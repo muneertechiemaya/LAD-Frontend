@@ -3,6 +3,8 @@ import { BuilderBottomInput } from "./BuilderBottomInput";
 import { X, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+import ReactMarkdown from "react-markdown";
+
 export interface SummaryBlock {
   id: string;
   title: string;
@@ -15,21 +17,25 @@ export function AgentBuilderSummary({
   blocks,
   onClose,
   onNext,
+  buttonLabel = "Finalize",
+  phase,
 }: {
   title: string;
   description?: string;
   blocks: SummaryBlock[];
   onClose?: () => void;
   onNext?: (val?: string, action?: string) => void;
+  buttonLabel?: string;
+  phase?: string;
 }) {
   return (
-    <div className="relative flex flex-col items-center w-full max-w-md h-[600px] bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+    <div className="relative flex flex-col items-center w-full max-w-md h-[600px] bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-300 outline-none focus:outline-none focus:ring-0">
       
       <div className="w-full flex w-shrink-0 items-center justify-between p-4 border-b border-slate-100 bg-white/80 z-10">
          <div className="flex items-center gap-2">
             <Sparkles className="size-4 text-emerald-500" />
             <span className="text-[11px] font-bold text-[#0b1957] uppercase tracking-wider">
-               Builder / Summary
+               {phase || "Builder / Summary"}
             </span>
          </div>
          {onClose && (
@@ -49,9 +55,19 @@ export function AgentBuilderSummary({
              {title}
           </h2>
           {description && (
-             <p className="text-sm text-slate-500 text-center leading-relaxed font-medium">
-               {description}
-             </p>
+             <div className="text-sm text-slate-500 text-center leading-relaxed font-medium">
+               <ReactMarkdown
+                 components={{
+                   strong: ({ node, ref, ...props }) => <strong className="font-bold" {...props} />,
+                   p: ({ node, ref, ...props }) => <p className="leading-relaxed" {...props} />,
+                   ul: ({ node, ref, ...props }) => <ul className="list-disc pl-4 space-y-1 text-left my-2" {...props} />,
+                   ol: ({ node, ref, ...props }) => <ol className="list-decimal pl-4 space-y-1 text-left my-2" {...props} />,
+                   li: ({ node, ref, ...props }) => <li className="text-slate-500 font-medium" {...props} />,
+                 }}
+               >
+                 {description}
+               </ReactMarkdown>
+             </div>
           )}
         </div>
 
@@ -87,7 +103,7 @@ export function AgentBuilderSummary({
            onClick={() => onNext?.("", "finalize")}
            className="bg-gradient-to-br from-[#0b1957] to-[#1e293b] hover:from-[#152778] active:scale-95 text-white px-6 py-2.5 rounded-full text-sm font-bold shadow-xl shadow-[#0b1957]/20 transition-all mb-3 pointer-events-auto"
         >
-          Finalize Agent
+          {buttonLabel}
         </button>
 
         <div className="w-full pointer-events-auto">

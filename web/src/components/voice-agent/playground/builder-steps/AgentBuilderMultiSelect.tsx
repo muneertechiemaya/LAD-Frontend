@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { X, Sparkles, CheckSquare, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
+import ReactMarkdown from "react-markdown";
 
 export interface MultiSelectOption {
   id: string;
@@ -13,33 +14,48 @@ export function AgentBuilderMultiSelect({
   options,
   onClose,
   onNext,
+  phase,
 }: {
   question: string;
   description?: string;
   options: MultiSelectOption[];
   onClose?: () => void;
   onNext?: (val?: string[], action?: string) => void;
+  phase?: string;
 }) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [lastSelectedId, setLastSelectedId] = useState<string | null>(null);
   const [showCustomInput, setShowCustomInput] = useState(false);
 
   // Layout rule: stack rows up to 4 options, wrap chips if more.
   const isStacked = options.length <= 4;
 
   const toggleSelect = (id: string) => {
-    setSelectedIds(prev => 
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-    );
+    setSelectedIds(prev => {
+      const isSelected = prev.includes(id);
+      if (isSelected) {
+        if (lastSelectedId === id) setLastSelectedId(null);
+        return prev.filter(i => i !== id);
+      } else {
+        setLastSelectedId(id);
+        return [...prev, id];
+      }
+    });
+  };
+
+  const handleDoubleClick = (id: string) => {
+    setSelectedIds(prev => prev.filter(i => i !== id));
+    if (lastSelectedId === id) setLastSelectedId(null);
   };
 
   return (
-    <div className="relative flex flex-col items-center w-full max-w-md h-[600px] bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+    <div className="relative flex flex-col items-center w-full max-w-md h-[600px] bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-300 outline-none focus:outline-none focus:ring-0">
       
-      <div className="w-full flex w-shrink-0 items-center justify-between p-4 border-b border-slate-100 bg-white/80 z-10">
+      <div className="w-full flex shrink-0 items-center justify-between p-4 border-b border-slate-100 bg-white/80 z-10">
          <div className="flex items-center gap-2">
             <Sparkles className="size-4 text-emerald-500" />
             <span className="text-[11px] font-bold text-[#0b1957] uppercase tracking-wider">
-               Builder / Multi-Select
+               {phase || "Builder / Multi-Select"}
             </span>
          </div>
          {onClose && (
@@ -66,9 +82,19 @@ export function AgentBuilderMultiSelect({
              </p>
           ))}
           {description && (
-             <p className="text-sm text-slate-400 text-center leading-relaxed">
-               {description}
-             </p>
+             <div className="text-sm text-slate-400 text-center leading-relaxed">
+               <ReactMarkdown
+                 components={{
+                   strong: ({ node, ref, ...props }) => <strong className="font-bold" {...props} />,
+                   p: ({ node, ref, ...props }) => <p className="leading-relaxed" {...props} />,
+                   ul: ({ node, ref, ...props }) => <ul className="list-disc pl-4 space-y-1 text-left my-2" {...props} />,
+                   ol: ({ node, ref, ...props }) => <ol className="list-decimal pl-4 space-y-1 text-left my-2" {...props} />,
+                   li: ({ node, ref, ...props }) => <li className="text-slate-400 font-medium" {...props} />,
+                 }}
+               >
+                 {description}
+               </ReactMarkdown>
+             </div>
           )}
         </div>
 
@@ -79,11 +105,13 @@ export function AgentBuilderMultiSelect({
         )}>
           {options.map((opt) => {
             const isSelected = selectedIds.includes(opt.id);
+            const isExpanded = isSelected && lastSelectedId === opt.id;
             return (
               <button
                 key={opt.id}
                 type="button"
                 onClick={() => toggleSelect(opt.id)}
+                onDoubleClick={() => handleDoubleClick(opt.id)}
                 className={cn(
                   "bg-white border text-left text-sm text-[#0b1957] flex items-center gap-3 transition-all hover:bg-slate-50 group",
                   isStacked ? "w-full rounded-2xl px-5 py-4 shadow-sm hover:shadow-md" : "w-auto rounded-full px-4 py-2 hover:shadow-sm",
@@ -93,7 +121,12 @@ export function AgentBuilderMultiSelect({
                 <div className="shrink-0 transition-colors duration-200 text-slate-300 group-hover:text-[#0b1957]/50">
                    {isSelected ? <CheckSquare className="size-4 text-[#0b1957]" /> : <Square className="size-4" />}
                 </div>
-                <span className={cn("flex-1 font-medium", isStacked ? "truncate" : "")}>{opt.label}</span>
+                <span className={cn(
+                  "flex-1 font-medium",
+                  isStacked && !isExpanded ? "truncate" : "whitespace-normal break-words"
+                )}>
+                  {opt.label}
+                </span>
               </button>
             );
           })}

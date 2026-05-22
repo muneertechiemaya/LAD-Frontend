@@ -47,7 +47,7 @@ export default function Playground({
   if (pg.sessionToken) {
     return (
       <div className="flex flex-col items-center w-full min-h-[400px] bg-transparent font-sans antialiased pb-8">
-        <div className="relative flex flex-col items-center w-full max-w-xl bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="relative flex flex-col items-center w-full max-w-xl bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500 outline-none focus:outline-none focus:ring-0">
           <LiveKitRoom
             token={pg.sessionToken}
             serverUrl={pg.livekitUrl}

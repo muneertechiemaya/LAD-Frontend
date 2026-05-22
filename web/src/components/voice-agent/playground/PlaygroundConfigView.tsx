@@ -14,6 +14,9 @@ import { AgentBuilderMCQ } from "./builder-steps/AgentBuilderMCQ";
 import { AgentBuilderSummary } from "./builder-steps/AgentBuilderSummary";
 import { AgentBuilderBlank } from "./builder-steps/AgentBuilderBlank";
 import { AgentBuilderMultiSelect } from "./builder-steps/AgentBuilderMultiSelect";
+import { AgentBuilderMasterDraft } from "./builder-steps/AgentBuilderMasterDraft";
+import { AgentBuilderDropdown } from "./builder-steps/AgentBuilderDropdown";
+import { AgentBuilderConfigs } from "./builder-steps/AgentBuilderConfigs";
 import { BuilderData } from "@/hooks/voice-agent/usePlayground";
 
 interface PlaygroundConfigViewProps {
@@ -44,7 +47,7 @@ interface PlaygroundConfigViewProps {
   startCall: () => Promise<void>;
   step: 
     | "welcome" | "config" | "create-selection" | "guided-journey"
-    | "builder-text" | "builder-mcq-few" | "builder-mcq-many" | "builder-summary" | "builder-blank";
+    | "builder-text" | "builder-mcq" | "builder-mcq-few" | "builder-mcq-many" | "builder-mcq-multi" | "builder-multi-select" | "builder-summary" | "builder-blank" | "builder-master-draft" | "builder-dropdown" | "builder-configs";
 }
 
 /* Shared UI fragments */
@@ -205,7 +208,7 @@ export default function PlaygroundConfigView({
   /* ── GUIDED JOURNEY SCREEN ── */
   if (step === "guided-journey") {
     return (
-      <div className="relative flex flex-col items-center w-full max-w-md p-10 bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+      <div className="relative flex flex-col items-center w-full max-w-md p-10 bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-300 outline-none focus:outline-none focus:ring-0">
         <CloseButton onClose={onClose} />
         <div className="flex flex-col items-center text-center space-y-8 pt-6 pb-4">
           <div className="space-y-2">
@@ -223,36 +226,28 @@ export default function PlaygroundConfigView({
 
   /* ── BUILDER SCENARIOS (Demo Flow) ── */
   if (step === "builder-text") {
-    return <AgentBuilderTextInput onClose={onClose} onNext={advanceBuilderStep} question={builderData?.question || "Provide input"} description={builderData?.description || ""} />;
+    return <AgentBuilderTextInput onClose={onClose} onNext={advanceBuilderStep} question={builderData?.question || "Provide input"} description={builderData?.description || ""} phase={builderData?.phase} />;
   }
 
-  if (step === "builder-mcq-few") {
+  if (step === "builder-mcq" || step === "builder-mcq-few" || step === "builder-mcq-many") {
     return <AgentBuilderMCQ 
       onClose={onClose}
       onNext={advanceBuilderStep}
       question={builderData?.question || ""}
       description={builderData?.description || ""}
       options={builderData?.options || []}
+      phase={builderData?.phase}
     />;
   }
 
-  if (step === "builder-mcq-many") {
-    return <AgentBuilderMCQ 
-      onClose={onClose}
-      onNext={advanceBuilderStep}
-      question={builderData?.question || ""}
-      description={builderData?.description || ""}
-      options={builderData?.options || []}
-    />;
-  }
-
-  if (step === "builder-mcq-multi") {
+  if (step === "builder-mcq-multi" || step === "builder-multi-select") {
     return <AgentBuilderMultiSelect 
       onClose={onClose}
       onNext={advanceBuilderStep}
       question={builderData?.question || ""}
       description={builderData?.description || ""}
       options={builderData?.options || []}
+      phase={builderData?.phase}
     />;
   }
 
@@ -263,17 +258,52 @@ export default function PlaygroundConfigView({
       title={builderData?.question || "Summary"}
       description={builderData?.description || ""}
       blocks={builderData?.blocks || []}
+      buttonLabel={builderData?.buttonLabel}
+      phase={builderData?.phase}
     />;
   }
 
   if (step === "builder-blank") {
-     return <AgentBuilderBlank onClose={onClose} onNext={advanceBuilderStep} htmlContent={builderData?.htmlContent || ""} />;
+     return <AgentBuilderBlank onClose={onClose} onNext={advanceBuilderStep} htmlContent={builderData?.htmlContent || ""} phase={builderData?.phase} />;
+  }
+
+  if (step === "builder-master-draft") {
+    return <AgentBuilderMasterDraft
+      onClose={onClose}
+      onNext={advanceBuilderStep}
+      title={builderData?.question || "Review Agent Blueprint"}
+      description={builderData?.description || ""}
+      draft={builderData?.draft}
+      buttonLabel={builderData?.buttonLabel}
+      phase={builderData?.phase}
+    />;
+  }
+
+  if (step === "builder-dropdown") {
+    return <AgentBuilderDropdown
+      onClose={onClose}
+      onNext={advanceBuilderStep}
+      question={builderData?.question || ""}
+      description={builderData?.description || ""}
+      options={builderData?.options || []}
+      phase={builderData?.phase}
+    />;
+  }
+
+  if (step === "builder-configs") {
+    return <AgentBuilderConfigs
+      onClose={onClose}
+      onNext={advanceBuilderStep}
+      question={builderData?.question || ""}
+      description={builderData?.description || ""}
+      phase={builderData?.phase}
+    />;
   }
 
   /* ── CREATE SELECTION SCREEN ── */
   if (step === "create-selection") {
     return (
-      <div className="relative flex flex-col items-center w-full max-w-md p-8 bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+      <div className="relative flex flex-col items-center w-full max-w-md p-8 bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-300 outline-none focus:outline-none focus:ring-0">
         <BackButton onClick={onBack} />
         <CloseButton onClose={onClose} />
 
@@ -325,7 +355,7 @@ export default function PlaygroundConfigView({
   /* ── WELCOME ── */
   if (step === "welcome") {
     return (
-      <div className="relative flex flex-col items-center w-full max-w-md p-8 bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+      <div className="relative flex flex-col items-center w-full max-w-md p-8 bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-300 outline-none focus:outline-none focus:ring-0">
         <CloseButton onClose={onClose} />
 
         <div className="mb-8 mt-2 relative w-48 h-12">
@@ -392,7 +422,7 @@ export default function PlaygroundConfigView({
 
   /* ── CONFIG (agent selection + toggles + start call) ── */
   return (
-    <div className="relative flex flex-col items-center w-full max-w-md p-6 bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+    <div className="relative flex flex-col items-center w-full max-w-md p-6 bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-300 outline-none focus:outline-none focus:ring-0">
       <BackButton onClick={onBack} />
       <CloseButton onClose={onClose} />
       <StatusBar isHolding={isHolding} timerDisplay={timerDisplay} />
