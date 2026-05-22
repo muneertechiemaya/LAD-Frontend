@@ -356,16 +356,24 @@ export function usePlayground({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workerUrl]);
 
-  /* Auto-release when leaving test screens */
+  /* Keep and maintain connection (wait and hold) for all active playground/builder phases */
   useEffect(() => {
-    const isAtTestArea = step === "config" || !!sessionToken;
-    if (!isAtTestArea && callIdRef.current) {
-      releaseHold(callIdRef.current);
-      setCallId("");
-      setIsHolding(false);
-      clearAllTimers();
+    const isAtActiveArea = step !== "welcome" && step !== "create-selection";
+    if (isAtActiveArea) {
+      if (!isHolding && !reloading && !callIdRef.current) {
+        const id = generateCallId();
+        setCallId(id);
+        establishHold(id);
+      }
+    } else {
+      if (callIdRef.current) {
+        releaseHold(callIdRef.current);
+        setCallId("");
+        setIsHolding(false);
+        clearAllTimers();
+      }
     }
-  }, [step, sessionToken, releaseHold, clearAllTimers]);
+  }, [step, isHolding, reloading, establishHold, releaseHold, clearAllTimers]);
 
   /* ────────────────── STEP TRANSITIONS ────────────────── */
 
