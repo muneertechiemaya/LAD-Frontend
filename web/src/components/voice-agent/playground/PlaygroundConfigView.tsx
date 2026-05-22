@@ -210,12 +210,14 @@ export default function PlaygroundConfigView({
     return (
       <div className="relative flex flex-col items-center w-full max-w-md p-10 bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-300 outline-none focus:outline-none focus:ring-0">
         <CloseButton onClose={onClose} />
-        <div className="flex flex-col items-center text-center space-y-8 pt-6 pb-4">
+        <BackButton onClick={onBack} />
+        <Notices reloading={reloading} error={error} />
+        <div className="flex flex-col items-center text-center space-y-8 pt-6 pb-4 w-full">
           <div className="space-y-2">
             <h2 className="text-2xl font-bold text-[#0b1957]">AI Guided Journey</h2>
             <p className="text-sm text-slate-500">Creating your agent in real-time</p>
           </div>
-          <ThinkingIndicator />
+          {!error && <ThinkingIndicator />}
           <p className="text-[10px] text-slate-400 max-w-[200px] leading-relaxed">
             This minimal configuration ensures your agent follows best practices for interaction and goal achievement.
           </p>

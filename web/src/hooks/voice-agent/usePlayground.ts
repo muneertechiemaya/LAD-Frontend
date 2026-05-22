@@ -381,6 +381,7 @@ export function usePlayground({
     setStep("config");
     if (!isHolding && !reloading) {
       const id = generateCallId();
+      callIdRef.current = id;
       setCallId(id);
       establishHold(id);
     }
@@ -498,9 +499,50 @@ export function usePlayground({
       const newSessionId = `session-${Math.random().toString(36).substring(2, 9)}`;
       setBuilderSessionId(newSessionId);
       setBuilderData(null);
+      setError("");
       setStep("guided-journey"); // Show loading screen
 
+      const id = generateCallId();
+      callIdRef.current = id; // Sync ref synchronously to prevent race conditions with active area useEffect
+      setCallId(id);
+
+      // Probe worker status with retry loop (10 attempts, 1.5s delay)
+      let awake = false;
+      const maxAttempts = 10;
+      const delayMs = 1500;
+
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          console.log(`[Playground] Probing worker status, attempt ${attempt}/${maxAttempts}...`);
+          const probe = await fetch(`${workerUrl}/worker-status`, {
+            method: "GET",
+            headers: getAuthHeaderOnly(),
+          });
+          if (probe.ok) {
+            awake = true;
+            break;
+          }
+        } catch (e) {
+          console.warn(`[Playground] Worker status probe attempt ${attempt} failed:`, e);
+        }
+        if (attempt < maxAttempts) {
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+        }
+      }
+
+      if (!awake) {
+        console.error("[Playground] Worker failed to wake up after polling.");
+        setError("Worker is sleeping. Please try again later.");
+        // Clear callId as the connection failed
+        setCallId("");
+        callIdRef.current = "";
+        return;
+      }
+
+      // Worker is awake! Establish hold and call builder chat
       try {
+        await establishHold(id);
+
         const res = await fetch(`${workerUrl}/playground-builder/chat`, {
           method: "POST",
           headers: getAuthHeaders(),
@@ -515,7 +557,7 @@ export function usePlayground({
         const data = await res.json();
         console.log("[Playground] Agent responded:", data.step, data.question);
 
-        // Set data and transition in the same tick — no timer
+        // Set data and transition immediately
         setBuilderData({
           question: data.question,
           description: data.description,
@@ -528,9 +570,10 @@ export function usePlayground({
           phase: data.phase,
         });
         setStep(data.step as PlaygroundStep);
-      } catch (err) {
+      } catch (err: any) {
         console.error("[Playground] FETCH FAILED:", err);
-        setStep("builder-text"); // Fallback so user isn't stuck on loading
+        setError(err.message || "Failed to initialize guided journey. Please try again later.");
+        // DO NOT transition to "builder-text" (empty screen), stay on loading screen to display soft error
       }
     },
     advanceBuilderStep: async (userInput?: string | string[], action?: string) => {

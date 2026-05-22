@@ -111,7 +111,15 @@ export default function Playground({
       <PlaygroundConfigView
         step={pg.step}
         onClose={onClose}
-        onBack={() => pg.setStep("welcome")}
+        onBack={() => {
+          if (pg.step === "create-selection" || pg.step === "config") {
+            pg.setStep("welcome");
+          } else if (pg.step === "guided-journey" || pg.step.startsWith("builder-")) {
+            pg.setStep("create-selection");
+          } else {
+            pg.setStep("welcome");
+          }
+        }}
         onOpenCreateSelection={pg.openCreateSelection}
         onStartTesting={pg.startTesting}
         onStartDirectConfig={pg.startDirectConfig}
