@@ -9022,7 +9022,7 @@ const css = `
                 html, body, .adv-landing, .adv-chat-root, main { background: #FFFFFF !important; }
                 .adv-chat-input-box { width: 100% !important; max-width: 100% !important; border-radius: 20px; padding: 16px 18px 12px; border: none !important; box-shadow: none !important; outline: none !important; background: #FFFFFF !important; }
                 .adv-chat-ta { text-align: left; font-size: 15px !important; outline: none !important; border: none !important; background: #FFFFFF !important; }
-                .adv-chat-back { width: 36px; height: 36px; top: 82px; left: 12px; z-index: 2000 !important; }
+                .adv-chat-back { width: 36px; height: 36px; top: 82px; left: 12px; z-index: 10 !important; }
                 .adv-leads-panel {width: 100% !important; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 50; border-left: none; }
                 main { overflow: hidden !important; height: calc(100vh - 64px) !important; padding-top: 0 !important; background: #FFFFFF !important; }
                 .adv-chat-root { height: calc(100vh - 64px) !important; overflow: hidden !important; background: #FFFFFF !important; }
@@ -9134,7 +9134,7 @@ const css = `
                 /* MOBILE FOOTER */
                 .adv-mobile-footer {
                     display: flex; position: fixed; bottom: 10px; left: 6%; right: 6%;
-                    height: 60px; background: #FFFFFF !important; border-radius: 40px; z-index: 1000;
+                    height: 60px; background: #FFFFFF !important; border-radius: 40px; z-index: 40;
                     box-shadow: 0 8px 24px rgba(0,0,0,0.12);
                     justify-content: space-around; align-items: center;
                     padding: 0 10px; border: none;
