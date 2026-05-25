@@ -896,6 +896,7 @@ export default function CallLogsPage() {
     // TODO: Implement bulk end API
     // await callLogsQuery.refetch();
     setSelected(new Set());
+    setSelectAllMode('none');
   }
 
   // End a single call using SDK
@@ -915,6 +916,7 @@ export default function CallLogsPage() {
       await retryCallsMutation.mutateAsync({ call_ids: failedCallIds });
       alert(`Retrying ${failedCallIds.length} failed calls`);
       setSelected(new Set());
+      setSelectAllMode('none');
     } catch (error) {
       logger.error("Error retrying calls", error);
       alert("Failed to retry calls. Please try again.");
