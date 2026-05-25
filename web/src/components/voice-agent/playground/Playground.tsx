@@ -47,7 +47,7 @@ export default function Playground({
   if (pg.sessionToken) {
     return (
       <div className="flex flex-col items-center w-full min-h-[400px] bg-transparent font-sans antialiased pb-8">
-        <div className="relative flex flex-col items-center w-full max-w-xl bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="relative flex flex-col items-center w-full max-w-xl bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500 outline-none focus:outline-none focus:ring-0">
           <LiveKitRoom
             token={pg.sessionToken}
             serverUrl={pg.livekitUrl}
@@ -111,7 +111,15 @@ export default function Playground({
       <PlaygroundConfigView
         step={pg.step}
         onClose={onClose}
-        onBack={() => pg.setStep("welcome")}
+        onBack={() => {
+          if (pg.step === "create-selection" || pg.step === "config") {
+            pg.setStep("welcome");
+          } else if (pg.step === "guided-journey" || pg.step.startsWith("builder-")) {
+            pg.setStep("create-selection");
+          } else {
+            pg.setStep("welcome");
+          }
+        }}
         onOpenCreateSelection={pg.openCreateSelection}
         onStartTesting={pg.startTesting}
         onStartDirectConfig={pg.startDirectConfig}

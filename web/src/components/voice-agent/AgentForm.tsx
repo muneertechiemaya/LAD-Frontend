@@ -9,7 +9,11 @@ import {
   RotateCcw,
   AlertCircle,
   Loader2,
-  Languages
+  Languages,
+  Sliders,
+  Volume2,
+  Music,
+  Gauge
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -39,6 +43,8 @@ import { PromptEditor } from './PromptEditor';
 import { VoicePreview } from './VoicePreview';
 import { CharacterCounter } from './CharacterCounter';
 import { cn } from '@/lib/utils';
+import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
 
 interface AgentFormProps {
   formData: AgentFormData;
@@ -99,6 +105,14 @@ export function AgentForm({
 }: AgentFormProps) {
   // Filter voices by selected gender
   const filteredVoices = voices.filter((v: Voice) => v.gender === formData.gender);
+
+  // Local state for Universal Agent Settings (Voice Dynamics and Background Ambiance)
+  const [speed, setSpeed] = React.useState<number>(1.0);
+  const [pitch, setPitch] = React.useState<number>(0.0);
+  const [volume, setVolume] = React.useState<number>(1.0);
+  const [bgSoundOn, setBgSoundOn] = React.useState<boolean>(false);
+  const [bgSoundUrl, setBgSoundUrl] = React.useState<string>('/office_chatter_loud.mp3');
+  const [bgSoundVolume, setBgSoundVolume] = React.useState<number>(0.4);
 
   return (
     <div className="space-y-6">
@@ -319,8 +333,180 @@ export function AgentForm({
         </CardContent>
       </Card>
 
-      {/* Agent Instructions */}
+      {/* Universal Agent Settings */}
       <Card className="form-section animate-fade-in-up stagger-3">
+        <CardHeader className="pb-4">
+          <div className="flex items-center gap-3">
+            <div className="icon-container">
+              <Sliders className="h-5 w-5 text-blue" />
+            </div>
+            <div>
+              <CardTitle className="text-lg">Universal Agent Settings</CardTitle>
+              <CardDescription>Configure provider-independent voice dynamics and ambiance masking</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 divide-y md:divide-y-0 md:divide-x divide-border">
+            {/* Left Column: Voice Dynamics */}
+            <div className="space-y-6 md:pr-4">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground mb-1">Voice Dynamics</h3>
+                <p className="text-xs text-muted-foreground">Standardized, provider-independent settings for pitch, speed, and volume.</p>
+              </div>
+
+              {/* Speed */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="flex items-center gap-2">
+                    <Gauge className="h-4 w-4 text-muted-foreground" />
+                    <span>Speaking Rate (Speed)</span>
+                  </Label>
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                    {speed.toFixed(2)}x
+                  </span>
+                </div>
+                <Slider 
+                  value={speed} 
+                  onValueChange={setSpeed} 
+                  min={0.5} 
+                  max={2.0} 
+                  step={0.05} 
+                />
+                <div className="flex justify-between text-[10px] text-muted-foreground">
+                  <span>Slow (0.5x)</span>
+                  <span>Normal (1.0x)</span>
+                  <span>Fast (2.0x)</span>
+                </div>
+              </div>
+
+              {/* Pitch */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="flex items-center gap-2">
+                    <Sliders className="h-4 w-4 text-muted-foreground" />
+                    <span>Voice Pitch</span>
+                  </Label>
+                  <span className={cn(
+                    "text-xs font-semibold px-2 py-0.5 rounded-full",
+                    pitch === 0 ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary"
+                  )}>
+                    {pitch > 0 ? `+${pitch.toFixed(1)}` : pitch.toFixed(1)}
+                  </span>
+                </div>
+                <Slider 
+                  value={pitch} 
+                  onValueChange={setPitch} 
+                  min={-1.0} 
+                  max={1.0} 
+                  step={0.1} 
+                />
+                <div className="flex justify-between text-[10px] text-muted-foreground">
+                  <span>Lowest (-1.0)</span>
+                  <span>Native (0.0)</span>
+                  <span>Highest (1.0)</span>
+                </div>
+              </div>
+
+              {/* Volume */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="flex items-center gap-2">
+                    <Volume2 className="h-4 w-4 text-muted-foreground" />
+                    <span>Loudness (Volume)</span>
+                  </Label>
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                    {volume.toFixed(2)}x
+                  </span>
+                </div>
+                <Slider 
+                  value={volume} 
+                  onValueChange={setVolume} 
+                  min={0.5} 
+                  max={2.0} 
+                  step={0.05} 
+                />
+                <div className="flex justify-between text-[10px] text-muted-foreground">
+                  <span>Soft (0.5x)</span>
+                  <span>Native (1.0x)</span>
+                  <span>Loud (2.0x)</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column: Background Ambiance */}
+            <div className="space-y-6 pt-6 md:pt-0 md:pl-8">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground mb-1">Background Ambiance</h3>
+                <p className="text-xs text-muted-foreground">Standardized control for enabling background ambient masking audio.</p>
+              </div>
+
+              {/* Background Sound On/Off */}
+              <div className="flex items-center justify-between rounded-lg border border-border p-4 bg-muted/40">
+                <div className="space-y-0.5">
+                  <Label className="text-sm font-medium">Ambient Noise Masking</Label>
+                  <p className="text-xs text-muted-foreground">Inject natural background atmosphere during calls</p>
+                </div>
+                <Switch 
+                  checked={bgSoundOn} 
+                  onCheckedChange={setBgSoundOn}
+                />
+              </div>
+
+              {/* Background URL & Volume */}
+              <div className={cn(
+                "space-y-6 transition-all duration-300",
+                !bgSoundOn ? "opacity-40 pointer-events-none" : "opacity-100"
+              )}>
+                {/* Background Sound URL */}
+                <div className="space-y-2">
+                  <Label htmlFor="bg-sound-url" className="text-xs font-medium">Sound Override URL / Path</Label>
+                  <Input
+                    id="bg-sound-url"
+                    value={bgSoundUrl}
+                    onChange={(e) => setBgSoundUrl(e.target.value)}
+                    placeholder="/office_chatter_loud.mp3"
+                    disabled={!bgSoundOn}
+                    className="h-9 text-xs"
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    Complete URL or relative sound path (e.g. <code>/office_chatter_loud.mp3</code>)
+                  </p>
+                </div>
+
+                {/* Background Sound Volume */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="flex items-center gap-2 text-xs">
+                      <Music className="h-4 w-4 text-muted-foreground" />
+                      <span>Ambiance Volume</span>
+                    </Label>
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                      {Math.round(bgSoundVolume * 100)}%
+                    </span>
+                  </div>
+                  <Slider 
+                    value={bgSoundVolume} 
+                    onValueChange={setBgSoundVolume} 
+                    min={0.0} 
+                    max={1.0} 
+                    step={0.05}
+                    disabled={!bgSoundOn}
+                  />
+                  <div className="flex justify-between text-[10px] text-muted-foreground">
+                    <span>Silent (0%)</span>
+                    <span>Standard (40%)</span>
+                    <span>Full (100%)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Agent Instructions */}
+      <Card className="form-section animate-fade-in-up stagger-4">
         <CardHeader className="pb-4">
           <div className="flex items-center gap-3">
             <div className="icon-container bg-success/10">
@@ -348,7 +534,7 @@ export function AgentForm({
       </Card>
 
       {/* System Instructions */}
-      <Card className="form-section animate-fade-in-up stagger-4">
+      <Card className="form-section animate-fade-in-up stagger-5">
         <CardHeader className="pb-4">
           <div className="flex items-center gap-3">
             <div className="icon-container bg-warning/10">
@@ -376,7 +562,7 @@ export function AgentForm({
       </Card>
 
       {/* Outbound Configuration */}
-      <Card className="form-section animate-fade-in-up">
+      <Card className="form-section animate-fade-in-up stagger-6">
         <CardHeader className="pb-4">
           <div className="flex items-center gap-3">
             <div className="icon-container bg-primary/10">

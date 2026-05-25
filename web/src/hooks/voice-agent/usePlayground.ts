@@ -56,7 +56,16 @@ export interface BuilderData {
   options?: any[];
   htmlContent?: string;
   blocks?: any[];
+  buttonLabel?: string;
+  agentId?: number;
+  draft?: {
+    agent_prompt?: string;
+    outbound_greeting?: string;
+    inbound_greeting?: string;
+  };
+  phase?: string;
 }
+
 
 export type PlaygroundStep = 
   | "welcome" 
@@ -64,11 +73,16 @@ export type PlaygroundStep =
   | "create-selection" 
   | "guided-journey"
   | "builder-text"
+  | "builder-mcq"
   | "builder-mcq-few"
   | "builder-mcq-many"
   | "builder-mcq-multi"
+  | "builder-multi-select"
   | "builder-summary"
-  | "builder-blank";
+  | "builder-blank"
+  | "builder-master-draft"
+  | "builder-dropdown"
+  | "builder-configs";
 
 
 export interface UsePlaygroundOptions {
@@ -342,16 +356,24 @@ export function usePlayground({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workerUrl]);
 
-  /* Auto-release when leaving test screens */
+  /* Keep and maintain connection (wait and hold) for all active playground/builder phases */
   useEffect(() => {
-    const isAtTestArea = step === "config" || !!sessionToken;
-    if (!isAtTestArea && callIdRef.current) {
-      releaseHold(callIdRef.current);
-      setCallId("");
-      setIsHolding(false);
-      clearAllTimers();
+    const isAtActiveArea = step !== "welcome" && step !== "create-selection";
+    if (isAtActiveArea) {
+      if (!isHolding && !reloading && !callIdRef.current) {
+        const id = generateCallId();
+        setCallId(id);
+        establishHold(id);
+      }
+    } else {
+      if (callIdRef.current) {
+        releaseHold(callIdRef.current);
+        setCallId("");
+        setIsHolding(false);
+        clearAllTimers();
+      }
     }
-  }, [step, sessionToken, releaseHold, clearAllTimers]);
+  }, [step, isHolding, reloading, establishHold, releaseHold, clearAllTimers]);
 
   /* ────────────────── STEP TRANSITIONS ────────────────── */
 
@@ -359,6 +381,7 @@ export function usePlayground({
     setStep("config");
     if (!isHolding && !reloading) {
       const id = generateCallId();
+      callIdRef.current = id;
       setCallId(id);
       establishHold(id);
     }
@@ -471,86 +494,144 @@ export function usePlayground({
       if (onClose) onClose();
       router.push("/settings?tab=api");
     },
-    startGuidedJourney: () => {
-      console.log("[Playground] Entering initial guided-journey transition...");
+    startGuidedJourney: async () => {
+      console.log("[Playground] Starting guided journey...");
       const newSessionId = `session-${Math.random().toString(36).substring(2, 9)}`;
       setBuilderSessionId(newSessionId);
       setBuilderData(null);
-      setStep("guided-journey");
-      
-      // Also fire initial fetch to backend so the first step data is ready!
-      fetch(`${workerUrl}/playground-builder/chat`, {
+      setError("");
+      setStep("guided-journey"); // Show loading screen
+
+      const id = generateCallId();
+      callIdRef.current = id; // Sync ref synchronously to prevent race conditions with active area useEffect
+      setCallId(id);
+
+      // Probe worker status with retry loop (10 attempts, 1.5s delay)
+      let awake = false;
+      const maxAttempts = 10;
+      const delayMs = 1500;
+
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          console.log(`[Playground] Probing worker status, attempt ${attempt}/${maxAttempts}...`);
+          const probe = await fetch(`${workerUrl}/worker-status`, {
+            method: "GET",
+            headers: getAuthHeaderOnly(),
+          });
+          if (probe.ok) {
+            awake = true;
+            break;
+          }
+        } catch (e) {
+          console.warn(`[Playground] Worker status probe attempt ${attempt} failed:`, e);
+        }
+        if (attempt < maxAttempts) {
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+        }
+      }
+
+      if (!awake) {
+        console.error("[Playground] Worker failed to wake up after polling.");
+        setError("Worker is sleeping. Please try again later.");
+        // Clear callId as the connection failed
+        setCallId("");
+        callIdRef.current = "";
+        return;
+      }
+
+      // Worker is awake! Establish hold and call builder chat
+      try {
+        await establishHold(id);
+
+        const res = await fetch(`${workerUrl}/playground-builder/chat`, {
+          method: "POST",
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ session_id: newSessionId }),
+        });
+
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(`HTTP ${res.status}: ${errText}`);
+        }
+
+        const data = await res.json();
+        console.log("[Playground] Agent responded:", data.step, data.question);
+
+        // Set data and transition immediately
+        setBuilderData({
+          question: data.question,
+          description: data.description,
+          options: data.options,
+          htmlContent: data.htmlContent,
+          blocks: data.blocks,
+          buttonLabel: data.buttonLabel,
+          agentId: data.agentId,
+          draft: data.draft,
+          phase: data.phase,
+        });
+        setStep(data.step as PlaygroundStep);
+      } catch (err: any) {
+        console.error("[Playground] FETCH FAILED:", err);
+        setError(err.message || "Failed to initialize guided journey. Please try again later.");
+        // DO NOT transition to "builder-text" (empty screen), stay on loading screen to display soft error
+      }
+    },
+    advanceBuilderStep: async (userInput?: string | string[], action?: string) => {
+      if (demoTimerRef.current) clearTimeout(demoTimerRef.current);
+
+      console.log(`[Playground] advanceBuilderStep — input: ${userInput}, action: ${action}`);
+
+      setStep("guided-journey"); // Show loading screen while waiting
+
+      try {
+        const res = await fetch(`${workerUrl}/playground-builder/chat`, {
           method: "POST",
           headers: getAuthHeaders(),
           body: JSON.stringify({
-              session_id: newSessionId,
-          })
-      }).then(res => res.json()).then(data => {
-          setBuilderData({
-             question: data.question,
-             description: data.description,
-             options: data.options,
-             htmlContent: data.htmlContent,
-             blocks: data.blocks
-          });
-      }).catch(err => console.error("Failed to init builder session:", err));
+            session_id: builderSessionId,
+            message: typeof userInput === "string" ? userInput : (userInput || []).join(", "),
+            action: action,
+          }),
+        });
 
-      demoTimerRef.current = setTimeout(() => {
-         setStep((prev) => prev === "guided-journey" ? "builder-text" : prev);
-      }, 7000); // Wait 7 seconds on the transition animation, then advance.
-    },
-    advanceBuilderStep: async (userInput?: string | string[], action?: string) => {
-       if (demoTimerRef.current) clearTimeout(demoTimerRef.current);
-       
-       console.log(`[Playground] advanceBuilderStep called. Input: ${userInput}, Action: ${action}`);
-       
-       // If user finalized, exit
-       if (action === "finalize") {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        console.log("[Playground] Agent responded:", data.step, data.question);
+
+        if (data.step === "config") {
+          await fetchAgents();
+          if (data.agentId) {
+            setSelectedAgent(Number(data.agentId));
+          }
           setStep("config");
-          // also inform backend to clean up
-          fetch(`${workerUrl}/playground-builder/chat`, {
-             method: "POST",
-             headers: getAuthHeaders(),
-             body: JSON.stringify({ session_id: builderSessionId, action: "finalize" })
-          }).catch(err => console.error(err));
+          if (!isHolding && !reloading) {
+            const id = generateCallId();
+            setCallId(id);
+            establishHold(id);
+          }
           return;
-       }
+        }
 
-       setStep("guided-journey"); // start loading screen
+        // Set data and transition immediately — no timer
+        setBuilderData({
+          question: data.question,
+          description: data.description,
+          options: data.options,
+          htmlContent: data.htmlContent,
+          blocks: data.blocks,
+          buttonLabel: data.buttonLabel,
+          agentId: data.agentId,
+          draft: data.draft,
+          phase: data.phase,
+        });
 
-       try {
-           const res = await fetch(`${workerUrl}/playground-builder/chat`, {
-               method: "POST",
-               headers: getAuthHeaders(),
-               body: JSON.stringify({
-                   session_id: builderSessionId,
-                   message: typeof userInput === "string" ? userInput : (userInput || []).join(", "),
-                   action: action
-               })
-           });
-
-           if (!res.ok) throw new Error("Failed to reach builder API");
-           const data = await res.json();
-           
-           setBuilderData({
-              question: data.question,
-              description: data.description,
-              options: data.options,
-              htmlContent: data.htmlContent,
-              blocks: data.blocks
-           });
-
-           demoTimerRef.current = setTimeout(() => {
-               setStep(data.step as PlaygroundStep);
-           }, 7000);
-
-       } catch (err) {
-           console.error("Builder fetch failed:", err);
-           // Fallback / skip if failed
-           demoTimerRef.current = setTimeout(() => {
-               setStep("welcome");
-           }, 2000);
-       }
-    }
+        setStep(data.step as PlaygroundStep);
+      } catch (err) {
+        console.error("[Playground] advanceBuilderStep FAILED:", err);
+        setStep("welcome"); // Go back to start on failure
+      }
+    },
+    builderData,
   };
 }
