@@ -59,9 +59,9 @@ export function AgentSelector({
       </div>
 
       {/* Search and Action Buttons Row */}
-      <div className="w-full px-3 sm:px-4 md:px-5 lg:px-6 py-3 sm:py-4 border-b border-border/30 space-y-3">
+      <div className="w-full px-3 sm:px-4 md:px-5 lg:px-6 py-3 sm:py-4 border-b border-border/30">
         {/* Search Bar */}
-        <div className="relative flex-1 w-full">
+        <div className="relative w-full mb-3">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
@@ -86,7 +86,7 @@ export function AgentSelector({
         </div>
 
         {/* Action Buttons Row */}
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
           <Button
             onClick={() => onSelectAgent(null)}
             className={cn(
