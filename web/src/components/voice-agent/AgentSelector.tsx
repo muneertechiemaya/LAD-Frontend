@@ -90,7 +90,7 @@ export function AgentSelector({
           <Button
             onClick={() => onSelectAgent(null)}
             className={cn(
-              "justify-start gap-2 h-10 transition-all duration-200 font-medium shrink-0 px-3 sm:px-4",
+              "justify-center gap-2 h-10 transition-all duration-200 font-medium flex-1 px-3 sm:px-4",
               selectedAgentId === null && "gradient-primary shadow-lg scale-[1.02]"
             )}
             variant={selectedAgentId === null ? "default" : "outline"}
@@ -103,7 +103,7 @@ export function AgentSelector({
             onClick={onOpenPlayground}
             variant="outline"
             size="sm"
-            className="justify-start gap-2 h-10 font-medium shrink-0 px-3 sm:px-4 border-border/50 text-muted-foreground hover:text-foreground hover:bg-slate-50 dark:hover:bg-slate-800/50"
+            className="justify-center gap-2 h-10 font-medium flex-1 px-3 sm:px-4 border-border/50 text-muted-foreground hover:text-foreground hover:bg-slate-50 dark:hover:bg-slate-800/50"
           >
             <Sparkles className="h-4 w-4" />
             <span className="whitespace-nowrap">VOAG Playground</span>
