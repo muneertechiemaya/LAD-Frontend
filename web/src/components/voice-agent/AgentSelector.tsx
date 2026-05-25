@@ -86,7 +86,7 @@ export function AgentSelector({
         </div>
 
         {/* Action Buttons Row */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full">
           <Button
             onClick={() => onSelectAgent(null)}
             className={cn(

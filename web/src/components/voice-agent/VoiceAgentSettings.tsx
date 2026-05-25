@@ -390,7 +390,7 @@ export function VoiceAgentSettings() {
         <Tabs defaultValue="agents" className="w-full">
           <div className="flex flex-col gap-4 mb-6">
             <h1 className="text-2xl font-bold font-display">Voice Agents Workspace</h1>
-            <TabsList>
+            <TabsList className="w-full grid grid-cols-2">
               <TabsTrigger value="agents">Agent Configuration</TabsTrigger>
               <TabsTrigger value="library">Voice Library</TabsTrigger>
             </TabsList>
