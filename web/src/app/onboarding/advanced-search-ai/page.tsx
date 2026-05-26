@@ -3856,8 +3856,8 @@ export default function AdvancedSearchAIPage() {
                                         {busy ? <div className="adv-spinner" /> : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>}
                                     </button>
                                 </div>
-                                <div className="adv-msg-counter">{creditBalance !== null && creditBalance > 0 ? `${msgCount} messages used` : `${msgCount}/10 messages used`}</div>
                             </div>
+                                <div className="adv-msg-counter">{creditBalance !== null && creditBalance > 0 ? `${msgCount} messages used` : `${msgCount}/10 messages used`}</div>
                         </div>
                     )}
                     {messages.length === 0 && (
@@ -9033,7 +9033,7 @@ const css = `
                 .adv-chat-left-empty .adv-msgs-inner { display: none !important; }
                 .adv-chat-left-empty .adv-chat-input-wrap { padding-bottom: 0 !important; flex: 0 0 auto !important; }
                 .adv-chat-left-empty .adv-chat-input-box { padding: 24px 30px !important; max-width: 90% !important; margin: 0 auto !important; }
-                .adv-chat-left-empty .adv-chat-ta { font-size: 11px !important; }
+                .adv-chat-left-empty .adv-chat-ta { font-size: 12px !important; }
                 .adv-mobile-icp-box { display: flex; width: auto !important; left: auto !important; right: 12px !important; top: 82px !important; }
                 /* Decrease width for a more contained look on mobile */
                 .adv-chat-msgs { flex: 1 !important; overflow-y: auto !important; padding: 72px 0 10px !important; width: 100% !important; display: flex; flex-direction: column; overflow-x: hidden !important; border: none !important; background: #FFFFFF !important; }
