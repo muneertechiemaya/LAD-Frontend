@@ -788,8 +788,7 @@ function WABASidebar({ conversations, selectedId, onSelectConversation, searchQu
 
   // activePanel === 'main'
   return (
-    <div className="h-full flex flex-col bg-background text-foreground dark:bg-[#161717]">
-      
+   <div className="h-full flex flex-col overflow-visible bg-background text-foreground dark:bg-[#161717]">   
       {/* Header */}
       <div className="flex items-center justify-between p-4 pb-2">
         <h1 className="text-[22px] font-bold dark:text-white">WhatsApp</h1>
@@ -831,7 +830,7 @@ function WABASidebar({ conversations, selectedId, onSelectConversation, searchQu
       </div>
 
       {/* Search */}
-      <div className="px-4 pb-3 pt-1">
+      <div className="px-4 pb-3 pt-1 relative z-50">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground dark:text-[#a2a2a2]" />
           <Input 
@@ -842,8 +841,7 @@ function WABASidebar({ conversations, selectedId, onSelectConversation, searchQu
           />
            {/* ADD THIS */}
            {searchQuery && (
-  <div className="absolute top-12 left-0 right-0 bg-white dark:bg-[#202c33] rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto border dark:border-[#2a3942]">
-
+      <div className="absolute top-full mt-2 left-0 right-0 bg-white dark:bg-[#202c33] rounded-lg shadow-lg z-[999] max-h-60 overflow-y-auto border dark:border-[#2a3942]">
     {conversations.length > 0 && filteredConversations.length > 0 ? (
       filteredConversations.map((conv) => (
         <div
@@ -934,7 +932,7 @@ function WABASidebar({ conversations, selectedId, onSelectConversation, searchQu
       </div>
 
       {/* Chat List */}
-      <div className="flex-1 overflow-y-auto mt-0">
+      <div className="flex-1 overflow-y-auto mt-0 relative z-0">
         {filterTab === 'favourites' ? (
           <div className="flex flex-col items-center justify-center p-8 text-center gap-4 h-[80%]">
             <div className="w-32 h-32 bg-muted/50 dark:bg-[#202c33] rounded-full flex items-center justify-center mb-4 relative">
