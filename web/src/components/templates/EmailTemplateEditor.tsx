@@ -925,14 +925,6 @@ export default function EmailTemplateEditor({ mode, initialTemplate }: EmailTemp
               </button>
             </div>
           )}
-          <button
-            onClick={() => handleSave(true)}
-            disabled={saving}
-            className="w-full max-w-xs mx-auto flex items-center justify-center gap-2 py-2 px-4 bg-[#0B1957] text-white text-xs font-semibold rounded-lg hover:bg-[#13257e] disabled:opacity-60 transition-all cursor-pointer shadow-xs"
-          >
-            {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-            {saving ? 'Saving…' : mode === 'create' ? 'Create template' : 'Save changes'}
-          </button>
         </div>
       )}
 
