@@ -997,7 +997,7 @@ export default function CallLogsPage() {
               onClick={endSelectedCalls}
               className="px-5 py-2.5 bg-[#FFE2E2] hover:bg-[#FCDADA] text-red-700 rounded-xl transition-all duration-300 font-bold shadow-lg hover:shadow-xl hover:scale-105"
             >
-              End Selected ({selected.size})
+              End Selected ({selectAllMode === 'all' ? totalRecords : selected.size})
             </button>
           </div>
         )}
