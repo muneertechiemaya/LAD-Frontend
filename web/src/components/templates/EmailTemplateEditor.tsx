@@ -486,7 +486,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate }: EmailTemp
       </div>
 
       {/* ── Mobile Sub-tabs (Design, Preview, Details) ── */}
-      {activeTab === 'editor' && (
+      {activeTab === 'editor' && editorMode && (
         <div className="sm:hidden flex-shrink-0 bg-gray-50 border-b border-gray-200 px-4 py-2.5 flex justify-center">
           <div className="flex items-center bg-gray-200/55 p-1 rounded-xl border border-gray-300/30 w-full max-w-sm shadow-xs">
             <button
