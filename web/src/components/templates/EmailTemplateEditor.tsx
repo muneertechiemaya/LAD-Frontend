@@ -406,7 +406,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
               } else if (onBack) {
                 onBack();
               } else {
-                router.push('/campaigns/templates');
+                router.back();
               }
             }}
              className="p-1.5 rounded-lg text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-colors cursor-pointer flex-shrink-0"
