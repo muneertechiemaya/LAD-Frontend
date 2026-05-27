@@ -119,7 +119,7 @@ function EditableName({ name, onChange }: { name: string; onChange: (v: string) 
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
-export default function EmailTemplateEditor({ mode, initialTemplate }: EmailTemplateEditorProps) {
+export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: EmailTemplateEditorProps) {
   const router = useRouter();
 
   const [activeTab, setActiveTab]     = useState<'editor' | 'templates'>('editor');
@@ -399,12 +399,20 @@ export default function EmailTemplateEditor({ mode, initialTemplate }: EmailTemp
       {/* ── Top bar ── */}
       <header className="flex-shrink-0 bg-white border-b border-gray-200 px-4 py-3 sm:px-5 sm:py-3.5 flex items-center justify-between gap-2.5 sm:gap-3">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-          <Link
-            href="/campaigns/templates"
-            className="p-1.5 rounded-lg text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-colors cursor-pointer flex-shrink-0"
+           <button
+            onClick={() => {
+              if (editorMode) {
+                setEditorMode(null);
+              } else if (onBack) {
+                onBack();
+              } else {
+                router.push('/campaigns/templates');
+              }
+            }}
+             className="p-1.5 rounded-lg text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-colors cursor-pointer flex-shrink-0"
           >
             <ArrowLeft className="w-4 h-4" />
-          </Link>
+          </button>
 
           <div className="flex flex-col min-w-0">
             <EditableName name={template.name} onChange={(v) => set('name', v)} />
