@@ -113,6 +113,7 @@ export function useConversations(hookOptions?: UseConversationsOptions): UseConv
   // Select conversation
   const selectConversation = useCallback((id: string) => {
     setSelectedId(id);
+    if (!id) return;
 
     // Fire-and-forget: persist the reset to the DB so polls stay at 0
     markConversationReadApi(id, hookOptions?.channel).catch(() => {
@@ -133,13 +134,13 @@ export function useConversations(hookOptions?: UseConversationsOptions): UseConv
   });
 
   const sendMessage = useCallback(
-    (payload: RichMessagePayload) => {
+    async (payload: RichMessagePayload) => {
       if (!effectiveSelectedId || !selectedConversation) return;
       // Require at least some content for text messages (also guard against missing type)
       const payloadType = payload.type || 'text';
       if (payloadType === 'text' && !payload.content?.trim()) return;
 
-      sendMutation.mutate({
+      return sendMutation.mutateAsync({
         conversationId: effectiveSelectedId,
         leadId: selectedConversation.leadId || selectedConversation.contact.id,
         phoneNumber: selectedConversation.contact.phone,

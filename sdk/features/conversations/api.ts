@@ -9,6 +9,7 @@
  */
 import { queryOptions, infiniteQueryOptions } from '@tanstack/react-query';
 import { proxyClient } from '../../shared/proxyClient';
+import { safeStorage } from '../../shared/storage';
 import type {
   Conversation,
   ConversationListFilters,
@@ -74,6 +75,12 @@ function mapMessageFromApi(raw: any): Message {
       ? (metadata.sender_name || metadata.agent_name || raw.sender_name || undefined)
       : undefined;
 
+  const rawType = String(raw.type || '').toLowerCase();
+  const inferredMediaTypeFromRawType =
+    rawType === 'image' || rawType === 'video' || rawType === 'audio' || rawType === 'document'
+      ? rawType
+      : undefined;
+
   return {
     id: raw.id,
     conversationId: raw.conversation_id,
@@ -84,9 +91,11 @@ function mapMessageFromApi(raw: any): Message {
     // Map 'received' → 'sent' for display (shows clock icon) since older rows may
     // still carry the DB default before the wamid-backfill was introduced.
     status: (() => {
-      const s = raw.message_status || '';
-      if (!s || s === 'received') return 'sent' as MessageStatus;
-      return s as MessageStatus;
+      const s = raw.message_status || raw.status || '';
+      if (s === 'read' || s === 'seen') return 'read' as MessageStatus;
+      if (s === 'delivered' || s === 'delivered_to_device') return 'delivered' as MessageStatus;
+      if (s === 'failed' || s === 'error') return 'failed' as MessageStatus;
+      return 'sent' as MessageStatus;
     })(),
     sender: {
       id: isOutgoing ? (metadata.human_agent_id || 'agent') : raw.lead_id || 'user',
@@ -98,18 +107,22 @@ function mapMessageFromApi(raw: any): Message {
     intent: raw.intent,
     senderName,
     humanAgentId: metadata.human_agent_id || undefined,
-    templateName: metadata.template_name || undefined,
+    templateName: metadata.template_name || raw.template_name || undefined,
     // Location fields (extracted from metadata)
-    latitude: metadata.latitude !== undefined ? Number(metadata.latitude) : undefined,
-    longitude: metadata.longitude !== undefined ? Number(metadata.longitude) : undefined,
-    locationName: metadata.location_name || undefined,
-    locationAddress: metadata.location_address || undefined,
+    latitude: metadata.latitude !== undefined
+      ? Number(metadata.latitude)
+      : (raw.latitude !== undefined ? Number(raw.latitude) : undefined),
+    longitude: metadata.longitude !== undefined
+      ? Number(metadata.longitude)
+      : (raw.longitude !== undefined ? Number(raw.longitude) : undefined),
+    locationName: metadata.location_name || raw.location_name || undefined,
+    locationAddress: metadata.location_address || raw.location_address || undefined,
     // Inbound media fields (extracted from metadata)
-    mediaId: metadata.media_id || undefined,
-    mediaType: metadata.message_type || undefined,
-    mediaMimeType: metadata.mime_type || undefined,
-    mediaFilename: metadata.filename || undefined,
-    mediaCaption: metadata.caption || undefined,
+    mediaId: metadata.media_id || raw.media_id || raw.mediaId || raw.file_url || raw.url || undefined,
+    mediaType: metadata.message_type || metadata.media_type || raw.message_type || raw.media_type || raw.mediaType || inferredMediaTypeFromRawType || undefined,
+    mediaMimeType: metadata.mime_type || raw.mime_type || raw.content_type || raw.media_mime_type || undefined,
+    mediaFilename: metadata.filename || raw.filename || raw.media_filename || undefined,
+    mediaCaption: metadata.caption || raw.caption || undefined,
   };
 }
 
@@ -385,8 +398,38 @@ async function uploadMediaForMessage(file: File, channel?: string): Promise<stri
     ? '/api/whatsapp-conversations/conversations/upload-media?channel=personal'
     : '/api/whatsapp-conversations/conversations/upload-media';
 
+  const headers: Record<string, string> = {};
+  if (typeof window !== 'undefined') {
+    const token = safeStorage.getItem('token');
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    const selectedTenantId = safeStorage.getItem('selectedTenantId') || '';
+    const rawUser = safeStorage.getItem('user');
+    let userTenantId = '';
+    if (rawUser) {
+      try {
+        const parsedUser = JSON.parse(rawUser);
+        userTenantId = parsedUser?.tenantId || parsedUser?.organizationId || '';
+      } catch {
+        userTenantId = '';
+      }
+    }
+
+    const effectiveTenantId = selectedTenantId && selectedTenantId !== 'default'
+      ? selectedTenantId
+      : userTenantId;
+
+    if (effectiveTenantId) {
+      headers['X-Tenant-ID'] = effectiveTenantId;
+    }
+  }
+
   const res = await fetch(uploadUrl, {
     method: 'POST',
+    headers,
+    credentials: 'include',
     body: formData,
   });
 

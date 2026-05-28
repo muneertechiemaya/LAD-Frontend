@@ -1,9 +1,10 @@
 import { memo, useState } from 'react';
 import { Message } from '@/types/conversation';
-import { Check, CheckCheck, Clock, AlertCircle, X, UserCircle, MessageSquare, MapPin, FileText, Music, Video, Download } from 'lucide-react';
+import { Check, CheckCheck, Clock, AlertCircle, X, UserCircle, MessageSquare, MapPin, FileText, Music, Video, Download, MoreVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { MrLadAvatar } from './MrLadAvatar';
 
 // ── Location card renderer ───────────────────────────────────────────────────
@@ -58,7 +59,25 @@ function LocationCard({
 // ── Plain-text renderer with clickable URLs ───────────────────────────────────
 const URL_REGEX = /https?:\/\/[^\s]+/g;
 
-function TextWithLinks({ text, className }: { text: string; className?: string }) {
+function highlightQuery(content: string, query?: string) {
+  if (!query || !query.trim()) return content;
+  const parts = content.split(new RegExp(`(${query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi'));
+  return (
+    <>
+      {parts.map((part, index) =>
+        part.toLowerCase() === query.toLowerCase() ? (
+          <mark key={index} className="bg-amber-300 text-black px-0.5 rounded dark:bg-amber-400">
+            {part}
+          </mark>
+        ) : (
+          part
+        )
+      )}
+    </>
+  );
+}
+
+function TextWithLinks({ text, searchText, className }: { text: string; searchText?: string; className?: string }) {
   const lines = text.split('\n');
   return (
     <div className={cn('wa-msg-text whitespace-pre-line', className)}>
@@ -69,7 +88,12 @@ function TextWithLinks({ text, className }: { text: string; className?: string }
         const regex = new RegExp(URL_REGEX.source, 'g');
         while ((match = regex.exec(line)) !== null) {
           if (match.index > lastIndex) {
-            parts.push(line.slice(lastIndex, match.index));
+            const textPart = line.slice(lastIndex, match.index);
+            parts.push(
+              <span key={`text-${lineIdx}-${lastIndex}`}>
+                {highlightQuery(textPart, searchText)}
+              </span>
+            );
           }
           const url = match[0];
           parts.push(
@@ -86,9 +110,14 @@ function TextWithLinks({ text, className }: { text: string; className?: string }
           lastIndex = match.index + url.length;
         }
         if (lastIndex < line.length) {
-          parts.push(line.slice(lastIndex));
+          const textPart = line.slice(lastIndex);
+          parts.push(
+            <span key={`text-${lineIdx}-${lastIndex}`}>
+              {highlightQuery(textPart, searchText)}
+            </span>
+          );
         }
-        return <div key={lineIdx}>{parts.length > 0 ? parts : line}</div>;
+        return <div key={lineIdx}>{parts.length > 0 ? parts : highlightQuery(line, searchText)}</div>;
       })}
     </div>
   );
@@ -217,13 +246,17 @@ interface MessageBubbleProps {
   showAvatar?: boolean;
   contact?: Contact;
   onAgentClick?: (agentId?: string) => void;
+  onDeleteMessage?: (message: Message, scope: 'me' | 'everyone') => void;
+  searchText?: string;
+  isHighlighted?: boolean;
 }
 
 const statusIcons = {
-  sent: Clock,
-  delivered: Check,
+  sent: Check,
+  delivered: CheckCheck,
   read: CheckCheck,
   failed: AlertCircle,
+  pending: Clock,
 };
 
 // ── Avatar components ────────────────────────────────────────────────────────
@@ -344,6 +377,9 @@ export const MessageBubble = memo(function MessageBubble({
   showAvatar = true,
   contact,
   onAgentClick,
+  onDeleteMessage,
+  searchText,
+  isHighlighted = false,
 }: MessageBubbleProps) {
   const { content, timestamp, isOutgoing, status, sender, role } = message;
   const StatusIcon = statusIcons[status];
@@ -366,7 +402,7 @@ export const MessageBubble = memo(function MessageBubble({
   return (
     <div
       className={cn(
-        'flex gap-2 animate-message-pop',
+        'flex gap-2 animate-message-pop group',
         isOutgoing ? 'flex-row-reverse' : 'flex-row'
       )}
     >
@@ -400,10 +436,35 @@ export const MessageBubble = memo(function MessageBubble({
       {/* ── Message bubble ── */}
       <div
         className={cn(
-          'max-w-[72%] px-3 py-[6px] shadow-sm flex flex-col',
-          isOutgoing ? 'message-bubble-outgoing' : 'message-bubble-incoming'
+          'max-w-[72%] px-3 py-[6px] shadow-sm flex flex-col transition-all duration-300 relative',
+          isOutgoing ? 'message-bubble-outgoing' : 'message-bubble-incoming',
+          isHighlighted && 'ring-2 ring-amber-500 dark:ring-amber-400 bg-amber-100/40 dark:bg-amber-500/25 scale-[1.02]'
         )}
       >
+        {isOutgoing && onDeleteMessage && (
+          <div className="absolute top-1 right-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Message actions"
+                  className="h-6 w-6 rounded-full bg-black/15 hover:bg-black/25 text-white/90 inline-flex items-center justify-center"
+                >
+                  <MoreVertical className="h-3.5 w-3.5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuItem onClick={() => onDeleteMessage(message, 'me')}>
+                  Delete for me
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onDeleteMessage(message, 'everyone')}>
+                  Delete for everyone
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
+
         {/* Reply Block */}
         {(message as any).quotedMessage && (
           <div
@@ -451,7 +512,7 @@ export const MessageBubble = memo(function MessageBubble({
             <TextWithLinks text={content} className="text-sm" />
           </div>
         ) : (
-          <TextWithLinks text={content} />
+          <TextWithLinks text={content} searchText={searchText} />
         )}
 
         {/* Timestamp + status row */}

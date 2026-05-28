@@ -20,12 +20,15 @@ interface MessageListProps {
   isAgentTyping?: boolean;
   contact?: Contact;
   onAgentClick?: (agentId?: string) => void;
+  onDeleteMessage?: (message: Message, scope: 'me' | 'everyone') => void;
   /** Whether older messages exist beyond the current window */
   hasMore?: boolean;
   /** Whether older messages are currently being fetched */
   isLoadingMore?: boolean;
   /** Called when the user scrolls to the top or clicks "Load older messages" */
   onLoadMore?: () => void;
+  searchText?: string;
+  highlightedMessageId?: string;
 }
 
 interface ListItem {
@@ -91,9 +94,12 @@ export const MessageList = memo(function MessageList({
   isAgentTyping,
   contact,
   onAgentClick,
+  onDeleteMessage,
   hasMore,
   isLoadingMore,
   onLoadMore,
+  searchText,
+  highlightedMessageId,
 }: MessageListProps) {
   const virtuosoRef = useRef<VirtuosoHandle>(null);
 
@@ -140,6 +146,21 @@ export const MessageList = memo(function MessageList({
     }
   }, [isAgentTyping]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Scroll to highlighted message when it changes
+  useEffect(() => {
+    if (!highlightedMessageId || !virtuosoRef.current) return;
+    const index = listItems.findIndex(
+      (item) => item.type === 'message' && (item.data as Message).id === highlightedMessageId
+    );
+    if (index !== -1) {
+      virtuosoRef.current.scrollToIndex({
+        index,
+        behavior: 'smooth',
+        align: 'center',
+      });
+    }
+  }, [highlightedMessageId, listItems]);
+
   // When older messages finish loading, stay at the same position (don't jump)
   // Virtuoso handles this automatically when prepending via prependItemCount
 
@@ -154,12 +175,16 @@ export const MessageList = memo(function MessageList({
     if (item.type === 'date') {
       return <DateSeparator date={item.data as Date} />;
     }
+    const msg = item.data as Message;
     return (
       <div className="px-3 py-[3px]">
         <MessageBubble
-          message={item.data as Message}
+          message={msg}
           contact={contact}
           onAgentClick={onAgentClick}
+          onDeleteMessage={onDeleteMessage}
+          searchText={searchText}
+          isHighlighted={msg.id === highlightedMessageId}
         />
       </div>
     );
