@@ -242,7 +242,7 @@ export function useKnowledgeBase(tenantId: string = "", userId: string = "") {
     }
   };
 
-  const testChat = async (storeName: string, question: string) => {
+  const testChat = async (storeName: string, question: string, history?: { role: string; content: string }[]) => {
     if (!isWorkerConfigured) throw new Error("Voice playground is not available in this environment.");
     if (!tenantId) throw new Error("Missing tenantId");
     const storeGeminiId = storeName.replace("fileSearchStores/", "");
@@ -252,6 +252,7 @@ export function useKnowledgeBase(tenantId: string = "", userId: string = "") {
       body: JSON.stringify({
         tenant_id: tenantId,
         question: question,
+        history: history || [],
       }),
     });
     if (!res.ok) {

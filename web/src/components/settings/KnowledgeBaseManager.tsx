@@ -175,11 +175,18 @@ export default function KnowledgeBaseManager({ tenantId, userId }: KnowledgeBase
 
     const query = chatInput.trim();
     setChatInput("");
+
+    // Build the history payload from prior turns BEFORE we mutate state
+    const historyPayload = chatMessages.map((msg) => ({
+      role: msg.role === "bot" ? "assistant" : "user",
+      content: msg.content,
+    }));
+
     setChatMessages((prev) => [...prev, { role: "user", content: query }]);
     setIsChatting(true);
 
     try {
-      const response = await rag.testChat(selectedStore.gemini_store_name, query);
+      const response = await rag.testChat(selectedStore.gemini_store_name, query, historyPayload);
       setChatMessages((prev) => [
         ...prev,
         { role: "bot", content: response.answer, sources: response.sources },
