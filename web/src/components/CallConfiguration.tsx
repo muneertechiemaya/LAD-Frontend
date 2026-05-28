@@ -319,12 +319,7 @@ export function CallConfiguration({
                         <SelectPrimitive.Item
                           key={code}
                           value={code}
-                          className="
-          group relative flex items-center gap-3 w-full h-auto py-2 px-3 cursor-pointer rounded-md outline-none select-none
-          text-gray-700 dark:text-gray-200
-          /* Restores focus colors matching your theme on arrow/mouse hover selection */
-          data-[highlighted]:bg-[#0f1f5a] data-[highlighted]:text-white
-        "
+                          className="group relative flex items-center gap-3 w-full h-auto py-2 px-3 cursor-pointer rounded-md outline-none select-none text-gray-700 dark:text-gray-200 data-[highlighted]:bg-[#0f1f5a] data-[highlighted]:text-white"
                         >
                           {/* SelectPrimitive.ItemText is required by Radix to wrap content cleanly */}
                           <SelectPrimitive.ItemText>
@@ -371,20 +366,32 @@ export function CallConfiguration({
                   <SelectTrigger className="h-auto flex-1 border-0 rounded-none focus:ring-0 shadow-none bg-transparent px-3 text-left min-h-[48px]">
                     <SelectValue placeholder="Select number" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white dark:bg-[#0c1938] border border-gray-200 dark:border-[#262831] p-1">
                     {numbers.map((n) => (
-                      <SelectItem key={n.id} value={n.id}>
-                        <div className="flex flex-col">
-                          <span className="font-medium">
-                            {n.base_number ?? normalizeE164Like(n.phone_number)}
-                          </span>
-                          {n.provider && (
-                            <span className="text-xs text-gray-500">
-                              {n.provider}
+                      <SelectPrimitive.Item
+                        key={n.id}
+                        value={n.id}
+                        className="group relative flex items-center justify-between w-full h-auto py-2 px-3 cursor-pointer rounded-md outline-none select-none text-gray-700 dark:text-gray-200 data-[highlighted]:bg-[#0f1f5a] data-[highlighted]:text-white"
+                      >
+                        <SelectPrimitive.ItemText>
+                          <div className="flex flex-col text-left pr-4">
+                            <span className="font-medium text-sm text-gray-950 dark:text-white group-data-[highlighted]:text-white">
+                              {n.base_number ?? normalizeE164Like(n.phone_number)}
                             </span>
-                          )}
-                        </div>
-                      </SelectItem>
+                            {n.provider && (
+                              <span className="text-xs text-gray-500 dark:text-[#7a8ba3] group-data-[highlighted]:text-white/70">
+                                {n.provider}
+                              </span>
+                            )}
+                          </div>
+                        </SelectPrimitive.ItemText>
+
+                        <SelectPrimitive.ItemIndicator className="absolute right-3 flex items-center justify-center">
+                          <span className="text-[#0f1f5a] dark:text-blue-400 group-data-[highlighted]:text-white font-bold text-sm">
+                            ✓
+                          </span>
+                        </SelectPrimitive.ItemIndicator>
+                      </SelectPrimitive.Item>
                     ))}
                   </SelectContent>
                 </Select>
@@ -404,14 +411,23 @@ export function CallConfiguration({
               <SelectTrigger className="h-12 rounded-[10px] border-gray-200 focus:ring-2 focus:ring-primary w-full">
                 <SelectValue placeholder="Select number" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white dark:bg-[#0c1938] border border-gray-200 dark:border-[#262831] p-1">
                 {numbers.map((n) => (
-                  <SelectItem key={n.id} value={n.id}>
-                    <div className="flex items-center gap-2">
-                      <Phone className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                      <span>{n.base_number ?? normalizeE164Like(n.phone_number)}</span>
-                    </div>
-                  </SelectItem>
+                  <SelectPrimitive.Item
+                    key={n.id}
+                    value={n.id}
+                    className="group relative flex items-center gap-2 w-full h-auto py-2 px-3 cursor-pointer rounded-md outline-none select-none text-gray-700 dark:text-gray-200 data-[highlighted]:bg-[#0f1f5a] data-[highlighted]:text-white"
+                  >
+                    <SelectPrimitive.ItemText>
+                      <div className="flex items-center gap-2 text-left">
+                        <Phone className="w-4 h-4 text-gray-500 flex-shrink-0 group-data-[highlighted]:text-white" />
+                        <span className="text-sm">{n.base_number ?? normalizeE164Like(n.phone_number)}</span>
+                      </div>
+                    </SelectPrimitive.ItemText>
+                    <SelectPrimitive.ItemIndicator className="absolute right-3 flex items-center justify-center">
+                      <span className="text-[#0f1f5a] dark:text-blue-400 group-data-[highlighted]:text-white font-bold text-sm">✓</span>
+                    </SelectPrimitive.ItemIndicator>
+                  </SelectPrimitive.Item>
                 ))}
               </SelectContent>
             </Select>
@@ -450,28 +466,30 @@ export function CallConfiguration({
                     </span>
                   )}
                 </SelectTrigger>
-                <SelectContent className="w-full">
+                <SelectContent className="w-full bg-white dark:bg-[#0c1938] border border-gray-200 dark:border-[#262831] p-1">
                   {agents.map((agent) => (
-                    <SelectItem
+                    <SelectPrimitive.Item
                       key={agent.id}
                       value={String(agent.id)}
-                      className="h-auto py-3"
+                      className="group relative flex items-center gap-3 w-full h-auto py-3 px-3 cursor-pointer rounded-md outline-none select-none text-gray-700 dark:text-gray-200 data-[highlighted]:bg-[#0f1f5a] data-[highlighted]:text-white"
                     >
-                      <div className="flex items-center gap-3 w-full">
-                        <Mic className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                        <div className="flex-1 flex items-center justify-between min-w-0">
+                      <SelectPrimitive.ItemText>
+                        <div className="flex items-center gap-3 w-full pr-4 text-left">
+                          <Mic className="w-4 h-4 text-blue-500 flex-shrink-0 group-data-[highlighted]:text-white" />
                           <div className="flex flex-col items-start min-w-0">
-                            <span className="font-medium truncate">
+                            <span className="font-medium truncate text-sm text-gray-950 dark:text-white group-data-[highlighted]:text-white">
                               {agent.name}
                             </span>
-                            <span className="text-xs text-muted-foreground truncate">
-                              {agent.description} • {agent.accent} •{" "}
-                              {agent.gender}
+                            <span className="text-xs text-muted-foreground truncate dark:text-[#7a8ba3] group-data-[highlighted]:text-white/70">
+                              {agent.description} • {agent.accent} • {agent.gender}
                             </span>
                           </div>
                         </div>
-                      </div>
-                    </SelectItem>
+                      </SelectPrimitive.ItemText>
+                      <SelectPrimitive.ItemIndicator className="absolute right-3 flex items-center justify-center">
+                        <span className="text-[#0f1f5a] dark:text-blue-400 group-data-[highlighted]:text-white font-bold text-sm">✓</span>
+                      </SelectPrimitive.ItemIndicator>
+                    </SelectPrimitive.Item>
                   ))}
                 </SelectContent>
               </Select>
@@ -531,7 +549,7 @@ export function CallConfiguration({
                   placeholder={selectedAgent?.language || "Select language"}
                 />
               </SelectTrigger>
-              <SelectContent className="w-full">
+              <SelectContent className="w-full bg-white dark:bg-[#0c1938] border border-gray-200 dark:border-[#262831] p-1">
                 {Array.from(
                   new Map(
                     agents
@@ -551,9 +569,18 @@ export function CallConfiguration({
                       .filter(([value]) => !!value)
                   ).entries()
                 ).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    <span>{label}</span>
-                  </SelectItem>
+                  <SelectPrimitive.Item
+                    key={value}
+                    value={value}
+                    className="group relative flex items-center justify-between w-full h-auto py-2 px-3 cursor-pointer rounded-md outline-none select-none text-gray-700 dark:text-gray-200 data-[highlighted]:bg-[#0f1f5a] data-[highlighted]:text-white"
+                  >
+                    <SelectPrimitive.ItemText>
+                      <span className="text-sm text-gray-950 dark:text-white group-data-[highlighted]:text-white">{label}</span>
+                    </SelectPrimitive.ItemText>
+                    <SelectPrimitive.ItemIndicator className="absolute right-3 flex items-center justify-center">
+                      <span className="text-[#0f1f5a] dark:text-blue-400 group-data-[highlighted]:text-white font-bold text-sm">✓</span>
+                    </SelectPrimitive.ItemIndicator>
+                  </SelectPrimitive.Item>
                 ))}
               </SelectContent>
             </Select>
@@ -578,7 +605,7 @@ export function CallConfiguration({
                   placeholder={selectedAgent?.accent || "Select accent"}
                 />
               </SelectTrigger>
-              <SelectContent className="w-full">
+              <SelectContent className="w-full bg-white dark:bg-[#0c1938] border border-gray-200 dark:border-[#262831] p-1">
                 {Array.from(
                   new Set(
                     agents
@@ -600,9 +627,18 @@ export function CallConfiguration({
                     const value = String(accent).trim();
                     if (!value) return null;
                     return (
-                      <SelectItem key={value} value={value}>
-                        <span className="capitalize">{accent}</span>
-                      </SelectItem>
+                      <SelectPrimitive.Item
+                        key={value}
+                        value={value}
+                        className="group relative flex items-center justify-between w-full h-auto py-2 px-3 cursor-pointer rounded-md outline-none select-none text-gray-700 dark:text-gray-200 data-[highlighted]:bg-[#0f1f5a] data-[highlighted]:text-white"
+                      >
+                        <SelectPrimitive.ItemText>
+                          <span className="capitalize text-sm text-gray-950 dark:text-white group-data-[highlighted]:text-white">{accent}</span>
+                        </SelectPrimitive.ItemText>
+                        <SelectPrimitive.ItemIndicator className="absolute right-3 flex items-center justify-center">
+                          <span className="text-[#0f1f5a] dark:text-blue-400 group-data-[highlighted]:text-white font-bold text-sm">✓</span>
+                        </SelectPrimitive.ItemIndicator>
+                      </SelectPrimitive.Item>
                     );
                   })
                   .filter(Boolean)}
@@ -662,15 +698,7 @@ export function CallConfiguration({
                   setIsRephrasing(false);
                 }
               }}
-              className="
-                absolute top-2 right-2
-                h-8 px-3 rounded-md
-                bg-gray-100 dark:bg-[#253456] hover:bg-gray-200 dark:hover:bg-[#2d3e5a]
-                flex items-center gap-1
-                border border-gray-300 dark:border-[#262831]
-                shadow-sm
-                text-xs font-medium text-gray-700 dark:text-white
-              "
+              className="absolute top-2 right-2 h-8 px-3 rounded-md bg-gray-100 dark:bg-[#253456] hover:bg-gray-200 dark:hover:bg-[#2d3e5a] flex items-center gap-1 border border-gray-300 dark:border-[#262831] shadow-sm text-xs font-medium text-gray-700 dark:text-white"
             >
               {isRephrasing ? (
                 <span className="animate-spin text-gray-600">⏳</span>
