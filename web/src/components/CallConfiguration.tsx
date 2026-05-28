@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useEffect, useRef, ReactNode } from "react";
 import Image from "next/image";
+import * as SelectPrimitive from "@radix-ui/react-select";
 
 interface ApiResponse<T = any> {
   success: boolean;
@@ -311,34 +312,55 @@ export function CallConfiguration({
                       <span className="text-sm font-medium text-gray-700 dark:text-white">{activeCode}</span>
                     </div>
                   </SelectTrigger>
-                  <SelectContent>
-                    {countryCodes.map((code) => {
-                      const country = DIAL_TO_COUNTRY[code];
-                      return (
-                        <SelectItem key={code} value={code}>
-                          <div className="flex items-center gap-3">
-                            {country ? (
-                              <Image
-                                src={`https://flagcdn.com/w40/${country.code}.png`}
-                                alt={country.name}
-                                width={24}
-                                height={16}
-                                unoptimized
-                              />
-                            ) : (
-                              <Phone className="w-4 h-4 text-gray-400" />
-                            )}
-                            <span className="text-sm text-gray-700 dark:text-white">
-                              {country?.name ?? code}
-                            </span>
-                            <span className="text-sm font-medium text-gray-500 dark:text-[#7a8ba3] ml-auto">
-                              {code}
-                            </span>
-                          </div>
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
+                <SelectContent className="bg-white dark:bg-[#0c1938] border border-gray-200 dark:border-[#262831] p-1">
+  {countryCodes.map((code) => {
+    const country = DIAL_TO_COUNTRY[code];
+    return (
+      <SelectPrimitive.Item
+        key={code}
+        value={code}
+        className="
+          group relative flex items-center gap-3 w-full h-auto py-2 px-3 cursor-pointer rounded-md outline-none select-none
+          text-gray-700 dark:text-gray-200
+          /* Restores focus colors matching your theme on arrow/mouse hover selection */
+          data-[highlighted]:bg-[#0f1f5a] data-[highlighted]:text-white
+        "
+      >
+        {/* SelectPrimitive.ItemText is required by Radix to wrap content cleanly */}
+        <SelectPrimitive.ItemText>
+          <div className="flex items-center gap-3 w-full pr-4 text-gray-700 dark:text-gray-200 group-data-[highlighted]:text-white">
+            {country ? (
+              <Image
+                src={`https://flagcdn.com/w40/${country.code}.png`}
+                alt={country.name}
+                width={24}
+                height={16}
+                unoptimized
+              />
+            ) : (
+              <Phone className="w-4 h-4 text-gray-400 group-data-[highlighted]:text-white" />
+            )}
+            <span className="text-sm font-normal">
+              {country?.name ?? code}
+            </span>
+            <span className="text-sm font-medium text-gray-400 dark:text-[#7a8ba3] ml-auto group-data-[highlighted]:text-white/80">
+              {code}
+            </span>
+          </div>
+        </SelectPrimitive.ItemText>
+
+        {/* Radix's ItemIndicator manages the checkmark visibility natively. 
+          Our custom style forces it to turn crisp white ONLY on focus/highlight state.
+        */}
+        <SelectPrimitive.ItemIndicator className="absolute right-3 flex items-center justify-center">
+          <span className="text-[#0f1f5a] dark:text-blue-400 group-data-[highlighted]:text-white font-bold text-sm">
+            ✓
+          </span>
+        </SelectPrimitive.ItemIndicator>
+      </SelectPrimitive.Item>
+    );
+  })}
+</SelectContent>
                 </Select>
 
                 {/* Right: base number selector */}
