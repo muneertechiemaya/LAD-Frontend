@@ -25,6 +25,7 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: [
       'build',
+      '--no-cache',
       '-t', 'gcr.io/$PROJECT_ID/lad-frontend-stage:$COMMIT_SHA',
       '-t', 'gcr.io/$PROJECT_ID/lad-frontend-stage:$SHORT_SHA',
       '-t', 'gcr.io/$PROJECT_ID/lad-frontend-stage:$BRANCH_NAME',
@@ -126,8 +127,8 @@ substitutions:
   # asia-south1 service (lad-waba-comms-stage-asia) is the live deployment.
   _WABA_SERVICE_URL: 'https://lad-waba-comms-stage-asia-344049867257.asia-south1.run.app'
   _PLAYGROUND_WORKER_URL: 'https://voag-stg-playground-worker-axxjxdzmbq-el.a.run.app'
-  _PLAYGROUND_TENANT_ID: '926070b5-189b-4682-9279-ea10ca090b84'
-  _PLAYGROUND_USER_ID: 'fe9d6368-ff1b-4133-952a-525d60d06cbe'
+  _PLAYGROUND_TENANT_ID: '885d38de-8e8b-4277-ad2c-0255265a7b0f'
+  _PLAYGROUND_USER_ID: '20bc2e61-cd1a-4801-87b6-2e125303474f'
   _PLAYGROUND_TO_NUMBER: '+15555555555'
   _PLAYGROUND_FROM_NUMBER: '+15555555555'
 
