@@ -78,6 +78,57 @@ interface PendingFile {
   mediaType: 'image' | 'video' | 'document' | 'audio';
 }
 
+interface RichMessagePayload {
+  type: 'text' | 'image' | 'video' | 'document' | 'audio' | 'location' | 'contact' | 'poll';
+  content?: string;
+  fileBase64?: string;
+  filename?: string;
+  contentType?: string;
+  caption?: string;
+  latitude?: number;
+  longitude?: number;
+  locationName?: string;
+  locationAddress?: string;
+  contactName?: string;
+  contactPhone?: string;
+  pollQuestion?: string;
+  pollOptions?: string[];
+}
+
+interface LabelLike {
+  id?: string | number;
+  label_id?: string | number;
+}
+
+interface SidebarErrorState {
+  message: string;
+}
+
+type ConversationActionHandler = (id?: string) => void | Promise<void>;
+
+interface WABAChatWindowProps {
+  conversation: Conversation | null;
+  onSendMessage: (payload: RichMessagePayload) => void | Promise<void>;
+  onTogglePanel?: () => void;
+  isPanelOpen?: boolean;
+  onBack?: () => void;
+  onDeleteChat?: ConversationActionHandler;
+  onBlockChat?: ConversationActionHandler;
+  onFavoriteChat?: ConversationActionHandler;
+  onMuteChat?: ConversationActionHandler;
+  onClearChat?: ConversationActionHandler;
+  onCloseChat?: ConversationActionHandler;
+  channel?: 'personal' | 'waba';
+  conversationId?: string;
+  owner?: string | null;
+  backendChannel?: 'personal' | 'waba';
+}
+
+interface WABAContextPanelProps {
+  conversation: Conversation | null;
+  onClose: () => void;
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────────
 function readFileAsBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -93,6 +144,45 @@ function inferMediaType(file: File): PendingFile['mediaType'] {
   if (file.type.startsWith('video/')) return 'video';
   if (file.type.startsWith('audio/')) return 'audio';
   return 'document';
+}
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.trim()) return error.message;
+  return fallback;
+}
+
+function getConversationLeadId(conv: Conversation): string | undefined {
+  const raw = conv as Conversation & { leadId?: string | number; lead_id?: string | number };
+  return raw.leadId != null ? String(raw.leadId) : raw.lead_id != null ? String(raw.lead_id) : undefined;
+}
+
+function getConversationLastMessageTimestamp(conv: Conversation): string | Date | undefined {
+  const raw = conv as Conversation & { lastMessage?: { timestamp?: string | Date } };
+  return raw.lastMessage?.timestamp;
+}
+
+function getConversationContextStatus(conv: Conversation): string | undefined {
+  const raw = conv as Conversation & { context_status?: string | null };
+  return raw.context_status ?? conv.conversationState ?? undefined;
+}
+
+function getConversationLabelIds(conv: Conversation): string[] {
+  const raw = conv as Conversation & { labels?: Array<string | LabelLike>; labelIds?: Array<string | number> };
+  const labels = (raw.labels ?? []).map((label) => {
+    if (typeof label === 'string') return label;
+    if (label?.id != null) return String(label.id);
+    if (label?.label_id != null) return String(label.label_id);
+    return '';
+  });
+  const labelIds = (raw.labelIds ?? []).map(String);
+  return [...labels, ...labelIds, ...(conv.tags ?? []).map(String)].filter(Boolean);
+}
+
+async function getApiErrorMessage(res: Response, fallback: string): Promise<string> {
+  const data = await res.json().catch(() => ({}));
+  if (typeof data?.error === 'string' && data.error.trim()) return data.error;
+  if (typeof data?.message === 'string' && data.message.trim()) return data.message;
+  return fallback;
 }
 
 function MessageTicks({ status }: { status?: string }) {
@@ -148,7 +238,7 @@ const STICKER_PACKS: Record<string, { label: string; emojis: string[] }> = {
 };
 
 // ── Sub-modals ─────────────────────────────────────────────────────────────────
-function PollModal({ onClose, onSend }: { onClose: () => void; onSend: (p: any) => void }) {
+function PollModal({ onClose, onSend }: { onClose: () => void; onSend: (p: RichMessagePayload) => void }) {
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '']);
   const addOption = () => options.length < 10 && setOptions([...options, '']);
@@ -205,7 +295,7 @@ function PollModal({ onClose, onSend }: { onClose: () => void; onSend: (p: any) 
   );
 }
 
-function ContactModal({ onClose, onSend }: { onClose: () => void; onSend: (p: any) => void }) {
+function ContactModal({ onClose, onSend }: { onClose: () => void; onSend: (p: RichMessagePayload) => void }) {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const handleSend = () => {
@@ -242,7 +332,7 @@ function ContactModal({ onClose, onSend }: { onClose: () => void; onSend: (p: an
   );
 }
 
-function EventModal({ onClose, onSend }: { onClose: () => void; onSend: (p: any) => void }) {
+function EventModal({ onClose, onSend }: { onClose: () => void; onSend: (p: RichMessagePayload) => void }) {
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
@@ -291,7 +381,7 @@ function EventModal({ onClose, onSend }: { onClose: () => void; onSend: (p: any)
   );
 }
 
-function LocationModal({ onClose, onSend }: { onClose: () => void; onSend: (p: any) => void }) {
+function LocationModal({ onClose, onSend }: { onClose: () => void; onSend: (p: RichMessagePayload) => void }) {
   const [gpsStatus, setGpsStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [manual, setManual] = useState('');
@@ -392,7 +482,7 @@ function StickerPicker({ onSelect, onClose }: { onSelect: (s: string) => void; o
 /* WABAContextPanel                                                          */
 /* ========================================================================= */
 
-function WABAContextPanel({ conversation, onClose }: any) {
+function WABAContextPanel({ conversation, onClose }: WABAContextPanelProps) {
   if (!conversation) return null;
 
   const mockImages = [
@@ -590,7 +680,7 @@ function WABAChatWindow({
   conversationId,
   owner,
   backendChannel,
-}: any) {
+}: WABAChatWindowProps) {
   const [text, setText] = useState('');
   const [agentType, setAgentType] = useState<AgentType>(owner === 'human_agent' ? 'human' : 'ai');
   const [showTakeoverDialog, setShowTakeoverDialog] = useState(false);
@@ -706,9 +796,12 @@ function WABAChatWindow({
   return 'sent';
 };
 
-const normalizedPolledMessages = polledMessages.map((m: any) => ({
+const normalizedPolledMessages = polledMessages.map((m) => ({
   ...m,
-  status: normalizeStatus(m.status || m.message_status),
+  status: normalizeStatus(
+    (m as Message & { message_status?: string }).status ||
+    (m as Message & { message_status?: string }).message_status
+  ),
 }));
 
 const baseMessages = dedupeById([...olderMessages, ...normalizedPolledMessages]);
@@ -759,9 +852,9 @@ const allMessages = useMemo(
       const res = await fetchWithTenant(url);
       if (!res.ok) return;
       const data = await res.json();
-      const raw: any[] = data.data || data.messages || [];
+      const raw = (Array.isArray(data?.data) ? data.data : (Array.isArray(data?.messages) ? data.messages : [])) as Array<Record<string, unknown>>;
 
-      const mapped: Message[] = raw.map((r: any) => {
+      const mapped: Message[] = raw.map((r) => {
         const rawRole = r.role || 'user';
         const rawType = String(r.type || '').toLowerCase();
         const inferredMediaTypeFromRawType =
@@ -813,9 +906,10 @@ const allMessages = useMemo(
       });
 
       setOlderMessages((prev) => dedupeById([...mapped, ...prev]).slice(-MAX_OLDER_MESSAGES));
-      setOlderOffset((prev) => prev + LOAD_MORE_LIMIT);
-    } catch (err) {
-      console.error('Failed to load older messages', err);
+      const nextOffsetIncrement = raw.length > 0 ? raw.length : LOAD_MORE_LIMIT;
+      setOlderOffset((prev) => prev + nextOffsetIncrement);
+    } catch (err: unknown) {
+      setSendError(getErrorMessage(err, 'Failed to load older messages'));
     } finally {
       setLoadingOlder(false);
     }
@@ -844,8 +938,8 @@ const allMessages = useMemo(
       try {
         await updateOwnership('AI');
         setAgentType('ai');
-      } catch (err: any) {
-        setOwnershipError(err?.message || 'Failed to return control to AI');
+      } catch (err: unknown) {
+        setOwnershipError(getErrorMessage(err, 'Failed to return control to AI'));
       } finally {
         setOwnershipUpdating(false);
       }
@@ -860,8 +954,8 @@ const allMessages = useMemo(
       await updateOwnership('human_agent');
       setAgentType('human');
       setShowTakeoverDialog(false);
-    } catch (err: any) {
-      setOwnershipError(err?.message || 'Failed to take over from AI');
+    } catch (err: unknown) {
+      setOwnershipError(getErrorMessage(err, 'Failed to take over from AI'));
     } finally {
       setOwnershipUpdating(false);
     }
@@ -887,9 +981,9 @@ const allMessages = useMemo(
       }
       setPendingFiles(prev => [...prev, ...additions]);
       setSendError(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       additions.forEach((pf) => URL.revokeObjectURL(pf.previewUrl));
-      setSendError(err?.message || 'Failed to read attachment');
+      setSendError(getErrorMessage(err, 'Failed to read attachment'));
     } finally {
       setFileLoading(false);
     }
@@ -930,11 +1024,11 @@ const allMessages = useMemo(
         setPendingFiles([]);
         setText('');
         if (textareaRef.current) textareaRef.current.style.height = 'auto';
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (sentIds.size > 0) {
           setPendingFiles((prev) => prev.filter((pf) => !sentIds.has(pf.id)));
         }
-        setSendError(err?.message || 'Failed to send attachment');
+        setSendError(getErrorMessage(err, 'Failed to send attachment'));
       } finally {
         setIsSending(false);
       }
@@ -946,20 +1040,20 @@ const allMessages = useMemo(
       await Promise.resolve(onSendMessage({ type: 'text', content: text.trim() }));
       setText('');
       if (textareaRef.current) textareaRef.current.style.height = 'auto';
-    } catch (err: any) {
-      setSendError(err?.message || 'Failed to send message');
+    } catch (err: unknown) {
+      setSendError(getErrorMessage(err, 'Failed to send message'));
     } finally {
       setIsSending(false);
     }
   }, [isSending, pendingFiles, text, onSendMessage]);
 
-  const handleRichSend = useCallback(async (payload: any) => {
+  const handleRichSend = useCallback(async (payload: RichMessagePayload) => {
     setSendError(null);
     setIsSending(true);
     try {
       await Promise.resolve(onSendMessage(payload));
-    } catch (err: any) {
-      setSendError(err?.message || 'Failed to send message');
+    } catch (err: unknown) {
+      setSendError(getErrorMessage(err, 'Failed to send message'));
       return;
     } finally {
       setIsSending(false);
@@ -1028,7 +1122,7 @@ const allMessages = useMemo(
   // ── Template send ──────────────────────────────────────────────────────────
   const handleTemplateSend = useCallback(async (
     templateName: string, languageCode: string, parameters: string[],
-    _nameFormat: 'first' | 'full', _batch: any,
+    _nameFormat: 'first' | 'full', _batch: { batchSize?: number; delayMin?: number; delayRandom?: number; dailyLimit?: number },
     headerParamCount: number, headerType: string, headerUrl: string,
   ) => {
     const convId = conversationId || conversation?.id;
@@ -1060,8 +1154,8 @@ const allMessages = useMemo(
       setTemplateSendResult({ success: true, message: `Template "${templateName}" sent` });
       setTimeout(() => setIsTemplatePickerOpen(false), 500);
       setTimeout(() => setTemplateSendResult(null), 3000);
-    } catch (err: any) {
-      setTemplateSendResult({ success: false, message: err.message || 'Failed to send template' });
+    } catch (err: unknown) {
+      setTemplateSendResult({ success: false, message: getErrorMessage(err, 'Failed to send template') });
       setTemplateSendProgress(null);
     } finally {
       setTemplateSending(false);
@@ -1285,7 +1379,7 @@ const allMessages = useMemo(
         onSend={handleTemplateSend}
         sending={templateSending}
         sendProgress={templateSendProgress}
-        channel={backendChannel ?? (channel === 'whatsapp' ? 'waba' : (channel as any)) ?? 'waba'}
+        channel={backendChannel ?? 'waba'}
         isBulkSend={false}
       />
 
@@ -1524,6 +1618,7 @@ function WABASidebar({
 }: WABASidebarProps) {
   const [filterTab, setFilterTab] = useState<FilterTab>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [sidebarError, setSidebarError] = useState<SidebarErrorState | null>(null);
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedChatIds, setSelectedChatIds] = useState<Set<string>>(new Set());
 
@@ -1567,7 +1662,7 @@ function WABASidebar({
   const conversationIdByLead = useMemo(() => {
     const map = new Map<string, string>();
     conversations.forEach((conv) => {
-      const lead = (conv as any).leadId || (conv as any).lead_id;
+      const lead = getConversationLeadId(conv);
       if (lead) map.set(String(lead), conv.id);
     });
     return map;
@@ -1607,7 +1702,12 @@ function WABASidebar({
       .then((data) => {
         if (cancelled) return;
         const rows = Array.isArray(data?.data) ? data.data : Array.isArray(data?.labels) ? data.labels : [];
-        setAllLabels(rows.map((l: any) => ({ id: String(l.id), name: l.name, color: l.color || '#808080' })));
+        const safeRows = rows as Array<{ id?: string | number; name?: string; color?: string }>;
+        setAllLabels(
+          safeRows
+            .filter((l) => l.id != null && typeof l.name === 'string')
+            .map((l) => ({ id: String(l.id), name: l.name as string, color: l.color || '#808080' }))
+        );
       })
       .catch(() => { });
     return () => { cancelled = true; };
@@ -1636,10 +1736,11 @@ function WABASidebar({
     const ch = backendChannel || 'waba';
     const searchParam = deferredNewChatSearch ? `&search=${encodeURIComponent(deferredNewChatSearch)}` : '';
 
-    const mapContact = (raw: any): Conversation => {
-      if (raw.contact) return raw;
+    const mapContact = (rawRecord: Record<string, unknown>): Conversation => {
+      const raw = rawRecord as Record<string, unknown> & { contact?: Conversation['contact'] };
+      if (raw.contact) return raw as unknown as Conversation;
       const leadId = raw.lead_id || raw.leadId || raw.id;
-      const phone = raw.lead_phone || raw.phone || '';
+      const phone = String(raw.lead_phone || raw.phone || '');
       const normalizedPhone = normalizePhone(phone);
       const existingConversationId =
         raw.conversation_id ||
@@ -1659,14 +1760,15 @@ function WABASidebar({
     if (ch === 'personal') {
       const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-      const fetchPage = async (offset: number, retries = 1): Promise<{ raw: any[]; total: number } | null> => {
+      const fetchPage = async (offset: number, retries = 1): Promise<{ raw: Array<Record<string, unknown>>; total: number } | null> => {
         try {
           const r = await fetchWithTenant(
             `/api/whatsapp-conversations/contacts?channel=personal&limit=${PAGE_SIZE}&offset=${offset}${searchParam}`
           );
           if (!r.ok) return null;
           const data = await r.json();
-          return { raw: data.contacts || data.data || [], total: data.total || 0 };
+          const raw = (Array.isArray(data.contacts) ? data.contacts : (Array.isArray(data.data) ? data.data : [])) as Array<Record<string, unknown>>;
+          return { raw, total: Number(data.total || 0) };
         } catch {
           if (retries > 0) { await sleep(500); return fetchPage(offset, retries - 1); }
           return null;
@@ -1696,7 +1798,7 @@ function WABASidebar({
         .then((r) => r.json())
         .then((data) => {
           if (cancelled) return;
-          const raw: any[] = Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
+          const raw = (Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : [])) as Array<Record<string, unknown>>;
           const list: Conversation[] = raw.map(mapContact);
           setNewChatContacts(list);
           setNewChatContactsTotal(data.total || list.length);
@@ -1718,7 +1820,7 @@ function WABASidebar({
   ]);
 
   const openChatFromNewContact = useCallback((conv: Conversation) => {
-    const leadId = (conv as any).leadId || (conv as any).lead_id;
+    const leadId = getConversationLeadId(conv);
     const normalizedPhone = normalizePhone(conv.contact?.phone);
     const resolvedConversationId =
       (conversations.some((c) => c.id === conv.id) ? conv.id : undefined) ||
@@ -1743,9 +1845,12 @@ function WABASidebar({
   const handleRefresh = useCallback(() => {
     if (!onRefresh || isRefreshing) return;
     setIsRefreshing(true);
+    setSidebarError(null);
     const channelParam = backendChannel ? `?channel=${backendChannel}` : '';
     fetchWithTenant(`/api/whatsapp-conversations/accounts/sync${channelParam}`, { method: 'POST' })
-      .catch(() => { })
+      .catch((err: unknown) => {
+        setSidebarError({ message: getErrorMessage(err, 'Failed to refresh conversations') });
+      })
       .finally(() => {
         setTimeout(() => {
           onRefresh();
@@ -1828,8 +1933,11 @@ function WABASidebar({
                   }));
                 }
               }
+              if (!data.success) {
+                setSidebarError({ message: data.error || `Failed to send template to group ${groupId}` });
+              }
             } catch (err) {
-              console.error(`Group template send error for ${groupId}:`, err);
+              setSidebarError({ message: getErrorMessage(err, `Failed to send template to group ${groupId}`) });
             }
 
             const isLastGroup = i === groupTemplateSendTarget.groupIds.length - 1;
@@ -1864,13 +1972,13 @@ function WABASidebar({
           });
           const data = await res.json();
           if (!data.success) {
-            console.error('Bulk template send failed:', data.error);
+            setSidebarError({ message: data.error || 'Bulk template send failed' });
           } else {
             setTemplateSendProgress(prev => prev ? { ...prev, sent: data.sent || 0, running: false } : null);
           }
         }
       } catch (err) {
-        console.error('Template send error:', err);
+        setSidebarError({ message: getErrorMessage(err, 'Template send failed') });
         setTemplateSendProgress(null);
       } finally {
         setTemplateSending(false);
@@ -1888,17 +1996,14 @@ function WABASidebar({
         conv.contact?.phone?.toLowerCase().includes(deferredSidebarSearch)
         : true;
       if (!matchesSearch) return false;
-      if (filterTab === 'unread') return conv.unreadCount && conv.unreadCount > 0;
-      if (filterTab === 'favourites') return Boolean((conv as any).is_favorite || (conv as any).isFavorite || (conv as any).favorite);
-      if (filterTab === 'groups') return Boolean((conv as any).is_group || (conv as any).isGroup || (conv as any).groupId);
+      if (filterTab === 'unread') return Boolean(conv.unreadCount && conv.unreadCount > 0);
+      const extendedConv = conv as Conversation & { isFavorite?: boolean; favorite?: boolean; is_group?: boolean; isGroup?: boolean; groupId?: string };
+      if (filterTab === 'favourites') return Boolean(extendedConv.is_favorite || extendedConv.isFavorite || extendedConv.favorite);
+      if (filterTab === 'groups') return Boolean(extendedConv.is_group || extendedConv.isGroup || extendedConv.groupId);
       if (hideEmpty && !conv.lastMessage && !conv.messageCount && !conv.messages?.length) return false;
-      if (contextStatusFilter !== 'all' && conv.conversationState !== contextStatusFilter && (conv as any).context_status !== contextStatusFilter) return false;
+      if (contextStatusFilter !== 'all' && getConversationContextStatus(conv) !== contextStatusFilter) return false;
       if (selectedLabelIds.length > 0) {
-        const labelIds = [
-          ...(((conv as any).labels || []) as any[]).map((label) => String(label.id ?? label.label_id ?? label)),
-          ...(((conv as any).labelIds || []) as any[]).map(String),
-          ...((conv.tags || []) as string[]).map(String),
-        ];
+        const labelIds = getConversationLabelIds(conv);
         if (!selectedLabelIds.every((id) => labelIds.includes(id))) return false;
       }
       return true;
@@ -1910,8 +2015,8 @@ function WABASidebar({
       if (sortBy === 'message_count') {
         return (b.messageCount || b.messages?.length || 0) - (a.messageCount || a.messages?.length || 0);
       }
-      const aTime = new Date((a.lastMessage as any)?.timestamp || a.updatedAt || a.createdAt || 0).getTime();
-      const bTime = new Date((b.lastMessage as any)?.timestamp || b.updatedAt || b.createdAt || 0).getTime();
+      const aTime = new Date(getConversationLastMessageTimestamp(a) || a.updatedAt || a.createdAt || 0).getTime();
+      const bTime = new Date(getConversationLastMessageTimestamp(b) || b.updatedAt || b.createdAt || 0).getTime();
       return bTime - aTime;
     });
   }, [conversations, contextStatusFilter, deferredSidebarSearch, filterTab, hideEmpty, selectedLabelIds, sortBy]);
@@ -1936,6 +2041,16 @@ function WABASidebar({
   return (
     // IMPORTANT: `relative` here is what allows the absolute overlay to cover this column only
     <div className="h-full flex flex-col overflow-visible bg-background text-foreground dark:bg-[#161717] relative">
+      {sidebarError && (
+        <div className="mx-4 mt-2 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-800 dark:bg-red-950/60 dark:text-red-200">
+          <div className="flex items-center justify-between gap-3">
+            <span>{sidebarError.message}</span>
+            <button type="button" className="underline underline-offset-2" onClick={() => setSidebarError(null)}>
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between p-4 pb-2">
         <h1 className="text-[22px] font-bold dark:text-white">WhatsApp</h1>
@@ -2323,7 +2438,7 @@ function WABASidebar({
                   onClick={async () => {
                     const channelParam = backendChannel ? `?channel=${backendChannel}` : '?channel=waba';
                     try {
-                      await fetchWithTenant(
+                      const res = await fetchWithTenant(
                         `/api/whatsapp-conversations/conversations/bulk${channelParam}`,
                         {
                           method: 'POST',
@@ -2331,9 +2446,12 @@ function WABASidebar({
                           body: JSON.stringify({ action: 'resolve', conversation_ids: Array.from(selectedChatIds) }),
                         }
                       );
+                      if (!res.ok) {
+                        throw new Error(await getApiErrorMessage(res, 'Failed to resolve selected conversations'));
+                      }
                       onRefresh?.();
-                    } catch (err) {
-                      console.error('Bulk resolve error:', err);
+                    } catch (err: unknown) {
+                      setSidebarError({ message: getErrorMessage(err, 'Bulk resolve failed') });
                     }
                     exitSelectMode();
                   }}
@@ -2355,7 +2473,7 @@ function WABASidebar({
                   onClick={async () => {
                     const channelParam = backendChannel ? `?channel=${backendChannel}` : '?channel=waba';
                     try {
-                      await fetchWithTenant(
+                      const res = await fetchWithTenant(
                         `/api/whatsapp-conversations/conversations/bulk${channelParam}`,
                         {
                           method: 'POST',
@@ -2363,9 +2481,12 @@ function WABASidebar({
                           body: JSON.stringify({ action: 'delete', conversation_ids: Array.from(selectedChatIds) }),
                         }
                       );
+                      if (!res.ok) {
+                        throw new Error(await getApiErrorMessage(res, 'Failed to delete selected conversations'));
+                      }
                       onRefresh?.();
-                    } catch (err) {
-                      console.error('Bulk delete error:', err);
+                    } catch (err: unknown) {
+                      setSidebarError({ message: getErrorMessage(err, 'Bulk delete failed') });
                     }
                     exitSelectMode();
                   }}
@@ -2412,7 +2533,8 @@ function WABASidebar({
           filteredConversations.map((conv) => {
             const isSelected = selectedId === conv.id;
             const initials = conv.contact?.name?.substring(0, 2).toUpperCase();
-            let lastMsg = (conv as any).lastMessage || conv.messages?.[conv.messages.length - 1];
+            const convLastMessage = (conv as Conversation & { lastMessage?: Message }).lastMessage;
+            let lastMsg = convLastMessage || conv.messages?.[conv.messages.length - 1];
             if (isSelected && activeLastMsg) {
               lastMsg = activeLastMsg;
             }
@@ -2690,9 +2812,11 @@ function WABASidebar({
                                                 .then((data) => { if (Array.isArray(data.data)) setNewChatGroups(data.data); })
                                                 .catch(() => { })
                                                 .finally(() => setNewChatGroupsLoading(false));
+                                            } else {
+                                              setSidebarError({ message: await getApiErrorMessage(res, 'Failed to delete group') });
                                             }
-                                          } catch (err) {
-                                            console.error('Error deleting group:', err);
+                                          } catch (err: unknown) {
+                                            setSidebarError({ message: getErrorMessage(err, 'Error deleting group') });
                                           }
                                         }}
                                         className="p-1.5 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md transition-all hover:shadow-sm"
@@ -2912,6 +3036,7 @@ export function WABusinessView({
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
   const [localSearchQuery, setLocalSearchQuery] = useState('');
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const {
     conversations,
@@ -2948,37 +3073,56 @@ export function WABusinessView({
   }, [queryClient]);
 
   const handleFavorite = useCallback(
-    async (id: string) => {
+    async (id?: string) => {
+      if (!id) return;
+      setActionError(null);
       try {
         const res = await fetchWithTenant(withChannel(`/api/whatsapp-conversations/conversations/${id}/favorite`), { method: 'PATCH' });
-        if (res.ok) invalidate();
-      } catch { }
+        if (!res.ok) {
+          throw new Error(await getApiErrorMessage(res, 'Failed to update favorite status'));
+        }
+        invalidate();
+      } catch (err) {
+        setActionError(getErrorMessage(err, 'Failed to update favorite status'));
+      }
     },
     [withChannel, invalidate]
   );
 
   const handleDelete = useCallback(
-    async (id: string) => {
+    async (id?: string) => {
+      if (!id) return;
+      setActionError(null);
       try {
         const res = await fetchWithTenant(withChannel(`/api/whatsapp-conversations/conversations/${id}`), { method: 'DELETE' });
-        if (res.ok) {
-          invalidate();
-          if (selectedId === id) selectConversation('');
+        if (!res.ok) {
+          throw new Error(await getApiErrorMessage(res, 'Failed to delete conversation'));
         }
-      } catch { }
+        invalidate();
+        if (selectedId === id) selectConversation('');
+      } catch (err) {
+        setActionError(getErrorMessage(err, 'Failed to delete conversation'));
+      }
     },
     [withChannel, invalidate, selectedId, selectConversation]
   );
 
   const handleBlock = useCallback(
-    async (id: string) => {
+    async (id?: string) => {
+      if (!id) return;
+      setActionError(null);
       try {
         const res = await fetchWithTenant(withChannel(`/api/whatsapp-conversations/conversations/${id}/status`), {
           method: 'PATCH',
           body: JSON.stringify({ status: 'resolved' }),
         });
-        if (res.ok) invalidate();
-      } catch { }
+        if (!res.ok) {
+          throw new Error(await getApiErrorMessage(res, 'Failed to update conversation status'));
+        }
+        invalidate();
+      } catch (err) {
+        setActionError(getErrorMessage(err, 'Failed to update conversation status'));
+      }
     },
     [withChannel, invalidate]
   );
@@ -3001,12 +3145,15 @@ export function WABusinessView({
       .then((r) => r.json())
       .then((data) => {
         if (data.success && Array.isArray(data.data)) {
+          const statuses = (data.data as Array<{ value?: string; count?: number }>)
+            .filter((s) => typeof s.value === 'string')
+            .map((s) => ({
+              value: s.value as string,
+              label: formatContextStatus(s.value as string),
+              count: Number(s.count || 0),
+            }));
           setContextStatuses(
-            data.data.map((s: any) => ({
-              value: s.value,
-              label: formatContextStatus(s.value),
-              count: s.count,
-            }))
+            statuses
           );
         }
       })
@@ -3039,17 +3186,31 @@ export function WABusinessView({
     : null;
 
   return (
-    <div className="flex-1 flex overflow-hidden bg-background">
+    <div className="flex-1 flex overflow-hidden bg-background min-w-0">
+      {actionError && (
+        <div className="absolute left-1/2 top-4 z-50 -translate-x-1/2 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 shadow-sm dark:border-red-800 dark:bg-red-950/70 dark:text-red-200 max-w-[calc(100%-1rem)]">
+          <div className="flex items-center gap-3">
+            <span>{actionError}</span>
+            <button
+              type="button"
+              className="text-xs font-medium underline underline-offset-2"
+              onClick={() => setActionError(null)}
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
       {/* Sidebar — desktop: controlled by isSidebarCollapsed; mobile: shown when no chat is selected */}
       <AnimatePresence mode="wait">
         {(!isSidebarCollapsed || (isMobileViewport && !typedSelectedConversation)) && (
           <motion.div
             initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 460, opacity: 1 }}
+            animate={{ width: isMobileViewport ? '100%' : 460, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
             className={cn(
-              "h-full flex-shrink-0 overflow-hidden border-r border-border dark:border-[#222d34] z-10 relative shadow-sm",
+              "h-full flex-shrink-0 overflow-hidden border-r border-border dark:border-[#222d34] z-10 relative shadow-sm w-full lg:w-[460px] min-w-0",
               // Mobile: show sidebar only when no conversation is selected (same as LinkedIn)
               typedSelectedConversation ? "hidden lg:block" : "block lg:block"
             )}
@@ -3105,7 +3266,7 @@ export function WABusinessView({
           onCloseChat={(_id: string) => selectConversation('')}
           channel={channel}
           conversationId={typedSelectedConversation?.id}
-          owner={(typedSelectedConversation as any)?.owner}
+          owner={typedSelectedConversation?.owner}
           backendChannel={channel}
         />
       </div>
