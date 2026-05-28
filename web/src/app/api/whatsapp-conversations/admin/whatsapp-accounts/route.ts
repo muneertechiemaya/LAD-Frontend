@@ -170,41 +170,70 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  // Read the body once; we may need to re-send it to the Node fallback.
+  // Create flow is owned exclusively by the Python WABA service — the Node
+  // backend has no POST handler for /admin/whatsapp-accounts and its catch-all
+  // returns a misleading 404 ("Personal WhatsApp endpoints must be explicitly
+  // defined."). Surface real errors from Python instead of swallowing them.
   let parsedBody: unknown;
   try {
     parsedBody = await req.json();
   } catch { /* empty body */ }
 
-  // Try Python BNI service first (full onboarding flow) using a direct fetch
-  // so ECONNREFUSED is swallowed silently without proxy error logs.
   const wabaBase = getWhatsAppServiceUrl();
-  if (wabaBase) {
-    try {
-      const targetUrl = new URL('/admin/whatsapp-accounts', wabaBase);
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      const auth = req.headers.get('authorization');
-      if (auth) headers['Authorization'] = auth;
-      const tid = req.headers.get('x-tenant-id');
-      if (tid) headers['X-Tenant-ID'] = tid;
 
-      const bniResp = await fetch(targetUrl.toString(), {
-        method: 'POST',
-        headers,
-        body: parsedBody !== undefined ? JSON.stringify(parsedBody) : undefined,
-        signal: AbortSignal.timeout(10000),
-      });
+  // Guard against unconfigured / placeholder / localhost URLs in deployed envs.
+  const isUsable =
+    !!wabaBase &&
+    !wabaBase.includes('REPLACE_PROJECT_NUMBER') &&
+    !(process.env.NODE_ENV === 'production' && wabaBase.includes('localhost'));
 
-      if (bniResp.ok) {
-        const data = await bniResp.json();
-        return NextResponse.json(data, { status: bniResp.status });
-      }
-      // BNI returned 4xx/5xx — fall through to Node fallback below
-    } catch {
-      // Python service down — fall through to Node fallback silently
-    }
+  if (!isUsable) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'WABA service not configured',
+        message:
+          'NEXT_PUBLIC_WHATSAPP_API_URL / WABA_SERVICE_URL is missing or points at a placeholder. Set it on the lad-frontend Cloud Run service.',
+      },
+      { status: 503 },
+    );
   }
 
-  // Fallback: Node.js backend
-  return callNodeBackend(req, 'POST', parsedBody);
+  const targetUrl = new URL('/admin/whatsapp-accounts', wabaBase);
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const auth = req.headers.get('authorization');
+  if (auth) headers['Authorization'] = auth;
+  const tid = req.headers.get('x-tenant-id');
+  if (tid) headers['X-Tenant-ID'] = tid;
+
+  let bniResp: Response;
+  try {
+    bniResp = await fetch(targetUrl.toString(), {
+      method: 'POST',
+      headers,
+      body: parsedBody !== undefined ? JSON.stringify(parsedBody) : undefined,
+      signal: AbortSignal.timeout(10000),
+    });
+  } catch (err) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'WABA service unreachable',
+        message: err instanceof Error ? err.message : String(err),
+        target: targetUrl.toString(),
+      },
+      { status: 502 },
+    );
+  }
+
+  // Pass Python's status and body through unchanged so 4xx validation errors
+  // and 5xx server errors surface to the caller with their real meaning.
+  const rawBody = await bniResp.text();
+  let parsed: unknown;
+  try {
+    parsed = rawBody ? JSON.parse(rawBody) : null;
+  } catch {
+    parsed = { success: bniResp.ok, error: 'Non-JSON response from WABA service', body: rawBody };
+  }
+  return NextResponse.json(parsed, { status: bniResp.status });
 }
