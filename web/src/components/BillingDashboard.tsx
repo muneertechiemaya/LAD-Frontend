@@ -80,7 +80,7 @@ export const BillingDashboard: React.FC<BillingDashboardProps> = ({ customerId }
   }
   if (error) {
     return (
-      <div className="bg-card text-card-foreground p-6 rounded-lg shadow-lg border border-border">
+      <div className="bg-card text-card-foreground p-6 rounded-lg shadow-lg border border-border dark:bg-[#030a21]/60 dark:border-blue-950/40">
         <div className="text-center text-destructive mb-4">
           <Wallet className="h-8 w-8 mx-auto mb-2" />
           <span className="text-lg font-medium">Unable to Load Billing Information</span>
@@ -91,7 +91,7 @@ export const BillingDashboard: React.FC<BillingDashboardProps> = ({ customerId }
   }
   if (!balance) {
     return (
-      <div className="bg-card text-card-foreground p-6 rounded-lg shadow-lg border border-border">
+      <div className="bg-card text-card-foreground p-6 rounded-lg shadow-lg border border-border dark:bg-[#030a21]/60 dark:border-blue-950/40">
         <div className="text-center">
           <Wallet className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold text-foreground mb-2">No Credit Balance</h3>
@@ -110,54 +110,54 @@ export const BillingDashboard: React.FC<BillingDashboardProps> = ({ customerId }
   return (
     <div className="space-y-6">
       {/* Credit Balance Summary */}
-      <div className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground p-6 rounded-xl shadow-lg">
+      <div className="bg-gradient-to-br from-primary to-primary/80 text-[#ffffff] p-6 rounded-xl shadow-lg dark:from-[#051139] dark:to-[#02081e] dark:border dark:border-blue-950/50">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center">
-            <Wallet className="h-5 w-5 mr-2" />
-            <h3 className="text-lg font-bold">Billing Summary</h3>
+            <Wallet className="h-5 w-5 mr-2 text-[#ffffff] dark:text-blue-400" />
+            <h3 className="text-lg font-bold text-[#ffffff]">Billing Summary</h3>
           </div>
           <Link
             href="/wallet"
-            className="bg-white/10 hover:bg-white/20 text-primary-foreground px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center"
+            className="bg-white/10 hover:bg-white/20 text-[#ffffff] px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center dark:bg-blue-600 dark:hover:bg-blue-700"
           >
             <Plus className="h-3 w-3 mr-1.5" />
             Add Credits
           </Link>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-6 text-[#ffffff]">
           <div className="col-span-2 md:col-span-1">
-            <div className="flex items-center mb-1">
+            <div className="flex items-center mb-1 text-[#ffffff]">
               <Wallet className="h-4 w-4 mr-2 opacity-80" />
               <span className="text-xs font-medium opacity-80 uppercase tracking-wider">Current Balance</span>
             </div>
-            <p className="text-3xl md:text-3xl font-bold">{balance.credits.toLocaleString()}</p>
-            <p className="text-[10px] md:text-xs opacity-70">credits available</p>
+            <p className="text-3xl md:text-3xl font-bold text-[#ffffff]">{balance.credits.toLocaleString()}</p>
+            <p className="text-[10px] md:text-xs opacity-70 text-[#ffffff]">credits available</p>
           </div>
 
           <div>
-            <div className="flex items-center mb-1">
+            <div className="flex items-center mb-1 text-[#ffffff]">
               <TrendingUp className="h-4 w-4 mr-2 opacity-80" />
               <span className="text-xs font-medium opacity-80 uppercase tracking-wider">Usage</span>
             </div>
-            <p className="text-xl md:text-2xl font-semibold">{balance.monthlyUsage.toLocaleString()}</p>
-            <p className="text-[10px] opacity-70">this month</p>
+            <p className="text-xl md:text-2xl font-semibold text-[#ffffff]">{balance.monthlyUsage.toLocaleString()}</p>
+            <p className="text-[10px] opacity-70 text-[#ffffff]">this month</p>
           </div>
 
           <div className="text-right md:text-left">
-            <div className="flex items-center justify-end md:justify-start mb-1">
+            <div className="flex items-center justify-end md:justify-start mb-1 text-[#ffffff]">
               <Calendar className="h-4 w-4 mr-2 opacity-80" />
               <span className="text-xs font-medium opacity-80 uppercase tracking-wider">Spent</span>
             </div>
-            <p className="text-lg md:text-2xl font-semibold">{formatCurrency(balance.totalSpent)}</p>
-            <p className="text-[10px] opacity-70">all-time</p>
+            <p className="text-lg md:text-2xl font-semibold text-[#ffffff]">{formatCurrency(balance.totalSpent)}</p>
+            <p className="text-[10px] opacity-70 text-[#ffffff]">all-time</p>
           </div>
         </div>
 
         {balance.lastRecharge && (
-          <div className="mt-5 pt-4 border-t border-white/10">
-            <p className="text-[11px] opacity-80 leading-relaxed">
-              Last recharge: <span className="font-semibold text-primary-foreground">{balance.lastRecharge.credits.toLocaleString()} credits</span> ($
+          <div className="mt-5 pt-4 border-t border-white/10 dark:border-blue-950/40">
+            <p className="text-[11px] opacity-80 leading-relaxed text-[#ffffff]">
+              Last recharge: <span className="font-semibold text-[#ffffff]">{balance.lastRecharge.credits.toLocaleString()} credits</span> ($
               {balance.lastRecharge.amount}) on {formatDate(balance.lastRecharge.date)}
             </p>
           </div>
@@ -167,33 +167,33 @@ export const BillingDashboard: React.FC<BillingDashboardProps> = ({ customerId }
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Link
           href="/wallet"
-          className="bg-card text-card-foreground p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow border-2 border-transparent hover:border-primary"
+          className="bg-card text-card-foreground p-6 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 border-2 border-transparent hover:border-primary dark:bg-[#030a21]/60 dark:border-blue-950/30 dark:hover:border-blue-500"
         >
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-lg font-semibold text-foreground">Add Credits</h3>
-            <Wallet className="h-6 w-6 text-primary" />
+            <h3 className="text-lg font-semibold text-foreground dark:text-white">Add Credits</h3>
+            <Wallet className="h-6 w-6 text-primary dark:text-blue-400" />
           </div>
-          <p className="text-sm text-muted-foreground">Purchase credit packages starting at $99</p>
+          <p className="text-sm text-muted-foreground dark:text-gray-400">Purchase credit packages starting at $99</p>
         </Link>
         <Link
           href="/pricing"
-          className="bg-card text-card-foreground p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow border-2 border-transparent hover:border-primary"
+          className="bg-card text-card-foreground p-6 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 border-2 border-transparent hover:border-primary dark:bg-[#030a21]/60 dark:border-blue-950/30 dark:hover:border-blue-500"
         >
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-lg font-semibold text-foreground">View Pricing</h3>
-            <ExternalLink className="h-6 w-6 text-primary" />
+            <h3 className="text-lg font-semibold text-foreground dark:text-white">View Pricing</h3>
+            <ExternalLink className="h-6 w-6 text-primary dark:text-blue-400" />
           </div>
-          <p className="text-sm text-muted-foreground">See credit costs for all features</p>
+          <p className="text-sm text-muted-foreground dark:text-gray-400">See credit costs for all features</p>
         </Link>
         <button
-          className="bg-card text-card-foreground p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow border-2 border-transparent hover:border-primary text-left"
+          className="bg-card text-card-foreground p-6 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 border-2 border-transparent hover:border-primary text-left dark:bg-[#030a21]/60 dark:border-blue-950/30 dark:hover:border-blue-500"
           onClick={() => window.print()}
         >
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-lg font-semibold text-foreground">Download Report</h3>
-            <Download className="h-6 w-6 text-primary" />
+            <h3 className="text-lg font-semibold text-foreground dark:text-white">Download Report</h3>
+            <Download className="h-6 w-6 text-primary dark:text-blue-400" />
           </div>
-          <p className="text-sm text-muted-foreground">Export your usage and billing history</p>
+          <p className="text-sm text-muted-foreground dark:text-gray-400">Export your usage and billing history</p>
         </button>
       </div>
       {/* Credit Usage Analytics */}

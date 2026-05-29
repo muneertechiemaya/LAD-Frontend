@@ -79,15 +79,15 @@ export const CreditsSettings: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Wallet Balance Card */}
-      <div className="bg-gradient-to-br from-blue-600 to-blue-800 p-6 rounded-lg shadow-lg text-white">
+      <div className="bg-gradient-to-br from-blue-600 to-blue-800 p-6 rounded-lg shadow-lg text-white dark:from-[#051139] dark:to-[#02081e] dark:border dark:border-blue-950/50">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
-            <Wallet className="h-6 w-6 mr-3" />
+            <Wallet className="h-6 w-6 mr-3 text-white dark:text-blue-400" />
             <h3 className="text-xl font-bold">Wallet Balance</h3>
           </div>
           <button
             onClick={() => setShowAddCreditsModal(true)}
-            className="bg-white text-blue-600 px-4 py-2 rounded-lg font-medium hover:bg-blue-50 transition-colors flex items-center text-sm"
+            className="bg-white text-blue-600 px-4 py-2 rounded-lg font-medium hover:bg-blue-50 dark:bg-blue-600 dark:text-white dark:hover:bg-blue-700 transition-colors flex items-center text-sm"
           >
             <Plus className="h-4 w-4 mr-2" />
             Add Credits
@@ -95,31 +95,31 @@ export const CreditsSettings: React.FC = () => {
         </div>
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-blue-100 text-sm mb-1">Available Credits</p>
+            <p className="text-blue-100 dark:text-gray-400 text-sm mb-1">Available Credits</p>
             {isLoadingBalance ? (
               <div className="flex items-center">
                 <Loader2 className="h-8 w-8 animate-spin text-white" />
               </div>
             ) : (
-              <p className="text-4xl font-bold">{balance.toLocaleString()}</p>
+              <p className="text-4xl font-bold text-white">{balance.toLocaleString()}</p>
             )}
           </div>
           <div className="text-right">
-            <p className="text-blue-100 text-xs">Last updated</p>
-            <p className="text-white text-sm font-medium">{lastUpdated}</p>
+            <p className="text-blue-100 dark:text-gray-500 text-xs">Last updated</p>
+            <p className="text-white dark:text-gray-300 text-sm font-medium">{lastUpdated}</p>
           </div>
         </div>
       </div>
 
       {/* Add Credits Modal */}
       {showAddCreditsModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowAddCreditsModal(false)}>
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50" onClick={() => setShowAddCreditsModal(false)}>
+          <div className="bg-white dark:bg-[#030a21] rounded-lg p-6 max-w-md w-full mx-4 border border-transparent dark:border-blue-950/50 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-semibold text-gray-900">Add Credits</h3>
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Add Credits</h3>
               <button
                 onClick={() => setShowAddCreditsModal(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -130,41 +130,43 @@ export const CreditsSettings: React.FC = () => {
                   <button
                     key={preset.value}
                     onClick={() => handleSelectAmount(preset.value)}
-                    className={`p-4 border-2 rounded-lg transition-colors ${
+                    className={`p-4 border-2 rounded-lg transition-colors text-center ${
                       selectedAmount === preset.value
-                        ? 'border-blue-600 bg-blue-50'
-                        : 'border-gray-200 hover:border-blue-400'
+                        ? 'border-blue-600 bg-blue-50 dark:border-blue-500 dark:bg-blue-950/30'
+                        : 'border-gray-200 dark:border-blue-950/40 bg-transparent hover:border-blue-400 dark:hover:border-blue-900/60'
                     }`}
                   >
-                    <p className="text-2xl font-bold text-blue-600">{preset.credits.toLocaleString()}</p>
-                    <p className="text-xs text-gray-500">credits</p>
-                    <p className="text-sm text-gray-700 mt-1 font-medium">${preset.value}</p>
-                    <p className="text-xs text-gray-500">{preset.label}</p>
+                    <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{preset.credits.toLocaleString()}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">credits</p>
+                    <p className="text-sm text-gray-700 dark:text-white mt-1 font-medium">${preset.value}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{preset.label}</p>
                   </button>
                 ))}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Custom Amount</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Custom Amount</label>
                 <input
                   type="number"
                   placeholder="Enter amount"
                   value={customAmount}
                   onChange={(e) => handleCustomAmountChange(e.target.value)}
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent ${
-                    customAmount ? 'border-blue-600' : 'border-gray-300'
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 dark:focus:ring-blue-500 dark:bg-[#061033]/70 dark:text-white dark:placeholder-gray-600 ${
+                    customAmount 
+                      ? 'border-blue-600 dark:border-blue-500' 
+                      : 'border-gray-300 dark:border-blue-950/60'
                   }`}
                   min="1"
                 />
               </div>
               {(selectedAmount || customAmount) && (
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-sm text-blue-800">
+                <div className="p-3 bg-blue-50 border border-blue-200 dark:bg-blue-950/20 dark:border-blue-900/40 rounded-lg">
+                  <p className="text-sm text-blue-800 dark:text-blue-400">
                     <span className="font-semibold">You'll receive: </span>
                     {(() => {
                       const amount = parseFloat(customAmount) || selectedAmount || 0;
                       if (!amount || amount <= 0) return 'Select an amount';
                       const preset = presetAmounts.find(p => p.value === amount);
-                      const credits = preset ? preset.credits : Math.round(amount * 10.1); // Approximate for custom amounts
+                      const credits = preset ? preset.credits : Math.round(amount * 10.1); 
                       return `${credits.toLocaleString()} credits for $${amount}`;
                     })()}
                   </p>
@@ -176,8 +178,8 @@ export const CreditsSettings: React.FC = () => {
                   disabled={(!selectedAmount && !customAmount) || isProcessing}
                   className={`w-full px-4 py-2.5 rounded-lg transition-colors flex items-center justify-center font-medium ${
                     (selectedAmount || customAmount) && !isProcessing
-                      ? 'bg-blue-600 text-white hover:bg-blue-700'
-                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      ? 'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700'
+                      : 'bg-gray-300 text-gray-500 dark:bg-blue-950/40 dark:text-gray-600 cursor-not-allowed'
                   }`}
                 >
                   {isProcessing ? (
@@ -196,38 +198,38 @@ export const CreditsSettings: React.FC = () => {
       )}
 
       {/* Credits Information */}
-      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <h3 className="text-xl font-semibold text-gray-900 mb-4">How Credits Work</h3>
+      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 dark:bg-[#030a21]/60 dark:border-blue-950/40">
+        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">How Credits Work</h3>
         <div className="space-y-4">
           <div className="flex items-start space-x-3">
-            <div className="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-semibold text-sm">
+            <div className="flex-shrink-0 w-6 h-6 bg-blue-100 dark:bg-blue-950 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 font-semibold text-sm">
               1
             </div>
             <div>
-              <h4 className="font-medium text-gray-900 mb-1">Purchase Credits</h4>
-              <p className="text-sm text-gray-600">
+              <h4 className="font-medium text-gray-900 dark:text-white mb-1">Purchase Credits</h4>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
                 Add credits to your wallet at any time. Credits never expire and can be used across all services.
               </p>
             </div>
           </div>
           <div className="flex items-start space-x-3">
-            <div className="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-semibold text-sm">
+            <div className="flex-shrink-0 w-6 h-6 bg-blue-100 dark:bg-blue-950 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 font-semibold text-sm">
               2
             </div>
             <div>
-              <h4 className="font-medium text-gray-900 mb-1">Use for Services</h4>
-              <p className="text-sm text-gray-600">
+              <h4 className="font-medium text-gray-900 dark:text-white mb-1">Use for Services</h4>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
                 Credits are automatically deducted when you use services like voice calls, SMS messages, and lead generation.
               </p>
             </div>
           </div>
           <div className="flex items-start space-x-3">
-            <div className="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-semibold text-sm">
+            <div className="flex-shrink-0 w-6 h-6 bg-blue-100 dark:bg-blue-950 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 font-semibold text-sm">
               3
             </div>
             <div>
-              <h4 className="font-medium text-gray-900 mb-1">Track Usage</h4>
-              <p className="text-sm text-gray-600">
+              <h4 className="font-medium text-gray-900 dark:text-white mb-1">Track Usage</h4>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
                 Monitor your credit usage and remaining balance in real-time from your wallet dashboard.
               </p>
             </div>
@@ -236,64 +238,64 @@ export const CreditsSettings: React.FC = () => {
       </div>
 
       {/* Credit Pricing Guide */}
-      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <h3 className="text-xl font-semibold text-gray-900 mb-4">Credit Pricing</h3>
+      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 dark:bg-[#030a21]/60 dark:border-blue-950/40">
+        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Credit Pricing</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="p-4 border border-gray-200 rounded-lg">
+          <div className="p-4 border border-gray-200 dark:border-blue-950/40 rounded-lg">
             <div className="flex items-center justify-between mb-2">
-              <span className="font-medium text-gray-900">Voice Calls (Cartesia)</span>
-              <span className="text-blue-600 font-semibold">3 cr/min</span>
+              <span className="font-medium text-gray-900 dark:text-white">Voice Calls (Cartesia)</span>
+              <span className="text-blue-600 dark:text-blue-400 font-semibold">3 cr/min</span>
             </div>
-            <p className="text-xs text-gray-600">Per minute (includes analytics)</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Per minute (includes analytics)</p>
           </div>
-          <div className="p-4 border border-gray-200 rounded-lg">
+          <div className="p-4 border border-gray-200 dark:border-blue-950/40 rounded-lg">
             <div className="flex items-center justify-between mb-2">
-              <span className="font-medium text-gray-900">Premium Voice (ElevenLabs)</span>
-              <span className="text-blue-600 font-semibold">4 cr/min</span>
+              <span className="font-medium text-gray-900 dark:text-white">Premium Voice (ElevenLabs)</span>
+              <span className="text-blue-600 dark:text-blue-400 font-semibold">4 cr/min</span>
             </div>
-            <p className="text-xs text-gray-600">Higher quality voice + analytics</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Higher quality voice + analytics</p>
           </div>
-          <div className="p-4 border border-gray-200 rounded-lg">
+          <div className="p-4 border border-gray-200 dark:border-blue-950/40 rounded-lg">
             <div className="flex items-center justify-between mb-2">
-              <span className="font-medium text-gray-900">Email + Linkedin URL</span>
-              <span className="text-blue-600 font-semibold">2 credits</span>
+              <span className="font-medium text-gray-900 dark:text-white">Email + Linkedin URL</span>
+              <span className="text-blue-600 dark:text-blue-400 font-semibold">2 credits</span>
             </div>
-            <p className="text-xs text-gray-600">Per lead with email address and Linkedin Profile URL</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Per lead with email address and Linkedin Profile URL</p>
           </div>
-          <div className="p-4 border border-gray-200 rounded-lg">
+          <div className="p-4 border border-gray-200 dark:border-blue-950/40 rounded-lg">
             <div className="flex items-center justify-between mb-2">
-              <span className="font-medium text-gray-900">Phone Reveal</span>
-              <span className="text-blue-600 font-semibold">10 credits</span>
+              <span className="font-medium text-gray-900 dark:text-white">Phone Reveal</span>
+              <span className="text-blue-600 dark:text-blue-400 font-semibold">10 credits</span>
             </div>
-            <p className="text-xs text-gray-600">Per phone number revealed</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Per phone number revealed</p>
           </div>
-          <div className="p-4 border border-gray-200 rounded-lg">
+          <div className="p-4 border border-gray-200 dark:border-blue-950/40 rounded-lg">
             <div className="flex items-center justify-between mb-2">
-              <span className="font-medium text-gray-900">Profile Summary</span>
-              <span className="text-blue-600 font-semibold">5 credits</span>
+              <span className="font-medium text-gray-900 dark:text-white">Profile Summary</span>
+              <span className="text-blue-600 dark:text-blue-400 font-semibold">5 credits</span>
             </div>
-            <p className="text-xs text-gray-600">AI-generated profile summary</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">AI-generated profile summary</p>
           </div>
-          <div className="p-4 border border-gray-200 rounded-lg">
+          <div className="p-4 border border-gray-200 dark:border-blue-950/40 rounded-lg">
             <div className="flex items-center justify-between mb-2">
-              <span className="font-medium text-gray-900">LinkedIn Connection</span>
-              <span className="text-blue-600 font-semibold">50 cr/mo</span>
+              <span className="font-medium text-gray-900 dark:text-white">LinkedIn Connection</span>
+              <span className="text-blue-600 dark:text-blue-400 font-semibold">50 cr/mo</span>
             </div>
-            <p className="text-xs text-gray-600">Monthly connection fee</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Monthly connection fee</p>
           </div>
-          <div className="p-4 border border-gray-200 rounded-lg">
+          <div className="p-4 border border-gray-200 dark:border-blue-950/40 rounded-lg">
             <div className="flex items-center justify-between mb-2">
-              <span className="font-medium text-gray-900">Google Connection</span>
-              <span className="text-blue-600 font-semibold">20 cr/mo</span>
+              <span className="font-medium text-gray-900 dark:text-white">Google Connection</span>
+              <span className="text-blue-600 dark:text-blue-400 font-semibold">20 cr/mo</span>
             </div>
-            <p className="text-xs text-gray-600">Monthly connection fee</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Monthly connection fee</p>
           </div>
-          <div className="p-4 border border-gray-200 rounded-lg">
+          <div className="p-4 border border-gray-200 dark:border-blue-950/40 rounded-lg">
             <div className="flex items-center justify-between mb-2">
-              <span className="font-medium text-gray-900">Outlook Connection</span>
-              <span className="text-blue-600 font-semibold">20 cr/mo</span>
+              <span className="font-medium text-gray-900 dark:text-white">Outlook Connection</span>
+              <span className="text-blue-600 dark:text-blue-400 font-semibold">20 cr/mo</span>
             </div>
-            <p className="text-xs text-gray-600">Monthly connection fee</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Monthly connection fee</p>
           </div>
         </div>
       </div>
