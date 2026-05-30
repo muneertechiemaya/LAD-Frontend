@@ -23,6 +23,104 @@
   }
 }
 
+/* ------------------------------
+   LEGAL / POLICY PAGES PROSE
+   Readable typography for Privacy Policy, Terms of Service & Cookies Policy.
+------------------------------ */
+.legal-prose {
+  color: #374151; /* gray-700 */
+  font-size: 1rem;
+  line-height: 1.75;
+}
+.dark .legal-prose {
+  color: #d1d5db; /* gray-300 */
+}
+.legal-prose > :first-child {
+  margin-top: 0;
+}
+.legal-prose h2 {
+  color: #0b1957;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+  scroll-margin-top: 6rem;
+}
+.dark .legal-prose h2 {
+  color: #ffffff;
+}
+.legal-prose h3 {
+  color: #0b1957;
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-top: 1.75rem;
+  margin-bottom: 0.75rem;
+}
+.dark .legal-prose h3 {
+  color: #e5e7eb; /* gray-200 */
+}
+.legal-prose p {
+  margin-bottom: 1.1rem;
+}
+.legal-prose ul,
+.legal-prose ol {
+  margin: 0 0 1.1rem 1.4rem;
+}
+.legal-prose ul {
+  list-style: disc;
+}
+.legal-prose ol {
+  list-style: decimal;
+}
+.legal-prose li {
+  margin-bottom: 0.5rem;
+  padding-left: 0.25rem;
+}
+.legal-prose a {
+  color: #2563eb; /* blue-600 */
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.dark .legal-prose a {
+  color: #93c5fd; /* blue-300 */
+}
+.legal-prose a:hover {
+  opacity: 0.8;
+}
+.legal-prose strong {
+  color: #0b1957;
+  font-weight: 600;
+}
+.dark .legal-prose strong {
+  color: #ffffff;
+}
+.legal-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+}
+.legal-prose th,
+.legal-prose td {
+  border: 1px solid #e5e7eb;
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+}
+.dark .legal-prose th,
+.dark .legal-prose td {
+  border-color: #374151;
+}
+.legal-prose th {
+  background: #f9fafb;
+  font-weight: 600;
+  color: #0b1957;
+}
+.dark .legal-prose th {
+  background: #1a2f6b;
+  color: #ffffff;
+}
+
   :root {
     --radius: 0.625rem;
 

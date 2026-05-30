@@ -65,3 +65,6 @@ next-env.d.ts
 Thumbs.dbfrontend_1502.zip
 web/src/app/api/token/route.ts
 .claude/
+
+# Sentry Config File
+.env.sentry-build-plugin
