@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { BuilderBottomInput } from "./BuilderBottomInput";
 import { X, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import ReactMarkdown from "react-markdown";
 
 export interface MCQOption {
   id: string;
@@ -14,12 +15,14 @@ export function AgentBuilderMCQ({
   options,
   onClose,
   onNext,
+  phase,
 }: {
   question: string;
   description?: string;
   options: MCQOption[];
   onClose?: () => void;
   onNext?: (val?: string, action?: string) => void;
+  phase?: string;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showCustomInput, setShowCustomInput] = useState(false);
@@ -28,18 +31,18 @@ export function AgentBuilderMCQ({
   const isStacked = options.length <= 4;
 
   const handleSelect = (id: string) => {
-    setSelectedId(id);
+    setSelectedId((prev) => (prev === id ? null : id));
     setShowCustomInput(false);
   };
 
   return (
-    <div className="relative flex flex-col items-center w-full max-w-md h-[600px] bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+    <div className="relative flex flex-col items-center w-full max-w-md h-[600px] bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-300 outline-none focus:outline-none focus:ring-0">
       
       <div className="w-full flex flex-shrink-0 items-center justify-between p-4 border-b border-slate-100 bg-white/80 z-10">
          <div className="flex items-center gap-2">
             <Sparkles className="size-4 text-emerald-500" />
             <span className="text-[11px] font-bold text-[#0b1957] uppercase tracking-wider">
-               Builder / MCQ
+               {phase || "Builder / MCQ"}
             </span>
          </div>
          {onClose && (
@@ -65,9 +68,19 @@ export function AgentBuilderMCQ({
              </p>
           ))}
           {description && (
-             <p className="text-sm text-slate-400 text-center leading-relaxed">
-               {description}
-             </p>
+             <div className="text-sm text-slate-400 text-center leading-relaxed">
+               <ReactMarkdown
+                 components={{
+                   strong: ({ node, ref, ...props }) => <strong className="font-bold" {...props} />,
+                   p: ({ node, ref, ...props }) => <p className="leading-relaxed" {...props} />,
+                   ul: ({ node, ref, ...props }) => <ul className="list-disc pl-4 space-y-1 text-left my-2" {...props} />,
+                   ol: ({ node, ref, ...props }) => <ol className="list-decimal pl-4 space-y-1 text-left my-2" {...props} />,
+                   li: ({ node, ref, ...props }) => <li className="text-slate-400 font-medium" {...props} />,
+                 }}
+               >
+                 {description}
+               </ReactMarkdown>
+             </div>
           )}
         </div>
 
@@ -80,6 +93,7 @@ export function AgentBuilderMCQ({
             <button
               key={opt.id}
               onClick={() => handleSelect(opt.id)}
+              onDoubleClick={() => setSelectedId(null)}
               className={cn(
                 "bg-white border text-left text-sm text-[#0b1957] flex items-center gap-3 transition-all hover:bg-slate-50 group",
                 isStacked ? "w-full rounded-2xl px-5 py-4 shadow-sm hover:shadow-md" : "w-auto rounded-full px-4 py-2 hover:shadow-sm",
@@ -90,7 +104,12 @@ export function AgentBuilderMCQ({
                   "size-3.5 rounded-full border shrink-0 transition-colors duration-200",
                   selectedId === opt.id ? "border-[#0b1957] bg-[#0b1957]" : "border-slate-300 group-hover:border-[#0b1957]/50"
               )} />
-              <span className={cn("flex-1 font-medium", isStacked ? "truncate" : "")}>{opt.label}</span>
+              <span className={cn(
+                "flex-1 font-medium", 
+                isStacked && selectedId !== opt.id ? "truncate" : "whitespace-normal break-words"
+              )}>
+                {opt.label}
+              </span>
             </button>
           ))}
 
