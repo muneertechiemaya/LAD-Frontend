@@ -76,6 +76,13 @@ RUN if [ -d "prisma" ]; then npx --yes prisma@6 generate; fi
 RUN node -e "console.log('RQ:', require.resolve('@tanstack/react-query'))" \
  && node -e "console.log('QC:', require.resolve('@tanstack/query-core'))"
 
+# Next.js 15 production builds of this app exceed Node's default ~2 GB V8 heap
+# and OOM ("Reached heap limit Allocation failed"). The Cloud Build machine
+# (E2_HIGHCPU_8) has 8 GB RAM, so lift the old-space cap to 6 GB for the build.
+# Scoped to the builder stage — the runner stage starts FROM base, so this does
+# not affect the runtime server process.
+ENV NODE_OPTIONS="--max-old-space-size=6144"
+
 RUN npm run build
 
 # Verify standalone output was generated (fails build if next.config.mjs output:standalone didn't work)
