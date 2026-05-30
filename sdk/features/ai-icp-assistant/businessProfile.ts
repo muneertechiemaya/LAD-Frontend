@@ -1,7 +1,7 @@
 /**
  * BusinessProfile — shared shape for the tenant's 14-field business profile.
  *
- * Persisted as a JSONB blob in `lad_dev.ai_icp_profiles.icp_data` via
+ * Persisted as a JSONB blob in `ai_icp_profiles.icp_data` via
  * GET/POST /api/ai-playground. Read by:
  *   - The "ICP Discovery" drawer in advanced-search-ai/page.tsx (chat)
  *   - The onboarding wizard's Company step (form)

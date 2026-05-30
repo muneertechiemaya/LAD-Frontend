@@ -3,7 +3,7 @@
  * Business Profile settings tab.
  *
  * Renders all 14 (+3 optional) fields stored in
- * lad_dev.ai_icp_profiles.icp_data and persisted via /api/ai-playground.
+ * ai_icp_profiles.icp_data and persisted via /api/ai-playground.
  * Reads/writes through `useBusinessProfile()` so the wizard's Company step,
  * the ICP Discovery chat, and this tab all stay in sync.
  *

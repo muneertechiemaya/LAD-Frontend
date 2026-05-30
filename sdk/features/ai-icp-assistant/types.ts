@@ -336,7 +336,7 @@ export interface SearchStrategy {
   total_cap_per_day?: number;
 }
 
-/** A row from the lad_dev.tenant_icp_definitions table. */
+/** A row from the tenant_icp_definitions table. */
 export interface IcpDefinition {
   id: string;
   tenant_id: string;
@@ -361,7 +361,7 @@ export interface IcpDefinition {
   deleted_at?: string | null;
 }
 
-/** A row from lad_dev.tenant_icp_searches — audit log of Apollo / Sales Nav runs. */
+/** A row from tenant_icp_searches — audit log of Apollo / Sales Nav runs. */
 export interface IcpSearch {
   id: string;
   tenant_id: string;

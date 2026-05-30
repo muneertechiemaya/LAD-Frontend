@@ -1,7 +1,7 @@
 // extractIcp.ts — Phase 4 of R8.
 //
 // Maps the chat's freeform `businessProfile` state object to the canonical
-// `IcpStructured` shape that lad_dev.tenant_icp_definitions expects.
+// `IcpStructured` shape that tenant_icp_definitions expects.
 //
 // The keys here mirror what advanced-search-ai/page.tsx initialises at
 // ~line 726 (companyName, industry, website, icpJobTitles, icpCompanySize,

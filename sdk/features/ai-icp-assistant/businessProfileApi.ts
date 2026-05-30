@@ -1,7 +1,7 @@
 /**
  * Business Profile HTTP client — GET/POST /api/ai-playground.
  *
- * The backend UPSERTs into `lad_dev.ai_icp_profiles.icp_data` (JSONB),
+ * The backend UPSERTs into `ai_icp_profiles.icp_data` (JSONB),
  * keyed by tenant_id + is_active=true + is_deleted=false. Tenant scoping
  * is enforced server-side from the session/JWT — clients never pass
  * tenant_id in the body.

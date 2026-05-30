@@ -6,7 +6,7 @@
  * Routing strategy for GET:
  *   - Call BOTH the Node backend (social_whatsapp_accounts table) AND the Python BNI
  *     service in parallel, then merge the results (deduplicated by slug).
- *   - This ensures tenants whose accounts live in lad_dev.social_whatsapp_accounts
+ *   - This ensures tenants whose accounts live in social_whatsapp_accounts
  *     (e.g. Techiemaya) as well as tenants managed by the Python service (BNI, TPF)
  *     all see their accounts correctly.
  *
@@ -27,7 +27,7 @@ interface WaAccount {
   [key: string]: unknown;
 }
 
-/** Pull accounts from the Node backend (lad_dev.social_whatsapp_accounts). */
+/** Pull accounts from the Node backend (social_whatsapp_accounts). */
 async function fetchNodeAccounts(req: NextRequest): Promise<WaAccount[]> {
   const backendUrl = getBackendUrl();
   const targetUrl = `${backendUrl}/api/whatsapp-conversations/admin/whatsapp-accounts`;
