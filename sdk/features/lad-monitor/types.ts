@@ -1,0 +1,360 @@
+// lad-monitor (admin observability) SDK — types
+// Mirrors the backend /api/admin/monitor/* response shapes.
+
+export interface DateRangeParams {
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface NameValue {
+  name: string;
+  value: number;
+}
+
+export interface ServiceMetrics {
+  callSuccessRate: string;
+  campaignQueue: string;
+  avgCallDuration: string;
+  leadEnrichment: string;
+}
+
+export interface DashboardStats {
+  totalTenants: number;
+  totalUsers: number;
+  callsToday: number;
+  totalCalls: number;
+  campaignsToday: number;
+  totalCampaigns: number;
+  activeCampaigns: number;
+  voiceAgents: number;
+  pipelineLeads: number;
+  totalLeads: number;
+  conversations: number;
+  totalConversations: number;
+  tenantsByPlan: NameValue[];
+  voiceCallStatus: NameValue[];
+  campaignDistribution: NameValue[];
+  serviceMetrics: ServiceMetrics;
+  generatedAt: string;
+  range: DateRangeParams | null;
+}
+
+export interface TenantUser {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+  status: 'active' | 'inactive';
+}
+
+export interface TenantBilling {
+  creditsBalance: number;
+  totalSpent: number;
+  monthlyUsage: number;
+  currency: string;
+}
+
+export interface TenantIntegration {
+  name: string;
+  connected: boolean;
+  account?: string | null;
+  count?: number;
+}
+
+export interface ConversationMetrics {
+  totalConversations: number;
+  totalMessages: number;
+  totalContacts: number;
+  messagesLast7d: number;
+}
+
+export interface TenantSetup {
+  hasIntegration: boolean;
+  hasCampaign: boolean;
+  hasLeads: boolean;
+  hasVoiceAgent: boolean;
+  percent: number;
+}
+
+export interface TenantHealth {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+  plan: string;
+  email?: string;
+  phone?: string;
+  website?: string;
+  campaigns: number;
+  activeCampaigns: number;
+  calls: number;
+  pipelineLeads: number;
+  voiceAgentsCount: number;
+  users: TenantUser[];
+  activeUsers: number;
+  lastLoginAt: string | null;
+  errorRate: number;
+  setup: TenantSetup;
+  billing: TenantBilling;
+  integrations: TenantIntegration[];
+  conversations: ConversationMetrics | null;
+}
+
+export interface TenantCampaign {
+  id: string;
+  name: string;
+  status: string;
+  executionState?: string;
+  createdAt: string;
+  leads: number;
+  sent: number;
+  connected: number;
+  replied: number;
+}
+
+export interface TenantCallLog {
+  id: string;
+  startedAt: string;
+  endedAt?: string;
+  duration?: number;
+  status: string;
+  direction?: string;
+  cost: number;
+  agentName?: string | null;
+  leadName?: string | null;
+}
+
+export interface TenantDetail {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+  plan: string;
+  campaigns: TenantCampaign[];
+  callLogs: TenantCallLog[];
+  conversations: ConversationMetrics;
+}
+
+export type LogSeverity = 'DEFAULT' | 'INFO' | 'WARNING' | 'ERROR' | 'CRITICAL';
+
+export interface CloudLogParams {
+  severity?: LogSeverity;
+  service?: string;
+  limit?: number;
+  pageToken?: string;
+  startTime?: string;
+  endTime?: string;
+}
+
+export interface CloudLogEntry {
+  id: string | null;
+  timestamp: string | null;
+  severity: string;
+  message: string;
+  service: string;
+  revision: string;
+  location: string;
+  httpMethod: string | null;
+  httpUrl: string | null;
+  httpStatus: number | null;
+  latencyMs: number | null;
+}
+
+export interface CloudLogsResponse {
+  success?: boolean;
+  entries: CloudLogEntry[];
+  nextPageToken: string | null;
+  configured: boolean;
+  error?: string;
+}
+
+export interface CloudLogsConfig {
+  success?: boolean;
+  configured: boolean;
+  projectId: string | null;
+  authMethod: 'service-account-key' | 'adc' | 'none';
+}
+
+export interface CronHeartbeat {
+  jobName: string;
+  lastBeatAt: string | null;
+  lastStatus: string;
+  expectedIntervalSeconds: number;
+  consecutiveFailures: number;
+  lastError: string | null;
+  secondsSinceBeat: number | null;
+  stalenessThresholdSeconds: number;
+  stale: boolean;
+  healthy: boolean;
+}
+
+export interface CronHealth {
+  success?: boolean;
+  status: string;
+  healthy: boolean;
+  totalJobs: number;
+  staleJobs: string[];
+  erroredJobs: string[];
+  jobs: CronHeartbeat[];
+}
+
+export interface SahSummary {
+  sah_count: number;
+  total_cost: number;
+  avg_cost_per_sah: number;
+  total_voice_cost: number;
+  total_llm_cost: number;
+}
+
+export interface SahByType {
+  type: string;
+  sah_count: number;
+  avg_cost_per_sah: number;
+  total_cost: number;
+}
+
+export interface SahByTenant {
+  tenant_id: string;
+  tenant_name: string | null;
+  sah_count: number;
+  total_cost: number;
+  avg_cost_per_sah: number;
+  voice_cost: number;
+  llm_cost: number;
+}
+
+export interface SahCostData {
+  summary: SahSummary;
+  byType: SahByType[];
+  byTenant: SahByTenant[];
+  range: DateRangeParams | null;
+  generatedAt: string;
+}
+
+export interface TaskSummary {
+  failed: number;
+  dead_letter: number;
+  stuck: number;
+  pending: number;
+  executed: number;
+  cancelled: number;
+  campaignActivityErrors7d: number;
+}
+
+export interface TaskProblem {
+  id: string;
+  tenantId: string;
+  tenantName: string | null;
+  leadId: string | null;
+  bookingType: string | null;
+  taskStatus: string;
+  executionAttempts: number;
+  lastError: string | null;
+  taskScheduledAt: string | null;
+  problem: 'failed' | 'stuck' | 'dead_letter';
+}
+
+export interface TaskByTenant {
+  tenant_id: string;
+  tenant_name: string | null;
+  failed: number;
+  dead_letter: number;
+  stuck: number;
+}
+
+export interface WabaFollowupHealth {
+  stuck: number;
+  failed: number;
+  pending: number;
+  byTenant: Array<{ tenant_id: string; tenant_name: string | null; stuck: number; failed: number; pending: number }>;
+  tenantsChecked: number;
+}
+
+export interface TaskHealth {
+  summary: TaskSummary;
+  problems: TaskProblem[];
+  byTenant: TaskByTenant[];
+  wabaFollowups: WabaFollowupHealth;
+  graceMinutes: number;
+  stuckAlertThreshold: number;
+  generatedAt: string;
+}
+
+// ── LLM cost / spend (billing_usage_events) ──────────────────────────────────
+
+/** The dominant cost driver (feature + tenant) for a single day. */
+export interface LlmCostDriver {
+  feature_key: string;
+  tenant_id: string | null;
+  tenant_name: string | null;
+  cost: number;
+  calls: number;
+}
+
+/** One calendar day (UTC) of LLM spend, with spike flag + attribution. */
+export interface LlmCostDay {
+  day: string; // YYYY-MM-DD (UTC)
+  total_cost: number;
+  calls: number;
+  input_tokens: number;
+  output_tokens: number;
+  providers: Record<string, number>; // e.g. { anthropic: 5.66, gemini: 0 }
+  baseline: number;                   // trailing-median baseline for the day
+  is_spike: boolean;
+  multiple_of_baseline: number | null;
+  driver: LlmCostDriver | null;
+}
+
+export interface LlmCostByFeature {
+  feature_key: string;
+  provider: string;
+  model: string;
+  cost: number;
+  calls: number;
+  input_tokens: number;
+  output_tokens: number;
+}
+
+export interface LlmCostByTenant {
+  tenant_id: string;
+  tenant_name: string | null;
+  cost: number;
+  calls: number;
+}
+
+export interface LlmCostByProvider {
+  provider: string;
+  cost: number;
+  calls: number;
+}
+
+export interface LlmCostSummary {
+  days: number;
+  totalCost: number;
+  totalCalls: number;
+  avgDailyCost: number;
+  todayCost: number;
+  maxDayCost: number;
+  maxDay: string | null;
+  projectedMonthlyCost: number;
+  spikeCount: number;
+}
+
+export interface LlmCostThresholds {
+  baselineWindowDays: number;
+  spikeMultiplier: number;
+  spikeFloorUsd: number;
+}
+
+export interface LlmCostData {
+  series: LlmCostDay[];
+  spikes: LlmCostDay[];
+  byFeature: LlmCostByFeature[];
+  byTenant: LlmCostByTenant[];
+  byProvider: LlmCostByProvider[];
+  summary: LlmCostSummary;
+  thresholds: LlmCostThresholds;
+  range: { days: number };
+  generatedAt: string;
+}

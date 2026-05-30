@@ -121,3 +121,35 @@ export {
   clearTemplatesFromLocalStorage as clearLinkedInTemplatesFromLocalStorage,
 } from './linkedin-message-templates';
 
+// ============================================================================
+// INSTAGRAM MESSAGE TEMPLATES (Sub-Feature)
+// ============================================================================
+export {
+  // Types
+  type InstagramMessageTemplate,
+  type CreateInstagramTemplateRequest,
+  type UpdateInstagramTemplateRequest,
+  type InstagramTemplateFilters,
+  INSTAGRAM_MESSAGE_VARIABLES,
+  INSTAGRAM_DM_RECOMMENDED_MAX_LENGTH,
+  // Hooks
+  useMessageTemplates as useInstagramMessageTemplates,
+  useMessageTemplate as useInstagramMessageTemplate,
+  useDefaultMessageTemplate as useDefaultInstagramMessageTemplate,
+  useCreateMessageTemplate as useCreateInstagramMessageTemplate,
+  useUpdateMessageTemplate as useUpdateInstagramMessageTemplate,
+  useDeleteMessageTemplate as useDeleteInstagramMessageTemplate,
+  usePersonalizeMessage as usePersonalizeInstagramMessage,
+  // API Functions
+  instagramMessageTemplateKeys,
+  getMessageTemplates as getInstagramMessageTemplates,
+  getMessageTemplatesQueryOptions as getInstagramMessageTemplatesQueryOptions,
+  getMessageTemplateById as getInstagramMessageTemplateById,
+  getMessageTemplateByIdQueryOptions as getInstagramMessageTemplateByIdQueryOptions,
+  getDefaultMessageTemplate as getDefaultInstagramMessageTemplate,
+  getDefaultMessageTemplateQueryOptions as getDefaultInstagramMessageTemplateQueryOptions,
+  createMessageTemplate as createInstagramMessageTemplate,
+  updateMessageTemplate as updateInstagramMessageTemplate,
+  deleteMessageTemplate as deleteInstagramMessageTemplate,
+} from './instagram-message-templates';
+

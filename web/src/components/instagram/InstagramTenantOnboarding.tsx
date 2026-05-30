@@ -23,7 +23,7 @@ import { createPortal } from 'react-dom';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
 import {
   Plus, Trash2, RefreshCw, Loader2, CheckCircle2, AlertCircle, Power, Eye, EyeOff,
-  X as XIcon, Instagram as InstagramIcon,
+  X as XIcon, Instagram as InstagramIcon, Pencil,
 } from 'lucide-react';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -263,6 +263,10 @@ export const InstagramTenantOnboarding: React.FC = () => {
   // turning it on would just silently do nothing.
   const [likesUnavailableOpen, setLikesUnavailableOpen] = useState(false);
 
+  // Account currently being edited via the per-row "Edit" button. Null when
+  // the modal is closed.
+  const [editingAccount, setEditingAccount] = useState<InstagramAccount | null>(null);
+
   const handleToggleAi = useCallback(
     async (account: InstagramAccount, field: 'ai_replies_enabled' | 'ai_comments_enabled' | 'ai_likes_enabled') => {
       const next = !account[field];
@@ -374,14 +378,24 @@ export const InstagramTenantOnboarding: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleDisconnect(a)}
-                      className="flex items-center gap-1.5 rounded-md border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs text-rose-700 hover:bg-rose-100 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200 dark:hover:bg-rose-500/20"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                      Disconnect
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditingAccount(a)}
+                        className="flex items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100 dark:border-white/10 dark:bg-white/5 dark:text-white/80 dark:hover:bg-white/10"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDisconnect(a)}
+                        className="flex items-center gap-1.5 rounded-md border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs text-rose-700 hover:bg-rose-100 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200 dark:hover:bg-rose-500/20"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Disconnect
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -646,6 +660,23 @@ export const InstagramTenantOnboarding: React.FC = () => {
       {likesUnavailableOpen && (
         <LikesUnavailableModal onClose={() => setLikesUnavailableOpen(false)} />
       )}
+
+      {/* Edit-account modal. Opens when an operator clicks "Edit" on a row.
+          Saves dirty fields via PATCH /api/accounts/{id}; secrets (app_secret,
+          access_token) are write-only — pre-populated as blank, sent only if
+          the operator types a replacement. */}
+      {editingAccount && (
+        <EditAccountModal
+          account={editingAccount}
+          onClose={() => setEditingAccount(null)}
+          onSaved={async () => {
+            setEditingAccount(null);
+            setToast({ kind: 'ok', message: 'Account updated.' });
+            await load(true);
+          }}
+          onError={(msg) => setToast({ kind: 'err', message: msg })}
+        />
+      )}
     </div>
   );
 };
@@ -693,6 +724,228 @@ function LikesUnavailableModal({ onClose }: { onClose: () => void }): JSX.Elemen
             className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90"
           >
             Got it
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EditAccountModal({
+  account,
+  onClose,
+  onSaved,
+  onError,
+}: {
+  account: InstagramAccount;
+  onClose: () => void;
+  onSaved: () => void;
+  onError: (msg: string) => void;
+}): JSX.Element {
+  // Pre-populate from the current row. Secrets aren't returned by GET, so they
+  // start blank — empty stays blank means "leave existing secret untouched".
+  const [displayName, setDisplayName] = useState(account.display_name || '');
+  const [username, setUsername] = useState(account.instagram_username || '');
+  const [aiModel, setAiModel] = useState(account.ai_model || 'gemini-2.5-flash');
+  const [status, setStatus] = useState(account.status || 'active');
+  const [metaAppId, setMetaAppId] = useState(account.meta_app_id || '');
+  const [metaVerifyToken, setMetaVerifyToken] = useState(account.meta_verify_token || '');
+  const [metaIgUserId, setMetaIgUserId] = useState(account.meta_ig_user_id || '');
+  const [metaAppSecret, setMetaAppSecret] = useState('');
+  const [metaAccessToken, setMetaAccessToken] = useState('');
+  const [showSecrets, setShowSecrets] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const isMeta = (account.provider || '').toLowerCase() === 'meta';
+
+  const handleSave = async () => {
+    if (saving) return;
+    setSaving(true);
+
+    // Build a diff. Only send fields that differ from the persisted row.
+    // For secret rotates (app_secret, access_token) we send only when the
+    // operator has typed a non-empty value — empty means "don't touch".
+    const updates: Record<string, any> = {};
+    const trimOrNull = (s: string) => (s.trim() === '' ? null : s.trim());
+
+    if (trimOrNull(displayName) !== (account.display_name || null)) {
+      updates.display_name = trimOrNull(displayName);
+    }
+    if (trimOrNull(username) !== (account.instagram_username || null)) {
+      updates.instagram_username = trimOrNull(username);
+    }
+    if ((aiModel || null) !== (account.ai_model || null)) {
+      updates.ai_model = aiModel;
+    }
+    if (status !== account.status) {
+      updates.status = status;
+    }
+    if (isMeta) {
+      if (trimOrNull(metaAppId) !== (account.meta_app_id || null)) {
+        updates.meta_app_id = trimOrNull(metaAppId);
+      }
+      if (trimOrNull(metaVerifyToken) !== (account.meta_verify_token || null)) {
+        updates.meta_verify_token = trimOrNull(metaVerifyToken);
+      }
+      if (trimOrNull(metaIgUserId) !== (account.meta_ig_user_id || null)) {
+        updates.meta_ig_user_id = trimOrNull(metaIgUserId);
+      }
+      if (metaAppSecret.trim() !== '') {
+        updates.meta_app_secret = metaAppSecret.trim();
+      }
+      if (metaAccessToken.trim() !== '') {
+        updates.meta_access_token = metaAccessToken.trim();
+      }
+    }
+
+    if (Object.keys(updates).length === 0) {
+      onError('No changes to save.');
+      setSaving(false);
+      return;
+    }
+
+    const result = await patchAccount(account.id, updates);
+    setSaving(false);
+    if (result.success) {
+      onSaved();
+    } else {
+      onError(result.error || 'Update failed.');
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="max-w-lg w-full max-h-[90vh] overflow-y-auto rounded-2xl border bg-white p-6 shadow-xl dark:border-white/10 dark:bg-neutral-900"
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Pencil className="h-5 w-5 text-neutral-500 dark:text-white/60" />
+            <h3 className="text-base font-semibold text-neutral-900 dark:text-white">
+              Edit Instagram account
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md p-1 text-neutral-500 hover:bg-neutral-100 dark:text-white/60 dark:hover:bg-white/10"
+            aria-label="Close"
+          >
+            <XIcon className="h-4 w-4" />
+          </button>
+        </div>
+
+        <p className="mb-4 text-xs text-neutral-500 dark:text-white/50">
+          Provider: <span className="font-medium text-neutral-700 dark:text-white/80">{account.provider}</span>
+          {' · '}Account id: <span className="font-mono">{account.id.slice(0, 8)}…</span>
+        </p>
+
+        <div className="space-y-4">
+          <Field label="Display name">
+            <Input value={displayName} onChange={setDisplayName} placeholder="Friendly label shown in the app" />
+          </Field>
+
+          <Field label="Instagram username" hint="without the @">
+            <Input value={username} onChange={setUsername} placeholder="naveenyeluru" />
+          </Field>
+
+          <Field label="AI model">
+            <select
+              value={aiModel}
+              onChange={(e) => setAiModel(e.target.value)}
+              className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-400 dark:border-white/10 dark:bg-white/5 dark:text-white"
+            >
+              {AI_MODELS.map((m) => (
+                <option key={m.id} value={m.id}>{m.label}</option>
+              ))}
+            </select>
+          </Field>
+
+          <Field label="Status">
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-400 dark:border-white/10 dark:bg-white/5 dark:text-white"
+            >
+              <option value="active">active</option>
+              <option value="paused">paused</option>
+              <option value="disconnected">disconnected</option>
+            </select>
+          </Field>
+
+          {isMeta && (
+            <>
+              <div className="mt-2 border-t border-neutral-200 pt-4 dark:border-white/10">
+                <div className="mb-3 flex items-center justify-between">
+                  <h4 className="text-sm font-semibold text-neutral-900 dark:text-white">Meta credentials</h4>
+                  <button
+                    type="button"
+                    onClick={() => setShowSecrets((s) => !s)}
+                    className="flex items-center gap-1 text-xs text-neutral-600 hover:text-neutral-900 dark:text-white/60 dark:hover:text-white"
+                  >
+                    {showSecrets ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                    {showSecrets ? 'Hide secrets' : 'Show secrets'}
+                  </button>
+                </div>
+              </div>
+
+              <Field label="Meta App ID">
+                <Input value={metaAppId} onChange={setMetaAppId} mono />
+              </Field>
+
+              <Field label="Meta IG User ID" hint="Instagram Business Account id (the 17841… form)">
+                <Input value={metaIgUserId} onChange={setMetaIgUserId} mono />
+              </Field>
+
+              <Field label="Meta verify token">
+                <Input value={metaVerifyToken} onChange={setMetaVerifyToken} mono />
+              </Field>
+
+              <Field label="Meta App Secret" hint="leave blank to keep existing">
+                <Input
+                  value={metaAppSecret}
+                  onChange={setMetaAppSecret}
+                  type={showSecrets ? 'text' : 'password'}
+                  placeholder="Enter to rotate"
+                  mono
+                />
+              </Field>
+
+              <Field label="Meta Access Token" hint="leave blank to keep existing">
+                <Input
+                  value={metaAccessToken}
+                  onChange={setMetaAccessToken}
+                  type={showSecrets ? 'text' : 'password'}
+                  placeholder="Enter to rotate"
+                  mono
+                />
+              </Field>
+            </>
+          )}
+        </div>
+
+        <div className="mt-6 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-white/80 dark:hover:bg-white/10"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-1.5 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90"
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+            {saving ? 'Saving…' : 'Save changes'}
           </button>
         </div>
       </div>

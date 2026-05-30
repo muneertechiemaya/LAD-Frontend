@@ -20,9 +20,12 @@ tags = ["secret", "google-oauth"]
 [[rules]]
 id = "lad-cloudbuild-literal-secret-substitution"
 description = "Cloud Build substitution variable for a secret has a literal value (should be SET_IN_TRIGGER)"
-# Matches lines like `_FOO_SECRET: 'bar'` or `_FOO_KEY: "bar"` where the value is NOT SET_IN_TRIGGER
-# and the substitution name contains SECRET / KEY / TOKEN / PASSWORD.
-regex = '''(?im)^\s*_[A-Z0-9_]*(SECRET|KEY|TOKEN|PASSWORD|APIKEY)[A-Z0-9_]*:\s*['"](?!SET_IN_TRIGGER)[^'"]{8,}['"]'''
+# Matches lines like `_FOO_SECRET: 'bar'` or `_FOO_KEY: "bar"` where the
+# substitution name contains SECRET / KEY / TOKEN / PASSWORD / APIKEY.
+# NOTE: gitleaks uses the RE2 engine, which has no lookahead — so the
+# "value is not SET_IN_TRIGGER" exclusion is handled by the [allowlist]
+# regex below (SET_IN_TRIGGER) rather than an inline negative lookahead.
+regex = '''(?im)^\s*_[A-Z0-9_]*(SECRET|KEY|TOKEN|PASSWORD|APIKEY)[A-Z0-9_]*:\s*['"][^'"]{8,}['"]'''
 path = '''cloudbuild.*\.ya?ml$'''
 tags = ["secret", "cloudbuild"]
 
