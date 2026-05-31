@@ -3031,7 +3031,10 @@ export function WABusinessView({
   isSidebarCollapsed: boolean;
   setIsSidebarCollapsed: (val: boolean) => void;
 }) {
-  const channel = 'personal';
+  // WABusinessView is the WhatsApp Business tab — it must always use the WABA
+  // channel (routes to LAD-WABA-Comms). Hardcoding 'personal' here sent every
+  // request to the empty personal service and showed "No chats found".
+  const channel = 'waba';
   const queryClient = useQueryClient();
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
