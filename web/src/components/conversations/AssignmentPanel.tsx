@@ -279,7 +279,7 @@ export const AssignmentPanel = memo(function AssignmentPanel({
 
       {/* Current Assignment */}
       {assignment && assignment.is_active ? (
-        <div className="bg-gradient-to-br from-primary/5 to-transparent p-4 rounded-lg border border-primary/10 space-y-4">
+        <div className="bg-gradient-to-br from-primary/5 to-transparent dark:from-[#1e2a30] dark:to-[#161717] p-4 rounded-lg border border-primary/10 dark:border-[#222d34] space-y-4">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0 flex-1">
               <Avatar className="h-10 w-10 flex-shrink-0 border border-border">
@@ -288,7 +288,7 @@ export const AssignmentPanel = memo(function AssignmentPanel({
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0 overflow-hidden">
-                <p className="text-sm font-bold truncate text-[#172560] leading-none mb-1">
+                <p className="text-sm font-bold truncate dark:text-white leading-none mb-1">
                   {assignedUser?.name || 'Unknown User'}
                 </p>
                 <p className="text-[11px] text-muted-foreground truncate leading-none">
@@ -341,7 +341,7 @@ export const AssignmentPanel = memo(function AssignmentPanel({
 
           {/* Reason */}
           {assignment.reason && (
-            <div className="p-2 bg-muted/50 rounded text-xs">
+            <div className="p-2 bg-muted/50 dark:bg-[#1e2a30] rounded text-xs">
               <p className="text-muted-foreground mb-1">Reason:</p>
               <p>{assignment.reason}</p>
             </div>
@@ -375,7 +375,7 @@ export const AssignmentPanel = memo(function AssignmentPanel({
         </div>
       ) : (
         // No assignment - show assign button
-        <div className="bg-muted/50 p-4 rounded-lg border border-muted text-center space-y-4">
+        <div className="bg-muted/50 dark:bg-[#1e2a30] p-4 rounded-lg border border-muted dark:border-[#222d34] text-center space-y-4">
           <div className="text-center">
             <Users className="h-8 w-8 text-muted-foreground mx-auto mb-2 opacity-50" />
             <p className="text-sm font-medium">Not Assigned</p>
@@ -408,7 +408,7 @@ export const AssignmentPanel = memo(function AssignmentPanel({
               : null;
 
             return (
-              <div key={h.id} className="p-2.5 bg-muted/50 rounded-lg text-xs space-y-1">
+              <div key={h.id} className="p-2.5 bg-muted/50 dark:bg-[#1e2a30] rounded-lg text-xs space-y-1">
                 <div className="flex items-center gap-2">
                   <Avatar className="h-5 w-5">
                     <AvatarFallback className="text-[9px] bg-primary/10 text-primary">
