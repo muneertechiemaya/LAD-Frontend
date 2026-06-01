@@ -1,11 +1,11 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { CheckCircle2, AlertCircle, Loader2, ExternalLink, ChevronDown, ChevronUp, Eye, EyeOff, X } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Loader2, ExternalLink, ChevronDown, ChevronUp, Eye, EyeOff, X, Power } from 'lucide-react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, DialogHeader } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { getApiBaseUrl } from '@/lib/api-utils';
 import { apiGet, apiPost } from '@/lib/api';
-import { safeStorage } from '@lad/shared/storage';
+import { safeStorage } from '@lad/shared/storage';  
 import { io } from 'socket.io-client';
 
 import { LINKEDIN_LOGO_PATH, PHONE_AUTH_PATH } from '@/constants/icons';
@@ -47,6 +47,15 @@ interface LinkedInStatusResponse {
   connections: LinkedInAccount[];
   totalConnections: number;
 }
+// Tenant-level LinkedIn automation config (one per tenant, derived from the
+// active social_linkedin_accounts metadata). Returned by
+// GET /api/social-integration/linkedin/automation-settings wrapped in { data }.
+interface LinkedInAutomationSettings {
+  auto_like_posts: boolean;
+  auto_comment_posts: boolean;
+  ai_agent_enabled: boolean;
+  ai_agent_reply_delay_seconds: number;
+}
 type AuthMethod = 'credentials' | 'cookies';
 export const LinkedInIntegration: React.FC = () => {
   const [linkedInConnections, setLinkedInConnections] = useState<LinkedInAccount[]>([]);
@@ -77,8 +86,26 @@ export const LinkedInIntegration: React.FC = () => {
   // Yes/No auto-polling states
   const [yesNoPolling, setYesNoPolling] = useState<NodeJS.Timeout | null>(null);
   const [autoResolving, setAutoResolving] = useState(false);
+  // ── AI Replies (tenant-level LinkedIn AI agent) ────────────────────────────
+  // ai_agent_enabled is stored once per tenant, so every connected account shares
+  // the same flag. We hold the full settings object (not just the boolean) so a
+  // PUT can resend auto_like_posts / auto_comment_posts / reply-delay unchanged —
+  // the backend rebuilds all four keys, so omitting them would clobber them.
+  const [automationSettings, setAutomationSettings] = useState<LinkedInAutomationSettings | null>(null);
+  const [aiRepliesSaving, setAiRepliesSaving] = useState(false);
+  const [aiToast, setAiToast] = useState<{ kind: 'ok' | 'err'; message: string } | null>(null);
+  // Auto-dismiss the AI Replies toast after a few seconds (mirrors Instagram).
+  useEffect(() => {
+    if (!aiToast) return;
+    const t = setTimeout(() => setAiToast(null), 4500);
+    return () => clearTimeout(t);
+  }, [aiToast]);
   useEffect(() => {
     checkLinkedInConnection();
+    // Fetch the tenant's AI-agent setting on mount and whenever the account
+    // count changes (connect/disconnect). Deliberately NOT in the 30s poll so
+    // an in-flight optimistic toggle isn't overwritten mid-flight.
+    void fetchAutomationSettings();
     // Start polling status every 30 seconds if any connection is active
     const pollInterval = setInterval(() => {
       if (linkedInConnections.some(conn => conn.connected)) {
@@ -138,17 +165,17 @@ export const LinkedInIntegration: React.FC = () => {
 
       // Update account status in state
       setLinkedInConnections(prev => prev.map(account => {
-        if (account.id === data.accountId ||
+        if (account.id === data.accountId || 
             account.unipileAccount?.id === data.accountId ||
             account.accountName === data.accountName ||
             account.profileName === data.profileName) {
           return {
             ...account,
-            status: newStatus === 'active' ? 'connected' :
-                newStatus === 'credentials_expired' ? 'error' :
-                    newStatus === 'error' ? 'error' :
-                        newStatus === 'stopped' ? 'stopped' :
-                            newStatus === 'checkpoint' ? 'checkpoint' : 'unknown' as any,
+            status: newStatus === 'active' ? 'connected' : 
+                   newStatus === 'credentials_expired' ? 'error' :
+                   newStatus === 'error' ? 'error' :
+                   newStatus === 'stopped' ? 'stopped' : 
+                   newStatus === 'checkpoint' ? 'checkpoint' : 'unknown' as any,
             connected: isActive,
           };
         }
@@ -157,25 +184,25 @@ export const LinkedInIntegration: React.FC = () => {
 
       // If checkpoint is resolved (user clicked Yes/No on mobile device)
       if (isActive && showOtpModal && currentCheckpointAccount) {
-        const isCurrentAccount = currentCheckpointAccount.id === data.accountId ||
-            currentCheckpointAccount.unipileAccount?.id === data.accountId;
-
+        const isCurrentAccount = currentCheckpointAccount.id === data.accountId || 
+                                currentCheckpointAccount.unipileAccount?.id === data.accountId;
+        
         if (isCurrentAccount) {
           // Stop polling if active
           if (yesNoPolling) {
             clearInterval(yesNoPolling);
             setYesNoPolling(null);
           }
-
+          
           // Auto-close modal and show success
           setAutoResolving(true);
           setShowOtpModal(false);
           setConnectionSuccess(true);
-
+          
           // Refresh account status
           const accountEmail = currentCheckpointAccount?.email || email;
           checkLinkedInConnection(accountEmail);
-
+          
           // Close connection modal after a short delay
           setTimeout(() => {
             setShowConnectionModal(false);
@@ -262,7 +289,7 @@ export const LinkedInIntegration: React.FC = () => {
         if (yesNoPolling) {
           clearInterval(yesNoPolling);
           setYesNoPolling(null);
-        }
+          }
       }, 5 * 60 * 1000); // 5 minutes
     }
     return () => {
@@ -276,8 +303,8 @@ export const LinkedInIntegration: React.FC = () => {
     try {
       setLoading(true); // Explicitly set loading at start
       // Add timeout to prevent infinite loading
-      const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject({ timeout: true }), 15000) // Increased to 15s
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject({ timeout: true }), 15000) // Increased to 15s
       );
       // Use apiGet for authenticated requests with timeout
       const dataPromise = apiGet<any>('/api/campaigns/linkedin/accounts');
@@ -307,6 +334,63 @@ export const LinkedInIntegration: React.FC = () => {
       setLoading(false);
     }
   };
+  // GET the tenant's LinkedIn automation settings. Response is { success, data }.
+  // Failure is non-fatal: we leave settings unloaded and keep the pill disabled
+  // (so a toggle can never PUT a partial/clobbering payload).
+  const fetchAutomationSettings = async () => {
+    try {
+      const res = await apiGet<{ success?: boolean; data?: LinkedInAutomationSettings }>(
+        '/api/social-integration/linkedin/automation-settings'
+      );
+      if (res?.data) {
+        setAutomationSettings(res.data);
+      }
+    } catch (error) {
+      // Non-fatal — see note above.
+    }
+  };
+  // Flip the tenant-level AI agent on/off. Optimistic UI, then PUT the FULL set
+  // (only ai_agent_enabled changed) so the backend's jsonb rebuild preserves
+  // auto_like_posts / auto_comment_posts / reply-delay. Reverts + toasts on
+  // failure (mirrors Instagram's per-account AI toggle).
+  const toggleAiReplies = async () => {
+    if (!automationSettings || aiRepliesSaving) return;
+    const previous = automationSettings;
+    const next = !previous.ai_agent_enabled;
+    // Optimistic — all cards read this one flag, so they flip together.
+    setAutomationSettings({ ...previous, ai_agent_enabled: next });
+    setAiRepliesSaving(true);
+    try {
+      const response = await fetch(
+        `${getApiBaseUrl()}/api/social-integration/linkedin/automation-settings`,
+        {
+          method: 'PUT',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            auto_like_posts: previous.auto_like_posts,
+            auto_comment_posts: previous.auto_comment_posts,
+            ai_agent_enabled: next,
+            ai_agent_reply_delay_seconds: previous.ai_agent_reply_delay_seconds,
+          }),
+        }
+      );
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.error || data?.message || 'Failed to update AI Replies');
+      }
+      // Reconcile with the server's authoritative copy.
+      if (data.data) setAutomationSettings(data.data as LinkedInAutomationSettings);
+    } catch (error) {
+      // Roll back the optimistic flip and surface the error.
+      setAutomationSettings(previous);
+      setAiToast({
+        kind: 'err',
+        message: error instanceof Error ? error.message : 'Could not update AI Replies.',
+      });
+    } finally {
+      setAiRepliesSaving(false);
+    }
+  };
   const handleConnect = async () => {
     setConnecting(true);
     setConnectionError(null);
@@ -314,9 +398,9 @@ export const LinkedInIntegration: React.FC = () => {
     try {
       // Get user agent for cookie method
       const userAgent = typeof window !== 'undefined' ? navigator.userAgent : '';
-      const payload = authMethod === 'credentials'
-          ? { method: 'credentials', email, ['pass' + 'word']: pinCode }
-          : { method: 'cookies', li_at: liAtCookie, li_a: liACookie, user_agent: userAgent };
+      const payload = authMethod === 'credentials' 
+        ? { method: 'credentials', email, ['pass' + 'word']: pinCode }
+        : { method: 'cookies', li_at: liAtCookie, li_a: liACookie, user_agent: userAgent };
       const data = await apiPost<any>('/api/campaigns/linkedin/connect', payload);
       if (!data.success) {
         const errorMessage = data.error || data.message || 'Failed to connect LinkedIn account';
@@ -327,8 +411,8 @@ export const LinkedInIntegration: React.FC = () => {
       // Accept either explicit `required: true` OR presence of is_yes_no / is_otp flags
       // so the UI works even if the backend omits the `required` field.
       const isCheckpoint =
-          data.checkpoint &&
-          (data.checkpoint.required || data.checkpoint.is_yes_no || data.checkpoint.is_otp);
+        data.checkpoint &&
+        (data.checkpoint.required || data.checkpoint.is_yes_no || data.checkpoint.is_otp);
       if (isCheckpoint) {
         // Show checkpoint modal instead of closing connection modal
         setShowOtpModal(true);
@@ -349,7 +433,7 @@ export const LinkedInIntegration: React.FC = () => {
         setCurrentCheckpointAccount(checkpointAccount);
         // If it's a Yes/No checkpoint, show message that we're monitoring
         if (data.checkpoint.is_yes_no) {
-        }
+          }
       } else {
         // Success - account created or connected
         setConnectionSuccess(true);
@@ -430,7 +514,7 @@ export const LinkedInIntegration: React.FC = () => {
       const response = await fetch(`${getApiBaseUrl()}/api/campaigns/linkedin/solve-checkpoint`, {
         method: 'POST',
         headers: getAuthHeaders(),
-        body: JSON.stringify({
+        body: JSON.stringify({ 
           answer,
           account_id: currentCheckpointAccount?.unipileAccount?.id || currentCheckpointAccount?.id
         }),
@@ -468,9 +552,9 @@ export const LinkedInIntegration: React.FC = () => {
     }
   };
   const disconnectLinkedIn = async (connectionId?: string, email?: string) => {
-    const confirmMessage = connectionId
-        ? `Are you sure you want to disconnect this LinkedIn account (${email || 'this account'})?`
-        : 'Are you sure you want to disconnect your LinkedIn account?';
+    const confirmMessage = connectionId 
+      ? `Are you sure you want to disconnect this LinkedIn account (${email || 'this account'})?`
+      : 'Are you sure you want to disconnect your LinkedIn account?';
     if (!confirm(confirmMessage)) {
       return;
     }
@@ -557,7 +641,7 @@ export const LinkedInIntegration: React.FC = () => {
 
   const reconnectInactiveAccount = async (account: LinkedInAccount) => {
     const accountKey = account.id || account.email || 'default';
-
+    
     // For inactive accounts, always prompt user to enter credentials
     // (old accounts don't have stored details)
     setEmail(account.metadata?.email || account.email || '');
@@ -573,7 +657,7 @@ export const LinkedInIntegration: React.FC = () => {
       case 'active':
       case 'connected':
         return {
-          color: 'text-green-600 dark:text-green-400',
+          color: 'text-green-600',
           bgColor: 'bg-green-500',
           icon: CheckCircle2,
           text: 'Connected',
@@ -582,7 +666,7 @@ export const LinkedInIntegration: React.FC = () => {
       case 'inactive':
       case 'disconnected':
         return {
-          color: 'text-gray-400 dark:text-gray-500',
+          color: 'text-gray-400',
           bgColor: 'bg-gray-400',
           icon: AlertCircle,
           text: 'Disconnected',
@@ -590,7 +674,7 @@ export const LinkedInIntegration: React.FC = () => {
         };
       case 'stopped':
         return {
-          color: 'text-yellow-600 dark:text-yellow-400',
+          color: 'text-yellow-600',
           bgColor: 'bg-yellow-500',
           icon: AlertCircle,
           text: 'Stopped',
@@ -599,7 +683,7 @@ export const LinkedInIntegration: React.FC = () => {
       case 'credentials_expired':
       case 'checkpoint':
         return {
-          color: 'text-orange-600 dark:text-orange-400',
+          color: 'text-orange-600',
           bgColor: 'bg-orange-500',
           icon: AlertCircle,
           text: 'Reconnect Required',
@@ -609,7 +693,7 @@ export const LinkedInIntegration: React.FC = () => {
       case 'error':
       default:
         return {
-          color: 'text-red-600 dark:text-red-400',
+          color: 'text-red-600',
           bgColor: 'bg-red-500',
           icon: AlertCircle,
           text: 'Error',
@@ -669,17 +753,35 @@ export const LinkedInIntegration: React.FC = () => {
                       <span className={`font-semibold ${statusDisplay.color} whitespace-nowrap`}>
                     {linkedInConnections.length > 0 ? `${linkedInConnections.length} Account${linkedInConnections.length > 1 ? 's' : ''}` : statusDisplay.text}
                   </span>
-                    </div>
-                );
-              })()}
-            </div>
+                </div>
+              );
+            })()}
           </div>
+        </div>
+        {/* AI Replies toggle feedback — only surfaces on failure (mirrors Instagram). */}
+        {aiToast && (
+            <div
+                className={`mb-4 flex items-center gap-2 rounded-lg border p-3 text-sm ${
+                    aiToast.kind === 'ok'
+                        ? 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200'
+                        : 'border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200'
+                }`}
+            >
+              {aiToast.kind === 'ok' ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+              {aiToast.message}
+            </div>
+        )}
           {/* Display all connected LinkedIn accounts */}
           {linkedInConnections.length > 0 && (
               <div className="mb-6 space-y-3">
                 <h4 className="font-medium text-gray-900 dark:text-gray-100 text-sm mb-2">
                   Connected Accounts ({linkedInConnections.length})
                 </h4>
+                {linkedInConnections.length > 1 && (
+                    <p className="text-xs text-gray-500 -mt-1 mb-1">
+                      AI Replies is account-wide — toggling it on any card applies to all your connected LinkedIn accounts.
+                    </p>
+                )}
                 {linkedInConnections.map((account, index) => {
                   const accountStatusDisplay = getStatusDisplay(account.status, account.connected);
                   const AccountStatusIcon = accountStatusDisplay.icon;
@@ -748,12 +850,48 @@ export const LinkedInIntegration: React.FC = () => {
                             </button>
                           </div>
                         </div>
+                        {/* AI Replies — tenant-level LinkedIn AI agent. Every connected
+                      account binds to the same flag; toggling persists via the
+                      automation-settings API and survives a refresh. */}
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                          <AiToggleChip
+                              label="AI Replies"
+                              enabled={automationSettings?.ai_agent_enabled ?? true}
+                              disabled={!automationSettings || aiRepliesSaving}
+                              onToggle={toggleAiReplies}
+                          />
+                        </div>
                       </div>
                   );
                 })}
               </div>
           )}
           <div className="space-y-4">
+          {/* <div className="border-t border-gray-200 pt-4">
+            <h4 className="font-medium text-gray-900 mb-3">Features</h4>
+            <ul className="space-y-2 text-sm text-gray-600">
+              <li className="flex items-start">
+                <CheckCircle2 className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
+                <span>Automatically enrich leads with LinkedIn profile data</span>
+              </li>
+              <li className="flex items-start">
+                <CheckCircle2 className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
+                <span>Extract decision maker information and contact details</span>
+              </li>
+              <li className="flex items-start">
+                <CheckCircle2 className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
+                <span>Access to company employee lists and org charts</span>
+              </li>
+              <li className="flex items-start">
+                <CheckCircle2 className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
+                <span>Send automated connection requests and messages</span>
+              </li>
+              <li className="flex items-start">
+                <CheckCircle2 className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
+                <span>Track engagement and response rates</span>
+              </li>
+            </ul>
+          </div> */}
             <div className="border-t border-gray-200 dark:border-gray-800 pt-4 space-y-3">
               {/* Always show "Add Account" button to allow multiple connections */}
               <button
@@ -1128,3 +1266,34 @@ export const LinkedInIntegration: React.FC = () => {
       </>
   );
 };
+
+// ── AI Replies chip ──────────────────────────────────────────────────────────
+// Green pill toggle mirroring Instagram's connected-account cards
+// (components/instagram/InstagramTenantOnboarding.tsx → AiToggleChip).
+function AiToggleChip({
+  label,
+  enabled,
+  onToggle,
+  disabled,
+}: {
+  label: string;
+  enabled: boolean;
+  onToggle: () => void;
+  disabled?: boolean;
+}): JSX.Element {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      disabled={disabled}
+      className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${
+        enabled
+          ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200 dark:hover:bg-emerald-500/20'
+          : 'border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-100 dark:border-white/10 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/10'
+      }`}
+    >
+      <Power className="h-3 w-3" />
+      {label}: {enabled ? 'on' : 'off'}
+    </button>
+  );
+}

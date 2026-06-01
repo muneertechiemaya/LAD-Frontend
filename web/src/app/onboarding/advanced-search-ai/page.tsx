@@ -17,6 +17,9 @@ import {
     useCampaignCreation,
     useVoiceAgent,
     useBilling,
+    useBusinessProfile,
+    computeCompleteness,
+    type BusinessProfile,
 } from '@lad/frontend-features/ai-icp-assistant';
 
 /* ═══════════════════════════════════════════════
@@ -723,6 +726,11 @@ export default function AdvancedSearchAIPage() {
     const [pgIsComplete, setPgIsComplete] = useState(false);
     const [pgSuggesting, setPgSuggesting] = useState(false);  // AI suggestion loading
     const pgMessagesEndRef = useRef<HTMLDivElement>(null);
+    // The 17-key business profile (14 core + 3 optional). Persisted server-side
+    // by /api/ai-playground/chat on every turn — the hook handles the initial
+    // load + exposes the shared completeness math used by Settings and the
+    // wizard's Company step.
+    const { profile: loadedProfile, loading: profileLoading } = useBusinessProfile();
     const [businessProfile, setBusinessProfile] = useState<Record<string, string>>({
         companyName: '', industry: '', website: '', companyDescription: '',
         productsServices: '', targetCustomers: '', icpJobTitles: '',
@@ -730,14 +738,27 @@ export default function AdvancedSearchAIPage() {
         sampleConversation: '', operatingHours: '', timezone: '',
         geographicFocus: '', valueProposition: '', competitors: '', campaignTone: '',
     });
+    const [bpHydrated, setBpHydrated] = useState(false);
 
-    // Load profile from localStorage on mount
+    // Hydrate local state once when the hook's initial load completes.
+    // We keep `businessProfile` as a local Record<string, string> because the
+    // chat continues to mutate it through many setBusinessProfile calls — the
+    // backend persists each turn via /api/ai-playground/chat, no client write
+    // needed here.
     useEffect(() => {
-        try {
-            const stored = localStorage.getItem('lad_business_profile');
-            if (stored) setBusinessProfile(prev => ({ ...prev, ...JSON.parse(stored) }));
-        } catch { }
-    }, []);
+        if (!profileLoading && !bpHydrated) {
+            const next: Record<string, string> = {};
+            for (const k of Object.keys(businessProfile)) {
+                const v = (loadedProfile as Record<string, unknown>)[k];
+                if (typeof v === 'string') next[k] = v;
+            }
+            if (Object.keys(next).length > 0) {
+                setBusinessProfile(prev => ({ ...prev, ...next }));
+            }
+            setBpHydrated(true);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [profileLoading, bpHydrated, loadedProfile]);
 
     // Auto-scroll playground chat — also fires when busy clears (card widget appears)
     useEffect(() => {
@@ -777,19 +798,15 @@ export default function AdvancedSearchAIPage() {
                     }
                 }
                 if (data.profile) {
+                    // Persistence is handled server-side by /api/ai-playground/chat
+                    // — no client write needed. The hook will re-fetch on demand
+                    // (Settings / wizard refresh).
                     setBusinessProfile(prev => ({ ...prev, ...data.profile }));
-                    try { localStorage.setItem('lad_business_profile', JSON.stringify({ ...businessProfile, ...data.profile })); } catch { }
                 }
                 if (data.isComplete) {
                     setPgIsComplete(true);
-                    // Explicitly persist the final complete profile to DB so lead-chat always has full context
-                    const finalProfile = { ...businessProfile, ...(data.profile || {}) };
-                    fetch('/api/ai-playground', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        credentials: 'include',
-                        body: JSON.stringify({ profile: finalProfile }),
-                    }).catch(() => { });
+                    // The final profile is already persisted by the chat endpoint's
+                    // own upsertIcpProfile call — no duplicate POST here.
                 }
             }
         } catch { }
@@ -4483,18 +4500,14 @@ export default function AdvancedSearchAIPage() {
                                     </div>
                                 </div>
 
-                                {/* Profile completeness bar */}
+                                {/* Profile completeness bar — math comes from the shared SDK helper so
+                                    the wizard / Settings / this drawer always agree. When pgIsComplete
+                                    we lock to 100% regardless of trailing blank optional fields. */}
                                 {(() => {
-                                    // Optional/supplementary fields not part of the core conversation flow
-                                    const optionalFields = new Set(['website', 'sampleConversation', 'competitors']);
-                                    const coreProfile = Object.fromEntries(
-                                        Object.entries(businessProfile).filter(([k]) => !optionalFields.has(k))
-                                    );
-                                    const filled = pgIsComplete
-                                        ? Object.keys(coreProfile).length
-                                        : Object.values(coreProfile).filter(v => v).length;
-                                    const total = Object.keys(coreProfile).length;
-                                    const pct = Math.round((filled / total) * 100);
+                                    const c = computeCompleteness(businessProfile as BusinessProfile);
+                                    const filled = pgIsComplete ? c.total : c.filled;
+                                    const total = c.total;
+                                    const pct = pgIsComplete ? 100 : c.pct;
                                     return (
                                         <div style={{ marginTop: 10 }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
@@ -4508,6 +4521,26 @@ export default function AdvancedSearchAIPage() {
                                                     width: `${pct}%`, transition: 'width .5s ease',
                                                 }} />
                                             </div>
+
+                                            {/* Edit affordance — once any field is filled, the tenant can jump
+                                                to the full editor (Settings → Business Profile) to change any of
+                                                the 14 values. The chat is for first capture; Settings is for edits. */}
+                                            {filled > 0 && (
+                                                <button
+                                                    onClick={() => router.push('/settings?tab=businessprofile')}
+                                                    style={{
+                                                        marginTop: 8, width: '100%', padding: '7px 10px',
+                                                        borderRadius: 8, border: '1px solid #c7d2fe',
+                                                        background: '#fff', color: '#0b1957',
+                                                        fontSize: 11.5, fontWeight: 600, cursor: 'pointer',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                                                    }}
+                                                    title="Open the Business Profile editor to change any saved field"
+                                                >
+                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                                                    Review &amp; edit your {total} fields
+                                                </button>
+                                            )}
                                         </div>
                                     );
                                 })()}
