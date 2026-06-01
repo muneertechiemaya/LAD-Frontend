@@ -20,11 +20,11 @@ interface MediaInsertionModalProps {
 }
 
 export default function MediaInsertionModal({
-  isOpen,
-  onClose,
-  onInsert,
-  tenantId,
-}: MediaInsertionModalProps) {
+                                              isOpen,
+                                              onClose,
+                                              onInsert,
+                                              tenantId,
+                                            }: MediaInsertionModalProps) {
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
   const [selectedMedia, setSelectedMedia] = useState<MediaFile | null>(null);
   const [altText, setAltText] = useState('');
@@ -48,7 +48,7 @@ export default function MediaInsertionModal({
       // Source 1: localStorage — URLs saved immediately after each upload
       try {
         const stored: Array<{ url: string; name: string; uploadedAt: string }> =
-          JSON.parse(localStorage.getItem('email_media_uploads') || '[]');
+            JSON.parse(localStorage.getItem('email_media_uploads') || '[]');
         stored.forEach((entry) => {
           if (entry.url && !seen.has(entry.url)) {
             seen.add(entry.url);
@@ -127,128 +127,128 @@ export default function MediaInsertionModal({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Insert Media into Email</DialogTitle>
-          <DialogDescription>
-            Select a previously uploaded image or upload a new one
-          </DialogDescription>
-        </DialogHeader>
+      <Dialog open={isOpen} onOpenChange={handleClose}>
+        <DialogContent className="dark:bg-[#000c3b] dark:border-gray-800">
+          <DialogHeader>
+            <DialogTitle className="dark:text-white">Insert Media into Email</DialogTitle>
+            <DialogDescription className="dark:text-gray-400">
+              Select a previously uploaded image or upload a new one
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="space-y-4">
-          {/* Error Message */}
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-              <p className="text-red-700 text-sm">{error}</p>
-            </div>
-          )}
+          <div className="space-y-4">
+            {/* Error Message */}
+            {error && (
+                <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-lg p-3">
+                  <p className="text-red-700 dark:text-red-400 text-sm">{error}</p>
+                </div>
+            )}
 
-          {/* Loading State */}
-          {loading && (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <span className="ml-3 text-gray-600">Loading media...</span>
-            </div>
-          )}
+            {/* Loading State */}
+            {loading && (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-500"></div>
+                  <span className="ml-3 text-gray-600 dark:text-gray-400">Loading media...</span>
+                </div>
+            )}
 
-          {/* Media Selection Grid */}
-          {!loading && (
-            <>
-              {mediaFiles.length > 0 ? (
-                <div className="space-y-3">
-                  <label className="block text-sm font-semibold text-gray-900">Select Media:</label>
-                  <div className="grid grid-cols-2 gap-4 max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-3">
-                    {mediaFiles.map((media) => (
-                      <div
-                        key={media.id}
-                        onClick={() => setSelectedMedia(media)}
-                        className={`p-3 rounded-lg border-2 cursor-pointer transition ${
-                          selectedMedia?.id === media.id
-                            ? 'border-blue-500 bg-blue-50'
-                            : 'border-gray-200 hover:border-gray-300 bg-white'
-                        }`}
-                      >
-                        <img
-                          src={media.url}
-                          alt={media.name}
-                          className="w-full h-24 object-cover rounded mb-2"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = '🖼️';
-                          }}
-                        />
-                        <p className="text-xs text-gray-600 truncate font-mono">{media.name}</p>
-                        <p className="text-xs text-gray-400 text-right">
-                          {new Date(media.uploadedAt).toLocaleDateString()}
+            {/* Media Selection Grid */}
+            {!loading && (
+                <>
+                  {mediaFiles.length > 0 ? (
+                      <div className="space-y-3">
+                        <label className="block text-sm font-semibold text-gray-900 dark:text-white">Select Media:</label>
+                        <div className="grid grid-cols-2 gap-4 max-h-48 overflow-y-auto border border-gray-200 dark:border-gray-800 rounded-lg p-3">
+                          {mediaFiles.map((media) => (
+                              <div
+                                  key={media.id}
+                                  onClick={() => setSelectedMedia(media)}
+                                  className={`p-3 rounded-lg border-2 cursor-pointer transition ${
+                                      selectedMedia?.id === media.id
+                                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/40 dark:border-blue-500'
+                                          : 'border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 bg-white dark:bg-[#000724]'
+                                  }`}
+                              >
+                                <img
+                                    src={media.url}
+                                    alt={media.name}
+                                    className="w-full h-24 object-cover rounded mb-2"
+                                    onError={(e) => {
+                                      (e.target as HTMLImageElement).src = '🖼️';
+                                    }}
+                                />
+                                <p className="text-xs text-gray-600 dark:text-gray-300 truncate font-mono">{media.name}</p>
+                                <p className="text-xs text-gray-400 dark:text-gray-500 text-right">
+                                  {new Date(media.uploadedAt).toLocaleDateString()}
+                                </p>
+                              </div>
+                          ))}
+                        </div>
+                      </div>
+                  ) : (
+                      <div className="bg-gray-50 dark:bg-[#000724] border border-gray-200 dark:border-gray-800 rounded-lg p-6 text-center">
+                        <p className="text-gray-600 dark:text-gray-400 mb-3">No media uploaded yet</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-500">
+                          Upload an image in the media section first, then use this tool to insert it
                         </p>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
-                  <p className="text-gray-600 mb-3">No media uploaded yet</p>
-                  <p className="text-sm text-gray-500">
-                    Upload an image in the media section first, then use this tool to insert it
-                  </p>
-                </div>
-              )}
+                  )}
 
-              {/* Alt Text Input */}
-              {selectedMedia && (
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Alt Text (for accessibility):
-                  </label>
-                  <input
-                    type="text"
-                    value={altText}
-                    onChange={(e) => setAltText(e.target.value)}
-                    placeholder="Describe the image content..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    This text is shown if the image fails to load and helps with accessibility
-                  </p>
-                </div>
-              )}
+                  {/* Alt Text Input */}
+                  {selectedMedia && (
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                          Alt Text (for accessibility):
+                        </label>
+                        <input
+                            type="text"
+                            value={altText}
+                            onChange={(e) => setAltText(e.target.value)}
+                            placeholder="Describe the image content..."
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white dark:bg-[#000724] text-gray-900 dark:text-white placeholder-gray-400"
+                        />
+                        <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                          This text is shown if the image fails to load and helps with accessibility
+                        </p>
+                      </div>
+                  )}
 
-              {/* Preview */}
-              {selectedMedia && (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                  <p className="text-sm font-semibold text-gray-900 mb-2">Preview:</p>
-                  <img
-                    src={selectedMedia.url}
-                    alt={altText || selectedMedia.name}
-                    className="max-h-40 rounded"
-                  />
-                </div>
-              )}
+                  {/* Preview */}
+                  {selectedMedia && (
+                      <div className="bg-gray-50 dark:bg-[#000724] border border-gray-200 dark:border-gray-800 rounded-lg p-4">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Preview:</p>
+                        <img
+                            src={selectedMedia.url}
+                            alt={altText || selectedMedia.name}
+                            className="max-h-40 rounded"
+                        />
+                      </div>
+                  )}
 
-              {/* HTML Preview */}
-              {selectedMedia && (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                  <p className="text-xs font-semibold text-gray-700 mb-1">Generated HTML:</p>
-                  <code className="text-xs text-gray-600 break-all">
-                    &lt;img src="{selectedMedia.url}" alt="{altText || selectedMedia.name}" /&gt;
-                  </code>
-                </div>
-              )}
-            </>
-          )}
-        </div>
+                  {/* HTML Preview */}
+                  {selectedMedia && (
+                      <div className="bg-gray-50 dark:bg-[#000724] border border-gray-200 dark:border-gray-800 rounded-lg p-3">
+                        <p className="text-xs font-semibold text-gray-700 dark:text-gray-400 mb-1">Generated HTML:</p>
+                        <code className="text-xs text-gray-600 dark:text-gray-300 break-all">
+                          &lt;img src="{selectedMedia.url}" alt="{altText || selectedMedia.name}" /&gt;
+                        </code>
+                      </div>
+                  )}
+                </>
+            )}
+          </div>
 
-        {/* Actions */}
-        <div className="flex justify-end pt-4 border-t border-gray-200">
-          <Button
-            onClick={handleInsert}
-            disabled={!selectedMedia || loading}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            Insert Image
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+          {/* Actions */}
+          <div className="flex justify-end pt-4 border-t border-gray-200 dark:border-gray-800">
+            <Button
+                onClick={handleInsert}
+                disabled={!selectedMedia || loading}
+                className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white"
+            >
+              Insert Image
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
   );
 }

@@ -91,19 +91,19 @@ function blockToHtml(block: EmailBlock): string {
       const hasHtml = /<[a-zA-Z]/.test(props.content || '');
       // Add inline list styles so email clients (which strip <style> tags) render bullets correctly
       const textContent = (hasHtml
-        ? props.content
-        : (props.content || '').replace(/\n/g, '<br/>'))
-        .replace(/<ul/g, '<ul style="list-style:disc;padding-left:20px;margin:4px 0;"')
-        .replace(/<ol/g, '<ol style="list-style:decimal;padding-left:20px;margin:4px 0;"')
-        .replace(/<li/g, '<li style="margin:2px 0;"');
+          ? props.content
+          : (props.content || '').replace(/\n/g, '<br/>'))
+          .replace(/<ul/g, '<ul style="list-style:disc;padding-left:20px;margin:4px 0;"')
+          .replace(/<ol/g, '<ol style="list-style:decimal;padding-left:20px;margin:4px 0;"')
+          .replace(/<li/g, '<li style="margin:2px 0;"');
       // Use <div> (not <p>) so nested lists render correctly in email clients
       return `<div style="text-align:${align};color:${color};font-size:15px;line-height:1.7;margin:0 0 12px;">${textContent}</div>`;
     }
     case 'image':
-      if (!props.src) return `<!-- image block (no src) -->`;
+      if (!props.src) return ``;
       return `<div style="text-align:${align};margin:0 0 16px;"><img src="${props.src}" alt="${props.alt}" style="max-width:${props.width}%;height:auto;display:inline-block;" /></div>`;
     case 'logo':
-      if (!props.src) return `<!-- logo block (no src) -->`;
+      if (!props.src) return ``;
       return `<div style="text-align:${align};margin:0 0 20px;">${props.href ? `<a href="${props.href}" style="text-decoration:none;">` : ''}<img src="${props.src}" alt="${props.alt || 'Logo'}" style="width:${props.width || 160}px;height:auto;display:inline-block;" />${props.href ? '</a>' : ''}</div>`;
     case 'button':
       return `<div style="text-align:${align};margin:16px 0;"><a href="${props.href}" style="background:${props.bgColor};color:${props.textColor};padding:12px 28px;text-decoration:none;border-radius:6px;font-size:15px;font-weight:600;display:inline-block;">${props.label}</a></div>`;
@@ -156,8 +156,6 @@ export function blocksToHtml(blocks: EmailBlock[]): string {
 }
 
 // ── HTML → Blocks parser (reverses blocksToHtml) ─────────────────────────────
-// Only recognises HTML produced by this editor (outer max-width:600px wrapper).
-// Returns null if the HTML wasn't created here so the editor starts fresh.
 
 function htmlToBlocks(html: string): EmailBlock[] | null {
   if (typeof window === 'undefined' || !html?.trim()) return null;
@@ -167,7 +165,6 @@ function htmlToBlocks(html: string): EmailBlock[] | null {
     const parser = new DOMParser();
     const doc    = parser.parseFromString(html, 'text/html');
 
-    // Must have our outer wrapper — bail if it doesn't
     const wrapper = doc.querySelector('div[style*="max-width:600px"]');
     if (!wrapper) return null;
 
@@ -177,64 +174,56 @@ function htmlToBlocks(html: string): EmailBlock[] | null {
       const el       = child as HTMLElement;
       const tag      = el.tagName.toLowerCase();
       const styleStr = el.getAttribute('style') || '';
-      const cs       = el.style; // CSSStyleDeclaration
+      const cs       = el.style;
 
-      // ── h1 ──────────────────────────────────────────────────────────────────
       if (tag === 'h1') {
         blocks.push({ id: uid(), type: 'h1', props: {
-          content: el.textContent || '',
-          align:   cs.textAlign  || 'left',
-          color:   cs.color      || '#111827',
-        }});
+            content: el.textContent || '',
+            align:   cs.textAlign  || 'left',
+            color:   cs.color      || '#111827',
+          }});
         continue;
       }
 
-      // ── h2 ──────────────────────────────────────────────────────────────────
       if (tag === 'h2') {
         blocks.push({ id: uid(), type: 'h2', props: {
-          content: el.textContent || '',
-          align:   cs.textAlign  || 'left',
-          color:   cs.color      || '#374151',
-        }});
+            content: el.textContent || '',
+            align:   cs.textAlign  || 'left',
+            color:   cs.color      || '#374151',
+          }});
         continue;
       }
 
-      // ── text (p) ─────────────────────────────────────────────────────────────
       if (tag === 'p') {
         blocks.push({ id: uid(), type: 'text', props: {
-          content: el.innerHTML.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '') || '',
-          align:   cs.textAlign || 'left',
-          color:   cs.color     || '#374151',
-        }});
+            content: el.innerHTML.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '') || '',
+            align:   cs.textAlign || 'left',
+            color:   cs.color     || '#374151',
+          }});
         continue;
       }
 
-      // ── divider (hr) ─────────────────────────────────────────────────────────
       if (tag === 'hr') {
         blocks.push({ id: uid(), type: 'divider', props: {
-          color: cs.borderTopColor || '#e5e7eb',
-        }});
+            color: cs.borderTopColor || '#e5e7eb',
+          }});
         continue;
       }
 
-      // ── div — spacer / image / logo / button / footer / signature ────────────
       if (tag === 'div') {
 
-        // Spacer: only a height style, no meaningful children
         if (styleStr.includes('height:') && !el.textContent?.trim() && el.children.length === 0) {
           blocks.push({ id: uid(), type: 'spacer', props: {
-            height: parseInt(cs.height) || 24,
-          }});
+              height: parseInt(cs.height) || 24,
+            }});
           continue;
         }
 
-        // Footer: padding:24px 20px + text-align:center fingerprint
         if (styleStr.includes('padding:24px') && styleStr.includes('text-align:center')) {
           const props: Record<string, any> = {
             ...DEFAULT_PROPS.footer,
             bgColor:   cs.backgroundColor || '#f3f4f6',
           };
-          // Extract paragraphs: company name (font-weight:700), address, unsubscribe text
           const paras = Array.from(el.querySelectorAll('p'));
           const boldP = paras.find((p) => (p as HTMLElement).style.fontWeight === '700' || (p as HTMLElement).style.fontWeight === 'bold');
           if (boldP) props.companyName = boldP.textContent || '';
@@ -246,7 +235,6 @@ function htmlToBlocks(html: string): EmailBlock[] | null {
             props.unsubscribeLabel = unsubLink.textContent || 'Unsubscribe';
             props.unsubscribeUrl   = unsubLink.getAttribute('href') || '#';
           }
-          // Extract social links from <a><img alt="Facebook" /></a> pattern
           const socials: Record<string, string> = {};
           el.querySelectorAll('a').forEach((a) => {
             if (a === unsubLink) return;
@@ -260,28 +248,23 @@ function htmlToBlocks(html: string): EmailBlock[] | null {
           continue;
         }
 
-        // Signature: border-left fingerprint
         if (styleStr.includes('border-left:')) {
           const props: Record<string, any> = {
             ...DEFAULT_PROPS.signature,
             bgColor:     cs.backgroundColor                   || '#ffffff',
             accentColor: cs.borderLeftColor                   || '#0b1957',
           };
-          // Logo img (first img without an anchor parent)
           const logoImg = el.querySelector('img');
           if (logoImg) {
             props.logoSrc   = logoImg.getAttribute('src')   || '';
             props.logoAlt   = logoImg.getAttribute('alt')   || 'Logo';
             props.logoWidth = parseInt(logoImg.style.width) || 120;
           }
-          // Name: bold paragraph (font-weight:700)
           const namePara = el.querySelector('p[style*="font-weight:700"]');
           if (namePara) props.name = namePara.textContent || '';
-          // Other paragraphs: title, company
           const otherParas = Array.from(el.querySelectorAll('p')).filter((p) => p !== namePara);
           if (otherParas[0]) props.title   = otherParas[0].textContent || '';
           if (otherParas[1]) props.company = otherParas[1].textContent || '';
-          // Contact links
           const mailto = el.querySelector('a[href^="mailto:"]');
           const tel    = el.querySelector('a[href^="tel:"]');
           const web    = Array.from(el.querySelectorAll('a')).find((a) => !a.href.startsWith('mailto:') && !a.href.startsWith('tel:'));
@@ -292,60 +275,53 @@ function htmlToBlocks(html: string): EmailBlock[] | null {
           continue;
         }
 
-        // Logo: <div><a href="..."><img /></a></div>
         const logoAnchor = el.querySelector(':scope > a');
         if (logoAnchor && logoAnchor.querySelector('img')) {
           const img = logoAnchor.querySelector('img') as HTMLImageElement;
           blocks.push({ id: uid(), type: 'logo', props: {
-            src:   img.getAttribute('src')          || '',
-            alt:   img.getAttribute('alt')          || 'Logo',
-            align: cs.textAlign                     || 'center',
-            width: parseInt(img.style.width)        || 160,
-            href:  logoAnchor.getAttribute('href')  || '',
-          }});
+              src:   img.getAttribute('src')          || '',
+              alt:   img.getAttribute('alt')          || 'Logo',
+              align: cs.textAlign                     || 'center',
+              width: parseInt(img.style.width)        || 160,
+              href:  logoAnchor.getAttribute('href')  || '',
+            }});
           continue;
         }
 
-        // Image: <div><img /></div>
         const img = el.querySelector(':scope > img');
         if (img) {
           const wStr = (img as HTMLElement).style.maxWidth || '100%';
           blocks.push({ id: uid(), type: 'image', props: {
-            src:   img.getAttribute('src')    || '',
-            alt:   img.getAttribute('alt')    || 'Image',
-            align: cs.textAlign               || 'center',
-            width: parseInt(wStr)             || 100,
-          }});
+              src:   img.getAttribute('src')    || '',
+              alt:   img.getAttribute('alt')    || 'Image',
+              align: cs.textAlign               || 'center',
+              width: parseInt(wStr)             || 100,
+            }});
           continue;
         }
 
-        // Button: <div><a style="background:...">Label</a></div>
-        // Must be single direct-child <a> with a background colour (distinguishes from inline links)
         const btnAnchor = el.querySelector(':scope > a[style*="background"]');
         if (btnAnchor && el.children.length === 1) {
           const bcs = (btnAnchor as HTMLElement).style;
           blocks.push({ id: uid(), type: 'button', props: {
-            label:     btnAnchor.textContent          || 'Click Here',
-            href:      btnAnchor.getAttribute('href') || '#',
-            bgColor:   bcs.background || bcs.backgroundColor || '#0b1957',
-            textColor: bcs.color                              || '#ffffff',
-            align:     cs.textAlign                          || 'center',
-          }});
+              label:     btnAnchor.textContent          || 'Click Here',
+              href:      btnAnchor.getAttribute('href') || '#',
+              bgColor:   bcs.background || bcs.backgroundColor || '#0b1957',
+              textColor: bcs.color                              || '#ffffff',
+              align:     cs.textAlign                          || 'center',
+            }});
           continue;
         }
 
-        // Fallback: any div with text/html content → rich text block
-        // (Catches text blocks written by this editor using <div> wrapper)
         if (el.innerHTML?.trim()) {
           blocks.push({ id: uid(), type: 'text', props: {
-            content: el.innerHTML,
-            align:   cs.textAlign || 'left',
-            color:   cs.color     || '#374151',
-          }});
+              content: el.innerHTML,
+              align:   cs.textAlign || 'left',
+              color:   cs.color     || '#374151',
+            }});
           continue;
         }
       }
-      // unknown element — skip
     }
 
     return blocks.length > 0 ? blocks : null;
@@ -396,37 +372,37 @@ function VariablePicker({ onInsert, dropAlign = 'left' }: { onInsert: (v: string
   }, []);
 
   return (
-    <div className="relative" ref={ref}>
-      <button
-        type="button"
-        onMouseDown={(e) => { e.preventDefault(); setOpen((v) => !v); }}
-        className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg border transition-all ${
-          open
-            ? 'bg-violet-600 text-white border-violet-600 shadow-sm'
-            : 'bg-white text-violet-600 border-violet-200 hover:bg-violet-50'
-        }`}
-      >
-        <Tags className="w-3.5 h-3.5" />
-        Variables
-      </button>
+      <div className="relative" ref={ref}>
+        <button
+            type="button"
+            onMouseDown={(e) => { e.preventDefault(); setOpen((v) => !v); }}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg border transition-all ${
+                open
+                    ? 'bg-violet-600 text-white border-violet-600 shadow-sm'
+                    : 'bg-white dark:bg-[#000c3b] text-violet-600 dark:text-violet-400 border-violet-200 dark:border-violet-900 hover:bg-violet-50 dark:hover:bg-violet-950/30'
+            }`}
+        >
+          <Tags className="w-3.5 h-3.5" />
+          Variables
+        </button>
 
-      {open && (
-        <div className={`absolute ${dropAlign === 'right' ? 'right-0' : 'left-0'} top-full mt-1.5 z-50 bg-white rounded-xl shadow-lg border border-gray-100 py-1.5 min-w-[180px]`}>
-          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 pb-1.5">Insert variable</p>
-          {VARIABLES.map(({ label, val }) => (
-            <button
-              key={val}
-              type="button"
-              onClick={() => { onInsert(val); setOpen(false); }}
-              className="w-full flex items-center justify-between gap-4 px-3 py-1.5 text-xs hover:bg-violet-50 transition-colors group"
-            >
-              <span className="text-gray-700 font-medium group-hover:text-violet-700">{label}</span>
-              <span className="font-mono text-[10px] text-gray-400 group-hover:text-violet-500">{val}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+        {open && (
+            <div className={`absolute ${dropAlign === 'right' ? 'right-0' : 'left-0'} top-full mt-1.5 z-50 bg-white dark:bg-[#000c3b] rounded-xl shadow-lg border border-gray-100 dark:border-gray-800 py-1.5 min-w-[180px]`}>
+              <p className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide px-3 pb-1.5">Insert variable</p>
+              {VARIABLES.map(({ label, val }) => (
+                  <button
+                      key={val}
+                      type="button"
+                      onClick={() => { onInsert(val); setOpen(false); }}
+                      className="w-full flex items-center justify-between gap-4 px-3 py-1.5 text-xs hover:bg-violet-50 dark:hover:bg-violet-950/30 transition-colors group"
+                  >
+                    <span className="text-gray-700 dark:text-gray-300 font-medium group-hover:text-violet-700 dark:group-hover:text-violet-400">{label}</span>
+                    <span className="font-mono text-[10px] text-gray-400 dark:text-gray-500 group-hover:text-violet-500">{val}</span>
+                  </button>
+              ))}
+            </div>
+        )}
+      </div>
   );
 }
 
@@ -450,102 +426,102 @@ function FooterBlockEditor({ local, set, inputCls, labelCls }: {
   const setSocial = (key: string, val: string) => set('socials', { ...socials, [key]: val });
 
   return (
-    <>
-      {/* Company info */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className={labelCls}>Company Name</label>
-          <input type="text" value={local.companyName || ''} onChange={(e) => set('companyName', e.target.value)} className={inputCls} />
-        </div>
-        <div>
-          <label className={labelCls}>Address</label>
-          <input type="text" value={local.address || ''} onChange={(e) => set('address', e.target.value)} className={inputCls} />
-        </div>
-      </div>
-
-      {/* Unsubscribe */}
-      <div>
-        <label className={labelCls}>Unsubscribe Text</label>
-        <input type="text" value={local.unsubscribeText || ''} onChange={(e) => set('unsubscribeText', e.target.value)} className={inputCls} />
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className={labelCls}>Unsubscribe Label</label>
-          <input type="text" value={local.unsubscribeLabel || 'Unsubscribe'} onChange={(e) => set('unsubscribeLabel', e.target.value)} className={inputCls} />
-        </div>
-        <div>
-          <label className={labelCls}>Unsubscribe URL</label>
-          <input type="text" placeholder="https://..." value={local.unsubscribeUrl || '#'} onChange={(e) => set('unsubscribeUrl', e.target.value)} className={inputCls} />
-        </div>
-      </div>
-
-      {/* Colors */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className={labelCls}>Background</label>
-          <div className="flex items-center gap-2">
-            <input type="color" value={local.bgColor || '#f3f4f6'} onChange={(e) => set('bgColor', e.target.value)} className="h-8 w-10 rounded border border-gray-200 cursor-pointer flex-shrink-0" />
-            <input type="text" value={local.bgColor || '#f3f4f6'} onChange={(e) => set('bgColor', e.target.value)} className={inputCls} />
+      <>
+        {/* Company info */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelCls}>Company Name</label>
+            <input type="text" value={local.companyName || ''} onChange={(e) => set('companyName', e.target.value)} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>Address</label>
+            <input type="text" value={local.address || ''} onChange={(e) => set('address', e.target.value)} className={inputCls} />
           </div>
         </div>
+
+        {/* Unsubscribe */}
         <div>
-          <label className={labelCls}>Text Color</label>
-          <div className="flex items-center gap-2">
-            <input type="color" value={local.textColor || '#6b7280'} onChange={(e) => set('textColor', e.target.value)} className="h-8 w-10 rounded border border-gray-200 cursor-pointer flex-shrink-0" />
-            <input type="text" value={local.textColor || '#6b7280'} onChange={(e) => set('textColor', e.target.value)} className={inputCls} />
+          <label className={labelCls}>Unsubscribe Text</label>
+          <input type="text" value={local.unsubscribeText || ''} onChange={(e) => set('unsubscribeText', e.target.value)} className={inputCls} />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelCls}>Unsubscribe Label</label>
+            <input type="text" value={local.unsubscribeLabel || 'Unsubscribe'} onChange={(e) => set('unsubscribeLabel', e.target.value)} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>Unsubscribe URL</label>
+            <input type="text" placeholder="https://..." value={local.unsubscribeUrl || '#'} onChange={(e) => set('unsubscribeUrl', e.target.value)} className={inputCls} />
           </div>
         </div>
-      </div>
 
-      {/* Social links */}
-      <div>
-        <label className={labelCls}>Social Media Links</label>
-        <div className="space-y-2 mt-1">
-          {SOCIAL_ICONS.map(({ key, label, Icon, color }) => (
-            <div key={key} className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: color }}>
-                <Icon className="w-3.5 h-3.5 text-white" />
-              </div>
-              <input
-                type="text"
-                placeholder={`${label} URL (leave blank to hide)`}
-                value={socials[key] || ''}
-                onChange={(e) => setSocial(key, e.target.value)}
-                className={inputCls}
-              />
+        {/* Colors */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelCls}>Background</label>
+            <div className="flex items-center gap-2">
+              <input type="color" value={local.bgColor || '#f3f4f6'} onChange={(e) => set('bgColor', e.target.value)} className="h-8 w-10 rounded border border-gray-200 dark:border-gray-800 cursor-pointer flex-shrink-0" />
+              <input type="text" value={local.bgColor || '#f3f4f6'} onChange={(e) => set('bgColor', e.target.value)} className={inputCls} />
             </div>
-          ))}
+          </div>
+          <div>
+            <label className={labelCls}>Text Color</label>
+            <div className="flex items-center gap-2">
+              <input type="color" value={local.textColor || '#6b7280'} onChange={(e) => set('textColor', e.target.value)} className="h-8 w-10 rounded border border-gray-200 dark:border-gray-800 cursor-pointer flex-shrink-0" />
+              <input type="text" value={local.textColor || '#6b7280'} onChange={(e) => set('textColor', e.target.value)} className={inputCls} />
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* Live preview */}
-      <div>
-        <label className={labelCls}>Preview</label>
-        <div className="rounded-xl overflow-hidden border border-gray-200 text-center py-5 px-4" style={{ background: local.bgColor || '#f3f4f6' }}>
-          {/* Social icons */}
-          <div className="flex justify-center gap-2 mb-3">
-            {SOCIAL_ICONS.filter(s => socials[s.key]).map(({ key, label, Icon, color }) => (
-              <div key={key} className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: color }}>
-                <Icon className="w-3.5 h-3.5 text-white" />
-              </div>
-            ))}
-            {!SOCIAL_ICONS.some(s => socials[s.key]) && (
-              <div className="flex gap-2">
-                {SOCIAL_ICONS.slice(0, 3).map(({ key, Icon, color }) => (
-                  <div key={key} className="w-7 h-7 rounded-full flex items-center justify-center opacity-30" style={{ background: color }}>
+        {/* Social links */}
+        <div>
+          <label className={labelCls}>Social Media Links</label>
+          <div className="space-y-2 mt-1">
+            {SOCIAL_ICONS.map(({ key, label, Icon, color }) => (
+                <div key={key} className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: color }}>
                     <Icon className="w-3.5 h-3.5 text-white" />
                   </div>
-                ))}
-              </div>
-            )}
+                  <input
+                      type="text"
+                      placeholder={`${label} URL (leave blank to hide)`}
+                      value={socials[key] || ''}
+                      onChange={(e) => setSocial(key, e.target.value)}
+                      className={inputCls}
+                  />
+                </div>
+            ))}
           </div>
-          {local.companyName && <p className="text-xs font-bold mb-0.5" style={{ color: local.textColor || '#374151' }}>{local.companyName}</p>}
-          {local.address && <p className="text-[11px] mb-2" style={{ color: local.textColor || '#6b7280' }}>{local.address}</p>}
-          {local.unsubscribeText && <p className="text-[10px] text-gray-400 mb-1">{local.unsubscribeText}</p>}
-          {local.unsubscribeLabel && <span className="text-[10px] text-gray-400 underline">{local.unsubscribeLabel}</span>}
         </div>
-      </div>
-    </>
+
+        {/* Live preview */}
+        <div>
+          <label className={labelCls}>Preview</label>
+          <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800 text-center py-5 px-4" style={{ background: local.bgColor || '#f3f4f6' }}>
+            {/* Social icons */}
+            <div className="flex justify-center gap-2 mb-3">
+              {SOCIAL_ICONS.filter(s => socials[s.key]).map(({ key, label, Icon, color }) => (
+                  <div key={key} className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: color }}>
+                    <Icon className="w-3.5 h-3.5 text-white" />
+                  </div>
+              ))}
+              {!SOCIAL_ICONS.some(s => socials[s.key]) && (
+                  <div className="flex gap-2">
+                    {SOCIAL_ICONS.slice(0, 3).map(({ key, Icon, color }) => (
+                        <div key={key} className="w-7 h-7 rounded-full flex items-center justify-center opacity-30" style={{ background: color }}>
+                          <Icon className="w-3.5 h-3.5 text-white" />
+                        </div>
+                    ))}
+                  </div>
+              )}
+            </div>
+            {local.companyName && <p className="text-xs font-bold mb-0.5" style={{ color: local.textColor || '#374151' }}>{local.companyName}</p>}
+            {local.address && <p className="text-[11px] mb-2" style={{ color: local.textColor || '#6b7280' }}>{local.address}</p>}
+            {local.unsubscribeText && <p className="text-[10px] text-gray-400 mb-1">{local.unsubscribeText}</p>}
+            {local.unsubscribeLabel && <span className="text-[10px] text-gray-400 underline">{local.unsubscribeLabel}</span>}
+          </div>
+        </div>
+      </>
   );
 }
 
@@ -574,7 +550,6 @@ function SignatureBlockEditor({ local, set, onCommit, inputCls, labelCls }: {
       const url  = data.url || data.data?.url;
       if (url) {
         set('logoSrc', url);
-        // Auto-commit so logo is saved without requiring the user to click ✓
         onCommit?.({ ...local, logoSrc: url });
       }
     } catch { /* non-fatal */ }
@@ -582,106 +557,105 @@ function SignatureBlockEditor({ local, set, onCommit, inputCls, labelCls }: {
   };
 
   return (
-    <>
-      {/* Logo */}
-      <div>
-        <label className={labelCls}>Logo</label>
-        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
-        {local.logoSrc ? (
-          <div className="relative inline-block">
-            <img src={local.logoSrc} alt="Logo" className="max-h-14 object-contain rounded border border-gray-200 bg-white p-1" />
-            <button type="button" onClick={() => set('logoSrc', '')} className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white">
-              <X className="w-3 h-3" />
-            </button>
+      <>
+        {/* Logo */}
+        <div>
+          <label className={labelCls}>Logo</label>
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+          {local.logoSrc ? (
+              <div className="relative inline-block">
+                <img src={local.logoSrc} alt="Logo" className="max-h-14 object-contain rounded border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#000724] p-1" />
+                <button type="button" onClick={() => set('logoSrc', '')} className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white">
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+          ) : (
+              <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
+                      className="flex items-center gap-2 px-3 py-2 border-2 border-dashed border-blue-200 dark:border-blue-900 rounded-xl text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-all">
+                {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                Upload logo
+              </button>
+          )}
+          {local.logoSrc && (
+              <div className="flex items-center gap-2 mt-2">
+                <input type="range" min={40} max={300} step={10} value={local.logoWidth ?? 120}
+                       onChange={(e) => set('logoWidth', Number(e.target.value))} className="flex-1 accent-blue-600" />
+                <span className="text-xs text-gray-600 dark:text-gray-400 w-14 text-right">{local.logoWidth ?? 120}px wide</span>
+              </div>
+          )}
+        </div>
+
+        {/* Name & title */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelCls}>Full Name</label>
+            <input type="text" value={local.name || ''} onChange={(e) => set('name', e.target.value)} className={inputCls} />
           </div>
-        ) : (
-          <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
-            className="flex items-center gap-2 px-3 py-2 border-2 border-dashed border-blue-200 rounded-xl text-xs text-blue-600 hover:bg-blue-50 transition-all">
-            {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-            Upload logo
-          </button>
-        )}
-        {local.logoSrc && (
-          <div className="flex items-center gap-2 mt-2">
-            <input type="range" min={40} max={300} step={10} value={local.logoWidth ?? 120}
-              onChange={(e) => set('logoWidth', Number(e.target.value))} className="flex-1 accent-blue-600" />
-            <span className="text-xs text-gray-600 w-14 text-right">{local.logoWidth ?? 120}px wide</span>
-          </div>
-        )}
-      </div>
-
-      {/* Name & title */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className={labelCls}>Full Name</label>
-          <input type="text" value={local.name || ''} onChange={(e) => set('name', e.target.value)} className={inputCls} />
-        </div>
-        <div>
-          <label className={labelCls}>Job Title</label>
-          <input type="text" value={local.title || ''} onChange={(e) => set('title', e.target.value)} className={inputCls} />
-        </div>
-      </div>
-      <div>
-        <label className={labelCls}>Company</label>
-        <input type="text" value={local.company || ''} onChange={(e) => set('company', e.target.value)} className={inputCls} />
-      </div>
-
-      {/* Contact */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className={labelCls}>Email</label>
-          <input type="text" placeholder="you@company.com" value={local.email || ''} onChange={(e) => set('email', e.target.value)} className={inputCls} />
-        </div>
-        <div>
-          <label className={labelCls}>Phone</label>
-          <input type="text" placeholder="+1 (555) 000-0000" value={local.phone || ''} onChange={(e) => set('phone', e.target.value)} className={inputCls} />
-        </div>
-      </div>
-      <div>
-        <label className={labelCls}>Website</label>
-        <input type="text" placeholder="https://yoursite.com" value={local.website || ''} onChange={(e) => set('website', e.target.value)} className={inputCls} />
-      </div>
-
-      {/* Accent color */}
-      <div>
-        <label className={labelCls}>Accent Color</label>
-        <div className="flex items-center gap-2">
-          <input type="color" value={local.accentColor || '#0b1957'} onChange={(e) => set('accentColor', e.target.value)} className="h-8 w-10 rounded border border-gray-200 cursor-pointer flex-shrink-0" />
-          <input type="text" value={local.accentColor || '#0b1957'} onChange={(e) => set('accentColor', e.target.value)} className={inputCls} />
-        </div>
-      </div>
-
-      {/* Live preview */}
-      <div>
-        <label className={labelCls}>Preview</label>
-        <div className="rounded-xl border-l-4 p-4" style={{ borderColor: local.accentColor || '#0b1957', background: local.bgColor || '#ffffff' }}>
-          {local.logoSrc && <img src={local.logoSrc} alt="Logo" style={{ width: local.logoWidth || 120 }} className="max-h-12 object-contain mb-2" />}
-          {local.name && <p className="font-bold text-sm mb-0.5" style={{ color: local.accentColor || '#0b1957' }}>{local.name}</p>}
-          {local.title && <p className="text-xs text-gray-600 mb-0.5">{local.title}</p>}
-          {local.company && <p className="text-xs font-semibold text-gray-700 mb-1.5">{local.company}</p>}
-          <div className="text-xs text-gray-500 space-y-0.5">
-            {local.email && <p>{local.email}</p>}
-            {local.phone && <p>{local.phone}</p>}
-            {local.website && <p>{local.website}</p>}
+          <div>
+            <label className={labelCls}>Job Title</label>
+            <input type="text" value={local.title || ''} onChange={(e) => set('title', e.target.value)} className={inputCls} />
           </div>
         </div>
-      </div>
-    </>
+        <div>
+          <label className={labelCls}>Company</label>
+          <input type="text" value={local.company || ''} onChange={(e) => set('company', e.target.value)} className={inputCls} />
+        </div>
+
+        {/* Contact */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelCls}>Email</label>
+            <input type="text" placeholder="you@company.com" value={local.email || ''} onChange={(e) => set('email', e.target.value)} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>Phone</label>
+            <input type="text" placeholder="+1 (555) 000-0000" value={local.phone || ''} onChange={(e) => set('phone', e.target.value)} className={inputCls} />
+          </div>
+        </div>
+        <div>
+          <label className={labelCls}>Website</label>
+          <input type="text" placeholder="https://yoursite.com" value={local.website || ''} onChange={(e) => set('website', e.target.value)} className={inputCls} />
+        </div>
+
+        {/* Accent color */}
+        <div>
+          <label className={labelCls}>Accent Color</label>
+          <div className="flex items-center gap-2">
+            <input type="color" value={local.accentColor || '#0b1957'} onChange={(e) => set('accentColor', e.target.value)} className="h-8 w-10 rounded border border-gray-200 dark:border-gray-800 cursor-pointer flex-shrink-0" />
+            <input type="text" value={local.accentColor || '#0b1957'} onChange={(e) => set('accentColor', e.target.value)} className={inputCls} />
+          </div>
+        </div>
+
+        {/* Live preview */}
+        <div>
+          <label className={labelCls}>Preview</label>
+          <div className="rounded-xl border-l-4 p-4" style={{ borderColor: local.accentColor || '#0b1957', background: local.bgColor || '#ffffff' }}>
+            {local.logoSrc && <img src={local.logoSrc} alt="Logo" style={{ width: local.logoWidth || 120 }} className="max-h-12 object-contain mb-2" />}
+            {local.name && <p className="font-bold text-sm mb-0.5" style={{ color: local.accentColor || '#0b1957' }}>{local.name}</p>}
+            {local.title && <p className="text-xs text-gray-600 mb-0.5">{local.title}</p>}
+            {local.company && <p className="text-xs font-semibold text-gray-700 mb-1.5">{local.company}</p>}
+            <div className="text-xs text-gray-500 space-y-0.5">
+              {local.email && <p>{local.email}</p>}
+              {local.phone && <p>{local.phone}</p>}
+              {local.website && <p>{local.website}</p>}
+            </div>
+          </div>
+        </div>
+      </>
   );
 }
 
 // ── Image block sub-editor (upload + URL + preview) ──────────────────────────
 
 function ImageBlockEditor({
-  local,
-  set,
-  onCommit,
-  inputCls,
-  labelCls,
-}: {
+                            local,
+                            set,
+                            onCommit,
+                            inputCls,
+                            labelCls,
+                          }: {
   local: Record<string, any>;
   set: (key: string, val: any) => void;
-  /** Called immediately after a successful upload to persist the URL to blocks state without requiring the user to click ✓. */
   onCommit?: (patch: Record<string, any>) => void;
   inputCls: string;
   labelCls: string;
@@ -690,19 +664,12 @@ function ImageBlockEditor({
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
 
-  /** Convert Google Drive share links to direct-embed URLs.
-   *  Handles:
-   *   - https://drive.google.com/file/d/FILE_ID/view?...
-   *   - https://drive.google.com/open?id=FILE_ID
-   *  Returns the URL unchanged if it's not a Drive link. */
   function toDirectImageUrl(url: string): string {
     try {
       const u = new URL(url);
       if (u.hostname !== 'drive.google.com') return url;
-      // /file/d/FILE_ID/...
       const fileMatch = u.pathname.match(/\/file\/d\/([^/]+)/);
       if (fileMatch) return `https://drive.google.com/uc?export=view&id=${fileMatch[1]}`;
-      // ?id=FILE_ID
       const idParam = u.searchParams.get('id');
       if (idParam) return `https://drive.google.com/uc?export=view&id=${idParam}`;
     } catch { /* not a valid URL yet — leave as-is */ }
@@ -728,8 +695,6 @@ function ImageBlockEditor({
         const altText = (!local.alt || local.alt === 'Image') ? file.name.replace(/\.[^.]+$/, '') : local.alt;
         set('src', url);
         set('alt', altText);
-        // Auto-commit: immediately propagate the new src to the parent blocks state
-        // so the image is saved even if the user doesn't click ✓ manually.
         onCommit?.({ ...local, src: url, alt: altText });
       }
     } catch (err) {
@@ -741,96 +706,96 @@ function ImageBlockEditor({
   };
 
   return (
-    <>
-      {/* Upload + URL row */}
-      <div>
-        <label className={labelCls}>Image</label>
+      <>
+        {/* Upload + URL row */}
+        <div>
+          <label className={labelCls}>Image</label>
 
-        {/* Upload button */}
-        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-        <button
-          type="button"
-          onClick={() => fileRef.current?.click()}
-          disabled={uploading}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 mb-2 border-2 border-dashed border-blue-200 rounded-xl text-sm text-blue-600 bg-white hover:bg-blue-50 hover:border-blue-400 transition-all disabled:opacity-60"
-        >
-          {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-          {uploading ? 'Uploading…' : 'Upload from device'}
-        </button>
-
-        {/* Divider */}
-        <div className="flex items-center gap-2 my-2">
-          <div className="flex-1 border-t border-gray-200" />
-          <span className="text-[11px] text-gray-400 font-medium">or paste URL / Google Drive link</span>
-          <div className="flex-1 border-t border-gray-200" />
-        </div>
-
-        {/* URL input — auto-converts Google Drive share links to direct embed URLs */}
-        <input
-          type="text"
-          placeholder="https://example.com/image.png  or Google Drive share link"
-          value={local.src || ''}
-          onChange={(e) => {
-            const converted = toDirectImageUrl(e.target.value.trim());
-            set('src', converted);
-          }}
-          className={inputCls}
-        />
-
-        {uploadError && (
-          <p className="text-xs text-red-500 mt-1">{uploadError}</p>
-        )}
-      </div>
-
-      {/* Image preview */}
-      {local.src && (
-        <div className="relative rounded-xl overflow-hidden border border-gray-200 bg-white">
-          <img
-            src={local.src}
-            alt={local.alt || 'Preview'}
-            className="w-full max-h-40 object-contain"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-          />
+          {/* Upload button */}
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
           <button
-            type="button"
-            onClick={() => set('src', '')}
-            className="absolute top-2 right-2 w-6 h-6 bg-white rounded-full shadow flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors"
-            title="Remove image"
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 mb-2 border-2 border-dashed border-blue-200 dark:border-blue-900 rounded-xl text-sm text-blue-600 dark:text-blue-400 bg-white dark:bg-[#000c3b] hover:bg-blue-50 dark:hover:bg-blue-950/20 hover:border-blue-400 dark:hover:border-blue-500 transition-all disabled:opacity-60"
           >
-            <X className="w-3.5 h-3.5" />
+            {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+            {uploading ? 'Uploading…' : 'Upload from device'}
           </button>
-        </div>
-      )}
 
-      {/* Alt text */}
-      <div>
-        <label className={labelCls}>Alt Text</label>
-        <input
-          type="text"
-          placeholder="Describe the image…"
-          value={local.alt || ''}
-          onChange={(e) => set('alt', e.target.value)}
-          className={inputCls}
-        />
-      </div>
+          {/* Divider */}
+          <div className="flex items-center gap-2 my-2">
+            <div className="flex-1 border-t border-gray-200 dark:border-gray-800" />
+            <span className="text-[11px] text-gray-400 dark:text-gray-500 font-medium">or paste URL / Google Drive link</span>
+            <div className="flex-1 border-t border-gray-200 dark:border-gray-800" />
+          </div>
 
-      {/* Width */}
-      <div>
-        <label className={labelCls}>Width %</label>
-        <div className="flex items-center gap-3">
+          {/* URL input */}
           <input
-            type="range"
-            min={20}
-            max={100}
-            step={5}
-            value={local.width ?? 100}
-            onChange={(e) => set('width', Number(e.target.value))}
-            className="flex-1 accent-blue-600"
+              type="text"
+              placeholder="https://example.com/image.png  or Google Drive share link"
+              value={local.src || ''}
+              onChange={(e) => {
+                const converted = toDirectImageUrl(e.target.value.trim());
+                set('src', converted);
+              }}
+              className={inputCls}
           />
-          <span className="text-sm font-semibold text-gray-700 w-10 text-right">{local.width ?? 100}%</span>
+
+          {uploadError && (
+              <p className="text-xs text-red-500 mt-1">{uploadError}</p>
+          )}
         </div>
-      </div>
-    </>
+
+        {/* Image preview */}
+        {local.src && (
+            <div className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#000724]">
+              <img
+                  src={local.src}
+                  alt={local.alt || 'Preview'}
+                  className="w-full max-h-40 object-contain"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+              <button
+                  type="button"
+                  onClick={() => set('src', '')}
+                  className="absolute top-2 right-2 w-6 h-6 bg-white dark:bg-[#000c3b] rounded-full shadow flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-red-500 transition-colors"
+                  title="Remove image"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+        )}
+
+        {/* Alt text */}
+        <div>
+          <label className={labelCls}>Alt Text</label>
+          <input
+              type="text"
+              placeholder="Describe the image…"
+              value={local.alt || ''}
+              onChange={(e) => set('alt', e.target.value)}
+              className={inputCls}
+          />
+        </div>
+
+        {/* Width */}
+        <div>
+          <label className={labelCls}>Width %</label>
+          <div className="flex items-center gap-3">
+            <input
+                type="range"
+                min={20}
+                max={100}
+                step={5}
+                value={local.width ?? 100}
+                onChange={(e) => set('width', Number(e.target.value))}
+                className="flex-1 accent-blue-600"
+            />
+            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 w-10 text-right">{local.width ?? 100}%</span>
+          </div>
+        </div>
+      </>
   );
 }
 
@@ -848,9 +813,9 @@ const FONT_FAMILIES = [
 ];
 
 function RichTextEditor({
-  value,
-  onChange,
-}: {
+                          value,
+                          onChange,
+                        }: {
   value: string;
   onChange: (html: string) => void;
 }) {
@@ -858,30 +823,24 @@ function RichTextEditor({
   const savedRangeRef = useRef<Range | null>(null);
   const colorInputRef = useRef<HTMLInputElement>(null);
 
-  // Set initial content once on mount only (avoids cursor jumping on every keystroke)
   useEffect(() => {
     if (editorRef.current) {
-      // Backward-compat: legacy plain-text content has no HTML tags → convert \n → <br>
       const hasHtml = /<[a-zA-Z]/.test(value || '');
       editorRef.current.innerHTML = hasHtml
-        ? (value || '')
-        : (value || '').replace(/\n/g, '<br>');
+          ? (value || '')
+          : (value || '').replace(/\n/g, '<br>');
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Sync contenteditable HTML back to parent state
   const sync = useCallback(() => {
     onChange(editorRef.current?.innerHTML || '');
   }, [onChange]);
 
-  // Save caret/selection before toolbar interactions blur the editor
   const saveSelection = () => {
     const sel = window.getSelection();
     if (sel?.rangeCount) savedRangeRef.current = sel.getRangeAt(0).cloneRange();
   };
 
-  // Restore saved selection (used when colour picker causes editor blur)
   const restoreSelection = () => {
     if (!savedRangeRef.current) return;
     editorRef.current?.focus();
@@ -890,22 +849,17 @@ function RichTextEditor({
     sel?.addRange(savedRangeRef.current);
   };
 
-  // Run a document.execCommand and sync HTML immediately after
   const exec = (cmd: string, val?: string) => {
     editorRef.current?.focus();
     document.execCommand(cmd, false, val ?? '');
     setTimeout(sync, 0);
   };
 
-  // List insertion — falls back to insertHTML when execCommand list command fails
-  // (execCommand insertUnorderedList/insertOrderedList can silently fail if caret
-  //  is inside a <div> with no block content before it)
   const insertList = (type: 'ul' | 'ol') => {
     editorRef.current?.focus();
     const cmd = type === 'ul' ? 'insertUnorderedList' : 'insertOrderedList';
     const beforeHtml = editorRef.current?.innerHTML || '';
     document.execCommand(cmd, false, '');
-    // If innerHTML is unchanged the command did nothing — fall back to raw HTML insert
     if (editorRef.current?.innerHTML === beforeHtml) {
       const sel = window.getSelection();
       const selected = sel?.toString() || '';
@@ -919,7 +873,6 @@ function RichTextEditor({
     setTimeout(sync, 0);
   };
 
-  // Font-size: execCommand uses 1-7 sizes; we mark with 7 then replace with real px
   const setFontSize = (px: string) => {
     editorRef.current?.focus();
     document.execCommand('fontSize', false, '7');
@@ -932,14 +885,12 @@ function RichTextEditor({
     sync();
   };
 
-  // Insert a {{variable}} at current caret position
   const insertVariable = (variable: string) => {
     editorRef.current?.focus();
     document.execCommand('insertText', false, variable);
     setTimeout(sync, 0);
   };
 
-  // Link insertion — uses saved selection so focus loss doesn't break it
   const insertLink = () => {
     saveSelection();
     const url = window.prompt('Enter URL:', 'https://');
@@ -950,145 +901,132 @@ function RichTextEditor({
       document.execCommand('createLink', false, url);
     } else {
       document.execCommand('insertHTML', false,
-        `<a href="${url}" style="color:#2563eb;text-decoration:underline;">${url}</a>`);
+          `<a href="${url}" style="color:#2563eb;text-decoration:underline;">${url}</a>`);
     }
     setTimeout(sync, 0);
   };
 
-  // ── Toolbar sub-components ─────────────────────────────────────────────────
-
   const Btn = ({
-    onClick, title, children,
-  }: { onClick: () => void; title: string; children: React.ReactNode }) => (
-    <button
-      type="button"
-      title={title}
-      onMouseDown={(e) => { e.preventDefault(); onClick(); }}
-      className="p-1.5 rounded text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-colors flex items-center justify-center"
-    >
-      {children}
-    </button>
+                 onClick, title, children,
+               }: { onClick: () => void; title: string; children: React.ReactNode }) => (
+      <button
+          type="button"
+          title={title}
+          onMouseDown={(e) => { e.preventDefault(); onClick(); }}
+          className="p-1.5 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-colors flex items-center justify-center"
+      >
+        {children}
+      </button>
   );
 
-  const Sep = () => <span className="w-px h-4 bg-gray-300 mx-0.5 flex-shrink-0" />;
+  const Sep = () => <span className="w-px h-4 bg-gray-300 dark:bg-gray-700 mx-0.5 flex-shrink-0" />;
 
   return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-400 transition-shadow">
+      <div className="border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-400 transition-shadow">
 
-      {/* ── Toolbar ── */}
-      <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 bg-gray-50 border-b border-gray-200">
+        {/* ── Toolbar ── */}
+        <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 bg-gray-50 dark:bg-[#000724] border-b border-gray-200 dark:border-gray-800">
 
-        {/* Format */}
-        <Btn title="Bold (Cmd+B)"      onClick={() => exec('bold')}         ><Bold          className="w-3.5 h-3.5" /></Btn>
-        <Btn title="Italic (Cmd+I)"    onClick={() => exec('italic')}       ><Italic        className="w-3.5 h-3.5" /></Btn>
-        <Btn title="Underline (Cmd+U)" onClick={() => exec('underline')}    ><Underline     className="w-3.5 h-3.5" /></Btn>
-        <Btn title="Strikethrough"     onClick={() => exec('strikeThrough')}><Strikethrough className="w-3.5 h-3.5" /></Btn>
-        <Sep />
+          <Btn title="Bold (Cmd+B)"      onClick={() => exec('bold')}         ><Bold          className="w-3.5 h-3.5" /></Btn>
+          <Btn title="Italic (Cmd+I)"    onClick={() => exec('italic')}       ><Italic        className="w-3.5 h-3.5" /></Btn>
+          <Btn title="Underline (Cmd+U)" onClick={() => exec('underline')}    ><Underline     className="w-3.5 h-3.5" /></Btn>
+          <Btn title="Strikethrough"     onClick={() => exec('strikeThrough')}><Strikethrough className="w-3.5 h-3.5" /></Btn>
+          <Sep />
 
-        {/* Lists */}
-        <Btn title="Bullet list"   onClick={() => insertList('ul')}><List        className="w-3.5 h-3.5" /></Btn>
-        <Btn title="Numbered list" onClick={() => insertList('ol')}><ListOrdered className="w-3.5 h-3.5" /></Btn>
-        <Sep />
+          <Btn title="Bullet list"   onClick={() => insertList('ul')}><List        className="w-3.5 h-3.5" /></Btn>
+          <Btn title="Numbered list" onClick={() => insertList('ol')}><ListOrdered className="w-3.5 h-3.5" /></Btn>
+          <Sep />
 
-        {/* Font size */}
-        <select
-          title="Font size"
-          onMouseDown={(e) => e.stopPropagation()}
-          onFocus={saveSelection}
-          onChange={(e) => { setFontSize(e.target.value); (e.target as HTMLSelectElement).value = ''; }}
-          className="text-xs border border-gray-200 rounded px-1 py-1 bg-white text-gray-600 focus:outline-none cursor-pointer"
-          defaultValue=""
-        >
-          <option value="" disabled>Size</option>
-          {FONT_SIZES.map((s) => <option key={s} value={s}>{s}px</option>)}
-        </select>
+          <select
+              title="Font size"
+              onMouseDown={(e) => e.stopPropagation()}
+              onFocus={saveSelection}
+              onChange={(e) => { setFontSize(e.target.value); (e.target as HTMLSelectElement).value = ''; }}
+              className="text-xs border border-gray-200 dark:border-gray-800 rounded px-1 py-1 bg-white dark:bg-[#000c3b] text-gray-600 dark:text-gray-400 focus:outline-none cursor-pointer"
+              defaultValue=""
+          >
+            <option value="" disabled className="dark:bg-[#000c3b]">Size</option>
+            {FONT_SIZES.map((s) => <option key={s} value={s} className="dark:bg-[#000c3b]">{s}px</option>)}
+          </select>
 
-        {/* Font family */}
-        <select
-          title="Font family"
-          onMouseDown={(e) => e.stopPropagation()}
-          onFocus={saveSelection}
-          onChange={(e) => {
-            if (e.target.value) { restoreSelection(); exec('fontName', e.target.value); }
-            (e.target as HTMLSelectElement).value = '';
-          }}
-          className="text-xs border border-gray-200 rounded px-1 py-1 bg-white text-gray-600 focus:outline-none cursor-pointer max-w-[90px]"
-          defaultValue=""
-        >
-          <option value="" disabled>Font</option>
-          {FONT_FAMILIES.map(({ label, value }) => <option key={label} value={value}>{label}</option>)}
-        </select>
-        <Sep />
+          <select
+              title="Font family"
+              onMouseDown={(e) => e.stopPropagation()}
+              onFocus={saveSelection}
+              onChange={(e) => {
+                if (e.target.value) { restoreSelection(); exec('fontName', e.target.value); }
+                (e.target as HTMLSelectElement).value = '';
+              }}
+              className="text-xs border border-gray-200 dark:border-gray-800 rounded px-1 py-1 bg-white dark:bg-[#000c3b] text-gray-600 dark:text-gray-400 focus:outline-none cursor-pointer max-w-[90px]"
+              defaultValue=""
+          >
+            <option value="" disabled className="dark:bg-[#000c3b]">Font</option>
+            {FONT_FAMILIES.map(({ label, value }) => <option key={label} value={value} className="dark:bg-[#000c3b]">{label}</option>)}
+          </select>
+          <Sep />
 
-        {/* Text colour */}
-        <label
-          title="Text colour"
-          className="flex items-center gap-0.5 p-1.5 rounded hover:bg-gray-200 cursor-pointer"
-          onMouseDown={saveSelection}
-        >
-          <span className="text-[13px] font-bold text-gray-700 select-none" style={{ textDecoration: 'underline wavy' }}>A</span>
-          <input
-            ref={colorInputRef}
-            type="color"
-            defaultValue="#000000"
-            className="w-0 h-0 opacity-0 absolute pointer-events-none"
-            onChange={(e) => { restoreSelection(); exec('foreColor', e.target.value); }}
-          />
-          <span
-            className="w-3 h-2 rounded-sm border border-gray-300 ml-0.5"
-            style={{ background: '#000000' }}
-            onClick={() => colorInputRef.current?.click()}
-          />
-        </label>
-        <Sep />
+          <label
+              title="Text colour"
+              className="flex items-center gap-0.5 p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-800 cursor-pointer"
+              onMouseDown={saveSelection}
+          >
+            <span className="text-[13px] font-bold text-gray-700 dark:text-gray-300 select-none" style={{ textDecoration: 'underline wavy' }}>A</span>
+            <input
+                ref={colorInputRef}
+                type="color"
+                defaultValue="#000000"
+                className="w-0 h-0 opacity-0 absolute pointer-events-none"
+                onChange={(e) => { restoreSelection(); exec('foreColor', e.target.value); }}
+            />
+            <span
+                className="w-3 h-2 rounded-sm border border-gray-300 dark:border-gray-700 ml-0.5"
+                style={{ background: '#000000' }}
+                onClick={() => colorInputRef.current?.click()}
+            />
+          </label>
+          <Sep />
 
-        {/* Links */}
-        <Btn title="Insert link"  onClick={insertLink}            ><Link2    className="w-3.5 h-3.5" /></Btn>
-        <Btn title="Remove link"  onClick={() => exec('unlink')}  ><Link2Off className="w-3.5 h-3.5" /></Btn>
-        <Sep />
+          <Btn title="Insert link"  onClick={insertLink}            ><Link2    className="w-3.5 h-3.5" /></Btn>
+          <Btn title="Remove link"  onClick={() => exec('unlink')}  ><Link2Off className="w-3.5 h-3.5" /></Btn>
+          <Sep />
 
-        {/* Clear formatting */}
-        <Btn title="Clear formatting" onClick={() => exec('removeFormat')}>
-          <span className="text-[11px] font-semibold leading-none">Tx</span>
-        </Btn>
-        <Sep />
+          <Btn title="Clear formatting" onClick={() => exec('removeFormat')}>
+            <span className="text-[11px] font-semibold leading-none">Tx</span>
+          </Btn>
+          <Sep />
 
-        {/* Variables — opens right-aligned so it stays inside the toolbar */}
-        <VariablePicker onInsert={insertVariable} dropAlign="right" />
-      </div>
+          <VariablePicker onInsert={insertVariable} dropAlign="right" />
+        </div>
 
-      {/* ── Editable content area ── */}
-      {/* [&_ul] / [&_ol] override Tailwind Preflight's list-style:none reset so bullets render */}
-      <div
-        ref={editorRef}
-        contentEditable
-        suppressContentEditableWarning
-        onInput={sync}
-        onBlur={sync}
-        onPaste={(e) => {
-          // Paste as plain text to avoid messy external HTML
-          e.preventDefault();
-          const text = e.clipboardData.getData('text/plain');
-          document.execCommand('insertText', false, text);
-          setTimeout(sync, 0);
-        }}
-        className="min-h-[140px] max-h-[300px] overflow-y-auto p-3 text-sm text-gray-800 focus:outline-none
+        <div
+            ref={editorRef}
+            contentEditable
+            suppressContentEditableWarning
+            onInput={sync}
+            onBlur={sync}
+            onPaste={(e) => {
+              e.preventDefault();
+              const text = e.clipboardData.getData('text/plain');
+              document.execCommand('insertText', false, text);
+              setTimeout(sync, 0);
+            }}
+            className="min-h-[140px] max-h-[300px] overflow-y-auto p-3 text-sm text-gray-800 dark:text-gray-200 bg-white dark:bg-[#000c3b] focus:outline-none
           [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-1
           [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-1
           [&_li]:my-0.5"
-        style={{ lineHeight: '1.7', wordBreak: 'break-word' }}
-      />
-    </div>
+            style={{ lineHeight: '1.7', wordBreak: 'break-word' }}
+        />
+      </div>
   );
 }
 
 // ── Inline block editor ───────────────────────────────────────────────────────
 
 function BlockEditor({
-  block,
-  onUpdate,
-  onClose,
-}: {
+                       block,
+                       onUpdate,
+                       onClose,
+                     }: {
   block: EmailBlock;
   onUpdate: (props: Record<string, any>) => void;
   onClose: () => void;
@@ -1099,7 +1037,6 @@ function BlockEditor({
   const set = (key: string, val: any) => setLocal((p) => ({ ...p, [key]: val }));
   const handleSave = () => { onUpdate(local); onClose(); };
 
-  // Cursor-aware variable insert for plain inputs (h1, h2, button label)
   const insertVariable = (variable: string) => {
     if (['h1', 'h2'].includes(block.type)) {
       const el = inputRef.current;
@@ -1113,167 +1050,156 @@ function BlockEditor({
     }
   };
 
-  const labelCls = 'block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1';
-  const inputCls = 'w-full text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white';
+  const labelCls = 'block text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1';
+  const inputCls = 'w-full text-sm px-3 py-2 border border-gray-200 dark:border-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-[#000c3b] text-gray-900 dark:text-white placeholder-gray-400';
 
   return (
-    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mt-2 space-y-3">
+      <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/60 rounded-xl p-4 mt-2 space-y-3">
 
-      {/* Rich text editor for text blocks */}
-      {block.type === 'text' && (
-        <div>
-          <label className={labelCls}>Content</label>
-          <RichTextEditor
-            value={local.content || ''}
-            onChange={(html) => set('content', html)}
-          />
-        </div>
-      )}
-
-      {/* Plain input for headings (with variable picker) */}
-      {['h1', 'h2'].includes(block.type) && (
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className={labelCls} style={{ marginBottom: 0 }}>Content</label>
-            <VariablePicker onInsert={insertVariable} />
-          </div>
-          <input
-            ref={inputRef}
-            type="text"
-            value={local.content || ''}
-            onChange={(e) => set('content', e.target.value)}
-            className={inputCls + ' mt-1.5'}
-          />
-        </div>
-      )}
-
-      {/* Image src + upload + alt + width */}
-      {block.type === 'image' && (
-        <ImageBlockEditor local={local} set={set} onCommit={onUpdate} inputCls={inputCls} labelCls={labelCls} />
-      )}
-
-      {/* Logo — upload + optional link + width */}
-      {block.type === 'logo' && (
-        <>
-          <ImageBlockEditor local={local} set={set} onCommit={onUpdate} inputCls={inputCls} labelCls={labelCls} />
-          <div>
-            <label className={labelCls}>Link URL (optional)</label>
-            <input type="text" placeholder="https://yoursite.com" value={local.href || ''}
-              onChange={(e) => set('href', e.target.value)} className={inputCls} />
-          </div>
-        </>
-      )}
-
-      {/* Button props */}
-      {block.type === 'button' && (
-        <>
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className={labelCls} style={{ marginBottom: 0 }}>Button Label</label>
-              <VariablePicker onInsert={insertVariable} />
-            </div>
-            <input type="text" value={local.label || ''} onChange={(e) => set('label', e.target.value)} className={inputCls + ' mt-1.5'} />
-          </div>
-          <div>
-            <label className={labelCls}>Link URL</label>
-            <input type="text" placeholder="https://..." value={local.href || ''} onChange={(e) => set('href', e.target.value)} className={inputCls} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
+        {block.type === 'text' && (
             <div>
-              <label className={labelCls}>Background</label>
+              <label className={labelCls}>Content</label>
+              <RichTextEditor
+                  value={local.content || ''}
+                  onChange={(html) => set('content', html)}
+              />
+            </div>
+        )}
+
+        {['h1', 'h2'].includes(block.type) && (
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className={labelCls} style={{ marginBottom: 0 }}>Content</label>
+                <VariablePicker onInsert={insertVariable} />
+              </div>
+              <input
+                  ref={inputRef}
+                  type="text"
+                  value={local.content || ''}
+                  onChange={(e) => set('content', e.target.value)}
+                  className={inputCls + ' mt-1.5'}
+              />
+            </div>
+        )}
+
+        {block.type === 'image' && (
+            <ImageBlockEditor local={local} set={set} onCommit={onUpdate} inputCls={inputCls} labelCls={labelCls} />
+        )}
+
+        {block.type === 'logo' && (
+            <>
+              <ImageBlockEditor local={local} set={set} onCommit={onUpdate} inputCls={inputCls} labelCls={labelCls} />
+              <div>
+                <label className={labelCls}>Link URL (optional)</label>
+                <input type="text" placeholder="https://yoursite.com" value={local.href || ''}
+                       onChange={(e) => set('href', e.target.value)} className={inputCls} />
+              </div>
+            </>
+        )}
+
+        {block.type === 'button' && (
+            <>
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className={labelCls} style={{ marginBottom: 0 }}>Button Label</label>
+                  <VariablePicker onInsert={insertVariable} />
+                </div>
+                <input type="text" value={local.label || ''} onChange={(e) => set('label', e.target.value)} className={inputCls + ' mt-1.5'} />
+              </div>
+              <div>
+                <label className={labelCls}>Link URL</label>
+                <input type="text" placeholder="https://..." value={local.href || ''} onChange={(e) => set('href', e.target.value)} className={inputCls} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelCls}>Background</label>
+                  <div className="flex items-center gap-2">
+                    <input type="color" value={local.bgColor || '#0b1957'} onChange={(e) => set('bgColor', e.target.value)} className="h-8 w-12 rounded border border-gray-200 dark:border-gray-800 cursor-pointer" />
+                    <input type="text" value={local.bgColor || '#0b1957'} onChange={(e) => set('bgColor', e.target.value)} className={inputCls} />
+                  </div>
+                </div>
+                <div>
+                  <label className={labelCls}>Text Color</label>
+                  <div className="flex items-center gap-2">
+                    <input type="color" value={local.textColor || '#ffffff'} onChange={(e) => set('textColor', e.target.value)} className="h-8 w-12 rounded border border-gray-200 dark:border-gray-800 cursor-pointer" />
+                    <input type="text" value={local.textColor || '#ffffff'} onChange={(e) => set('textColor', e.target.value)} className={inputCls} />
+                  </div>
+                </div>
+              </div>
+            </>
+        )}
+
+        {block.type === 'divider' && (
+            <div>
+              <label className={labelCls}>Color</label>
               <div className="flex items-center gap-2">
-                <input type="color" value={local.bgColor || '#0b1957'} onChange={(e) => set('bgColor', e.target.value)} className="h-8 w-12 rounded border border-gray-200 cursor-pointer" />
-                <input type="text" value={local.bgColor || '#0b1957'} onChange={(e) => set('bgColor', e.target.value)} className={inputCls} />
+                <input type="color" value={local.color || '#e5e7eb'} onChange={(e) => set('color', e.target.value)} className="h-8 w-12 rounded border border-gray-200 dark:border-gray-800 cursor-pointer" />
+                <input type="text" value={local.color || '#e5e7eb'} onChange={(e) => set('color', e.target.value)} className={inputCls} />
               </div>
             </div>
+        )}
+
+        {block.type === 'spacer' && (
             <div>
-              <label className={labelCls}>Text Color</label>
-              <div className="flex items-center gap-2">
-                <input type="color" value={local.textColor || '#ffffff'} onChange={(e) => set('textColor', e.target.value)} className="h-8 w-12 rounded border border-gray-200 cursor-pointer" />
-                <input type="text" value={local.textColor || '#ffffff'} onChange={(e) => set('textColor', e.target.value)} className={inputCls} />
+              <label className={labelCls}>Height (px)</label>
+              <input type="number" min={4} max={120} value={local.height ?? 24} onChange={(e) => set('height', Number(e.target.value))} className={inputCls} />
+            </div>
+        )}
+
+        {['h1', 'h2', 'text', 'image', 'logo', 'button'].includes(block.type) && (
+            <div>
+              <label className={labelCls}>Alignment</label>
+              <div className="flex gap-2">
+                {(['left', 'center', 'right'] as Align[]).map((a) => (
+                    <button
+                        key={a}
+                        onClick={() => set('align', a)}
+                        className={`flex-1 py-1.5 text-xs rounded-lg border font-medium capitalize transition ${local.align === a ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-[#000c3b] text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                    >
+                      {a}
+                    </button>
+                ))}
               </div>
             </div>
-          </div>
-        </>
-      )}
+        )}
 
-      {/* Divider color */}
-      {block.type === 'divider' && (
-        <div>
-          <label className={labelCls}>Color</label>
-          <div className="flex items-center gap-2">
-            <input type="color" value={local.color || '#e5e7eb'} onChange={(e) => set('color', e.target.value)} className="h-8 w-12 rounded border border-gray-200 cursor-pointer" />
-            <input type="text" value={local.color || '#e5e7eb'} onChange={(e) => set('color', e.target.value)} className={inputCls} />
-          </div>
+        {['h1', 'h2', 'text'].includes(block.type) && (
+            <div>
+              <label className={labelCls}>Color</label>
+              <div className="flex items-center gap-2">
+                <input type="color" value={local.color || '#374151'} onChange={(e) => set('color', e.target.value)} className="h-8 w-12 rounded border border-gray-200 dark:border-gray-800 cursor-pointer" />
+                <input type="text" value={local.color || '#374151'} onChange={(e) => set('color', e.target.value)} className={inputCls} />
+              </div>
+            </div>
+        )}
+
+        {block.type === 'footer' && (
+            <FooterBlockEditor local={local} set={set} inputCls={inputCls} labelCls={labelCls} />
+        )}
+
+        {block.type === 'signature' && (
+            <SignatureBlockEditor local={local} set={set} onCommit={onUpdate} inputCls={inputCls} labelCls={labelCls} />
+        )}
+
+        <div className="flex gap-2 pt-1">
+          <button onClick={handleSave} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
+            <Check className="w-3.5 h-3.5" /> Apply Changes
+          </button>
         </div>
-      )}
-
-      {/* Spacer height */}
-      {block.type === 'spacer' && (
-        <div>
-          <label className={labelCls}>Height (px)</label>
-          <input type="number" min={4} max={120} value={local.height ?? 24} onChange={(e) => set('height', Number(e.target.value))} className={inputCls} />
-        </div>
-      )}
-
-      {/* Alignment (most blocks) */}
-      {['h1', 'h2', 'text', 'image', 'logo', 'button'].includes(block.type) && (
-        <div>
-          <label className={labelCls}>Alignment</label>
-          <div className="flex gap-2">
-            {(['left', 'center', 'right'] as Align[]).map((a) => (
-              <button
-                key={a}
-                onClick={() => set('align', a)}
-                className={`flex-1 py-1.5 text-xs rounded-lg border font-medium capitalize transition ${local.align === a ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
-              >
-                {a}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Text/heading color */}
-      {['h1', 'h2', 'text'].includes(block.type) && (
-        <div>
-          <label className={labelCls}>Color</label>
-          <div className="flex items-center gap-2">
-            <input type="color" value={local.color || '#374151'} onChange={(e) => set('color', e.target.value)} className="h-8 w-12 rounded border border-gray-200 cursor-pointer" />
-            <input type="text" value={local.color || '#374151'} onChange={(e) => set('color', e.target.value)} className={inputCls} />
-          </div>
-        </div>
-      )}
-
-      {/* ── Footer editor ── */}
-      {block.type === 'footer' && (
-        <FooterBlockEditor local={local} set={set} inputCls={inputCls} labelCls={labelCls} />
-      )}
-
-      {/* ── Signature editor ── */}
-      {block.type === 'signature' && (
-        <SignatureBlockEditor local={local} set={set} onCommit={onUpdate} inputCls={inputCls} labelCls={labelCls} />
-      )}
-
-      <div className="flex gap-2 pt-1">
-        <button onClick={handleSave} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
-          <Check className="w-3.5 h-3.5" /> Apply Changes
-        </button>
       </div>
-    </div>
   );
 }
 
 // ── Sortable block row ────────────────────────────────────────────────────────
 
 function SortableBlock({
-  block,
-  isEditing,
-  onStartEdit,
-  onUpdate,
-  onDelete,
-  onStopEdit,
-}: {
+                         block,
+                         isEditing,
+                         onStartEdit,
+                         onUpdate,
+                         onDelete,
+                         onStopEdit,
+                       }: {
   block: EmailBlock;
   isEditing: boolean;
   onStartEdit: () => void;
@@ -1293,54 +1219,53 @@ function SortableBlock({
   const typeLabel = PALETTE.find((p) => p.type === block.type)?.label ?? block.type;
   const typeIcon  = PALETTE.find((p) => p.type === block.type)?.icon;
 
-  // Compact block preview
   const Preview = () => {
     const { props, type } = block;
     switch (type) {
       case 'h1':
-        return <span className="text-base font-bold text-gray-800 truncate">{props.content}</span>;
+        return <span className="text-base font-bold text-gray-800 dark:text-gray-200 truncate">{props.content}</span>;
       case 'h2':
-        return <span className="text-sm font-semibold text-gray-700 truncate">{props.content}</span>;
+        return <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 truncate">{props.content}</span>;
       case 'text':
-        return <span className="text-sm text-gray-500 truncate">{props.content?.substring(0, 80)}{props.content?.length > 80 ? '…' : ''}</span>;
+        return <span className="text-sm text-gray-500 dark:text-gray-400 truncate">{props.content?.substring(0, 80)}{props.content?.length > 80 ? '…' : ''}</span>;
       case 'image':
         return props.src
-          ? <span className="text-sm text-blue-500 truncate">🖼 {props.src.substring(0, 50)}…</span>
-          : <span className="text-sm text-amber-500 italic">⚠ No image URL set</span>;
+            ? <span className="text-sm text-blue-500 dark:text-blue-400 truncate">🖼 {props.src.substring(0, 50)}…</span>
+            : <span className="text-sm text-amber-500 italic">⚠ No image URL set</span>;
       case 'logo':
         return props.src
-          ? <img src={props.src} alt="logo" className="h-6 object-contain" />
-          : <span className="text-sm text-amber-500 italic">⚠ No logo uploaded</span>;
+            ? <img src={props.src} alt="logo" className="h-6 object-contain" />
+            : <span className="text-sm text-amber-500 italic">⚠ No logo uploaded</span>;
       case 'button':
         return (
-          <span className="inline-block px-3 py-1 text-xs rounded font-semibold" style={{ background: props.bgColor, color: props.textColor }}>
+            <span className="inline-block px-3 py-1 text-xs rounded font-semibold" style={{ background: props.bgColor, color: props.textColor }}>
             {props.label}
           </span>
         );
       case 'divider':
-        return <hr className="border-t border-gray-300 w-32" />;
+        return <hr className="border-t border-gray-300 dark:border-gray-700 w-32" />;
       case 'spacer':
-        return <span className="text-xs text-gray-400">{props.height}px gap</span>;
+        return <span className="text-xs text-gray-400 dark:text-gray-500">{props.height}px gap</span>;
       case 'footer': {
         const activeSocials = SOCIAL_ICONS.filter(s => props.socials?.[s.key]);
         return (
-          <div className="flex items-center gap-2">
-            {activeSocials.slice(0, 4).map(({ key, Icon, color }) => (
-              <div key={key} className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: color }}>
-                <Icon className="w-2.5 h-2.5 text-white" />
-              </div>
-            ))}
-            <span className="text-xs text-gray-500 truncate">{props.companyName || 'Footer'} · {props.address || 'address'}</span>
-          </div>
+            <div className="flex items-center gap-2">
+              {activeSocials.slice(0, 4).map(({ key, Icon, color }) => (
+                  <div key={key} className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: color }}>
+                    <Icon className="w-2.5 h-2.5 text-white" />
+                  </div>
+              ))}
+              <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{props.companyName || 'Footer'} · {props.address || 'address'}</span>
+            </div>
         );
       }
       case 'signature':
         return (
-          <div className="flex items-center gap-2">
-            {props.logoSrc && <img src={props.logoSrc} alt="logo" className="h-5 object-contain" />}
-            <span className="text-xs font-semibold truncate" style={{ color: props.accentColor || '#0b1957' }}>{props.name || 'Signature'}</span>
-            {props.title && <span className="text-xs text-gray-400 truncate">· {props.title}</span>}
-          </div>
+            <div className="flex items-center gap-2">
+              {props.logoSrc && <img src={props.logoSrc} alt="logo" className="h-5 object-contain" />}
+              <span className="text-xs font-semibold truncate" style={{ color: props.accentColor || '#0b1957' }}>{props.name || 'Signature'}</span>
+              {props.title && <span className="text-xs text-gray-400 dark:text-gray-500 truncate">· {props.title}</span>}
+            </div>
         );
       default:
         return null;
@@ -1348,55 +1273,50 @@ function SortableBlock({
   };
 
   return (
-    <div ref={setNodeRef} style={style}>
-      <div className={`group relative flex items-center gap-3 p-3 bg-white rounded-xl border-2 transition-all ${isEditing ? 'border-blue-400 shadow-md' : 'border-gray-100 hover:border-gray-300 hover:shadow-sm'}`}>
-        {/* Drag handle */}
-        <div
-          {...attributes}
-          {...listeners}
-          className="flex-shrink-0 cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 transition-colors"
-          title="Drag to reorder"
-        >
-          <GripVertical className="w-5 h-5" />
-        </div>
+      <div ref={setNodeRef} style={style}>
+        <div className={`group relative flex items-center gap-3 p-3 bg-white dark:bg-[#000c3b] rounded-xl border-2 transition-all ${isEditing ? 'border-blue-400 shadow-md' : 'border-gray-100 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 hover:shadow-sm'}`}>
+          <div
+              {...attributes}
+              {...listeners}
+              className="flex-shrink-0 cursor-grab active:cursor-grabbing text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 transition-colors"
+              title="Drag to reorder"
+          >
+            <GripVertical className="w-5 h-5" />
+          </div>
 
-        {/* Type badge */}
-        <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-500">
-          {typeIcon}
-        </div>
+          <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gray-50 dark:bg-[#000724] border border-gray-100 dark:border-gray-800 flex items-center justify-center text-gray-500">
+            {typeIcon}
+          </div>
 
-        {/* Content preview */}
-        <div className="flex-1 min-w-0 flex items-center gap-2">
-          <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wide flex-shrink-0">{typeLabel}</span>
-          <div className="flex-1 min-w-0">
-            <Preview />
+          <div className="flex-1 min-w-0 flex items-center gap-2">
+            <span className="text-[10px] font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide flex-shrink-0">{typeLabel}</span>
+            <div className="flex-1 min-w-0">
+              <Preview />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <button
+                onClick={isEditing ? onStopEdit : onStartEdit}
+                className="p-1.5 rounded-lg text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors"
+                title="Edit"
+            >
+              {isEditing ? <X className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
+            </button>
+            <button
+                onClick={onDelete}
+                className="p-1.5 rounded-lg text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
+                title="Delete"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
-        {/* Action buttons */}
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <button
-            onClick={isEditing ? onStopEdit : onStartEdit}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-            title="Edit"
-          >
-            {isEditing ? <X className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
-          </button>
-          <button
-            onClick={onDelete}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-            title="Delete"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
+        {isEditing && (
+            <BlockEditor block={block} onUpdate={onUpdate} onClose={onStopEdit} />
+        )}
       </div>
-
-      {/* Inline editor */}
-      {isEditing && (
-        <BlockEditor block={block} onUpdate={onUpdate} onClose={onStopEdit} />
-      )}
-    </div>
   );
 }
 
@@ -1412,12 +1332,8 @@ export default function DragDropEmailEditor({ htmlContent, subject, onContentCha
   const [blocks, setBlocks] = useState<EmailBlock[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showPalette, setShowPalette] = useState(false);
-  // Track whether we've initialised from external htmlContent already
   const [initialised, setInitialised] = useState(false);
 
-  // On first mount: restore blocks from saved HTML (if it was generated by this editor).
-  // htmlToBlocks recognises the outer max-width:600px wrapper fingerprint.
-  // Returns null for arbitrary HTML → editor starts empty in that case.
   useEffect(() => {
     if (!initialised) {
       if (htmlContent?.trim()) {
@@ -1430,14 +1346,13 @@ export default function DragDropEmailEditor({ htmlContent, subject, onContentCha
     }
   }, []);
 
-  // Whenever blocks change → regenerate HTML
   useEffect(() => {
     if (initialised) onContentChange(blocksToHtml(blocks));
   }, [blocks]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+      useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+      useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
   const uid = () => Math.random().toString(36).slice(2, 9);
@@ -1470,76 +1385,75 @@ export default function DragDropEmailEditor({ htmlContent, subject, onContentCha
   };
 
   return (
-    <div className="space-y-4">
-      {/* Add block toolbar */}
-      <div className="relative">
-        <button
-          onClick={() => setShowPalette((v) => !v)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-white border-2 border-dashed border-gray-300 rounded-xl text-sm font-medium text-gray-600 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-all w-full justify-center"
-        >
-          <Plus className="w-4 h-4" />
-          Add Block
-        </button>
+      <div className="space-y-4 bg-transparent">
+        {/* Add block toolbar */}
+        <div className="relative">
+          <button
+              onClick={() => setShowPalette((v) => !v)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-[#000c3b] border-2 border-dashed border-gray-300 dark:border-gray-800 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:border-blue-400 dark:hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-all w-full justify-center"
+          >
+            <Plus className="w-4 h-4" />
+            Add Block
+          </button>
 
-        {showPalette && (
-          <div className="absolute top-full left-0 mt-2 z-30 bg-white rounded-2xl shadow-xl border border-gray-100 p-4 w-full">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Choose a block type</p>
-            <div className="grid grid-cols-4 gap-2">
-              {PALETTE.map(({ type, label, icon, desc }) => (
-                <button
-                  key={type}
-                  onClick={() => addBlock(type)}
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-gray-100 hover:border-blue-300 hover:bg-blue-50 transition-all group"
-                >
-                  <div className="w-9 h-9 rounded-lg bg-gray-50 group-hover:bg-blue-100 flex items-center justify-center text-gray-500 group-hover:text-blue-600 transition-colors">
-                    {icon}
-                  </div>
-                  <span className="text-xs font-semibold text-gray-700">{label}</span>
-                  <span className="text-[10px] text-gray-400">{desc}</span>
-                </button>
+          {showPalette && (
+              <div className="absolute top-full left-0 mt-2 z-30 bg-white dark:bg-[#000c3b] rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 p-4 w-full">
+                <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-3">Choose a block type</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {PALETTE.map(({ type, label, icon, desc }) => (
+                      <button
+                          key={type}
+                          onClick={() => addBlock(type)}
+                          className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-blue-300 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-all group"
+                      >
+                        <div className="w-9 h-9 rounded-lg bg-gray-50 dark:bg-[#000724] group-hover:bg-blue-100 dark:group-hover:bg-blue-950/60 flex items-center justify-center text-gray-500 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                          {icon}
+                        </div>
+                        <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{label}</span>
+                        <span className="text-[10px] text-gray-400 dark:text-gray-500">{desc}</span>
+                      </button>
+                  ))}
+                </div>
+              </div>
+          )}
+        </div>
+
+        {/* Empty state */}
+        {blocks.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 text-center border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-2xl bg-gray-50 dark:bg-[#000c3b]">
+              <div className="w-14 h-14 rounded-2xl bg-white dark:bg-[#000724] shadow-sm border border-gray-100 dark:border-gray-800 flex items-center justify-center mb-4">
+                <AlignLeft className="w-7 h-7 text-gray-300 dark:text-gray-600" />
+              </div>
+              <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Your email is empty</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">Click "Add Block" above to build your email</p>
+            </div>
+        )}
+
+        {/* Sortable blocks */}
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
+            <div className="space-y-2">
+              {blocks.map((block) => (
+                  <SortableBlock
+                      key={block.id}
+                      block={block}
+                      isEditing={editingId === block.id}
+                      onStartEdit={() => setEditingId(block.id)}
+                      onStopEdit={() => setEditingId(null)}
+                      onUpdate={(props) => updateBlock(block.id, props)}
+                      onDelete={() => deleteBlock(block.id)}
+                  />
               ))}
             </div>
-            {/* Palette closed by clicking outside or re-clicking Add Block */}
-          </div>
+          </SortableContext>
+        </DndContext>
+
+        {/* Block count */}
+        {blocks.length > 0 && (
+            <p className="text-xs text-gray-400 dark:text-gray-500 text-center">
+              {blocks.length} block{blocks.length !== 1 ? 's' : ''} · drag to reorder · click ✏ to edit
+            </p>
         )}
       </div>
-
-      {/* Empty state */}
-      {blocks.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-16 text-center border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50">
-          <div className="w-14 h-14 rounded-2xl bg-white shadow-sm border border-gray-100 flex items-center justify-center mb-4">
-            <AlignLeft className="w-7 h-7 text-gray-300" />
-          </div>
-          <p className="text-sm font-semibold text-gray-700 mb-1">Your email is empty</p>
-          <p className="text-xs text-gray-400 mb-4">Click "Add Block" above to build your email</p>
-        </div>
-      )}
-
-      {/* Sortable blocks */}
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
-          <div className="space-y-2">
-            {blocks.map((block) => (
-              <SortableBlock
-                key={block.id}
-                block={block}
-                isEditing={editingId === block.id}
-                onStartEdit={() => setEditingId(block.id)}
-                onStopEdit={() => setEditingId(null)}
-                onUpdate={(props) => updateBlock(block.id, props)}
-                onDelete={() => deleteBlock(block.id)}
-              />
-            ))}
-          </div>
-        </SortableContext>
-      </DndContext>
-
-      {/* Block count */}
-      {blocks.length > 0 && (
-        <p className="text-xs text-gray-400 text-center">
-          {blocks.length} block{blocks.length !== 1 ? 's' : ''} · drag to reorder · click ✏ to edit
-        </p>
-      )}
-    </div>
   );
 }
