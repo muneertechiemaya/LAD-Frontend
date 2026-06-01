@@ -5,12 +5,14 @@ import { Building2, Upload, MapPin, Target, FileText, Briefcase, Save, X, Clock,
 import { selectSettings, setCompanyLocation, setCompanyIcp, setCompanyAbout, setCompanyServices, setCompanyBusinessHours } from '@/store/slices/settingsSlice';
 import { useBusinessHours, useUpdateBusinessHours } from '@lad/frontend-features/settings';
 import type { BusinessHoursPayload } from '@lad/frontend-features/settings';
+
 interface CompanySettingsProps {
   companyName: string;
   setCompanyName: (name: string) => void;
   companyLogo: string;
   setCompanyLogo: (logo: string) => void;
 }
+
 export const CompanySettings: React.FC<CompanySettingsProps> = ({
   companyName: externalCompanyName,
   setCompanyName: setExternalCompanyName,
@@ -118,6 +120,7 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({
     else dayStr = sorted.map(i => BH_DAYS[i]).join(', ');
     return `${bhFmt12(data.startTime)} – ${bhFmt12(data.endTime)} · ${dayStr} · ${tzOpt?.short ?? ''}`;
   };
+
   // Sync company name with external prop
   useEffect(() => {
     setCompanyData(prev => ({ ...prev, companyName: externalCompanyName }));
@@ -136,6 +139,7 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [savedBH]);
+
   const [isEditing, setIsEditing] = useState({
     companyName: false,
     location: false,
@@ -144,6 +148,7 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({
     businessServices: false,
     businessHours: false,
   });
+
   const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -154,18 +159,21 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({
       }));
     }
   };
+
   const handleInputChange = (field: keyof typeof companyData, value: string) => {
     setCompanyData(prev => ({
       ...prev,
       [field]: value,
     }));
   };
+
   const toggleEdit = (field: keyof typeof isEditing) => {
     setIsEditing(prev => ({
       ...prev,
       [field]: !prev[field],
     }));
   };
+
   const handleSaveField = (field: keyof typeof isEditing) => {
     setIsEditing(prev => ({
       ...prev,
@@ -186,13 +194,14 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({
       dispatch(setCompanyBusinessHours(companyData.businessHours));
     }
   };
+
   const handleCancelField = (field: keyof typeof isEditing) => {
     setIsEditing(prev => ({
       ...prev,
       [field]: false,
     }));
-    // TODO: Reset to original value from server
   };
+
   const handleKeyDown = (e: React.KeyboardEvent, field: keyof typeof isEditing) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -202,8 +211,8 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({
       handleCancelField(field);
     }
   };
+
   const handleSave = () => {
-    // Persist all active edits to Redux
     dispatch(setCompanyLocation(companyData.location));
     dispatch(setCompanyIcp(companyData.icp));
     dispatch(setCompanyAbout(companyData.about));
@@ -219,26 +228,27 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({
       businessHours: false,
     });
   };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-gray-100 dark:text-gray-100">
       {/* Company Name */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="bg-[#0b122f]/40 dark:bg-gray-900/60 rounded-lg shadow-sm border border-gray-800/60 dark:border-gray-800 p-6 transition-colors duration-200">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-gray-900 text-xl font-semibold flex items-center gap-2">
-            <Building2 className="w-5 h-5" />
+          <h2 className="text-gray-100 dark:text-gray-100 text-xl font-semibold flex items-center gap-2">
+            <Building2 className="w-5 h-5 text-gray-400 dark:text-gray-300" />
             Company Name
           </h2>
           {!isEditing.companyName ? (
             <button
               onClick={() => toggleEdit('companyName')}
-              className="text-[#0B1957] hover:opacity-75 text-sm font-medium"
+              className="text-blue-400 dark:text-blue-400 hover:opacity-75 text-sm font-medium"
             >
               Edit
             </button>
           ) : (
             <button
               onClick={() => handleSaveField('companyName')}
-              className="px-4 py-1.5 bg-[#0B1957] text-white rounded-lg hover:bg-[#0a1648] text-sm font-medium flex items-center gap-1"
+              className="px-4 py-1.5 bg-blue-600 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-700 text-sm font-medium flex items-center gap-1"
             >
               <Save className="w-3.5 h-3.5" />
               Save
@@ -251,32 +261,33 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({
             value={companyData.companyName}
             onChange={(e) => handleInputChange('companyName', e.target.value)}
             onKeyDown={(e) => handleKeyDown(e, 'companyName')}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0B1957] focus:border-[#0B1957]"
+            className="w-full px-4 py-2 border border-gray-700 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-500 focus:border-blue-500 dark:focus:border-blue-500 bg-gray-800 dark:bg-gray-800 text-gray-100 dark:text-gray-100"
             placeholder="Enter company name"
             autoFocus
           />
         ) : (
-          <p className="text-gray-700">{companyData.companyName || 'Not set'}</p>
+          <p className="text-gray-400 dark:text-gray-400">{companyData.companyName || 'Not set'}</p>
         )}
       </div>
+
       {/* Location */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="bg-[#0b122f]/40 dark:bg-gray-900/60 rounded-lg shadow-sm border border-gray-800/60 dark:border-gray-800 p-6 transition-colors duration-200">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-gray-900 text-xl font-semibold flex items-center gap-2">
-            <MapPin className="w-5 h-5" />
+          <h2 className="text-gray-100 dark:text-gray-100 text-xl font-semibold flex items-center gap-2">
+            <MapPin className="w-5 h-5 text-gray-400 dark:text-gray-300" />
             Location
           </h2>
           {!isEditing.location ? (
             <button
               onClick={() => toggleEdit('location')}
-              className="text-[#0B1957] hover:opacity-75 text-sm font-medium"
+              className="text-blue-400 dark:text-blue-400 hover:opacity-75 text-sm font-medium"
             >
               Edit
             </button>
           ) : (
             <button
               onClick={() => handleSaveField('location')}
-              className="px-4 py-1.5 bg-[#0B1957] text-white rounded-lg hover:bg-[#0a1648] text-sm font-medium flex items-center gap-1"
+              className="px-4 py-1.5 bg-blue-600 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-700 text-sm font-medium flex items-center gap-1"
             >
               <Save className="w-3.5 h-3.5" />
               Save
@@ -289,32 +300,33 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({
             value={companyData.location}
             onChange={(e) => handleInputChange('location', e.target.value)}
             onKeyDown={(e) => handleKeyDown(e, 'location')}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0B1957] focus:border-[#0B1957]"
+            className="w-full px-4 py-2 border border-gray-700 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-500 focus:border-blue-500 dark:focus:border-blue-500 bg-gray-800 dark:bg-gray-800 text-gray-100 dark:text-gray-100"
             placeholder="e.g., San Francisco, CA, USA"
             autoFocus
           />
         ) : (
-          <p className="text-gray-700">{companyData.location || 'Not set'}</p>
+          <p className="text-gray-400 dark:text-gray-400">{companyData.location || 'Not set'}</p>
         )}
       </div>
+
       {/* ICP (Ideal Customer Profile) */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="bg-[#0b122f]/40 dark:bg-gray-900/60 rounded-lg shadow-sm border border-gray-800/60 dark:border-gray-800 p-6 transition-colors duration-200">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-gray-900 text-xl font-semibold flex items-center gap-2">
-            <Target className="w-5 h-5" />
+          <h2 className="text-gray-100 dark:text-gray-100 text-xl font-semibold flex items-center gap-2">
+            <Target className="w-5 h-5 text-gray-400 dark:text-gray-300" />
             Ideal Customer Profile (ICP)
           </h2>
           {!isEditing.icp ? (
             <button
               onClick={() => toggleEdit('icp')}
-              className="text-[#0B1957] hover:opacity-75 text-sm font-medium"
+              className="text-blue-400 dark:text-blue-400 hover:opacity-75 text-sm font-medium"
             >
               Edit
             </button>
           ) : (
             <button
               onClick={() => handleSaveField('icp')}
-              className="px-4 py-1.5 bg-[#0B1957] text-white rounded-lg hover:bg-[#0a1648] text-sm font-medium flex items-center gap-1"
+              className="px-4 py-1.5 bg-blue-600 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-700 text-sm font-medium flex items-center gap-1"
             >
               <Save className="w-3.5 h-3.5" />
               Save
@@ -326,32 +338,33 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({
             value={companyData.icp}
             onChange={(e) => handleInputChange('icp', e.target.value)}
             onKeyDown={(e) => handleKeyDown(e, 'icp')}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0B1957] focus:border-[#0B1957] min-h-[120px]"
+            className="w-full px-4 py-2 border border-gray-700 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-500 focus:border-blue-500 dark:focus:border-blue-500 min-h-[120px] bg-gray-800 dark:bg-gray-800 text-gray-100 dark:text-gray-100"
             placeholder="Describe your ideal customer profile (e.g., industry, company size, role, pain points)"
             autoFocus
           />
         ) : (
-          <p className="text-gray-700 whitespace-pre-wrap">{companyData.icp || 'Not set'}</p>
+          <p className="text-gray-400 dark:text-gray-400 whitespace-pre-wrap">{companyData.icp || 'Not set'}</p>
         )}
       </div>
+
       {/* About Company */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="bg-[#0b122f]/40 dark:bg-gray-900/60 rounded-lg shadow-sm border border-gray-800/60 dark:border-gray-800 p-6 transition-colors duration-200">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-gray-900 text-xl font-semibold flex items-center gap-2">
-            <FileText className="w-5 h-5" />
+          <h2 className="text-gray-100 dark:text-gray-100 text-xl font-semibold flex items-center gap-2">
+            <FileText className="w-5 h-5 text-gray-400 dark:text-gray-300" />
             About Company
           </h2>
           {!isEditing.about ? (
             <button
               onClick={() => toggleEdit('about')}
-              className="text-[#0B1957] hover:opacity-75 text-sm font-medium"
+              className="text-blue-400 dark:text-blue-400 hover:opacity-75 text-sm font-medium"
             >
               Edit
             </button>
           ) : (
             <button
               onClick={() => handleSaveField('about')}
-              className="px-4 py-1.5 bg-[#0B1957] text-white rounded-lg hover:bg-[#0a1648] text-sm font-medium flex items-center gap-1"
+              className="px-4 py-1.5 bg-blue-600 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-700 text-sm font-medium flex items-center gap-1"
             >
               <Save className="w-3.5 h-3.5" />
               Save
@@ -363,32 +376,33 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({
             value={companyData.about}
             onChange={(e) => handleInputChange('about', e.target.value)}
             onKeyDown={(e) => handleKeyDown(e, 'about')}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0B1957] focus:border-[#0B1957] min-h-[150px]"
+            className="w-full px-4 py-2 border border-gray-700 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-500 focus:border-blue-500 dark:focus:border-blue-500 min-h-[150px] bg-gray-800 dark:bg-gray-800 text-gray-100 dark:text-gray-100"
             placeholder="Tell us about your company, mission, and values"
             autoFocus
           />
         ) : (
-          <p className="text-gray-700 whitespace-pre-wrap">{companyData.about || 'Not set'}</p>
+          <p className="text-gray-400 dark:text-gray-400 whitespace-pre-wrap">{companyData.about || 'Not set'}</p>
         )}
       </div>
+
       {/* Business Services */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="bg-[#0b122f]/40 dark:bg-gray-900/60 rounded-lg shadow-sm border border-gray-800/60 dark:border-gray-800 p-6 transition-colors duration-200">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-gray-900 text-xl font-semibold flex items-center gap-2">
-            <Briefcase className="w-5 h-5" />
+          <h2 className="text-gray-100 dark:text-gray-100 text-xl font-semibold flex items-center gap-2">
+            <Briefcase className="w-5 h-5 text-gray-400 dark:text-gray-300" />
             Business Services
           </h2>
           {!isEditing.businessServices ? (
             <button
               onClick={() => toggleEdit('businessServices')}
-              className="text-[#0B1957] hover:opacity-75 text-sm font-medium"
+              className="text-blue-400 dark:text-blue-400 hover:opacity-75 text-sm font-medium"
             >
               Edit
             </button>
           ) : (
             <button
               onClick={() => handleSaveField('businessServices')}
-              className="px-4 py-1.5 bg-[#0B1957] text-white rounded-lg hover:bg-[#0a1648] text-sm font-medium flex items-center gap-1"
+              className="px-4 py-1.5 bg-blue-600 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-700 text-sm font-medium flex items-center gap-1"
             >
               <Save className="w-3.5 h-3.5" />
               Save
@@ -400,34 +414,35 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({
             value={companyData.businessServices}
             onChange={(e) => handleInputChange('businessServices', e.target.value)}
             onKeyDown={(e) => handleKeyDown(e, 'businessServices')}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0B1957] focus:border-[#0B1957] min-h-[150px]"
+            className="w-full px-4 py-2 border border-gray-700 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-500 focus:border-blue-500 dark:focus:border-blue-500 min-h-[150px] bg-gray-800 dark:bg-gray-800 text-gray-100 dark:text-gray-100"
             placeholder="List the services or products your company offers"
             autoFocus
           />
         ) : (
-          <p className="text-gray-700 whitespace-pre-wrap">
+          <p className="text-gray-400 dark:text-gray-400 whitespace-pre-wrap">
             {companyData.businessServices || 'Not set'}
           </p>
         )}
       </div>
+
       {/* Business Hours */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="bg-[#0b122f]/40 dark:bg-gray-900/60 rounded-lg shadow-sm border border-gray-800/60 dark:border-gray-800 p-6 transition-colors duration-200">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-gray-900 text-xl font-semibold flex items-center gap-2">
-            <Clock className="w-5 h-5" />
+          <h2 className="text-gray-100 dark:text-gray-100 text-xl font-semibold flex items-center gap-2">
+            <Clock className="w-5 h-5 text-gray-400 dark:text-gray-300" />
             Business Hours
           </h2>
           {!isEditing.businessHours ? (
             <button
               onClick={() => toggleEdit('businessHours')}
-              className="text-[#0B1957] hover:opacity-75 text-sm font-medium"
+              className="text-blue-400 dark:text-blue-400 hover:opacity-75 text-sm font-medium"
             >
               Edit
             </button>
           ) : (
             <div className="flex items-center gap-2">
               {updateBH.isError && (
-                <span className="text-xs text-red-500">Save failed — retry?</span>
+                <span className="text-xs text-red-400 dark:text-red-400">Save failed — retry?</span>
               )}
               <button
                 disabled={updateBH.isPending}
@@ -445,7 +460,7 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({
                     },
                   });
                 }}
-                className="px-4 py-1.5 bg-[#0B1957] text-white rounded-lg hover:bg-[#0a1648] disabled:opacity-60 text-sm font-medium flex items-center gap-1"
+                className="px-4 py-1.5 bg-blue-600 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-700 disabled:opacity-60 text-sm font-medium flex items-center gap-1"
               >
                 <Save className="w-3.5 h-3.5" />
                 {updateBH.isPending ? 'Saving…' : 'Save'}
@@ -457,24 +472,24 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({
           <div className="space-y-5">
             {/* Operating Hours */}
             <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2">Operating Hours</p>
+              <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-500 mb-2">Operating Hours</p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1 font-medium">Start Time</label>
+                  <label className="block text-xs text-gray-400 mb-1 font-medium">Start Time</label>
                   <input
                     type="time"
                     value={bhData.startTime}
                     onChange={e => setBhData(p => ({ ...p, startTime: e.target.value }))}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0B1957] focus:border-[#0B1957] text-sm font-medium bg-gray-50"
+                    className="w-full px-3 py-2.5 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm font-medium bg-gray-800 text-gray-100"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1 font-medium">End Time</label>
+                  <label className="block text-xs text-gray-400 mb-1 font-medium">End Time</label>
                   <input
                     type="time"
                     value={bhData.endTime}
                     onChange={e => setBhData(p => ({ ...p, endTime: e.target.value }))}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0B1957] focus:border-[#0B1957] text-sm font-medium bg-gray-50"
+                    className="w-full px-3 py-2.5 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm font-medium bg-gray-800 text-gray-100"
                   />
                 </div>
               </div>
@@ -483,31 +498,30 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({
             <div className="grid grid-cols-2 gap-3">
               {/* Timezone */}
               <div>
-                <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2">Timezone</p>
+                <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-2">Timezone</p>
                 <div className="relative">
                   <button
                     type="button"
                     onClick={() => { setBhTzOpen(o => !o); setBhDaysOpen(false); }}
-                    className="w-full flex items-center justify-between px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 font-medium hover:border-gray-300 hover:bg-white transition-all shadow-sm"
+                    className="w-full flex items-center justify-between px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-sm text-gray-300 font-medium hover:border-gray-600 hover:bg-gray-900/60 transition-all shadow-sm"
                   >
                     <span className="truncate pr-2">{BH_TZ_OPTIONS.find(o => o.value === bhData.timezone)?.short ?? 'Select timezone'}</span>
-                    <ChevronDown className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200 ${bhTzOpen ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${bhTzOpen ? 'rotate-180' : ''}`} />
                   </button>
                   {bhTzOpen && (
                     <>
                       <div className="fixed inset-0 z-40" onClick={() => setBhTzOpen(false)} />
-                      <div className="absolute z-50 bottom-full mb-1.5 w-[320px] bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
+                      <div className="absolute z-50 bottom-full mb-1.5 w-[320px] bg-gray-800 border border-gray-700 rounded-xl shadow-xl overflow-hidden">
                         {BH_TZ_OPTIONS.map(o => (
                           <button
                             key={o.value}
                             type="button"
                             onClick={() => { setBhData(p => ({ ...p, timezone: o.value })); setBhTzOpen(false); }}
-                            className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center justify-between ${o.value === bhData.timezone ? 'bg-blue-50 text-[#0B1957] font-semibold' : 'text-gray-700 hover:bg-gray-50'
-                              }`}
+                            className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center justify-between ${o.value === bhData.timezone ? 'bg-blue-900/40 text-blue-400 font-semibold' : 'text-gray-300 hover:bg-gray-700'}`}
                           >
                             <span>{o.label}</span>
                             {o.value === bhData.timezone && (
-                              <svg className="w-4 h-4 text-[#0B1957] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                              <svg className="w-4 h-4 text-blue-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                               </svg>
                             )}
@@ -520,12 +534,12 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({
               </div>
               {/* Active Days */}
               <div>
-                <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2">Active Days</p>
+                <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-2">Active Days</p>
                 <div className="relative">
                   <button
                     type="button"
                     onClick={() => { setBhDaysOpen(o => !o); setBhTzOpen(false); }}
-                    className="w-full flex items-center justify-between px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 font-medium hover:border-gray-300 hover:bg-white transition-all shadow-sm"
+                    className="w-full flex items-center justify-between px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-sm text-gray-300 font-medium hover:border-gray-600 hover:bg-gray-900/60 transition-all shadow-sm"
                   >
                     <span className="truncate pr-2">
                       {bhGetPreset(bhData.activeDays) === 'weekdays' ? 'Weekdays (Mon–Fri)'
@@ -533,12 +547,12 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({
                           : bhGetPreset(bhData.activeDays) === 'weekend' ? 'Weekends (Sat–Sun)'
                             : bhGetDayHint(bhData.activeDays)}
                     </span>
-                    <ChevronDown className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200 ${bhDaysOpen ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${bhDaysOpen ? 'rotate-180' : ''}`} />
                   </button>
                   {bhDaysOpen && (
                     <>
                       <div className="fixed inset-0 z-40" onClick={() => setBhDaysOpen(false)} />
-                      <div className="absolute right-0 z-50 bottom-full mb-1.5 w-[280px] bg-white border border-gray-200 rounded-xl shadow-xl p-3">
+                      <div className="absolute right-0 z-50 bottom-full mb-1.5 w-[280px] bg-gray-800 border border-gray-700 rounded-xl shadow-xl p-3">
                         {/* Presets */}
                         <div className="flex gap-1.5 flex-wrap mb-3">
                           {(['weekdays', 'all', 'weekend', 'custom'] as const).map(preset => (
@@ -546,9 +560,8 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({
                               key={preset}
                               onClick={() => bhApplyPreset(preset)}
                               className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all ${bhGetPreset(bhData.activeDays) === preset
-                                ? 'border-[#0B1957] text-[#0B1957] bg-blue-50'
-                                : 'border-gray-200 text-gray-500 bg-gray-50 hover:border-gray-400'
-                                }`}
+                                ? 'border-blue-500 text-blue-400 bg-blue-900/30'
+                                : 'border-gray-700 text-gray-400 bg-gray-900/60 hover:border-gray-500'}`}
                             >
                               {preset === 'weekdays' ? 'Weekdays' : preset === 'all' ? 'All Days' : preset === 'weekend' ? 'Weekends' : 'Custom'}
                             </button>
@@ -561,16 +574,15 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({
                               key={d}
                               onClick={() => bhToggleDay(i)}
                               className={`h-8 rounded-lg text-[10px] font-semibold border transition-all flex flex-col items-center justify-center gap-0.5 ${bhData.activeDays.includes(i)
-                                ? 'border-[#0B1957] text-[#0B1957] bg-blue-50 shadow-sm'
-                                : 'border-gray-200 text-gray-400 bg-gray-50 hover:border-gray-400 hover:text-gray-600'
-                                }`}
+                                ? 'border-blue-500 text-blue-400 bg-blue-900/30 shadow-sm'
+                                : 'border-gray-700 text-gray-500 bg-gray-900/60 hover:border-gray-500 hover:text-gray-300'}`}
                             >
                               <span>{d}</span>
-                              <span className={`w-1 h-1 rounded-full ${bhData.activeDays.includes(i) ? 'bg-[#0B1957]' : 'bg-transparent'}`} />
+                              <span className={`w-1 h-1 rounded-full ${bhData.activeDays.includes(i) ? 'bg-blue-400' : 'bg-transparent'}`} />
                             </button>
                           ))}
                         </div>
-                        <p className="text-[10px] text-gray-400 text-center mt-2">{bhGetDayHint(bhData.activeDays)}</p>
+                        <p className="text-[10px] text-gray-500 text-center mt-2">{bhGetDayHint(bhData.activeDays)}</p>
                       </div>
                     </>
                   )}
@@ -578,21 +590,20 @@ export const CompanySettings: React.FC<CompanySettingsProps> = ({
               </div>
             </div>
             {/* Summary */}
-            <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 flex items-center gap-3">
+            <div className="bg-blue-950/40 border border-blue-900/60 rounded-xl px-4 py-3 flex items-center gap-3">
               <span className="text-lg">📋</span>
               <div>
-                <p className="text-xs text-gray-400 uppercase tracking-wider font-medium">Schedule Summary</p>
-                <p className="text-sm font-semibold text-gray-800 mt-0.5">{bhGetSummary(bhData)}</p>
+                <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Schedule Summary</p>
+                <p className="text-sm font-semibold text-gray-200 mt-0.5">{bhGetSummary(bhData)}</p>
               </div>
             </div>
           </div>
         ) : (
-          <p className="text-gray-700 whitespace-pre-wrap">
+          <p className="text-gray-400 dark:text-gray-400 whitespace-pre-wrap">
             {companyData.businessHours || 'Not set'}
           </p>
         )}
       </div>
-
     </div>
   );
 };
