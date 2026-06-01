@@ -377,17 +377,17 @@ export default function TemplatesPage() {
         <div className="max-w-7xl mx-auto px-8">
           <div className="flex gap-8">
             {TABS.map(tab => (
-            <button
+              <button
                 key={tab.key}
-              onClick={() => setActiveTab('email')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'email'
-                  ? 'border-[#0b1957] text-[#0b1957] dark:text-[#60a5fa] dark:border-[#60a5fa]'
-                  : 'border-transparent text-gray-600 dark:text-[#7a8ba3] hover:text-gray-900 dark:hover:text-white'
-              }`}
-            >
-              {tab.label}
-            </button>
+                onClick={() => setActiveTab(tab.key)}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === tab.key
+                    ? 'border-[#0b1957] text-[#0b1957] dark:text-[#60a5fa] dark:border-[#60a5fa]'
+                    : 'border-transparent text-gray-600 dark:text-[#7a8ba3] hover:text-gray-900 dark:hover:text-white'
+                }`}
+              >
+                {tab.label}
+              </button>
             ))}
           </div>
         </div>
@@ -688,6 +688,11 @@ export default function TemplatesPage() {
           </div>
         )}
       </div>
+
+      {/* ── Modals ─────────────────────────────────────────────── */}
+      <CreateLinkedInTemplateModal open={liModalOpen} editing={liEditing} onClose={() => setLiModalOpen(false)} />
+      <CreateInstagramTemplateModal open={igModalOpen} editing={igEditing} onClose={() => setIgModalOpen(false)} />
+      <CreatePersonalWaTemplateModal open={wapaModalOpen} editing={wapaEditing} onClose={() => setWapaModalOpen(false)} onSaved={loadWapaTemplates} />
     </div>
   );
 }
