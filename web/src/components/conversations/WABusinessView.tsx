@@ -8,6 +8,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { useQueryClient } from '@tanstack/react-query';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -66,6 +67,24 @@ interface ContextStatusOption {
 function formatContextStatus(value: string): string {
   return value.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
+
+/** Tailwind classes per WABA conversation stage — mirrors the chip the older
+ *  ConversationListItem renders so the new WhatsApp UI shows the same stages
+ *  (greeting → info_gathering → booking_in_progress → booking_completed /
+ *  cancelled, plus human). Keyed by the lowercased context_status. */
+const WABA_STAGE_CHIP_COLORS: Record<string, string> = {
+  greeting:            'bg-blue-50 text-blue-700 border-blue-200',
+  info_gathering:      'bg-violet-50 text-violet-700 border-violet-200',
+  booking_in_progress: 'bg-amber-50 text-amber-700 border-amber-200',
+  booking_completed:   'bg-emerald-50 text-emerald-700 border-emerald-200',
+  cancelled:           'bg-rose-50 text-rose-700 border-rose-200',
+  human:               'bg-orange-50 text-orange-700 border-orange-200',
+  // legacy values still present on older rows
+  booked:              'bg-emerald-50 text-emerald-700 border-emerald-200',
+  qualified:           'bg-violet-50 text-violet-700 border-violet-200',
+  active:              'bg-violet-50 text-violet-700 border-violet-200',
+};
+const WABA_STAGE_CHIP_DEFAULT = 'bg-gray-50 text-gray-600 border-gray-200';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type AgentType = 'human' | 'ai';
@@ -2576,6 +2595,24 @@ function WABASidebar({
                       {time}
                     </span>
                   </div>
+                  {/* Conversation stage chip (context_status) — mirrors the
+                      older ConversationListItem badge so the new WhatsApp UI
+                      keeps showing the state-machine stage. */}
+                  {(() => {
+                    const stage = getConversationContextStatus(conv);
+                    if (!stage) return null;
+                    const colorCls = WABA_STAGE_CHIP_COLORS[stage.toLowerCase()] || WABA_STAGE_CHIP_DEFAULT;
+                    return (
+                      <div className="mb-0.5">
+                        <Badge
+                          variant="outline"
+                          className={cn('text-[9px] px-1.5 py-0 h-3.5 font-medium border', colorCls)}
+                        >
+                          {formatContextStatus(stage)}
+                        </Badge>
+                      </div>
+                    );
+                  })()}
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-1 min-w-0 overflow-hidden">
                       {(lastMsg?.isOutgoing || lastMsg?.role === 'assistant' || lastMsg?.role === 'human_agent') && !conv.unreadCount && (
