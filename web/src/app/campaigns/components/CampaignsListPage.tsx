@@ -262,17 +262,17 @@ export default function CampaignsListPage() {
         </div>
         <div className="flex gap-3 flex-col sm:flex-row">
           {/* Refresh LinkedIn accepted connections */}
-          <Button
-            onClick={handleRefreshConnections}
-            disabled={syncing}
-            variant="outline"
-            className="rounded-xl font-semibold px-3 py-1.5 w-full sm:w-auto border-[#0A66C2] text-[#0A66C2] hover:bg-[#0A66C2]/10 hover:cursor-pointer disabled:opacity-60"
-          >
-            <RefreshCw className={`w-4 h-4 mr-1 ${syncing ? "animate-spin" : ""}`} />
-            {syncing ? "Syncing..." : "Refresh Connections"}
-          </Button>
+
 
           <div className="flex gap-2 w-full sm:w-auto">
+            <Button
+                onClick={handleRefreshConnections}
+                disabled={syncing}
+                className="bg-[#0b1957] text-white rounded-xl font-semibold px-3 py-1.5 shadow-[0_4px_20px_rgba(11,25,87,0.3)] flex-1 sm:w-auto hover:bg-[#0a1540] hover:shadow-[0_8px_30px_rgba(11,25,87,0.5)] hover:cursor-pointer"
+            >
+              <RefreshCw className={`w-4 h-4 mr-1 ${syncing ? "animate-spin" : ""}`} />
+              {syncing ? "Syncing..." : "Refresh Connections"}
+            </Button>
             <Button
               onClick={() => router.push("/campaigns/templates/create")}
               className="bg-[#0b1957] text-white rounded-xl font-semibold px-3 py-1.5 shadow-[0_4px_20px_rgba(11,25,87,0.3)] flex-1 sm:w-auto hover:bg-[#0a1540] hover:shadow-[0_8px_30px_rgba(11,25,87,0.5)] hover:cursor-pointer"
