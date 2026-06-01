@@ -351,7 +351,7 @@ export default function TemplatesPage() {
   return (
     <div className="min-h-screen bg-[#F8F9FE] dark:bg-[#000724]">
       {/* Header */}
-      <div className="px-8">
+      <div className="px-4 md:px-8">
         <div className="mb-5 flex flex-col sm:flex-row justify-between mt-10 items-stretch sm:items-center gap-2 sm:gap-0">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -377,24 +377,24 @@ export default function TemplatesPage() {
         <div className="max-w-7xl mx-auto px-8">
           <div className="flex gap-8">
             {TABS.map(tab => (
-              <button
+            <button
                 key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === tab.key
-                    ? 'border-[#0b1957] text-[#0b1957] dark:text-[#60a5fa] dark:border-[#60a5fa]'
-                    : 'border-transparent text-gray-600 dark:text-[#7a8ba3] hover:text-gray-900 dark:hover:text-white'
-                }`}
-              >
-                {tab.label}
-              </button>
+              onClick={() => setActiveTab('email')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'email'
+                  ? 'border-[#0b1957] text-[#0b1957] dark:text-[#60a5fa] dark:border-[#60a5fa]'
+                  : 'border-transparent text-gray-600 dark:text-[#7a8ba3] hover:text-gray-900 dark:hover:text-white'
+              }`}
+            >
+              {tab.label}
+            </button>
             ))}
           </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="px-8 py-8">
+      <div className="px-4 md:px-8 py-8">
 
         {/* ── Email Tab ─────────────────────────────────────────── */}
         {activeTab === 'email' && (
@@ -688,11 +688,6 @@ export default function TemplatesPage() {
           </div>
         )}
       </div>
-
-      {/* ── Modals ─────────────────────────────────────────────── */}
-      <CreateLinkedInTemplateModal open={liModalOpen} editing={liEditing} onClose={() => setLiModalOpen(false)} />
-      <CreateInstagramTemplateModal open={igModalOpen} editing={igEditing} onClose={() => setIgModalOpen(false)} />
-      <CreatePersonalWaTemplateModal open={wapaModalOpen} editing={wapaEditing} onClose={() => setWapaModalOpen(false)} onSaved={loadWapaTemplates} />
     </div>
   );
 }
