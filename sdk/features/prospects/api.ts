@@ -1,0 +1,127 @@
+/**
+ * Prospects feature — API functions.
+ *
+ * All requests flow through the shared apiClient, which targets the app's own
+ * /api/* routes in browsers and the backend URL in SSR. The Next.js proxy at
+ * /api/prospects/* forwards to LAD-Master-Agent.
+ */
+import { apiGet, apiDelete, apiPost } from '../../shared/apiClient';
+import type {
+  ListProspectEventsParams,
+  ListProspectsParams,
+  ProspectEvent,
+  ProspectState,
+} from './types';
+
+function buildQuery(params?: object): string {
+  if (!params) return '';
+  const search = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== null && v !== '') {
+      search.append(k, String(v));
+    }
+  }
+  const s = search.toString();
+  return s ? `?${s}` : '';
+}
+
+export async function listProspects(
+  params?: ListProspectsParams,
+): Promise<ProspectState[]> {
+  const response = await apiGet<ProspectState[]>(
+    `/api/prospects${buildQuery(params)}`,
+  );
+  return response.data;
+}
+
+export async function getProspect(id: string): Promise<ProspectState> {
+  const response = await apiGet<ProspectState>(`/api/prospects/${id}`);
+  return response.data;
+}
+
+export async function listProspectEvents(
+  id: string,
+  params?: ListProspectEventsParams,
+): Promise<ProspectEvent[]> {
+  const response = await apiGet<ProspectEvent[]>(
+    `/api/prospects/${id}/events${buildQuery(params)}`,
+  );
+  return response.data;
+}
+
+/**
+ * Soft-delete a prospect ("not a fit"). The Master Agent sets is_deleted = TRUE,
+ * so it disappears from every list/detail read but the row is retained for audit.
+ */
+export async function deleteProspect(
+  id: string,
+  reason?: string,
+): Promise<{ id: string; deleted: boolean; reason?: string | null }> {
+  const qs = reason ? `?reason=${encodeURIComponent(reason)}` : '';
+  const response = await apiDelete<{ id: string; deleted: boolean; reason?: string | null }>(
+    `/api/prospects/${id}${qs}`,
+  );
+  return response.data;
+}
+
+/**
+ * On-demand LinkedIn profile enrichment (Option C). Triggers a Unipile
+ * profile fetch → company + employment history + warm-path signals. Best-effort;
+ * the Master Agent applies the result, so callers refetch the prospect after.
+ */
+export interface EnrichProspectResult {
+  enriched?: boolean;
+  skipped?: string;
+  company_name?: string | null;
+  network_distance?: string | null;
+  mutual_connections_count?: number | null;
+  experience_throttled?: boolean;
+}
+export async function enrichProspect(id: string): Promise<EnrichProspectResult> {
+  const response = await apiPost<EnrichProspectResult>(`/api/prospects/${id}/enrich`, {});
+  return response.data;
+}
+
+/** A queued automatic follow-up for a prospect (across channels). */
+export interface ProspectFollowup {
+  id: string;
+  channel: string | null;
+  type: string | null;
+  stage: string | null;
+  scheduled_time: string | null;
+  attempt: number | null;
+}
+
+/** Upcoming scheduled automatic follow-ups for the prospect. */
+export async function getProspectFollowups(id: string): Promise<ProspectFollowup[]> {
+  const response = await apiGet<{ prospect_id: string; followups: ProspectFollowup[] }>(
+    `/api/prospects/${id}/followups`,
+  );
+  return response.data.followups ?? [];
+}
+
+/**
+ * Apply a CRM "Take action" to a prospect.
+ *   doNotContact: hard-suppress (true) / lift the suppression (false)
+ *   quietDays:    pause outreach for N days (0 clears the pause)
+ */
+export interface ProspectActionParams {
+  doNotContact?: boolean;
+  quietDays?: number;
+}
+export interface ProspectActionResult {
+  id: string;
+  do_not_contact: boolean | null;
+  quiet_until: string | null;
+}
+export async function prospectAction(
+  id: string,
+  params: ProspectActionParams,
+): Promise<ProspectActionResult> {
+  const qs = buildQuery({
+    do_not_contact: params.doNotContact,
+    quiet_days: params.quietDays,
+  });
+  const response = await apiPost<ProspectActionResult>(`/api/prospects/${id}/action${qs}`, {});
+  return response.data;
+}
