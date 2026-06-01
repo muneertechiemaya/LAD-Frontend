@@ -98,15 +98,9 @@ export async function proxyToPythonService(
     // Direct route — no path transformation. Path-aware destination:
     //   /api/personal-whatsapp/*  → LAD-WAPA-Comms  (Phase 5+)
     //   anything else             → LAD_backend     (LinkedIn, billing, etc.)
-    // EXCEPTION: the System Prompts store (/api/personal-whatsapp/prompts*) is
-    // channel-agnostic config — the UI saves WABA / LinkedIn / Gmail / Instagram
-    // prompts through this same endpoint (channel is in the body) — and it lives
-    // in LAD_backend, so it must NOT follow the personal-whatsapp → WAPA rule.
-    const isPromptsStore = path.startsWith('/api/personal-whatsapp/prompts');
-    resolvedBaseUrl =
-      path.startsWith('/api/personal-whatsapp/') && !isPromptsStore
-        ? getWAPAServiceUrl()
-        : getBackendUrl();
+    resolvedBaseUrl = path.startsWith('/api/personal-whatsapp/')
+      ? getWAPAServiceUrl()
+      : getBackendUrl();
     resolvedPath = path;
   } else {
     // Fallback: use the passed-in baseUrl (backwards compat)
