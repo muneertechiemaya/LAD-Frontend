@@ -124,20 +124,12 @@ export const MessageList = memo(function MessageList({
     return items;
   }, [messages]);
 
-  const lastMessageId = messages.length > 0 ? messages[messages.length - 1].id : null;
-
   // Scroll to bottom on conversation switch (instant)
   useEffect(() => {
     if (!virtuosoRef.current || listItems.length === 0) return;
     virtuosoRef.current.scrollToIndex({ index: listItems.length - 1, behavior: 'auto' });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId]);
-
-  // Smooth scroll to bottom on new message
-  useEffect(() => {
-    if (!virtuosoRef.current || listItems.length === 0) return;
-    virtuosoRef.current.scrollToIndex({ index: listItems.length - 1, behavior: 'smooth' });
-  }, [lastMessageId, listItems.length]);
 
   // Scroll to bottom when typing indicator appears
   useEffect(() => {
@@ -197,7 +189,7 @@ export const MessageList = memo(function MessageList({
         style={{ flex: 1 }}
         totalCount={listItems.length}
         itemContent={itemContent}
-        followOutput="smooth"
+        followOutput="auto"
         alignToBottom
         className="custom-scrollbar"
         initialTopMostItemIndex={listItems.length - 1}

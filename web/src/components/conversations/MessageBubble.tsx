@@ -374,7 +374,7 @@ function AgentProfilePopover({
 
 export const MessageBubble = memo(function MessageBubble({
   message,
-  showAvatar = true,
+  showAvatar = false,
   contact,
   onAgentClick,
   onDeleteMessage,
@@ -388,7 +388,6 @@ export const MessageBubble = memo(function MessageBubble({
 
   // Determine the sender category
   const isAI = isOutgoing && role !== 'human_agent';
-  const isHumanAgent = isOutgoing && role === 'human_agent';
   const isLead = !isOutgoing;
 
   const handleAgentAvatarClick = (agentId?: string) => {
@@ -402,7 +401,7 @@ export const MessageBubble = memo(function MessageBubble({
   return (
     <div
       className={cn(
-        'flex gap-2 animate-message-pop group',
+        'flex gap-2 group',
         isOutgoing ? 'flex-row-reverse' : 'flex-row'
       )}
     >
@@ -481,13 +480,6 @@ export const MessageBubble = memo(function MessageBubble({
             </span>
           </div>
         )}
-        {/* Sender label for human-agent messages */}
-        {isHumanAgent && (
-          <p className="text-[10px] font-semibold text-violet-400 mb-0.5 uppercase tracking-wide">
-            {message.senderName || sender.name || 'Agent'}
-          </p>
-        )}
-
         {/* Message content — template, media, location, or plain text */}
         {message.templateName ? (
           <TemplateMessageBubble content={content} templateName={message.templateName} />
@@ -524,7 +516,7 @@ export const MessageBubble = memo(function MessageBubble({
         >
           <span
             className={cn(
-             'wa-msg-time text-[#a4a5a5]'
+             'wa-msg-time text-[#667781] dark:text-white/60'
             )}
           >
             {format(timestamp, 'h:mm a')}
@@ -534,10 +526,10 @@ export const MessageBubble = memo(function MessageBubble({
               className={cn(
                 'h-3 w-3',
                 status === 'read'
-                   ? 'text-[#68a4f6]'
+                   ? 'text-[#53bdeb]'
                   : status === 'failed'
                   ? 'text-red-400'
-                  : 'text-[#a4a5a5]'
+                  : 'text-[#667781] dark:text-[#8696a0]'
               )}
             />
           )}
