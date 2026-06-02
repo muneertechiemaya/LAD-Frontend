@@ -31,7 +31,6 @@
       "@lad/frontend-features/billing": ["../sdk/features/billing"],
       "@lad/frontend-features/campaigns": ["../sdk/features/campaigns"],
       "@lad/frontend-features/community-roi": ["../sdk/features/community-roi"],
-      "@lad/sdk/features/ai-icp-assistant": ["../sdk/features/ai-icp-assistant"],
       "@lad/frontend-features/conversations": ["../sdk/features/conversations"],
       "@lad/frontend-features/overview": ["../sdk/features/overview"],
       "@lad/frontend-features/voice-agent": ["../sdk/features/voice-agent"],
@@ -45,6 +44,7 @@
       "@lad/frontend-features/email-templates": ["../sdk/features/email-templates"],
       "@lad/frontend-features/email-senders": ["../sdk/features/email-senders"],
       "@lad/frontend-features/email-accounts": ["../sdk/features/email-accounts"],
+      "@lad/frontend-features/lad-monitor": ["../sdk/features/lad-monitor"],
       "@lad/shared/*": ["../sdk/shared/*"]
     }
   },

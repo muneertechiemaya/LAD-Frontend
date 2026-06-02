@@ -25,6 +25,8 @@ import {
   Palette,
   Pin,
   PinOff,
+  Contact,
+  Gauge,
 } from "lucide-react";
 import { NavLink } from "./NavLink";
 import { ThemeToggle } from "./ThemeToggle";
@@ -38,6 +40,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import LAD3DShowcase from "@/app/page";
+
+// Internal observability console is super-admin only — gated by email, matching
+// the backend `requireSuperAdmin` gate on /api/admin/monitor.
+const SUPER_ADMIN_EMAIL = (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'admin@techiemaya.com').toLowerCase();
+
 type RootState = {
   auth: {
     user: {
@@ -253,6 +260,13 @@ export function Sidebar() {
       requiredFeature: "deals-pipeline",
     },
     {
+      href: "/crm",
+      label: "CRM",
+      icon: Contact,
+      details: "Unified cross-channel prospects, leads and clients from the Master Agent.",
+      requiredCapability: "view_pipeline",
+    },
+    {
       href: "/follow-ups",
       label: "Follow-ups",
       icon: GitFork,
@@ -264,19 +278,21 @@ export function Sidebar() {
   ];
 
   // Helper: does the user have access to this nav item?
-  // An item is visible when ANY of the following matches:
-  //   • Admin / owner role → always
-  //   • requiredCapability is in user.capabilities[]
-  //   • requiredFeature    is in user.tenantFeatures[] (i.e. hasFeature)
+  // Tenant feature flag is the hard gate — if the tenant doesn't have the
+  // feature enabled, NO user of that tenant sees it (including owner/admin).
+  // Within an enabled feature, owner/admin see it automatically; other roles
+  // additionally need the matching capability.
   // Items without any required* field are public (always shown).
   const hasNavAccess = (item: NavItem): boolean => {
     if (!item.requiredCapability && !item.requiredFeature) return true;
+
+    // Tenant feature gate — applies to every role, no bypass.
+    if (item.requiredFeature && !hasFeature(item.requiredFeature)) return false;
+
     const isAdminOrOwner = user?.role === 'admin' || user?.role === 'owner';
     if (isAdminOrOwner) return true;
     const caps = user?.capabilities || [];
-    const capOk = !!item.requiredCapability && caps.includes(item.requiredCapability);
-    const featOk = !!item.requiredFeature    && hasFeature(item.requiredFeature);
-    return capOk || featOk;
+    return !!item.requiredCapability && caps.includes(item.requiredCapability);
   };
 
   // Filter navigation strictly. Previously we showed every item when the
@@ -284,12 +300,29 @@ export function Sidebar() {
   // Pipeline, Make a Call, …) to fresh accounts on first login. Now an
   // unassigned user sees an empty sidebar — the right signal to assign
   // them features in Settings → Team.
-  const nav = isHydrated
+  const baseNav = isHydrated
     ? allNavItems.filter(hasNavAccess).map(item => ({
         ...item,
         children: item.children?.filter(hasNavAccess),
       }))
     : []; // Empty during SSR to prevent hydration mismatch
+
+  // Super-admin-only entry to the internal observability console. Appended
+  // (not part of allNavItems) so it's strictly email-gated and never leaks to
+  // tenant users. The backend independently enforces the same gate.
+  const isSuperAdmin =
+    isHydrated && (user?.email || '').toLowerCase().trim() === SUPER_ADMIN_EMAIL;
+  const nav = isSuperAdmin
+    ? [
+        ...baseNav,
+        {
+          href: '/admin/monitor',
+          label: 'Platform Monitor',
+          icon: Gauge,
+          details: 'Internal cross-tenant observability (super-admin).',
+        },
+      ]
+    : baseNav;
   return (
     <>
       {/* Mobile Top Bar */}

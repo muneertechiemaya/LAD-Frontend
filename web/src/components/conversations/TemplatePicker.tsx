@@ -249,8 +249,15 @@ export function TemplatePicker({
     // WABA handles rate-limiting server-side — pass zeroes so the backend sends
     // without artificial throttling. Personal WA uses the user-configured schedule
     // to avoid account restrictions from rapid bulk sends.
+    // Guard against NaN values (a cleared number input puts NaN into state).
+    // Fall back to the same defaults the useState hooks use above.
     const scheduleParams = channel === 'personal'
-      ? { batchSize, delayMin, delayRandom, dailyLimit }
+      ? {
+          batchSize:   Number.isFinite(batchSize)   ? batchSize   : 5,
+          delayMin:    Number.isFinite(delayMin)    ? delayMin    : 120,
+          delayRandom: Number.isFinite(delayRandom) ? delayRandom : 30,
+          dailyLimit:  Number.isFinite(dailyLimit)  ? dailyLimit  : 250,
+        }
       : { batchSize: 0, delayMin: 0, delayRandom: 0, dailyLimit: 0 };
     onSend(
       selectedTemplate.name,
@@ -554,8 +561,12 @@ export function TemplatePicker({
                           <label className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">Batch Size</label>
                           <Input
                             type="number"
-                            value={batchSize}
-                            onChange={e => setBatchSize(parseInt(e.target.value))}
+                            value={Number.isFinite(batchSize) ? batchSize : ''}
+                            onChange={e => {
+                              const raw = e.target.value;
+                              const n = parseInt(raw, 10);
+                              setBatchSize(raw === '' || Number.isNaN(n) ? NaN : n);
+                            }}
                             className="h-10 rounded-lg border-amber-200 bg-white"
                           />
                         </div>
@@ -563,8 +574,12 @@ export function TemplatePicker({
                           <label className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">Delay (s)</label>
                           <Input
                             type="number"
-                            value={delayMin}
-                            onChange={e => setDelayMin(parseInt(e.target.value))}
+                            value={Number.isFinite(delayMin) ? delayMin : ''}
+                            onChange={e => {
+                              const raw = e.target.value;
+                              const n = parseInt(raw, 10);
+                              setDelayMin(raw === '' || Number.isNaN(n) ? NaN : n);
+                            }}
                             className="h-10 rounded-lg border-amber-200 bg-white"
                           />
                         </div>
@@ -572,8 +587,12 @@ export function TemplatePicker({
                           <label className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">Daily Cap</label>
                           <Input
                             type="number"
-                            value={dailyLimit}
-                            onChange={e => setDailyLimit(parseInt(e.target.value))}
+                            value={Number.isFinite(dailyLimit) ? dailyLimit : ''}
+                            onChange={e => {
+                              const raw = e.target.value;
+                              const n = parseInt(raw, 10);
+                              setDailyLimit(raw === '' || Number.isNaN(n) ? NaN : n);
+                            }}
                             className="h-10 rounded-lg border-amber-200 bg-white"
                           />
                         </div>

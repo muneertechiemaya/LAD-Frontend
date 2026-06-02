@@ -1,8 +1,10 @@
 /**
  * Proxy utility for forwarding Next.js API requests to the appropriate backend:
- *   - channel=personal  → LAD_backend (Node.js) for personal WhatsApp (Baileys)
+ *   - channel=personal  → LAD-WAPA-Comms (Node.js, Baileys; was LAD_backend pre-Phase 5)
  *   - channel=waba      → LAD-WABA-Comms (Python FastAPI) for WhatsApp Business API
  *   - channel=linkedin  → LAD_backend (Node.js) for LinkedIn via Unipile
+ *   - channel=backend   → LAD_backend OR LAD-WAPA-Comms (path-aware: any path
+ *                         starting with /api/personal-whatsapp/ goes to WAPA)
  *
  * The channel is determined by the `channel` query param or `X-WhatsApp-Channel` header.
  */
@@ -10,12 +12,22 @@ import { NextRequest, NextResponse } from 'next/server';
 
 // ── Service URL resolvers ───────────────────────────────────────────
 
-/** LAD_backend (Node.js) – personal WhatsApp via Baileys */
+/** LAD_backend (Node.js) – everything except personal WhatsApp post-Phase 5 */
 export function getBackendUrl(): string {
   return (
     process.env.BACKEND_INTERNAL_URL ||
     process.env.NEXT_PUBLIC_BACKEND_URL ||
     'http://localhost:3004'
+  );
+}
+
+/** LAD-WAPA-Comms (Node.js) – personal WhatsApp via Baileys (Phase 5+) */
+export function getWAPAServiceUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_WAPA_SERVICE_URL ||
+    process.env.WAPA_SERVICE_URL ||
+    process.env.WAPA_SERVICE_INTERNAL_URL ||
+    'http://localhost:18080'
   );
 }
 
@@ -69,9 +81,9 @@ export async function proxyToPythonService(
   let resolvedPath: string;
 
   if (channel === 'personal') {
-    // Personal WhatsApp → LAD_backend
+    // Personal WhatsApp → LAD-WAPA-Comms (was LAD_backend pre-Phase 5)
     // Transform: /api/conversations → /api/whatsapp-conversations/conversations
-    resolvedBaseUrl = getBackendUrl();
+    resolvedBaseUrl = getWAPAServiceUrl();
     resolvedPath = '/api/whatsapp-conversations' + path.replace(/^\/api/, '');
   } else if (channel === 'waba') {
     // WhatsApp Business API → LAD-WABA-Comms
@@ -83,9 +95,12 @@ export async function proxyToPythonService(
     resolvedBaseUrl = getBackendUrl();
     resolvedPath = '/api/linkedin-conversations' + path.replace(/^\/api/, '');
   } else if (channel === 'backend') {
-    // Direct Node.js backend route — no path transformation
-    // Use when the full API path is already specified (e.g. /api/personal-whatsapp/prompts)
-    resolvedBaseUrl = getBackendUrl();
+    // Direct route — no path transformation. Path-aware destination:
+    //   /api/personal-whatsapp/*  → LAD-WAPA-Comms  (Phase 5+)
+    //   anything else             → LAD_backend     (LinkedIn, billing, etc.)
+    resolvedBaseUrl = path.startsWith('/api/personal-whatsapp/')
+      ? getWAPAServiceUrl()
+      : getBackendUrl();
     resolvedPath = path;
   } else {
     // Fallback: use the passed-in baseUrl (backwards compat)
@@ -122,6 +137,20 @@ export async function proxyToPythonService(
     const tenantId = extractTenantIdFromJwt(token);
     if (tenantId) {
       headers['X-Tenant-ID'] = tenantId;
+    }
+  } else {
+    // Phase 5: WAPA (Node.js) actually verifies the JWT, unlike the Python WABA
+    // service which trusts X-Tenant-ID. If the browser only sent a cookie, lift
+    // it into the Authorization header so WAPA's JWT middleware accepts it.
+    const cookieToken =
+      req.cookies.get('access_token')?.value ||
+      req.cookies.get('token')?.value;
+    if (cookieToken) {
+      headers['Authorization'] = `Bearer ${cookieToken}`;
+      const tenantId = extractTenantIdFromJwt(cookieToken);
+      if (tenantId) {
+        headers['X-Tenant-ID'] = tenantId;
+      }
     }
   }
 

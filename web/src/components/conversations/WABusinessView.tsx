@@ -3195,8 +3195,9 @@ export function WABusinessView({
   isSidebarCollapsed: boolean;
   setIsSidebarCollapsed: (val: boolean) => void;
 }) {
-  // WhatsApp Business (WABA) view — route all data (conversations, chat-groups,
-  // context-statuses, messages) to the WABA backend, not personal WhatsApp.
+  // WABusinessView is the WhatsApp Business tab — it must always use the WABA
+  // channel (routes to LAD-WABA-Comms). Hardcoding 'personal' here sent every
+  // request to the empty personal service and showed "No chats found".
   const channel = 'waba';
   const queryClient = useQueryClient();
   const [isMobileViewport, setIsMobileViewport] = useState(false);
