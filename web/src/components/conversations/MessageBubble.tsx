@@ -266,7 +266,7 @@ function AiAvatar() {
   const { isDark } = useTheme();
   return (
     <img
-      src={isDark ? '/MrLAD-logo-white.svg' : '/MrLAD-logo-dark.svg'}
+      src={isDark ? '/logo-white.svg' : '/logo.svg'}
       alt="Mr LAD"
       className="h-8 w-8 object-contain shrink-0"
     />

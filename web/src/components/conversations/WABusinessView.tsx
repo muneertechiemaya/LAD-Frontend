@@ -1601,18 +1601,18 @@ const allMessages = useMemo(
                   'h-9 w-9 flex items-center justify-center rounded-full transition-colors hover:bg-muted flex-shrink-0',
                   agentType === 'human' && 'text-orange-500'
                 )}
-                title={agentType === 'human' ? 'Human agent — tap to hand back to Mr LAD' : 'Mr LAD (AI) is replying — tap to take over'}
+                title={agentType === 'human' ? 'Human agent — tap to hand back to Mr LAD' : 'Mr LAD is replying — tap to take over'}
               >
-                {agentType === 'human' ? <User className="h-5 w-5" /> : <img src={isDark ? '/MrLAD-logo-white.svg' : '/MrLAD-logo-dark.svg'} alt="Mr LAD" className="h-7 w-7 object-contain" />}
+                {agentType === 'human' ? <User className="h-5 w-5" /> : <img src={isDark ? '/logo-white.svg' : '/logo.svg'} alt="Mr LAD" className="h-7 w-7 object-contain" />}
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="bg-popover z-50">
-              <DropdownMenuItem onClick={() => handleAgentTypeChange('human')} className={cn(agentType === 'human' && 'bg-accent')}>
+              <DropdownMenuItem onClick={() => handleAgentTypeChange('human')} className={cn('cursor-pointer focus:bg-muted focus:text-foreground dark:focus:text-white', agentType === 'human' && 'bg-muted')}>
                 <User className="h-4 w-4 mr-2" /> Human Agent
                 {agentType === 'human' && <span className="ml-auto text-xs text-muted-foreground">Active</span>}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleAgentTypeChange('ai')} className={cn(agentType === 'ai' && 'bg-accent')}>
-                <MrLadAvatar size={16} className="mr-2" /> Mr LAD (AI)
+              <DropdownMenuItem onClick={() => handleAgentTypeChange('ai')} className={cn('cursor-pointer focus:bg-muted focus:text-foreground dark:focus:text-white', agentType === 'ai' && 'bg-muted')}>
+                <MrLadAvatar size={16} className="mr-2" /> Mr LAD
                 {agentType === 'ai' && <span className="ml-auto text-xs text-muted-foreground">Active</span>}
               </DropdownMenuItem>
             </DropdownMenuContent>
