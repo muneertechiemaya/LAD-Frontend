@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MrLadAvatar } from './MrLadAvatar';
+import { useTheme } from '@/contexts/ThemeContext';
 
 // ── Location card renderer ───────────────────────────────────────────────────
 function LocationCard({
@@ -261,9 +261,16 @@ const statusIcons = {
 
 // ── Avatar components ────────────────────────────────────────────────────────
 
-/** MR LAD animated visualizer — shown for AI-generated messages */
+/** Mr LAD logo — shown for AI-generated messages (theme-aware) */
 function AiAvatar() {
-  return <MrLadAvatar size={32} className="ring-1 ring-[#5b7fe8]/30" />;
+  const { isDark } = useTheme();
+  return (
+    <img
+      src={isDark ? '/MrLAD-logo-white.svg' : '/MrLAD-logo-dark.svg'}
+      alt="Mr LAD"
+      className="h-8 w-8 object-contain shrink-0"
+    />
+  );
 }
 
 /** Lead avatar — WhatsApp profile pic or first letter of name */

@@ -8,7 +8,6 @@ import { formatDistanceToNow } from 'date-fns';
 import { useQueryClient } from '@tanstack/react-query';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -22,6 +21,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuCheckboxItem,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu';
 import { MessageList } from './MessageList';
 import { ConversationContextPanel } from './ConversationContextPanel';
@@ -37,6 +39,9 @@ import { TemplatePicker } from './TemplatePicker';
 import { ImportLeadsDialog } from './ImportLeadsDialog';
 import { ChatGroupManager, AddToGroupDropdown, type ChatGroup } from './ChatGroupManager';
 import { CreateBroadcastGroupModal } from './CreateBroadcastGroupModal';
+import { MessageSettings } from './MessageSettings';
+import { MrLadAvatar } from './MrLadAvatar';
+import { useTheme } from '@/contexts/ThemeContext';
 
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -45,11 +50,11 @@ import {
 } from '@/components/ui/alert-dialog';
 
 import {
-  X, Video, Phone, Ban, ThumbsDown, Trash2, Bot, User, Camera, Music, MapPin, BarChart2, Star as StarIcon,
+  X, Video, Phone, Ban, ThumbsDown, Trash2, User, Camera, Music, MapPin, BarChart2, Star as StarIcon,
   MoreHorizontal, Smile, Paperclip, Mic, Send, MessageSquare, MessageSquarePlus, CheckCheck,
   Search, PlusSquare, MoreVertical, ArrowLeft, Grip, UserPlus, Users, Plus, FileText, ChevronDown, ChevronLeft,
   Pencil, Image as ImageIcon, Star, Bell, Clock, Shield, Lock, Heart, List, MinusCircle, ChevronRight,
-  Info, CheckSquare, BellOff, XCircle, Link, Calendar, ListChecks, LogOut, RefreshCw, LayoutTemplate,
+  Info, CheckSquare, BellOff, XCircle, Calendar, ListChecks, LogOut, RefreshCw, LayoutTemplate,
   // ── New icons for sort/filter toolbar ──
   ArrowDownUp, EyeOff, Eye, Hash, Tag, Filter,
   // ── New icons for rich New Chat overlay ──
@@ -68,23 +73,23 @@ function formatContextStatus(value: string): string {
   return value.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-/** Tailwind classes per WABA conversation stage — mirrors the chip the older
- *  ConversationListItem renders so the new WhatsApp UI shows the same stages
- *  (greeting → info_gathering → booking_in_progress → booking_completed /
- *  cancelled, plus human). Keyed by the lowercased context_status. */
-const WABA_STAGE_CHIP_COLORS: Record<string, string> = {
-  greeting:            'bg-blue-50 text-blue-700 border-blue-200',
-  info_gathering:      'bg-violet-50 text-violet-700 border-violet-200',
-  booking_in_progress: 'bg-amber-50 text-amber-700 border-amber-200',
-  booking_completed:   'bg-emerald-50 text-emerald-700 border-emerald-200',
-  cancelled:           'bg-rose-50 text-rose-700 border-rose-200',
-  human:               'bg-orange-50 text-orange-700 border-orange-200',
+/** Solid colour per WABA conversation stage, shown as a small WhatsApp-style
+ *  label tag on each conversation row (colour only — the stage name shows on
+ *  hover and in the filter, not repeated as text on every row). Keyed by the
+ *  lowercased context_status. */
+const WABA_STAGE_TAG_HEX: Record<string, string> = {
+  greeting:            '#3b82f6', // blue
+  info_gathering:      '#8b5cf6', // violet
+  booking_in_progress: '#f59e0b', // amber
+  booking_completed:   '#10b981', // emerald
+  cancelled:           '#f43f5e', // rose
+  human:               '#f97316', // orange
   // legacy values still present on older rows
-  booked:              'bg-emerald-50 text-emerald-700 border-emerald-200',
-  qualified:           'bg-violet-50 text-violet-700 border-violet-200',
-  active:              'bg-violet-50 text-violet-700 border-violet-200',
+  booked:              '#10b981',
+  qualified:           '#8b5cf6',
+  active:              '#8b5cf6',
 };
-const WABA_STAGE_CHIP_DEFAULT = 'bg-gray-50 text-gray-600 border-gray-200';
+const WABA_STAGE_TAG_DEFAULT = '#9ca3af'; // gray
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type AgentType = 'human' | 'ai';
@@ -701,12 +706,64 @@ function WABAChatWindow({
   backendChannel,
 }: WABAChatWindowProps) {
   const [text, setText] = useState('');
+  const { isDark } = useTheme();
   const [agentType, setAgentType] = useState<AgentType>(owner === 'human_agent' ? 'human' : 'ai');
   const [showTakeoverDialog, setShowTakeoverDialog] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [showStickers, setShowStickers] = useState(false);
   const [showPoll, setShowPoll] = useState(false);
   const [showContact, setShowContact] = useState(false);
+
+  // ── "Add to Group" (broadcast groups) ───────────────────────────────────
+  const [addGroups, setAddGroups] = useState<{ id: string; name: string; conversation_count?: number }[]>([]);
+  const [addGroupsLoading, setAddGroupsLoading] = useState(false);
+  const [addGroupsLoaded, setAddGroupsLoaded] = useState(false);
+  const [addingGroupId, setAddingGroupId] = useState<string | null>(null);
+  const [groupActionNote, setGroupActionNote] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const loadAddGroups = useCallback(async () => {
+    if (addGroupsLoaded || addGroupsLoading) return;
+    setAddGroupsLoading(true);
+    try {
+      const res = await fetchWithTenant(`/api/whatsapp-conversations/chat-groups?channel=${backendChannel || 'waba'}`);
+      const data = await res.json();
+      const rows = Array.isArray(data?.data) ? data.data : [];
+      setAddGroups(
+        rows.map((g: { id: string | number; name: string; conversation_count?: number }) => ({
+          id: String(g.id),
+          name: g.name,
+          conversation_count: g.conversation_count,
+        })),
+      );
+      setAddGroupsLoaded(true);
+    } catch {
+      setGroupActionNote({ ok: false, text: 'Could not load groups' });
+    } finally {
+      setAddGroupsLoading(false);
+    }
+  }, [addGroupsLoaded, addGroupsLoading, backendChannel]);
+
+  const handleAddToGroup = useCallback(async (groupId: string, groupName: string) => {
+    if (!conversationId || addingGroupId) return;
+    setAddingGroupId(groupId);
+    setGroupActionNote(null);
+    try {
+      const res = await fetchWithTenant(
+        `/api/whatsapp-conversations/chat-groups/${groupId}/conversations?channel=${backendChannel || 'waba'}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ conversation_ids: [conversationId] }),
+        },
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setGroupActionNote({ ok: true, text: `Added to “${groupName}”` });
+    } catch {
+      setGroupActionNote({ ok: false, text: `Couldn't add to “${groupName}”` });
+    } finally {
+      setAddingGroupId(null);
+    }
+  }, [conversationId, addingGroupId, backendChannel]);
   const [showEvent, setShowEvent] = useState(false);
   const [showLocation, setShowLocation] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
@@ -1309,26 +1366,40 @@ const allMessages = useMemo(
                     <div className="flex items-center gap-4"><BellOff className="w-4 h-4" /> <span>Mute notifications</span></div>
                     <ChevronRight className="w-4 h-4" />
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="focus:bg-accent dark:focus:bg-[#182229] focus:text-white dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4">
-                    <Clock className="w-4 h-4" /> <span>Disappearing messages</span>
-                  </DropdownMenuItem>
                   <DropdownMenuItem className="focus:bg-accent dark:focus:bg-[#182229] focus:text-white dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4" onClick={() => onFavoriteChat?.(conversation?.id)}>
                     <Heart className="w-4 h-4" /> <span>Add to favourites</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="focus:bg-accent dark:focus:bg-[#182229] focus:text-white dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4">
-                    <List className="w-4 h-4" /> <span>Add to list</span>
-                  </DropdownMenuItem>
+                  <DropdownMenuSub onOpenChange={(o) => { if (o) loadAddGroups(); }}>
+                    <DropdownMenuSubTrigger className="focus:bg-accent dark:focus:bg-[#182229] focus:text-white dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4">
+                      <Users className="w-4 h-4" /> <span>Add to Group</span>
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="max-h-72 w-56 overflow-y-auto bg-white dark:bg-[#161717] border border-border dark:border-0 shadow-lg text-foreground dark:text-[#d1d7db]">
+                      {addGroupsLoading ? (
+                        <DropdownMenuItem disabled className="py-2.5 px-4 text-muted-foreground">Loading…</DropdownMenuItem>
+                      ) : addGroups.length === 0 ? (
+                        <DropdownMenuItem disabled className="py-2.5 px-4 text-muted-foreground">No broadcast groups</DropdownMenuItem>
+                      ) : (
+                        addGroups.map((g) => (
+                          <DropdownMenuItem
+                            key={g.id}
+                            disabled={addingGroupId !== null}
+                            onSelect={(e) => { e.preventDefault(); handleAddToGroup(g.id, g.name); }}
+                            className="focus:bg-accent dark:focus:bg-[#182229] cursor-pointer py-2.5 px-4 flex items-center justify-between gap-4"
+                          >
+                            <span className="truncate">{g.name}</span>
+                            {addingGroupId === g.id
+                              ? <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                              : <span className="text-[10px] text-muted-foreground shrink-0">{g.conversation_count ?? 0}</span>}
+                          </DropdownMenuItem>
+                        ))
+                      )}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
                   <DropdownMenuItem className="focus:bg-accent dark:focus:bg-[#182229] focus:text-white dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4" onClick={() => onCloseChat?.(conversation?.id)}>
                     <XCircle className="w-4 h-4" /> <span>Close chat</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem className="focus:bg-accent dark:focus:bg-[#182229] focus:text-white dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4">
-                    <Link className="w-4 h-4" /> <span>Send call link</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="focus:bg-accent dark:focus:bg-[#182229] focus:text-white dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4">
                     <Calendar className="w-4 h-4" /> <span>Schedule call</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="focus:bg-accent dark:focus:bg-[#182229] focus:text-white dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4">
-                    <ThumbsDown className="w-4 h-4" /> <span>Report</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem className="focus:bg-accent dark:focus:bg-[#182229] focus:text-white dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4" onClick={() => onBlockChat?.(conversation?.id)}>
                     <Ban className="w-4 h-4" /> <span>Block</span>
@@ -1436,31 +1507,6 @@ const allMessages = useMemo(
 
           {/* ── Left icons — outside the pill ── */}
 
-          {/* Agent type toggle */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className={cn(
-                  'h-9 w-9 flex items-center justify-center rounded-full transition-colors hover:bg-muted flex-shrink-0',
-                  agentType === 'human' ? 'text-orange-500' : 'text-green-500'
-                )}
-                title={agentType === 'human' ? 'Human agent' : 'AI agent'}
-              >
-                {agentType === 'human' ? <User className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="bg-popover z-50">
-              <DropdownMenuItem onClick={() => handleAgentTypeChange('human')} className={cn(agentType === 'human' && 'bg-accent')}>
-                <User className="h-4 w-4 mr-2" /> Human Agent
-                {agentType === 'human' && <span className="ml-auto text-xs text-muted-foreground">Active</span>}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleAgentTypeChange('ai')} className={cn(agentType === 'ai' && 'bg-accent')}>
-                <Bot className="h-4 w-4 mr-2" /> AI Agent
-                {agentType === 'ai' && <span className="ml-auto text-xs text-muted-foreground">Active</span>}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
           {/* Attach menu */}
           <div ref={attachBtnRef} className="relative flex-shrink-0">
             <button
@@ -1533,7 +1579,7 @@ const allMessages = useMemo(
             <LayoutTemplate className="w-5 h-5" />
           </button>
 
-          {/* ── Pill — text input + send/mic only ── */}
+          {/* ── Pill — text input only ── */}
           <div className="flex-1 flex items-center bg-[#f0f2f5] dark:bg-[#2e2f2f] rounded-full px-4 h-[44px] gap-2">
             <Textarea
               ref={textareaRef}
@@ -1544,13 +1590,41 @@ const allMessages = useMemo(
               className="flex-1 bg-transparent border-0 text-foreground dark:text-[#e9edef] py-2.5 px-0 text-[15px] focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-[#8696a0] dark:placeholder:text-[#a2a2a2] resize-none min-h-[24px] max-h-[120px] self-center"
               rows={1}
             />
-            <div className="shrink-0 cursor-pointer transition-colors" onClick={handleSend}>
-              {isSending
-                ? <Loader2 className="w-6 h-6 text-[#00a884] animate-spin" />
-                : (text.trim() || pendingFiles.length > 0)
-                ? <Send className="w-6 h-6 text-[#00a884] hover:text-[#008f6f]" />
-                : <Mic className="w-6 h-6 text-muted-foreground dark:text-white hover:text-foreground" />}
-            </div>
+          </div>
+
+          {/* ── Right controls — AI take-over (Mr LAD) + send/mic, WhatsApp-style ── */}
+          {/* Agent type toggle — Mr LAD for AI; tap to hand control between AI and a human agent */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className={cn(
+                  'h-9 w-9 flex items-center justify-center rounded-full transition-colors hover:bg-muted flex-shrink-0',
+                  agentType === 'human' && 'text-orange-500'
+                )}
+                title={agentType === 'human' ? 'Human agent — tap to hand back to Mr LAD' : 'Mr LAD (AI) is replying — tap to take over'}
+              >
+                {agentType === 'human' ? <User className="h-5 w-5" /> : <img src={isDark ? '/MrLAD-logo-white.svg' : '/MrLAD-logo-dark.svg'} alt="Mr LAD" className="h-7 w-7 object-contain" />}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="bg-popover z-50">
+              <DropdownMenuItem onClick={() => handleAgentTypeChange('human')} className={cn(agentType === 'human' && 'bg-accent')}>
+                <User className="h-4 w-4 mr-2" /> Human Agent
+                {agentType === 'human' && <span className="ml-auto text-xs text-muted-foreground">Active</span>}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleAgentTypeChange('ai')} className={cn(agentType === 'ai' && 'bg-accent')}>
+                <MrLadAvatar size={16} className="mr-2" /> Mr LAD (AI)
+                {agentType === 'ai' && <span className="ml-auto text-xs text-muted-foreground">Active</span>}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Send / mic */}
+          <div className="shrink-0 cursor-pointer transition-colors h-9 w-9 flex items-center justify-center" onClick={handleSend}>
+            {isSending
+              ? <Loader2 className="w-6 h-6 text-[#00a884] animate-spin" />
+              : (text.trim() || pendingFiles.length > 0)
+              ? <Send className="w-6 h-6 text-[#00a884] hover:text-[#008f6f]" />
+              : <Mic className="w-6 h-6 text-muted-foreground dark:text-white hover:text-foreground" />}
           </div>
 
         </div>
@@ -1559,6 +1633,18 @@ const allMessages = useMemo(
           <div className="mt-1.5 px-3 py-1.5 rounded-md text-xs flex items-center justify-between gap-2 bg-red-50 text-red-700 border border-red-200">
             <span>{sendError || ownershipError}</span>
             <button type="button" onClick={() => { setSendError(null); setOwnershipError(null); }} className="text-red-500 hover:text-red-700">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+
+        {groupActionNote && (
+          <div className={cn(
+            'mt-1.5 px-3 py-1.5 rounded-md text-xs flex items-center justify-between gap-2 border',
+            groupActionNote.ok ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'
+          )}>
+            <span>{groupActionNote.text}</span>
+            <button type="button" onClick={() => setGroupActionNote(null)} className="hover:opacity-70">
               <X className="h-3.5 w-3.5" />
             </button>
           </div>
@@ -1612,7 +1698,7 @@ interface WABASidebarProps {
   activeLastMsg?: Message | null;
 }
 
-type FilterTab = 'all' | 'unread' | 'favourites' | 'groups';
+type FilterTab = 'all' | 'unread' | 'favourites';
 
 function WABASidebar({
   conversations,
@@ -1700,6 +1786,8 @@ function WABASidebar({
 
   // ── Group manager dialog ───────────────────────────────────────────────
   const [isGroupManagerOpen, setIsGroupManagerOpen] = useState(false);
+  // ── Message settings dialog (reply delay + inbound debounce) ────────────
+  const [showMessageSettings, setShowMessageSettings] = useState(false);
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
   const [createGroupIds, setCreateGroupIds] = useState<string[]>([]);
 
@@ -2018,7 +2106,6 @@ function WABASidebar({
       if (filterTab === 'unread') return Boolean(conv.unreadCount && conv.unreadCount > 0);
       const extendedConv = conv as Conversation & { isFavorite?: boolean; favorite?: boolean; is_group?: boolean; isGroup?: boolean; groupId?: string };
       if (filterTab === 'favourites') return Boolean(extendedConv.is_favorite || extendedConv.isFavorite || extendedConv.favorite);
-      if (filterTab === 'groups') return Boolean(extendedConv.is_group || extendedConv.isGroup || extendedConv.groupId);
       if (hideEmpty && !conv.lastMessage && !conv.messageCount && !conv.messages?.length) return false;
       if (contextStatusFilter !== 'all' && getConversationContextStatus(conv) !== contextStatusFilter) return false;
       if (selectedLabelIds.length > 0) {
@@ -2164,6 +2251,13 @@ function WABASidebar({
                 <DropdownMenuItem className="focus:bg-muted dark:focus:bg-muted hover:bg-muted dark:hover:bg-muted focus:text-foreground dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4">
                   <ListChecks className="w-4 h-4" /><span>Mark all as read</span>
                 </DropdownMenuItem>
+                <DropdownMenuSeparator className="my-1 bg-border dark:bg-[#222d34]" />
+                <DropdownMenuItem
+                  className="focus:bg-muted dark:focus:bg-muted hover:bg-muted dark:hover:bg-muted focus:text-foreground dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4"
+                  onClick={() => setShowMessageSettings(true)}
+                >
+                  <Clock className="w-4 h-4" /><span>Message settings</span>
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 
@@ -2208,9 +2302,9 @@ function WABASidebar({
         </div>
       </div>
 
-      {/* Filter Chips (All / Unread / Favourites / Groups) + Sort/Filter */}
+      {/* Filter Chips (All / Unread / Favourites) + Sort/Filter */}
       <div className="px-4 pb-3 flex items-center gap-2 overflow-x-auto no-scrollbar border-b border-border dark:border-[#222d34]/80">
-        {(['all', 'unread', 'favourites', 'groups'] as FilterTab[]).map((tab) => (
+        {(['all', 'unread', 'favourites'] as FilterTab[]).map((tab) => (
           <button
             key={tab}
             onClick={() => setFilterTab(tab)}
@@ -2224,35 +2318,6 @@ function WABASidebar({
             {tab === 'unread' ? `Unread${unreadCount > 0 ? ` ${unreadCount}` : ''}` : tab.charAt(0).toUpperCase() + tab.slice(1)}
           </button>
         ))}
-
-        {/* ── Sort button — same pill style ── */}
-        {onSortByChange && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className={cn(
-                'px-3 py-1.5 rounded-full text-[14px] font-medium whitespace-nowrap shrink-0 transition-colors border flex items-center gap-1',
-                'bg-muted/50 dark:bg-[#161717] dark:border-[#2e2f2f] text-muted-foreground dark:text-[#a2a2a2] hover:bg-muted dark:hover:bg-[#2a3942]'
-              )}>
-                <ArrowDownUp className="h-3.5 w-3.5" />
-                {sortBy === 'message_count' ? 'Size' : sortBy === 'name' ? 'Name' : 'Date'}
-                <ChevronDown className="h-3 w-3 opacity-60" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-44 bg-white dark:bg-[#161717] border border-border dark:border-0 shadow-lg text-foreground dark:text-[#d1d7db]">
-              <DropdownMenuLabel className="text-xs">Sort by</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => onSortByChange('date')} className={cn('text-xs cursor-pointer', sortBy === 'date' && 'bg-[#0a332c] dark:bg-[#1a342a] text-[#00a884]')}>
-                <Calendar className="h-3.5 w-3.5 mr-2" /> Date (most recent)
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onSortByChange('message_count')} className={cn('text-xs cursor-pointer', sortBy === 'message_count' && 'bg-[#0a332c] dark:bg-[#1a342a] text-[#00a884]')}>
-                <Hash className="h-3.5 w-3.5 mr-2" /> Size (most messages)
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onSortByChange('name')} className={cn('text-xs cursor-pointer', sortBy === 'name' && 'bg-[#0a332c] dark:bg-[#1a342a] text-[#00a884]')}>
-                <ArrowDownUp className="h-3.5 w-3.5 mr-2" /> Name (A → Z)
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
 
         {/* ── Hide Empty button — same pill style ── */}
         {onHideEmptyChange && (
@@ -2271,8 +2336,8 @@ function WABASidebar({
           </button>
         )}
 
-        {/* ── Labels dropdown — same pill style ── */}
-        {onLabelFilterChange && allLabels.length > 0 && (
+        {/* ── Labels filter — hidden for now (code kept, gated off for easy re-enable) ── */}
+        {false && onLabelFilterChange && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className={cn(
@@ -2283,9 +2348,10 @@ function WABASidebar({
               )}>
                 <Tag className="h-3.5 w-3.5" />
                 {selectedLabelIds.length > 0 ? `${selectedLabelIds.length} label${selectedLabelIds.length === 1 ? '' : 's'}` : 'Labels'}
+                <ChevronDown className="h-3 w-3 opacity-60" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 max-h-80 overflow-y-auto bg-white dark:bg-[#161717] border border-border dark:border-0 shadow-lg">
+            <DropdownMenuContent align="start" className="w-56 max-h-80 overflow-y-auto bg-white dark:bg-[#161717] border border-border dark:border-0 shadow-lg">
               <DropdownMenuLabel className="flex items-center justify-between text-xs">
                 <span>Filter by label</span>
                 {selectedLabelIds.length > 0 && (
@@ -2293,43 +2359,101 @@ function WABASidebar({
                 )}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {allLabels.map((l) => (
-                <DropdownMenuCheckboxItem
-                  key={l.id}
-                  checked={selectedLabelIds.includes(l.id)}
-                  onCheckedChange={() => toggleLabel(l.id)}
-                  onSelect={(e) => e.preventDefault()}
-                  className="text-xs"
-                >
-                  <span className="inline-block w-2.5 h-2.5 rounded-full mr-2 flex-shrink-0" style={{ backgroundColor: l.color }} />
-                  <span className="truncate">{l.name}</span>
-                </DropdownMenuCheckboxItem>
-              ))}
+              {allLabels.length === 0 ? (
+                <DropdownMenuItem disabled className="text-xs text-muted-foreground">No labels yet</DropdownMenuItem>
+              ) : (
+                allLabels.map((l) => (
+                  <DropdownMenuCheckboxItem
+                    key={l.id}
+                    checked={selectedLabelIds.includes(l.id)}
+                    onCheckedChange={() => toggleLabel(l.id)}
+                    onSelect={(e) => e.preventDefault()}
+                    className="text-xs"
+                  >
+                    <Tag className="h-3.5 w-3.5 mr-2 shrink-0" fill={l.color} style={{ color: l.color }} />
+                    <span className="truncate">{l.name}</span>
+                  </DropdownMenuCheckboxItem>
+                ))
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         )}
 
-        {/* ── Context Status chips — inline in the same row ── */}
-        {contextStatuses.map(({ value, label, count }) => (
-          <button
-            type="button"
-            key={value}
-            onClick={() => onContextStatusFilterChange?.(value)}
-            className={cn(
-              'px-3 py-1.5 rounded-full text-[14px] font-medium whitespace-nowrap shrink-0 transition-colors border',
-              contextStatusFilter === value
-                ? 'bg-[#00a884] text-white border-transparent'
-                : 'bg-muted/50 dark:bg-[#161717] dark:border-[#2e2f2f] text-muted-foreground dark:text-[#a2a2a2] hover:bg-muted dark:hover:bg-[#2a3942]'
-            )}
-          >
-            {label}
-            {count > 0 && (
-              <span className={cn('ml-1 text-[10px]', contextStatusFilter === value ? 'opacity-80' : 'opacity-60')}>
-                {count}
-              </span>
-            )}
-          </button>
-        ))}
+        {/* ── Stage (context status) dropdown ── */}
+        {onContextStatusFilterChange && contextStatuses.length > 0 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className={cn(
+                'px-3 py-1.5 rounded-full text-[14px] font-medium whitespace-nowrap shrink-0 transition-colors border flex items-center gap-1',
+                contextStatusFilter && contextStatusFilter !== 'all'
+                  ? 'bg-[#00a884] text-white border-transparent'
+                  : 'bg-muted/50 dark:bg-[#161717] dark:border-[#2e2f2f] text-muted-foreground dark:text-[#a2a2a2] hover:bg-muted dark:hover:bg-[#2a3942]'
+              )}>
+                <Filter className="h-3.5 w-3.5" />
+                {contextStatusFilter && contextStatusFilter !== 'all' ? formatContextStatus(contextStatusFilter) : 'Stage'}
+                <ChevronDown className="h-3 w-3 opacity-60" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56 max-h-80 overflow-y-auto bg-white dark:bg-[#161717] border border-border dark:border-0 shadow-lg">
+              <DropdownMenuLabel className="flex items-center justify-between text-xs">
+                <span>Filter by stage</span>
+                {contextStatusFilter && contextStatusFilter !== 'all' && (
+                  <button onClick={() => onContextStatusFilterChange('all')} className="text-[10px] text-muted-foreground hover:text-foreground">Clear</button>
+                )}
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => onContextStatusFilterChange('all')}
+                className={cn('text-xs cursor-pointer', (!contextStatusFilter || contextStatusFilter === 'all') && 'bg-[#0a332c] dark:bg-[#1a342a] text-[#00a884]')}
+              >
+                All stages
+              </DropdownMenuItem>
+              {contextStatuses.map(({ value, label, count }) => {
+                const tagColor = WABA_STAGE_TAG_HEX[value.toLowerCase()] || WABA_STAGE_TAG_DEFAULT;
+                return (
+                  <DropdownMenuItem
+                    key={value}
+                    onClick={() => onContextStatusFilterChange(value)}
+                    className={cn('text-xs cursor-pointer flex items-center gap-2', contextStatusFilter === value && 'bg-[#0a332c] dark:bg-[#1a342a] text-[#00a884]')}
+                  >
+                    <Tag className="h-3.5 w-3.5 shrink-0" fill={tagColor} style={{ color: tagColor }} />
+                    <span className="truncate flex-1">{label}</span>
+                    {count > 0 && <span className="text-[10px] text-muted-foreground">{count}</span>}
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+
+        {/* ── Sort button — at the end ── */}
+        {onSortByChange && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className={cn(
+                'px-3 py-1.5 rounded-full text-[14px] font-medium whitespace-nowrap shrink-0 transition-colors border flex items-center gap-1',
+                'bg-muted/50 dark:bg-[#161717] dark:border-[#2e2f2f] text-muted-foreground dark:text-[#a2a2a2] hover:bg-muted dark:hover:bg-[#2a3942]'
+              )}>
+                <ArrowDownUp className="h-3.5 w-3.5" />
+                {sortBy === 'message_count' ? 'Size' : sortBy === 'name' ? 'Name' : 'Date'}
+                <ChevronDown className="h-3 w-3 opacity-60" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44 bg-white dark:bg-[#161717] border border-border dark:border-0 shadow-lg text-foreground dark:text-[#d1d7db]">
+              <DropdownMenuLabel className="text-xs">Sort by</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => onSortByChange('date')} className={cn('text-xs cursor-pointer', sortBy === 'date' && 'bg-[#0a332c] dark:bg-[#1a342a] text-[#00a884]')}>
+                <Calendar className="h-3.5 w-3.5 mr-2" /> Date (most recent)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onSortByChange('message_count')} className={cn('text-xs cursor-pointer', sortBy === 'message_count' && 'bg-[#0a332c] dark:bg-[#1a342a] text-[#00a884]')}>
+                <Hash className="h-3.5 w-3.5 mr-2" /> Size (most messages)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onSortByChange('name')} className={cn('text-xs cursor-pointer', sortBy === 'name' && 'bg-[#0a332c] dark:bg-[#1a342a] text-[#00a884]')}>
+                <ArrowDownUp className="h-3.5 w-3.5 mr-2" /> Name (A → Z)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
 
         {/* ── New List + button (keep at the end) ── */}
         <TooltipProvider delayDuration={100}>
@@ -2589,30 +2713,26 @@ function WABASidebar({
                   <AvatarFallback>{initials}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0 py-1">
-                  <div className="flex justify-between items-baseline mb-0.5">
-                    <span className="font-medium text-[16px] truncate text-foreground dark:text-white">{conv.contact?.name}</span>
-                    <span className={cn('text-xs', conv.unreadCount ? 'text-[#25D366] dark:text-[#00a884] font-medium' : 'text-muted-foreground dark:text-[#a2a2a2]')}>
+                  <div className="flex justify-between items-center mb-0.5 gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="font-medium text-[16px] truncate text-foreground dark:text-white">{conv.contact?.name}</span>
+                      {/* Conversation stage (context_status) as a small WhatsApp-style colour
+                          tag — colour only; the stage name shows on hover, not as repeated text. */}
+                      {(() => {
+                        const stage = getConversationContextStatus(conv);
+                        if (!stage) return null;
+                        const tagColor = WABA_STAGE_TAG_HEX[stage.toLowerCase()] || WABA_STAGE_TAG_DEFAULT;
+                        return (
+                          <span title={formatContextStatus(stage)} aria-label={formatContextStatus(stage)} className="inline-flex shrink-0">
+                            <Tag className="h-3.5 w-3.5" fill={tagColor} style={{ color: tagColor }} />
+                          </span>
+                        );
+                      })()}
+                    </div>
+                    <span className={cn('text-xs shrink-0', conv.unreadCount ? 'text-[#25D366] dark:text-[#00a884] font-medium' : 'text-muted-foreground dark:text-[#a2a2a2]')}>
                       {time}
                     </span>
                   </div>
-                  {/* Conversation stage chip (context_status) — mirrors the
-                      older ConversationListItem badge so the new WhatsApp UI
-                      keeps showing the state-machine stage. */}
-                  {(() => {
-                    const stage = getConversationContextStatus(conv);
-                    if (!stage) return null;
-                    const colorCls = WABA_STAGE_CHIP_COLORS[stage.toLowerCase()] || WABA_STAGE_CHIP_DEFAULT;
-                    return (
-                      <div className="mb-0.5">
-                        <Badge
-                          variant="outline"
-                          className={cn('text-[9px] px-1.5 py-0 h-3.5 font-medium border', colorCls)}
-                        >
-                          {formatContextStatus(stage)}
-                        </Badge>
-                      </div>
-                    );
-                  })()}
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-1 min-w-0 overflow-hidden">
                       {(lastMsg?.isOutgoing || lastMsg?.role === 'assistant' || lastMsg?.role === 'human_agent') && !conv.unreadCount && (
@@ -3001,6 +3121,13 @@ function WABASidebar({
         channel={backendChannel}
       />
 
+      {/* ── Message Settings Dialog (reply delay + inbound debounce) ─────── */}
+      <MessageSettings
+        open={showMessageSettings}
+        onOpenChange={setShowMessageSettings}
+        showTrigger={false}
+      />
+
       {/* ── Template Picker Dialog ──────────────────────────────────────── */}
       <TemplatePicker
         open={isTemplatePickerOpen}
@@ -3068,7 +3195,9 @@ export function WABusinessView({
   isSidebarCollapsed: boolean;
   setIsSidebarCollapsed: (val: boolean) => void;
 }) {
-  const channel = 'personal';
+  // WhatsApp Business (WABA) view — route all data (conversations, chat-groups,
+  // context-statuses, messages) to the WABA backend, not personal WhatsApp.
+  const channel = 'waba';
   const queryClient = useQueryClient();
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);

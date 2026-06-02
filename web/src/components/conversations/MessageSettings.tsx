@@ -68,7 +68,24 @@ export function useMessageSettings() {
   return { settings, updateSetting };
 }
 
-export function MessageSettings() {
+interface MessageSettingsProps {
+  /** Controlled open state. When provided, the dialog is controlled by the parent. */
+  open?: boolean;
+  /** Notified whenever the dialog wants to open/close (controlled or uncontrolled). */
+  onOpenChange?: (open: boolean) => void;
+  /**
+   * Render the built-in gear trigger button. Set to false when opening from an
+   * external control (e.g. a dropdown menu item). Defaults to true so existing
+   * usages keep their gear button.
+   */
+  showTrigger?: boolean;
+}
+
+export function MessageSettings({
+  open: controlledOpen,
+  onOpenChange,
+  showTrigger = true,
+}: MessageSettingsProps = {}) {
   const { settings, updateSetting } = useMessageSettings();
 
   // Per-tenant inbound debounce — persisted server-side via the WABA
@@ -79,7 +96,19 @@ export function MessageSettings() {
   const [debounceSaving, setDebounceSaving] = useState(false);
   const [debounceError, setDebounceError] = useState<string | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [open, setOpen] = useState(false);
+
+  // Support both controlled usage (parent passes open/onOpenChange, e.g. opened
+  // from a menu item) and uncontrolled usage (the built-in gear trigger).
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = useCallback(
+    (next: boolean) => {
+      if (!isControlled) setInternalOpen(next);
+      onOpenChange?.(next);
+    },
+    [isControlled, onOpenChange],
+  );
 
   // Fetch current value when the modal first opens, so we don't hit the API
   // on every conversation page load for users who never open the menu.
@@ -145,11 +174,13 @@ export function MessageSettings() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8" title="Message settings">
-          <Settings className="h-4 w-4" />
-        </Button>
-      </DialogTrigger>
+      {showTrigger && (
+        <DialogTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8" title="Message settings">
+            <Settings className="h-4 w-4" />
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent
         showCloseButton={false}
         className="sm:max-w-md sm:w-auto rounded-2xl bg-white dark:bg-[#161717] border border-slate-200 dark:border-[#222d34] shadow-xl"
