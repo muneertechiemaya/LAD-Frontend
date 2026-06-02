@@ -3,21 +3,21 @@
 export const dynamic = 'force-dynamic';
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { setCompanyName, setCompanyLogo } from '../../store/slices/settingsSlice';
+import { setCompanyName } from '../../store/slices/settingsSlice';
 import { IntegrationsSettings } from '../../components/settings/IntegrationsSettings';
 import { VoiceAgentSettings } from '../../components/voice-agent/VoiceAgentSettings';
 import { ChatSettings } from '../../components/settings/ChatSettings';
 import { BillingSettings } from '../../components/settings/BillingSettings';
 import { CreditsSettings } from '../../components/settings/CreditsSettings';
-import { CompanySettings } from '../../components/settings/CompanySettings';
+import { BusinessProfileSettings } from '../../components/settings/BusinessProfileSettings';
 import { TeamManagement } from '../../components/settings/TeamManagement';
-import { Building2, Users, UserCircle, Globe, Plug, Terminal, CreditCard, Coins, Upload, MessageSquare } from 'lucide-react';
+import { Building2, Users, UserCircle, Globe, Plug, Terminal, CreditCard, Coins, Upload, MessageSquare, Target } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTenant } from '@/contexts/TenantContext';
 
-type ActiveTab = 'company' | 'team' | 'accounts' | 'website' | 'integrations' | 'chat' | 'api' | 'billing' | 'credits';
+type ActiveTab = 'businessprofile' | 'team' | 'accounts' | 'website' | 'integrations' | 'chat' | 'api' | 'billing' | 'credits';
 
 const SettingsPage: React.FC = () => {
   const router = useRouter();
@@ -62,8 +62,14 @@ const SettingsPage: React.FC = () => {
     if (!user) return;
     // Initialize active tab from URL query param if present
     const tabParam = (searchParams.get('tab') || '').toLowerCase();
-    const allowed: ActiveTab[] = ['company', 'team', 'accounts', 'website', 'integrations', 'chat', 'api', 'billing', 'credits'];
-    if (allowed.includes(tabParam as ActiveTab)) {
+    const allowed: ActiveTab[] = ['businessprofile', 'team', 'accounts', 'website', 'integrations', 'chat', 'api', 'billing', 'credits'];
+    // The Company tab was merged into Business Profile — redirect old links/bookmarks.
+    if (tabParam === 'company') {
+      const sp = new URLSearchParams(Array.from(searchParams.entries()));
+      sp.set('tab', 'businessprofile');
+      router.replace(`/settings?${sp.toString()}`);
+      setActiveTab('businessprofile');
+    } else if (allowed.includes(tabParam as ActiveTab)) {
       setActiveTab(tabParam as ActiveTab);
     }
     // Fetch subscription data to get renewal date
@@ -96,7 +102,7 @@ const SettingsPage: React.FC = () => {
 
   if (!user) return null;
   const tabs = [
-    { id: 'company' as ActiveTab, label: 'Company', icon: Building2 },
+    { id: 'businessprofile' as ActiveTab, label: 'Business Profile', icon: Target },
     { id: 'team' as ActiveTab, label: 'Team', icon: Users },
     // { id: 'accounts' as ActiveTab, label: 'Accounts', icon: UserCircle },
     // { id: 'website' as ActiveTab, label: 'Website', icon: Globe },
@@ -161,14 +167,7 @@ const SettingsPage: React.FC = () => {
       </div>
       {/* Content */}
       <div className="space-y-6">
-        {activeTab === 'company' && (
-          <CompanySettings
-            companyName={displayCompanyName}
-            setCompanyName={(name: string) => dispatch(setCompanyName(name))}
-            companyLogo={companyLogo}
-            setCompanyLogo={(logo: string) => dispatch(setCompanyLogo(logo))}
-          />
-        )}
+        {activeTab === 'businessprofile' && <BusinessProfileSettings />}
         {activeTab === 'integrations' && <IntegrationsSettings />}
         {activeTab === 'chat' && <ChatSettings />}
         {activeTab === 'api' && <VoiceAgentSettings />}

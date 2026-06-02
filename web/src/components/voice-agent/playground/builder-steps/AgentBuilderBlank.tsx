@@ -5,20 +5,22 @@ import { X, Sparkles } from "lucide-react";
 export function AgentBuilderBlank({
   htmlContent,
   onClose,
-  onNext
+  onNext,
+  phase,
 }: {
   htmlContent: string;
   onClose?: () => void;
   onNext?: (val?: string, action?: string) => void;
+  phase?: string;
 }) {
   return (
-    <div className="relative flex flex-col items-center w-full max-w-md h-[600px] bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+    <div className="relative flex flex-col items-center w-full max-w-md h-[600px] bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-300 outline-none focus:outline-none focus:ring-0">
       
       <div className="w-full shrink-0 flex items-center justify-between p-4 border-b border-slate-100 bg-white/80 z-10">
          <div className="flex items-center gap-2">
             <Sparkles className="size-4 text-emerald-500" />
             <span className="text-[11px] font-bold text-[#0b1957] uppercase tracking-wider">
-               Builder / Result
+               {phase || "Builder / Result"}
             </span>
          </div>
          {onClose && (
