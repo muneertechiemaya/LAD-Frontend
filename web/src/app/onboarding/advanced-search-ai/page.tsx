@@ -4438,64 +4438,42 @@ export default function AdvancedSearchAIPage() {
                     AI PLAYGROUND DRAWER — Chat + Card based
                     ═══════════════════════════════════════════════ */}
                 {showPlayground && (
-                    <div style={{
-                        position: 'fixed', inset: 0, zIndex: 9998,
-                        display: 'flex', alignItems: 'stretch',
-                    }}>
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 9998, display: 'flex', alignItems: 'stretch' }}>
                         {/* Backdrop */}
-                        <div onClick={() => setShowPlayground(false)} style={{ flex: 1, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }} />
+                        <div onClick={() => setShowPlayground(false)} className="flex-1 bg-black/35 backdrop-blur-[2px]" />
 
                         {/* Drawer */}
-                        <div style={{
-                            width: 480, maxWidth: '96vw', background: '#fff',
-                            display: 'flex', flexDirection: 'column',
-                            boxShadow: '-8px 0 40px rgba(0,0,0,.18)',
-                            animation: 'slideInRight .28s cubic-bezier(.4,0,.2,1) both',
-                            overflow: 'hidden',
-                        }}>
+                        <div className="w-[480px] max-w-[96vw] bg-white dark:bg-[#000724] flex flex-col shadow-[-8px_0_40px_rgba(0,0,0,.18)] animate-[slideInRight_0.28s_cubic-bezier(0.4,0,0.2,1)_both] overflow-hidden">
                             {/* ── Header ── */}
-                            <div style={{
-                                padding: '16px 20px 12px',
-                                borderBottom: '1.5px solid #e5e7eb',
-                                background: 'linear-gradient(135deg,#f0f3ff 0%,#e8ecfa 100%)',
-                                flexShrink: 0,
-                            }}>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                        <div style={{
-                                            width: 36, height: 36, borderRadius: 10,
-                                            background: 'linear-gradient(135deg,#0b1957,#1a3a8f)',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        }}>
+                            <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-800 bg-gradient-to-br from-[#f0f3ff] to-[#e8ecfa] dark:from-[#000c3b] dark:to-[#000724] flex-shrink-0">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#0b1957] to-[#1a3a8f] dark:from-[#0b1957] dark:to-[#1a3a8f] flex items-center justify-center">
                                             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round">
                                                 <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                                             </svg>
                                         </div>
                                         <div>
-                                            <div style={{ fontSize: 15, fontWeight: 800, color: '#111827' }}>ICP Discovery</div>
-                                            <div style={{ fontSize: 11.5, color: '#0b1957', fontWeight: 500 }}>
+                                            <div className="text-[15px] font-bold text-gray-900 dark:text-white">ICP Discovery</div>
+                                            <div className="text-[11.5px] font-semibold text-[#0b1957] dark:text-blue-300">
                                                 {pgIsComplete ? '✅ ICP profile complete!' : 'Answer questions to power smarter lead discovery'}
                                             </div>
                                         </div>
                                     </div>
-                                    <div style={{ display: 'flex', gap: 6 }}>
+                                    <div className="flex gap-2">
                                         <button
                                             onClick={pgStartConversation}
                                             title="Restart conversation"
-                                            style={{
-                                                padding: '5px 10px', borderRadius: 8, border: '1px solid #e5e7eb',
-                                                background: '#fff', color: '#6b7280', fontSize: 11.5, fontWeight: 600,
-                                                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-                                            }}
+                                            className="px-2.5 py-1 text-[11px] font-bold rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#000724] text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1A2A43] flex items-center gap-1 cursor-pointer transition-all"
                                         >
                                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /></svg>
                                             Restart
                                         </button>
-                                        <button onClick={() => setShowPlayground(false)} style={{
-                                            width: 30, height: 30, border: '1px solid #e5e7eb', borderRadius: 8,
-                                            background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        }}>
-                                            <X size={15} color="#6b7280" />
+                                        <button
+                                            onClick={() => setShowPlayground(false)}
+                                            className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#000724] hover:bg-gray-50 dark:hover:bg-[#1A2A43] cursor-pointer text-gray-600 dark:text-gray-300 transition-all"
+                                        >
+                                            <X size={15} />
                                         </button>
                                     </div>
                                 </div>
@@ -4509,17 +4487,18 @@ export default function AdvancedSearchAIPage() {
                                     const total = c.total;
                                     const pct = pgIsComplete ? 100 : c.pct;
                                     return (
-                                        <div style={{ marginTop: 10 }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                                                <span style={{ fontSize: 11, color: '#9ca3af', fontWeight: 600 }}>Profile completeness</span>
-                                                <span style={{ fontSize: 11, color: pct >= 70 ? '#10b981' : '#0b1957', fontWeight: 700 }}>{pct}% ({filled}/{total} fields)</span>
+                                        <div className="mt-3">
+                                            <div className="flex justify-between mb-1">
+                                                <span className="text-[11px] font-semibold text-gray-400 dark:text-gray-500">Profile completeness</span>
+                                                <span className={`text-[11px] font-bold ${pct >= 70 ? 'text-emerald-500' : 'text-[#0b1957] dark:text-blue-400'}`}>
+                                    {pct}% ({filled}/{total} fields)
+                                </span>
                                             </div>
-                                            <div style={{ height: 5, borderRadius: 99, background: '#dce3f5', overflow: 'hidden' }}>
-                                                <div style={{
-                                                    height: '100%', borderRadius: 99,
-                                                    background: pct >= 70 ? 'linear-gradient(90deg,#10b981,#059669)' : 'linear-gradient(90deg,#0b1957,#0b1957)',
-                                                    width: `${pct}%`, transition: 'width .5s ease',
-                                                }} />
+                                            <div className="h-1.5 w-full bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full bg-emerald-500 transition-all duration-500"
+                                                    style={{ width: `${pct}%` }}
+                                                />
                                             </div>
 
                                             {/* Edit affordance — once any field is filled, the tenant can jump
@@ -4546,35 +4525,36 @@ export default function AdvancedSearchAIPage() {
                                 })()}
                             </div>
 
-                            {/* ── Chat Messages ── */}
-                            <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: 14, background: '#f9fafb' }}>
+                            {/* ── Chat Messages (Dark background) ── */}
+                            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3.5 bg-gray-50 dark:bg-[#000724]">
                                 {pgChatHistory.length === 0 && !pgBusy && (
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: 14, padding: '40px 20px' }}>
-                                        <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'linear-gradient(135deg,#0b1957,#1a3a8f)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 24px rgba(11,25,87,.3)' }}>
+                                    <div className="flex flex-col items-center justify-center flex-1 p-10 text-center gap-4">
+                                        {/* Visualizer Container */}
+                                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#0b1957] to-[#1a3a8f] dark:from-blue-600 dark:to-blue-800 flex items-center justify-center shadow-[0_8px_24px_rgba(11,25,87,.3)]">
                                             <AgentVisualizer state="idle" size={36} />
                                         </div>
-                                        <div style={{ textAlign: 'center' }}>
-                                            <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', marginBottom: 6 }}>Define Your Ideal Customer Profile</div>
-                                            <div style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.6 }}>
+
+                                        {/* Text Content */}
+                                        <div className="max-w-[300px]">
+                                            <div className="text-base font-bold text-gray-900 dark:text-white mb-2">
+                                                Define Your Ideal Customer Profile
+                                            </div>
+                                            <div className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
                                                 Answer a few questions about your business and I'll identify exactly who you should target for outreach.
                                             </div>
                                         </div>
+
+                                        {/* Start Button */}
                                         <button
                                             onClick={pgStartConversation}
-                                            style={{
-                                                padding: '12px 28px', borderRadius: 12, border: 'none',
-                                                background: 'linear-gradient(135deg,#0b1957,#1a3a8f)',
-                                                color: '#fff', fontSize: 14, fontWeight: 700,
-                                                cursor: 'pointer', boxShadow: '0 4px 14px rgba(11,25,87,.4)',
-                                                display: 'flex', alignItems: 'center', gap: 8,
-                                            }}
+                                            className="flex items-center gap-2 px-7 py-3 rounded-xl border-none font-bold text-sm cursor-pointer transition-all shadow-[0_4px_14px_rgba(11,25,87,.4)]
+                       bg-gradient-to-br from-[#0b1957] to-[#1a3a8f] dark:from-blue-600 dark:to-blue-800 text-white"
                                         >
                                             <Sparkles size={16} />
                                             Start AI Setup
                                         </button>
                                     </div>
                                 )}
-
                                 {pgChatHistory.map((msg, idx) => (
                                     <div key={idx}>
                                         {msg.role === 'user' ? (
@@ -8378,7 +8358,7 @@ function TargetingFormInline({
 
                     {/* Step 4: Education */}
                     {step === 4 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div className="p-3 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-[#000c3b] flex-shrink-0 flex gap-2">
                             {EDUCATION_OPTIONS.map((edu) => {
                                 const selected = education.includes(edu);
                                 return (
@@ -9371,4 +9351,6 @@ const css = `
             .dark .adv-web-searched { background: #1A2A43; border-color: #000724; color: #7a8ba3; }
             .dark .adv-thinking-wrap { color: #60a5fa; }
             .dark .adv-gemini-logo { filter: brightness(0) invert(1); }
+            :root { --header-start: #f0f3ff; --header-end: #e8ecfa; }
+            .dark { --header-start: #000c3b; --header-end: #000724; }
             `;
