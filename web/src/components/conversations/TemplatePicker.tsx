@@ -354,7 +354,7 @@ export function TemplatePicker({
                     placeholder="Search templates..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="pl-9 h-11 rounded-xl bg-gray-50 border-gray-100"
+                    className="pl-9 h-11 rounded-xl bg-gray-50 dark:bg-[#2e2f2f] border-gray-100 dark:border-[#3d3d3d] dark:text-white dark:placeholder:text-[#8696a0]"
                   />
                 </div>
               </div>
@@ -380,11 +380,11 @@ export function TemplatePicker({
                     {filtered.map((template) => (
                       <div
                         key={`${template.name}-${template.language}`}
-                        className="p-3 rounded-xl hover:bg-orange-50/50 cursor-pointer transition-all border border-transparent hover:border-orange-100 group"
+                        className="p-3 rounded-xl hover:bg-orange-50/50 dark:hover:bg-[#2e2f2f] cursor-pointer transition-all border border-transparent hover:border-orange-100 dark:hover:border-[#3d3d3d] group"
                         onClick={() => handleSelectTemplate(template)}
                       >
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm font-bold text-gray-900 group-hover:text-orange-700 transition-colors">{template.name}</span>
+                          <span className="text-sm font-bold text-gray-900 dark:text-white group-hover:text-orange-700 dark:group-hover:text-orange-400 transition-colors">{template.name}</span>
                           <Badge
                             variant="outline"
                             className={cn(
@@ -411,7 +411,7 @@ export function TemplatePicker({
             <div className="flex-1 flex flex-col min-h-0 overflow-hidden px-8 py-6">
               <div className="flex-1 overflow-y-auto space-y-6 pr-2">
                 {/* Back button + template info */}
-                <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                <div className="flex items-center gap-3 bg-gray-50 dark:bg-[#2e2f2f] p-3 rounded-xl border border-gray-100 dark:border-[#3d3d3d]">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -421,7 +421,7 @@ export function TemplatePicker({
                     <ChevronDown className="h-4 w-4 rotate-90" />
                   </Button>
                   <div className="flex flex-col">
-                    <span className="text-sm font-bold text-gray-900">{selectedTemplate.name}</span>
+                    <span className="text-sm font-bold text-gray-900 dark:text-white">{selectedTemplate.name}</span>
                     <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">{selectedTemplate.category}</span>
                   </div>
                 </div>
@@ -438,9 +438,9 @@ export function TemplatePicker({
                         const label       = isNaN(Number(paramName)) ? `{{${paramName}}}` : `Parameter {{${paramName}}}`;
                         const ctx         = getParamContext(selectedTemplate.body, paramName);
                         return (
-                          <div key={i} className="space-y-2 p-4 rounded-xl border border-gray-100 bg-white shadow-sm">
+                          <div key={i} className="space-y-2 p-4 rounded-xl border border-gray-100 dark:border-[#3d3d3d] bg-white dark:bg-[#2e2f2f] shadow-sm">
                             <div className="flex items-center justify-between">
-                              <span className="text-xs font-bold text-gray-700 font-mono">{label}</span>
+                              <span className="text-xs font-bold text-gray-700 dark:text-gray-200 font-mono">{label}</span>
                               {ctx && <span className="text-[10px] text-muted-foreground font-mono italic opacity-60">{ctx}</span>}
                             </div>
                             
@@ -482,7 +482,7 @@ export function TemplatePicker({
                 {['image', 'document', 'video'].includes(selectedTemplate.header_type) && (
                   <div className="space-y-3">
                     <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Header {selectedTemplate.header_type}</h4>
-                    <div className="p-4 rounded-xl border border-gray-100 bg-white shadow-sm space-y-3">
+                    <div className="p-4 rounded-xl border border-gray-100 dark:border-[#3d3d3d] bg-white dark:bg-[#2e2f2f] shadow-sm space-y-3">
                       {resolvingMedia ? (
                         <div className="flex items-center gap-3 py-4 text-sm text-muted-foreground">
                           <Loader2 className="h-5 w-5 animate-spin text-orange-500" />
@@ -543,9 +543,9 @@ export function TemplatePicker({
                 {/* Preview */}
                 <div className="space-y-3">
                   <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Message Preview</h4>
-                  <div className="p-6 rounded-2xl bg-white border border-gray-100 shadow-sm relative overflow-hidden">
+                  <div className="p-6 rounded-2xl bg-white dark:bg-[#2e2f2f] border border-gray-100 dark:border-[#3d3d3d] shadow-sm relative overflow-hidden">
                     <div className="absolute top-0 left-0 w-1.5 h-full bg-orange-400" />
-                    <p className="text-sm leading-relaxed text-gray-800 whitespace-pre-wrap font-medium">
+                    <p className="text-sm leading-relaxed text-gray-800 dark:text-gray-200 whitespace-pre-wrap font-medium">
                       {previewBody}
                     </p>
                   </div>

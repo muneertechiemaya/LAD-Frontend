@@ -42,6 +42,7 @@ export const AUTH_ROUTES = [
   '/community-roi',
   '/follow-ups',
   '/instagram', // Instagram management (accounts, AI replies, comments, goals)
+  '/admin', // Internal admin tooling (platform observability monitor, blog, submissions) — super-admin gated
   '/api/protected', // Mark all protected API routes with /api/protected prefix
 ];
 
