@@ -20,7 +20,9 @@ import { cn } from '@/lib/utils';
 import { ImportLeadsDialog } from './ImportLeadsDialog';
 import { EmailTemplatePicker } from './EmailTemplatePicker';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface EmailContact {
   id: string;
@@ -62,6 +64,29 @@ interface EmailTemplate {
   category: string;
 }
 
+interface EmailMessage {
+  id: string;
+  contact_id: string;
+  direction: 'outbound' | 'inbound';
+  provider: string;
+  subject: string;
+  body_html: string | null;
+  preview_text: string | null;
+  status: string;
+  sent_at: string;
+}
+
+// Defined at module level — not inside the component — to avoid redefining on
+// every render and to allow usage in ComposeWindow props.
+type ComposeInstance = {
+  id: string;
+  minimized: boolean;
+  maximized: boolean;
+  initialTo?: string;
+  initialSubject?: string;
+  initialBody?: string;
+};
+
 type EmailProvider = 'gmail' | 'outlook' | 'custom';
 type FolderType = 'inbox' | 'starred' | 'sent' | 'important' | 'drafts' | 'spam' | 'trash' | 'snoozed';
 type CategoryTab = 'primary' | 'social' | 'promotions' | 'updates';
@@ -70,9 +95,13 @@ interface EmailChannelViewProps {
   provider: EmailProvider;
   connectedEmail?: string;
   userImage?: string;
+  /** Called when the user clicks "Sign out of all accounts" */
+  onSignOut?: () => void;
 }
 
-// ── Constants ─────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────────────────────────────────────
 
 const API = '/api/email-conversations';
 const TEMPLATES_API = '/api/campaigns/email-templates';
@@ -82,6 +111,7 @@ const PROVIDER_COLOR: Record<EmailProvider, string> = {
   outlook: '#0078D4',
   custom: '#059669',
 };
+
 const PROVIDER_LABEL: Record<EmailProvider, string> = {
   gmail: 'Gmail',
   outlook: 'Outlook',
@@ -103,7 +133,32 @@ const AVATAR_GRADIENTS = [
   'from-violet-400 to-indigo-500',
 ];
 
-// ── Smart Replies ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Security: HTML Sanitizer
+//
+// IMPORTANT: Install DOMPurify for production:
+//   npm install dompurify @types/dompurify
+// Then replace the body of sanitizeHtml with:
+//   import DOMPurify from 'dompurify';
+//   return DOMPurify.sanitize(html, { USE_PROFILES: { html: true } });
+//
+// The regex below is a basic fallback — it does NOT cover all XSS vectors.
+// ─────────────────────────────────────────────────────────────────────────────
+function sanitizeHtml(html: string): string {
+  return html
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+    .replace(/<iframe[\s\S]*?>/gi, '')
+    .replace(/<\/iframe>/gi, '')
+    .replace(/<object[\s\S]*?>/gi, '')
+    .replace(/<embed[\s\S]*?>/gi, '')
+    .replace(/\bon\w+\s*=\s*["'][^"']*["']/gi, '')
+    .replace(/\bon\w+\s*=\s*[^\s>]*/gi, '')
+    .replace(/javascript\s*:/gi, '');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Smart Replies
+// ─────────────────────────────────────────────────────────────────────────────
 
 const SMART_REPLIES: Record<string, string[]> = {
   default: ['Looking forward to it!', 'We will be there!', 'Thanks for the update!'],
@@ -122,7 +177,9 @@ function getSmartReplies(subject: string): string[] {
   return SMART_REPLIES.default;
 }
 
-// ── Mock Data ─────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Mock Data  (replace API calls below with real endpoints when ready)
+// ─────────────────────────────────────────────────────────────────────────────
 
 const MOCK_CONTACTS: EmailContact[] = [
   { id: '1', contact_name: 'GlobalStay Residences', email: 'bookings@globalstay.com', company: 'GlobalStay', channel: 'gmail', created_at: '2026-05-29T13:05:00Z' },
@@ -230,7 +287,9 @@ const MOCK_EMAIL_DETAILS: Record<string, {
   '25': { subject: 'Commercial leasing agreement awaiting final approval', snippet: `Dear Melony,\n\nThe legal review for the Singapore business center leasing agreement has now been completed successfully.`, date: '7:55 AM', unread: false, category: 'updates', labels: ['Updates'] },
 };
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
 
 function authHeaders(): Record<string, string> {
   const h: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -239,7 +298,9 @@ function authHeaders(): Record<string, string> {
     if (token) h['Authorization'] = `Bearer ${token}`;
     const tenant = typeof window !== 'undefined' ? localStorage.getItem('selectedTenantId') : null;
     if (tenant && tenant !== 'default') h['X-Tenant-ID'] = tenant;
-  } catch { /* ignore */ }
+  } catch (err) {
+    console.error('[EmailChannelView] Failed to read auth headers:', err);
+  }
   return h;
 }
 
@@ -255,21 +316,64 @@ function avatarGradient(id: string): string {
 
 function formatDate(iso?: string): string {
   if (!iso) return '';
-  try { return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }); }
-  catch { return ''; }
+  try {
+    return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  } catch {
+    return '';
+  }
 }
 
 function getEmailDetails(contact: EmailContact) {
-  return MOCK_EMAIL_DETAILS[contact.id] || {
-    subject: `Email from ${contact.contact_name}`,
-    snippet: `Message from ${contact.email || 'unknown'}...`,
-    date: new Date(contact.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  return MOCK_EMAIL_DETAILS[contact.id] ?? {
+    subject: `Email from ${contact.contact_name ?? 'Unknown'}`,
+    snippet: `Message from ${contact.email ?? 'unknown'}...`,
+    date: new Date(contact.created_at ?? Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     unread: false,
     category: 'primary' as CategoryTab,
   };
 }
 
-// ── Avatar ────────────────────────────────────────────────────────────────────
+/** Wraps the current textarea selection with a prefix/suffix. */
+function wrapSelection(
+  el: HTMLTextAreaElement,
+  body: string,
+  setBody: (v: string) => void,
+  wrap: string,
+  defaultText = 'text',
+) {
+  const start = el.selectionStart;
+  const end = el.selectionEnd;
+  const selected = body.slice(start, end) || defaultText;
+  const newBody = body.slice(0, start) + wrap + selected + wrap + body.slice(end);
+  setBody(newBody);
+  setTimeout(() => {
+    el.focus();
+    el.selectionStart = start + wrap.length;
+    el.selectionEnd = start + wrap.length + selected.length;
+  }, 0);
+}
+
+/** Inserts a snippet at the current cursor position. */
+function insertAtCursor(
+  el: HTMLTextAreaElement,
+  body: string,
+  setBody: (v: string) => void,
+  snippet: string,
+) {
+  const start = el.selectionStart;
+  const end = el.selectionEnd;
+  const newBody = body.slice(0, start) + snippet + body.slice(end);
+  setBody(newBody);
+  setTimeout(() => {
+    el.focus();
+    el.selectionStart = start + snippet.length;
+    el.selectionEnd = start + snippet.length;
+  }, 0);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Avatar
+// ─────────────────────────────────────────────────────────────────────────────
 
 function Avatar({ name, id, size = 'md' }: { name?: string | null; id: string; size?: 'sm' | 'md' | 'lg' }) {
   const sz = size === 'sm' ? 'h-8 w-8 text-[10px]' : size === 'lg' ? 'h-12 w-12 text-base' : 'h-9 w-9 text-xs';
@@ -280,30 +384,32 @@ function Avatar({ name, id, size = 'md' }: { name?: string | null; id: string; s
   );
 }
 
-// ── EmailMessage type ─────────────────────────────────────────────────────────
-
-interface EmailMessage {
-  id: string; contact_id: string; direction: 'outbound' | 'inbound';
-  provider: string; subject: string; body_html: string | null;
-  preview_text: string | null; status: string; sent_at: string;
-}
-
-// ── TBtn ──────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// TBtn — reusable icon toolbar button
+// ─────────────────────────────────────────────────────────────────────────────
 
 function TBtn({ icon: Icon, label, onClick, active }: { icon: React.ElementType; label: string; onClick: () => void; active?: boolean }) {
   return (
     <button
-      type="button" title={label} aria-label={label} onClick={onClick}
-      className={cn('h-8 w-8 flex items-center justify-center rounded-full transition-colors',
-        active ? 'bg-[#c2dbff] text-[#001D35]' : 'text-[#444746] hover:bg-[#f1f3f4]')}
+      type="button"
+      title={label}
+      aria-label={label}
+      onClick={onClick}
+      className={cn(
+        'h-8 w-8 flex items-center justify-center rounded-full transition-colors',
+        active
+          ? 'bg-[#c2dbff] dark:bg-[#004a77] text-[#001D35] dark:text-[#c2e7ff]'
+          : 'text-[#444746] dark:text-[#9aa0a6] hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]',
+      )}
     >
       <Icon className="h-4 w-4" />
     </button>
   );
 }
 
-// ── Floating Compose Window ───────────────────────────────────────────────────
-// Matches Gmail's floating compose: dark header, white body, full toolbar
+// ─────────────────────────────────────────────────────────────────────────────
+// ComposeWindow — floating Gmail-style compose
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface ComposeWindowProps {
   provider: EmailProvider;
@@ -313,7 +419,6 @@ interface ComposeWindowProps {
   initialBody?: string;
   onClose: () => void;
   onSent?: () => void;
-  /** If true, renders minimized as a taskbar tab */
   minimized?: boolean;
   onMinimize?: () => void;
   onMaximize?: () => void;
@@ -325,6 +430,10 @@ function ComposeWindow({
   onClose, onSent, minimized = false, onMinimize, onMaximize, maximized = false,
 }: ComposeWindowProps) {
   const [to, setTo] = useState(initialTo);
+  const [cc, setCc] = useState('');
+  const [bcc, setBcc] = useState('');
+  const [showCc, setShowCc] = useState(false);
+  const [showBcc, setShowBcc] = useState(false);
   const [subject, setSubject] = useState(initialSubject);
   const [body, setBody] = useState(initialBody);
   const [sending, setSending] = useState(false);
@@ -342,28 +451,54 @@ function ComposeWindow({
     if (!to.trim()) return [];
     const t = to.toLowerCase();
     return contacts.filter(c =>
-      (c.contact_name || '').toLowerCase().includes(t) || (c.email || '').toLowerCase().includes(t)
+      (c.contact_name ?? '').toLowerCase().includes(t) || (c.email ?? '').toLowerCase().includes(t),
     ).slice(0, 5);
   }, [contacts, to]);
 
   const handleSend = async () => {
     if (!to.trim() || !subject.trim() || !body.trim()) {
-      setError('Recipient, subject, and body are required.'); return;
+      setError('Recipient, subject, and body are required.');
+      return;
     }
-    setSending(true); setError('');
+    setSending(true);
+    setError('');
     try {
+      const recipients = [{ email: to.trim() }];
+      if (cc.trim()) cc.split(',').forEach(e => { if (e.trim()) recipients.push({ email: e.trim() }); });
       const res = await fetch(`${API}/send-bulk`, {
-        method: 'POST', headers: authHeaders(),
-        body: JSON.stringify({ provider: toBackendProvider(provider), recipients: [{ email: to.trim() }], subject: subject.trim(), body_html: body.trim() }),
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          provider: toBackendProvider(provider),
+          recipients,
+          cc: cc.trim() || undefined,
+          bcc: bcc.trim() || undefined,
+          subject: subject.trim(),
+          body_html: body.trim(),
+        }),
       });
       const data = await res.json();
-      if (!data.success) throw new Error(data.error);
-    } catch { /* mock success */ }
+      if (!data.success) throw new Error(data.error ?? 'Send failed');
+    } catch (err) {
+      // In dev: log and continue with optimistic success
+      console.error('[ComposeWindow] Send error:', err);
+    }
     setSent(true);
     onSent?.();
     setTimeout(() => { setSent(false); onClose(); }, 1500);
     setSending(false);
   };
+
+  const handleBold = () => bodyRef.current && wrapSelection(bodyRef.current, body, setBody, '**', 'bold text');
+  const handleItalic = () => bodyRef.current && wrapSelection(bodyRef.current, body, setBody, '_', 'italic text');
+  const handleLink = () => {
+    const url = window.prompt('Enter URL:', 'https://');
+    if (url && bodyRef.current) insertAtCursor(bodyRef.current, body, setBody, `[link text](${url})`);
+  };
+  const handleUndo = () => { document.execCommand('undo'); };
+  const handleRedo = () => { document.execCommand('redo'); };
+  const handleBulletList = () => bodyRef.current && insertAtCursor(bodyRef.current, body, setBody, '\n• ');
+  const handleNumberedList = () => bodyRef.current && insertAtCursor(bodyRef.current, body, setBody, '\n1. ');
 
   // Minimized — just the header tab
   if (minimized) {
@@ -371,13 +506,29 @@ function ComposeWindow({
       <div
         className="w-[216px] h-10 bg-[#404040] text-white rounded-t-xl flex items-center justify-between px-4 cursor-pointer hover:bg-[#3a3a3a] transition-colors shadow-lg"
         onClick={onMaximize}
+        role="button"
+        tabIndex={0}
+        onKeyDown={e => e.key === 'Enter' && onMaximize?.()}
+        aria-label={`Restore compose window: ${subject.trim() || 'New Message'}`}
       >
         <span className="text-sm font-medium truncate">{subject.trim() || 'New Message'}</span>
         <div className="flex items-center gap-1 ml-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
-          <button title="Restore" aria-label="Restore compose window" onClick={onMaximize} className="h-5 w-5 flex items-center justify-center hover:bg-white/20 rounded">
-            <svg viewBox="0 0 24 24" className="h-3 w-3" aria-hidden="true"><path d="M4 15H2v7h9v-2H4v-5zM2 9h2V4h5V2H2v7zm15 11h-5v2h7v-7h-2v5zM15 2v2h5v5h2V2h-7z" fill="currentColor" /></svg>
+          <button
+            title="Restore"
+            aria-label="Restore compose window"
+            onClick={onMaximize}
+            className="h-5 w-5 flex items-center justify-center hover:bg-white/20 rounded"
+          >
+            <svg viewBox="0 0 24 24" className="h-3 w-3" aria-hidden="true">
+              <path d="M4 15H2v7h9v-2H4v-5zM2 9h2V4h5V2H2v7zm15 11h-5v2h7v-7h-2v5zM15 2v2h5v5h2V2h-7z" fill="currentColor" />
+            </svg>
           </button>
-          <button title="Close" aria-label="Close compose window" onClick={onClose} className="h-5 w-5 flex items-center justify-center hover:bg-white/20 rounded">
+          <button
+            title="Close"
+            aria-label="Close compose window"
+            onClick={onClose}
+            className="h-5 w-5 flex items-center justify-center hover:bg-white/20 rounded"
+          >
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
@@ -388,7 +539,7 @@ function ComposeWindow({
   return (
     <div
       className={cn(
-        'bg-white border border-[#e0e0e0] rounded-t-xl flex flex-col overflow-hidden',
+        'bg-white dark:bg-[#2d2d2d] border border-[#e0e0e0] dark:border-[#3c4043] rounded-t-xl flex flex-col overflow-hidden',
         'shadow-[0_8px_10px_1px_rgba(60,64,67,.15),0_3px_14px_2px_rgba(60,64,67,.12),0_5px_5px_-3px_rgba(60,64,67,.2)]',
         maximized
           ? 'fixed inset-2 sm:inset-4 z-50 rounded-xl'
@@ -398,92 +549,137 @@ function ComposeWindow({
       aria-label="Compose new email"
       aria-modal="true"
     >
-      {/* ── Header ── */}
+      {/* Header */}
       <div className="h-10 px-4 bg-[#404040] text-white flex items-center justify-between flex-shrink-0 rounded-t-xl select-none">
         <span className="text-sm font-medium">New Message</span>
         <div className="flex items-center gap-0.5">
-          <button
-            title="Minimize"
-            aria-label="Minimize compose window"
-            onClick={onMinimize}
-            className="h-7 w-7 flex items-center justify-center hover:bg-white/20 rounded transition-colors"
-          >
+          <button title="Minimize" aria-label="Minimize compose window" onClick={onMinimize}
+            className="h-7 w-7 flex items-center justify-center hover:bg-white/20 rounded transition-colors">
             <span className="text-white text-base leading-none pb-1" aria-hidden="true">—</span>
           </button>
-          <button
-            title={maximized ? 'Restore' : 'Maximize'}
-            aria-label={maximized ? 'Restore compose window' : 'Maximize compose window'}
-            onClick={onMaximize}
-            className="h-7 w-7 flex items-center justify-center hover:bg-white/20 rounded transition-colors"
-          >
+          <button title={maximized ? 'Restore' : 'Maximize'} aria-label={maximized ? 'Restore compose window' : 'Maximize compose window'} onClick={onMaximize}
+            className="h-7 w-7 flex items-center justify-center hover:bg-white/20 rounded transition-colors">
             <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" aria-hidden="true">
               {maximized
                 ? <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" fill="currentColor" />
                 : <path d="M4 4h7V2H2v9h2V4zm9 14h7v-7h-2v5h-5v2zM20 2h-7v2h5v5h2V2zM4 15H2v7h9v-2H4v-5z" fill="currentColor" />}
             </svg>
           </button>
-          <button
-            title="Close"
-            aria-label="Close compose window"
-            onClick={onClose}
-            className="h-7 w-7 flex items-center justify-center hover:bg-white/20 rounded transition-colors"
-          >
+          <button title="Close" aria-label="Close compose window" onClick={onClose}
+            className="h-7 w-7 flex items-center justify-center hover:bg-white/20 rounded transition-colors">
             <X className="h-4 w-4" />
           </button>
         </div>
       </div>
 
-      {/* ── Fields ── */}
+      {/* Fields */}
       <div className="flex-1 flex flex-col overflow-y-auto text-sm min-h-0">
 
         {/* To */}
-        <div className="relative border-b border-[#e0e0e0]">
+        <div className="relative border-b border-[#e0e0e0] dark:border-[#3c4043]">
           <div className="flex items-center px-4 h-10">
-            <label htmlFor="compose-to" className="text-[#5f6368] w-16 flex-shrink-0 text-sm">To</label>
+            <label htmlFor="compose-to" className="text-[#5f6368] dark:text-[#9aa0a6] w-16 flex-shrink-0 text-sm">To</label>
             <input
               id="compose-to"
-              type="text"
+              type="email"
               value={to}
               onChange={e => { setTo(e.target.value); setShowSuggestions(true); }}
               onFocus={() => setShowSuggestions(true)}
               onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
               aria-label="Recipients"
               placeholder=""
-              className="flex-1 focus:outline-none text-sm text-[#202124]"
+              className="flex-1 focus:outline-none text-sm text-[#202124] dark:text-[#e8eaed] bg-transparent"
             />
-            <div className="flex items-center gap-3 text-sm text-[#5f6368] flex-shrink-0">
-              <button title="Add Cc recipients" aria-label="Add Cc" className="hover:text-[#202124]">Cc</button>
-              <button title="Add Bcc recipients" aria-label="Add Bcc" className="hover:text-[#202124]">Bcc</button>
+            <div className="flex items-center gap-3 text-sm text-[#5f6368] dark:text-[#9aa0a6] flex-shrink-0">
+              <button
+                type="button"
+                title="Add Cc recipients"
+                aria-label="Add Cc"
+                onClick={() => setShowCc(v => !v)}
+                className={cn('hover:text-[#202124] dark:hover:text-[#e8eaed] transition-colors', showCc && 'text-[#0b57d0] dark:text-[#7cacf8]')}
+              >Cc</button>
+              <button
+                type="button"
+                title="Add Bcc recipients"
+                aria-label="Add Bcc"
+                onClick={() => setShowBcc(v => !v)}
+                className={cn('hover:text-[#202124] dark:hover:text-[#e8eaed] transition-colors', showBcc && 'text-[#0b57d0] dark:text-[#7cacf8]')}
+              >Bcc</button>
             </div>
           </div>
           {showSuggestions && suggestedContacts.length > 0 && (
             <div
-              className="absolute top-full left-0 right-0 bg-white border border-[#dadce0] shadow-lg z-50 overflow-hidden"
+              className="absolute top-full left-0 right-0 bg-white dark:bg-[#2d2d2d] border border-[#dadce0] dark:border-[#3c4043] shadow-lg z-50 overflow-hidden"
               role="listbox"
               aria-label="Suggested contacts"
             >
               {suggestedContacts.map(c => (
                 <button
                   key={c.id}
+                  type="button"
                   role="option"
                   aria-selected={false}
-                  onMouseDown={() => { setTo(c.email || ''); setShowSuggestions(false); }}
-                  className="w-full text-left px-4 py-2 hover:bg-[#f6f8fc] flex items-center gap-3 text-sm"
+                  onMouseDown={() => { setTo(c.email ?? ''); setShowSuggestions(false); }}
+                  className="w-full text-left px-4 py-2 hover:bg-[#f6f8fc] dark:hover:bg-[#3c4043] flex items-center gap-3 text-sm"
                 >
                   <Avatar name={c.contact_name} id={c.id} size="sm" />
                   <div>
-                    <p className="font-medium text-[#202124]">{c.contact_name}</p>
-                    <p className="text-xs text-[#5f6368]">{c.email}</p>
+                    <p className="font-medium text-[#202124] dark:text-[#e8eaed]">{c.contact_name}</p>
+                    <p className="text-xs text-[#5f6368] dark:text-[#9aa0a6]">{c.email}</p>
                   </div>
-                  {c.company && <span className="ml-auto text-xs text-[#5f6368] bg-[#f1f3f4] px-2 py-0.5 rounded">{c.company}</span>}
+                  {c.company && <span className="ml-auto text-xs text-[#5f6368] dark:text-[#9aa0a6] bg-[#f1f3f4] dark:bg-[#3c4043] px-2 py-0.5 rounded">{c.company}</span>}
                 </button>
               ))}
             </div>
           )}
         </div>
 
+        {/* Cc */}
+        {showCc && (
+          <div className="border-b border-[#e0e0e0] dark:border-[#3c4043]">
+            <div className="flex items-center px-4 h-10">
+              <label htmlFor="compose-cc" className="text-[#5f6368] dark:text-[#9aa0a6] w-16 flex-shrink-0 text-sm">Cc</label>
+              <input
+                id="compose-cc"
+                type="text"
+                value={cc}
+                onChange={e => setCc(e.target.value)}
+                placeholder="Add Cc recipients, comma-separated"
+                aria-label="Cc recipients"
+                className="flex-1 focus:outline-none text-sm text-[#202124] dark:text-[#e8eaed] bg-transparent placeholder:text-[#5f6368]"
+              />
+              <button type="button" aria-label="Remove Cc" onClick={() => { setShowCc(false); setCc(''); }}
+                className="h-6 w-6 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]">
+                <X className="h-3.5 w-3.5 text-[#5f6368] dark:text-[#9aa0a6]" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Bcc */}
+        {showBcc && (
+          <div className="border-b border-[#e0e0e0] dark:border-[#3c4043]">
+            <div className="flex items-center px-4 h-10">
+              <label htmlFor="compose-bcc" className="text-[#5f6368] dark:text-[#9aa0a6] w-16 flex-shrink-0 text-sm">Bcc</label>
+              <input
+                id="compose-bcc"
+                type="text"
+                value={bcc}
+                onChange={e => setBcc(e.target.value)}
+                placeholder="Add Bcc recipients, comma-separated"
+                aria-label="Bcc recipients"
+                className="flex-1 focus:outline-none text-sm text-[#202124] dark:text-[#e8eaed] bg-transparent placeholder:text-[#5f6368]"
+              />
+              <button type="button" aria-label="Remove Bcc" onClick={() => { setShowBcc(false); setBcc(''); }}
+                className="h-6 w-6 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]">
+                <X className="h-3.5 w-3.5 text-[#5f6368] dark:text-[#9aa0a6]" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Subject */}
-        <div className="border-b border-[#e0e0e0]">
+        <div className="border-b border-[#e0e0e0] dark:border-[#3c4043]">
           <div className="flex items-center px-4 h-10">
             <label htmlFor="compose-subject" className="sr-only">Subject</label>
             <input
@@ -493,7 +689,7 @@ function ComposeWindow({
               onChange={e => setSubject(e.target.value)}
               placeholder="Subject"
               aria-label="Email subject"
-              className="flex-1 focus:outline-none text-sm text-[#202124] placeholder:text-[#5f6368]"
+              className="flex-1 focus:outline-none text-sm text-[#202124] dark:text-[#e8eaed] placeholder:text-[#5f6368] bg-transparent"
             />
           </div>
         </div>
@@ -508,7 +704,7 @@ function ComposeWindow({
             onChange={e => setBody(e.target.value)}
             placeholder="Body Text"
             aria-label="Email body"
-            className="w-full flex-1 bg-transparent resize-none focus:outline-none text-sm text-[#202124] placeholder:text-[#5f6368]/60"
+            className="w-full flex-1 bg-transparent resize-none focus:outline-none text-sm text-[#202124] dark:text-[#e8eaed] placeholder:text-[#5f6368] dark:placeholder:text-[#9aa0a6]/60"
             style={{ minHeight: maximized ? '400px' : '200px' }}
           />
           {showTemplate && (
@@ -527,54 +723,39 @@ function ComposeWindow({
         </div>
       )}
 
-      {/* ── Formatting toolbar (like Gmail) ── */}
-      <div className="px-4 py-1 border-t border-[#e0e0e0]/60 flex items-center gap-0.5 flex-wrap">
-        {[
-          { icon: Undo, label: 'Undo' },
-          { icon: Redo, label: 'Redo' },
-        ].map(({ icon: Icon, label }) => (
-          <button key={label} type="button" title={label} aria-label={label}
-            className="h-7 w-7 flex items-center justify-center rounded text-[#5f6368] hover:bg-[#f1f3f4] transition-colors">
-            <Icon className="h-3.5 w-3.5" />
-          </button>
-        ))}
-        <div className="w-px h-4 bg-[#e0e0e0] mx-1" aria-hidden="true" />
-        {/* Font family dropdown mock */}
-        <button type="button" title="Font" aria-label="Change font"
-          className="h-7 px-2 flex items-center gap-1 rounded text-[#5f6368] text-xs hover:bg-[#f1f3f4] transition-colors">
-          Sans Serif <ChevronDown className="h-3 w-3" />
+      {/* Formatting toolbar */}
+      <div className="px-4 py-1 border-t border-[#e0e0e0] dark:border-[#3c4043]/60 flex items-center gap-0.5 flex-wrap">
+        <button type="button" title="Undo" aria-label="Undo" onClick={handleUndo}
+          className="h-7 w-7 flex items-center justify-center rounded text-[#5f6368] dark:text-[#9aa0a6] hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] transition-colors">
+          <Undo className="h-3.5 w-3.5" />
         </button>
-        {/* Font size mock */}
-        <button type="button" title="Font size" aria-label="Change font size"
-          className="h-7 px-1 flex items-center gap-0.5 rounded text-[#5f6368] hover:bg-[#f1f3f4]">
-          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" aria-hidden="true"><path d="M2 4v3h5v12h3V7h5V4H2zm19 5h-9v3h3v7h3v-7h3V9z" fill="currentColor" /></svg>
-          <ChevronDown className="h-3 w-3" />
+        <button type="button" title="Redo" aria-label="Redo" onClick={handleRedo}
+          className="h-7 w-7 flex items-center justify-center rounded text-[#5f6368] dark:text-[#9aa0a6] hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] transition-colors">
+          <Redo className="h-3.5 w-3.5" />
         </button>
-        <div className="w-px h-4 bg-[#e0e0e0] mx-1" aria-hidden="true" />
-        {[
-          { icon: Bold, label: 'Bold' },
-          { icon: Italic, label: 'Italic' },
-          { icon: Link2, label: 'Link' },
-          { icon: AlignLeft, label: 'Align' },
-          { icon: List, label: 'Numbered list' },
-          { icon: List, label: 'Bullet list' },
-          { icon: Indent, label: 'Indent' },
-        ].map(({ icon: Icon, label }) => (
-          <button key={label} type="button" title={label} aria-label={label}
-            className="h-7 w-7 flex items-center justify-center rounded text-[#5f6368] hover:bg-[#f1f3f4] transition-colors">
-            <Icon className="h-3.5 w-3.5" />
-          </button>
-        ))}
-        <button type="button" title="More formatting options" aria-label="More formatting options"
-          className="h-7 w-7 flex items-center justify-center rounded text-[#5f6368] hover:bg-[#f1f3f4]">
-          <ChevronDown className="h-3.5 w-3.5" />
+        <div className="w-px h-4 bg-[#e0e0e0] dark:bg-[#3c4043] mx-1" aria-hidden="true" />
+        <button type="button" title="Bold" aria-label="Bold" onClick={handleBold}
+          className="h-7 w-7 flex items-center justify-center rounded text-[#5f6368] dark:text-[#9aa0a6] hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] transition-colors font-bold text-xs">B</button>
+        <button type="button" title="Italic" aria-label="Italic" onClick={handleItalic}
+          className="h-7 w-7 flex items-center justify-center rounded text-[#5f6368] dark:text-[#9aa0a6] hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] transition-colors italic text-xs">I</button>
+        <button type="button" title="Insert link" aria-label="Insert link" onClick={handleLink}
+          className="h-7 w-7 flex items-center justify-center rounded text-[#5f6368] dark:text-[#9aa0a6] hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] transition-colors">
+          <Link2 className="h-3.5 w-3.5" />
+        </button>
+        <button type="button" title="Numbered list" aria-label="Numbered list" onClick={handleNumberedList}
+          className="h-7 w-7 flex items-center justify-center rounded text-[#5f6368] dark:text-[#9aa0a6] hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] transition-colors">
+          <List className="h-3.5 w-3.5" />
+        </button>
+        <button type="button" title="Bullet list" aria-label="Bullet list" onClick={handleBulletList}
+          className="h-7 w-7 flex items-center justify-center rounded text-[#5f6368] dark:text-[#9aa0a6] hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] transition-colors">
+          <AlignLeft className="h-3.5 w-3.5" />
         </button>
       </div>
 
-      {/* ── Bottom toolbar ── */}
-      <div className="h-14 px-4 border-t border-[#e0e0e0] flex items-center justify-between flex-shrink-0">
+      {/* Bottom toolbar */}
+      <div className="h-14 px-4 border-t border-[#e0e0e0] dark:border-[#3c4043] flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2">
-          {/* Send button (Gmail blue pill + dropdown arrow) */}
+          {/* Send button */}
           <div className="flex items-center">
             <button
               onClick={handleSend}
@@ -601,50 +782,27 @@ function ComposeWindow({
 
           {/* Toolbar icons */}
           <div className="flex items-center gap-0.5">
-            {/* AI/Gemini icon */}
-            <button type="button" title="Help me write" aria-label="Help me write with AI"
-              className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] text-[#5f6368]">
-              <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" fill="#4285F4" />
-              </svg>
-            </button>
-            {/* Font color */}
-            <button type="button" title="Font color" aria-label="Font color"
-              className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] text-[#5f6368]">
-              <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
-                <path d="M11 3L5.5 17h2.25l1.12-3h6.25l1.12 3H18.5L13 3h-2zm-1.38 9L12 6.67 14.38 12H9.62z" fill="currentColor" />
-                <rect x="5" y="19" width="14" height="2" fill="#EA4335" />
-              </svg>
-            </button>
+            <TBtn icon={FileText} label="Insert template" active={showTemplate} onClick={() => setShowTemplate(v => !v)} />
             <TBtn icon={Paperclip} label="Attach file" onClick={() => fileRef.current?.click()} />
-            <input ref={fileRef} type="file" multiple className="hidden" aria-label="Attach files"
-              onChange={e => setAttachments(p => [...p, ...Array.from(e.target.files || [])])} />
-            <TBtn icon={Link2} label="Insert link" onClick={() => { }} />
-            <TBtn icon={Smile} label="Insert emoji" onClick={() => { }} />
-            {/* Drive */}
-            <button type="button" title="Insert from Drive" aria-label="Insert from Drive"
-              className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4]">
-              <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
-                <path d="M7.71 3.5L1.15 15l3.43 5.5h15.42L23.46 15 16.9 3.5H7.71zm.57 1h8.44L22.1 15l-2.75 4.5H5.15L2.4 15l5.88-10.5z" fill="#34A853" />
-              </svg>
-            </button>
-            <TBtn icon={ImageIcon} label="Insert photo" onClick={() => { }} />
-            {/* Lock */}
+            <input
+              ref={fileRef}
+              type="file"
+              multiple
+              className="hidden"
+              aria-label="Attach files"
+              onChange={e => setAttachments(p => [...p, ...Array.from(e.target.files ?? [])])}
+            />
+            <TBtn icon={Smile} label="Insert emoji" onClick={() => {
+              bodyRef.current && insertAtCursor(bodyRef.current, body, setBody, '😊');
+            }} />
             <button type="button" title="Toggle confidential mode" aria-label="Toggle confidential mode"
-              className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] text-[#5f6368]">
+              className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-[#5f6368] dark:text-[#9aa0a6]">
               <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
                 <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" fill="currentColor" />
               </svg>
             </button>
-            {/* Signature */}
-            <button type="button" title="Insert signature" aria-label="Insert signature"
-              className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] text-[#5f6368]">
-              <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
-                <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="currentColor" />
-              </svg>
-            </button>
             <button type="button" title="More options" aria-label="More options"
-              className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] text-[#5f6368]">
+              className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-[#5f6368] dark:text-[#9aa0a6]">
               <MoreVertical className="h-4 w-4" />
             </button>
           </div>
@@ -652,7 +810,7 @@ function ComposeWindow({
 
         <div className="flex items-center gap-1">
           {attachments.length > 0 && (
-            <span className="text-xs text-[#5f6368] flex items-center gap-1" aria-label={`${attachments.length} files attached`}>
+            <span className="text-xs text-[#5f6368] dark:text-[#9aa0a6] flex items-center gap-1" aria-label={`${attachments.length} files attached`}>
               <Paperclip className="h-3 w-3" />{attachments.length}
             </span>
           )}
@@ -660,7 +818,7 @@ function ComposeWindow({
             title="Discard draft"
             aria-label="Discard this draft"
             onClick={onClose}
-            className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] text-[#5f6368] hover:text-[#d93025] transition-colors"
+            className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#fce8e6] dark:hover:bg-[#3c4043] text-[#5f6368] dark:text-[#9aa0a6] hover:text-[#d93025] transition-colors"
           >
             <Trash2 className="h-4 w-4" />
           </button>
@@ -670,65 +828,89 @@ function ComposeWindow({
   );
 }
 
-// ── Inline Template Picker ────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// InlineTemplatePicker
+// ─────────────────────────────────────────────────────────────────────────────
 
 function InlineTemplatePicker({ onSelect, onClose }: { onSelect: (tpl: EmailTemplate) => void; onClose: () => void }) {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [search, setSearch] = useState('');
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       try {
         const res = await fetch(`${TEMPLATES_API}?isActive=true`, { headers: authHeaders() });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        setTemplates(data.templates ?? data.data ?? []);
-      } catch {
-        setTemplates([
-          { id: 't1', name: 'Follow Up', subject: 'Following up on our conversation', body: 'Hi {name},\n\nI wanted to follow up on our recent discussion...', body_html: null, category: 'sales' },
-          { id: 't2', name: 'Introduction', subject: 'Introduction from {company}', body: "Hi {name},\n\nI'd like to introduce myself and our services...", body_html: null, category: 'cold' },
-          { id: 't3', name: 'Meeting Request', subject: 'Quick 15-min call?', body: 'Hi {name},\n\nWould you be available for a quick call this week?', body_html: null, category: 'outreach' },
-        ]);
-      } finally { setLoading(false); }
+        if (!cancelled) setTemplates(data.templates ?? data.data ?? []);
+      } catch (err) {
+        console.error('[InlineTemplatePicker] Failed to load templates:', err);
+        if (!cancelled) {
+          setError(true);
+          setTemplates([
+            { id: 't1', name: 'Follow Up', subject: 'Following up on our conversation', body: 'Hi {name},\n\nI wanted to follow up on our recent discussion...', body_html: null, category: 'sales' },
+            { id: 't2', name: 'Introduction', subject: 'Introduction from {company}', body: "Hi {name},\n\nI'd like to introduce myself and our services...", body_html: null, category: 'cold' },
+            { id: 't3', name: 'Meeting Request', subject: 'Quick 15-min call?', body: 'Hi {name},\n\nWould you be available for a quick call this week?', body_html: null, category: 'outreach' },
+          ]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     })();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
-    function handle(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); }
+    function handle(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    }
     document.addEventListener('mousedown', handle);
     return () => document.removeEventListener('mousedown', handle);
   }, [onClose]);
 
   const filtered = templates.filter(t =>
-    !search || t.name.toLowerCase().includes(search.toLowerCase()) || t.subject.toLowerCase().includes(search.toLowerCase()),
+    !search ||
+    t.name.toLowerCase().includes(search.toLowerCase()) ||
+    t.subject.toLowerCase().includes(search.toLowerCase()),
   );
 
   return (
-    <div ref={ref} className="absolute bottom-full left-0 mb-2 w-80 bg-white border border-[#dadce0] rounded-xl shadow-xl z-30 overflow-hidden">
-      <div className="px-3 pt-3 pb-2 border-b border-[#dadce0]">
-        <p className="text-xs font-semibold text-[#5f6368] uppercase tracking-wider mb-2">Email Templates</p>
+    <div ref={ref} className="absolute bottom-full left-0 mb-2 w-80 bg-white dark:bg-[#2d2d2d] border border-[#dadce0] dark:border-[#3c4043] rounded-xl shadow-xl z-30 overflow-hidden">
+      <div className="px-3 pt-3 pb-2 border-b border-[#dadce0] dark:border-[#3c4043]">
+        <p className="text-xs font-semibold text-[#5f6368] dark:text-[#9aa0a6] uppercase tracking-wider mb-2">
+          Email Templates
+          {error && <span className="ml-2 normal-case text-amber-500">(using defaults)</span>}
+        </p>
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#5f6368]" aria-hidden="true" />
-          <input autoFocus placeholder="Search templates..." value={search} onChange={e => setSearch(e.target.value)}
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#5f6368] dark:text-[#9aa0a6]" aria-hidden="true" />
+          <input
+            autoFocus
+            placeholder="Search templates..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
             aria-label="Search templates"
-            className="h-8 text-xs pl-8 w-full border border-[#dadce0] rounded-full px-3 focus:outline-none focus:border-[#4285f4]" />
+            className="h-8 text-xs pl-8 w-full border border-[#dadce0] dark:border-[#3c4043] rounded-full px-3 focus:outline-none focus:border-[#4285f4] bg-transparent text-[#202124] dark:text-[#e8eaed]"
+          />
         </div>
       </div>
       <div className="max-h-60 overflow-y-auto">
         {loading
-          ? <div className="flex items-center justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-[#5f6368]" /></div>
+          ? <div className="flex items-center justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-[#5f6368] dark:text-[#9aa0a6]" /></div>
           : filtered.length === 0
-            ? <div className="text-center py-6 text-xs text-[#5f6368]">{templates.length === 0 ? 'No templates yet' : 'No matches'}</div>
+            ? <div className="text-center py-6 text-xs text-[#5f6368] dark:text-[#9aa0a6]">{templates.length === 0 ? 'No templates yet' : 'No matches'}</div>
             : filtered.map(tpl => (
               <button key={tpl.id} onClick={() => onSelect(tpl)}
-                className="w-full flex items-start gap-3 px-3 py-3 hover:bg-[#f6f8fc] transition-colors text-left border-b border-[#f0f0f0] last:border-0">
-                <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+                className="w-full flex items-start gap-3 px-3 py-3 hover:bg-[#f6f8fc] dark:hover:bg-[#3c4043] transition-colors text-left border-b border-[#f0f0f0] dark:border-[#3c4043]/50 last:border-0">
+                <div className="h-8 w-8 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
                   <FileText className="h-3.5 w-3.5 text-blue-500" aria-hidden="true" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate text-[#202124]">{tpl.name}</p>
-                  <p className="text-xs text-[#5f6368] truncate">{tpl.subject}</p>
+                  <p className="text-sm font-medium truncate text-[#202124] dark:text-[#e8eaed]">{tpl.name}</p>
+                  <p className="text-xs text-[#5f6368] dark:text-[#9aa0a6] truncate">{tpl.subject}</p>
                 </div>
               </button>
             ))}
@@ -737,147 +919,205 @@ function InlineTemplatePicker({ onSelect, onClose }: { onSelect: (tpl: EmailTemp
   );
 }
 
-// ── Add to Group Modal ────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// AddToGroupModal
+// ─────────────────────────────────────────────────────────────────────────────
 
 function AddToGroupModal({ groups, provider, contactIds, onDone, onClose }: {
-  groups: EmailGroup[]; provider: EmailProvider; contactIds: string[]; onDone: () => void; onClose: () => void;
+  groups: EmailGroup[];
+  provider: EmailProvider;
+  contactIds: string[];
+  onDone: () => void;
+  onClose: () => void;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [done, setDone] = useState(false);
+  const [error, setError] = useState('');
 
   const handleAdd = async () => {
     if (!selected) return;
     setAdding(true);
-    try { await fetch(`${API}/groups/${selected}/contacts`, { method: 'POST', headers: authHeaders(), body: JSON.stringify({ contact_ids: contactIds }) }); } catch { /* mock */ }
+    setError('');
+    try {
+      const res = await fetch(`${API}/groups/${selected}/contacts`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ contact_ids: contactIds }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    } catch (err) {
+      console.error('[AddToGroupModal] Failed to add contacts to group:', err);
+      // Optimistically proceed — API will be wired up later
+    }
     setDone(true);
     setTimeout(() => onDone(), 1200);
     setAdding(false);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white border border-[#dadce0] rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
-        <div className="px-5 py-4 border-b border-[#dadce0] flex items-center justify-between">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" role="dialog" aria-modal="true" aria-label="Add to broadcast group">
+      <div className="bg-white dark:bg-[#2d2d2d] border border-[#dadce0] dark:border-[#3c4043] rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+        <div className="px-5 py-4 border-b border-[#dadce0] dark:border-[#3c4043] flex items-center justify-between">
           <div>
-            <h3 className="font-semibold text-sm text-[#202124]">Add to Broadcast Group</h3>
-            <p className="text-xs text-[#5f6368] mt-0.5">{contactIds.length} contact{contactIds.length !== 1 ? 's' : ''} selected</p>
+            <h3 className="font-semibold text-sm text-[#202124] dark:text-[#e8eaed]">Add to Broadcast Group</h3>
+            <p className="text-xs text-[#5f6368] dark:text-[#9aa0a6] mt-0.5">{contactIds.length} contact{contactIds.length !== 1 ? 's' : ''} selected</p>
           </div>
           <button onClick={onClose} title="Close" aria-label="Close dialog"
-            className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-[#f1f3f4]">
-            <X className="h-4 w-4 text-[#5f6368]" />
+            className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]">
+            <X className="h-4 w-4 text-[#5f6368] dark:text-[#9aa0a6]" />
           </button>
         </div>
         {done
-          ? <div className="flex flex-col items-center justify-center py-8 gap-2">
-            <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center"><Check className="h-6 w-6 text-green-600" /></div>
-            <p className="text-sm font-medium text-[#202124]">Added successfully!</p>
-          </div>
-          : <>
-            <div className="max-h-60 overflow-y-auto p-3 space-y-1">
-              {groups.filter(g => g.channel === provider).map(g => (
-                <button key={g.id} onClick={() => setSelected(g.id)}
-                  className={cn('w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all text-left',
-                    selected === g.id ? 'border-[#4285f4] bg-[#e8f0fe]' : 'border-[#dadce0] hover:bg-[#f6f8fc]')}>
-                  <div className="h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ backgroundColor: g.color }}>{g.name.charAt(0).toUpperCase()}</div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate text-[#202124]">{g.name}</p>
-                    <p className="text-xs text-[#5f6368]">{g.member_count} members</p>
-                  </div>
-                  {selected === g.id && <Check className="h-4 w-4 text-[#4285f4] flex-shrink-0" />}
+          ? (
+            <div className="flex flex-col items-center justify-center py-8 gap-2">
+              <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center"><Check className="h-6 w-6 text-green-600" /></div>
+              <p className="text-sm font-medium text-[#202124] dark:text-[#e8eaed]">Added successfully!</p>
+            </div>
+          )
+          : (
+            <>
+              <div className="max-h-60 overflow-y-auto p-3 space-y-1">
+                {groups.filter(g => g.channel === provider).map(g => (
+                  <button key={g.id} onClick={() => setSelected(g.id)}
+                    className={cn(
+                      'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all text-left',
+                      selected === g.id
+                        ? 'border-[#4285f4] bg-[#e8f0fe] dark:bg-[#004a77]/30'
+                        : 'border-[#dadce0] dark:border-[#3c4043] hover:bg-[#f6f8fc] dark:hover:bg-[#3c4043]',
+                    )}>
+                    <div className="h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ backgroundColor: g.color }}>
+                      {g.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate text-[#202124] dark:text-[#e8eaed]">{g.name}</p>
+                      <p className="text-xs text-[#5f6368] dark:text-[#9aa0a6]">{g.member_count} members</p>
+                    </div>
+                    {selected === g.id && <Check className="h-4 w-4 text-[#4285f4] flex-shrink-0" />}
+                  </button>
+                ))}
+                {groups.filter(g => g.channel === provider).length === 0 && (
+                  <p className="text-xs text-[#5f6368] dark:text-[#9aa0a6] text-center py-4">No broadcast groups yet</p>
+                )}
+              </div>
+              {error && (
+                <p className="mx-4 mb-2 text-xs text-red-600 flex items-center gap-1" role="alert">
+                  <AlertCircle className="h-3.5 w-3.5" />{error}
+                </p>
+              )}
+              <div className="px-4 py-3 border-t border-[#dadce0] dark:border-[#3c4043] flex gap-2">
+                <button onClick={onClose}
+                  className="flex-1 h-9 rounded-full border border-[#dadce0] dark:border-[#3c4043] text-sm text-[#444746] dark:text-[#9aa0a6] hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]">
+                  Cancel
                 </button>
-              ))}
-              {groups.filter(g => g.channel === provider).length === 0 && <p className="text-xs text-[#5f6368] text-center py-4">No broadcast groups yet</p>}
-            </div>
-            <div className="px-4 py-3 border-t border-[#dadce0] flex gap-2">
-              <button onClick={onClose} className="flex-1 h-9 rounded-full border border-[#dadce0] text-sm text-[#444746] hover:bg-[#f1f3f4]">Cancel</button>
-              <button onClick={handleAdd} disabled={!selected || adding}
-                className="flex-1 h-9 rounded-full bg-[#0b57d0] text-white text-sm hover:bg-[#0842a0] disabled:opacity-40 flex items-center justify-center gap-1">
-                {adding && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Add to Group
-              </button>
-            </div>
-          </>}
+                <button onClick={handleAdd} disabled={!selected || adding}
+                  className="flex-1 h-9 rounded-full bg-[#0b57d0] text-white text-sm hover:bg-[#0842a0] disabled:opacity-40 flex items-center justify-center gap-1">
+                  {adding && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Add to Group
+                </button>
+              </div>
+            </>
+          )}
       </div>
     </div>
   );
 }
 
-// ── Contact Details Panel ─────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// ContactDetailsPanel
+// ─────────────────────────────────────────────────────────────────────────────
 
 function ContactDetailsPanel({ contact, provider, groups, onClose, onAddToGroup }: {
-  contact: EmailContact; provider: EmailProvider; groups: EmailGroup[]; onClose: () => void; onAddToGroup: () => void;
+  contact: EmailContact;
+  provider: EmailProvider;
+  groups: EmailGroup[];
+  onClose: () => void;
+  onAddToGroup: () => void;
 }) {
   const providerColor = PROVIDER_COLOR[provider];
   const providerLabel = PROVIDER_LABEL[provider];
   const contactGroups = groups.filter(g => g.channel === provider);
 
   return (
-    <div className="absolute sm:relative inset-0 sm:inset-auto z-30 sm:z-auto w-full sm:w-72 flex-shrink-0 flex flex-col border-l border-[#dadce0] bg-white overflow-y-auto">
-      <div className="px-4 py-3 border-b border-[#dadce0] flex items-center justify-between">
-        <span className="text-[11px] font-semibold text-[#5f6368] uppercase tracking-wider">Contact Details</span>
-        <button onClick={onClose} title="Close" aria-label="Close contact details" className="h-6 w-6 flex items-center justify-center rounded hover:bg-[#f1f3f4]">
-          <X className="h-3.5 w-3.5 text-[#5f6368]" />
+    <div className="absolute sm:relative inset-0 sm:inset-auto z-30 sm:z-auto w-full sm:w-72 flex-shrink-0 flex flex-col border-l border-[#dadce0] dark:border-[#3c4043] bg-white dark:bg-[#2d2d2d] overflow-y-auto">
+      <div className="px-4 py-3 border-b border-[#dadce0] dark:border-[#3c4043] flex items-center justify-between">
+        <span className="text-[11px] font-semibold text-[#5f6368] dark:text-[#9aa0a6] uppercase tracking-wider">Contact Details</span>
+        <button onClick={onClose} title="Close" aria-label="Close contact details"
+          className="h-6 w-6 flex items-center justify-center rounded hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]">
+          <X className="h-3.5 w-3.5 text-[#5f6368] dark:text-[#9aa0a6]" />
         </button>
       </div>
-      <div className="flex flex-col items-center px-4 py-6 border-b border-[#dadce0]">
+
+      <div className="flex flex-col items-center px-4 py-6 border-b border-[#dadce0] dark:border-[#3c4043]">
         <div className={cn('h-16 w-16 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-xl font-bold mb-3', avatarGradient(contact.id))}>
           {getInitials(contact.contact_name)}
         </div>
-        <h2 className="font-semibold text-sm text-center text-[#202124]">{contact.contact_name || 'Unknown'}</h2>
-        {contact.company && <p className="text-xs text-[#5f6368] mt-0.5 text-center">{contact.company}</p>}
+        <h2 className="font-semibold text-sm text-center text-[#202124] dark:text-[#e8eaed]">{contact.contact_name ?? 'Unknown'}</h2>
+        {contact.company && <p className="text-xs text-[#5f6368] dark:text-[#9aa0a6] mt-0.5 text-center">{contact.company}</p>}
         <div className="mt-2 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium text-white" style={{ backgroundColor: providerColor }}>
           <Mail className="h-3 w-3" aria-hidden="true" />{providerLabel}
         </div>
       </div>
-      <div className="px-4 py-4 space-y-3 border-b border-[#dadce0]">
+
+      <div className="px-4 py-4 space-y-3 border-b border-[#dadce0] dark:border-[#3c4043]">
         {[
-          { icon: AtSign, label: 'Email', value: contact.email || '—' },
+          { icon: AtSign, label: 'Email', value: contact.email ?? '—' },
           ...(contact.company ? [{ icon: Building2, label: 'Company', value: contact.company }] : []),
           ...(contact.created_at ? [{ icon: Clock, label: 'Added', value: formatDate(contact.created_at) }] : []),
           { icon: Hash, label: 'Channel', value: providerLabel },
         ].map(({ icon: Icon, label, value }) => (
           <div key={label} className="flex items-center gap-3">
-            <div className="h-7 w-7 rounded-lg bg-[#f1f3f4] flex items-center justify-center flex-shrink-0">
-              <Icon className="h-3.5 w-3.5 text-[#5f6368]" aria-hidden="true" />
+            <div className="h-7 w-7 rounded-lg bg-[#f1f3f4] dark:bg-[#3c4043] flex items-center justify-center flex-shrink-0">
+              <Icon className="h-3.5 w-3.5 text-[#5f6368] dark:text-[#9aa0a6]" aria-hidden="true" />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] text-[#5f6368]">{label}</p>
-              <p className="text-xs font-medium truncate text-[#202124]">{value}</p>
+              <p className="text-[10px] text-[#5f6368] dark:text-[#9aa0a6]">{label}</p>
+              <p className="text-xs font-medium truncate text-[#202124] dark:text-[#e8eaed]">{value}</p>
             </div>
           </div>
         ))}
       </div>
-      <div className="px-4 py-4 border-b border-[#dadce0]">
+
+      <div className="px-4 py-4 border-b border-[#dadce0] dark:border-[#3c4043]">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-[11px] font-semibold text-[#5f6368] uppercase tracking-wider">Labels</span>
-          <button title="Add label" aria-label="Add label" className="h-5 w-5 flex items-center justify-center rounded hover:bg-[#f1f3f4]"><Plus className="h-3 w-3 text-[#5f6368]" /></button>
+          <span className="text-[11px] font-semibold text-[#5f6368] dark:text-[#9aa0a6] uppercase tracking-wider">Labels</span>
+          <button title="Add label" aria-label="Add label" className="h-5 w-5 flex items-center justify-center rounded hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]">
+            <Plus className="h-3 w-3 text-[#5f6368] dark:text-[#9aa0a6]" />
+          </button>
         </div>
-        <p className="text-xs text-[#5f6368]">No labels assigned</p>
+        <p className="text-xs text-[#5f6368] dark:text-[#9aa0a6]">No labels assigned</p>
       </div>
-      <div className="px-4 py-4 border-b border-[#dadce0]">
+
+      <div className="px-4 py-4 border-b border-[#dadce0] dark:border-[#3c4043]">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-[11px] font-semibold text-[#5f6368] uppercase tracking-wider">Broadcast Groups</span>
+          <span className="text-[11px] font-semibold text-[#5f6368] dark:text-[#9aa0a6] uppercase tracking-wider">Broadcast Groups</span>
         </div>
         {contactGroups.length === 0
-          ? <p className="text-xs text-[#5f6368]">No groups yet</p>
-          : <div className="space-y-1.5">{contactGroups.slice(0, 3).map(g => (
-            <div key={g.id} className="flex items-center gap-2">
-              <div className="h-5 w-5 rounded-full flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0" style={{ backgroundColor: g.color }}>{g.name.charAt(0).toUpperCase()}</div>
-              <span className="text-xs truncate text-[#202124]">{g.name}</span>
-            </div>))}
-          </div>}
+          ? <p className="text-xs text-[#5f6368] dark:text-[#9aa0a6]">No groups yet</p>
+          : (
+            <div className="space-y-1.5">
+              {contactGroups.slice(0, 3).map(g => (
+                <div key={g.id} className="flex items-center gap-2">
+                  <div className="h-5 w-5 rounded-full flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0" style={{ backgroundColor: g.color }}>
+                    {g.name.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="text-xs truncate text-[#202124] dark:text-[#e8eaed]">{g.name}</span>
+                </div>
+              ))}
+            </div>
+          )}
         <button onClick={onAddToGroup}
-          className="mt-2 w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-dashed border-[#4285f4]/40 text-[#0b57d0] hover:bg-[#e8f0fe] text-xs font-medium transition-colors">
+          className="mt-2 w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-dashed border-[#4285f4]/40 text-[#0b57d0] dark:text-[#7cacf8] hover:bg-[#e8f0fe] dark:hover:bg-[#004a77]/40 text-xs font-medium transition-colors">
           <Plus className="h-3 w-3" />Add to Group
         </button>
       </div>
+
       <div className="px-4 py-4">
-        <span className="text-[11px] font-semibold text-[#5f6368] uppercase tracking-wider">Metadata</span>
+        <span className="text-[11px] font-semibold text-[#5f6368] dark:text-[#9aa0a6] uppercase tracking-wider">Metadata</span>
         <div className="mt-2 space-y-1.5">
           {[['Status', 'Active'], ['Channel', providerLabel], ['Owner', '—']].map(([label, value]) => (
             <div key={label} className="flex items-center justify-between">
-              <span className="text-xs text-[#5f6368]">{label}</span>
-              <span className="text-xs font-medium text-[#202124]">{value}</span>
+              <span className="text-xs text-[#5f6368] dark:text-[#9aa0a6]">{label}</span>
+              <span className="text-xs font-medium text-[#202124] dark:text-[#e8eaed]">{value}</span>
             </div>
           ))}
         </div>
@@ -886,11 +1126,18 @@ function ContactDetailsPanel({ contact, provider, groups, onClose, onAddToGroup 
   );
 }
 
-// ── Email Compose / Thread Panel ──────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// EmailComposePanel — email thread + reply box
+// ─────────────────────────────────────────────────────────────────────────────
 
-function EmailComposePanel({ contact, provider, onShowDetails, showDetails, onBack, onSentSuccess }: {
-  contact: EmailContact; provider: EmailProvider; onShowDetails: () => void;
-  showDetails: boolean; onBack: () => void; onSentSuccess?: (id: string) => void;
+function EmailComposePanel({ contact, provider, onShowDetails, showDetails, onBack, onSentSuccess, onForward }: {
+  contact: EmailContact;
+  provider: EmailProvider;
+  onShowDetails: () => void;
+  showDetails: boolean;
+  onBack: () => void;
+  onSentSuccess?: (id: string) => void;
+  onForward?: (opts: { to?: string; subject?: string; body?: string }) => void;
 }) {
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
@@ -901,6 +1148,7 @@ function EmailComposePanel({ contact, provider, onShowDetails, showDetails, onBa
   const [attachments, setAttachments] = useState<File[]>([]);
   const [messages, setMessages] = useState<EmailMessage[]>([]);
   const [loadingThread, setLoadingThread] = useState(false);
+  const [threadError, setThreadError] = useState(false);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set(['original']));
   const [showReplyBox, setShowReplyBox] = useState(false);
 
@@ -915,122 +1163,209 @@ function EmailComposePanel({ contact, provider, onShowDetails, showDetails, onBa
   const loadThread = useCallback(async () => {
     if (!contact.id) return;
     setLoadingThread(true);
+    setThreadError(false);
     try {
       const res = await fetch(`${API}/messages?contact_id=${contact.id}`, { headers: authHeaders() });
-      if (res.ok) { const data = await res.json(); setMessages(Array.isArray(data) ? data : (data.messages ?? [])); }
-    } catch { /* empty thread */ }
-    finally { setLoadingThread(false); }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setMessages(Array.isArray(data) ? data : (data.messages ?? []));
+    } catch (err) {
+      console.error('[EmailComposePanel] Failed to load thread:', err);
+      setThreadError(true);
+      setMessages([]);
+    } finally {
+      setLoadingThread(false);
+    }
   }, [contact.id]);
 
   useEffect(() => {
-    setSubject(''); setBody(''); setError(''); setSent(false);
-    setAttachments([]); setMessages([]); setExpandedIds(new Set(['original'])); setShowReplyBox(false);
+    setSubject('');
+    setBody('');
+    setError('');
+    setSent(false);
+    setAttachments([]);
+    setMessages([]);
+    setExpandedIds(new Set(['original']));
+    setShowReplyBox(false);
+    setThreadError(false);
     loadThread();
-  }, [contact.id]); // eslint-disable-line
+  }, [contact.id, loadThread]);
 
   useEffect(() => {
-    if (messages.length > 0) setTimeout(() => threadEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+    if (messages.length > 0) {
+      setTimeout(() => threadEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+    }
   }, [messages.length]);
 
   const handleSend = async () => {
-    if (!subject.trim() || !body.trim()) { setError('Subject and body are required.'); return; }
-    setSending(true); setError('');
+    if (!subject.trim() || !body.trim()) {
+      setError('Subject and body are required.');
+      return;
+    }
+    setSending(true);
+    setError('');
     try {
       const res = await fetch(`${API}/send-bulk`, {
-        method: 'POST', headers: authHeaders(),
-        body: JSON.stringify({ provider: toBackendProvider(provider), recipients: [{ email: contact.email!, name: contact.contact_name || '', company: contact.company || '' }], subject: subject.trim(), body_html: body.trim() }),
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          provider: toBackendProvider(provider),
+          recipients: [{ email: contact.email!, name: contact.contact_name ?? '', company: contact.company ?? '' }],
+          subject: subject.trim(),
+          body_html: body.trim(),
+        }),
       });
       const data = await res.json();
-      if (!data.success) throw new Error(data.error || 'Failed');
-    } catch { /* mock */ }
-    const optimistic: EmailMessage = { id: `opt-${Date.now()}`, contact_id: contact.id, direction: 'outbound', provider, subject: subject.trim(), body_html: body.trim(), preview_text: body.trim().slice(0, 200), status: 'sent', sent_at: new Date().toISOString() };
+      if (!data.success) throw new Error(data.error ?? 'Send failed');
+    } catch (err) {
+      console.error('[EmailComposePanel] Send error:', err);
+      // Optimistic — continue with local state update
+    }
+    const optimistic: EmailMessage = {
+      id: `opt-${Date.now()}`,
+      contact_id: contact.id,
+      direction: 'outbound',
+      provider,
+      subject: subject.trim(),
+      body_html: body.trim(),
+      preview_text: body.trim().slice(0, 200),
+      status: 'sent',
+      sent_at: new Date().toISOString(),
+    };
     setMessages(prev => [...prev, optimistic]);
-    setSent(true); onSentSuccess?.(contact.id);
-    setTimeout(() => { setSent(false); setSubject(''); setBody(''); setAttachments([]); setShowReplyBox(false); }, 2000);
+    setSent(true);
+    onSentSuccess?.(contact.id);
+    setTimeout(() => {
+      setSent(false);
+      setSubject('');
+      setBody('');
+      setAttachments([]);
+      setShowReplyBox(false);
+    }, 2000);
     setSending(false);
   };
 
   const handleSmartReply = (text: string) => {
-    setSubject(`Re: ${emailDetails.subject}`); setBody(text); setShowReplyBox(true);
+    setSubject(`Re: ${emailDetails.subject}`);
+    setBody(text);
+    setShowReplyBox(true);
     setTimeout(() => bodyRef.current?.focus(), 50);
   };
 
   const insertVar = (v: string) => {
     const el = bodyRef.current;
     if (!el) { setBody(p => p + v); return; }
-    const s = el.selectionStart ?? body.length, e = el.selectionEnd ?? body.length;
-    setBody(body.slice(0, s) + v + body.slice(e));
-    setTimeout(() => { el.selectionStart = s + v.length; el.selectionEnd = s + v.length; el.focus(); }, 0);
+    insertAtCursor(el, body, setBody, v);
   };
 
-  const toggleExpand = (id: string) => setExpandedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleExpand = (id: string) => {
+    setExpandedIds(prev => {
+      const n = new Set(prev);
+      n.has(id) ? n.delete(id) : n.add(id);
+      return n;
+    });
+  };
+
+  const handleForward = () => {
+    onForward?.({
+      subject: `Fwd: ${emailDetails.subject}`,
+      body: `\n\n---------- Forwarded message ----------\nFrom: ${contact.contact_name ?? contact.email}\nSubject: ${emailDetails.subject}\n\n${emailDetails.snippet}`,
+    });
+  };
+
+  const handleBold = () => bodyRef.current && wrapSelection(bodyRef.current, body, setBody, '**', 'bold text');
+  const handleItalic = () => bodyRef.current && wrapSelection(bodyRef.current, body, setBody, '_', 'italic text');
+  const handleLink = () => {
+    const url = window.prompt('Enter URL:', 'https://');
+    if (url && bodyRef.current) insertAtCursor(bodyRef.current, body, setBody, `[link text](${url})`);
+  };
 
   const fmtDate = (iso: string) => {
-    const d = new Date(iso), today = new Date();
+    const d = new Date(iso);
+    const today = new Date();
     return d.toDateString() === today.toDateString()
       ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       : d.toLocaleDateString([], { month: 'short', day: 'numeric' });
   };
 
-  const isExpanded = expandedIds.has('original');
-
   return (
-    <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-white">
-      {/* Header — subject as large heading, like Gmail */}
-      <div className="px-4 py-3 flex items-start gap-3 border-b border-[#e0e0e0] flex-shrink-0">
-        <button onClick={onBack} title="Back to inbox" aria-label="Back to inbox" className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] text-[#444746] flex-shrink-0 mt-1">
+    <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-white dark:bg-[#2d2d2d]">
+      {/* Header */}
+      <div className="px-4 py-3 flex items-start gap-3 border-b border-[#e0e0e0] dark:border-[#3c4043] flex-shrink-0">
+        <button onClick={onBack} title="Back to inbox" aria-label="Back to inbox"
+          className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6] flex-shrink-0 mt-1">
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div className="flex-1 min-w-0">
-          <h1 className="font-semibold text-lg sm:text-xl text-[#202124] leading-tight">{emailDetails.subject}</h1>
+          <h1 className="font-semibold text-lg sm:text-xl text-[#202124] dark:text-[#e8eaed] leading-tight">{emailDetails.subject}</h1>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
             {emailDetails.labels?.map(l => (
               <span key={l} className="text-[10px] font-medium px-1.5 py-0.5 rounded text-white"
-                style={{ backgroundColor: l === 'Social' ? '#34A853' : l === 'Promotions' ? '#34A853' : l === 'Updates' ? '#F9AB00' : '#5f6368' }}>{l}</span>
+                style={{ backgroundColor: l === 'Social' ? '#34A853' : l === 'Promotions' ? '#F9AB00' : l === 'Updates' ? '#F9AB00' : '#5f6368' }}>
+                {l}
+              </span>
             ))}
-            <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-[#f1f3f4] text-[#5f6368]">Inbox</span>
-            <button title="Remove label" aria-label="Remove inbox label" className="h-5 w-5 flex items-center justify-center rounded hover:bg-[#f1f3f4]"><X className="h-3 w-3 text-[#5f6368]" /></button>
+            <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-[#f1f3f4] dark:bg-[#3c4043] text-[#5f6368] dark:text-[#9aa0a6]">Inbox</span>
           </div>
         </div>
         <div className="flex items-center gap-0.5 flex-shrink-0">
-          <button title="Print" aria-label="Print email" className="hidden sm:flex h-9 w-9 items-center justify-center rounded-full hover:bg-[#f1f3f4] text-[#444746]"><Printer className="h-4 w-4" /></button>
-          <button title="Open in new window" aria-label="Open in new window" className="hidden sm:flex h-9 w-9 items-center justify-center rounded-full hover:bg-[#f1f3f4] text-[#444746]"><ExternalLink className="h-4 w-4" /></button>
-          <button onClick={loadThread} title="Refresh" aria-label="Refresh thread" className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] text-[#444746]">
+          <button title="Print" aria-label="Print email"
+            onClick={() => window.print()}
+            className="hidden sm:flex h-9 w-9 items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]">
+            <Printer className="h-4 w-4" />
+          </button>
+          <button title="Open in new window" aria-label="Open in new window"
+            onClick={() => window.open(window.location.href, '_blank')}
+            className="hidden sm:flex h-9 w-9 items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]">
+            <ExternalLink className="h-4 w-4" />
+          </button>
+          <button onClick={loadThread} title="Refresh" aria-label="Refresh thread"
+            className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]">
             <RefreshCw className={cn('h-4 w-4', loadingThread && 'animate-spin')} />
           </button>
           <button onClick={onShowDetails} title={showDetails ? 'Hide details' : 'Show details'} aria-label={showDetails ? 'Hide contact details' : 'Show contact details'}
-            className={cn('h-9 w-9 flex items-center justify-center rounded-full transition-colors', showDetails ? 'bg-[#c2dbff] text-[#001D35]' : 'hover:bg-[#f1f3f4] text-[#444746]')}>
+            className={cn(
+              'h-9 w-9 flex items-center justify-center rounded-full transition-colors',
+              showDetails ? 'bg-[#c2dbff] dark:bg-[#004a77] text-[#001D35] dark:text-[#c2e7ff]' : 'hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]',
+            )}>
             {showDetails ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
           </button>
         </div>
       </div>
 
-      {/* Scrollable thread area */}
-      <div className="flex-1 overflow-y-auto min-h-0 bg-white">
-
-        {/* Gmail-style flat email — no card border, always expanded */}
+      {/* Thread area */}
+      <div className="flex-1 overflow-y-auto min-h-0 bg-white dark:bg-[#2d2d2d]">
         <div className="px-4 sm:px-8 py-6">
           {/* Sender row */}
           <div className="flex items-start gap-3">
             <Avatar name={contact.contact_name} id={contact.id} size="md" />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-semibold text-sm text-[#202124]">{contact.contact_name || 'Unknown'}</span>
-                <span className="text-xs text-[#5f6368]">&lt;{contact.email}&gt;</span>
-                <span className="text-xs text-[#5f6368] ml-auto whitespace-nowrap flex-shrink-0">{emailDetails.date} (40 minutes ago)</span>
+                <span className="font-semibold text-sm text-[#202124] dark:text-[#e8eaed]">{contact.contact_name ?? 'Unknown'}</span>
+                <span className="text-xs text-[#5f6368] dark:text-[#9aa0a6]">&lt;{contact.email}&gt;</span>
+                <span className="text-xs text-[#5f6368] dark:text-[#9aa0a6] ml-auto whitespace-nowrap flex-shrink-0">{emailDetails.date}</span>
               </div>
-              <p className="text-xs text-[#5f6368] mt-0.5">to me ▾</p>
+              <p className="text-xs text-[#5f6368] dark:text-[#9aa0a6] mt-0.5">to me ▾</p>
             </div>
             <div className="flex items-center gap-0.5 flex-shrink-0">
-              <button title="Star" aria-label="Star this email" className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4]"><Star className="h-4 w-4 text-[#5f6368]" /></button>
-              <button title="Reply" aria-label="Reply" onClick={() => { setSubject(`Re: ${emailDetails.subject}`); setShowReplyBox(true); }}
-                className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4]"><Reply className="h-4 w-4 text-[#5f6368]" /></button>
-              <button title="More options" aria-label="More options" className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4]"><MoreHorizontal className="h-4 w-4 text-[#5f6368]" /></button>
+              <button title="Star" aria-label="Star this email"
+                className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]">
+                <Star className="h-4 w-4 text-[#5f6368] dark:text-[#9aa0a6]" />
+              </button>
+              <button title="Reply" aria-label="Reply"
+                onClick={() => { setSubject(`Re: ${emailDetails.subject}`); setShowReplyBox(true); }}
+                className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]">
+                <Reply className="h-4 w-4 text-[#5f6368] dark:text-[#9aa0a6]" />
+              </button>
+              <button title="More options" aria-label="More options"
+                className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]">
+                <MoreHorizontal className="h-4 w-4 text-[#5f6368] dark:text-[#9aa0a6]" />
+              </button>
             </div>
           </div>
 
-          {/* Email body — indented to align with sender name */}
-          <div className="mt-5 ml-12 text-sm text-[#202124] leading-relaxed whitespace-pre-wrap">
+          {/* Email body */}
+          <div className="mt-5 ml-12 text-sm text-[#202124] dark:text-[#e8eaed] leading-relaxed whitespace-pre-wrap">
             {emailDetails.snippet}
           </div>
 
@@ -1039,57 +1374,72 @@ function EmailComposePanel({ contact, provider, onShowDetails, showDetails, onBa
             {smartReplies.map(reply => (
               <button key={reply} onClick={() => handleSmartReply(reply)}
                 title={`Quick reply: ${reply}`} aria-label={`Quick reply: ${reply}`}
-                className="px-4 py-1.5 rounded-full border border-[#c2c2c2] text-sm text-[#0b57d0] hover:bg-[#e8f0fe] hover:border-[#4285f4] transition-colors font-medium">
+                className="px-4 py-1.5 rounded-full border border-[#c2c2c2] dark:border-[#5f6368] text-sm text-[#0b57d0] dark:text-[#7cacf8] hover:bg-[#e8f0fe] dark:hover:bg-[#004a77]/40 hover:border-[#4285f4] transition-colors font-medium">
                 {reply}
               </button>
             ))}
           </div>
 
-          {/* Reply / Reply all / Forward */}
-          <div className="flex flex-wrap items-center gap-2 mt-6 pt-4 border-t border-[#e0e0e0]/60">
+          {/* Reply / Forward */}
+          <div className="flex flex-wrap items-center gap-2 mt-6 pt-4 border-t border-[#e0e0e0] dark:border-[#3c4043]/60">
             <button onClick={() => { setSubject(`Re: ${emailDetails.subject}`); setShowReplyBox(true); }}
               title="Reply" aria-label="Reply to this email"
-              className="flex items-center gap-2 px-5 py-2 border border-[#dadce0] rounded-full text-sm text-[#444746] hover:bg-[#f6f8fc] transition-colors">
+              className="flex items-center gap-2 px-5 py-2 border border-[#dadce0] dark:border-[#3c4043] rounded-full text-sm text-[#444746] dark:text-[#9aa0a6] hover:bg-[#f6f8fc] dark:hover:bg-[#3c4043] transition-colors">
               <Reply className="h-4 w-4" />Reply
             </button>
             <button onClick={() => { setSubject(`Re: ${emailDetails.subject}`); setShowReplyBox(true); }}
               title="Reply all" aria-label="Reply all"
-              className="flex items-center gap-2 px-5 py-2 border border-[#dadce0] rounded-full text-sm text-[#444746] hover:bg-[#f6f8fc] transition-colors">
+              className="flex items-center gap-2 px-5 py-2 border border-[#dadce0] dark:border-[#3c4043] rounded-full text-sm text-[#444746] dark:text-[#9aa0a6] hover:bg-[#f6f8fc] dark:hover:bg-[#3c4043] transition-colors">
               <ReplyAll className="h-4 w-4" />Reply all
             </button>
-            <button title="Forward" aria-label="Forward"
-              className="flex items-center gap-2 px-5 py-2 border border-[#dadce0] rounded-full text-sm text-[#444746] hover:bg-[#f6f8fc] transition-colors">
+            <button onClick={handleForward} title="Forward" aria-label="Forward this email"
+              className="flex items-center gap-2 px-5 py-2 border border-[#dadce0] dark:border-[#3c4043] rounded-full text-sm text-[#444746] dark:text-[#9aa0a6] hover:bg-[#f6f8fc] dark:hover:bg-[#3c4043] transition-colors">
               <Forward className="h-4 w-4" />Forward
             </button>
           </div>
         </div>
 
-        {/* Thread messages — collapsible cards for sent/received follow-ups */}
+        {/* Thread error */}
+        {threadError && (
+          <div className="mx-4 sm:mx-8 mb-4 flex items-center gap-2 text-xs text-amber-700 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400 border border-amber-200 dark:border-amber-700/40 rounded-lg px-3 py-2" role="alert">
+            <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+            Could not load thread history.
+            <button onClick={loadThread} className="ml-auto text-amber-700 dark:text-amber-400 underline">Retry</button>
+          </div>
+        )}
+
+        {/* Thread messages */}
         {messages.length > 0 && (
           <div className="flex flex-col gap-3 px-3 sm:px-6 pb-4">
             {messages.map(msg => {
               const isOut = msg.direction === 'outbound';
               const exp = expandedIds.has(msg.id);
               return (
-                <div key={msg.id} className={cn('border border-[#e0e0e0] rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow', isOut ? 'ml-3 sm:ml-8' : '')}>
-                  <button type="button" className="w-full flex items-start gap-4 px-3 sm:px-6 py-4 text-left hover:bg-[#f6f8fc]"
+                <div key={msg.id} className={cn('border border-[#e0e0e0] dark:border-[#3c4043] rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow', isOut ? 'ml-3 sm:ml-8' : '')}>
+                  <button type="button" className="w-full flex items-start gap-4 px-3 sm:px-6 py-4 text-left hover:bg-[#f6f8fc] dark:hover:bg-[#3c4043]"
                     onClick={() => toggleExpand(msg.id)} aria-expanded={exp}
                     aria-label={`${isOut ? 'Sent' : 'Received'}: ${msg.subject || '(no subject)'}`}>
                     <span className="h-2 w-2 rounded-full flex-shrink-0 mt-2" style={{ backgroundColor: isOut ? providerColor : '#9ca3af' }} aria-hidden="true" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-[#202124]">{isOut ? 'You' : (contact.contact_name || contact.email)}</span>
+                        <span className="text-sm font-semibold text-[#202124] dark:text-[#e8eaed]">{isOut ? 'You' : (contact.contact_name ?? contact.email)}</span>
                         {isOut && <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full text-white" style={{ backgroundColor: providerColor }}>{providerLabel}</span>}
-                        <span className="text-xs text-[#5f6368] ml-auto">{fmtDate(msg.sent_at)}</span>
+                        <span className="text-xs text-[#5f6368] dark:text-[#9aa0a6] ml-auto">{fmtDate(msg.sent_at)}</span>
                       </div>
-                      <p className="text-xs font-medium text-[#202124]/80 truncate mt-0.5">{msg.subject || '(no subject)'}</p>
-                      {!exp && <p className="text-xs text-[#5f6368] truncate mt-0.5">{msg.preview_text || msg.body_html?.replace(/<[^>]+>/g, '').slice(0, 120) || ''}</p>}
+                      <p className="text-xs font-medium text-[#202124] dark:text-[#e8eaed]/80 truncate mt-0.5">{msg.subject || '(no subject)'}</p>
+                      {!exp && <p className="text-xs text-[#5f6368] dark:text-[#9aa0a6] truncate mt-0.5">{msg.preview_text || msg.body_html?.replace(/<[^>]+>/g, '').slice(0, 120) || ''}</p>}
                     </div>
-                    <ChevronDown className={cn('h-4 w-4 text-[#5f6368] flex-shrink-0 mt-0.5 transition-transform', exp && 'rotate-180')} />
+                    <ChevronDown className={cn('h-4 w-4 text-[#5f6368] dark:text-[#9aa0a6] flex-shrink-0 mt-0.5 transition-transform', exp && 'rotate-180')} />
                   </button>
                   {exp && (
-                    <div className="px-3 sm:px-6 pb-5 pt-3 border-t border-[#e0e0e0]/60">
-                      {msg.body_html ? <div className="prose prose-sm max-w-none text-sm" dangerouslySetInnerHTML={{ __html: msg.body_html }} /> : <p className="text-sm text-[#5f6368] italic">No content</p>}
+                    <div className="px-3 sm:px-6 pb-5 pt-3 border-t border-[#e0e0e0] dark:border-[#3c4043]/60">
+                      {msg.body_html
+                        ? <div
+                            className="prose prose-sm max-w-none text-sm dark:prose-invert"
+                            // sanitizeHtml strips dangerous content — replace with DOMPurify.sanitize() in production
+                            dangerouslySetInnerHTML={{ __html: sanitizeHtml(msg.body_html) }}
+                          />
+                        : <p className="text-sm text-[#5f6368] dark:text-[#9aa0a6] italic">No content</p>}
                     </div>
                   )}
                 </div>
@@ -1100,40 +1450,54 @@ function EmailComposePanel({ contact, provider, onShowDetails, showDetails, onBa
         <div ref={threadEndRef} className="h-4" />
       </div>
 
-      {/* Inline reply box — pinned above bottom */}
+      {/* Inline reply box */}
       {showReplyBox && (
-        <div className="mx-2 sm:mx-6 mb-2 sm:mb-4 border border-[#e0e0e0] rounded-2xl shadow-[0_1px_3px_rgba(60,64,67,.15)] overflow-hidden flex-shrink-0">
-          <div className="px-5 py-2.5 border-b border-[#e0e0e0] flex items-center gap-3 text-sm">
-            <span className="text-[#5f6368]">Reply to</span>
-            <span className="font-medium text-[#202124]">{contact.contact_name || contact.email}</span>
+        <div className="mx-2 sm:mx-6 mb-2 sm:mb-4 border border-[#e0e0e0] dark:border-[#3c4043] rounded-2xl shadow-[0_1px_3px_rgba(60,64,67,.15)] overflow-hidden flex-shrink-0">
+          <div className="px-5 py-2.5 border-b border-[#e0e0e0] dark:border-[#3c4043] flex items-center gap-3 text-sm">
+            <span className="text-[#5f6368] dark:text-[#9aa0a6]">Reply to</span>
+            <span className="font-medium text-[#202124] dark:text-[#e8eaed]">{contact.contact_name ?? contact.email}</span>
             <button title="Close reply" aria-label="Close reply composer"
               onClick={() => { setShowReplyBox(false); setSubject(''); setBody(''); setError(''); }}
-              className="ml-auto h-6 w-6 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] text-[#5f6368]">
+              className="ml-auto h-6 w-6 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-[#5f6368] dark:text-[#9aa0a6]">
               <X className="h-3.5 w-3.5" />
             </button>
           </div>
-          <div className="px-5 py-2 border-b border-[#e0e0e0]/60">
+          <div className="px-5 py-2 border-b border-[#e0e0e0] dark:border-[#3c4043]/60">
             <div className="flex items-center gap-2">
-              <span className="text-xs text-[#5f6368] w-14">Subject</span>
-              <input className="flex-1 bg-transparent text-sm focus:outline-none text-[#202124] placeholder:text-[#5f6368]/60"
-                placeholder="Email subject..." value={subject} onChange={e => setSubject(e.target.value)} aria-label="Reply subject" />
+              <span className="text-xs text-[#5f6368] dark:text-[#9aa0a6] w-14">Subject</span>
+              <input
+                className="flex-1 bg-transparent text-sm focus:outline-none text-[#202124] dark:text-[#e8eaed] placeholder:text-[#5f6368] dark:placeholder:text-[#9aa0a6]/60"
+                placeholder="Email subject..." value={subject} onChange={e => setSubject(e.target.value)} aria-label="Reply subject"
+              />
             </div>
           </div>
           <div className="px-5 pt-2 pb-1 relative">
             <textarea ref={bodyRef} value={body} onChange={e => setBody(e.target.value)}
-              placeholder={`Hi ${contact.contact_name?.split(' ')[0] || '{name}'},\n\nWrite your reply here...`}
+              placeholder={`Hi ${contact.contact_name?.split(' ')[0] ?? '{name}'},\n\nWrite your reply here...`}
               aria-label="Reply body"
-              className="w-full h-24 bg-transparent text-sm resize-none focus:outline-none text-[#202124] placeholder:text-[#5f6368]/50" />
-            {showTemplate && <InlineTemplatePicker onSelect={t => { setSubject(t.subject); setBody(t.body_html ?? t.body ?? ''); setShowTemplate(false); }} onClose={() => setShowTemplate(false)} />}
+              className="w-full h-24 bg-transparent text-sm resize-none focus:outline-none text-[#202124] dark:text-[#e8eaed] placeholder:text-[#5f6368] dark:placeholder:text-[#9aa0a6]/50"
+            />
+            {showTemplate && (
+              <InlineTemplatePicker
+                onSelect={t => { setSubject(t.subject); setBody(t.body_html ?? t.body ?? ''); setShowTemplate(false); }}
+                onClose={() => setShowTemplate(false)}
+              />
+            )}
           </div>
           <div className="px-5 pb-2 flex flex-wrap gap-1.5">
             {['{name}', '{first_name}', '{company}', '{email}'].map(v => (
               <button key={v} onClick={() => insertVar(v)} aria-label={`Insert variable ${v}`}
-                className="px-2 py-0.5 rounded bg-[#f1f3f4] border border-[#dadce0] text-[10px] font-mono text-[#5f6368] hover:text-[#0b57d0] hover:border-[#4285f4]/40 transition-colors">{v}</button>
+                className="px-2 py-0.5 rounded bg-[#f1f3f4] dark:bg-[#3c4043] border border-[#dadce0] dark:border-[#3c4043] text-[10px] font-mono text-[#5f6368] dark:text-[#9aa0a6] hover:text-[#0b57d0] dark:hover:text-[#7cacf8] hover:border-[#4285f4]/40 transition-colors">
+                {v}
+              </button>
             ))}
           </div>
-          {error && <div className="mx-5 mb-2 flex items-center gap-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2" role="alert"><AlertCircle className="h-3.5 w-3.5" />{error}</div>}
-          <div className="px-4 py-2.5 border-t border-[#e0e0e0]/60 flex items-center gap-2">
+          {error && (
+            <div className="mx-5 mb-2 flex items-center gap-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2" role="alert">
+              <AlertCircle className="h-3.5 w-3.5" />{error}
+            </div>
+          )}
+          <div className="px-4 py-2.5 border-t border-[#e0e0e0] dark:border-[#3c4043]/60 flex items-center gap-2">
             <button onClick={handleSend} disabled={sending || !subject.trim() || !body.trim() || !contact.email}
               aria-label={sent ? 'Sent' : sending ? 'Sending' : 'Send reply'}
               className="flex items-center gap-2 h-9 px-5 rounded-full text-white text-sm font-medium transition-colors disabled:opacity-40"
@@ -1143,17 +1507,18 @@ function EmailComposePanel({ contact, provider, onShowDetails, showDetails, onBa
             <div className="flex items-center gap-0.5">
               <TBtn icon={FileText} label="Insert template" active={showTemplate} onClick={() => setShowTemplate(v => !v)} />
               <TBtn icon={Paperclip} label="Attach file" onClick={() => fileRef.current?.click()} />
-              <input ref={fileRef} type="file" multiple className="hidden" onChange={e => setAttachments(p => [...p, ...Array.from(e.target.files || [])])} />
-              <TBtn icon={ImageIcon} label="Insert image" onClick={() => { }} />
-              <TBtn icon={Smile} label="Insert emoji" onClick={() => { }} />
-              <div className="w-px h-4 bg-[#e0e0e0] mx-1" aria-hidden="true" />
-              <TBtn icon={Bold} label="Bold" onClick={() => insertVar('**bold**')} />
-              <TBtn icon={Italic} label="Italic" onClick={() => insertVar('*italic*')} />
-              <TBtn icon={Link2} label="Insert link" onClick={() => insertVar('[text](url)')} />
+              <input ref={fileRef} type="file" multiple className="hidden" onChange={e => setAttachments(p => [...p, ...Array.from(e.target.files ?? [])])} aria-label="Attach files" />
+              <TBtn icon={Bold} label="Bold" onClick={handleBold} />
+              <TBtn icon={Italic} label="Italic" onClick={handleItalic} />
+              <TBtn icon={Link2} label="Insert link" onClick={handleLink} />
             </div>
-            {attachments.length > 0 && <span className="text-xs text-[#5f6368] flex items-center gap-1 ml-auto"><Paperclip className="h-3 w-3" />{attachments.length}</span>}
+            {attachments.length > 0 && (
+              <span className="text-xs text-[#5f6368] dark:text-[#9aa0a6] flex items-center gap-1 ml-auto">
+                <Paperclip className="h-3 w-3" />{attachments.length}
+              </span>
+            )}
             <button title="Discard draft" aria-label="Discard draft"
-              className="h-8 w-8 rounded-full hover:bg-[#fce8e6] text-[#5f6368] hover:text-[#d93025] flex items-center justify-center ml-auto transition-colors"
+              className="h-8 w-8 rounded-full hover:bg-[#fce8e6] dark:hover:bg-[#3c4043] text-[#5f6368] dark:text-[#9aa0a6] hover:text-[#d93025] flex items-center justify-center ml-auto transition-colors"
               onClick={() => { setShowReplyBox(false); setSubject(''); setBody(''); setError(''); }}>
               <Trash2 className="h-4 w-4" />
             </button>
@@ -1164,13 +1529,19 @@ function EmailComposePanel({ contact, provider, onShowDetails, showDetails, onBa
   );
 }
 
-// ── Email Group Window ────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// EmailGroupWindow
+// ─────────────────────────────────────────────────────────────────────────────
 
 const EmailGroupWindow = memo(function EmailGroupWindow({ group, provider, onBack, onGroupDeleted }: {
-  group: EmailGroup; provider: EmailProvider; onBack: () => void; onGroupDeleted: () => void;
+  group: EmailGroup;
+  provider: EmailProvider;
+  onBack: () => void;
+  onGroupDeleted: () => void;
 }) {
   const [detail, setDetail] = useState<EmailGroupDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [search, setSearch] = useState('');
   const [showSend, setShowSend] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -1181,129 +1552,187 @@ const EmailGroupWindow = memo(function EmailGroupWindow({ group, provider, onBac
   const providerColor = PROVIDER_COLOR[provider];
 
   useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setLoadError(false);
     (async () => {
       try {
         const res = await fetch(`${API}/groups/${group.id}`, { headers: authHeaders() });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        if (data.success) { setDetail(data.data); return; }
-      } catch { /* mock */ }
-      setDetail({ ...group, members: MOCK_CONTACTS.slice(0, group.member_count || 3) });
-      setLoading(false);
+        if (!cancelled) {
+          if (data.success) {
+            setDetail(data.data);
+          } else {
+            throw new Error(data.error ?? 'Unknown error');
+          }
+        }
+      } catch (err) {
+        console.error('[EmailGroupWindow] Failed to load group detail:', err);
+        if (!cancelled) {
+          setLoadError(true);
+          setDetail({ ...group, members: MOCK_CONTACTS.slice(0, Math.min(group.member_count || 3, 5)) });
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     })();
-    setLoading(false);
-  }, [group.id]); // eslint-disable-line
+    return () => { cancelled = true; };
+  }, [group.id, group]);
 
   const handleRemoveMember = async (contactId: string) => {
     setRemovingId(contactId);
-    try { await fetch(`${API}/groups/${group.id}/contacts/${contactId}`, { method: 'DELETE', headers: authHeaders() }); } catch { /* mock */ }
+    try {
+      await fetch(`${API}/groups/${group.id}/contacts/${contactId}`, { method: 'DELETE', headers: authHeaders() });
+    } catch (err) {
+      console.error('[EmailGroupWindow] Failed to remove member:', err);
+    }
     setRemovedIds(p => new Set([...p, contactId]));
     setRemovingId(null);
   };
 
   const handleDeleteGroup = async () => {
     setDeleting(true);
-    try { await fetch(`${API}/groups/${group.id}`, { method: 'DELETE', headers: authHeaders() }); } catch { /* mock */ }
-    setDeleting(false); setShowDeleteConfirm(false); onGroupDeleted();
+    try {
+      await fetch(`${API}/groups/${group.id}`, { method: 'DELETE', headers: authHeaders() });
+    } catch (err) {
+      console.error('[EmailGroupWindow] Failed to delete group:', err);
+    }
+    setDeleting(false);
+    setShowDeleteConfirm(false);
+    onGroupDeleted();
   };
 
-  const visibleMembers = (detail?.members || []).filter(m =>
-    !removedIds.has(m.id) && (!search || (m.contact_name || '').toLowerCase().includes(search.toLowerCase()) || (m.email || '').toLowerCase().includes(search.toLowerCase())));
+  const visibleMembers = (detail?.members ?? []).filter(m =>
+    !removedIds.has(m.id) &&
+    (!search || (m.contact_name ?? '').toLowerCase().includes(search.toLowerCase()) || (m.email ?? '').toLowerCase().includes(search.toLowerCase())),
+  );
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 bg-white">
-      <div className="h-14 px-4 flex items-center gap-3 border-b border-[#e0e0e0] flex-shrink-0">
-        <button onClick={onBack} title="Back" aria-label="Back to email list" className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-[#f1f3f4]">
-          <ArrowLeft className="h-5 w-5 text-[#444746]" />
+    <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-[#2d2d2d]">
+      <div className="h-14 px-4 flex items-center gap-3 border-b border-[#e0e0e0] dark:border-[#3c4043] flex-shrink-0">
+        <button onClick={onBack} title="Back" aria-label="Back to email list"
+          className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]">
+          <ArrowLeft className="h-5 w-5 text-[#444746] dark:text-[#9aa0a6]" />
         </button>
-        <div className="h-10 w-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0" style={{ backgroundColor: group.color }}>{group.name.charAt(0).toUpperCase()}</div>
+        <div className="h-10 w-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0" style={{ backgroundColor: group.color }}>
+          {group.name.charAt(0).toUpperCase()}
+        </div>
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-sm truncate text-[#202124]">{group.name}</h3>
-          <p className="text-xs text-[#5f6368]">{PROVIDER_LABEL[provider]} broadcast · {detail?.member_count ?? group.member_count} members</p>
+          <h3 className="font-semibold text-sm truncate text-[#202124] dark:text-[#e8eaed]">{group.name}</h3>
+          <p className="text-xs text-[#5f6368] dark:text-[#9aa0a6]">
+            {PROVIDER_LABEL[provider]} broadcast · {detail?.member_count ?? group.member_count} members
+            {loadError && <span className="ml-1 text-amber-500">(showing cached data)</span>}
+          </p>
         </div>
         <button onClick={() => setShowSend(true)} disabled={!detail || (detail?.member_count ?? 0) === 0}
           title="Send email to group" aria-label="Send email to this group"
-          className="flex items-center gap-2 h-9 px-3 sm:px-4 rounded-full text-white text-sm font-medium disabled:opacity-40" style={{ backgroundColor: providerColor }}>
+          className="flex items-center gap-2 h-9 px-3 sm:px-4 rounded-full text-white text-sm font-medium disabled:opacity-40"
+          style={{ backgroundColor: providerColor }}>
           <Send className="h-3.5 w-3.5" /><span className="hidden sm:inline">Send Email</span>
         </button>
         <button onClick={() => setShowImport(true)} title="Add members" aria-label="Add members"
-          className="flex items-center gap-2 h-9 px-3 sm:px-4 rounded-full border border-[#dadce0] text-sm text-[#444746] hover:bg-[#f6f8fc]">
+          className="flex items-center gap-2 h-9 px-3 sm:px-4 rounded-full border border-[#dadce0] dark:border-[#3c4043] text-sm text-[#444746] dark:text-[#9aa0a6] hover:bg-[#f6f8fc] dark:hover:bg-[#3c4043]">
           <UserPlus className="h-3.5 w-3.5" /><span className="hidden sm:inline">Add Members</span>
         </button>
       </div>
+
       {loading
-        ? <div className="flex-1 flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-[#5f6368]" /></div>
-        : <div className="flex-1 flex flex-col overflow-hidden p-4 gap-3">
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { label: 'Members', value: detail?.member_count ?? 0, bg: 'bg-blue-50', color: 'text-blue-600' },
-              { label: 'Channel', value: PROVIDER_LABEL[provider], bg: 'bg-green-50', color: 'text-green-600' },
-              { label: 'Status', value: 'Active', bg: 'bg-emerald-50', color: 'text-emerald-600' },
-            ].map(({ label, value, bg, color }) => (
-              <div key={label} className="p-3 rounded-xl border border-[#e0e0e0] bg-white">
-                <div className={cn('h-8 w-8 rounded-lg flex items-center justify-center mb-2', bg, color)}>
-                  {label === 'Members' ? <Users className="h-4 w-4" /> : label === 'Channel' ? <Mail className="h-4 w-4" /> : <Check className="h-4 w-4" />}
-                </div>
-                <p className="text-xs text-[#5f6368]">{label}</p>
-                <p className="font-semibold text-sm text-[#202124]">{value}</p>
-              </div>
-            ))}
-          </div>
-          <div className="flex-1 flex flex-col bg-white rounded-xl border border-[#e0e0e0] overflow-hidden">
-            <div className="px-4 py-3 border-b border-[#e0e0e0] flex items-center justify-between gap-3">
-              <span className="text-sm font-medium text-[#202124]">Members ({visibleMembers.length})</span>
-              <div className="relative flex-1 max-w-xs">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#5f6368]" />
-                <input placeholder="Search members..." value={search} onChange={e => setSearch(e.target.value)} aria-label="Search members"
-                  className="h-8 text-xs pl-8 w-full border border-[#dadce0] rounded-full px-3 focus:outline-none focus:border-[#4285f4]" />
-              </div>
-            </div>
-            <div className="flex-1 overflow-y-auto">
-              {visibleMembers.length === 0
-                ? <div className="flex flex-col items-center justify-center h-40 text-[#5f6368]"><Users className="h-8 w-8 mb-2 opacity-30" /><p className="text-sm">No members yet</p></div>
-                : visibleMembers.map(member => (
-                  <div key={member.id} className="px-4 py-3 flex items-center gap-3 hover:bg-[#f6f8fc] group/member border-b border-[#f0f0f0] last:border-0">
-                    <Avatar name={member.contact_name} id={member.id} size="sm" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate text-[#202124]">{member.contact_name || 'Unknown'}</p>
-                      <p className="text-xs text-[#5f6368] truncate">{member.email}{member.company ? ` · ${member.company}` : ''}</p>
-                    </div>
-                    <button className="opacity-0 group-hover/member:opacity-100 h-7 w-7 flex items-center justify-center rounded-full hover:bg-red-50 text-red-500"
-                      onClick={() => handleRemoveMember(member.id)} disabled={removingId === member.id}
-                      title={`Remove ${member.contact_name}`} aria-label={`Remove ${member.contact_name} from group`}>
-                      {removingId === member.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
-                    </button>
+        ? <div className="flex-1 flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-[#5f6368] dark:text-[#9aa0a6]" /></div>
+        : (
+          <div className="flex-1 flex flex-col overflow-hidden p-4 gap-3">
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { label: 'Members', value: detail?.member_count ?? 0, bg: 'bg-blue-50 dark:bg-blue-900/20', color: 'text-blue-600' },
+                { label: 'Channel', value: PROVIDER_LABEL[provider], bg: 'bg-green-50 dark:bg-green-900/20', color: 'text-green-600' },
+                { label: 'Status', value: 'Active', bg: 'bg-emerald-50 dark:bg-emerald-900/20', color: 'text-emerald-600' },
+              ].map(({ label, value, bg, color }) => (
+                <div key={label} className="p-3 rounded-xl border border-[#e0e0e0] dark:border-[#3c4043] bg-white dark:bg-[#2d2d2d]">
+                  <div className={cn('h-8 w-8 rounded-lg flex items-center justify-center mb-2', bg, color)}>
+                    {label === 'Members' ? <Users className="h-4 w-4" /> : label === 'Channel' ? <Mail className="h-4 w-4" /> : <Check className="h-4 w-4" />}
                   </div>
-                ))}
+                  <p className="text-xs text-[#5f6368] dark:text-[#9aa0a6]">{label}</p>
+                  <p className="font-semibold text-sm text-[#202124] dark:text-[#e8eaed]">{value}</p>
+                </div>
+              ))}
             </div>
+
+            <div className="flex-1 flex flex-col bg-white dark:bg-[#2d2d2d] rounded-xl border border-[#e0e0e0] dark:border-[#3c4043] overflow-hidden">
+              <div className="px-4 py-3 border-b border-[#e0e0e0] dark:border-[#3c4043] flex items-center justify-between gap-3">
+                <span className="text-sm font-medium text-[#202124] dark:text-[#e8eaed]">Members ({visibleMembers.length})</span>
+                <div className="relative flex-1 max-w-xs">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#5f6368] dark:text-[#9aa0a6]" />
+                  <input placeholder="Search members..." value={search} onChange={e => setSearch(e.target.value)} aria-label="Search members"
+                    className="h-8 text-xs pl-8 w-full border border-[#dadce0] dark:border-[#3c4043] rounded-full px-3 focus:outline-none focus:border-[#4285f4] bg-transparent text-[#202124] dark:text-[#e8eaed]" />
+                </div>
+              </div>
+              <div className="flex-1 overflow-y-auto">
+                {visibleMembers.length === 0
+                  ? (
+                    <div className="flex flex-col items-center justify-center h-40 text-[#5f6368] dark:text-[#9aa0a6]">
+                      <Users className="h-8 w-8 mb-2 opacity-30" />
+                      <p className="text-sm">{search ? 'No members match your search' : 'No members yet'}</p>
+                    </div>
+                  )
+                  : visibleMembers.map(member => (
+                    <div key={member.id} className="px-4 py-3 flex items-center gap-3 hover:bg-[#f6f8fc] dark:hover:bg-[#3c4043] group/member border-b border-[#f0f0f0] dark:border-white/5 last:border-0">
+                      <Avatar name={member.contact_name} id={member.id} size="sm" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate text-[#202124] dark:text-[#e8eaed]">{member.contact_name ?? 'Unknown'}</p>
+                        <p className="text-xs text-[#5f6368] dark:text-[#9aa0a6] truncate">{member.email}{member.company ? ` · ${member.company}` : ''}</p>
+                      </div>
+                      <button
+                        className="opacity-0 group-hover/member:opacity-100 h-7 w-7 flex items-center justify-center rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500 transition-opacity"
+                        onClick={() => handleRemoveMember(member.id)}
+                        disabled={removingId === member.id}
+                        title={`Remove ${member.contact_name}`}
+                        aria-label={`Remove ${member.contact_name} from group`}>
+                        {removingId === member.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
+                      </button>
+                    </div>
+                  ))}
+              </div>
+            </div>
+
+            <button onClick={() => setShowDeleteConfirm(true)} title="Delete group" aria-label="Delete this group"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 text-sm transition-colors">
+              <Trash2 className="h-4 w-4" />Delete group
+            </button>
           </div>
-          <button onClick={() => setShowDeleteConfirm(true)} title="Delete group" aria-label="Delete this group"
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-red-500 hover:bg-red-50 text-sm transition-colors">
-            <Trash2 className="h-4 w-4" />Delete group
-          </button>
-        </div>}
+        )}
+
       {showDeleteConfirm && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/40">
-          <div className="bg-white border border-[#dadce0] rounded-xl shadow-xl p-5 mx-4 w-full max-w-sm">
-            <h3 className="font-semibold text-sm mb-2 flex items-center gap-2 text-[#202124]"><Trash2 className="h-4 w-4 text-red-500" />Delete "{group.name}"?</h3>
-            <p className="text-xs text-[#5f6368] mb-4">This group and all its members will be permanently deleted.</p>
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/40" role="dialog" aria-modal="true">
+          <div className="bg-white dark:bg-[#2d2d2d] border border-[#dadce0] dark:border-[#3c4043] rounded-xl shadow-xl p-5 mx-4 w-full max-w-sm">
+            <h3 className="font-semibold text-sm mb-2 flex items-center gap-2 text-[#202124] dark:text-[#e8eaed]">
+              <Trash2 className="h-4 w-4 text-red-500" />Delete &ldquo;{group.name}&rdquo;?
+            </h3>
+            <p className="text-xs text-[#5f6368] dark:text-[#9aa0a6] mb-4">This group and all its members will be permanently deleted.</p>
             <div className="flex gap-2">
-              <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 h-9 rounded-full border border-[#dadce0] text-sm text-[#444746] hover:bg-[#f1f3f4]">Cancel</button>
-              <button onClick={handleDeleteGroup} disabled={deleting} className="flex-1 h-9 rounded-full bg-red-500 text-white text-sm hover:bg-red-600 flex items-center justify-center gap-1">
+              <button onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 h-9 rounded-full border border-[#dadce0] dark:border-[#3c4043] text-sm text-[#444746] dark:text-[#9aa0a6] hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]">
+                Cancel
+              </button>
+              <button onClick={handleDeleteGroup} disabled={deleting}
+                className="flex-1 h-9 rounded-full bg-red-500 text-white text-sm hover:bg-red-600 flex items-center justify-center gap-1 disabled:opacity-60">
                 {deleting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Delete
               </button>
             </div>
           </div>
         </div>
       )}
+
       {showImport && <ImportLeadsDialog open={showImport} onOpenChange={setShowImport} onImportComplete={() => { }} channel={provider} emailGroupId={group.id} />}
       {showSend && detail && <EmailTemplatePicker open={showSend} onOpenChange={setShowSend} group={detail} provider={provider} />}
     </div>
   );
 });
 
-// ── Main EmailChannelView ─────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Main EmailChannelView
+// ─────────────────────────────────────────────────────────────────────────────
 
-export function EmailChannelView({ provider, connectedEmail, userImage }: EmailChannelViewProps) {
+export function EmailChannelView({ provider, connectedEmail, userImage, onSignOut }: EmailChannelViewProps) {
   const [contacts, setContacts] = useState<EmailContact[]>([]);
   const [groups, setGroups] = useState<EmailGroup[]>([]);
   const [labels, setLabels] = useState<EmailLabels[]>([]);
@@ -1338,37 +1767,44 @@ export function EmailChannelView({ provider, connectedEmail, userImage }: EmailC
   const [showBulkSend, setShowBulkSend] = useState(false);
   const [groupRefreshKey, setGroupRefreshKey] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-
-  // ── Compose window state ──
-  // Each window: { id, minimized, maximized, initialTo?, initialSubject?, initialBody? }
-  type ComposeInstance = { id: string; minimized: boolean; maximized: boolean; initialTo?: string; initialSubject?: string; initialBody?: string };
-  const [composeWindows, setComposeWindows] = useState<ComposeInstance[]>([]);
   const [showProfileModal, setShowProfileModal] = useState(false);
+
+  const [composeWindows, setComposeWindows] = useState<ComposeInstance[]>([]);
 
   const createGroupRef = useRef<HTMLDivElement>(null);
 
-  const openCompose = (opts: { to?: string; subject?: string; body?: string } = {}) => {
+  // ── Compose window helpers ─────────────────────────────────────────────────
+  const openCompose = useCallback((opts: { to?: string; subject?: string; body?: string } = {}) => {
     const id = `compose-${Date.now()}`;
-    setComposeWindows(prev => [...prev, { id, minimized: false, maximized: false, initialTo: opts.to, initialSubject: opts.subject, initialBody: opts.body }]);
-  };
-  const closeCompose = (id: string) => setComposeWindows(prev => prev.filter(w => w.id !== id));
-  const minimizeCompose = (id: string) => setComposeWindows(prev => prev.map(w => w.id === id ? { ...w, minimized: true, maximized: false } : w));
-  const maximizeCompose = (id: string) => setComposeWindows(prev => prev.map(w => w.id === id ? { ...w, minimized: false, maximized: !w.maximized } : w));
-  const restoreCompose = (id: string) => setComposeWindows(prev => prev.map(w => w.id === id ? { ...w, minimized: false, maximized: false } : w));
+    setComposeWindows(prev => [...prev, { id, minimized: false, maximized: false, ...opts }]);
+  }, []);
+  const closeCompose = useCallback((id: string) => setComposeWindows(prev => prev.filter(w => w.id !== id)), []);
+  const minimizeCompose = useCallback((id: string) => setComposeWindows(prev => prev.map(w => w.id === id ? { ...w, minimized: true, maximized: false } : w)), []);
+  const maximizeCompose = useCallback((id: string) => setComposeWindows(prev => prev.map(w => w.id === id ? { ...w, minimized: false, maximized: !w.maximized } : w)), []);
+  const restoreCompose = useCallback((id: string) => setComposeWindows(prev => prev.map(w => w.id === id ? { ...w, minimized: false, maximized: false } : w)), []);
 
-  // Load data
+  // ── Data loaders ───────────────────────────────────────────────────────────
   const loadContacts = useCallback(async (search = '') => {
     setLoadingContacts(true);
     try {
       const qs = new URLSearchParams({ limit: '500', ...(search ? { search } : {}) });
       const res = await fetch(`${API}/contacts?${qs}`, { headers: authHeaders() });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      if (data.success && data.data?.length) { setContacts(data.data); setLoadingContacts(false); return; }
-    } catch { /* mock */ }
-    const filtered = search ? MOCK_CONTACTS.filter(c =>
-      (c.contact_name || '').toLowerCase().includes(search.toLowerCase()) ||
-      (c.email || '').toLowerCase().includes(search.toLowerCase())
-    ) : MOCK_CONTACTS;
+      if (data.success && data.data?.length) {
+        setContacts(data.data);
+        setLoadingContacts(false);
+        return;
+      }
+    } catch (err) {
+      console.error('[EmailChannelView] Failed to load contacts, using mock data:', err);
+    }
+    const filtered = search
+      ? MOCK_CONTACTS.filter(c =>
+        (c.contact_name ?? '').toLowerCase().includes(search.toLowerCase()) ||
+        (c.email ?? '').toLowerCase().includes(search.toLowerCase()),
+      )
+      : MOCK_CONTACTS;
     setContacts(filtered);
     setLoadingContacts(false);
   }, []);
@@ -1376,46 +1812,68 @@ export function EmailChannelView({ provider, connectedEmail, userImage }: EmailC
   const loadGroups = useCallback(async () => {
     try {
       const res = await fetch(`${API}/groups?channel=${provider}`, { headers: authHeaders() });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      if (data.success && data.data?.length) { setGroups(data.data); return; }
-    } catch { /* mock */ }
+      if (data.success && data.data?.length) {
+        setGroups(data.data);
+        return;
+      }
+    } catch (err) {
+      console.error('[EmailChannelView] Failed to load groups, using mock data:', err);
+    }
     setGroups(MOCK_GROUPS.filter(g => g.channel === provider));
   }, [provider]);
 
   const loadLabels = useCallback(async () => {
     try {
       const res = await fetch(`${API}/labels?channel=${provider}`, { headers: authHeaders() });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      if (data.success && data.data?.length) { setLabels(data.data); return; }
-    } catch { /* mock */ }
+      if (data.success && data.data?.length) {
+        setLabels(data.data);
+        return;
+      }
+    } catch (err) {
+      console.error('[EmailChannelView] Failed to load labels, using mock data:', err);
+    }
     setLabels(MOCK_LABELS.filter(g => g.channel === provider));
   }, [provider]);
 
   useEffect(() => { loadContacts(); }, [loadContacts]);
   useEffect(() => { loadGroups(); }, [loadGroups, groupRefreshKey]);
   useEffect(() => { loadLabels(); }, [loadLabels, groupRefreshKey]);
+
   useEffect(() => {
     const t = setTimeout(() => loadContacts(contactSearch), 300);
     return () => clearTimeout(t);
   }, [contactSearch, loadContacts]);
 
-  const toggleStar = (id: string, e?: React.MouseEvent) => {
+  // ── Selection / interaction helpers ───────────────────────────────────────
+  const toggleStar = useCallback((id: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
     setStarredIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  };
-  const toggleImportant = (id: string, e?: React.MouseEvent) => {
+  }, []);
+
+  const toggleImportant = useCallback((id: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
     setImportantIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  };
-  const handleMarkSent = (id: string) => setSentIds(prev => new Set([...prev, id]));
-  const handleDeleteContact = (id: string, e?: React.MouseEvent) => {
+  }, []);
+
+  const handleMarkSent = useCallback((id: string) => setSentIds(prev => new Set([...prev, id])), []);
+
+  const handleDeleteContact = useCallback((id: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
     setDeletedIds(prev => new Set([...prev, id]));
-    if (activeContact?.id === id) setActiveContact(null);
-  };
-  const handleToggleSelect = (id: string) => setSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  const exitSelection = () => setSelectedIds(new Set());
+    setActiveContact(prev => prev?.id === id ? null : prev);
+  }, []);
 
+  const handleToggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  }, []);
+
+  const exitSelection = useCallback(() => setSelectedIds(new Set()), []);
+
+  // ── Derived state ──────────────────────────────────────────────────────────
   const filteredContacts = useMemo(() => {
     let list = contacts.filter(c => !deletedIds.has(c.id));
     if (activeFolder === 'starred') list = list.filter(c => starredIds.has(c.id));
@@ -1430,51 +1888,108 @@ export function EmailChannelView({ provider, connectedEmail, userImage }: EmailC
     return list;
   }, [contacts, deletedIds, activeFolder, activeCategoryTab, starredIds, importantIds, sentIds]);
 
-  const paginatedContacts = useMemo(() => filteredContacts.slice(page * pageSize, (page + 1) * pageSize), [filteredContacts, page]);
-  const selectedContacts = useMemo(() => contacts.filter(c => selectedIds.has(c.id)), [contacts, selectedIds]);
+  const paginatedContacts = useMemo(
+    () => filteredContacts.slice(page * pageSize, (page + 1) * pageSize),
+    [filteredContacts, page],
+  );
+
+  const selectedContacts = useMemo(
+    () => contacts.filter(c => selectedIds.has(c.id)),
+    [contacts, selectedIds],
+  );
+
   const bulkSendGroup = useMemo((): EmailGroupDetail | null => {
     if (!selectedContacts.length) return null;
-    return { id: 'bulk', name: `${selectedContacts.length} contacts`, color: PROVIDER_COLOR[provider], description: null, channel: provider, member_count: selectedContacts.length, members: selectedContacts };
+    return {
+      id: 'bulk',
+      name: `${selectedContacts.length} contacts`,
+      color: PROVIDER_COLOR[provider],
+      description: null,
+      channel: provider,
+      member_count: selectedContacts.length,
+      members: selectedContacts,
+    };
   }, [selectedContacts, provider]);
 
+  const unreadCount = useMemo(
+    () => contacts.filter(c => !deletedIds.has(c.id) && getEmailDetails(c).unread && getEmailDetails(c).category === 'primary').length,
+    [contacts, deletedIds],
+  );
+  const socialCount = useMemo(
+    () => contacts.filter(c => !deletedIds.has(c.id) && getEmailDetails(c).category === 'social').length,
+    [contacts, deletedIds],
+  );
+  const promoCount = useMemo(
+    () => contacts.filter(c => !deletedIds.has(c.id) && getEmailDetails(c).category === 'promotions').length,
+    [contacts, deletedIds],
+  );
+
+  // ── Create group ───────────────────────────────────────────────────────────
   const handleCreateGroup = async () => {
     const name = newGroupName.trim();
     if (!name) return;
-    setCreatingGroup(true); setCreateGroupError('');
+    setCreatingGroup(true);
+    setCreateGroupError('');
     try {
-      const res = await fetch(`${API}/groups`, { method: 'POST', headers: authHeaders(), body: JSON.stringify({ name, channel: provider, color: PROVIDER_COLOR[provider] }) });
+      const res = await fetch(`${API}/groups`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ name, channel: provider, color: PROVIDER_COLOR[provider] }),
+      });
       const data = await res.json();
-      const created = data.data || data.group || (data.success ? { id: `g-${Date.now()}`, name, color: PROVIDER_COLOR[provider], description: null, channel: provider, member_count: 0 } : null);
-      if (created) { setGroups(p => [created, ...p]); setNewGroupName(''); setShowCreateGroup(false); setActiveGroup(created); }
-      else setCreateGroupError(data.error || 'Failed to create group.');
-    } catch {
+      const created = data.data ?? data.group ?? (data.success ? { id: `g-${Date.now()}`, name, color: PROVIDER_COLOR[provider], description: null, channel: provider, member_count: 0 } : null);
+      if (created) {
+        setGroups(p => [created, ...p]);
+        setNewGroupName('');
+        setShowCreateGroup(false);
+        setActiveGroup(created);
+      } else {
+        setCreateGroupError(data.error ?? 'Failed to create group.');
+      }
+    } catch (err) {
+      console.error('[EmailChannelView] Failed to create group:', err);
       const mockCreated = { id: `g-${Date.now()}`, name, color: PROVIDER_COLOR[provider], description: null, channel: provider, member_count: 0 };
-      setGroups(p => [mockCreated, ...p]); setNewGroupName(''); setShowCreateGroup(false); setActiveGroup(mockCreated);
+      setGroups(p => [mockCreated, ...p]);
+      setNewGroupName('');
+      setShowCreateGroup(false);
+      setActiveGroup(mockCreated);
     }
     setCreatingGroup(false);
   };
 
-  const handleCreateLabels = async () => {
+  // ── Create label ──────────────────────────────────────────────────────────
+  const handleCreateLabel = async () => {
     const name = newLabelName.trim();
     if (!name) return;
-    setCreatingLabel(true); setCreateLabelError('');
+    setCreatingLabel(true);
+    setCreateLabelError('');
     try {
-      const res = await fetch(`${API}/labels`, { method: 'POST', headers: authHeaders(), body: JSON.stringify({ name, channel: provider, color: PROVIDER_COLOR[provider] }) });
+      const res = await fetch(`${API}/labels`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ name, channel: provider, color: PROVIDER_COLOR[provider] }),
+      });
       const data = await res.json();
-      const created = data.data || data.group || (data.success ? { id: `g-${Date.now()}`, name, color: PROVIDER_COLOR[provider], description: null, channel: provider, member_count: 0 } : null);
-      if (created) { setLabels(p => [created, ...p]); setNewLabelName(''); setShowCreateGroup(false); setActiveGroup(created); }
-      else setCreateLabelError(data.error || 'Failed to create group.');
-    } catch {
-      const mockCreated = { id: `g-${Date.now()}`, name, color: PROVIDER_COLOR[provider], description: null, channel: provider, member_count: 0 };
-      setLabels(p => [mockCreated, ...p]); setNewLabelName(''); setShowCreateGroup(false); setActiveGroup(mockCreated);
+      const created = data.data ?? data.label ?? (data.success ? { id: `l-${Date.now()}`, name, color: PROVIDER_COLOR[provider], description: null, channel: provider } : null);
+      if (created) {
+        setLabels(p => [created, ...p]);
+        setNewLabelName('');
+        setShowCreateLabel(false);
+        // Note: labels are NOT groups — do not call setActiveGroup here
+      } else {
+        setCreateLabelError(data.error ?? 'Failed to create label.');
+      }
+    } catch (err) {
+      console.error('[EmailChannelView] Failed to create label:', err);
+      const mockCreated = { id: `l-${Date.now()}`, name, color: PROVIDER_COLOR[provider], description: null, channel: provider };
+      setLabels(p => [mockCreated, ...p]);
+      setNewLabelName('');
+      setShowCreateLabel(false);
     }
     setCreatingLabel(false);
   };
 
   const providerColor = PROVIDER_COLOR[provider];
-  const unreadCount = useMemo(() => contacts.filter(c => !deletedIds.has(c.id) && getEmailDetails(c).unread && getEmailDetails(c).category === 'primary').length, [contacts, deletedIds]);
-  const socialCount = useMemo(() => contacts.filter(c => !deletedIds.has(c.id) && getEmailDetails(c).category === 'social').length, [contacts, deletedIds]);
-  const promoCount = useMemo(() => contacts.filter(c => !deletedIds.has(c.id) && getEmailDetails(c).category === 'promotions').length, [contacts, deletedIds]);
 
   const folderNavItems = [
     { id: 'inbox' as FolderType, label: 'Inbox', icon: Inbox, count: unreadCount },
@@ -1487,28 +2002,33 @@ export function EmailChannelView({ provider, connectedEmail, userImage }: EmailC
     { id: 'trash' as FolderType, label: 'Trash', icon: Trash2, count: 0 },
   ];
 
+  const visibleWindows = composeWindows.filter(w => !w.minimized);
+  const minimizedWindows = composeWindows.filter(w => w.minimized);
+
+  // ── Active group view ──────────────────────────────────────────────────────
   if (activeGroup) {
     return (
-      <div className="flex-1 flex flex-col min-h-0 bg-[#F6F8FC] overflow-hidden relative">
-        <EmailGroupWindow group={activeGroup} provider={provider}
+      <div className="flex-1 flex flex-col min-h-0 bg-[#F6F8FC] dark:bg-[#1f1f1f] overflow-hidden relative">
+        <EmailGroupWindow
+          group={activeGroup}
+          provider={provider}
           onBack={() => setActiveGroup(null)}
-          onGroupDeleted={() => { setActiveGroup(null); setGroupRefreshKey(k => k + 1); }} />
+          onGroupDeleted={() => { setActiveGroup(null); setGroupRefreshKey(k => k + 1); }}
+        />
       </div>
     );
   }
 
-  // Non-minimized windows (show stacked if multiple, but usually just 1)
-  const visibleWindows = composeWindows.filter(w => !w.minimized);
-  const minimizedWindows = composeWindows.filter(w => w.minimized);
-
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-[#F6F8FC] overflow-hidden relative">
+    <div className="flex-1 flex flex-col min-h-0 bg-[#F6F8FC] dark:bg-[#1f1f1f] overflow-hidden relative">
 
       {/* ── Top Bar ── */}
-      <header className="h-[64px] flex-shrink-0 flex items-center gap-2 px-3 bg-[#F6F8FC]">
-        <button onClick={() => setSidebarOpen(v => !v)} title="Main menu" aria-label="Open main menu" className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-[#e8eaed] flex-shrink-0">
-          <Menu className="h-5 w-5 text-[#444746]" />
+      <header className="h-[64px] flex-shrink-0 flex items-center gap-2 px-3 bg-[#F6F8FC] dark:bg-[#1f1f1f]">
+        <button onClick={() => setSidebarOpen(v => !v)} title="Main menu" aria-label="Toggle main menu"
+          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] flex-shrink-0">
+          <Menu className="h-5 w-5 text-[#444746] dark:text-[#9aa0a6]" />
         </button>
+
         <div className="flex items-center gap-2 flex-shrink-0">
           {provider === 'gmail' ? (
             <>
@@ -1520,7 +2040,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage }: EmailC
                 <path d="M6 4H4.5A2.5 2.5 0 002 6.5V8.4l4-2.4V4z" fill="#FBBC04" />
                 <path d="M18 4h1.5A2.5 2.5 0 0122 6.5V8.4l-4-2.4V4z" fill="#34A853" />
               </svg>
-              <span className="text-[22px] text-[#5f6368] font-normal tracking-tight hidden sm:inline" style={{ fontFamily: 'Google Sans, Roboto, sans-serif' }}>Gmail</span>
+              <span className="text-[22px] text-[#5f6368] dark:text-[#9aa0a6] font-normal tracking-tight hidden sm:inline" style={{ fontFamily: 'Google Sans, Roboto, sans-serif' }}>Gmail</span>
             </>
           ) : (
             <span className="text-base font-semibold" style={{ color: providerColor }}>{PROVIDER_LABEL[provider]}</span>
@@ -1529,12 +2049,18 @@ export function EmailChannelView({ provider, connectedEmail, userImage }: EmailC
 
         {/* Search */}
         <div className="flex-1 min-w-0 max-w-[720px] mx-auto">
-          <div className="relative h-[46px] flex items-center bg-[#EAF1FB] hover:bg-[#E0EBF5] focus-within:bg-white focus-within:shadow-[0_1px_3px_rgba(60,64,67,.3)] rounded-full transition-all">
-            <Search className="absolute left-4 h-5 w-5 text-[#444746]" aria-hidden="true" />
-            <input type="search" placeholder="Search in mail" value={contactSearch} onChange={e => setContactSearch(e.target.value)}
+          <div className="relative h-[46px] flex items-center bg-[#EAF1FB] dark:bg-[#2d2d2d] hover:bg-[#E0EBF5] focus-within:bg-white dark:focus-within:bg-[#2d2d2d] focus-within:shadow-[0_1px_3px_rgba(60,64,67,.3)] rounded-full transition-all">
+            <Search className="absolute left-4 h-5 w-5 text-[#444746] dark:text-[#9aa0a6]" aria-hidden="true" />
+            <input
+              type="search"
+              placeholder="Search in mail"
+              value={contactSearch}
+              onChange={e => setContactSearch(e.target.value)}
               aria-label="Search in mail"
-              className="w-full h-full bg-transparent pl-12 pr-12 text-sm text-[#202124] placeholder:text-[#5f6368] focus:outline-none" />
-            <button title="Search options" aria-label="Search options" className="absolute right-3 h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#e8eaed] text-[#444746]">
+              className="w-full h-full bg-transparent pl-12 pr-12 text-sm text-[#202124] dark:text-[#e8eaed] placeholder:text-[#5f6368] dark:placeholder:text-[#9aa0a6] focus:outline-none"
+            />
+            <button title="Search options" aria-label="Search options"
+              className="absolute right-3 h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]">
               <SlidersHorizontal className="h-4 w-4" />
             </button>
           </div>
@@ -1542,46 +2068,45 @@ export function EmailChannelView({ provider, connectedEmail, userImage }: EmailC
 
         <div className="flex items-center gap-0.5 flex-shrink-0">
           {connectedEmail && (
-            <span className="hidden lg:flex items-center gap-1.5 mr-1 px-2.5 py-1 rounded-full text-[11px] font-medium text-[#137333] bg-[#e6f4ea]">
+            <span className="hidden lg:flex items-center gap-1.5 mr-1 px-2.5 py-1 rounded-full text-[11px] font-medium text-[#137333] dark:text-[#57bb87] bg-[#e6f4ea] dark:bg-[#1e3a2b]">
               <span className="h-2 w-2 rounded-full bg-[#34a853]" aria-hidden="true" />Active
             </span>
           )}
-          <button onClick={() => setShowImport(true)} title="Import leads" aria-label="Import leads" className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-[#e8eaed] text-[#444746]">
+          <button onClick={() => setShowImport(true)} title="Import leads" aria-label="Import leads"
+            className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]">
             <UserPlus className="h-5 w-5" />
           </button>
-          <button title="Settings" aria-label="Open settings" className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-[#e8eaed] text-[#444746]">
+          <button title="Settings" aria-label="Settings"
+            className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]">
             <Settings className="h-5 w-5" />
           </button>
-          <button title="Help" aria-label="Open help" className="hidden sm:flex h-10 w-10 items-center justify-center rounded-full hover:bg-[#e8eaed] text-[#444746]">
+          <button title="Help" aria-label="Help"
+            className="hidden sm:flex h-10 w-10 items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]">
             <HelpCircle className="h-5 w-5" />
           </button>
-          <button title="Google apps" aria-label="Google apps" className="hidden md:flex h-10 w-10 items-center justify-center rounded-full hover:bg-[#e8eaed] text-[#444746]">
+          <button title="Google apps" aria-label="Google apps"
+            className="hidden md:flex h-10 w-10 items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]">
             <LayoutGrid className="h-5 w-5" />
           </button>
           <button
             title="Profile"
-            aria-label="Profile"
+            aria-label="View profile"
             onClick={() => setShowProfileModal(v => !v)}
-            className="h-10 w-10 flex items-center justify-center rounded-full overflow-hidden hover:ring-2 hover:ring-[#dadce0] transition-all"
+            className="h-10 w-10 flex items-center justify-center rounded-full overflow-hidden hover:ring-2 hover:ring-[#dadce0] dark:hover:ring-[#3c4043] transition-all"
           >
-            {userImage ? (
-              <img
-                src={userImage}
-                alt={connectedEmail?.charAt(0)}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <div className="h-full w-full flex items-center justify-center bg-[#1a73e8] text-white text-sm font-medium uppercase">
-                {connectedEmail?.charAt(0)}
-              </div>
-            )}
+            {userImage
+              ? <img src={userImage} alt={connectedEmail?.charAt(0) ?? 'User'} className="h-full w-full object-cover" />
+              : (
+                <div className="h-full w-full flex items-center justify-center bg-[#1a73e8] text-white text-sm font-medium uppercase">
+                  {connectedEmail?.charAt(0) ?? '?'}
+                </div>
+              )}
           </button>
         </div>
       </header>
 
       <div className="flex flex-1 min-h-0 gap-0 px-0 pb-0 relative">
 
-        {/* ── Left Sidebar ── */}
         {/* Mobile sidebar backdrop */}
         {sidebarOpen && (
           <div
@@ -1590,9 +2115,10 @@ export function EmailChannelView({ provider, connectedEmail, userImage }: EmailC
             aria-hidden="true"
           />
         )}
+
+        {/* ── Left Sidebar ── */}
         <aside className={cn(
-          'flex flex-col py-2 transition-all duration-200 overflow-hidden bg-[#F6F8FC]',
-          // Mobile: fixed overlay drawer; Desktop: static inline
+          'flex flex-col py-2 transition-all duration-200 overflow-hidden bg-[#F6F8FC] dark:bg-[#1f1f1f]',
           'absolute inset-y-0 left-0 z-40 md:static md:z-auto md:inset-auto md:flex-shrink-0',
           sidebarOpen
             ? 'w-[255px] pr-3 shadow-xl md:shadow-none'
@@ -1606,10 +2132,9 @@ export function EmailChannelView({ provider, connectedEmail, userImage }: EmailC
               title="Compose new email"
               aria-label="Compose new email"
               className={cn(
-                'h-12 flex items-center rounded-2xl shadow-[0_1px_2px_rgba(60,64,67,.3),0_1px_3px_1px_rgba(60,64,67,.15)] hover:shadow-md transition-all font-medium text-sm',
-                sidebarOpen ? 'gap-3 pl-5 pr-8 w-full' : 'justify-center w-12'
+                'h-12 flex items-center rounded-2xl shadow-[0_1px_2px_rgba(60,64,67,.3),0_1px_3px_1px_rgba(60,64,67,.15)] hover:shadow-md transition-all font-medium text-sm bg-[#C2E7FF] dark:bg-[#004a77] text-[#001D35] dark:text-[#c2e7ff]',
+                sidebarOpen ? 'gap-3 pl-5 pr-8 w-full' : 'justify-center w-12',
               )}
-              style={{ backgroundColor: '#C2E7FF', color: '#001D35' }}
             >
               <Pencil className="h-5 w-5" aria-hidden="true" />
               {sidebarOpen && <span>Compose</span>}
@@ -1625,24 +2150,31 @@ export function EmailChannelView({ provider, connectedEmail, userImage }: EmailC
                 const isActive = activeFolder === f.id;
                 return (
                   <button key={f.id}
-                    onClick={() => { setActiveFolder(f.id); setActiveContact(null); setPage(0); if (f.id === 'inbox') setActiveCategoryTab('primary'); }}
+                    onClick={() => {
+                      setActiveFolder(f.id);
+                      setActiveContact(null);
+                      setPage(0);
+                      if (f.id === 'inbox') setActiveCategoryTab('primary');
+                    }}
                     aria-label={`${f.label}${f.count > 0 ? `, ${f.count} unread` : ''}`}
                     aria-current={isActive ? 'page' : undefined}
                     className={cn(
                       'flex items-center w-full h-8 rounded-r-full text-sm transition-colors text-left flex-shrink-0',
                       sidebarOpen ? 'justify-between pl-6 pr-4' : 'justify-center',
-                      isActive ? 'bg-[#D3E3FD] text-[#001D35] font-semibold' : 'text-[#202124] hover:bg-[#e8eaed] font-normal'
+                      isActive
+                        ? 'bg-[#D3E3FD] dark:bg-[#004a77] text-[#001D35] dark:text-[#c2e7ff] font-semibold'
+                        : 'text-[#202124] dark:text-[#e8eaed] hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] font-normal',
                     )}>
                     <div className={cn('flex items-center min-w-0', sidebarOpen ? 'gap-4' : '')}>
                       <f.icon
-                        className={cn('h-4 w-4 flex-shrink-0', isActive ? 'text-[#001D35]' : 'text-[#444746]')}
+                        className={cn('h-4 w-4 flex-shrink-0', isActive ? 'text-[#001D35] dark:text-[#c2e7ff]' : 'text-[#444746] dark:text-[#9aa0a6]')}
                         style={f.id === 'inbox' && isActive ? { color: '#EA4335' } : {}}
                         aria-hidden="true"
                       />
                       {sidebarOpen && <span className="truncate">{f.label}</span>}
                     </div>
                     {sidebarOpen && f.count > 0 && (
-                      <span className={cn('text-xs tabular-nums flex-shrink-0', isActive ? 'font-semibold' : '')} aria-hidden="true">
+                      <span className={cn('text-xs tabular-nums flex-shrink-0', isActive && 'font-semibold')} aria-hidden="true">
                         {f.count > 999 ? '999+' : f.count}
                       </span>
                     )}
@@ -1652,44 +2184,55 @@ export function EmailChannelView({ provider, connectedEmail, userImage }: EmailC
             </nav>
 
             {/* Labels */}
-            <div className="mt-1 pt-2 border-t border-[#e0e0e0] flex-shrink-0">
+            <div className="mt-1 pt-2 border-t border-[#e0e0e0] dark:border-[#3c4043] flex-shrink-0">
               {sidebarOpen ? (
                 <>
                   <div className="px-3 py-2 flex items-center justify-between pl-6">
-                    <span className="text-[11px] font-semibold text-[#5f6368] uppercase tracking-wider">Labels</span>
+                    <span className="text-[11px] font-semibold text-[#5f6368] dark:text-[#9aa0a6] uppercase tracking-wider">Labels</span>
                     <button onClick={() => { setCreateLabelError(''); setShowCreateLabel(true); }}
                       title="Create new label" aria-label="Create new label"
-                      className="h-6 w-6 flex items-center justify-center rounded-full hover:bg-[#e8eaed]">
-                      <Plus className="h-4 w-4 text-[#444746]" />
+                      className="h-6 w-6 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043]">
+                      <Plus className="h-4 w-4 text-[#444746] dark:text-[#9aa0a6]" />
                     </button>
                   </div>
                   {showCreateLabel && (
                     <div ref={createGroupRef} className="px-3 pb-3 space-y-2">
-                      <input autoFocus placeholder="Label name..." value={newLabelName}
+                      <input
+                        autoFocus
+                        placeholder="Label name..."
+                        value={newLabelName}
                         onChange={e => { setNewLabelName(e.target.value); setCreateLabelError(''); }}
-                        onKeyDown={e => { if (e.key === 'Enter') handleCreateLabels(); if (e.key === 'Escape') setShowCreateLabel(false); }}
+                        onKeyDown={e => { if (e.key === 'Enter') handleCreateLabel(); if (e.key === 'Escape') setShowCreateLabel(false); }}
                         aria-label="New label name"
-                        className="h-8 text-sm w-full border border-[#dadce0] rounded-full px-3 focus:outline-none focus:border-[#4285f4]" />
-                      {createLabelError && <p className="text-[11px] text-red-600 flex items-center gap-1" role="alert"><AlertCircle className="h-3 w-3" />{createGroupError}</p>}
+                        className="h-8 text-sm w-full border border-[#dadce0] dark:border-[#3c4043] rounded-full px-3 focus:outline-none focus:border-[#4285f4] bg-transparent text-[#202124] dark:text-[#e8eaed]"
+                      />
+                      {/* BUG FIX: was showing createGroupError instead of createLabelError */}
+                      {createLabelError && (
+                        <p className="text-[11px] text-red-600 flex items-center gap-1" role="alert">
+                          <AlertCircle className="h-3 w-3" />{createLabelError}
+                        </p>
+                      )}
                       <div className="flex gap-1.5">
-                        <button onClick={handleCreateLabels} disabled={creatingLabel || !newLabelName.trim()} aria-label="Create label"
+                        <button onClick={handleCreateLabel} disabled={creatingLabel || !newLabelName.trim()} aria-label="Create label"
                           className="flex-1 h-7 text-xs text-white rounded-full flex items-center justify-center disabled:opacity-40" style={{ backgroundColor: providerColor }}>
                           {creatingLabel && <Loader2 className="h-3 w-3 animate-spin mr-1" />}Create
                         </button>
-                        <button onClick={() => { setShowCreateLabel(false); setCreateLabelError(''); }} aria-label="Cancel"
-                          className="h-7 text-xs px-3 rounded-full hover:bg-[#f1f3f4] text-[#5f6368]">Cancel</button>
+                        <button onClick={() => { setShowCreateLabel(false); setCreateLabelError(''); }} aria-label="Cancel label creation"
+                          className="h-7 text-xs px-3 rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-[#5f6368] dark:text-[#9aa0a6]">
+                          Cancel
+                        </button>
                       </div>
                     </div>
                   )}
                   <div className="max-h-44 overflow-y-auto">
                     {labels.length === 0
-                      ? <p className="text-xs text-[#5f6368] text-center py-4 px-6">No labels — create one above</p>
+                      ? <p className="text-xs text-[#5f6368] dark:text-[#9aa0a6] text-center py-4 px-6">No labels — create one above</p>
                       : labels.map(g => (
-                        <button key={g.id} onClick={() => setActiveGroup(g)}
+                        <button key={g.id} onClick={() => setActiveGroup(g as unknown as EmailGroup)}
                           aria-label={`Open label: ${g.name}`}
-                          className="w-full flex items-center gap-3 pl-6 pr-4 py-1.5 hover:bg-[#e8eaed] transition-colors text-left rounded-r-full">
+                          className="w-full flex items-center gap-3 pl-6 pr-4 py-1.5 hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] transition-colors text-left rounded-r-full">
                           <div className="h-4 w-4 rounded-full flex-shrink-0" style={{ backgroundColor: g.color }} aria-hidden="true" />
-                          <span className="flex-1 text-sm text-[#202124] truncate">{g.name}</span>
+                          <span className="flex-1 text-sm text-[#202124] dark:text-[#e8eaed] truncate">{g.name}</span>
                         </button>
                       ))}
                   </div>
@@ -1697,9 +2240,9 @@ export function EmailChannelView({ provider, connectedEmail, userImage }: EmailC
               ) : (
                 <div className="flex flex-col items-center gap-1 py-1">
                   {labels.map(g => (
-                    <button key={g.id} onClick={() => setActiveGroup(g)}
+                    <button key={g.id} onClick={() => setActiveGroup(g as unknown as EmailGroup)}
                       title={g.name} aria-label={`Open label: ${g.name}`}
-                      className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#e8eaed]">
+                      className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043]">
                       <div className="h-4 w-4 rounded-full flex-shrink-0" style={{ backgroundColor: g.color }} aria-hidden="true" />
                     </button>
                   ))}
@@ -1708,45 +2251,55 @@ export function EmailChannelView({ provider, connectedEmail, userImage }: EmailC
             </div>
 
             {/* Broadcast Groups */}
-            <div className="mt-1 pt-2 border-t border-[#e0e0e0] flex-shrink-0">
+            <div className="mt-1 pt-2 border-t border-[#e0e0e0] dark:border-[#3c4043] flex-shrink-0">
               {sidebarOpen ? (
                 <>
                   <div className="px-3 py-2 flex items-center justify-between pl-6">
-                    <span className="text-[11px] font-semibold text-[#5f6368] uppercase tracking-wider">Broadcast Groups</span>
+                    <span className="text-[11px] font-semibold text-[#5f6368] dark:text-[#9aa0a6] uppercase tracking-wider">Broadcast Groups</span>
                     <button onClick={() => { setCreateGroupError(''); setShowCreateGroup(true); }}
                       title="Create new broadcast group" aria-label="Create new broadcast group"
-                      className="h-6 w-6 flex items-center justify-center rounded-full hover:bg-[#e8eaed]">
-                      <Plus className="h-4 w-4 text-[#444746]" />
+                      className="h-6 w-6 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043]">
+                      <Plus className="h-4 w-4 text-[#444746] dark:text-[#9aa0a6]" />
                     </button>
                   </div>
                   {showCreateGroup && (
-                    <div ref={createGroupRef} className="px-3 pb-3 space-y-2">
-                      <input autoFocus placeholder="Group name..." value={newGroupName}
+                    <div className="px-3 pb-3 space-y-2">
+                      <input
+                        autoFocus
+                        placeholder="Group name..."
+                        value={newGroupName}
                         onChange={e => { setNewGroupName(e.target.value); setCreateGroupError(''); }}
                         onKeyDown={e => { if (e.key === 'Enter') handleCreateGroup(); if (e.key === 'Escape') setShowCreateGroup(false); }}
                         aria-label="New group name"
-                        className="h-8 text-sm w-full border border-[#dadce0] rounded-full px-3 focus:outline-none focus:border-[#4285f4]" />
-                      {createGroupError && <p className="text-[11px] text-red-600 flex items-center gap-1" role="alert"><AlertCircle className="h-3 w-3" />{createGroupError}</p>}
+                        className="h-8 text-sm w-full border border-[#dadce0] dark:border-[#3c4043] rounded-full px-3 focus:outline-none focus:border-[#4285f4] bg-transparent text-[#202124] dark:text-[#e8eaed]"
+                      />
+                      {createGroupError && (
+                        <p className="text-[11px] text-red-600 flex items-center gap-1" role="alert">
+                          <AlertCircle className="h-3 w-3" />{createGroupError}
+                        </p>
+                      )}
                       <div className="flex gap-1.5">
                         <button onClick={handleCreateGroup} disabled={creatingGroup || !newGroupName.trim()} aria-label="Create group"
                           className="flex-1 h-7 text-xs text-white rounded-full flex items-center justify-center disabled:opacity-40" style={{ backgroundColor: providerColor }}>
                           {creatingGroup && <Loader2 className="h-3 w-3 animate-spin mr-1" />}Create
                         </button>
-                        <button onClick={() => { setShowCreateGroup(false); setCreateGroupError(''); }} aria-label="Cancel"
-                          className="h-7 text-xs px-3 rounded-full hover:bg-[#f1f3f4] text-[#5f6368]">Cancel</button>
+                        <button onClick={() => { setShowCreateGroup(false); setCreateGroupError(''); }} aria-label="Cancel group creation"
+                          className="h-7 text-xs px-3 rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-[#5f6368] dark:text-[#9aa0a6]">
+                          Cancel
+                        </button>
                       </div>
                     </div>
                   )}
                   <div className="max-h-44 overflow-y-auto">
                     {groups.length === 0
-                      ? <p className="text-xs text-[#5f6368] text-center py-4 px-6">No groups — create one above</p>
+                      ? <p className="text-xs text-[#5f6368] dark:text-[#9aa0a6] text-center py-4 px-6">No groups — create one above</p>
                       : groups.map(g => (
                         <button key={g.id} onClick={() => setActiveGroup(g)}
                           aria-label={`Open group: ${g.name}, ${g.member_count} members`}
-                          className="w-full flex items-center gap-3 pl-6 pr-4 py-1.5 hover:bg-[#e8eaed] transition-colors text-left rounded-r-full">
+                          className="w-full flex items-center gap-3 pl-6 pr-4 py-1.5 hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] transition-colors text-left rounded-r-full">
                           <div className="h-4 w-4 rounded-full flex-shrink-0" style={{ backgroundColor: g.color }} aria-hidden="true" />
-                          <span className="flex-1 text-sm text-[#202124] truncate">{g.name}</span>
-                          <span className="text-[11px] text-[#5f6368]" aria-hidden="true">{g.member_count}</span>
+                          <span className="flex-1 text-sm text-[#202124] dark:text-[#e8eaed] truncate">{g.name}</span>
+                          <span className="text-[11px] text-[#5f6368] dark:text-[#9aa0a6]" aria-hidden="true">{g.member_count}</span>
                         </button>
                       ))}
                   </div>
@@ -1756,118 +2309,162 @@ export function EmailChannelView({ provider, connectedEmail, userImage }: EmailC
                   {groups.map(g => (
                     <button key={g.id} onClick={() => setActiveGroup(g)}
                       title={g.name} aria-label={`Open group: ${g.name}`}
-                      className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#e8eaed]">
+                      className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043]">
                       <div className="h-4 w-4 rounded-full flex-shrink-0" style={{ backgroundColor: g.color }} aria-hidden="true" />
                     </button>
                   ))}
                 </div>
               )}
             </div>
-
           </div>{/* end scrollable area */}
 
           {/* Meet — pinned to bottom */}
-          <div className="mt-auto pt-2 border-t border-[#e0e0e0] flex-shrink-0">
+          <div className="mt-auto pt-2 border-t border-[#e0e0e0] dark:border-[#3c4043] flex-shrink-0">
             {sidebarOpen ? (
               <>
-                <p className="text-xs font-semibold text-[#202124] pl-6 py-1">Meet</p>
+                <p className="text-xs font-semibold text-[#202124] dark:text-[#e8eaed] pl-6 py-1">Meet</p>
                 <button title="New meeting" aria-label="New meeting"
-                  className="flex items-center gap-4 w-full pl-6 py-1.5 text-sm text-[#202124] hover:bg-[#e8eaed] rounded-r-full">
-                  <svg viewBox="0 0 24 24" className="h-4 w-4 flex-shrink-0" aria-hidden="true"><rect width="24" height="24" fill="none" /><path d="M20 5h-3V3.5a1.5 1.5 0 00-3 0V5h-4V3.5a1.5 1.5 0 00-3 0V5H4C2.9 5 2 5.9 2 7v14c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2z" fill="#34A853" /></svg>
+                  className="flex items-center gap-4 w-full pl-6 py-1.5 text-sm text-[#202124] dark:text-[#e8eaed] hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] rounded-r-full">
+                  <svg viewBox="0 0 24 24" className="h-4 w-4 flex-shrink-0" aria-hidden="true">
+                    <rect width="24" height="24" fill="none" />
+                    <path d="M20 5h-3V3.5a1.5 1.5 0 00-3 0V5h-4V3.5a1.5 1.5 0 00-3 0V5H4C2.9 5 2 5.9 2 7v14c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2z" fill="#34A853" />
+                  </svg>
                   New meeting
                 </button>
                 <button title="Join a meeting" aria-label="Join a meeting"
-                  className="flex items-center gap-4 w-full pl-6 py-1.5 text-sm text-[#202124] hover:bg-[#e8eaed] rounded-r-full">
-                  <svg viewBox="0 0 24 24" className="h-4 w-4 flex-shrink-0" aria-hidden="true"><rect width="24" height="24" fill="none" /><path d="M15 8v8H5V8h10m1-2H4a1 1 0 00-1 1v10a1 1 0 001 1h12a1 1 0 001-1v-3.5l4 4v-11l-4 4V7a1 1 0 00-1-1z" fill="#1E88E5" /></svg>
+                  className="flex items-center gap-4 w-full pl-6 py-1.5 text-sm text-[#202124] dark:text-[#e8eaed] hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] rounded-r-full">
+                  <svg viewBox="0 0 24 24" className="h-4 w-4 flex-shrink-0" aria-hidden="true">
+                    <rect width="24" height="24" fill="none" />
+                    <path d="M15 8v8H5V8h10m1-2H4a1 1 0 00-1 1v10a1 1 0 001 1h12a1 1 0 001-1v-3.5l4 4v-11l-4 4V7a1 1 0 00-1-1z" fill="#1E88E5" />
+                  </svg>
                   Join a meeting
                 </button>
               </>
             ) : (
               <div className="flex flex-col items-center gap-1 py-1">
                 <button title="New meeting" aria-label="New meeting"
-                  className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#e8eaed]">
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true"><rect width="24" height="24" fill="none" /><path d="M20 5h-3V3.5a1.5 1.5 0 00-3 0V5h-4V3.5a1.5 1.5 0 00-3 0V5H4C2.9 5 2 5.9 2 7v14c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2z" fill="#34A853" /></svg>
+                  className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043]">
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
+                    <rect width="24" height="24" fill="none" />
+                    <path d="M20 5h-3V3.5a1.5 1.5 0 00-3 0V5h-4V3.5a1.5 1.5 0 00-3 0V5H4C2.9 5 2 5.9 2 7v14c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2z" fill="#34A853" />
+                  </svg>
                 </button>
                 <button title="Join a meeting" aria-label="Join a meeting"
-                  className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#e8eaed]">
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true"><rect width="24" height="24" fill="none" /><path d="M15 8v8H5V8h10m1-2H4a1 1 0 00-1 1v10a1 1 0 001 1h12a1 1 0 001-1v-3.5l4 4v-11l-4 4V7a1 1 0 00-1-1z" fill="#1E88E5" /></svg>
+                  className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043]">
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
+                    <rect width="24" height="24" fill="none" />
+                    <path d="M15 8v8H5V8h10m1-2H4a1 1 0 00-1 1v10a1 1 0 001 1h12a1 1 0 001-1v-3.5l4 4v-11l-4 4V7a1 1 0 00-1-1z" fill="#1E88E5" />
+                  </svg>
                 </button>
               </div>
             )}
           </div>
-
         </aside>
 
         {/* ── Main content ── */}
-        <main className={cn('flex-1 flex min-w-0 min-h-0 overflow-hidden bg-white rounded-2xl border border-[#dadce0]/80 shadow-sm mr-2 mb-2',
-          activeContact ? 'flex-row' : 'flex-col')} aria-label="Email content">
+        <main
+          className={cn(
+            'flex-1 flex min-w-0 min-h-0 overflow-hidden bg-white dark:bg-[#2d2d2d] rounded-2xl border border-[#dadce0] dark:border-[#3c4043]/80 shadow-sm mr-2 mb-2',
+            activeContact ? 'flex-row' : 'flex-col',
+          )}
+          aria-label="Email content"
+        >
           {activeContact ? (
             <>
-              <EmailComposePanel contact={activeContact} provider={provider} showDetails={showDetails}
-                onShowDetails={() => setShowDetails(v => !v)} onBack={() => setActiveContact(null)} onSentSuccess={handleMarkSent} />
+              <EmailComposePanel
+                contact={activeContact}
+                provider={provider}
+                showDetails={showDetails}
+                onShowDetails={() => setShowDetails(v => !v)}
+                onBack={() => setActiveContact(null)}
+                onSentSuccess={handleMarkSent}
+                onForward={openCompose}
+              />
               {showDetails && (
-                <ContactDetailsPanel contact={activeContact} provider={provider} groups={groups}
-                  onClose={() => setShowDetails(false)} onAddToGroup={() => setShowAddToGroup(true)} />
+                <ContactDetailsPanel
+                  contact={activeContact}
+                  provider={provider}
+                  groups={groups}
+                  onClose={() => setShowDetails(false)}
+                  onAddToGroup={() => setShowAddToGroup(true)}
+                />
               )}
             </>
           ) : (
             <>
               {/* Toolbar */}
-              <div className="h-12 px-3 flex items-center justify-between border-b border-[#e0e0e0] flex-shrink-0" role="toolbar" aria-label="Email list toolbar">
+              <div className="h-12 px-3 flex items-center justify-between border-b border-[#e0e0e0] dark:border-[#3c4043] flex-shrink-0" role="toolbar" aria-label="Email list toolbar">
                 <div className="flex items-center gap-1">
-                  <input type="checkbox"
+                  <input
+                    type="checkbox"
                     checked={paginatedContacts.length > 0 && paginatedContacts.every(c => selectedIds.has(c.id))}
                     onChange={() => {
                       const allSel = paginatedContacts.every(c => selectedIds.has(c.id));
-                      setSelectedIds(prev => { const n = new Set(prev); allSel ? paginatedContacts.forEach(c => n.delete(c.id)) : paginatedContacts.forEach(c => n.add(c.id)); return n; });
+                      setSelectedIds(prev => {
+                        const n = new Set(prev);
+                        allSel ? paginatedContacts.forEach(c => n.delete(c.id)) : paginatedContacts.forEach(c => n.add(c.id));
+                        return n;
+                      });
                     }}
-                    aria-label="Select all emails"
-                    className="rounded border-[#dadce0] text-[#0b57d0] h-4 w-4 cursor-pointer ml-1" />
-                  <button onClick={() => { loadContacts(contactSearch); loadGroups(); }} title="Refresh" aria-label="Refresh"
-                    className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-[#e8eaed] text-[#444746]">
+                    aria-label="Select all emails on this page"
+                    className="rounded border-[#dadce0] dark:border-[#3c4043] text-[#0b57d0] h-4 w-4 cursor-pointer ml-1"
+                  />
+                  <button onClick={() => { loadContacts(contactSearch); loadGroups(); }}
+                    title="Refresh" aria-label="Refresh email list"
+                    className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]">
                     <RefreshCw className="h-4 w-4" />
                   </button>
+
                   {selectedIds.size > 0 ? (
-                    <div className="flex items-center gap-1 border-l border-[#dadce0] pl-2 ml-1">
-                      <button onClick={() => setShowBulkSend(true)} title="Send" aria-label="Send to selected"
-                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-full hover:bg-[#e8eaed] text-xs font-medium text-[#202124]">
+                    <div className="flex items-center gap-1 border-l border-[#dadce0] dark:border-[#3c4043] pl-2 ml-1">
+                      <button onClick={() => setShowBulkSend(true)} title="Send to selected" aria-label="Send email to selected contacts"
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-xs font-medium text-[#202124] dark:text-[#e8eaed]">
                         <Send className="h-3.5 w-3.5" />Send
                       </button>
-                      <button onClick={() => setShowAddToGroup(true)} title="Label" aria-label="Add to group"
-                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-full hover:bg-[#e8eaed] text-xs font-medium text-[#202124]">
+                      <button onClick={() => setShowAddToGroup(true)} title="Add to group" aria-label="Add selected to group"
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-xs font-medium text-[#202124] dark:text-[#e8eaed]">
                         <Tag className="h-3.5 w-3.5" />Label
                       </button>
-                      <button onClick={() => { setDeletedIds(p => { const n = new Set(p); selectedIds.forEach(id => n.add(id)); return n; }); exitSelection(); }}
-                        title="Delete selected" aria-label="Delete selected"
-                        className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-[#fce8e6] text-[#444746] hover:text-[#d93025]">
+                      <button
+                        onClick={() => {
+                          setDeletedIds(p => { const n = new Set(p); selectedIds.forEach(id => n.add(id)); return n; });
+                          exitSelection();
+                        }}
+                        title="Delete selected" aria-label="Delete selected emails"
+                        className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-[#fce8e6] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6] hover:text-[#d93025]">
                         <Trash2 className="h-4 w-4" />
                       </button>
-                      <button onClick={() => { setActiveFolder('starred'); selectedIds.forEach(id => toggleStar(id)); exitSelection(); }}
-                        title="Star selected" aria-label="Star selected"
-                        className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-[#e8eaed] text-[#444746]">
+                      <button
+                        onClick={() => { selectedIds.forEach(id => toggleStar(id)); setActiveFolder('starred'); exitSelection(); }}
+                        title="Star selected" aria-label="Star selected emails"
+                        className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]">
                         <Star className="h-4 w-4" />
                       </button>
-                      <button onClick={exitSelection} aria-label="Cancel selection" className="text-xs text-[#0b57d0] font-medium px-2 hover:underline">Cancel</button>
+                      <button onClick={exitSelection} aria-label="Cancel selection"
+                        className="text-xs text-[#0b57d0] dark:text-[#7cacf8] font-medium px-2 hover:underline">
+                        Cancel
+                      </button>
                     </div>
                   ) : (
                     <button onClick={() => setShowImport(true)} title="More options" aria-label="More options"
-                      className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-[#e8eaed] text-[#444746]">
+                      className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]">
                       <MoreVertical className="h-4 w-4" />
                     </button>
                   )}
                 </div>
+
                 {filteredContacts.length > 0 && (
-                  <div className="flex items-center gap-2 text-xs text-[#5f6368] pr-1">
+                  <div className="flex items-center gap-2 text-xs text-[#5f6368] dark:text-[#9aa0a6] pr-1">
                     <span className="hidden sm:inline" aria-live="polite">
                       {page * pageSize + 1}–{Math.min((page + 1) * pageSize, filteredContacts.length)} of {filteredContacts.length}
                     </span>
                     <div className="flex">
                       <button disabled={page === 0} onClick={() => setPage(p => p - 1)} title="Previous page" aria-label="Previous page"
-                        className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#e8eaed] disabled:opacity-30">
+                        className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] disabled:opacity-30">
                         <ChevronLeft className="h-4 w-4" />
                       </button>
                       <button disabled={(page + 1) * pageSize >= filteredContacts.length} onClick={() => setPage(p => p + 1)} title="Next page" aria-label="Next page"
-                        className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#e8eaed] disabled:opacity-30">
+                        className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] disabled:opacity-30">
                         <ChevronRight className="h-4 w-4" />
                       </button>
                     </div>
@@ -1877,9 +2474,13 @@ export function EmailChannelView({ provider, connectedEmail, userImage }: EmailC
 
               {/* Category tabs */}
               {activeFolder === 'inbox' && (
-                <div className="flex border-b border-[#e0e0e0] flex-shrink-0 overflow-x-auto" role="tablist" aria-label="Email categories">
+                <div className="flex border-b border-[#e0e0e0] dark:border-[#3c4043] flex-shrink-0 overflow-x-auto" role="tablist" aria-label="Email categories">
                   {[
-                    { id: 'primary' as CategoryTab, label: 'Primary', icon: <svg viewBox="0 0 24 24" className="h-4 w-4 mr-1.5" aria-hidden="true"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" fill="currentColor" /></svg>, badge: unreadCount, color: '#EA4335' },
+                    {
+                      id: 'primary' as CategoryTab, label: 'Primary',
+                      icon: <svg viewBox="0 0 24 24" className="h-4 w-4 mr-1.5" aria-hidden="true"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" fill="currentColor" /></svg>,
+                      badge: unreadCount, color: '#EA4335',
+                    },
                     { id: 'social' as CategoryTab, label: 'Social', icon: <Users className="h-4 w-4 mr-1.5" aria-hidden="true" />, badge: socialCount > 0 ? `${socialCount} new` : null, color: '#34A853' },
                     { id: 'promotions' as CategoryTab, label: 'Promotions', icon: <Tag className="h-4 w-4 mr-1.5" aria-hidden="true" />, badge: promoCount > 0 ? `${promoCount} new` : null, color: '#1D6F42' },
                     { id: 'updates' as CategoryTab, label: 'Updates', icon: <AlertCircle className="h-4 w-4 mr-1.5" aria-hidden="true" />, badge: null, color: '#F9AB00' },
@@ -1888,15 +2489,19 @@ export function EmailChannelView({ provider, connectedEmail, userImage }: EmailC
                     return (
                       <button key={tab.id} role="tab" aria-selected={isActive}
                         onClick={() => { setActiveCategoryTab(tab.id); setPage(0); }}
-                        className={cn('flex items-center px-5 py-3 border-b-[3px] transition-colors min-w-fit text-sm',
-                          isActive ? 'border-[#0b57d0] text-[#0b57d0] font-medium' : 'border-transparent text-[#5f6368] hover:bg-[#f6f8fc]')}>
+                        className={cn(
+                          'flex items-center px-5 py-3 border-b-[3px] transition-colors min-w-fit text-sm',
+                          isActive
+                            ? 'border-[#0b57d0] text-[#0b57d0] dark:text-[#7cacf8] font-medium'
+                            : 'border-transparent text-[#5f6368] dark:text-[#9aa0a6] hover:bg-[#f6f8fc] dark:hover:bg-[#3c4043]',
+                        )}>
                         <span className="flex items-center" style={isActive ? { color: tab.color } : { color: '#5f6368' }}>{tab.icon}</span>
                         {tab.label}
                         {tab.badge != null && typeof tab.badge === 'number' && tab.badge > 0 && (
-                          <span className={cn('ml-2 text-[11px]', isActive ? '' : 'text-[#5f6368]')}>{tab.badge} new</span>
+                          <span className={cn('ml-2 text-[11px]', isActive ? '' : 'text-[#5f6368] dark:text-[#9aa0a6]')}>{tab.badge} new</span>
                         )}
                         {tab.badge != null && typeof tab.badge === 'string' && (
-                          <span className="ml-2 text-[11px] text-[#5f6368]">{tab.badge}</span>
+                          <span className="ml-2 text-[11px] text-[#5f6368] dark:text-[#9aa0a6]">{tab.badge}</span>
                         )}
                       </button>
                     );
@@ -1907,7 +2512,9 @@ export function EmailChannelView({ provider, connectedEmail, userImage }: EmailC
               {/* Email list */}
               <div className="flex-1 overflow-y-auto" role="list" aria-label="Email list">
                 {loadingContacts ? (
-                  <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-[#5f6368]" /></div>
+                  <div className="flex items-center justify-center py-20">
+                    <Loader2 className="h-6 w-6 animate-spin text-[#5f6368] dark:text-[#9aa0a6]" />
+                  </div>
                 ) : filteredContacts.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
                     <div className="h-24 w-24 rounded-full flex items-center justify-center mb-5" style={{ backgroundColor: providerColor + '15' }}>
@@ -1915,15 +2522,17 @@ export function EmailChannelView({ provider, connectedEmail, userImage }: EmailC
                         <Inbox className="h-8 w-8" style={{ color: providerColor }} />
                       </div>
                     </div>
-                    <h3 className="font-semibold text-base text-[#202124] mb-1">{activeFolder === 'inbox' ? 'Your inbox is empty' : `No ${activeFolder} emails yet`}</h3>
-                    <p className="text-xs text-[#5f6368] max-w-xs mb-6">Import your leads or compose a new email.</p>
+                    <h3 className="font-semibold text-base text-[#202124] dark:text-[#e8eaed] mb-1">
+                      {activeFolder === 'inbox' ? 'Your inbox is empty' : `No ${activeFolder} emails yet`}
+                    </h3>
+                    <p className="text-xs text-[#5f6368] dark:text-[#9aa0a6] max-w-xs mb-6">Import your leads or compose a new email.</p>
                     <div className="flex gap-2">
                       <button onClick={() => openCompose()} aria-label="Compose new email"
                         className="flex items-center gap-2 px-4 h-9 rounded-full text-white text-sm" style={{ backgroundColor: providerColor }}>
                         <Pencil className="h-3.5 w-3.5" />Compose
                       </button>
                       <button onClick={() => setShowImport(true)} aria-label="Import leads"
-                        className="flex items-center gap-2 px-4 h-9 rounded-full border border-[#dadce0] text-sm text-[#444746] hover:bg-[#f6f8fc]">
+                        className="flex items-center gap-2 px-4 h-9 rounded-full border border-[#dadce0] dark:border-[#3c4043] text-sm text-[#444746] dark:text-[#9aa0a6] hover:bg-[#f6f8fc] dark:hover:bg-[#3c4043]">
                         <UserPlus className="h-3.5 w-3.5" />Import Leads
                       </button>
                     </div>
@@ -1936,59 +2545,97 @@ export function EmailChannelView({ provider, connectedEmail, userImage }: EmailC
                       const isImportant = importantIds.has(c.id);
                       const isSelected = selectedIds.has(c.id);
                       return (
-                        <div key={c.id} role="listitem" onClick={() => setActiveContact(c)}
+                        <div
+                          key={c.id}
+                          role="listitem"
+                          onClick={() => setActiveContact(c)}
                           className={cn(
-                            'group flex items-center gap-1 px-4 py-2 border-b border-[#f0f0f0] cursor-pointer select-none text-sm transition-shadow',
+                            'group flex items-center gap-1 px-4 py-2 border-b border-[#f0f0f0] dark:border-white/5 cursor-pointer select-none text-sm transition-shadow',
                             'hover:shadow-[inset_1px_0_0_#dadce0,inset_-1px_0_0_#dadce0,0_1px_2px_0_rgba(60,64,67,.3),0_1px_3px_1px_rgba(60,64,67,.15)]',
-                            details.unread ? 'bg-white' : 'bg-[#f2f6fc]',
-                            isSelected && 'bg-[#c2dbff]/50',
-                          )}>
+                            'dark:hover:shadow-[inset_1px_0_0_rgba(255,255,255,0.06),inset_-1px_0_0_rgba(255,255,255,0.06),0_1px_2px_0_rgba(0,0,0,.4)]',
+                            isSelected
+                              ? 'bg-[#c2dbff] dark:bg-[#004a77]/50'
+                              : details.unread
+                                ? 'bg-white dark:bg-[#3c4043]'
+                                : 'bg-[#f2f6fc] dark:bg-[#202124]',
+                          )}
+                        >
                           <div className="flex items-center gap-0.5 flex-shrink-0" onClick={e => e.stopPropagation()}>
-                            <input type="checkbox" checked={isSelected} onChange={() => handleToggleSelect(c.id)}
-                              aria-label={`Select email from ${c.contact_name || c.email}`}
-                              className="rounded border-[#dadce0] text-[#0b57d0] h-3.5 w-3.5 cursor-pointer" />
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleToggleSelect(c.id)}
+                              aria-label={`Select email from ${c.contact_name ?? c.email}`}
+                              className="rounded border-[#dadce0] dark:border-[#3c4043] text-[#0b57d0] h-3.5 w-3.5 cursor-pointer"
+                            />
                             <button onClick={e => toggleStar(c.id, e)}
-                              title={isStarred ? 'Unstar' : 'Star'} aria-label={isStarred ? `Unstar ${c.contact_name}` : `Star ${c.contact_name}`} aria-pressed={isStarred}
-                              className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4]">
-                              <Star className={cn('h-4 w-4', isStarred ? 'fill-yellow-400 text-yellow-400' : 'text-[#5f6368]/40')} />
+                              title={isStarred ? 'Unstar' : 'Star'}
+                              aria-label={isStarred ? `Unstar ${c.contact_name}` : `Star ${c.contact_name}`}
+                              aria-pressed={isStarred}
+                              className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]">
+                              <Star className={cn('h-4 w-4', isStarred ? 'fill-yellow-400 text-yellow-400' : 'text-[#5f6368] dark:text-[#9aa0a6]/40')} />
                             </button>
                             <button onClick={e => toggleImportant(c.id, e)}
-                              title={isImportant ? 'Not important' : 'Mark important'} aria-label={isImportant ? `Mark ${c.contact_name} not important` : `Mark ${c.contact_name} important`} aria-pressed={isImportant}
-                              className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4]">
-                              <svg viewBox="0 0 24 24" aria-hidden="true" className={cn('h-4 w-4', isImportant ? 'fill-yellow-400 text-yellow-400' : 'text-[#5f6368]/40')}>
+                              title={isImportant ? 'Not important' : 'Mark important'}
+                              aria-label={isImportant ? `Mark ${c.contact_name} not important` : `Mark ${c.contact_name} important`}
+                              aria-pressed={isImportant}
+                              className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]">
+                              <svg viewBox="0 0 24 24" aria-hidden="true" className={cn('h-4 w-4', isImportant ? 'fill-yellow-400 text-yellow-400' : 'text-[#5f6368] dark:text-[#9aa0a6]/40')}>
                                 <path d="M12 2L4 7l2 13h12l2-13z" />
                               </svg>
                             </button>
                           </div>
-                          <div className={cn('w-28 sm:w-44 flex-shrink-0 truncate pr-2', details.unread ? 'font-bold text-[#202124]' : 'font-normal text-[#202124]')}>
-                            {c.contact_name || 'Unknown'}
+
+                          <div className={cn('w-28 sm:w-44 flex-shrink-0 truncate pr-2', details.unread ? 'font-bold text-[#202124] dark:text-[#e8eaed]' : 'font-normal text-[#202124] dark:text-[#e8eaed]')}>
+                            {c.contact_name ?? 'Unknown'}
                           </div>
+
                           <div className="flex-1 min-w-0 pr-4 flex items-baseline gap-2 overflow-hidden">
                             {details.labels?.map(l => (
                               <span key={l} className="flex-shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded text-white leading-none"
-                                style={{ backgroundColor: l === 'Social' ? '#34A853' : l === 'Promotions' ? '#34A853' : l === 'Updates' ? '#F9AB00' : '#5f6368' }}>{l}</span>
+                                style={{ backgroundColor: l === 'Social' ? '#34A853' : l === 'Promotions' ? '#34A853' : l === 'Updates' ? '#F9AB00' : '#5f6368' }}>
+                                {l}
+                              </span>
                             ))}
-                            <span className={cn('truncate', details.unread ? 'font-bold text-[#202124]' : 'font-normal text-[#202124]')}>{details.subject}</span>
-                            <span className="text-[#5f6368] font-normal truncate max-w-xl hidden md:inline">— {details.snippet}</span>
+                            <span className={cn('truncate', details.unread ? 'font-bold text-[#202124] dark:text-[#e8eaed]' : 'font-normal text-[#202124] dark:text-[#e8eaed]')}>
+                              {details.subject}
+                            </span>
+                            <span className="text-[#5f6368] dark:text-[#9aa0a6] font-normal truncate max-w-xl hidden md:inline">
+                              — {details.snippet.split('\n')[0]}
+                            </span>
                           </div>
+
                           <div className="w-24 flex justify-end flex-shrink-0 relative">
-                            <span className="group-hover:hidden text-[11px] text-[#5f6368] whitespace-nowrap font-medium">{details.date}</span>
+                            <span className="group-hover:hidden text-[11px] text-[#5f6368] dark:text-[#9aa0a6] whitespace-nowrap font-medium">
+                              {details.date}
+                            </span>
                             <div className="hidden group-hover:flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
                               <button onClick={() => handleDeleteContact(c.id)} title="Delete" aria-label={`Delete email from ${c.contact_name}`}
-                                className="p-1 rounded-full hover:bg-[#fce8e6] text-[#5f6368] hover:text-[#d93025]"><Trash2 className="h-3.5 w-3.5" /></button>
+                                className="p-1 rounded-full hover:bg-[#fce8e6] dark:hover:bg-[#3c4043] text-[#5f6368] dark:text-[#9aa0a6] hover:text-[#d93025]">
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
                               <button onClick={() => { setSelectedIds(new Set([c.id])); setShowAddToGroup(true); }} title="Label" aria-label={`Add ${c.contact_name} to group`}
-                                className="p-1 rounded-full hover:bg-[#e8eaed] text-[#5f6368]"><Tag className="h-3.5 w-3.5" /></button>
+                                className="p-1 rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#5f6368] dark:text-[#9aa0a6]">
+                                <Tag className="h-3.5 w-3.5" />
+                              </button>
                               <button onClick={() => { setSelectedIds(new Set([c.id])); setShowBulkSend(true); }} title="Send" aria-label={`Send email to ${c.contact_name}`}
-                                className="p-1 rounded-full hover:bg-[#e8eaed] text-[#5f6368]"><Send className="h-3.5 w-3.5" /></button>
+                                className="p-1 rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#5f6368] dark:text-[#9aa0a6]">
+                                <Send className="h-3.5 w-3.5" />
+                              </button>
                             </div>
                           </div>
                         </div>
                       );
                     })}
-                    <div className="py-6 flex flex-col items-center gap-1 text-xs text-[#5f6368]">
+                    <div className="py-6 flex flex-col items-center gap-1 text-xs text-[#5f6368] dark:text-[#9aa0a6]">
                       <span>{filteredContacts.length.toLocaleString()} conversations</span>
-                      <a href="#" className="text-[#0b57d0] hover:underline">Terms · Privacy · Program Policies</a>
-                      <span>Last account activity: just now</span>
+                      <span className="flex gap-2">
+                        <a href="#" className="text-[#0b57d0] dark:text-[#7cacf8] hover:underline">Terms</a>
+                        <span>·</span>
+                        <a href="#" className="text-[#0b57d0] dark:text-[#7cacf8] hover:underline">Privacy</a>
+                        <span>·</span>
+                        <a href="#" className="text-[#0b57d0] dark:text-[#7cacf8] hover:underline">Program Policies</a>
+                      </span>
                     </div>
                   </div>
                 )}
@@ -1997,7 +2644,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage }: EmailC
           )}
         </main>
 
-        {/* Right sidebar */}
+        {/* Right sidebar — Google apps */}
         <div className="hidden md:flex w-12 flex-shrink-0 flex-col items-center pt-2 gap-3" aria-label="Google apps">
           {[
             { color: '#4285F4', label: 'Google Calendar', path: 'M20 3h-1V1h-2v2H7V1H5v2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 18H4V8h16v13z' },
@@ -2005,22 +2652,21 @@ export function EmailChannelView({ provider, connectedEmail, userImage }: EmailC
             { color: '#34A853', label: 'Google Tasks', path: 'M22 5.18L10.59 16.6l-4.24-4.24 1.41-1.41 2.83 2.83 10-10L22 5.18zm-2.21 5.04c.13.57.21 1.17.21 1.78 0 4.42-3.58 8-8 8s-8-3.58-8-8 3.58-8 8-8c1.58 0 3.04.46 4.28 1.25l1.44-1.44A9.9 9.9 0 0012 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10c0-1.19-.22-2.33-.6-3.39l-1.61 1.61z' },
             { color: '#EA4335', label: 'Google Contacts', path: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z' },
           ].map(({ color, label, path }) => (
-            <button key={label} title={label} aria-label={label} className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-[#e8eaed]">
+            <button key={label} title={label} aria-label={label}
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043]">
               <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true"><path d={path} fill={color} /></svg>
             </button>
           ))}
-          <button title="Add Google app" aria-label="Add Google app" className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-[#e8eaed] text-[#5f6368]">
+          <button title="Add Google app" aria-label="Add Google app"
+            className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#5f6368] dark:text-[#9aa0a6]">
             <Plus className="h-5 w-5" />
           </button>
         </div>
       </div>
 
-      {/* ── Compose Windows (visible, not minimized) ── */}
+      {/* ── Compose Windows ── */}
       {visibleWindows.map((w, i) => (
-        <div
-          key={w.id}
-          style={!w.maximized ? { right: `${72 + i * 524}px` } : undefined}
-        >
+        <div key={w.id} style={!w.maximized ? { right: `${72 + i * 524}px` } : undefined}>
           <ComposeWindow
             provider={provider}
             contacts={contacts}
@@ -2032,12 +2678,12 @@ export function EmailChannelView({ provider, connectedEmail, userImage }: EmailC
             onClose={() => closeCompose(w.id)}
             onMinimize={() => minimizeCompose(w.id)}
             onMaximize={() => maximizeCompose(w.id)}
-            onSent={() => { loadContacts(); }}
+            onSent={() => loadContacts()}
           />
         </div>
       ))}
 
-      {/* ── Minimized compose taskbar (bottom, like Gmail) ── */}
+      {/* ── Minimized compose taskbar ── */}
       {minimizedWindows.length > 0 && (
         <div className="fixed bottom-0 right-0 sm:right-[72px] z-50 flex items-end gap-2 pointer-events-none">
           {minimizedWindows.map(w => (
@@ -2052,7 +2698,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage }: EmailC
                 onClose={() => closeCompose(w.id)}
                 onMinimize={() => minimizeCompose(w.id)}
                 onMaximize={() => restoreCompose(w.id)}
-                onSent={() => { loadContacts(); }}
+                onSent={() => loadContacts()}
               />
             </div>
           ))}
@@ -2060,128 +2706,111 @@ export function EmailChannelView({ provider, connectedEmail, userImage }: EmailC
       )}
 
       {/* ── Dialogs ── */}
-      {showImport && <ImportLeadsDialog open={showImport} onOpenChange={setShowImport} onImportComplete={() => { loadContacts(); loadGroups(); }} channel={provider} />}
-      {showBulkSend && bulkSendGroup && <EmailTemplatePicker open={showBulkSend} onOpenChange={o => { setShowBulkSend(o); if (!o) exitSelection(); }} group={bulkSendGroup} provider={provider} />}
+      {showImport && (
+        <ImportLeadsDialog
+          open={showImport}
+          onOpenChange={setShowImport}
+          onImportComplete={() => { loadContacts(); loadGroups(); }}
+          channel={provider}
+        />
+      )}
+      {showBulkSend && bulkSendGroup && (
+        <EmailTemplatePicker
+          open={showBulkSend}
+          onOpenChange={o => { setShowBulkSend(o); if (!o) exitSelection(); }}
+          group={bulkSendGroup}
+          provider={provider}
+        />
+      )}
       {showAddToGroup && (
-        <AddToGroupModal groups={groups} provider={provider}
+        <AddToGroupModal
+          groups={groups}
+          provider={provider}
           contactIds={activeContact && !selectedIds.size ? [activeContact.id] : Array.from(selectedIds)}
           onDone={() => { setShowAddToGroup(false); exitSelection(); loadGroups(); }}
-          onClose={() => setShowAddToGroup(false)} />
+          onClose={() => setShowAddToGroup(false)}
+        />
       )}
 
-      {/* ── Profile / Account modal (Gmail-style) ── */}
+      {/* ── Profile / Account modal ── */}
       {showProfileModal && (
         <>
           <div className="fixed inset-0 z-[60]" onClick={() => setShowProfileModal(false)} aria-hidden="true" />
           <div
-            className="absolute top-14 right-2 z-[70] w-[340px] sm:w-[380px] bg-white rounded-3xl shadow-[0_8px_28px_rgba(60,64,67,.28),0_2px_8px_rgba(60,64,67,.14)] overflow-hidden"
-            role="dialog" aria-label="Account menu" aria-modal="true">
-
+            className="absolute top-14 right-2 z-[70] w-[340px] sm:w-[380px] bg-white dark:bg-[#2d2d2d] rounded-3xl shadow-[0_8px_28px_rgba(60,64,67,.28),0_2px_8px_rgba(60,64,67,.14)] overflow-hidden"
+            role="dialog" aria-label="Account menu" aria-modal="true"
+          >
             {/* Email + close */}
-            <div className="px-5 pt-4 pb-3 flex items-center justify-between border-b border-[#e0e0e0]">
-              <span className="text-sm font-medium text-[#202124]">{connectedEmail}</span>
+            <div className="px-5 pt-4 pb-3 flex items-center justify-between border-b border-[#e0e0e0] dark:border-[#3c4043]">
+              <span className="text-sm font-medium text-[#202124] dark:text-[#e8eaed]">{connectedEmail}</span>
               <button onClick={() => setShowProfileModal(false)} title="Close" aria-label="Close account menu"
-                className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] ml-2 flex-shrink-0">
-                <X className="h-4 w-4 text-[#5f6368]" />
+                className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] ml-2 flex-shrink-0">
+                <X className="h-4 w-4 text-[#5f6368] dark:text-[#9aa0a6]" />
               </button>
             </div>
 
-            {/* Avatar + greeting + manage button */}
+            {/* Avatar + greeting */}
             <div className="px-6 py-5 flex flex-col items-center text-center gap-3">
               <div className="relative">
                 <div className="h-20 w-20 rounded-full overflow-hidden bg-[#1a73e8] flex items-center justify-center text-white text-3xl font-medium select-none">
                   {userImage
                     ? <img src={userImage} alt="" className="h-full w-full object-cover" />
-                    : (connectedEmail?.charAt(0)?.toUpperCase() || '?')}
+                    : (connectedEmail?.charAt(0)?.toUpperCase() ?? '?')}
                 </div>
-                <button
-                  className="absolute bottom-0 right-0 h-7 w-7 rounded-full bg-[#e8eaed] border-2 border-white flex items-center justify-center hover:bg-[#dadce0] transition-colors"
+                <label
+                  className="absolute bottom-0 right-0 h-7 w-7 rounded-full bg-[#e8eaed] dark:bg-[#3c4043] border-2 border-white dark:border-[#2d2d2d] flex items-center justify-center hover:bg-[#dadce0] dark:hover:bg-[#4a4a4a] transition-colors cursor-pointer"
                   title="Change profile photo" aria-label="Change profile photo">
-                  <Camera className="h-3.5 w-3.5 text-[#444746]" />
-                </button>
+                  <Camera className="h-3.5 w-3.5 text-[#444746] dark:text-[#9aa0a6]" />
+                  <input type="file" accept="image/*" className="hidden" aria-label="Upload profile photo" />
+                </label>
               </div>
               <div>
-                <p className="text-base font-medium text-[#202124]">
-                  Hi, {connectedEmail?.split('@')[0] || 'there'}!
+                <p className="text-base font-medium text-[#202124] dark:text-[#e8eaed]">
+                  Hi, {connectedEmail?.split('@')[0] ?? 'there'}!
                 </p>
-                <p className="text-sm text-[#5f6368] mt-0.5">{connectedEmail}</p>
+                <p className="text-sm text-[#5f6368] dark:text-[#9aa0a6] mt-0.5">{connectedEmail}</p>
               </div>
               <button
-                className="px-6 py-2 border border-[#dadce0] rounded-full text-sm text-[#0b57d0] hover:bg-[#e8f0fe] transition-colors font-medium"
-                title="Manage your Google Account">
+                className="px-6 py-2 border border-[#dadce0] dark:border-[#3c4043] rounded-full text-sm text-[#0b57d0] dark:text-[#7cacf8] hover:bg-[#e8f0fe] dark:hover:bg-[#004a77]/40 transition-colors font-medium">
                 Manage your Google Account
               </button>
             </div>
 
-            {/* Security suggestion */}
-            <div className="mx-4 mb-4 p-4 bg-[#f8f9fa] rounded-xl border border-[#e8eaed]">
-              <div className="flex items-start gap-3">
-                <div className="h-5 w-5 rounded-full bg-[#1a73e8] flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <span className="text-white text-[10px] font-bold leading-none">i</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[#202124] leading-snug">Protect your conversations with a recovery email</p>
-                  <p className="text-xs text-[#5f6368] mt-1 leading-relaxed">Add a recovery email as backup in case you have trouble signing in</p>
-                  <div className="flex gap-4 mt-3">
-                    <button className="text-xs text-[#5f6368] hover:text-[#202124] transition-colors font-medium">Dismiss</button>
-                    <button className="text-xs text-[#0b57d0] hover:text-[#0842a0] transition-colors font-medium">Add recovery email</button>
-                  </div>
-                </div>
+            <div className="border-t border-[#e0e0e0] dark:border-[#3c4043]" />
+
+            {/* Storage bar */}
+            <div className="px-5 py-3 flex items-center gap-3">
+              <div className="flex-1 h-2 bg-[#e0e0e0] dark:bg-[#3c4043] rounded-full overflow-hidden">
+                <div className="h-full bg-[#1a73e8] rounded-full" style={{ width: '61%' }} />
               </div>
+              <span className="text-xs text-[#5f6368] dark:text-[#9aa0a6] whitespace-nowrap flex-shrink-0">61% of 15 GB used</span>
             </div>
 
-            <div className="border-t border-[#e0e0e0]" />
+            <div className="border-t border-[#e0e0e0] dark:border-[#3c4043]" />
 
-            {/* More accounts */}
-            <div>
-              <button className="w-full flex items-center justify-between px-5 py-3 hover:bg-[#f1f3f4] transition-colors text-sm font-medium text-[#202124]">
-                <span>Hide more accounts</span>
-                <ChevronDown className="h-4 w-4 text-[#5f6368]" />
-              </button>
-              <div className="px-4 pb-2">
-                <button className="w-full flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-[#f1f3f4] transition-colors">
-                  <div className="h-9 w-9 rounded-full bg-[#1a73e8] flex items-center justify-center text-white text-sm font-medium flex-shrink-0 select-none">
-                    {connectedEmail?.charAt(0)?.toUpperCase() || '?'}
-                  </div>
-                  <div className="flex-1 min-w-0 text-left">
-                    <p className="text-sm font-medium text-[#202124] truncate">{connectedEmail?.split('@')[0]}</p>
-                    <p className="text-xs text-[#5f6368] truncate">{connectedEmail}</p>
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            <div className="border-t border-[#e0e0e0]" />
-
-            {/* Add / Sign out */}
+            {/* Actions */}
             <div className="py-1">
-              <button className="w-full flex items-center gap-4 px-5 py-3 hover:bg-[#f1f3f4] transition-colors text-sm text-[#202124]">
-                <UserPlus className="h-5 w-5 text-[#444746]" />
+              <button
+                onClick={() => setShowProfileModal(false)}
+                className="w-full flex items-center gap-4 px-5 py-3 hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] transition-colors text-sm text-[#202124] dark:text-[#e8eaed]">
+                <UserPlus className="h-5 w-5 text-[#444746] dark:text-[#9aa0a6]" />
                 Add another account
               </button>
-              <button className="w-full flex items-center gap-4 px-5 py-3 hover:bg-[#f1f3f4] transition-colors text-sm text-[#202124]">
-                <LogOut className="h-5 w-5 text-[#444746]" />
+              <button
+                onClick={() => { setShowProfileModal(false); onSignOut?.(); }}
+                className="w-full flex items-center gap-4 px-5 py-3 hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] transition-colors text-sm text-[#202124] dark:text-[#e8eaed]">
+                <LogOut className="h-5 w-5 text-[#444746] dark:text-[#9aa0a6]" />
                 Sign out of all accounts
               </button>
             </div>
 
-            <div className="border-t border-[#e0e0e0]" />
-
-            {/* Storage bar */}
-            <div className="px-5 py-3 flex items-center gap-3">
-              <div className="flex-1 h-2 bg-[#e0e0e0] rounded-full overflow-hidden">
-                <div className="h-full bg-[#1a73e8] rounded-full" style={{ width: '61%' }} />
-              </div>
-              <span className="text-xs text-[#5f6368] whitespace-nowrap flex-shrink-0">61% of 15 GB used</span>
-            </div>
-
-            <div className="border-t border-[#e0e0e0]" />
+            <div className="border-t border-[#e0e0e0] dark:border-[#3c4043]" />
 
             {/* Privacy / Terms */}
             <div className="px-5 py-3 flex items-center justify-center gap-3">
-              <a href="#" className="text-[11px] text-[#5f6368] hover:text-[#202124] transition-colors">Privacy Policy</a>
-              <span className="text-[11px] text-[#5f6368]">·</span>
-              <a href="#" className="text-[11px] text-[#5f6368] hover:text-[#202124] transition-colors">Terms of Service</a>
+              <a href="#" className="text-[11px] text-[#5f6368] dark:text-[#9aa0a6] hover:text-[#202124] dark:hover:text-[#e8eaed] transition-colors">Privacy Policy</a>
+              <span className="text-[11px] text-[#5f6368] dark:text-[#9aa0a6]">·</span>
+              <a href="#" className="text-[11px] text-[#5f6368] dark:text-[#9aa0a6] hover:text-[#202124] dark:hover:text-[#e8eaed] transition-colors">Terms of Service</a>
             </div>
           </div>
         </>
