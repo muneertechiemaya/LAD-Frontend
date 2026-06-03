@@ -180,7 +180,7 @@ export interface WorkflowPreviewStep {
   title: string;
   description?: string;
   icon?: string;
-  channel?: 'linkedin' | 'email' | 'whatsapp' | 'voice' | 'instagram';
+  channel?: 'linkedin' | 'email' | 'whatsapp' | 'voice' | 'instagram' | 'website';
   // Additional fields for step configuration
   message?: string;
   subject?: string;

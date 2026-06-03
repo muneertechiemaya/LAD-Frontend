@@ -1,5 +1,5 @@
 import React from 'react';
-import { Linkedin, Mail, MessageCircle, Phone, ArrowRight, Clock, Filter, Play, Square, Users, Search, Send, UserPlus, Eye, Zap } from 'lucide-react';
+import { Linkedin, Mail, MessageCircle, Phone, ArrowRight, Clock, Filter, Play, Square, Users, Search, Send, UserPlus, Eye, Zap, Globe, Instagram } from 'lucide-react';
 import { StepType } from '@/types/campaign';
 
 export interface NodeClasses {
@@ -118,5 +118,7 @@ export function getNodeIcon(type: StepType, size: string = 'w-5 h-5'): React.Rea
   if (type.includes('voice')) return <Phone className={size} />;
   if (type === 'delay') return <Clock className={size} />;
   if (type === 'condition') return <Filter className={size} />;
+  if (type.includes('instagram')) return <Instagram className={size} />;
+  if (type.includes('website')) return <Globe className={size} />;
   return <Zap className={size} />;
 }

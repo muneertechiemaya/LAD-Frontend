@@ -84,6 +84,7 @@ interface ParsedInboundLead {
     whatsapp: string;
     phone: string;
     website: string;
+    instagramProfile: string;
     notes: string;
 }
 
@@ -97,7 +98,7 @@ interface ChatMsg {
     options?: { label: string; value: string }[];
     leads?: LeadProfile[];
     inboundAction?: 'download' | 'upload' | 'summary';
-    inboundSummary?: { total: number; linkedin: number; email: number; whatsapp: number; phone: number; website: number };
+    inboundSummary?: { total: number; linkedin: number; email: number; whatsapp: number; phone: number; website: number; instagram: number };
     webSearchResult?: boolean;
     sources?: Array<{ title: string; url: string }>;
     leadDetailForm?: boolean;
@@ -105,7 +106,7 @@ interface ChatMsg {
 }
 
 interface OutreachStep {
-    channel: 'linkedin' | 'email' | 'whatsapp' | 'voice';
+    channel: 'linkedin' | 'email' | 'whatsapp' | 'voice' | 'website' | 'instagram';
     label: string;
     action: string;
     reason: string;
@@ -156,43 +157,60 @@ function candidatesToLeadProfiles(candidates: any[]): LeadProfile[] {
 }
 
 function buildOutreachJourney(leads: LeadProfile[], targeting: LeadTargeting | null): OutreachStep[] {
-    const hasEmail = leads.some(l => l.email);
-    const hasPhone = leads.some(l => l.phone);
-    const hasLi = leads.some(l => l.profile_url?.startsWith('http'));
+    const hasLi = leads.some(l => !!(l.first_name && l.current_company) || !!(l.profile_url && l.profile_url.startsWith('http')));
+    const hasEmail = leads.some(l => !!l.email);
+    const hasPhone = leads.some(l => !!l.phone);
+    const hasWebsite = leads.some(l => !!l.website);
+    const hasInstagram = leads.some(l => !!l.instagram || !!(l as any).instagramProfile);
+
     const locs = (targeting?.locations || []).map(l => l.toLowerCase());
     const isGCC = locs.some(l => ['uae', 'dubai', 'saudi', 'gcc', 'qatar', 'kuwait', 'bahrain', 'oman', 'riyadh', 'abu dhabi'].some(g => l.includes(g)));
     const isEnterprise = (targeting?.company_size || []).some(s => s.includes('1000'));
 
     return [
-        {
+        hasLi && {
             channel: 'linkedin',
             label: 'LinkedIn',
             action: 'Visit profile → Connect → Message',
-            reason: hasLi ? 'LinkedIn profiles found — warm up with a connection request first.' : 'Start with LinkedIn to build familiarity before reaching out.',
+            reason: 'LinkedIn profiles found — warm up with a connection request first.',
             recommended: true,
         },
-        {
+        hasEmail && {
             channel: 'email',
             label: 'Email',
             action: 'Personalised cold email + follow-up sequence',
-            reason: hasEmail ? 'Email addresses available — follow up 3–5 days after LinkedIn connect.' : 'Enrich emails via enrichment tools after LinkedIn connection is accepted.',
+            reason: 'Email addresses available — follow up 3–5 days after LinkedIn connect.',
             recommended: true,
         },
-        {
+        hasPhone && {
             channel: 'whatsapp',
             label: 'WhatsApp',
             action: 'Direct message, broadcast + follow-up sequence',
             reason: isGCC ? 'GCC region — WhatsApp has very high open rates (98%). Use after email.' : 'Add WhatsApp as a follow-up channel for warm leads.',
             recommended: true,
         },
-        {
+        hasPhone && {
             channel: 'voice',
             label: 'Voice Call',
             action: 'AI-powered voice call with script',
             reason: isEnterprise ? 'Enterprise deals benefit from a personal call to qualify intent.' : 'Reserve voice calls for high-priority leads who haven\'t responded.',
             recommended: true,
         },
-    ];
+        hasWebsite && {
+            channel: 'website',
+            label: 'Website',
+            action: 'Visit website -> Track analytics -> Retarget',
+            reason: 'Analyze visitor behavior and retarget via ads or custom flows.',
+            recommended: true,
+        },
+        hasInstagram && {
+            channel: 'instagram',
+            label: 'Instagram',
+            action: 'Direct message -> Social connection -> Follow-up',
+            reason: 'Engage with lead on social media to build rapport.',
+            recommended: true,
+        },
+    ].filter(Boolean) as OutreachStep[];
 }
 
 function avatarColor(name: string): string {
@@ -361,6 +379,7 @@ function parseRows(rows: string[][], resolve: (leads: ParsedInboundLead[]) => vo
             whatsapp: h.findIndex(x => x.toLowerCase().includes('whatsapp')),
             phone: h.findIndex(x => x.toLowerCase().includes('phone')),
             website: h.findIndex(x => x.toLowerCase().includes('website')),
+            instagram: h.findIndex(x => x.toLowerCase().includes('instagram') || x.toLowerCase().includes('insta')),
             notes: h.findIndex(x => x.toLowerCase().includes('notes')),
         };
         const leads = rows.slice(1).map(r => ({
@@ -372,10 +391,11 @@ function parseRows(rows: string[][], resolve: (leads: ParsedInboundLead[]) => vo
             whatsapp: fixPhone((ci.whatsapp >= 0 ? r[ci.whatsapp] : '') || ''),
             phone: fixPhone((ci.phone >= 0 ? r[ci.phone] : '') || ''),
             website: (ci.website >= 0 ? r[ci.website] : '') || '',
+            instagramProfile: (ci.instagram >= 0 ? r[ci.instagram] : '') || '',
             notes: (ci.notes >= 0 ? r[ci.notes] : '') || '',
         })).filter(l => {
             const isExample = l.companyName.toLowerCase().includes('delete this') || l.notes.toLowerCase().includes('delete this') || l.email.toLowerCase().includes('example.com');
-            const hasData = (l.companyName && l.companyName.trim().length > 1) || (l.email && l.email.includes('@')) || (l.linkedinProfile && l.linkedinProfile.includes('linkedin.com'));
+            const hasData = (l.companyName && l.companyName.trim().length > 1) || (l.email && l.email.includes('@')) || (l.linkedinProfile && l.linkedinProfile.includes('linkedin.com')) || (l.instagramProfile && l.instagramProfile.includes('instagram.com'));
             return !isExample && hasData;
         });
         if (leads.length === 0) {
@@ -524,9 +544,20 @@ export default function AdvancedSearchAIPage() {
     }, [messages.length]);
     const [targeting, setTargeting] = useState<LeadTargeting | null>(null);
     const [leads, setLeads] = useState<LeadProfile[]>([]);
+
+    // Inbound CSV upload state
+    const [inboundMode, setInboundMode] = useState(false);
+    const [inboundLeads, setInboundLeads] = useState<ParsedInboundLead[]>([]);
+    const [inboundLeadIds, setInboundLeadIds] = useState<string[]>([]); // Real UUIDs from leads table (CSV/image)
+    const [directContactLeadIds, setDirectContactLeadIds] = useState<string[]>([]); // Real UUIDs for chat-entered direct contacts
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
     const [filteredLeads, setFilteredLeads] = useState<LeadProfile[]>([]);   // below ICP threshold
     const [showFilteredLeads, setShowFilteredLeads] = useState(false);        // toggle "Show all"
     const [showPanel, setShowPanel] = useState<false | 'leads' | 'workflow'>(false);
+    const [panelWidth, setPanelWidth] = useState(40); // right panel width in %
+    const isDraggingRef = useRef(false);
+    const mainRef = useRef<HTMLDivElement>(null);
     const setWorkflowPreview = useOnboardingStore(s => s.setWorkflowPreview);
     // Activity tracking for SearchingThinker
     const [activities, setActivities] = useState<any[]>([]);
@@ -641,6 +672,56 @@ export default function AdvancedSearchAIPage() {
 
         setWorkflowPreview(steps);
     }, [cpActions, cpNextChannels, cpTriggerCondition, setWorkflowPreview]);
+
+    // ── Let Agent Deal — directly builds flowchart from lead data ──
+    const handleLetAgentDeal = useCallback(() => {
+        const sourceLeads = inboundLeads && inboundLeads.length > 0 ? inboundLeads : (leads || []);
+
+        const hasLi = sourceLeads.some((l: any) => {
+            if (l.linkedinProfile !== undefined) {
+                return !!(l.firstName && l.companyName) || !!l.linkedinProfile;
+            }
+            return l.profile_url?.startsWith('http') || !!(l.first_name && l.current_company);
+        });
+        const hasEmail = sourceLeads.some((l: any) => !!l.email);
+        const hasPhone = sourceLeads.some((l: any) => !!l.phone || !!l.whatsapp);
+        const hasWebsite = sourceLeads.some((l: any) => !!l.website);
+        const hasInstagram = sourceLeads.some((l: any) => !!l.instagramProfile || !!l.instagram);
+        const hasMultiChannel = hasEmail || hasPhone || hasWebsite || hasInstagram;
+
+        const steps: any[] = [];
+
+        // LinkedIn steps (visit → connect → message)
+        if (hasLi) {
+            steps.push({ id: 'lead-gen', type: 'lead_generation', title: 'LinkedIn Lead Search', description: 'Find and qualify leads via LinkedIn', channel: 'linkedin' });
+            steps.push({ id: 'li-visit', type: 'linkedin_visit', title: 'Visit LinkedIn Profile', description: 'View their LinkedIn profile to warm up', channel: 'linkedin' });
+            steps.push({ id: 'li-connect', type: 'linkedin_connect', title: 'Send Connection Request', description: 'Auto-connect with leads on LinkedIn', channel: 'linkedin' });
+            steps.push({ id: 'li-message', type: 'linkedin_message', title: 'Send Follow-up Message', description: 'Message after connection accepted', channel: 'linkedin' });
+        }
+
+        // Condition trigger between LinkedIn and follow-up channels
+        if (hasLi && hasMultiChannel) {
+            steps.push({ id: 'wait-condition', type: 'wait_for_condition', title: 'Wait for Connection Accepted', description: 'Trigger follow-up after LinkedIn connection', channel: 'linkedin' });
+        }
+
+        // Multi-channel follow-up steps based on detected lead data
+        if (hasEmail) {
+            steps.push({ id: 'email-send', type: 'email_send', title: 'Send Follow-up Email', description: 'Personalised cold email + follow-up sequence', channel: 'email' });
+        }
+        if (hasPhone) {
+            steps.push({ id: 'wa-send', type: 'whatsapp_send', title: 'Send WhatsApp Message', description: 'Direct message, broadcast + follow-up', channel: 'whatsapp' });
+            steps.push({ id: 'voice-call', type: 'voice_agent_call', title: 'AI Voice Call', description: 'AI-powered voice call with script', channel: 'voice' });
+        }
+        if (hasWebsite) {
+            steps.push({ id: 'website-visit', type: 'website_visit', title: 'Website Visit & Track', description: 'Visit website, track analytics, retarget', channel: 'website' });
+        }
+        if (hasInstagram) {
+            steps.push({ id: 'instagram-dm', type: 'instagram_dm', title: 'Instagram DM', description: 'Send Instagram Direct Message', channel: 'instagram' });
+        }
+
+        setWorkflowPreview(steps);
+        setShowPanel('workflow');
+    }, [inboundLeads, leads, setWorkflowPreview]);
     const [cpDays, setCpDays] = useState('30');
     const [cpChannelConfigStep, setCpChannelConfigStep] = useState(0); // Tracks which channel we're configuring (0-based)
     const [cpChannelDelays, setCpChannelDelays] = useState<Record<string, { days: string; hours: string }>>({}); // Delays per channel
@@ -702,12 +783,7 @@ export default function AdvancedSearchAIPage() {
     // Premium (Sales Navigator) search toggle
     const [useSalesNav, setUseSalesNav] = useState(false);
 
-    // Inbound CSV upload state
-    const [inboundMode, setInboundMode] = useState(false);
-    const [inboundLeads, setInboundLeads] = useState<ParsedInboundLead[]>([]);
-    const [inboundLeadIds, setInboundLeadIds] = useState<string[]>([]); // Real UUIDs from leads table (CSV/image)
-    const [directContactLeadIds, setDirectContactLeadIds] = useState<string[]>([]); // Real UUIDs for chat-entered direct contacts
-    const fileInputRef = useRef<HTMLInputElement>(null);
+
 
     // Contact picker modal state
     const [showContactPicker, setShowContactPicker] = useState(false);
@@ -792,7 +868,7 @@ export default function AdvancedSearchAIPage() {
             }
             setBpHydrated(true);
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [profileLoading, bpHydrated, loadedProfile]);
 
     // Auto-scroll playground chat — also fires when busy clears (card widget appears)
@@ -1582,8 +1658,8 @@ export default function AdvancedSearchAIPage() {
         const uid = `u-${Date.now()}`;
         const lid = `l-${Date.now()}`;
         setMessages(p => [...p,
-            { id: uid, role: 'user', text: promptText, ts: new Date() },
-            { id: lid, role: 'ai', text: '', ts: new Date(), loading: true },
+        { id: uid, role: 'user', text: promptText, ts: new Date() },
+        { id: lid, role: 'ai', text: '', ts: new Date(), loading: true },
         ]);
         setBusy(true);
         setMsgCount(c => c + 1);
@@ -1707,6 +1783,7 @@ export default function AdvancedSearchAIPage() {
             whatsapp: c.phone || '',
             phone: c.phone || '',
             website: c.website || '',
+            instagramProfile: c.instagram_url || c.instagram || '',
             notes: c.notes || '',
         }));
 
@@ -1721,6 +1798,7 @@ export default function AdvancedSearchAIPage() {
             whatsapp: asInbound.filter(l => l.whatsapp).length,
             phone: asInbound.filter(l => l.phone).length,
             website: asInbound.filter(l => l.website).length,
+            instagram: asInbound.filter(l => l.instagramProfile).length,
         };
 
         const sourceName = CP_SOURCES.find(s => s.key === cpSourceKey)?.label || 'Contacts';
@@ -1740,6 +1818,7 @@ export default function AdvancedSearchAIPage() {
         setBusy(true);
         const processingId = `l-${Date.now()}`;
         setMessages(p => [...p, { id: `u-${Date.now()}`, role: 'user', text: `📎 Uploaded: ${file.name}`, ts: new Date() }, { id: processingId, role: 'ai', text: '', ts: new Date(), loading: true }]);
+        setInput('');
         try {
             let parsed: ParsedInboundLead[] = [];
 
@@ -1777,6 +1856,7 @@ export default function AdvancedSearchAIPage() {
                     whatsapp: lead.phone || '',
                     phone: lead.phone || '',
                     website: lead.website || '',
+                    instagramProfile: lead.instagram_url || lead.instagram || '',
                     notes: lead.notes || '',
                 }));
             } else {
@@ -1794,6 +1874,7 @@ export default function AdvancedSearchAIPage() {
                 whatsapp: parsed.filter(l => l.whatsapp).length,
                 phone: parsed.filter(l => l.phone).length,
                 website: parsed.filter(l => l.website).length,
+                instagram: parsed.filter(l => l.instagramProfile).length,
             };
 
             // Convert inbound leads to LeadProfile format for the panel
@@ -1830,6 +1911,7 @@ export default function AdvancedSearchAIPage() {
                 company: l.companyName,
                 linkedin_url: l.linkedinProfile,
                 website: l.website,
+                instagram_url: l.instagramProfile,
                 notes: l.notes,
             }));
 
@@ -1845,6 +1927,7 @@ export default function AdvancedSearchAIPage() {
                             phone: counts.phone > 0,
                             linkedin: counts.linkedin > 0,
                             website: counts.website > 0,
+                            instagram: counts.instagram > 0,
                         },
                     }),
                 });
@@ -1909,6 +1992,7 @@ export default function AdvancedSearchAIPage() {
             if (counts.whatsapp > 0) summaryText += `\n• WhatsApp: ${counts.whatsapp} number${counts.whatsapp !== 1 ? 's' : ''}`;
             if (counts.phone > 0) summaryText += `\n• Phone: ${counts.phone} number${counts.phone !== 1 ? 's' : ''}`;
             if (counts.website > 0) summaryText += `\n• Website: ${counts.website} URL${counts.website !== 1 ? 's' : ''}`;
+            if (counts.instagram > 0) summaryText += `\n• Instagram: ${counts.instagram} profile${counts.instagram !== 1 ? 's' : ''}`;
             summaryText += `\n\nBuilding profiles in the background — searching Google and LinkedIn for additional context on each lead.\n\nWhen ready, click **"Create Outreach Journey"** below to configure your campaign.`;
 
             setMessages(p => p.filter(m => m.id !== processingId).concat({
@@ -3134,6 +3218,7 @@ export default function AdvancedSearchAIPage() {
             return;
         }
         if (v.toLowerCase().includes('refine')) setChatBlocked(false);
+        setInput('');
         doSend(v);
     }, [doSend, targeting, pendingContact, setCpStep, isMobile]);
 
@@ -3393,6 +3478,28 @@ export default function AdvancedSearchAIPage() {
         } catch (e) { console.error('[LoadMore] error', e); }
         setLoadingMore(false);
     }, [loadingMore, lastSearchQuery, leadCount, lastTargeting, lastIcpDescription, searchCursor, leads.length]);
+
+    const handleDividerMouseDown = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        isDraggingRef.current = true;
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+        const onMouseMove = (ev: MouseEvent) => {
+            if (!isDraggingRef.current || !mainRef.current) return;
+            const rect = mainRef.current.getBoundingClientRect();
+            const rightPct = Math.round(((rect.right - ev.clientX) / rect.width) * 100);
+            setPanelWidth(Math.min(70, Math.max(25, rightPct))); // clamp 25%–70%
+        };
+        const onMouseUp = () => {
+            isDraggingRef.current = false;
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
+        };
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
+    }, []);
 
     /* ═══════════════════════════════════════════════
        AI CHAT PERSISTENCE — save conversation + messages
@@ -3666,9 +3773,9 @@ export default function AdvancedSearchAIPage() {
     return (
         <div className="adv-chat-root">
             <div className="adv-yellow-bar" />
-            <div className="adv-chat-main">
+            <div className="adv-chat-main" ref={mainRef}>
                 {/* LEFT: CHAT */}
-                <div className={`adv-chat-left${messages.length === 0 ? ' adv-chat-left-empty' : ''}`} style={{ width: showPanel ? '60%' : '100%' }}>
+                <div className={`adv-chat-left${messages.length === 0 ? ' adv-chat-left-empty' : ''}`} style={{ width: showPanel ? `${100 - panelWidth}%` : '100%', transition: showPanel ? 'none' : 'width .35s cubic-bezier(.4,0,.2,1)' }}>
                     <button className="adv-chat-back" onClick={reset}>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
                     </button>
@@ -3731,7 +3838,15 @@ export default function AdvancedSearchAIPage() {
                                             : 'Qualifying...'
                                     }
                                     : m;
-                                return <Bubble key={m.id} msg={displayMsg} onOpt={onOptClick} onShowPanel={setShowPanel} onStartCheckpoints={() => setCpStep(0)} onStartTargeting={() => { setTgStep(0); setChatBlocked(false); }} hasPanel={!!showPanel} leadsCount={leads.length} filteredLeadsCount={filteredLeads.length} onUploadClick={() => fileInputRef.current?.click()} useSalesNav={useSalesNav} isMobile={isMobile} />;
+                                return <Bubble key={m.id} msg={displayMsg} onOpt={onOptClick} onShowPanel={setShowPanel} onStartCheckpoints={() => setCpStep(0)} onStartTargeting={() => { setTgStep(0); setChatBlocked(false); }} onLetAgentDeal={handleLetAgentDeal} hasPanel={!!showPanel} leadsCount={leads.length} filteredLeadsCount={filteredLeads.length} onUploadClick={() => fileInputRef.current?.click()} useSalesNav={useSalesNav} isMobile={isMobile} inboundLeads={inboundLeads} onEdit={(text, msgId) => {
+
+                                    setMessages(prev => {
+                                        const idx = prev.findIndex(m => m.id === msgId);
+                                        return idx === -1 ? prev : prev.slice(0, idx);
+                                    });
+                                    setInput(text);
+                                    setTimeout(() => taRef.current?.focus(), 50);
+                                }} />;
                             })}
                             {/* Import leads prompt — shown when conversation is about existing client relationships */}
                             {(() => {
@@ -3782,8 +3897,8 @@ export default function AdvancedSearchAIPage() {
                             })()}
                         </div>
 
-                        {/* ── Inline Checkpoint Form (typeform-style) ── */}
-                        {cpStep >= 0 && (
+                        {/* ── Inline Checkpoint Form (typeform-style) — DISABLED: Let Agent Deal now directly builds flowchart ── */}
+                        {false && cpStep >= 0 && (
                             <div className="adv-msgs-inner">
                                 <CheckpointFormInline
                                     step={cpStep}
@@ -4048,9 +4163,29 @@ export default function AdvancedSearchAIPage() {
                     </div>
                 )}
 
+                {(showPanel === 'leads' || showPanel === 'workflow') && (leads.length > 0 || inboundLeads.length > 0 || filteredLeads.length > 0 || showPanel === 'workflow') && (
+                    <div
+                        onMouseDown={handleDividerMouseDown}
+                        style={{
+                            width: '6px', flexShrink: 0, cursor: 'col-resize',
+                            background: 'transparent', position: 'relative', zIndex: 10,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).querySelector('div')!.style.background = '#2563eb'; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).querySelector('div')!.style.background = '#d1d5db'; }}
+                    >
+                        {/* Visual pill */}
+                        <div style={{
+                            width: '3px', height: '48px', borderRadius: '3px',
+                            background: '#d1d5db', transition: 'background 0.15s',
+                            pointerEvents: 'none',
+                        }} />
+                    </div>
+                )}
+
                 {/* RIGHT: PANELS */}
                 {(showPanel === 'leads' || showPanel === 'workflow') && (leads.length > 0 || inboundLeads.length > 0 || filteredLeads.length > 0 || showPanel === 'workflow') && (
-                    <div className="adv-leads-panel">
+                    <div className="adv-leads-panel" style={{ width: `${panelWidth}%` }}>
                         {/* Split-screen panel header */}
                         <div style={{
                             display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 20px',
@@ -5563,13 +5698,15 @@ export default function AdvancedSearchAIPage() {
    ═══════════════════════════════════════════════ */
 import { useSelector } from 'react-redux';
 
-function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onStartTargeting, hasPanel, leadsCount, filteredLeadsCount, onUploadClick, useSalesNav, isMobile }: { msg: ChatMsg; onOpt: (v: string) => void; onShowPanel: (panel: 'leads' | 'workflow') => void; onStartCheckpoints: () => void; onStartTargeting: () => void; hasPanel: boolean; leadsCount: number; filteredLeadsCount?: number; onUploadClick?: () => void; useSalesNav?: boolean; isMobile?: boolean }) {
+function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onStartTargeting, onLetAgentDeal, hasPanel, leadsCount, filteredLeadsCount, onUploadClick, useSalesNav, isMobile, inboundLeads = [], onEdit }: { msg: ChatMsg; onOpt: (v: string) => void; onShowPanel: (panel: 'leads' | 'workflow') => void; onStartCheckpoints: () => void; onStartTargeting: () => void; onLetAgentDeal?: () => void; hasPanel: boolean; leadsCount: number; filteredLeadsCount?: number; onUploadClick?: () => void; useSalesNav?: boolean; isMobile?: boolean; inboundLeads?: ParsedInboundLead[]; onEdit?: (text: string, msgId: string) => void }) {
     const user = useSelector((state: any) => state.auth?.user);
     const displayName = user?.name || "User";
     const userInitial = displayName.charAt(0).toUpperCase();
     const THINKING_WORDS = ['Thinking', 'Searching', 'Scrapping', 'Crawling', 'Analyzing', 'Matching', 'Qualifying', 'Processing'];
     const [thinkIdx, setThinkIdx] = React.useState(0);
     const [thinkVisible, setThinkVisible] = React.useState(true);
+    const [hovered, setHovered] = React.useState(false);
+    const [copied, setCopied] = React.useState(false);
     // Lead detail form local state (used when msg.leadDetailForm === true)
     const [ldFirst, setLdFirst] = React.useState('');
     const [ldLast, setLdLast] = React.useState('');
@@ -5602,9 +5739,61 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onStartTargeting,
         </div>
     );
     if (msg.role === 'user') return (
-        <div className="adv-bubble adv-bubble-user fadeUp" style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
-            <div className="adv-user-msg" style={{ margin: 0, order: 1 }}>{msg.text}</div>
-            <div style={{ order: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '50%', backgroundColor: '#172560', color: 'white', fontSize: '13px', fontWeight: 'bold', flexShrink: 0 }}>
+        <div
+            className="adv-bubble adv-bubble-user fadeUp"
+            style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+        >
+            {/* Message bubble + action icons stacked vertically */}
+            <div style={{ order: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                <div className="adv-user-msg" style={{ margin: 0 }}>{msg.text}</div>
+                {/* Copy / Edit icons — appear on hover, same as ChatGPT */}
+                <div style={{
+                    display: 'flex', gap: '2px',
+                    opacity: hovered ? 1 : 0,
+                    transition: 'opacity 0.15s ease',
+                }}>
+                    {/* Copy button */}
+                    <button
+                        onClick={() => {
+                            navigator.clipboard.writeText(msg.text).then(() => {
+                                setCopied(true);
+                                setTimeout(() => setCopied(false), 2000);
+                            });
+                        }}
+                        title={copied ? 'Copied!' : 'Copy'}
+                        style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            width: '28px', height: '28px', borderRadius: '6px', border: 'none',
+                            background: 'transparent', cursor: 'pointer', color: '#9ca3af',
+                        }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#f3f4f6'; (e.currentTarget as HTMLElement).style.color = '#374151'; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#9ca3af'; }}
+                    >
+                        {copied
+                            ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                            : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" /></svg>
+                        }
+                    </button>
+                    {/* Edit button */}
+                    <button
+                        onClick={() => onEdit?.(msg.text, msg.id)}
+                        title="Edit message"
+                        style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            width: '28px', height: '28px', borderRadius: '6px', border: 'none',
+                            background: 'transparent', cursor: 'pointer', color: '#9ca3af',
+                        }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#f3f4f6'; (e.currentTarget as HTMLElement).style.color = '#374151'; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#9ca3af'; }}
+                    >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                    </button>
+                </div>
+            </div>
+            {/* Avatar */}
+            <div style={{ order: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '50%', backgroundColor: '#172560', color: 'white', fontSize: '13px', fontWeight: 'bold', flexShrink: 0, alignSelf: 'flex-start' }}>
                 {user?.avatar ? <img src={user.avatar} alt="avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} /> : userInitial}
             </div>
         </div>
@@ -5805,22 +5994,6 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onStartTargeting,
                     </div>
                 )}
 
-                {/* ── Modern action buttons (Example 1 style) ── */}
-                {msg.targeting && (
-
-                    <div className="adv-action-btns" style={{ display: "flex", gap: "8px", flexWrap: "nowrap", borderTop: "1px solid #e5e7eb", paddingTop: "12px", justifyContent: "space-between" }}>
-                        <button className="adv-act-btn adv-act-btn-refine" style={{
-                            padding: "8px 12px", background: "#fff", border: "1px solid #e5e7eb", borderRadius: "20px", fontSize: "12px", fontWeight: 600, color: "#374151"
-                        }} onClick={() => onOpt('Refine my targeting criteria')}>Refine</button>
-                        <button className="adv-act-btn adv-act-btn-journey" style={{
-                            padding: "9px 16px", background: "#0b1957", border: "none", borderRadius: "20px", fontSize: "12.5px", fontWeight: 700, color: "#fff",
-                            boxShadow: "0 2px 8px rgba(23,37,96,0.35)", display: "flex", alignItems: "center", gap: "6px", letterSpacing: "0.01em"
-                        }} onClick={onStartCheckpoints}>
-                            Create Outreach Journey
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
-                        </button>
-                    </div>
-                )}
 
                 {/* ── Inbound: Download Template + Upload buttons ── */}
                 {(msg.inboundAction === 'download' || msg.inboundAction === 'upload') && (
@@ -5840,27 +6013,181 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onStartTargeting,
                 )}
 
                 {/* ── Inbound: Summary with platform badges ── */}
-                {msg.inboundAction === 'summary' && msg.inboundSummary && (
-                    <div style={{ marginTop: '12px', padding: '14px', background: 'linear-gradient(135deg, #ecfdf5, #d1fae5)', borderRadius: '14px', border: '1px solid #a7f3d0' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                            <CheckCircle2 size={18} color="#059669" />
-                            <span style={{ fontSize: '14px', fontWeight: 700, color: '#065f46' }}>{msg.inboundSummary.total} Leads Ready</span>
+                {msg.inboundAction === 'summary' && msg.inboundSummary && (() => {
+                    const hasLi = inboundLeads.some(l => (l.firstName && l.companyName) || l.linkedinProfile);
+                    const hasEmail = inboundLeads.some(l => l.email);
+                    const hasPhone = inboundLeads.some(l => l.phone);
+                    const hasWebsite = inboundLeads.some(l => l.website);
+                    const hasInstagram = inboundLeads.some(l => l.instagramProfile);
+
+                    const summaryJourney = [
+                        hasLi && {
+                            channel: 'linkedin',
+                            label: 'LinkedIn',
+                            action: 'Visit profile -> Connect -> Message',
+                            reason: 'LinkedIn profiles found — warm up with a connection request first.',
+                        },
+                        hasEmail && {
+                            channel: 'email',
+                            label: 'Email',
+                            action: 'Personalised cold email + follow-up sequence',
+                            reason: 'Email addresses available — follow up 3–5 days after LinkedIn connect.',
+                        },
+                        hasPhone && {
+                            channel: 'whatsapp',
+                            label: 'WhatsApp',
+                            action: 'Direct message, broadcast + follow-up sequence',
+                            reason: 'Add WhatsApp as a follow-up channel for warm leads.',
+                        },
+                        hasPhone && {
+                            channel: 'voice',
+                            label: 'Voice Call',
+                            action: 'AI-powered voice call with script',
+                            reason: 'Reserve voice calls for high-priority leads who haven\'t responded.',
+                        },
+                        hasWebsite && {
+                            channel: 'website',
+                            label: 'Website',
+                            action: 'Visit website -> Track analytics -> Retarget',
+                            reason: 'Analyze visitor behavior and retarget via ads or custom flows.',
+                        },
+                        hasInstagram && {
+                            channel: 'instagram',
+                            label: 'Instagram',
+                            action: 'Direct message -> Social connection -> Follow-up',
+                            reason: 'Engage with lead on social media to build rapport.',
+                        },
+                    ].filter(Boolean) as { channel: string; label: string; action: string; reason: string }[];
+
+                    return (
+                        <div style={{ marginTop: '16px' }}>
+                            <div style={{ fontSize: '12px', fontWeight: 700, color: '#0b1957', marginBottom: '16px', letterSpacing: '.06em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="#0b1957"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
+                                Suggested Outreach Journey
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', overflowX: 'auto', paddingBottom: '4px', justifyContent: "center", flexWrap: 'wrap' }}>
+                                {summaryJourney.map((step, si) => {
+                                    const channelConfig = {
+                                        linkedin: {
+                                            color: '#0a66c2', icon: (
+                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="#fff">
+                                                    <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
+                                                </svg>
+                                            )
+                                        },
+                                        email: {
+                                            color: '#4f46e5', icon: (
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /></svg>
+                                            )
+                                        },
+                                        whatsapp: {
+                                            color: '#25d366', icon: (
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z" /></svg>
+                                            )
+                                        },
+                                        voice: {
+                                            color: '#f97316', icon: (
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 3.8 10.5 19.79 19.79 0 0 1 .74 1.84 2 2 0 0 1 2.72 0h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L6.91 7.69a16 16 0 0 0 6.4 6.4l1.06-1.06a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
+                                            )
+                                        },
+                                        website: {
+                                            color: '#6b21a8', icon: (
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></svg>
+                                            )
+                                        },
+                                        instagram: {
+                                            color: '#e1306c', icon: (
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" y1="6.5" x2="17.51" y2="6.5" /></svg>
+                                            )
+                                        },
+                                    };
+                                    const config = channelConfig[step.channel as keyof typeof channelConfig] || channelConfig.email;
+                                    const bgColor = config.color;
+                                    return (
+                                        <div key={si} style={{ display: 'flex', alignItems: 'flex-start', flexShrink: 0 }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100px' }}>
+                                                {/* Icon circle with custom tooltip */}
+                                                <div style={{ position: 'relative', display: 'inline-flex' }}
+                                                    onMouseEnter={e => {
+                                                        const tip = (e.currentTarget as HTMLElement).querySelector('.journey-tip') as HTMLElement;
+                                                        if (tip) tip.style.opacity = '1';
+                                                    }}
+                                                    onMouseLeave={e => {
+                                                        const tip = (e.currentTarget as HTMLElement).querySelector('.journey-tip') as HTMLElement;
+                                                        if (tip) tip.style.opacity = '0';
+                                                    }}
+                                                >
+                                                    <div className="journey-icon-circle" style={{
+                                                        width: '44px', height: '44px', borderRadius: '50%',
+                                                        background: bgColor,
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                        boxShadow: `0 4px 12px ${bgColor}55`,
+                                                        border: 'none',
+                                                        flexShrink: 0, cursor: 'default', opacity: 1, visibility: 'visible'
+                                                    }}>
+                                                        {config.icon}
+                                                    </div>
+                                                    {/* Custom tooltip */}
+                                                    <div className="journey-tip" style={{
+                                                        opacity: 0, pointerEvents: 'none', transition: 'opacity 0.15s',
+                                                        position: 'absolute', bottom: 'calc(100% + 8px)', left: '50%',
+                                                        transform: 'translateX(-50%)',
+                                                        background: '#1f2937', color: '#fff', fontSize: '11px',
+                                                        borderRadius: '8px', padding: '6px 10px', width: '160px',
+                                                        lineHeight: 1.4, textAlign: 'center', zIndex: 50,
+                                                        boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                                                        whiteSpace: 'normal',
+                                                    }}>
+                                                        {step.reason}
+                                                        {/* Arrow */}
+                                                        <div style={{
+                                                            position: 'absolute', top: '100%', left: '50%',
+                                                            transform: 'translateX(-50%)',
+                                                            borderWidth: '5px', borderStyle: 'solid',
+                                                            borderColor: '#1f2937 transparent transparent transparent',
+                                                        }} />
+                                                    </div>
+                                                </div>
+                                                {/* Label */}
+                                                <div style={{ fontSize: '11px', fontWeight: 700, color: '#111827', marginTop: '6px', textAlign: 'center' }}>{step.label}</div>
+                                                {/* Action */}
+                                                <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '2px', textAlign: 'center', lineHeight: 1.3, padding: '0 4px' }}>{step.action}</div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Big Let Agent Deal button */}
+                            <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+                                <button
+                                    onClick={() => onLetAgentDeal ? onLetAgentDeal() : onStartCheckpoints()}
+                                    style={{
+                                        width: '100%',
+                                        padding: "12px 18px",
+                                        background: "#0b1957",
+                                        border: "none",
+                                        borderRadius: "12px",
+                                        color: "#fff",
+                                        cursor: 'pointer',
+                                        boxShadow: '0 4px 12px rgba(11,25,87,0.25)',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '3px',
+                                        transition: 'all 0.2s',
+                                    }}
+                                    onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#172560'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(23,37,96,0.35)'; }}
+                                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#0b1957'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(11,25,87,0.25)'; }}
+                                >
+                                    <span style={{ fontSize: "15px", fontWeight: 700, letterSpacing: '0.02em' }}>Let Agent deal</span>
+                                    <span style={{ fontSize: "11px", fontWeight: 400, opacity: 0.85 }}>Mr. LAD will create outreach journey</span>
+                                </button>
+                            </div>
                         </div>
-                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                            {msg.inboundSummary.linkedin > 0 && <span style={{ fontSize: '11px', background: '#fff', color: '#1e40af', padding: '4px 10px', borderRadius: '12px', fontWeight: 600, border: '1px solid #bfdbfe', display: 'inline-flex', alignItems: 'center', gap: '4px' }}><LinkedInIcon size={12} /> LinkedIn ({msg.inboundSummary.linkedin})</span>}
-                            {msg.inboundSummary.email > 0 && <span style={{ fontSize: '11px', background: '#fff', color: '#be185d', padding: '4px 10px', borderRadius: '12px', fontWeight: 600, border: '1px solid #fbcfe8' }}>✉️ Email ({msg.inboundSummary.email})</span>}
-                            {msg.inboundSummary.whatsapp > 0 && <span style={{ fontSize: '11px', background: '#fff', color: '#166534', padding: '4px 10px', borderRadius: '12px', fontWeight: 600, border: '1px solid #bbf7d0' }}>💬 WhatsApp ({msg.inboundSummary.whatsapp})</span>}
-                            {msg.inboundSummary.phone > 0 && <span style={{ fontSize: '11px', background: '#fff', color: '#9a3412', padding: '4px 10px', borderRadius: '12px', fontWeight: 600, border: '1px solid #fed7aa' }}>📞 Phone ({msg.inboundSummary.phone})</span>}
-                            {msg.inboundSummary.website > 0 && <span style={{ fontSize: '11px', background: '#fff', color: '#6b21a8', padding: '4px 10px', borderRadius: '12px', fontWeight: 600, border: '1px solid #e9d5ff' }}>🌐 Website ({msg.inboundSummary.website})</span>}
-                        </div>
-                        <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
-                            <button style={{
-                                width: '100%', padding: "10px 14px", background: "#172560", border: "none", borderRadius: "10px", fontSize: "13px", fontWeight: 700, color: "#fff", cursor: 'pointer', boxShadow: '0 4px 12px rgba(23,37,96,0.2)',
-                                display: 'block'
-                            }} onClick={onStartCheckpoints}>Create Outreach Journey</button>
-                        </div>
-                    </div>
-                )}
+                    );
+                })()}
 
                 {/* Option buttons from AI */}
                 {msg.options && msg.options.length > 0 && (
@@ -5872,43 +6199,48 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onStartTargeting,
                 {/* ── Outreach Journey Stepper ── */}
                 {msg.outreach_journey && msg.outreach_journey.length > 0 && (
                     <div style={{ marginTop: '16px' }}>
-                        <div style={{ fontSize: '12px', fontWeight: 700, color: '#374151', marginBottom: '10px', letterSpacing: '.04em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0b1957" strokeWidth="2.5" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
+                        <div style={{ fontSize: '12px', fontWeight: 700, color: '#0b1957', marginBottom: '10px', letterSpacing: '.06em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="#0b1957"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
                             Suggested Outreach Journey
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0', overflowX: 'auto', paddingBottom: '4px', justifyContent: "center" }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', overflowX: 'auto', paddingBottom: '4px', justifyContent: "center", flexWrap: 'wrap' }}>
                             {msg.outreach_journey.map((step, si) => {
                                 const channelConfig = {
                                     linkedin: {
                                         color: '#0a66c2', icon: (
-                                            <svg width="24" height="24" viewBox="0 0 24 24" fill={step.recommended ? '#fff' : '#9ca3af'}>
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="#fff">
                                                 <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
                                             </svg>
                                         )
                                     },
                                     email: {
                                         color: '#4f46e5', icon: (
-                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={step.recommended ? '#fff' : '#9ca3af'} strokeWidth="1.8" strokeLinecap="round"><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /></svg>
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /></svg>
                                         )
                                     },
                                     whatsapp: {
                                         color: '#25d366', icon: (
-                                            <svg width="20" height="20" viewBox="0 0 24 24" fill={step.recommended ? '#fff' : '#9ca3af'}><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" /></svg>
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z" /></svg>
                                         )
                                     },
                                     voice: {
                                         color: '#f97316', icon: (
-                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={step.recommended ? '#fff' : '#9ca3af'} strokeWidth="1.8" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.8 10.5 19.79 19.79 0 01.74 1.84 2 2 0 012.72 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.69a16 16 0 006.4 6.4l1.06-1.06a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" /></svg>
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 3.8 10.5 19.79 19.79 0 0 1 .74 1.84 2 2 0 0 1 2.72 0h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L6.91 7.69a16 16 0 0 0 6.4 6.4l1.06-1.06a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
+                                        )
+                                    },
+                                    website: {
+                                        color: '#6b21a8', icon: (
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></svg>
+                                        )
+                                    },
+                                    instagram: {
+                                        color: '#e1306c', icon: (
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" y1="6.5" x2="17.51" y2="6.5" /></svg>
                                         )
                                     },
                                 };
                                 const config = channelConfig[step.channel as keyof typeof channelConfig] || channelConfig.email;
-                                const bgColor = step.recommended
-                                    ? step.channel === 'linkedin' ? '#0a66c2'
-                                        : step.channel === 'email' ? '#0b1957'
-                                            : step.channel === 'whatsapp' ? '#25d366'
-                                                : '#f97316'
-                                    : '#f3f4f6';
+                                const bgColor = config.color;
                                 return (
                                     <div key={si} style={{ display: 'flex', alignItems: 'flex-start', flexShrink: 0 }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100px' }}>
@@ -5927,8 +6259,8 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onStartTargeting,
                                                     width: '44px', height: '44px', borderRadius: '50%',
                                                     background: bgColor,
                                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    boxShadow: step.recommended ? `0 4px 12px ${bgColor}55` : 'none',
-                                                    border: step.recommended ? 'none' : '1.5px solid #e5e7eb',
+                                                    boxShadow: `0 4px 12px ${bgColor}55`,
+                                                    border: 'none',
                                                     flexShrink: 0, cursor: 'default', opacity: 1, visibility: 'visible'
                                                 }}>
                                                     {config.icon}
@@ -5955,24 +6287,40 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onStartTargeting,
                                                 </div>
                                             </div>
                                             {/* Label */}
-                                            <div style={{ fontSize: '11px', fontWeight: 700, color: step.recommended ? '#111827' : '#9ca3af', marginTop: '6px', textAlign: 'center' }}>{step.label}</div>
+                                            <div style={{ fontSize: '11px', fontWeight: 700, color: '#111827', marginTop: '6px', textAlign: 'center' }}>{step.label}</div>
                                             {/* Action */}
                                             <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '2px', textAlign: 'center', lineHeight: 1.3, padding: '0 4px' }}>{step.action}</div>
-                                            {step.recommended && (
-                                                <div style={{ marginTop: '4px', fontSize: '9px', background: '#eff6ff', color: '#2563eb', borderRadius: '8px', padding: '1px 6px', fontWeight: 700, textTransform: 'uppercase' }}>Recommended</div>
-                                            )}
                                         </div>
-                                        {/* Connector arrow between steps */}
-                                        {si < msg.outreach_journey!.length - 1 && (
-                                            <div style={{ display: 'flex', alignItems: 'center', paddingTop: '14px', flexShrink: 0 }}>
-                                                <svg width="24" height="16" viewBox="0 0 24 16" fill="none">
-                                                    <path d="M0 8h20M16 4l4 4-4 4" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                                </svg>
-                                            </div>
-                                        )}
                                     </div>
                                 );
                             })}
+                        </div>
+                        {/* Big Let Agent Deal button */}
+                        <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+                            <button
+                                onClick={() => onLetAgentDeal ? onLetAgentDeal() : onStartCheckpoints()}
+                                style={{
+                                    width: '100%',
+                                    padding: "12px 18px",
+                                    background: "#0b1957",
+                                    border: "none",
+                                    borderRadius: "12px",
+                                    color: "#fff",
+                                    cursor: 'pointer',
+                                    boxShadow: '0 4px 12px rgba(11,25,87,0.25)',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '3px',
+                                    transition: 'all 0.2s',
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#172560'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(23,37,96,0.35)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#0b1957'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(11,25,87,0.25)'; }}
+                            >
+                                <span style={{ fontSize: "15px", fontWeight: 700, letterSpacing: '0.02em' }}>Let Agent deal</span>
+                                <span style={{ fontSize: "11px", fontWeight: 400, opacity: 0.85 }}>Mr. LAD will create outreach journey</span>
+                            </button>
                         </div>
                     </div>
                 )}

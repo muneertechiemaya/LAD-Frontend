@@ -18,6 +18,7 @@ export type StepType =
   | 'instagram_autopost'
   | 'instagram_comment_reply'
   | 'instagram_story_view'
+  | 'website_visit'
   | 'lead_generation'
   | 'delay' 
   | 'condition' 
