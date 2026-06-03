@@ -798,8 +798,12 @@ export function CallOptions(props: CallOptionsProps) {
         </div>
         {/* New UI row: Download template + Choose file */}
         <div className="flex gap-3 mb-3">
-          <Button variant="outline" onClick={downloadTemplate} className="flex items-center gap-2">
-            <Download className="w-4 h-4" /> Download Template
+          <Button
+              variant="outline"
+              onClick={downloadTemplate}
+              className="flex items-center gap-2 dark:hover:text-white dark:text-slate-200"
+          >
+            <Download className="w-4 h-4 text-current" /> Download Template
           </Button>
           {/* File chooser */}
           <label className="flex-1">

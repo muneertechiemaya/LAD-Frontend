@@ -497,40 +497,40 @@ export default function EmployeeCard({
           </div>
           {/* Profile Summary Section */}
           {profileSummary && (
-            <div className="w-full mt-4">
-              <Button
-                variant="outline"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSummaryExpanded(!summaryExpanded);
-                }}
-                className={`
-                  w-full border-[#0b1957] text-[#0b1957] font-semibold text-sm py-2
-                  hover:border-[#0b1957] hover:bg-[#0b1957]/5
-                  ${summaryExpanded ? 'mb-2' : ''}
-                `}
-              >
-                <FileText className="w-4 h-4 mr-2" />
-                {summaryExpanded ? 'Hide Summary' : 'View Summary'}
-                {summaryExpanded ? (
-                  <ChevronUp className="w-4 h-4 ml-2" />
-                ) : (
-                  <ChevronDown className="w-4 h-4 ml-2" />
-                )}
-              </Button>
-              <div
-                className={`
-                  overflow-hidden transition-all duration-300 ease-in-out
-                  ${summaryExpanded ? 'max-h-[500px] opacity-100 mt-2' : 'max-h-0 opacity-0'}
-                `}
-              >
-                <div className="p-4 bg-[#F8F9FE] dark:bg-[#0d1b3e] rounded-lg border border-[#E2E8F0] dark:border-[#262831]">
-                  <p className="text-sm text-[#475569] dark:text-[#7a8ba3] leading-relaxed whitespace-pre-wrap">
-                    {profileSummary}
-                  </p>
+              <div className="w-full mt-4">
+                <Button
+                    variant="outline"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSummaryExpanded(!summaryExpanded);
+                    }}
+                    className={`
+      w-full border-[#0b1957] dark:border-[#4a6cf7] text-[#0b1957] dark:text-[#4a6cf7] font-semibold text-sm py-2
+      hover:border-[#0b1957] dark:hover:border-[#4a6cf7] hover:bg-[#0b1957]/5 dark:hover:bg-[#4a6cf7]/10 dark:hover:text-white
+      ${summaryExpanded ? 'mb-2' : ''}
+    `}
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  {summaryExpanded ? 'Hide Summary' : 'View Summary'}
+                  {summaryExpanded ? (
+                      <ChevronUp className="w-4 h-4 ml-2" />
+                  ) : (
+                      <ChevronDown className="w-4 h-4 ml-2" />
+                  )}
+                </Button>
+                <div
+                    className={`
+      overflow-hidden transition-all duration-300 ease-in-out
+      ${summaryExpanded ? 'max-h-[500px] opacity-100 mt-2' : 'max-h-0 opacity-0'}
+    `}
+                >
+                  <div className="p-4 bg-[#F8F9FE] dark:bg-[#0d1b3e] rounded-lg border border-[#E2E8F0] dark:border-[#262831]">
+                    <p className="text-sm text-[#475569] dark:text-[#7a8ba3] leading-relaxed whitespace-pre-wrap">
+                      {profileSummary}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
           )}
           {/* View Summary Button (if no summary available yet) */}
           {!profileSummary && onViewSummary && (
