@@ -1888,9 +1888,6 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
                   <DropdownMenuItem className="focus:bg-accent dark:focus:bg-[#182229] focus:text-white dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4" onClick={onTogglePanel}>
                     <Info className="w-4 h-4" /> <span>Contact info</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="focus:bg-accent dark:focus:bg-[#182229] focus:text-white dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4" onClick={() => setIsSearchOpen(true)}>
-                    <Search className="w-4 h-4" /> <span>Search</span>
-                  </DropdownMenuItem>
                   <DropdownMenuItem className="focus:bg-accent dark:focus:bg-[#182229] focus:text-white dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4">
                     <CheckSquare className="w-4 h-4" /> <span>Select messages</span>
                   </DropdownMenuItem>
@@ -2404,12 +2401,6 @@ function WABASidebar({
   const [importRefreshTrigger, setImportRefreshTrigger] = useState(0);
   const deferredNewChatSearch = useDeferredValue(newChatSearch.trim());
 
-  console.log('[WABASidebar] Props:', {
-    contextStatuses: contextStatuses.length,
-    onContextStatusFilterChange: !!onContextStatusFilterChange,
-    contextStatusFilter,
-  });
-
   const normalizePhone = useCallback((value?: string) => (value || '').replace(/\D/g, ''), []);
   const conversationIdByLead = useMemo(() => {
     const map = new Map<string, string>();
@@ -2918,21 +2909,23 @@ function WABASidebar({
       </div>
 
       {/* Search */}
-      <div className="px-4 pb-3 pt-1 relative z-50">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground dark:text-[#a2a2a2]" />
-          <Input
-            placeholder="Search or start a new chat"
-            className="pl-10 bg-[#f0f2f5] dark:bg-[#2e2f2f] border-0 rounded-full h-9 text-sm text-foreground dark:text-white placeholder:text-muted-foreground dark:text-[#a2a2a2] focus-visible:ring-1 focus-visible:ring-transparent"
-            value={searchQuery || ''}
-            onChange={(e) => onSearchChange(e.target.value)}
-          />
-          {/* Search results render inline in the main conversation list below
-              (backend-filtered by name + phone). The old floating dropdown was
-              removed: it duplicated the list, capped results at max-h-60, and
-              overlapped the list because it only closed on select/clear. */}
+      {!isGroupsPanelOpen && (
+        <div className="px-4 pb-3 pt-1 relative z-50">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground dark:text-[#a2a2a2]" />
+            <Input
+              placeholder="Search or start a new chat"
+              className="pl-10 bg-[#f0f2f5] dark:bg-[#2e2f2f] border-0 rounded-full h-9 text-sm text-foreground dark:text-white placeholder:text-muted-foreground dark:text-[#a2a2a2] focus-visible:ring-1 focus-visible:ring-transparent"
+              value={searchQuery || ''}
+              onChange={(e) => onSearchChange(e.target.value)}
+            />
+            {/* Search results render inline in the main conversation list below
+                (backend-filtered by name + phone). The old floating dropdown was
+                removed: it duplicated the list, capped results at max-h-60, and
+                overlapped the list because it only closed on select/clear. */}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Filter Chips (All / Unread / Favourites) + Sort/Filter */}
       <div className="px-4 pb-3 flex items-center gap-2 overflow-x-auto no-scrollbar border-b border-border dark:border-[#222d34]/80">
@@ -4236,7 +4229,6 @@ const handleFavorite = useCallback(
     fetchWithTenant(`/api/whatsapp-conversations/conversations/context-statuses?channel=${channel}`)
       .then((r) => r.json())
       .then((data) => {
-        console.log('[Context Status] API response:', data);
         if (data.success && Array.isArray(data.data) && data.data.length > 0) {
           const statuses = (data.data as Array<{ value?: string; count?: number }>)
             .filter((s) => typeof s.value === 'string')
@@ -4245,15 +4237,12 @@ const handleFavorite = useCallback(
               label: formatContextStatus(s.value as string),
               count: Number(s.count || 0),
             }));
-          console.log('[Context Status] Setting statuses from API:', statuses);
           setContextStatuses(statuses);
         } else {
-          console.log('[Context Status] Using default statuses');
           setContextStatuses(DEFAULT_CONTEXT_STATUSES);
         }
       })
-      .catch((err) => {
-        console.error('[Context Status] API error:', err);
+      .catch(() => {
         setContextStatuses(DEFAULT_CONTEXT_STATUSES);
       });
   }, [channel]);
