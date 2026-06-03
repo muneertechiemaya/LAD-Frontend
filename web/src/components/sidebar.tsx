@@ -25,6 +25,8 @@ import {
   Palette,
   Pin,
   PinOff,
+  Contact,
+  Gauge,
 } from "lucide-react";
 import { NavLink } from "./NavLink";
 import { ThemeToggle } from "./ThemeToggle";
@@ -38,6 +40,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import LAD3DShowcase from "@/app/page";
+
+// Internal observability console is super-admin only — gated by email, matching
+// the backend `requireSuperAdmin` gate on /api/admin/monitor.
+const SUPER_ADMIN_EMAIL = (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'admin@techiemaya.com').toLowerCase();
+
 type RootState = {
   auth: {
     user: {
@@ -253,6 +260,13 @@ export function Sidebar() {
       requiredFeature: "deals-pipeline",
     },
     {
+      href: "/crm",
+      label: "Contacts Funnel",
+      icon: Contact,
+      details: "Unified cross-channel prospects, leads and clients from the Master Agent.",
+      requiredCapability: "view_pipeline",
+    },
+    {
       href: "/follow-ups",
       label: "Follow-ups",
       icon: GitFork,
@@ -286,12 +300,29 @@ export function Sidebar() {
   // Pipeline, Make a Call, …) to fresh accounts on first login. Now an
   // unassigned user sees an empty sidebar — the right signal to assign
   // them features in Settings → Team.
-  const nav = isHydrated
+  const baseNav = isHydrated
     ? allNavItems.filter(hasNavAccess).map(item => ({
         ...item,
         children: item.children?.filter(hasNavAccess),
       }))
     : []; // Empty during SSR to prevent hydration mismatch
+
+  // Super-admin-only entry to the internal observability console. Appended
+  // (not part of allNavItems) so it's strictly email-gated and never leaks to
+  // tenant users. The backend independently enforces the same gate.
+  const isSuperAdmin =
+    isHydrated && (user?.email || '').toLowerCase().trim() === SUPER_ADMIN_EMAIL;
+  const nav = isSuperAdmin
+    ? [
+        ...baseNav,
+        {
+          href: '/admin/monitor',
+          label: 'Platform Monitor',
+          icon: Gauge,
+          details: 'Internal cross-tenant observability (super-admin).',
+        },
+      ]
+    : baseNav;
   return (
     <>
       {/* Mobile Top Bar */}

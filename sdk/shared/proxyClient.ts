@@ -46,9 +46,11 @@ class ProxyClient {
     }
 
     // Inject channel param so the proxy routes to the correct backend.
-    // Prefer the per-request override; fall back to localStorage for legacy callers.
+    // Prefer the per-request override; fall back to localStorage, then default to
+    // 'waba' — matching the Next proxy's default and the primary channel. Personal-WA
+    // callers always pass channel: 'personal' explicitly, so this default is safe.
     if (typeof window !== 'undefined' && !url.searchParams.has('channel')) {
-      const channel = options?.channel ?? safeStorage.getItem('whatsappChannel') ?? 'personal';
+      const channel = options?.channel ?? safeStorage.getItem('whatsappChannel') ?? 'waba';
       url.searchParams.set('channel', channel);
     }
 
