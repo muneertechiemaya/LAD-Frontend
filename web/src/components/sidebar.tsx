@@ -261,7 +261,7 @@ export function Sidebar() {
     },
     {
       href: "/crm",
-      label: "CRM",
+      label: "Contacts Funnel",
       icon: Contact,
       details: "Unified cross-channel prospects, leads and clients from the Master Agent.",
       requiredCapability: "view_pipeline",

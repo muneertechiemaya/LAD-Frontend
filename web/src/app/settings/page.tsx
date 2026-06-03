@@ -11,7 +11,7 @@ import { BillingSettings } from '../../components/settings/BillingSettings';
 import { CreditsSettings } from '../../components/settings/CreditsSettings';
 import { BusinessProfileSettings } from '../../components/settings/BusinessProfileSettings';
 import { TeamManagement } from '../../components/settings/TeamManagement';
-import { Building2, Users, UserCircle, Globe, Plug, Terminal, CreditCard, Coins, Upload, MessageSquare, Target } from 'lucide-react';
+import { Building2, Users, UserCircle, Globe, Plug, Terminal, CreditCard, Coins, Upload, MessageSquare, Target, Crosshair } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 import { useAuth } from '@/contexts/AuthContext';
@@ -94,9 +94,9 @@ const SettingsPage: React.FC = () => {
 
   if (isAuthLoading) {
     return (
-        <div className="min-h-[50vh] flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0B1957] dark:border-blue-400"></div>
-        </div>
+      <div className="min-h-[50vh] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0B1957]"></div>
+      </div>
     );
   }
 
@@ -143,28 +143,35 @@ const SettingsPage: React.FC = () => {
           </div>
         {/* Bottom Section: Tabs Navigation */}
           <div className="border-t border-gray-200/50 dark:border-gray-800/60 bg-white/30 dark:bg-black/20 backdrop-blur-sm">
-            <div className="flex space-x-1 overflow-x-auto p-1">
-              {tabs.map((tab) => (
-                  <button
-                      key={tab.id}
-                      onClick={() => {
-                        setActiveTab(tab.id);
-                        const sp = new URLSearchParams(Array.from(searchParams.entries()));
-                        sp.set('tab', tab.id);
-                        router.replace(`/settings?${sp.toString()}`);
-                      }}
-                      className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-all ${activeTab === tab.id
-                          ? 'bg-white dark:bg-gray-800 text-[#0B1957] dark:text-blue-400 shadow-md font-semibold'
-                          : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-white/50 dark:hover:bg-gray-800/50'
-                      }`}
-                  >
-                    <tab.icon className="w-4 h-4" />
-                    {tab.label}
-                  </button>
-              ))}
-            </div>
+          <div className="flex space-x-1 overflow-x-auto p-1">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  const sp = new URLSearchParams(Array.from(searchParams.entries()));
+                  sp.set('tab', tab.id);
+                  router.replace(`/settings?${sp.toString()}`);
+                }}
+                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-all ${activeTab === tab.id
+                    ? 'bg-white dark:bg-gray-800 text-[#0B1957] dark:text-blue-400 shadow-md font-semibold'
+                    : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-white/50 dark:hover:bg-gray-800/50'
+                }`}
+              >
+                <tab.icon className="w-4 h-4" />
+                {tab.label}
+              </button>
+            ))}
+            <button
+                onClick={() => router.push('/settings/icp-search-strategy')}
+                className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-all text-gray-700 hover:text-gray-900 hover:bg-white/50"
+            >
+              <Crosshair className="w-4 h-4" />
+              ICP Strategy
+            </button>
           </div>
         </div>
+      </div>
       {/* Content */}
       <div className="space-y-6">
         {activeTab === 'businessprofile' && <BusinessProfileSettings />}

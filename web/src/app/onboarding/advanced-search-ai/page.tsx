@@ -13,6 +13,7 @@ import { useEmailTemplates, useCreateEmailTemplate } from '@lad/frontend-feature
 import { useConnectedEmailSenders } from '@lad/frontend-features/email-senders';
 import {
     useLinkedInSearch,
+    useRunSearch,
     useAIChat,
     useCampaignCreation,
     useVoiceAgent,
@@ -119,6 +120,39 @@ function toArr(v: any): string[] {
     if (Array.isArray(v)) return v.filter((x: any) => typeof x === 'string' && x.trim());
     if (typeof v === 'string' && v.trim()) return [v];
     return [];
+}
+
+const ICP_LEADS_PROMPT = 'Get leads from my active ICP';
+const isIcpLeadsPrompt = (s: string) => s.trim().toLowerCase() === ICP_LEADS_PROMPT.toLowerCase();
+
+/** Map SearchDispatcher candidates (ProspectCandidate) → the page's LeadProfile shape,
+ *  so an ICP-discovery run drops into the same leads list/panel the LinkedIn search uses. */
+function candidatesToLeadProfiles(candidates: any[]): LeadProfile[] {
+    return (candidates || []).map((c, i) => {
+        const fullName = String(c.full_name || '').trim();
+        const parts = fullName.split(/\s+/).filter(Boolean);
+        const email = c.email && !String(c.email).startsWith('email_not_unlocked@') ? c.email : undefined;
+        const conf = typeof c.source_confidence === 'number' ? c.source_confidence : 0;
+        const match: 'strong' | 'moderate' | 'weak' = conf >= 0.8 ? 'strong' : conf >= 0.5 ? 'moderate' : 'weak';
+        return {
+            id: String(c.apollo_id || c.linkedin_url || `icp-${i}`),
+            name: fullName || c.company_name || `Prospect ${i + 1}`,
+            first_name: parts[0] || '',
+            last_name: parts.slice(1).join(' ') || '',
+            headline: c.headline || c.job_title || '',
+            location: c.company_country || '',
+            current_company: c.company_name || '',
+            profile_url: c.linkedin_url || '',
+            profile_picture: '',
+            industry: c.company_industry || '',
+            network_distance: '',
+            email,
+            phone: c.phone_e164 || undefined,
+            icp_score: Math.round(conf * 100),
+            match_level: match,
+            icp_reasoning: `${match[0].toUpperCase()}${match.slice(1)} match to your ICP`,
+        };
+    });
 }
 
 function buildOutreachJourney(leads: LeadProfile[], targeting: LeadTargeting | null): OutreachStep[] {
@@ -446,6 +480,7 @@ export default function AdvancedSearchAIPage() {
 
     // Initialize SDK hooks
     const linkedInSearch = useLinkedInSearch();
+    const icpSearch = useRunSearch();
     const aiChat = useAIChat();
     const campaignCreation = useCampaignCreation();
     const { fetchLeadSummaryPreview, saveProspectFeedback, generateProspectSummary } = campaignCreation;
@@ -1541,6 +1576,62 @@ export default function AdvancedSearchAIPage() {
     };
 
     /* ── Landing submit ── */
+    // ── ICP discovery (SearchDispatcher) — runs Apollo + Sales Nav on the active ICP,
+    //    maps results into the same `leads` list so the existing campaign flow works. ──
+    const handleIcpLeadsSearch = useCallback(async (promptText: string) => {
+        const uid = `u-${Date.now()}`;
+        const lid = `l-${Date.now()}`;
+        setMessages(p => [...p,
+            { id: uid, role: 'user', text: promptText, ts: new Date() },
+            { id: lid, role: 'ai', text: '', ts: new Date(), loading: true },
+        ]);
+        setBusy(true);
+        setMsgCount(c => c + 1);
+        setIsSearching(true);
+        setActivities([]);
+        try {
+            const res = await icpSearch.run({ maxResults: 25, triggeredBy: 'manual' });
+            setIsSearching(false);
+            if (!res || res.success === false || res.error === 'no_active_icp') {
+                const msg = res?.error === 'no_active_icp'
+                    ? "You don't have an active ICP yet. Define one in Settings → ICP Search Strategy, then run this again."
+                    : `ICP search couldn't complete${res?.error ? `: ${res.error}` : ''}.`;
+                setMessages(p => p.map(m => m.id === lid ? { ...m, loading: false, text: msg } : m));
+                return;
+            }
+            const mapped = candidatesToLeadProfiles(res.candidates || []);
+            const n = mapped.length;
+            // Summarise the result set so the campaign card (gated by msg.targeting) and
+            // the outreach-journey preview render exactly like a normal search.
+            const icpTargeting: LeadTargeting = {
+                job_titles: [...new Set(mapped.map(l => l.headline).filter(Boolean))].slice(0, 6),
+                industries: [...new Set(mapped.map(l => l.industry).filter(Boolean))].slice(0, 6),
+                locations: [...new Set(mapped.map(l => l.location).filter(Boolean))].slice(0, 6),
+                keywords: [],
+                profile_language: [],
+            };
+            setLeads(mapped);
+            setFilteredLeads([]);
+            setTargeting(n > 0 ? icpTargeting : null);
+            setMessages(p => p.map(m => m.id === lid ? {
+                ...m,
+                loading: false,
+                text: n > 0
+                    ? `Found ${n} prospect${n === 1 ? '' : 's'} matching your active ICP. Review them and create your outreach campaign.`
+                    : 'No prospects matched your active ICP on this run. Try widening the ICP or raising the result cap in your search strategy.',
+                leads: n > 0 ? mapped.slice(0, 3) : undefined,
+                targeting: n > 0 ? icpTargeting : undefined,
+                outreach_journey: n > 0 ? buildOutreachJourney(mapped, icpTargeting) : undefined,
+            } : m));
+            if (n > 0) setTimeout(() => setShowPanel('leads'), 300);
+        } catch (e: any) {
+            setIsSearching(false);
+            setMessages(p => p.map(m => m.id === lid ? { ...m, loading: false, text: `ICP search failed: ${e?.message || 'unknown error'}` } : m));
+        } finally {
+            setBusy(false);
+        }
+    }, [icpSearch]);
+
     const onLandingSubmit = useCallback(() => {
         if (!input.trim()) return;
         addToHistory(input.trim());
@@ -1835,6 +1926,10 @@ export default function AdvancedSearchAIPage() {
 
     const doSend = useCallback(async (text: string, opts?: { targetingOverride?: LeadTargeting }) => {
         if (!text.trim() || busy) return;
+        // ICP chip sentinel → run the SearchDispatcher (Apollo + Sales Nav on the active
+        // ICP), not the LinkedIn pipeline. Placed here so every submit path is covered
+        // (landing onLandingSubmit + chat onChatSend both funnel through doSend).
+        if (isIcpLeadsPrompt(text)) { await handleIcpLeadsSearch(text); return; }
         // Enforce 10-message limit only when user has no credits
         if (creditBalance !== null && creditBalance <= 0 && msgCount >= 10) return;
         const uid = `u-${Date.now()}`;
@@ -3532,6 +3627,10 @@ export default function AdvancedSearchAIPage() {
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /></svg>
                         VP of Sales in UK SaaS
                     </button>
+                    <button className="adv-chip" onClick={() => { setInput(ICP_LEADS_PROMPT); taRef.current?.focus(); }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" /></svg>
+                        Get leads from my active ICP
+                    </button>
                 </div>
 
                 {/* Recent searches */}
@@ -3884,6 +3983,10 @@ export default function AdvancedSearchAIPage() {
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="19" y1="8" x2="19" y2="14" /><line x1="22" y1="11" x2="16" y2="11" /></svg>
                                 Strengthen client relationships
 
+                            </button>
+                            <button className="adv-gemini-chip" onClick={() => { setInput(ICP_LEADS_PROMPT); taRef.current?.focus(); }}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" /></svg>
+                                Get leads from my active ICP
                             </button>
                         </div>
                     )}
