@@ -130,7 +130,7 @@ const CONFIG = {
   LOAD_MORE_LIMIT: 100,
   MAX_OLDER_MESSAGES: 500,
   MAX_RECENT_EMOJIS: 20,
-  EMOJI_STORAGE_KEY: 'wa_emoji_recent_v1',
+  EMOJI_STORAGE_KEY: 'wa_emoji_recent_v1', // gitleaks:allow — localStorage key for recent emojis, not a secret
   VOICE_RECORDING_TIMEOUT: 10000, // 10 seconds
   SEARCH_DEBOUNCE_MS: 150,
   SIDEBAR_MIN_WIDTH: 260,
