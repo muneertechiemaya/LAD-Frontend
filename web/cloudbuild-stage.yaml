@@ -117,7 +117,11 @@ substitutions:
   _ENV: 'staging'
   _API_URL: ''
   _NEXT_PUBLIC_SOCKET_URL: ''
-  _WABA_SERVICE_URL: ''
+  # Live stage WABA service (asia-south1, verified healthy). Must be non-empty:
+  # an empty value makes getWABAServiceUrl() fall back to http://localhost:8000,
+  # which 502s every WABA call in the deployed frontend. The stage trigger may
+  # override this substitution — if so, ensure the trigger value matches.
+  _WABA_SERVICE_URL: 'https://lad-waba-comms-stage-asia-344049867257.asia-south1.run.app'
   # LAD-Instagram-Comms service URL — proxied through Next at
   # /api/instagram-conversations/*. Stage deploy in asia-south1.
   _INSTAGRAM_SERVICE_URL: 'https://lad-instagram-comms-stage-asia-344049867257.asia-south1.run.app'
