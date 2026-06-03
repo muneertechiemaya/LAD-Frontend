@@ -3579,30 +3579,18 @@ export default function AdvancedSearchAIPage() {
                         <button
                             onClick={() => setShowPlayground(true)}
                             title="Configure AI context: company, ICP, sales script, etc."
-                            className="adv-icp-discover-btn"
-                            style={{
-                                position: 'absolute', top: '16px', right: '20px', zIndex: 10,
-                                display: 'flex', alignItems: 'center', gap: '7px',
-                                padding: '8px 14px', borderRadius: '20px',
-                                border: '1.5px solid',
-                                borderColor: Object.values(businessProfile).some(v => v) ? '#0b1957' : '#e5e7eb',
-                                background: Object.values(businessProfile).some(v => v) ? 'linear-gradient(135deg,#e8ecfa,#f0f3ff)' : '#fff',
-                                color: Object.values(businessProfile).some(v => v) ? '#0b1957' : '#6b7280',
-                                fontSize: '12.5px', fontWeight: 600, cursor: 'pointer',
-                                boxShadow: '0 2px 8px rgba(0,0,0,.06)', transition: 'all .15s',
-                            }}
-                            onMouseEnter={e => { e.currentTarget.style.borderColor = '#0b1957'; e.currentTarget.style.color = '#0b1957'; }}
-                            onMouseLeave={e => {
-                                e.currentTarget.style.borderColor = Object.values(businessProfile).some(v => v) ? '#0b1957' : '#e5e7eb';
-                                e.currentTarget.style.color = Object.values(businessProfile).some(v => v) ? '#0b1957' : '#6b7280';
-                            }}
+                            className={`absolute top-4 right-5 z-10 flex items-center gap-2 px-3.5 py-2 rounded-full border-[1.5px] text-[12.5px] font-semibold transition-all shadow-sm ${
+                                Object.values(businessProfile).some(v => v)
+                                    ? 'border-[#0b1957] dark:border-blue-500 bg-gradient-to-br from-[#e8ecfa] to-[#f0f3ff] dark:from-blue-900/30 dark:to-blue-900/10 text-[#0b1957] dark:text-blue-200 hover:border-[#0b1957] dark:hover:border-blue-400'
+                                    : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-500'
+                            }`}
                         >
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                                 <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                             </svg>
                             ICP Discovery
                             {Object.values(businessProfile).some(v => v) && (
-                                <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981', display: 'inline-block', marginLeft: 2 }} />
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 ml-1 inline-block" />
                             )}
                         </button>
                     )}
@@ -3949,37 +3937,36 @@ export default function AdvancedSearchAIPage() {
                 {(showPanel === 'leads' || showPanel === 'workflow') && (leads.length > 0 || inboundLeads.length > 0 || filteredLeads.length > 0 || showPanel === 'workflow') && (
                     <div className="adv-leads-panel">
                         {/* Split-screen panel header */}
-                        <div style={{
-                            display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 20px',
-                            borderBottom: '1.5px solid #e5e7eb', background: '#fff', flexShrink: 0,
-                        }}>
-                            <div style={{ display: 'flex', gap: '4px', flex: 1, background: '#f3f4f6', borderRadius: '10px', padding: '3px' }}>
-                                <button onClick={() => setShowPanel('leads')} style={{
-                                    flex: 1, background: showPanel === 'leads' ? '#fff' : 'transparent',
-                                    border: 'none', fontSize: '13.5px', fontWeight: 600,
-                                    color: showPanel === 'leads' ? '#0b1957' : '#6b7280',
-                                    borderRadius: '8px', padding: '6px 12px', cursor: 'pointer',
-                                    boxShadow: showPanel === 'leads' ? '0 1px 4px rgba(0,0,0,.1)' : 'none',
-                                    transition: 'all .15s',
-                                }}>
+                        <div className="flex items-center gap-3 px-5 py-3.5 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-[#000724] flex-shrink-0">
+                            <div className="flex gap-1 flex-1 bg-gray-100 dark:bg-gray-800 rounded-[10px] p-[3px]">
+                                <button
+                                    onClick={() => setShowPanel('leads')}
+                                    className={`
+                                        flex-1 border-none text-[13.5px] font-semibold rounded-[8px] px-[12px] py-[6px] cursor-pointer transition-all
+                                        ${showPanel === 'leads'
+                                        ? 'bg-white dark:bg-gray-700 text-[#0b1957] dark:text-blue-300 shadow-sm'
+                                        : 'bg-transparent text-gray-500 dark:text-gray-400'
+                                    }
+        `}
+                                >
+
                                     👤 Leads {leads.length > 0 || inboundLeads.length > 0 ? `(${inboundMode ? inboundLeads.length : leads.length})` : ''}
                                 </button>
-                                <button onClick={() => setShowPanel('workflow')} style={{
-                                    flex: 1, background: showPanel === 'workflow' ? '#fff' : 'transparent',
-                                    border: 'none', fontSize: '13.5px', fontWeight: 600,
-                                    color: showPanel === 'workflow' ? '#0b1957' : '#6b7280',
-                                    borderRadius: '8px', padding: '6px 12px', cursor: 'pointer',
-                                    boxShadow: showPanel === 'workflow' ? '0 1px 4px rgba(0,0,0,.1)' : 'none',
-                                    transition: 'all .15s',
-                                }}>
-                                    ⚡ Workflow
+                                <button
+                                    onClick={() => setShowPanel('workflow')}
+                                    className={`
+        flex-1 border-none text-[13.5px] font-semibold rounded-[8px] px-[12px] py-[6px] cursor-pointer transition-all
+        ${showPanel === 'workflow'
+                                        ? 'bg-white dark:bg-gray-700 text-[#0b1957] dark:text-blue-300 shadow-sm'
+                                        : 'bg-transparent text-gray-500 dark:text-gray-400'
+                                    }
+    `}
+                                >     ⚡ Workflow
                                 </button>
                             </div>
-                            <button onClick={() => setShowPanel(false)} style={{
-                                width: '32px', height: '32px', borderRadius: '8px', border: '1px solid #e5e7eb',
-                                background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center',
-                                justifyContent: 'center', flexShrink: 0, transition: 'all .15s',
-                            }}
+                            <button
+                                onClick={() => setShowPanel(false)}
+                                className="w-8 h-8 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center justify-center flex-shrink-0 transition-all hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
                                 onMouseEnter={e => { e.currentTarget.style.background = '#f3f4f6'; }}
                                 onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}
                             >
@@ -3990,24 +3977,27 @@ export default function AdvancedSearchAIPage() {
                         {showPanel === 'leads' ? (
 
                             <div className="adv-panel-body">
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <h2 className="adv-panel-title" style={{ margin: 0 }}>
+                                <div className="flex justify-between items-center">
+                                    <h2 className="adv-panel-title m-0 text-gray-900 dark:text-gray-100">
                                         {inboundMode ? 'Your Imported Leads' : 'Your Lead Results'}
                                     </h2>
+
                                     {!inboundMode && totalResults > 0 && (
-                                        <span style={{ fontSize: '12px', color: '#6b7280', whiteSpace: 'nowrap' }}>
-                                            {((searchPage - 1) * leadCount) + 1}-{Math.min(searchPage * leadCount, totalResults)} of {totalResults}
-                                        </span>
+                                        <span className="text-[12px] text-gray-500 dark:text-gray-400 whitespace-nowrap">
+            {((searchPage - 1) * leadCount) + 1}-{Math.min(searchPage * leadCount, totalResults)} of {totalResults}
+        </span>
                                     )}
+
                                     {inboundMode && inboundLeads.length > 0 && (
-                                        <span style={{ fontSize: '12px', background: '#e0eaf5', color: '#0b1957', padding: '3px 10px', borderRadius: '20px', fontWeight: 600 }}>
-                                            {inboundLeads.length} contacts
-                                        </span>
+                                        <span className="text-[12px] bg-blue-100 dark:bg-blue-900/50 text-[#0b1957] dark:text-blue-200 px-[10px] py-[3px] rounded-[20px] font-semibold">
+            {inboundLeads.length} contacts
+        </span>
                                     )}
+
                                     {!inboundMode && leads.length > 0 && totalResults === 0 && (
-                                        <span style={{ fontSize: '12px', background: '#e0eaf5', color: '#0b1957', padding: '3px 10px', borderRadius: '20px', fontWeight: 600 }}>
-                                            {leads.length} contact{leads.length !== 1 ? 's' : ''}
-                                        </span>
+                                        <span className="text-[12px] bg-blue-100 dark:bg-blue-900/50 text-[#0b1957] dark:text-blue-200 px-[10px] py-[3px] rounded-[20px] font-semibold">
+            {leads.length} contact{leads.length !== 1 ? 's' : ''}
+        </span>
                                     )}
                                 </div>
 
@@ -4025,94 +4015,63 @@ export default function AdvancedSearchAIPage() {
                                 {inboundMode && inboundLeads.length > 0 && (
                                     <div className="adv-leads-list">
                                         {inboundLeads.map((lead, i) => (
-                                            <div key={i} className="adv-lead-card">
-                                                <div className="adv-lead-avatar" style={{ background: avatarColor(`${lead.firstName} ${lead.lastName}`) }}>
+                                            <div key={i} className="adv-lead-card flex items-center gap-3 p-4 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                                                <div className="adv-lead-avatar w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
+                                                     style={{ background: avatarColor(`${lead.firstName} ${lead.lastName}`) }}>
                                                     {initials(`${lead.firstName} ${lead.lastName}`) || '?'}
                                                 </div>
-                                                <div className="adv-lead-info">
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                        <span className="adv-lead-name">{[lead.firstName, lead.lastName].filter(Boolean).join(' ') || 'Unknown'}</span>
-                                                        <span className="adv-verified">✓</span>
+
+                                                <div className="adv-lead-info flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2">
+                    <span className="adv-lead-name text-gray-900 dark:text-gray-100 font-bold text-sm">
+                        {[lead.firstName, lead.lastName].filter(Boolean).join(' ') || 'Unknown'}
+                    </span>
+                                                        <span className="adv-verified text-green-600 dark:text-green-400">✓</span>
                                                     </div>
-                                                    <div className="adv-lead-title">{lead.companyName || 'No company'}</div>
-                                                    {lead.email && <div style={{ fontSize: '12px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden', whiteSpace: 'nowrap' }}><span style={{ flexShrink: 0 }}>✉️</span><span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{lead.email}</span></div>}
-                                                    {lead.phone && <div style={{ fontSize: '12px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden', whiteSpace: 'nowrap' }}><span style={{ flexShrink: 0 }}>📞</span><span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{lead.phone}</span></div>}
+                                                    <div className="adv-lead-title text-xs text-gray-500 dark:text-gray-400 truncate">
+                                                        {lead.companyName || 'No company'}
+                                                    </div>
+
+                                                    {lead.email && (
+                                                        <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 overflow-hidden">
+                                                            <span className="flex-shrink-0">✉️</span>
+                                                            <span className="truncate">{lead.email}</span>
+                                                        </div>
+                                                    )}
+                                                    {lead.phone && (
+                                                        <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 overflow-hidden">
+                                                            <span className="flex-shrink-0">📞</span>
+                                                            <span className="truncate">{lead.phone}</span>
+                                                        </div>
+                                                    )}
+
                                                     {lead.linkedinProfile && (
-                                                        <div style={{ fontSize: '12px', color: '#0a66c2' }}>
+                                                        <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
                                                             <a href={lead.linkedinProfile} target="_blank" rel="noopener noreferrer"
-                                                                style={{ color: '#0a66c2', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="#0a66c2"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" /></svg>
+                                                               className="flex items-center gap-1 no-underline hover:underline">
+                                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
                                                                 LinkedIn Profile
                                                             </a>
                                                         </div>
                                                     )}
-                                                    {lead.notes && lead.notes.length > 0 && (
-                                                        <div style={{
-                                                            fontSize: '11px',
-                                                            color: '#374151',
-                                                            marginTop: '6px',
-                                                            padding: '8px 10px',
-                                                            background: 'linear-gradient(135deg, #f0f4ff 0%, #f8fafc 100%)',
-                                                            borderRadius: '8px',
-                                                            border: '1px solid #c7d7f5',
-                                                            lineHeight: '1.6',
-                                                            maxWidth: '300px',
-                                                        }}>
-                                                            <span style={{ color: '#172560', fontWeight: 700, fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
-                                                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#172560" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-                                                                AI Research Summary
-                                                            </span>
+
+                                                    {lead.notes && (
+                                                        <div className="text-[11px] text-gray-700 dark:text-gray-300 mt-2 p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-100 dark:border-indigo-800 leading-relaxed max-w-[300px]">
+                        <span className="text-[#172560] dark:text-indigo-300 font-bold flex items-center gap-1 mb-1">
+                            <Sparkles size={10} /> AI Research Summary
+                        </span>
                                                             {lead.notes.length > 200 ? lead.notes.substring(0, 200) + '…' : lead.notes}
                                                         </div>
                                                     )}
                                                 </div>
-                                                <div style={{ display: 'flex', gap: '8px' }}>
-                                                    <button
-                                                        onClick={() => openEditLead(i)}
-                                                        style={{
-                                                            padding: '6px 12px',
-                                                            background: '#f3f4f6',
-                                                            border: '1px solid #e5e7eb',
-                                                            borderRadius: '6px',
-                                                            cursor: 'pointer',
-                                                            fontSize: '12px',
-                                                            fontWeight: '500',
-                                                            color: '#4b5563',
-                                                            transition: 'all 0.2s',
-                                                        }}
-                                                        onMouseEnter={(e) => {
-                                                            e.currentTarget.style.background = '#e5e7eb';
-                                                            e.currentTarget.style.borderColor = '#d1d5db';
-                                                        }}
-                                                        onMouseLeave={(e) => {
-                                                            e.currentTarget.style.background = '#f3f4f6';
-                                                            e.currentTarget.style.borderColor = '#e5e7eb';
-                                                        }}
-                                                    >
+
+                                                <div className="flex gap-2">
+                                                    <button onClick={() => openEditLead(i)}
+                                                            className="px-3 py-1.5 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md text-[12px] font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
                                                         ✏️ Edit
                                                     </button>
-                                                    <button
-                                                        onClick={() => openDeleteConfirmation(i)}
-                                                        style={{
-                                                            padding: '6px 12px',
-                                                            background: '#fee2e2',
-                                                            border: '1px solid #fecaca',
-                                                            borderRadius: '6px',
-                                                            cursor: 'pointer',
-                                                            fontSize: '12px',
-                                                            fontWeight: '500',
-                                                            color: '#dc2626',
-                                                            transition: 'all 0.2s',
-                                                        }}
-                                                        onMouseEnter={(e) => {
-                                                            e.currentTarget.style.background = '#fecaca';
-                                                            e.currentTarget.style.borderColor = '#fca5a5';
-                                                        }}
-                                                        onMouseLeave={(e) => {
-                                                            e.currentTarget.style.background = '#fee2e2';
-                                                            e.currentTarget.style.borderColor = '#fecaca';
-                                                        }}
-                                                    >
+                                                    <button onClick={() => openDeleteConfirmation(i)}
+                                                            className="px-3 py-1.5 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-md text-[12px] font-medium text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors">
                                                         🗑️ Delete
                                                     </button>
                                                 </div>
@@ -4125,117 +4084,82 @@ export default function AdvancedSearchAIPage() {
                                 {!inboundMode && (
                                     <div className="adv-leads-list">
                                         {leads.map((lead, i) => (
-                                            <div key={i} className={`adv-lead-card ${lead.locked ? 'adv-lead-locked' : ''}`}>
+                                            <div key={i} className={`adv-lead-card flex items-center gap-[14px] p-[14px_16px] border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${lead.locked ? 'adv-lead-locked' : ''}`}>
                                                 {lead.profile_picture ? (
-                                                    <img src={lead.profile_picture} alt={lead.name} className="adv-lead-avatar-img" />
+                                                    <img src={lead.profile_picture} alt={lead.name} className="w-[42px] h-[42px] rounded-full object-cover flex-shrink-0" />
                                                 ) : (
-                                                    <div className="adv-lead-avatar" style={{ background: avatarColor(lead.name) }}>
+                                                    <div className="adv-lead-avatar w-[42px] h-[42px] rounded-full flex items-center justify-center text-white font-bold text-[14px] flex-shrink-0" style={{ background: avatarColor(lead.name) }}>
                                                         {initials(lead.name)}
                                                     </div>
                                                 )}
-                                                <div className="adv-lead-info">
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <div className="adv-lead-info flex-1 min-w-0">
+                                                    <div className="flex items-center gap-[8px]">
                                                         {lead.profile_url && lead.profile_url.startsWith('http') ? (
-                                                            <a href={lead.profile_url} target="_blank" rel="noopener noreferrer" className="adv-lead-name" style={{ textDecoration: 'none', color: 'inherit' }} onClick={e => e.stopPropagation()}>
-                                                                {lead.name} {!lead.locked && <span className="adv-verified">✓</span>}
+                                                            <a href={lead.profile_url} target="_blank" rel="noopener noreferrer" className="adv-lead-name text-gray-900 dark:text-gray-100 font-bold text-[14px] no-underline" onClick={e => e.stopPropagation()}>
+                                                                {lead.name} {!lead.locked && <span className="adv-verified text-green-600 dark:text-green-400 ml-1">✓</span>}
                                                             </a>
                                                         ) : (
-                                                            <span className="adv-lead-name">{lead.name} {!lead.locked && <span className="adv-verified">✓</span>}</span>
+                                                            <span className="adv-lead-name text-gray-900 dark:text-gray-100 font-bold text-[14px]">
+                            {lead.name} {!lead.locked && <span className="adv-verified text-green-600 dark:text-green-400 ml-1">✓</span>}
+                        </span>
                                                         )}
                                                         {!targetingFiltersActive && lead.icp_score !== undefined && (
-                                                            <span style={{
-                                                                display: 'inline-flex', alignItems: 'center', gap: '3px',
-                                                                padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 700,
-                                                                background: scoreToMatchLevel(lead.icp_score) === 'strong' ? '#dcfce7' : '#fef9c3',
-                                                                color: scoreToMatchLevel(lead.icp_score) === 'strong' ? '#166534' : '#854d0e',
-                                                            }}>
-                                                                {scoreToMatchLevel(lead.icp_score) === 'strong' ? '🟢' : '🟡'} {lead.icp_score}%
-                                                            </span>
+                                                            <span className={`inline-flex items-center gap-[3px] px-[8px] py-[2px] rounded-[12px] text-[11px] font-bold ${scoreToMatchLevel(lead.icp_score) === 'strong' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300' : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-300'}`}>
+                            {scoreToMatchLevel(lead.icp_score) === 'strong' ? '🟢' : '🟡'} {lead.icp_score}%
+                        </span>
                                                         )}
                                                     </div>
-                                                    <div className="adv-lead-title">
+                                                    <div className="adv-lead-title text-[12px] text-gray-500 dark:text-gray-400 truncate">
                                                         {lead.headline || lead.current_company || (lead.profile_url ? 'LinkedIn User' : lead.phone ? 'Phone Contact' : lead.email ? 'Email Contact' : 'Contact')}
                                                     </div>
-                                                    {lead.location && <div className="adv-lead-location">📍 {lead.location}</div>}
+                                                    {lead.location && <div className="adv-lead-location text-[11px] text-gray-400 dark:text-gray-500">📍 {lead.location}</div>}
                                                     {lead.inferred_nationality && (
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '3px' }}>
-                                                            <span style={{
-                                                                display: 'inline-flex', alignItems: 'center', gap: '3px',
-                                                                padding: '1px 7px', borderRadius: '10px', fontSize: '10px', fontWeight: 600,
-                                                                background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe',
-                                                            }}>
-                                                                🌍 {lead.inferred_nationality}
-                                                                {lead.nationality_confidence && lead.nationality_confidence >= 70 && (
-                                                                    <span style={{ opacity: 0.6, fontWeight: 400, marginLeft: '2px' }}>·{lead.nationality_confidence}%</span>
-                                                                )}
-                                                            </span>
+                                                        <div className="flex items-center gap-[4px] mt-[3px]">
+                        <span className="inline-flex items-center gap-[3px] px-[7px] py-[1px] rounded-[10px] text-[10px] font-semibold bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                            🌍 {lead.inferred_nationality}
+                            {lead.nationality_confidence && lead.nationality_confidence >= 70 && (
+                                <span className="opacity-60 ml-[2px]">·{lead.nationality_confidence}%</span>
+                            )}
+                        </span>
                                                         </div>
                                                     )}
                                                     {!targetingFiltersActive && lead.icp_reasoning && (
-                                                        <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px', lineHeight: '1.4', fontStyle: 'italic' }}>
+                                                        <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-[4px] italic leading-relaxed">
                                                             {lead.icp_reasoning}
                                                         </div>
                                                     )}
                                                     {lead.enriched_profile?.skills && lead.enriched_profile.skills.length > 0 && (
-                                                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '6px' }}>
+                                                        <div className="flex gap-[4px] flex-wrap mt-[6px]">
                                                             {lead.enriched_profile.skills.slice(0, 4).map((skill, si) => (
-                                                                <span key={si} style={{
-                                                                    padding: '1px 6px', borderRadius: '8px', fontSize: '10px',
-                                                                    background: '#f3f4f6', color: '#4b5563', border: '1px solid #e5e7eb',
-                                                                }}>{skill}</span>
+                                                                <span key={si} className="px-[6px] py-[1px] rounded-[8px] text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600">
+                                {skill}
+                            </span>
                                                             ))}
                                                         </div>
                                                     )}
-                                                    {lead.profile_url ? (
-                                                        <div className="adv-lead-platform">
-                                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="#0a66c2"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" /></svg>
-                                                        </div>
-                                                    ) : lead.phone ? (
-                                                        <div className="adv-lead-platform" style={{ fontSize: '13px' }}>📞</div>
-                                                    ) : lead.email ? (
-                                                        <div className="adv-lead-platform" style={{ fontSize: '13px' }}>✉️</div>
-                                                    ) : null}
+                                                    <div className="adv-lead-platform mt-[4px]">
+                                                        {lead.profile_url ? (
+                                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="#0a66c2"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+                                                        ) : lead.phone ? '📞' : lead.email ? '✉️' : null}
+                                                    </div>
                                                 </div>
-                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                                                <div className="flex flex-col items-center gap-[4px] flex-shrink-0">
                                                     <button
-                                                        className="adv-lead-action"
-                                                        title="Generate Summary"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            if (!lead.locked) handleViewSummary(lead);
-                                                        }}
-                                                        style={{ pointerEvents: lead.locked ? 'none' : 'auto', border: 'none', background: 'transparent', cursor: lead.locked ? 'default' : 'pointer' }}
+                                                        className="adv-lead-action flex items-center justify-center w-[36px] h-[36px] rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                                        onClick={(e) => { e.stopPropagation(); if (!lead.locked) handleViewSummary(lead); }}
                                                     >
                                                         {lead.locked ? (
-                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0110 0v4" /></svg>
+                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0110 0v4" /></svg>
                                                         ) : (
-                                                            <Sparkles size={18} color="#172560" />
+                                                            <Sparkles size={18} className="text-[#172560] dark:text-blue-400" />
                                                         )}
                                                     </button>
                                                     {!lead.locked && (
-                                                        <div style={{ display: 'flex', gap: '2px' }}>
-                                                            <button
-                                                                title="Good match"
-                                                                onClick={(e) => { e.stopPropagation(); toggleFeedback(lead.id, 'good'); }}
-                                                                style={{
-                                                                    border: 'none', background: leadFeedback[lead.id] === 'good' ? '#dcfce7' : 'transparent',
-                                                                    borderRadius: '6px', padding: '3px 5px', cursor: 'pointer', fontSize: '14px', lineHeight: 1,
-                                                                    transition: 'all 0.15s',
-                                                                }}
-                                                            >
-                                                                👍
-                                                            </button>
-                                                            <button
-                                                                title="Bad match"
-                                                                onClick={(e) => { e.stopPropagation(); toggleFeedback(lead.id, 'bad', lead.name); }}
-                                                                style={{
-                                                                    border: 'none', background: leadFeedback[lead.id] === 'bad' ? '#fee2e2' : 'transparent',
-                                                                    borderRadius: '6px', padding: '3px 5px', cursor: 'pointer', fontSize: '14px', lineHeight: 1,
-                                                                    transition: 'all 0.15s',
-                                                                }}
-                                                            >
-                                                                👎
-                                                            </button>
+                                                        <div className="flex gap-[2px]">
+                                                            <button onClick={(e) => { e.stopPropagation(); toggleFeedback(lead.id, 'good'); }}
+                                                                    className={`p-[3px_5px] rounded-[6px] text-[14px] ${leadFeedback[lead.id] === 'good' ? 'bg-green-100 dark:bg-green-900' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}>👍</button>
+                                                            <button onClick={(e) => { e.stopPropagation(); toggleFeedback(lead.id, 'bad', lead.name); }}
+                                                                    className={`p-[3px_5px] rounded-[6px] text-[14px] ${leadFeedback[lead.id] === 'bad' ? 'bg-red-100 dark:bg-red-900' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}>👎</button>
                                                         </div>
                                                     )}
                                                 </div>
@@ -4246,25 +4170,16 @@ export default function AdvancedSearchAIPage() {
 
                                 {/* ── Filtered-out leads (below ICP threshold) ── */}
                                 {!inboundMode && filteredLeads.length > 0 && (
-                                    <div style={{ marginTop: '12px' }}>
+                                    <div className="mt-3">
                                         {/* Banner */}
-                                        <div style={{
-                                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                            padding: '8px 12px', borderRadius: '8px',
-                                            background: '#fefce8', border: '1px solid #fde68a',
-                                        }}>
-                                            <span style={{ fontSize: '12px', color: '#92400e', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
-                                                Filtered {filteredLeads.length} lead{filteredLeads.length !== 1 ? 's' : ''} below ICP threshold of 50
-                                            </span>
+                                        <div className="flex items-center justify-between p-2 px-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
+        <span className="text-[12px] text-yellow-800 dark:text-yellow-400 flex items-center gap-1.5">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+            Filtered {filteredLeads.length} lead{filteredLeads.length !== 1 ? 's' : ''} below ICP threshold of 50
+        </span>
                                             <button
                                                 onClick={() => setShowFilteredLeads(v => !v)}
-                                                style={{
-                                                    fontSize: '12px', fontWeight: 600, color: '#b45309',
-                                                    background: 'transparent', border: 'none', cursor: 'pointer',
-                                                    display: 'flex', alignItems: 'center', gap: '4px', padding: '2px 4px',
-                                                    borderRadius: '4px',
-                                                }}
+                                                className="text-[12px] font-semibold text-yellow-700 dark:text-yellow-500 bg-transparent border-none cursor-pointer flex items-center gap-1 p-1 rounded hover:bg-yellow-100 dark:hover:bg-yellow-900/30"
                                             >
                                                 {showFilteredLeads ? 'Hide' : 'Show all'}
                                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ transform: showFilteredLeads ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
@@ -4275,72 +4190,59 @@ export default function AdvancedSearchAIPage() {
 
                                         {/* Collapsible lead cards */}
                                         {showFilteredLeads && (
-                                            <div className="adv-leads-list" style={{ marginTop: '6px', opacity: 0.85 }}>
+                                            <div className="adv-leads-list mt-1.5 opacity-85">
                                                 {filteredLeads.map((lead, i) => (
-                                                    <div key={i} className="adv-lead-card" style={{ background: '#fafafa', border: '1px solid #f3f4f6' }}>
+                                                    <div key={i} className="adv-lead-card flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-lg">
                                                         {/* Avatar */}
                                                         {lead.profile_picture ? (
-                                                            <img src={lead.profile_picture} alt={lead.name} className="adv-lead-avatar-img" style={{ filter: 'grayscale(30%)' }} />
+                                                            <img src={lead.profile_picture} alt={lead.name} className="adv-lead-avatar-img grayscale-[30%]" />
                                                         ) : (
-                                                            <div className="adv-lead-avatar" style={{ background: '#d1d5db', color: '#6b7280' }}>
+                                                            <div className="adv-lead-avatar w-10 h-10 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 bg-gray-300 dark:bg-gray-600 font-bold text-[14px]">
                                                                 {(lead.name || '?').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}
                                                             </div>
                                                         )}
 
                                                         {/* Info */}
-                                                        <div className="adv-lead-info">
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                        <div className="adv-lead-info flex-1 min-w-0">
+                                                            <div className="flex items-center gap-2">
                                                                 {lead.profile_url && lead.profile_url.startsWith('http') ? (
                                                                     <a href={lead.profile_url} target="_blank" rel="noopener noreferrer"
-                                                                        className="adv-lead-name" style={{ textDecoration: 'none', color: '#374151' }} onClick={e => e.stopPropagation()}>
+                                                                       className="adv-lead-name text-gray-700 dark:text-gray-200 no-underline" onClick={e => e.stopPropagation()}>
                                                                         {lead.name}
                                                                     </a>
                                                                 ) : (
-                                                                    <span className="adv-lead-name" style={{ color: '#374151' }}>{lead.name}</span>
+                                                                    <span className="adv-lead-name text-gray-700 dark:text-gray-200">{lead.name}</span>
                                                                 )}
                                                                 {lead.icp_score !== undefined && (
-                                                                    <span style={{
-                                                                        display: 'inline-flex', alignItems: 'center', gap: '3px',
-                                                                        padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 700,
-                                                                        background: scoreToMatchLevel(lead.icp_score) === 'strong' ? '#dcfce7' : '#fef9c3',
-                                                                        color: scoreToMatchLevel(lead.icp_score) === 'strong' ? '#166534' : '#854d0e',
-                                                                    }}>
-                                                                        {scoreToMatchLevel(lead.icp_score) === 'strong' ? '🟢' : '🟡'} {lead.icp_score}%
-                                                                    </span>
+                                                                    <span className={`inline-flex items-center gap-[3px] px-2 py-0.5 rounded-full text-[11px] font-bold ${scoreToMatchLevel(lead.icp_score) === 'strong' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300' : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-300'}`}>
+                                    {scoreToMatchLevel(lead.icp_score) === 'strong' ? '🟢' : '🟡'} {lead.icp_score}%
+                                </span>
                                                                 )}
                                                             </div>
-                                                            <div className="adv-lead-title" style={{ color: '#9ca3af' }}>
+                                                            <div className="adv-lead-title text-gray-400 dark:text-gray-500 text-[12px]">
                                                                 {lead.headline || lead.current_company || (lead.profile_url ? 'LinkedIn User' : 'Contact')}
                                                             </div>
-                                                            {lead.location && <div className="adv-lead-location" style={{ color: '#9ca3af' }}>📍 {lead.location}</div>}
+                                                            {lead.location && <div className="adv-lead-location text-gray-400 dark:text-gray-500 text-[11px]">📍 {lead.location}</div>}
                                                             {lead.icp_reasoning && (
-                                                                <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px', lineHeight: '1.4', fontStyle: 'italic' }}>
+                                                                <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-1 italic leading-relaxed">
                                                                     {lead.icp_reasoning}
                                                                 </div>
                                                             )}
                                                         </div>
 
                                                         {/* Feedback buttons */}
-                                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                                                            <div style={{ fontSize: '10px', color: '#9ca3af', marginBottom: '2px' }}>Good fit?</div>
-                                                            <div style={{ display: 'flex', gap: '2px' }}>
+                                                        <div className="flex flex-col items-center gap-1 flex-shrink-0">
+                                                            <div className="text-[10px] text-gray-400 dark:text-gray-500 mb-0.5">Good fit?</div>
+                                                            <div className="flex gap-0.5">
                                                                 <button
                                                                     title="Actually a good fit"
                                                                     onClick={(e) => { e.stopPropagation(); toggleFeedback(lead.id, 'good'); }}
-                                                                    style={{
-                                                                        border: 'none', background: leadFeedback[lead.id] === 'good' ? '#dcfce7' : '#f3f4f6',
-                                                                        borderRadius: '6px', padding: '4px 6px', cursor: 'pointer', fontSize: '14px', lineHeight: 1,
-                                                                        transition: 'all 0.15s',
-                                                                    }}
+                                                                    className={`border-none rounded-md p-1 cursor-pointer text-[14px] leading-none transition-all ${leadFeedback[lead.id] === 'good' ? 'bg-green-100 dark:bg-green-900' : 'bg-gray-100 dark:bg-gray-700'}`}
                                                                 >👍</button>
                                                                 <button
                                                                     title="Confirmed bad fit"
                                                                     onClick={(e) => { e.stopPropagation(); toggleFeedback(lead.id, 'bad', lead.name); }}
-                                                                    style={{
-                                                                        border: 'none', background: leadFeedback[lead.id] === 'bad' ? '#fee2e2' : '#f3f4f6',
-                                                                        borderRadius: '6px', padding: '4px 6px', cursor: 'pointer', fontSize: '14px', lineHeight: 1,
-                                                                        transition: 'all 0.15s',
-                                                                    }}
+                                                                    className={`border-none rounded-md p-1 cursor-pointer text-[14px] leading-none transition-all ${leadFeedback[lead.id] === 'bad' ? 'bg-red-100 dark:bg-red-900' : 'bg-gray-100 dark:bg-gray-700'}`}
                                                                 >👎</button>
                                                             </div>
                                                         </div>
@@ -4353,7 +4255,7 @@ export default function AdvancedSearchAIPage() {
                                 {/* ── end filtered-out leads ── */}
 
                                 {!inboundMode && leads.some(l => l.locked) && (
-                                    <div className="adv-panel-footer" style={{ display: 'flex', justifyContent: 'center', padding: '16px 0', borderTop: '0px solid #e5e7eb', marginTop: '8px' }}>
+                                    <div className="flex justify-center pt-4 mt-2 border-t-0 border-gray-200 dark:border-gray-800">
                                         <button
                                             onClick={() => {
                                                 if (creditBalance !== null && creditBalance <= 0) {
@@ -4362,25 +4264,12 @@ export default function AdvancedSearchAIPage() {
                                                     setLeads(prev => prev.map(l => ({ ...l, locked: false })));
                                                 }
                                             }}
-                                            style={{
-                                                display: 'inline-flex',
-                                                alignItems: 'center',
-                                                gap: '8px',
-                                                background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)',
-                                                border: '1px solid rgba(255,255,255,0.1)',
-                                                color: '#ffffff',
-                                                padding: '10px 20px',
-                                                borderRadius: '24px',
-                                                fontWeight: '600',
-                                                fontSize: '14px',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.2s',
-                                                boxShadow: '0 4px 12px rgba(30, 27, 75, 0.2)'
-                                            }}
-                                            onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(30, 27, 75, 0.3)'; }}
-                                            onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(30, 27, 75, 0.2)'; }}
+                                            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-3xl font-semibold text-sm cursor-pointer transition-all duration-200
+                   bg-gradient-to-br from-[#1e1b4b] to-[#312e81] dark:from-[#312e81] dark:to-[#4338ca]
+                   border border-white/10 text-white shadow-[0_4px_12px_rgba(30,27,75,0.2)]
+                   hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(30,27,75,0.3)]"
                                         >
-                                            <Gem size={16} color="#fbbf24" fill="#fbbf24" />
+                                            <Gem size={16} className="text-amber-400 fill-amber-400" />
                                             Unlock Results
                                         </button>
                                     </div>
@@ -4390,22 +4279,17 @@ export default function AdvancedSearchAIPage() {
                                 cursor token is available or the backend reported more total
                                 results than we're currently displaying */}
                                 {!inboundMode && leads.length > 0 && !noMoreLeads && (
-                                    <div style={{
-                                        display: 'flex', justifyContent: 'center',
-                                        padding: '14px 16px', borderTop: '1px solid #e5e7eb', marginTop: '4px',
-                                    }}>
+                                    <div className="flex justify-center pt-3.5 mt-1 border-t border-gray-200 dark:border-gray-800">
                                         <button
                                             disabled={loadingMore}
                                             onClick={loadMoreLeads}
-                                            style={{
-                                                display: 'inline-flex', alignItems: 'center', gap: '8px',
-                                                padding: '10px 28px', borderRadius: '24px', fontSize: '14px', fontWeight: 600,
-                                                border: '1px solid #e5e7eb',
-                                                background: loadingMore ? '#f9fafb' : '#0b1957',
-                                                color: loadingMore ? '#9ca3af' : '#fff',
-                                                cursor: loadingMore ? 'default' : 'pointer',
-                                                transition: 'all 0.15s',
-                                            }}
+                                            className={`
+            inline-flex items-center gap-2 px-7 py-2.5 rounded-3xl text-sm font-semibold transition-all duration-150
+            border ${loadingMore
+                                                ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 border-gray-200 dark:border-gray-700 cursor-default'
+                                                : 'bg-[#0b1957] dark:bg-blue-600 text-white border-transparent hover:bg-indigo-900 dark:hover:bg-blue-700 cursor-pointer'
+                                            }
+        `}
                                         >
                                             {loadingMore ? (
                                                 <>
@@ -4420,13 +4304,18 @@ export default function AdvancedSearchAIPage() {
                                 )}
                             </div>
                         ) : (
-                            <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+                            <div className="flex-1 overflow-auto flex flex-col bg-white dark:bg-[#000724]">
                                 {/* Workflow panel header */}
-                                <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', background: '#fff', flexShrink: 0 }}>
-                                    <div style={{ fontSize: '17px', fontWeight: 800, color: '#111827', marginBottom: '4px' }}>Campaign Workflow</div>
-                                    <div style={{ fontSize: '12.5px', color: '#6b7280' }}>Live preview of your outreach sequence</div>
+                                <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-[#000724] flex-shrink-0">
+                                    <div className="text-[17px] font-extrabold text-gray-900 dark:text-gray-100 mb-1">
+                                        Campaign Workflow
+                                    </div>
+                                    <div className="text-[12.5px] text-gray-500 dark:text-gray-400">
+                                        Live preview of your outreach sequence
+                                    </div>
                                 </div>
-                                <div style={{ flex: 1, overflow: 'hidden', padding: '4px 0' }}>
+
+                                <div className="flex-1 overflow-hidden py-1">
                                     <WorkflowPreviewPanel />
                                 </div>
                             </div>
@@ -4478,9 +4367,6 @@ export default function AdvancedSearchAIPage() {
                                     </div>
                                 </div>
 
-                                {/* Profile completeness bar — math comes from the shared SDK helper so
-                                    the wizard / Settings / this drawer always agree. When pgIsComplete
-                                    we lock to 100% regardless of trailing blank optional fields. */}
                                 {(() => {
                                     const c = computeCompleteness(businessProfile as BusinessProfile);
                                     const filled = pgIsComplete ? c.total : c.filled;
@@ -4491,8 +4377,8 @@ export default function AdvancedSearchAIPage() {
                                             <div className="flex justify-between mb-1">
                                                 <span className="text-[11px] font-semibold text-gray-400 dark:text-gray-500">Profile completeness</span>
                                                 <span className={`text-[11px] font-bold ${pct >= 70 ? 'text-emerald-500' : 'text-[#0b1957] dark:text-blue-400'}`}>
-                                    {pct}% ({filled}/{total} fields)
-                                </span>
+                        {pct}% ({filled}/{total} fields)
+                    </span>
                                             </div>
                                             <div className="h-1.5 w-full bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
                                                 <div
@@ -4501,20 +4387,11 @@ export default function AdvancedSearchAIPage() {
                                                 />
                                             </div>
 
-                                            {/* Edit affordance — once any field is filled, the tenant can jump
-                                                to the full editor (Settings → Business Profile) to change any of
-                                                the 14 values. The chat is for first capture; Settings is for edits. */}
                                             {filled > 0 && (
                                                 <button
                                                     onClick={() => router.push('/settings?tab=businessprofile')}
-                                                    style={{
-                                                        marginTop: 8, width: '100%', padding: '7px 10px',
-                                                        borderRadius: 8, border: '1px solid #c7d2fe',
-                                                        background: '#fff', color: '#0b1957',
-                                                        fontSize: 11.5, fontWeight: 600, cursor: 'pointer',
-                                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                                                    }}
                                                     title="Open the Business Profile editor to change any saved field"
+                                                    className="mt-2 w-full px-2.5 py-2 rounded-lg border border-[#c7d2fe] dark:border-blue-900 bg-white dark:bg-[#000724] text-[#0b1957] dark:text-blue-300 text-[11.5px] font-semibold flex items-center justify-center gap-1.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-[#1A2A43] transition-colors"
                                                 >
                                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
                                                     Review &amp; edit your {total} fields
@@ -4529,58 +4406,39 @@ export default function AdvancedSearchAIPage() {
                             <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3.5 bg-gray-50 dark:bg-[#000724]">
                                 {pgChatHistory.length === 0 && !pgBusy && (
                                     <div className="flex flex-col items-center justify-center flex-1 p-10 text-center gap-4">
-                                        {/* Visualizer Container */}
-                                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#0b1957] to-[#1a3a8f] dark:from-blue-600 dark:to-blue-800 flex items-center justify-center shadow-[0_8px_24px_rgba(11,25,87,.3)]">
+                                        <div className="agent-avatar-wrapper w-16 h-16 rounded-full bg-gradient-to-br from-[#0b1957] to-[#1a3a8f] flex items-center justify-center shadow-[0_8px_24px_rgba(11,25,87,.3)]">
                                             <AgentVisualizer state="idle" size={36} />
                                         </div>
-
-                                        {/* Text Content */}
                                         <div className="max-w-[300px]">
-                                            <div className="text-base font-bold text-gray-900 dark:text-white mb-2">
-                                                Define Your Ideal Customer Profile
-                                            </div>
+                                            <div className="text-base font-bold text-gray-900 dark:text-white mb-2">Define Your Ideal Customer Profile</div>
                                             <div className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
                                                 Answer a few questions about your business and I'll identify exactly who you should target for outreach.
                                             </div>
                                         </div>
-
-                                        {/* Start Button */}
                                         <button
                                             onClick={pgStartConversation}
-                                            className="flex items-center gap-2 px-7 py-3 rounded-xl border-none font-bold text-sm cursor-pointer transition-all shadow-[0_4px_14px_rgba(11,25,87,.4)]
-                       bg-gradient-to-br from-[#0b1957] to-[#1a3a8f] dark:from-blue-600 dark:to-blue-800 text-white"
+                                            className="flex items-center gap-2 px-7 py-3 rounded-xl border-none font-bold text-sm cursor-pointer transition-all shadow-[0_4px_14px_rgba(11,25,87,.4)] bg-gradient-to-br from-[#0b1957] to-[#1a3a8f] dark:from-blue-600 dark:to-blue-800 text-white"
                                         >
-                                            <Sparkles size={16} />
-                                            Start AI Setup
+                                            <Sparkles size={16} /> Start AI Setup
                                         </button>
                                     </div>
                                 )}
+
                                 {pgChatHistory.map((msg, idx) => (
                                     <div key={idx}>
                                         {msg.role === 'user' ? (
-                                            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                                                <div style={{
-                                                    maxWidth: '78%', background: 'linear-gradient(135deg,#0b1957,#2563eb)',
-                                                    color: '#fff', borderRadius: '18px 18px 4px 18px',
-                                                    padding: '10px 14px', fontSize: 13.5, lineHeight: 1.55,
-                                                    boxShadow: '0 2px 8px rgba(23,37,96,.2)',
-                                                }}>
-                                                    {/* Hide card submission raw messages */}
+                                            <div className="flex justify-end">
+                                                <div className="max-w-[78%] bg-gradient-to-br from-[#0b1957] to-[#2563eb] text-white rounded-[18px_18px_4px_18px] p-[10px_14px] text-[13.5px] leading-[1.55] shadow-[0_2px_8px_rgba(23,37,96,.2)]">
                                                     {msg.content.startsWith('[Card submission:') ? '✅ Submitted' : msg.content}
                                                 </div>
                                             </div>
                                         ) : (
-                                            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                                                <div className="adv-ai-avatar adv-ai-avatar-viz" style={{ width: 32, height: 32, flexShrink: 0 }}>
+                                            <div className="flex gap-2.5 items-start">
+                                                <div className="w-8 h-8 flex-shrink-0">
                                                     <AgentVisualizer state="idle" size={32} />
                                                 </div>
-                                                <div style={{ flex: 1 }}>
-                                                    <div style={{
-                                                        background: '#fff', borderRadius: '4px 18px 18px 18px',
-                                                        padding: '10px 14px', fontSize: 13.5, color: '#374151',
-                                                        lineHeight: 1.65, boxShadow: '0 1px 4px rgba(0,0,0,.06)',
-                                                        border: '1px solid #f3f4f6',
-                                                    }}>
+                                                <div className="flex-1">
+                                                    <div className="bg-white dark:bg-gray-800 rounded-[4px_18px_18px_18px] p-[10px_14px] text-[13.5px] text-gray-700 dark:text-gray-200 leading-[1.65] shadow-[0_1px_4px_rgba(0,0,0,.06)] border border-gray-100 dark:border-gray-700">
                                                         {msg.content}
                                                     </div>
                                                 </div>
@@ -4591,13 +4449,13 @@ export default function AdvancedSearchAIPage() {
 
                                 {/* Typing indicator */}
                                 {pgBusy && (
-                                    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                                        <div className="adv-ai-avatar adv-ai-avatar-viz" style={{ width: 32, height: 32, flexShrink: 0 }}>
+                                    <div className="flex gap-2.5 items-start">
+                                        <div className="w-8 h-8 flex-shrink-0">
                                             <AgentVisualizer state="thinking" size={32} />
                                         </div>
-                                        <div style={{ background: '#fff', borderRadius: '4px 18px 18px 18px', padding: '12px 16px', boxShadow: '0 1px 4px rgba(0,0,0,.06)', border: '1px solid #f3f4f6', display: 'flex', gap: 4, alignItems: 'center' }}>
+                                        <div className="bg-white dark:bg-gray-800 rounded-[4px_18px_18px_18px] p-[12px_16px] shadow-[0_1px_4px_rgba(0,0,0,.06)] border border-gray-100 dark:border-gray-700 flex gap-1 items-center">
                                             {[0, 1, 2].map(i => (
-                                                <div key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: '#0b1957', animation: `pulse 1.2s ease ${i * 0.2}s infinite` }} />
+                                                <div key={i} className="w-1.5 h-1.5 rounded-full bg-[#0b1957] dark:bg-blue-400 animate-pulse" />
                                             ))}
                                         </div>
                                     </div>
@@ -4607,51 +4465,30 @@ export default function AdvancedSearchAIPage() {
                                 {pgCurrentCard && !pgBusy && (() => {
                                     const card = pgCurrentCard;
                                     const fieldVal = pgCardValues[card.field];
-
                                     return (
-                                        <div style={{
-                                            background: '#fff', border: '1.5px solid #dce3f5', borderRadius: 14,
-                                            padding: '14px 16px', boxShadow: '0 2px 12px rgba(11,25,87,.08)',
-                                        }}>
-                                            <div style={{ fontSize: 12, fontWeight: 700, color: '#0b1957', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 shadow-[0_2px_12px_rgba(0,0,0,.08)]">
+                                            <div className="text-[12px] font-bold text-[#0b1957] dark:text-blue-300 mb-2.5 flex items-center gap-1.5">
                                                 <Sparkles size={12} /> {card.label}
                                             </div>
 
                                             {/* TEXT / TEXTAREA */}
                                             {(card.type === 'text' || card.type === 'textarea') && (
-                                                <div style={{ position: 'relative' }}>
-                                                    <textarea
-                                                        rows={card.type === 'textarea' ? 3 : 1}
-                                                        value={fieldVal || ''}
-                                                        onChange={e => setPgCardValues({ [card.field]: e.target.value })}
-                                                        placeholder={card.placeholder || ''}
-                                                        autoFocus
-                                                        style={{
-                                                            width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 8,
-                                                            padding: '9px 12px', paddingBottom: card.type === 'textarea' ? '36px' : '9px',
-                                                            fontSize: 13, color: '#374151',
-                                                            resize: 'vertical', outline: 'none', fontFamily: 'inherit',
-                                                            lineHeight: 1.5, background: '#fafafa', boxSizing: 'border-box',
-                                                        }}
-                                                        onFocus={e => { e.currentTarget.style.borderColor = '#0b1957'; }}
-                                                        onBlur={e => { e.currentTarget.style.borderColor = '#e5e7eb'; }}
-                                                        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && card.type !== 'textarea') { e.preventDefault(); pgSubmitCard(); } }}
-                                                    />
+                                                <div className="relative">
+                        <textarea
+                            rows={card.type === 'textarea' ? 3 : 1}
+                            value={fieldVal || ''}
+                            onChange={e => setPgCardValues({ [card.field]: e.target.value })}
+                            placeholder={card.placeholder || ''}
+                            autoFocus
+                            className={`w-full border border-gray-200 dark:border-gray-600 rounded-lg p-2.5 text-[13px] text-gray-700 dark:text-gray-100 resize-vertical outline-none bg-gray-50 dark:bg-gray-900 focus:border-[#0b1957] dark:focus:border-blue-500 ${card.type === 'textarea' ? 'pb-9' : ''}`}
+                            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && card.type !== 'textarea') { e.preventDefault(); pgSubmitCard(); } }}
+                        />
                                                     {card.type === 'textarea' && (
                                                         <button
                                                             type="button"
                                                             onClick={pgGenerateSuggestion}
                                                             disabled={pgSuggesting}
-                                                            title="Generate with AI"
-                                                            style={{
-                                                                position: 'absolute', bottom: 8, right: 8,
-                                                                display: 'flex', alignItems: 'center', gap: 4,
-                                                                padding: '4px 10px', borderRadius: 6, border: 'none',
-                                                                background: pgSuggesting ? '#e5e7eb' : 'linear-gradient(135deg,#0b1957,#1a3a8f)',
-                                                                color: pgSuggesting ? '#9ca3af' : '#fff',
-                                                                fontSize: 11.5, fontWeight: 600, cursor: pgSuggesting ? 'default' : 'pointer',
-                                                                transition: 'all .15s',
-                                                            }}
+                                                            className="absolute bottom-2 right-2 flex items-center gap-1 px-2.5 py-1 rounded-md border-none bg-gradient-to-br from-[#0b1957] to-[#1a3a8f] dark:from-blue-700 dark:to-blue-900 text-white text-[11.5px] font-semibold cursor-pointer disabled:bg-gray-300"
                                                         >
                                                             <Sparkles size={11} />
                                                             {pgSuggesting ? 'Generating…' : 'Generate with AI'}
@@ -4782,55 +4619,43 @@ export default function AdvancedSearchAIPage() {
                                             <button
                                                 onClick={pgSubmitCard}
                                                 disabled={!fieldVal && !pgTagInput.trim() && card.type !== 'hours'}
-                                                style={{
-                                                    marginTop: 12, width: '100%', padding: '9px 0', borderRadius: 9, border: 'none',
-                                                    background: fieldVal || pgTagInput.trim() || card.type === 'hours' ? 'linear-gradient(135deg,#0b1957,#1a3a8f)' : '#e5e7eb',
-                                                    color: fieldVal || pgTagInput.trim() || card.type === 'hours' ? '#fff' : '#9ca3af',
-                                                    fontSize: 13, fontWeight: 700, cursor: fieldVal || pgTagInput.trim() || card.type === 'hours' ? 'pointer' : 'default',
-                                                    transition: 'all .15s',
-                                                }}
+                                                className="mt-3 w-full py-2 rounded-lg border-none text-[13px] font-bold text-white bg-[#0b1957] dark:bg-blue-700 disabled:bg-gray-200 dark:disabled:bg-gray-700 disabled:text-gray-400 cursor-pointer transition-all"
                                             >
                                                 Submit →
                                             </button>
                                         </div>
                                     );
                                 })()}
-
                                 <div ref={pgMessagesEndRef} />
                             </div>
 
                             {/* ── Text Input Bar ── */}
                             {pgChatHistory.length > 0 && (
-                                <div style={{
-                                    padding: '10px 14px', borderTop: '1.5px solid #e5e7eb',
-                                    background: '#fff', flexShrink: 0, display: 'flex', gap: 8,
-                                }}>
+                                <div className="px-3.5 py-2.5 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex-shrink-0 flex gap-2">
                                     <input
                                         value={pgInput}
                                         onChange={e => setPgInput(e.target.value)}
                                         onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); pgSendMessage(pgInput); } }}
                                         placeholder="Type a message or skip to next question…"
                                         disabled={pgBusy}
-                                        style={{
-                                            flex: 1, border: '1.5px solid #e5e7eb', borderRadius: 24,
-                                            padding: '9px 16px', fontSize: 13.5, outline: 'none', fontFamily: 'inherit',
-                                            background: pgBusy ? '#f9fafb' : '#fff', color: '#374151',
-                                            transition: 'border .15s',
-                                        }}
-                                        onFocus={e => { e.currentTarget.style.borderColor = '#0b1957'; }}
-                                        onBlur={e => { e.currentTarget.style.borderColor = '#e5e7eb'; }}
+                                        className={`flex-1 border-[1.5px] rounded-[24px] px-4 py-2.5 text-[13.5px] outline-none transition-colors font-inherit 
+                                        ${pgBusy
+                                            ? 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-400'
+                                            : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-100 focus:border-[#0b1957] dark:focus:border-blue-500'
+                                        }`}
                                     />
                                     <button
                                         onClick={() => pgSendMessage(pgInput)}
                                         disabled={!pgInput.trim() || pgBusy}
-                                        style={{
-                                            width: 38, height: 38, borderRadius: '50%', border: 'none', flexShrink: 0,
-                                            background: pgInput.trim() && !pgBusy ? 'linear-gradient(135deg,#0b1957,#1a3a8f)' : '#e5e7eb',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            cursor: pgInput.trim() && !pgBusy ? 'pointer' : 'default', transition: 'all .15s',
-                                        }}
+                                        className={`w-[38px] h-[38px] rounded-full border-none shrink-0 flex items-center justify-center transition-all ${
+                                            pgInput.trim() && !pgBusy
+                                                ? 'bg-gradient-to-br from-[#0b1957] to-[#1a3a8f] dark:from-blue-700 dark:to-blue-900 cursor-pointer'
+                                                : 'bg-gray-200 dark:bg-gray-700 cursor-default'
+                                        }`}
                                     >
-                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round">
+                                            <path d="M5 12h14M12 5l7 7-7 7" />
+                                        </svg>
                                     </button>
                                 </div>
                             )}
@@ -5044,180 +4869,73 @@ export default function AdvancedSearchAIPage() {
 
             {/* Edit Inbound Lead Modal */}
             {editingLeadIndex !== null && editFormData && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', zIndex: 9999
-                }} onClick={closeEditLead}>
-                    <div style={{
-                        background: 'white', borderRadius: '12px', padding: '24px',
-                        width: '90%', maxWidth: '500px', maxHeight: '80vh', overflow: 'auto',
-                        boxShadow: '0 20px 25px rgba(0,0,0,0.15)'
-                    }} onClick={(e) => e.stopPropagation()}>
-                        <h2 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>
-                            Edit Lead #{editingLeadIndex + 1}
-                        </h2>
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4" onClick={closeEditLead}>
+                    <div
+                        className="bg-white dark:bg-[#000724] rounded-2xl w-full max-w-[800px] max-h-[90vh] flex flex-col overflow-hidden shadow-2xl border border-gray-100 dark:border-gray-800"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Header */}
+                        <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                            <h2 className="text-[17px] font-extrabold text-gray-900 dark:text-gray-100 m-0">
+                                Edit Lead #{editingLeadIndex + 1}
+                            </h2>
+                            <button
+                                onClick={closeEditLead}
+                                className="text-gray-400 hover:text-gray-600 dark:text-white dark:hover:text-gray-300"
+                            >
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M18 6L6 18M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
 
-                        <div style={{ display: 'grid', gap: '16px' }}>
-                            {/* First Name */}
-                            <div>
-                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '6px', color: '#374151' }}>
-                                    First Name
-                                </label>
-                                <input
-                                    type="text"
-                                    value={editFormData.firstName}
-                                    onChange={(e) => updateEditField('firstName', e.target.value)}
-                                    style={{
-                                        width: '100%', padding: '8px 12px', border: '1px solid #d1d5db',
-                                        borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box'
-                                    }}
-                                    placeholder="First name"
-                                />
-                            </div>
+                        {/* Scrollable Form Content */}
+                        <div className="flex-1 overflow-y-auto p-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-                            {/* Last Name */}
-                            <div>
-                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '6px', color: '#374151' }}>
-                                    Last Name
-                                </label>
-                                <input
-                                    type="text"
-                                    value={editFormData.lastName}
-                                    onChange={(e) => updateEditField('lastName', e.target.value)}
-                                    style={{
-                                        width: '100%', padding: '8px 12px', border: '1px solid #d1d5db',
-                                        borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box'
-                                    }}
-                                    placeholder="Last name"
-                                />
-                            </div>
+                                {/* Fields using your original implementation */}
+                                {[
+                                    { label: 'First Name', key: 'firstName', type: 'text' },
+                                    { label: 'Last Name', key: 'lastName', type: 'text' },
+                                    { label: 'Email', key: 'email', type: 'email' },
+                                    { label: 'Phone', key: 'phone', type: 'tel' },
+                                    { label: 'Company', key: 'companyName', type: 'text' },
+                                    { label: 'LinkedIn URL', key: 'linkedinProfile', type: 'url' },
+                                    { label: 'Website', key: 'website', type: 'url' }
+                                ].map((field) => (
+                                    <div key={field.key} className="bg-gray-50/50 dark:bg-gray-800/50 p-3 rounded-xl border border-gray-100 dark:border-gray-700">
+                                        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1 font-medium uppercase tracking-wide">
+                                            {field.label}
+                                        </label>
+                                        <input
+                                            type={field.type}
+                                            value={editFormData[field.key]}
+                                            onChange={(e) => updateEditField(field.key, e.target.value)}
+                                            className="w-full bg-transparent text-gray-900 dark:text-gray-100 font-medium text-sm outline-none"
+                                            placeholder={field.label}
+                                        />
+                                    </div>
+                                ))}
 
-                            {/* Email */}
-                            <div>
-                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '6px', color: '#374151' }}>
-                                    Email
-                                </label>
-                                <input
-                                    type="email"
-                                    value={editFormData.email}
-                                    onChange={(e) => updateEditField('email', e.target.value)}
-                                    style={{
-                                        width: '100%', padding: '8px 12px', border: '1px solid #d1d5db',
-                                        borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box'
-                                    }}
-                                    placeholder="Email address"
-                                />
-                            </div>
-
-                            {/* Phone */}
-                            <div>
-                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '6px', color: '#374151' }}>
-                                    Phone
-                                </label>
-                                <input
-                                    type="tel"
-                                    value={editFormData.phone}
-                                    onChange={(e) => updateEditField('phone', e.target.value)}
-                                    style={{
-                                        width: '100%', padding: '8px 12px', border: '1px solid #d1d5db',
-                                        borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box'
-                                    }}
-                                    placeholder="Phone number"
-                                />
-                            </div>
-
-                            {/* Company */}
-                            <div>
-                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '6px', color: '#374151' }}>
-                                    Company
-                                </label>
-                                <input
-                                    type="text"
-                                    value={editFormData.companyName}
-                                    onChange={(e) => updateEditField('companyName', e.target.value)}
-                                    style={{
-                                        width: '100%', padding: '8px 12px', border: '1px solid #d1d5db',
-                                        borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box'
-                                    }}
-                                    placeholder="Company name"
-                                />
-                            </div>
-
-                            {/* LinkedIn Profile */}
-                            <div>
-                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '6px', color: '#374151' }}>
-                                    LinkedIn URL
-                                </label>
-                                <input
-                                    type="url"
-                                    value={editFormData.linkedinProfile}
-                                    onChange={(e) => updateEditField('linkedinProfile', e.target.value)}
-                                    style={{
-                                        width: '100%', padding: '8px 12px', border: '1px solid #d1d5db',
-                                        borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box'
-                                    }}
-                                    placeholder="https://linkedin.com/in/..."
-                                />
-                            </div>
-
-                            {/* Website */}
-                            <div>
-                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '6px', color: '#374151' }}>
-                                    Website
-                                </label>
-                                <input
-                                    type="url"
-                                    value={editFormData.website}
-                                    onChange={(e) => updateEditField('website', e.target.value)}
-                                    style={{
-                                        width: '100%', padding: '8px 12px', border: '1px solid #d1d5db',
-                                        borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box'
-                                    }}
-                                    placeholder="https://..."
-                                />
-                            </div>
-
-                            {/* Notes */}
-                            <div>
-                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '6px', color: '#374151' }}>
-                                    Notes
-                                </label>
-                                <textarea
-                                    value={editFormData.notes}
-                                    onChange={(e) => updateEditField('notes', e.target.value)}
-                                    style={{
-                                        width: '100%', padding: '8px 12px', border: '1px solid #d1d5db',
-                                        borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box',
-                                        minHeight: '80px', fontFamily: 'inherit', resize: 'vertical'
-                                    }}
-                                    placeholder="Any additional notes"
-                                />
+                                {/* Notes (Full width) */}
+                                <div className="sm:col-span-2 bg-gray-50/50 dark:bg-gray-800/50 p-3 rounded-xl border border-gray-100 dark:border-gray-700">
+                                    <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1 font-medium uppercase tracking-wide">Notes</label>
+                                    <textarea
+                                        value={editFormData.notes}
+                                        onChange={(e) => updateEditField('notes', e.target.value)}
+                                        className="w-full bg-transparent text-gray-900 dark:text-gray-100 font-medium text-sm outline-none min-h-[80px] resize-vertical"
+                                        placeholder="Any additional notes"
+                                    />
+                                </div>
                             </div>
                         </div>
 
-                        {/* Action Buttons */}
-                        <div style={{ display: 'flex', gap: '12px', marginTop: '24px', justifyContent: 'flex-end' }}>
-                            <button
-                                onClick={closeEditLead}
-                                disabled={savingLead}
-                                style={{
-                                    padding: '8px 16px', border: '1px solid #d1d5db', borderRadius: '6px',
-                                    background: 'white', color: '#374151', cursor: savingLead ? 'not-allowed' : 'pointer',
-                                    fontSize: '14px', fontWeight: '500', opacity: savingLead ? 0.6 : 1
-                                }}
-                            >
-                                Cancel
-                            </button>
+                        {/* Footer */}
+                        <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-[#000724] flex justify-end">
                             <button
                                 onClick={saveEditedLead}
                                 disabled={savingLead}
-                                style={{
-                                    padding: '8px 16px', border: 'none', borderRadius: '6px',
-                                    background: savingLead ? '#d1d5db' : '#3b82f6', color: 'white',
-                                    cursor: savingLead ? 'not-allowed' : 'pointer',
-                                    fontSize: '14px', fontWeight: '500'
-                                }}
+                                className="px-6 py-2 bg-[#0b1957] dark:bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-[#1a2a43] dark:hover:bg-blue-700 transition-colors disabled:opacity-50"
                             >
                                 {savingLead ? 'Saving...' : 'Save Changes'}
                             </button>
@@ -5553,11 +5271,11 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onStartTargeting,
 
                 {/* ── Web search source links ── */}
                 {msg.sources && msg.sources.length > 0 && (
-                    <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid #f0f0f0' }}>
-                        <div style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', letterSpacing: '0.06em', marginBottom: '8px', textTransform: 'uppercase' }}>
+                    <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800">
+                        <div className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2">
                             Sources
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                        <div className="flex flex-col gap-1.5">
                             {msg.sources.slice(0, 5).map((src, i) => {
                                 let hostname = '';
                                 try { hostname = new URL(src.url).hostname.replace('www.', ''); } catch { hostname = src.url; }
@@ -5567,23 +5285,16 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onStartTargeting,
                                         href={src.url}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        style={{
-                                            display: 'flex', alignItems: 'center', gap: '7px',
-                                            fontSize: '12px', color: '#2563eb', textDecoration: 'none',
-                                            padding: '5px 8px', borderRadius: '8px', background: '#f8faff',
-                                            border: '1px solid #e0eaf5', transition: 'background .12s',
-                                        }}
-                                        onMouseEnter={e => (e.currentTarget.style.background = '#e8ecfa')}
-                                        onMouseLeave={e => (e.currentTarget.style.background = '#f8faff')}
+                                        className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400 no-underline px-2 py-1.5 rounded-lg border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                                     >
                                         {/* Globe icon */}
-                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}>
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-gray-500 dark:text-gray-400 flex-shrink-0" strokeWidth="2" strokeLinecap="round">
                                             <circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
                                         </svg>
-                                        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                            {src.title || hostname}
-                                        </span>
-                                        <span style={{ fontSize: '10px', color: '#9ca3af', flexShrink: 0 }}>{hostname}</span>
+                                        <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                        {src.title || hostname}
+                    </span>
+                                        <span className="text-[10px] text-gray-400 dark:text-gray-500 flex-shrink-0">{hostname}</span>
                                     </a>
                                 );
                             })}
@@ -5594,90 +5305,88 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onStartTargeting,
                 {/* ── NAS.io-style MAIN PRODUCT CARD (only for first search results) ── */}
                 {msg.targeting && (
                     <div
-                        className="adv-main-product-card"
                         onClick={onStartCheckpoints}
-                        style={{
-                            background: "#f9fafb",
-                            border: "1px solid #e5e7eb",
-                            borderRadius: "14px",
-                            padding: "16px",
-                            cursor: "pointer",
-                            transition: "all 0.15s",
-                            marginBottom: "12px",
-                            marginTop: "12px",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "14px"
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.backgroundColor = "#f3f4f6"; e.currentTarget.style.borderColor = "#0b1957"; }}
-                        onMouseLeave={e => { e.currentTarget.style.backgroundColor = "#f9fafb"; e.currentTarget.style.borderColor = "#e5e7eb"; }}
+                        className="flex items-center gap-[14px] p-4 my-3 border rounded-[14px] cursor-pointer transition-all duration-150
+               bg-gray-50 dark:bg-gray-800
+               border-gray-200 dark:border-gray-700
+               hover:bg-gray-100 dark:hover:bg-gray-700
+               hover:border-[#0b1957] dark:hover:border-blue-400 adv-main-product-card"
                     >
-                        <div style={{
-                            width: "48px", height: "48px", background: "#0b1957", borderRadius: "10px",
-                            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0
-                        }}>
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" /></svg>
+                        {/* Icon Container */}
+                        <div className="w-[48px] h-[48px] bg-[#0b1957] dark:bg-blue-600 rounded-[10px] flex items-center justify-center flex-shrink-0">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                                <path d="M2 17l10 5 10-5" />
+                                <path d="M2 12l10 5 10-5" />
+                            </svg>
                         </div>
-                        <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: "15px", fontWeight: 700, color: "#111827", marginBottom: "4px" }}>
+
+                        {/* Text Content */}
+                        <div className="flex-1">
+                            <div className="text-[15px] font-bold text-gray-900 dark:text-gray-100 mb-1">
                                 Automate Your Business Processes with AI Agents
                             </div>
-                            <div style={{ fontSize: "12px", color: "#6b7280" }}>V1</div>
+                            <div className="text-[12px] text-gray-500 dark:text-gray-400">V1</div>
                         </div>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6" /></svg>
+
+                        {/* Chevron */}
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-gray-400 dark:text-gray-500" strokeWidth="2" strokeLinecap="round">
+                            <path d="M9 18l6-6-6-6" />
+                        </svg>
                     </div>
                 )}
 
                 {/* ── NAS.io-style clickable result cards ── */}
                 {msg.targeting && (
-                    <div className="adv-result-cards" style={{ display: "flex", gap: "12px", marginBottom: "16px" }}>
+                    <div className="adv-result-cards flex gap-3 mb-4">
                         {/* Targeting card */}
-                        <div className="adv-rc" onClick={onStartTargeting} style={{
-                            flex: 1, padding: "14px", border: useSalesNav ? "1px solid #e5e7eb" : "1px solid #fde68a", borderRadius: "12px", display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", background: useSalesNav ? "#fff" : "#fffbeb"
-                        }}>
-                            <div className="adv-rc-icon adv-rc-icon-target" style={{ width: "32px", height: "32px", borderRadius: "8px", background: "#e8ecfa", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0b1957" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6" /><line x1="8" y1="12" x2="20" y2="12" /><line x1="12" y1="18" x2="20" y2="18" /><circle cx="2" cy="6" r="1" fill="#0b1957" /><circle cx="4" cy="12" r="1" fill="#0b1957" /><circle cx="8" cy="18" r="1" fill="#0b1957" /></svg>
+                        <div
+                            className={`adv-rc flex flex-1 items-center gap-3 p-4 rounded-xl cursor-pointer border transition-colors ${
+                                useSalesNav
+                                    ? "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                                    : "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800"
+                            }`}
+                            onClick={onStartTargeting}
+                        >
+                            <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/40 flex items-center justify-center shrink-0">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-indigo-900 dark:text-indigo-300" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6" /><line x1="8" y1="12" x2="20" y2="12" /><line x1="12" y1="18" x2="20" y2="18" /><circle cx="2" cy="6" r="1" fill="currentColor" /><circle cx="4" cy="12" r="1" fill="currentColor" /><circle cx="8" cy="18" r="1" fill="currentColor" /></svg>
                             </div>
-                            <div className="adv-rc-body" style={{ flex: 1 }}>
-                                <div className="adv-rc-label" style={{ fontSize: "13px", fontWeight: 700 }}>Targeting</div>
+                            <div className="flex-1">
+                                <div className="text-[13px] font-bold text-gray-900 dark:text-gray-100">Targeting</div>
                                 {!useSalesNav && (
-                                    <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "4px" }}>
-                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
-                                        <span style={{ fontSize: "10px", color: "#d97706", fontWeight: 500, lineHeight: 1.3 }}>Sales Navigator required for narrow filters</span>
+                                    <div className="flex items-center gap-1 mt-1">
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-amber-600 dark:text-amber-500" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+                                        <span className="text-[10px] text-amber-600 dark:text-amber-500 font-medium leading-tight">Sales Navigator required</span>
                                     </div>
                                 )}
                             </div>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6" /></svg>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-gray-400 dark:text-gray-500" strokeWidth="2"><path d="M9 18l6-6-6-6" /></svg>
                         </div>
-                        <div className="adv-rc adv-rc-leads" onClick={() => onShowPanel('leads')} style={{
-                            flex: 1, padding: "14px", border: "1px solid #e5e7eb", borderRadius: "12px", display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", background: "#fff"
-                        }}>
-                            <div className="adv-rc-icon adv-rc-icon-leads" style={{ width: "32px", height: "32px", borderRadius: "8px", background: "#e0eaf5", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0b1957" strokeWidth="2" strokeLinecap="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="8.5" cy="7" r="4" /><line x1="20" y1="8" x2="20" y2="14" /><line x1="23" y1="11" x2="17" y2="11" /></svg>
+
+                        {/* Leads card */}
+                        <div className="adv-rc adv-rc-leads flex flex-1 items-center gap-3 p-4 rounded-xl cursor-pointer border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800" onClick={() => onShowPanel('leads')}>
+                            <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-indigo-900 dark:text-blue-300" strokeWidth="2"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="8.5" cy="7" r="4" /><line x1="20" y1="8" x2="20" y2="14" /><line x1="23" y1="11" x2="17" y2="11" /></svg>
                             </div>
-                            <div className="adv-rc-body" style={{ flex: 1 }}>
-                                <div className="adv-rc-label" style={{ fontSize: "13px", fontWeight: 700 }}>Leads</div>
-                                <div className="adv-rc-sub" style={{ fontSize: "11px", color: "#0b1957", fontWeight: 500 }}>
-                                    {leadsCount > 0
-                                        ? `${leadsCount} Leads found`
-                                        : filteredLeadsCount && filteredLeadsCount > 0
-                                            ? `${filteredLeadsCount} lead${filteredLeadsCount !== 1 ? 's' : ''} (below ICP threshold)`
-                                            : '0 Leads found'}
+                            <div className="flex-1">
+                                <div className="text-[13px] font-bold text-gray-900 dark:text-gray-100">Leads</div>
+                                <div className="text-[11px] text-indigo-900 dark:text-blue-300 font-medium">
+                                    {leadsCount > 0 ? `${leadsCount} Leads found` : (filteredLeadsCount > 0 ? `${filteredLeadsCount} lead${filteredLeadsCount !== 1 ? 's' : ''}` : '0 Leads found')}
                                 </div>
                             </div>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6" /></svg>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-gray-400 dark:text-gray-500" strokeWidth="2"><path d="M9 18l6-6-6-6" /></svg>
                         </div>
-                        <div className="adv-rc adv-rc-leads" onClick={() => onShowPanel('workflow')} style={{
-                            flex: 1, padding: "14px", border: "1px solid #e5e7eb", borderRadius: "12px", display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", background: "#fff"
-                        }}>
-                            <div className="adv-rc-icon" style={{ width: "32px", height: "32px", borderRadius: "8px", background: "#e0eaf5", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0b1957" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="2" /><circle cx="5" cy="19" r="2" /><circle cx="19" cy="19" r="2" /><path d="M12 7v4M9.5 17.5L12 11l2.5 6.5" /></svg>
+
+                        {/* Workflow card */}
+                        <div className="adv-rc adv-rc-leads flex flex-1 items-center gap-3 p-4 rounded-xl cursor-pointer border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800" onClick={() => onShowPanel('workflow')}>
+                            <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-indigo-900 dark:text-blue-300" strokeWidth="2"><circle cx="12" cy="5" r="2" /><circle cx="5" cy="19" r="2" /><circle cx="19" cy="19" r="2" /><path d="M12 7v4M9.5 17.5L12 11l2.5 6.5" /></svg>
                             </div>
-                            <div className="adv-rc-body" style={{ flex: 1 }}>
-                                <div className="adv-rc-label" style={{ fontSize: "13px", fontWeight: 700 }}>Workflow</div>
-                                <div className="adv-rc-sub" style={{ fontSize: "11px", color: "#0b1957", fontWeight: 500 }}>Live preview</div>
+                            <div className="flex-1">
+                                <div className="text-[13px] font-bold text-gray-900 dark:text-gray-100">Workflow</div>
+                                <div className="text-[11px] text-indigo-900 dark:text-blue-300 font-medium">Live preview</div>
                             </div>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6" /></svg>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-gray-400 dark:text-gray-500" strokeWidth="2"><path d="M9 18l6-6-6-6" /></svg>
                         </div>
                     </div>
                 )}
@@ -5685,56 +5394,92 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onStartTargeting,
                 {/* ── Modern action buttons (Example 1 style) ── */}
                 {msg.targeting && (
 
-                    <div className="adv-action-btns" style={{ display: "flex", gap: "8px", flexWrap: "nowrap", borderTop: "1px solid #e5e7eb", paddingTop: "12px", justifyContent: "space-between" }}>
-                        <button className="adv-act-btn adv-act-btn-refine" style={{
-                            padding: "8px 12px", background: "#fff", border: "1px solid #e5e7eb", borderRadius: "20px", fontSize: "12px", fontWeight: 600, color: "#374151"
-                        }} onClick={() => onOpt('Refine my targeting criteria')}>Refine</button>
-                        <button className="adv-act-btn adv-act-btn-journey" style={{
-                            padding: "9px 16px", background: "#0b1957", border: "none", borderRadius: "20px", fontSize: "12.5px", fontWeight: 700, color: "#fff",
-                            boxShadow: "0 2px 8px rgba(23,37,96,0.35)", display: "flex", alignItems: "center", gap: "6px", letterSpacing: "0.01em"
-                        }} onClick={onStartCheckpoints}>
+                    <div className="adv-action-btns flex flex-nowrap gap-2 border-t border-gray-200 dark:border-gray-800 pt-3 justify-between">
+                        <button
+                            className="adv-act-btn adv-act-btn-refine px-4 py-2 bg-white dark:bg-[#0b1229] border border-gray-200 dark:border-gray-700 rounded-full text-xs font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#161d36] transition-colors"
+                            onClick={() => onOpt('Refine my targeting criteria')}
+                        >
+                            Refine
+                        </button>
+
+                        <button
+                            className="adv-act-btn adv-act-btn-journey px-4 py-2 bg-[#0b1957] dark:bg-blue-600 border-none rounded-full text-[12.5px] font-bold text-white shadow-lg shadow-blue-900/20 flex items-center gap-1.5 tracking-[0.01em] hover:bg-[#152775] dark:hover:bg-blue-500 transition-all active:scale-[0.98]"
+                            onClick={onStartCheckpoints}
+                        >
                             Create Outreach Journey
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M5 12h14M12 5l7 7-7 7" />
+                            </svg>
                         </button>
                     </div>
                 )}
 
                 {/* ── Inbound: Download Template + Upload buttons ── */}
                 {(msg.inboundAction === 'download' || msg.inboundAction === 'upload') && (
-                    <div style={{ display: 'flex', flexDirection: 'row', gap: '8px', flexWrap: 'nowrap', width: '100%', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e5e7eb' }}>
-                        <button onClick={downloadInboundTemplate} style={{
-                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 1, gap: '6px', padding: '10px 8px',
-                            background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', color: '#fff',
-                            border: 'none', borderRadius: '12px', fontWeight: 600, fontSize: '13px', cursor: 'pointer',
-                            boxShadow: '0 4px 12px rgba(16,185,129,0.25)', transition: 'all 0.2s', whiteSpace: 'nowrap'
-                        }}><Download size={16} /> Download</button>
-                        <button onClick={() => onUploadClick?.()} style={{
-                            display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 18px',
-                            background: '#fff', color: '#0b1957', border: '2px solid #0b1957', borderRadius: '12px',
-                            fontWeight: 600, fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s',
-                        }}><Upload size={16} /> Upload CSV File</button>
+                    <div className="flex flex-row flex-nowrap gap-2 w-full mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                        <button
+                            onClick={downloadInboundTemplate}
+                            className="inline-flex items-center justify-center flex-1 gap-1.5 px-2 py-2.5 bg-gradient-to-br from-emerald-600 to-emerald-500 text-white border-none rounded-xl font-semibold text-[13px] cursor-pointer shadow-md hover:shadow-lg transition-all whitespace-nowrap"
+                        >
+                            <Download size={16} /> Download
+                        </button>
+                        <button
+                            onClick={() => onUploadClick?.()}
+                            className="inline-flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-800 text-[#0b1957] dark:text-blue-300 border-2 border-[#0b1957] dark:border-blue-400 rounded-xl font-semibold text-[13px] cursor-pointer transition-all hover:bg-gray-50 dark:hover:bg-gray-700"
+                        >
+                            <Upload size={16} /> Upload CSV File
+                        </button>
                     </div>
                 )}
 
                 {/* ── Inbound: Summary with platform badges ── */}
                 {msg.inboundAction === 'summary' && msg.inboundSummary && (
-                    <div style={{ marginTop: '12px', padding: '14px', background: 'linear-gradient(135deg, #ecfdf5, #d1fae5)', borderRadius: '14px', border: '1px solid #a7f3d0' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                            <CheckCircle2 size={18} color="#059669" />
-                            <span style={{ fontSize: '14px', fontWeight: 700, color: '#065f46' }}>{msg.inboundSummary.total} Leads Ready</span>
+                    <div className="mt-3 p-4 rounded-[14px] border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20">
+                        {/* Header */}
+                        <div className="flex items-center gap-2 mb-2.5">
+                            <CheckCircle2 size={18} className="text-emerald-600 dark:text-emerald-400" />
+                            <span className="text-[14px] font-bold text-emerald-800 dark:text-emerald-300">
+            {msg.inboundSummary.total} Leads Ready
+        </span>
                         </div>
-                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                            {msg.inboundSummary.linkedin > 0 && <span style={{ fontSize: '11px', background: '#fff', color: '#1e40af', padding: '4px 10px', borderRadius: '12px', fontWeight: 600, border: '1px solid #bfdbfe', display: 'inline-flex', alignItems: 'center', gap: '4px' }}><LinkedInIcon size={12} /> LinkedIn ({msg.inboundSummary.linkedin})</span>}
-                            {msg.inboundSummary.email > 0 && <span style={{ fontSize: '11px', background: '#fff', color: '#be185d', padding: '4px 10px', borderRadius: '12px', fontWeight: 600, border: '1px solid #fbcfe8' }}>✉️ Email ({msg.inboundSummary.email})</span>}
-                            {msg.inboundSummary.whatsapp > 0 && <span style={{ fontSize: '11px', background: '#fff', color: '#166534', padding: '4px 10px', borderRadius: '12px', fontWeight: 600, border: '1px solid #bbf7d0' }}>💬 WhatsApp ({msg.inboundSummary.whatsapp})</span>}
-                            {msg.inboundSummary.phone > 0 && <span style={{ fontSize: '11px', background: '#fff', color: '#9a3412', padding: '4px 10px', borderRadius: '12px', fontWeight: 600, border: '1px solid #fed7aa' }}>📞 Phone ({msg.inboundSummary.phone})</span>}
-                            {msg.inboundSummary.website > 0 && <span style={{ fontSize: '11px', background: '#fff', color: '#6b21a8', padding: '4px 10px', borderRadius: '12px', fontWeight: 600, border: '1px solid #e9d5ff' }}>🌐 Website ({msg.inboundSummary.website})</span>}
+
+                        {/* Badges */}
+                        <div className="flex gap-1.5 flex-wrap">
+                            {msg.inboundSummary.linkedin > 0 && (
+                                <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 bg-white dark:bg-gray-800 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-900">
+                <LinkedInIcon size={12} /> LinkedIn ({msg.inboundSummary.linkedin})
+            </span>
+                            )}
+                            {msg.inboundSummary.email > 0 && (
+                                <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-white dark:bg-gray-800 text-pink-700 dark:text-pink-300 border border-pink-100 dark:border-pink-900">
+                ✉️ Email ({msg.inboundSummary.email})
+            </span>
+                            )}
+                            {msg.inboundSummary.whatsapp > 0 && (
+                                <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-white dark:bg-gray-800 text-green-700 dark:text-green-300 border border-green-100 dark:border-green-900">
+                💬 WhatsApp ({msg.inboundSummary.whatsapp})
+            </span>
+                            )}
+                            {msg.inboundSummary.phone > 0 && (
+                                <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-white dark:bg-gray-800 text-orange-700 dark:text-orange-300 border border-orange-100 dark:border-orange-900">
+                📞 Phone ({msg.inboundSummary.phone})
+            </span>
+                            )}
+                            {msg.inboundSummary.website > 0 && (
+                                <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-white dark:bg-gray-800 text-purple-700 dark:text-purple-300 border border-purple-100 dark:border-purple-900">
+                🌐 Website ({msg.inboundSummary.website})
+            </span>
+                            )}
                         </div>
-                        <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
-                            <button style={{
-                                width: '100%', padding: "10px 14px", background: "#172560", border: "none", borderRadius: "10px", fontSize: "13px", fontWeight: 700, color: "#fff", cursor: 'pointer', boxShadow: '0 4px 12px rgba(23,37,96,0.2)',
-                                display: 'block'
-                            }} onClick={onStartCheckpoints}>Create Outreach Journey</button>
+
+                        {/* Footer Button */}
+                        <div className="mt-3 pt-3 border-t border-emerald-200/50 dark:border-emerald-800/50">
+                            <button
+                                onClick={onStartCheckpoints}
+                                className="w-full px-4 py-2.5 bg-[#172560] dark:bg-blue-700 text-white border-none rounded-[10px] text-[13px] font-bold cursor-pointer transition-all hover:bg-[#0b1957] dark:hover:bg-blue-600 shadow-sm"
+                            >
+                                Create Outreach Journey
+                            </button>
                         </div>
                     </div>
                 )}
@@ -5856,59 +5601,60 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onStartTargeting,
 
                 {/* ── Lead Detail Form (inline card) ── */}
                 {msg.leadDetailForm && (
-                    <div style={{
-                        marginTop: '12px', background: '#fff', border: '1.5px solid #e0eaf5',
-                        borderRadius: '16px', padding: '20px', maxWidth: '460px',
-                        boxShadow: '0 4px 16px rgba(23,37,96,0.06)',
-                    }}>
-                        <div style={{ fontSize: '13px', fontWeight: 700, color: '#0b1957', marginBottom: '14px', letterSpacing: '.01em' }}>
+                    <div className="mt-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 max-w-[460px] shadow-sm">
+                        <div className="text-[13px] font-bold text-[#0b1957] dark:text-blue-300 mb-4 tracking-[.01em]">
                             Contact Details
                         </div>
+
                         {/* Row 1: First Name + Last Name */}
-                        <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-                            <div style={{ flex: 1 }}>
-                                <label style={{ fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '4px' }}>First Name</label>
+                        <div className="flex gap-2.5 mb-2.5">
+                            <div className="flex-1">
+                                <label className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 block mb-1">First Name</label>
                                 <input value={ldFirst} onChange={e => setLdFirst(e.target.value)} placeholder="John"
-                                    style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: '10px', fontSize: '13px', color: '#111827', outline: 'none', boxSizing: 'border-box', background: '#fafafa' }} />
+                                       className="w-full p-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-[13px] text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 outline-none transition-colors" />
                             </div>
-                            <div style={{ flex: 1 }}>
-                                <label style={{ fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '4px' }}>Last Name</label>
+                            <div className="flex-1">
+                                <label className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 block mb-1">Last Name</label>
                                 <input value={ldLast} onChange={e => setLdLast(e.target.value)} placeholder="Doe"
-                                    style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: '10px', fontSize: '13px', color: '#111827', outline: 'none', boxSizing: 'border-box', background: '#fafafa' }} />
+                                       className="w-full p-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-[13px] text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 outline-none transition-colors" />
                             </div>
                         </div>
+
                         {/* Row 2: Company */}
-                        <div style={{ marginBottom: '10px' }}>
-                            <label style={{ fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '4px' }}>Company Name</label>
+                        <div className="mb-2.5">
+                            <label className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 block mb-1">Company Name</label>
                             <input value={ldCompany} onChange={e => setLdCompany(e.target.value)} placeholder="Acme Corp"
-                                style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: '10px', fontSize: '13px', color: '#111827', outline: 'none', boxSizing: 'border-box', background: '#fafafa' }} />
+                                   className="w-full p-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-[13px] text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 outline-none transition-colors" />
                         </div>
+
                         {/* Row 3: Website + Location */}
-                        <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-                            <div style={{ flex: 1 }}>
-                                <label style={{ fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '4px' }}>Website</label>
+                        <div className="flex gap-2.5 mb-2.5">
+                            <div className="flex-1">
+                                <label className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 block mb-1">Website</label>
                                 <input value={ldWebsite} onChange={e => setLdWebsite(e.target.value)} placeholder="https://acme.com"
-                                    style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: '10px', fontSize: '13px', color: '#111827', outline: 'none', boxSizing: 'border-box', background: '#fafafa' }} />
+                                       className="w-full p-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-[13px] text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 outline-none transition-colors" />
                             </div>
-                            <div style={{ flex: 1 }}>
-                                <label style={{ fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '4px' }}>Location</label>
+                            <div className="flex-1">
+                                <label className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 block mb-1">Location</label>
                                 <input value={ldLocation} onChange={e => setLdLocation(e.target.value)} placeholder="Dubai, UAE"
-                                    style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: '10px', fontSize: '13px', color: '#111827', outline: 'none', boxSizing: 'border-box', background: '#fafafa' }} />
+                                       className="w-full p-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-[13px] text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 outline-none transition-colors" />
                             </div>
                         </div>
+
                         {/* Row 4: Email + Phone */}
-                        <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
-                            <div style={{ flex: 1 }}>
-                                <label style={{ fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '4px' }}>Email</label>
+                        <div className="flex gap-2.5 mb-4">
+                            <div className="flex-1">
+                                <label className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 block mb-1">Email</label>
                                 <input value={ldEmail} onChange={e => setLdEmail(e.target.value)} placeholder="john@acme.com" type="email"
-                                    style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: '10px', fontSize: '13px', color: '#111827', outline: 'none', boxSizing: 'border-box', background: '#fafafa' }} />
+                                       className="w-full p-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-[13px] text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 outline-none transition-colors" />
                             </div>
-                            <div style={{ flex: 1 }}>
-                                <label style={{ fontSize: '11px', fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: '4px' }}>Phone / WhatsApp</label>
+                            <div className="flex-1">
+                                <label className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 block mb-1">Phone / WhatsApp</label>
                                 <input value={ldPhone} onChange={e => setLdPhone(e.target.value)} placeholder="+971506341191" type="tel"
-                                    style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: '10px', fontSize: '13px', color: '#111827', outline: 'none', boxSizing: 'border-box', background: '#fafafa' }} />
+                                       className="w-full p-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-[13px] text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 outline-none transition-colors" />
                             </div>
                         </div>
+
                         {/* Submit button */}
                         <button
                             onClick={() => {
@@ -5922,13 +5668,7 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onStartTargeting,
                                 if (ldPhone.trim()) formData.phone = ldPhone.trim();
                                 onOpt('__submit_lead_details__:' + JSON.stringify(formData));
                             }}
-                            style={{
-                                width: '100%', padding: '11px', background: '#0b1957', color: '#fff',
-                                border: 'none', borderRadius: '12px', fontSize: '14px', fontWeight: 700,
-                                cursor: 'pointer', transition: 'all .15s', boxShadow: '0 2px 8px rgba(23,37,96,.2)',
-                            }}
-                            onMouseEnter={e => { (e.target as HTMLButtonElement).style.background = '#0a1447'; }}
-                            onMouseLeave={e => { (e.target as HTMLButtonElement).style.background = '#0b1957'; }}
+                            className="w-full p-3 bg-[#0b1957] dark:bg-blue-600 text-white border-none rounded-xl text-[14px] font-bold cursor-pointer transition-all hover:bg-[#0a1447] dark:hover:bg-blue-700 shadow-sm"
                         >
                             Save Details &amp; Continue →
                         </button>
@@ -6918,30 +6658,45 @@ function CheckpointFormInline({
         <div className="adv-bubble adv-bubble-ai fadeUp" style={{ marginBottom: '16px' }}>
             <div className="adv-ai-avatar adv-ai-avatar-viz"><AgentVisualizer state="idle" size={36} /></div>
             <div style={{ flex: 1, maxWidth: '540px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <div className="adv-ai-name">LAD in Action</div>
-                    <button onClick={() => setStep(-1)} title="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: '#9ca3af', display: 'flex', alignItems: 'center', borderRadius: '4px' }}
-                        onMouseEnter={e => (e.currentTarget.style.color = '#374151')}
-                        onMouseLeave={e => (e.currentTarget.style.color = '#9ca3af')}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                <div className="flex items-center justify-between mb-2">
+                    <div className="adv-ai-name text-gray-900 dark:text-gray-100">
+                        LAD in Action
+                    </div>
+
+                    <button
+                        onClick={() => setStep(-1)}
+                        title="Close"
+                        className="flex items-center p-0.5 rounded text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 transition-colors"
+                    >
+                        <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                        >
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
                     </button>
                 </div>
 
                 {/* Question header */}
-                <div style={{ fontSize: '15px', fontWeight: 600, color: '#111827', marginBottom: '16px', lineHeight: 1.4 }}>
+                <div className="text-[15px] font-semibold text-gray-900 dark:text-gray-100 mb-4 leading-relaxed">
                     {q.question}
                 </div>
-
-                <div style={baseBox}>
+                <div className="p-4 bg-white dark:bg-[#000724] border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm transition-colors">
                     {/* Step 0: ICP Threshold */}
                     {step === 0 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div className="flex flex-col gap-2">
                             {[
                                 { value: '80', label: 'Above 80%', desc: 'Only top-tier matches' },
                                 { value: '75', label: 'Above 75%', desc: 'High quality leads' },
                                 { value: '50', label: 'Above 50%', desc: 'Moderate fit and above' },
                                 { value: '25', label: 'Above 25%', desc: 'Include most leads' },
-                                { value: '0', label: 'All Leads — Within the LinkedIn Account Limits', desc: linkedInDailyLimit ? `Up to ${linkedInDailyLimit} leads/day based on your account limit` : 'No filtering — include everyone' },
+                                { value: '0', label: 'All Leads', desc: linkedInDailyLimit ? `Up to ${linkedInDailyLimit} leads/day` : 'No filtering' },
                             ].map((opt, i) => {
                                 const selected = icpThreshold === opt.value;
                                 const count = leads.filter(l => (l.icp_score ?? 0) >= parseInt(opt.value)).length;
@@ -6949,14 +6704,14 @@ function CheckpointFormInline({
                                     ? linkedInDailyLimit
                                     : count;
                                 return (
-                                    <div key={opt.value} onClick={() => setIcpThreshold(opt.value)} style={optStyle(selected)}>
-                                        <div style={numBadge(i + 1, selected)}>{selected ? '✓' : i + 1}</div>
-                                        <div style={{ flex: 1 }}>
-                                            <div style={{ fontWeight: 600 }}>{opt.label}</div>
-                                            <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{opt.desc}</div>
+                                    <div key={opt.value} onClick={() => setIcpThreshold(opt.value)}
+                                         className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer border transition-all ${selected ? 'border-blue-600 bg-blue-50 dark:bg-blue-950/40 dark:border-blue-500' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'}`}>
+                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${selected ? 'bg-blue-600 dark:bg-blue-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300'}`}>
+                                            {selected ? '✓' : i + 1}
                                         </div>
-                                        <div style={{ fontSize: '12px', fontWeight: 700, color: selected ? '#0b1957' : '#9ca3af', whiteSpace: 'nowrap' }}>
-                                            {displayCount} lead{displayCount !== 1 ? 's' : ''}
+                                        <div className="flex-1">
+                                            <div className="font-semibold text-gray-900 dark:text-gray-100">{opt.label}</div>
+                                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{opt.desc}</div>
                                         </div>
                                     </div>
                                 );
@@ -6969,7 +6724,7 @@ function CheckpointFormInline({
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             {/* Context badge for direct contacts */}
                             {isDirectContact && (
-                                <div style={{ padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', fontSize: '12px', color: '#166534', fontWeight: 500, marginBottom: '4px' }}>
+                                <div className="px-3.5 py-2.5 mb-1 rounded-[10px] text-xs font-medium border bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-300">
                                     {hasPhone && hasEmail
                                         ? `📱✉️ Phone & email detected — select how you want to reach this contact${hasLinkedInInfo ? ' (LinkedIn available)' : ''}`
                                         : hasPhone
@@ -6977,29 +6732,31 @@ function CheckpointFormInline({
                                             : `✉️ Email detected — Email outreach recommended${hasLinkedInInfo ? ' · LinkedIn available' : ''}`}
                                 </div>
                             )}
-
                             {/* Channel Configuration Sequential UI */}
                             {isInChannelConfiguration && (
-                                <div style={{ marginTop: '12px', padding: '16px', background: '#f9fafb', border: '2px solid #e5e7eb', borderRadius: '12px' }}>
+                                <div className="mt-3 p-4 rounded-xl border-2 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                                     {/* Step indicator */}
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                                        <div style={{ fontSize: '14px', fontWeight: 700, color: '#111827' }}>
-                                            {channelIcons[currentChannelBeingConfigured]} Configure {channelNames[currentChannelBeingConfigured]}
+                                    <div className="flex justify-between items-center mb-4">
+                                        <div className="text-sm font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                            {channelIcons[currentChannelBeingConfigured]}
+                                            Configure {channelNames[currentChannelBeingConfigured]}
                                         </div>
-                                        <div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', background: '#fff', padding: '4px 10px', borderRadius: '12px', border: '1px solid #d1d5db' }}>
+                                        <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-900 px-2.5 py-1 rounded-full border border-gray-300 dark:border-gray-600">
                                             Step {channelConfigStep + 1} of {selectedChannelsList.length}
                                         </div>
                                     </div>
 
                                     {/* Progress bar */}
-                                    <div style={{ width: '100%', height: '4px', background: '#e5e7eb', borderRadius: '2px', overflow: 'hidden', marginBottom: '16px' }}>
-                                        <div style={{ height: '100%', background: '#3b82f6', width: `${((channelConfigStep + 1) / selectedChannelsList.length) * 100}%`, transition: 'width 0.3s' }}></div>
+                                    <div className="w-full h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mb-4">
+                                        <div
+                                            className="h-full bg-blue-500 transition-all duration-300"
+                                            style={{ width: `${((channelConfigStep + 1) / selectedChannelsList.length) * 100}%` }}
+                                        ></div>
                                     </div>
                                 </div>
                             )}
-
                             {[
-                                // LinkedIn first — always shown (for non-direct; for direct contacts only if name+company detected)
+                                // LinkedIn first — always shown
                                 ...(hasLinkedInInfo ? [{
                                     id: 'linkedin', icon: '💼', label: 'LinkedIn',
                                     desc: isDirectContact
@@ -7010,41 +6767,83 @@ function CheckpointFormInline({
                                 { id: 'email', label: 'Email', desc: isDirectContact ? 'Send an email to this contact' : 'Send a follow-up email to the lead', icon: '✉️', disabled: isDirectContact && !hasEmail },
                                 { id: 'whatsapp', label: 'WhatsApp', desc: isDirectContact ? 'Send a WhatsApp message to this contact' : 'Send a WhatsApp message', icon: '💬', disabled: isDirectContact && !hasPhone },
                                 { id: 'voice_call', label: 'Voice Call', desc: isDirectContact ? 'Trigger an AI voice call to this contact' : 'Trigger an AI voice call', icon: '📞', disabled: isDirectContact && !hasPhone },
-                            ].filter(ch => !ch.disabled).map((ch, i) => (
-                                <div key={ch.id} onClick={() => toggleNextChannel(ch.id)} style={optStyle(nextChannels.includes(ch.id))}>
-                                    <div style={numBadge(i + 1, nextChannels.includes(ch.id))}>{nextChannels.includes(ch.id) ? '✓' : i + 1}</div>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 600 }}>{ch.icon} {ch.label}</div>
-                                        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{ch.desc}</div>
+                            ].filter(ch => !ch.disabled).map((ch, i) => {
+                                const isSelected = nextChannels.includes(ch.id);
+
+                                return (
+                                    <div
+                                        key={ch.id}
+                                        onClick={() => toggleNextChannel(ch.id)}
+                                        className={`flex items-center gap-3 p-3 mb-2 rounded-xl cursor-pointer border transition-all ${
+                                            isSelected
+                                                ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20'
+                                                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
+                                        }`}
+                                    >
+                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                                            isSelected
+                                                ? 'bg-blue-600 text-white'
+                                                : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                                        }`}>
+                                            {isSelected ? '✓' : i + 1}
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="font-semibold text-gray-900 dark:text-gray-100">
+                                                {ch.icon} {ch.label}
+                                            </div>
+                                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                                {ch.desc}
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                             {!isDirectContact && (
-                                <div onClick={() => { setNextChannels([]); setStep(step + 1); }} style={optStyle(nextChannels.length === 0)}>
-                                    <div style={numBadge(4, nextChannels.length === 0)}>{nextChannels.length === 0 ? '✓' : 4}</div>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 600 }}>Skip</div>
-                                        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>No additional channels — LinkedIn only</div>
+                                <div
+                                    onClick={() => { setNextChannels([]); setStep(step + 1); }}
+                                    className={`flex items-center gap-3 p-3 mb-2 rounded-xl cursor-pointer border transition-all ${
+                                        nextChannels.length === 0
+                                            ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20'
+                                            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
+                                    }`}
+                                >
+                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                                        nextChannels.length === 0
+                                            ? 'bg-blue-600 text-white'
+                                            : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                                    }`}>
+                                        {nextChannels.length === 0 ? '✓' : 4}
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="font-semibold text-gray-900 dark:text-gray-100">
+                                            Skip
+                                        </div>
+                                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                            No additional channels — LinkedIn only
+                                        </div>
                                     </div>
                                 </div>
                             )}
 
-
                             {/* Email Config (inline when email selected) */}
                             {nextChannels.includes('email') && (isInChannelConfiguration ? currentChannelBeingConfigured === 'email' : true) && (
-                                <div style={{ marginTop: '12px', padding: '14px', background: '#f8faff', border: '1px solid #e0eaf5', borderRadius: '12px' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                                        <div style={{ fontSize: '13px', fontWeight: 700, color: '#0b1957' }}>✉️ Email Settings</div>
-                                        <button disabled={emailGenLoading} onClick={generateEmail}
-                                            style={{ background: 'none', border: 'none', fontSize: '12px', fontWeight: 700, color: emailGenLoading ? '#9ca3af' : '#0b1957', cursor: emailGenLoading ? 'default' : 'pointer' }}>
+                                <div className="mt-3 p-4 rounded-xl border bg-blue-50/50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/50">
+                                    <div className="flex justify-between items-center mb-3">
+                                        <div className="text-[13px] font-bold text-[#0b1957] dark:text-blue-300">✉️ Email Settings</div>
+                                        <button
+                                            disabled={emailGenLoading}
+                                            onClick={generateEmail}
+                                            className="text-xs font-bold text-[#0b1957] dark:text-blue-400 hover:opacity-80 disabled:text-gray-400"
+                                        >
                                             {emailGenLoading ? 'Generating...' : '✨ AI Generate'}
                                         </button>
                                     </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+
+                                    <div className="flex flex-col gap-3">
                                         {/* From account selector */}
                                         <div>
-                                            <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '4px', display: 'block' }}>
-                                                Send From <span style={{ color: '#ef4444' }}>*</span>
+                                            <label className="text-[12px] font-semibold text-gray-700 dark:text-gray-300 mb-1 block">
+                                                Send From <span className="text-red-500">*</span>
                                             </label>
                                             {connectedSenders.length > 0 ? (
                                                 <select
@@ -7054,7 +6853,8 @@ function CheckpointFormInline({
                                                         setEmailFromAddress(e.target.value);
                                                         setEmailProvider(sender?.provider || '');
                                                     }}
-                                                    style={{ width: '100%', border: '1px solid #e0eaf5', borderRadius: '8px', padding: '8px 10px', fontSize: '13px', background: '#fff', outline: 'none' }}>
+                                                    className="w-full border border-blue-100 dark:border-blue-900 rounded-lg p-2.5 text-[13px] bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none"
+                                                >
                                                     <option value="">— Select sender account —</option>
                                                     {connectedSenders.map(s => (
                                                         <option key={s.email} value={s.email}>
@@ -7063,9 +6863,9 @@ function CheckpointFormInline({
                                                     ))}
                                                 </select>
                                             ) : (
-                                                <div style={{ fontSize: '12px', color: '#ef4444', padding: '8px 10px', background: '#fff5f5', border: '1px solid #fecaca', borderRadius: '8px' }}>
-                                                    No email account connected.{' '}
-                                                    <a href="/settings?tab=integrations" style={{ color: '#0b1957', fontWeight: 600 }}>Connect Gmail or Outlook →</a>
+                                                <div className="text-[12px] text-red-600 dark:text-red-400 p-2.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900 rounded-lg">
+                                                    No email account connected.
+                                                    <a href="/settings?tab=integrations" className="text-[#0b1957] dark:text-blue-400 font-semibold ml-1">Connect Gmail or Outlook →</a>
                                                 </div>
                                             )}
                                         </div>
@@ -7073,7 +6873,7 @@ function CheckpointFormInline({
                                         {/* Template picker */}
                                         {emailTemplates.length > 0 && (
                                             <div>
-                                                <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '4px', display: 'block' }}>Use Saved Template</label>
+                                                <label className="text-[12px] font-semibold text-gray-700 dark:text-gray-300 mb-1 block">Use Saved Template</label>
                                                 <select
                                                     value={selectedEmailTemplateId}
                                                     onChange={e => {
@@ -7081,58 +6881,68 @@ function CheckpointFormInline({
                                                         if (tpl) { setEmailSubject(tpl.subject); setEmailBody(tpl.body); }
                                                         setSelectedEmailTemplateId(e.target.value);
                                                     }}
-                                                    style={{ width: '100%', border: '1px solid #e0eaf5', borderRadius: '8px', padding: '8px 10px', fontSize: '13px', background: '#fff', outline: 'none' }}>
+                                                    className="w-full border border-blue-100 dark:border-blue-900 rounded-lg p-2.5 text-[13px] bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none"
+                                                >
                                                     <option value="">— Select a template —</option>
                                                     {emailTemplates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                                                 </select>
                                             </div>
                                         )}
+
                                         {/* Subject */}
                                         <div>
-                                            <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '4px', display: 'block' }}>Subject <span style={{ color: '#ef4444' }}>*</span></label>
+                                            <label className="text-[12px] font-semibold text-gray-700 dark:text-gray-300 mb-1 block">Subject <span className="text-red-500">*</span></label>
                                             <input
                                                 type="text"
                                                 value={emailSubject}
                                                 onChange={e => setEmailSubject(e.target.value)}
                                                 placeholder="e.g. Quick question for {{first_name}}"
-                                                style={{ width: '100%', border: '1px solid #e0eaf5', borderRadius: '8px', padding: '8px 10px', fontSize: '13px', background: '#fff', outline: 'none', fontFamily: 'inherit' }}
+                                                className="w-full border border-blue-100 dark:border-blue-900 rounded-lg p-2.5 text-[13px] bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none placeholder:text-gray-400"
                                             />
                                         </div>
+
                                         {/* Body */}
                                         <div>
-                                            <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '4px', display: 'block' }}>Email Body <span style={{ color: '#ef4444' }}>*</span></label>
+                                            <label className="text-[12px] font-semibold text-gray-700 dark:text-gray-300 mb-1 block">Email Body <span className="text-red-500">*</span></label>
                                             <textarea
                                                 value={emailBody}
                                                 onChange={e => setEmailBody(e.target.value)}
-                                                placeholder={'Hi {{first_name}},\n\nI came across your profile at {{company}} and wanted to reach out...\n\nBest,\n[Your name]'}
+                                                placeholder={'Hi {{first_name}},...'}
                                                 rows={6}
-                                                style={{ width: '100%', border: '1px solid #e0eaf5', borderRadius: '8px', padding: '10px 12px', fontSize: '13px', background: '#fff', outline: 'none', resize: 'vertical', fontFamily: 'inherit' }}
+                                                className="w-full border border-blue-100 dark:border-blue-900 rounded-lg p-3 text-[13px] bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none placeholder:text-gray-400 resize-vertical"
                                             />
-                                            <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px' }}>
+                                            <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
                                                 Placeholders: {'{{first_name}}'} {'{{last_name}}'} {'{{company}}'} {'{{title}}'} {'{{industry}}'}
                                             </div>
                                         </div>
+
                                         {/* Save as Template */}
                                         {!saveTemplateMode ? (
-                                            <button onClick={() => setSaveTemplateMode(true)}
-                                                style={{ background: 'none', border: '1px dashed #d1d5db', borderRadius: '8px', padding: '8px 12px', fontSize: '12px', fontWeight: 600, color: '#6b7280', cursor: 'pointer', textAlign: 'left' }}>
+                                            <button
+                                                onClick={() => setSaveTemplateMode(true)}
+                                                className="border border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-2 text-[12px] font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 text-left"
+                                            >
                                                 + Save as template
                                             </button>
                                         ) : (
-                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                            <div className="flex gap-2">
                                                 <input
                                                     type="text"
                                                     value={saveTemplateName}
                                                     onChange={e => setSaveTemplateName(e.target.value)}
                                                     placeholder="Template name..."
-                                                    style={{ flex: 1, border: '1px solid #e0eaf5', borderRadius: '8px', padding: '8px 10px', fontSize: '13px', outline: 'none', fontFamily: 'inherit' }}
+                                                    className="flex-1 border border-blue-100 dark:border-blue-900 rounded-lg p-2.5 text-[13px] bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none"
                                                 />
-                                                <button onClick={saveEmailTemplate}
-                                                    style={{ padding: '8px 14px', background: '#0b1957', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
+                                                <button
+                                                    onClick={saveEmailTemplate}
+                                                    className="px-4 py-2 bg-[#0b1957] dark:bg-blue-600 text-white rounded-lg text-[12px] font-bold"
+                                                >
                                                     Save
                                                 </button>
-                                                <button onClick={() => { setSaveTemplateMode(false); setSaveTemplateName(''); }}
-                                                    style={{ padding: '8px 10px', background: '#f3f4f6', border: 'none', borderRadius: '8px', fontSize: '12px', color: '#6b7280', cursor: 'pointer' }}>
+                                                <button
+                                                    onClick={() => { setSaveTemplateMode(false); setSaveTemplateName(''); }}
+                                                    className="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg text-[12px]"
+                                                >
                                                     Cancel
                                                 </button>
                                             </div>
@@ -7143,13 +6953,15 @@ function CheckpointFormInline({
 
                             {/* Navigation & Summary for Channel Configuration */}
                             {isInChannelConfiguration && (
-                                <div style={{ marginTop: '16px', padding: '14px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '12px' }}>
+                                <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl">
                                     {/* Per-Channel Delay Configuration */}
-                                    <div style={{ marginBottom: '16px', paddingBottom: '16px', borderBottom: '1px solid #e5e7eb' }}>
-                                        <div style={{ fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '10px' }}>⏱️ Delay before next step (Optional)</div>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                    <div className="mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+                                        <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2.5">
+                                            ⏱️ Delay before next step (Optional)
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2.5">
                                             <div>
-                                                <label style={{ fontSize: '11px', fontWeight: 600, color: '#6b7280', marginBottom: '4px', display: 'block' }}>Days</label>
+                                                <label className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Days</label>
                                                 <input
                                                     type="number"
                                                     value={channelDelays[currentChannelBeingConfigured]?.days || '0'}
@@ -7158,11 +6970,11 @@ function CheckpointFormInline({
                                                         setChannelDelays(updated);
                                                     }}
                                                     min="0" max="365" placeholder="0"
-                                                    style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '6px', padding: '7px 9px', fontSize: '12px', background: '#fff', outline: 'none' }}
+                                                    className="w-full border border-gray-300 dark:border-gray-600 rounded-md p-2 text-xs bg-white dark:bg-gray-900 text-gray-900 dark:text-white outline-none"
                                                 />
                                             </div>
                                             <div>
-                                                <label style={{ fontSize: '11px', fontWeight: 600, color: '#6b7280', marginBottom: '4px', display: 'block' }}>Hours</label>
+                                                <label className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 mb-1 block">Hours</label>
                                                 <input
                                                     type="number"
                                                     value={channelDelays[currentChannelBeingConfigured]?.hours || '0'}
@@ -7171,32 +6983,39 @@ function CheckpointFormInline({
                                                         setChannelDelays(updated);
                                                     }}
                                                     min="0" max="23" placeholder="0"
-                                                    style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '6px', padding: '7px 9px', fontSize: '12px', background: '#fff', outline: 'none' }}
+                                                    className="w-full border border-gray-300 dark:border-gray-600 rounded-md p-2 text-xs bg-white dark:bg-gray-900 text-gray-900 dark:text-white outline-none"
                                                 />
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* Back/Forward Navigation */}
-                                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                                    <div className="flex gap-2.5 justify-end">
                                         <button
                                             onClick={() => {
                                                 if (channelConfigStep > 0) setChannelConfigStep(channelConfigStep - 1);
                                             }}
                                             disabled={channelConfigStep === 0}
-                                            style={{ padding: '10px 16px', background: channelConfigStep === 0 ? '#f3f4f6' : '#fff', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px', fontWeight: 600, color: channelConfigStep === 0 ? '#9ca3af' : '#374151', cursor: channelConfigStep === 0 ? 'not-allowed' : 'pointer' }}>
+                                            className={`px-4 py-2.5 rounded-lg text-[13px] font-semibold transition-colors ${
+                                                channelConfigStep === 0
+                                                    ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                                                    : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800'
+                                            }`}
+                                        >
                                             ← Back
                                         </button>
                                         {channelConfigStep < selectedChannelsList.length - 1 ? (
                                             <button
                                                 onClick={() => setChannelConfigStep(channelConfigStep + 1)}
-                                                style={{ padding: '10px 16px', background: '#0b1957', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, color: '#fff', cursor: 'pointer' }}>
+                                                className="px-4 py-2.5 bg-[#0b1957] dark:bg-blue-600 border-none rounded-lg text-[13px] font-semibold text-white cursor-pointer hover:opacity-90 transition-opacity"
+                                            >
                                                 Next → ({selectedChannelsList.length - channelConfigStep - 1} remaining)
                                             </button>
                                         ) : (
                                             <button
                                                 onClick={() => setStep(step + 1)}
-                                                style={{ padding: '10px 16px', background: '#10b981', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, color: '#fff', cursor: 'pointer' }}>
+                                                className="px-4 py-2.5 bg-emerald-500 dark:bg-emerald-600 border-none rounded-lg text-[13px] font-semibold text-white cursor-pointer hover:opacity-90 transition-opacity"
+                                            >
                                                 Continue →
                                             </button>
                                         )}
@@ -7206,25 +7025,31 @@ function CheckpointFormInline({
 
                             {/* WhatsApp Config (inline when whatsapp selected) */}
                             {nextChannels.includes('whatsapp') && (isInChannelConfiguration ? currentChannelBeingConfigured === 'whatsapp' : true) && (
-                                <div style={{ marginTop: '12px', padding: '14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px' }}>
+                                <div className="mt-3 p-4 bg-green-50/50 dark:bg-green-900/10 border border-green-100 dark:border-green-900/50 rounded-xl">
                                     {/* Header row */}
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                                        <div style={{ fontSize: '13px', fontWeight: 700, color: '#166534' }}>💬 WhatsApp Settings</div>
-                                        <button disabled={waGenLoading} onClick={generateWhatsApp}
-                                            style={{ background: 'none', border: 'none', fontSize: '12px', fontWeight: 700, color: waGenLoading ? '#9ca3af' : '#166534', cursor: waGenLoading ? 'default' : 'pointer' }}>
+                                    <div className="flex justify-between items-center mb-3">
+                                        <div className="text-[13px] font-bold text-green-800 dark:text-green-300">💬 WhatsApp Settings</div>
+                                        <button
+                                            disabled={waGenLoading}
+                                            onClick={generateWhatsApp}
+                                            className="text-[12px] font-bold text-green-800 dark:text-green-400 disabled:text-gray-400"
+                                        >
                                             {waGenLoading ? 'Generating...' : '✨ AI Generate'}
                                         </button>
                                     </div>
 
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                    <div className="flex flex-col gap-3">
                                         {/* Send From selector */}
                                         <div>
-                                            <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '4px', display: 'block' }}>
-                                                Send From <span style={{ color: '#ef4444' }}>*</span>
+                                            <label className="text-[12px] font-semibold text-gray-700 dark:text-gray-300 mb-1 block">
+                                                Send From <span className="text-red-500">*</span>
                                             </label>
                                             {whatsAppAccounts.length > 0 ? (
-                                                <select value={waAccountId} onChange={e => setWaAccountId(e.target.value)}
-                                                    style={{ width: '100%', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '8px 10px', fontSize: '13px', background: '#fff', outline: 'none' }}>
+                                                <select
+                                                    value={waAccountId}
+                                                    onChange={e => setWaAccountId(e.target.value)}
+                                                    className="w-full border border-green-100 dark:border-green-900 rounded-lg p-2.5 text-[13px] bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none"
+                                                >
                                                     <option value="">— Select WhatsApp account —</option>
                                                     {whatsAppAccounts.map((acc: any) => (
                                                         <option key={acc.id} value={acc.id}>
@@ -7233,34 +7058,35 @@ function CheckpointFormInline({
                                                     ))}
                                                 </select>
                                             ) : (
-                                                <div style={{ fontSize: '12px', color: '#b45309', padding: '8px 10px', background: '#fff', border: '1px solid #bbf7d0', borderRadius: '8px' }}>
-                                                    No WhatsApp account connected.{' '}
-                                                    <a href="/settings?tab=integrations" style={{ color: '#166534', fontWeight: 600 }}>Connect an account →</a>
+                                                <div className="text-[12px] text-amber-800 dark:text-amber-400 p-2.5 bg-amber-50 dark:bg-amber-900/20 border border-green-100 dark:border-green-900 rounded-lg">
+                                                    No WhatsApp account connected.
+                                                    <a href="/settings?tab=integrations" className="text-green-800 dark:text-green-300 font-semibold ml-1">Connect an account →</a>
                                                 </div>
                                             )}
                                         </div>
 
                                         {/* ── Template Selector ── */}
                                         <div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                                                <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151' }}>Message Template</label>
-                                                <button onClick={() => { setShowWaTemplatePanel(p => !p); setShowWaNewTmplForm(false); }}
-                                                    style={{ background: 'none', border: 'none', fontSize: '11px', fontWeight: 600, color: '#166534', cursor: 'pointer', padding: 0 }}>
+                                            <div className="flex justify-between items-center mb-1">
+                                                <label className="text-[12px] font-semibold text-gray-700 dark:text-gray-300">Message Template</label>
+                                                <button
+                                                    onClick={() => { setShowWaTemplatePanel(p => !p); setShowWaNewTmplForm(false); }}
+                                                    className="text-[11px] font-semibold text-green-800 dark:text-green-400"
+                                                >
                                                     {showWaTemplatePanel ? '✕ Close' : '📋 Browse templates'}
                                                 </button>
                                             </div>
 
-                                            {/* Selected template badge */}
+                                            {/* Selected template badge - Simplified logic remains the same */}
                                             {selectedWaTemplateId && !showWaTemplatePanel && (() => {
                                                 const tmpl = waTemplates.find(t => t.id === selectedWaTemplateId);
                                                 return tmpl ? (
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 10px', background: '#dcfce7', border: '1px solid #86efac', borderRadius: '6px', fontSize: '12px' }}>
-                                                        <span style={{ fontWeight: 600, color: '#166534', flex: 1 }}>✓ {tmpl.name}</span>
-                                                        <span style={{ background: tmpl.channel_type === 'business_api' ? '#dbeafe' : '#f0fdf4', color: tmpl.channel_type === 'business_api' ? '#1d4ed8' : '#166534', border: `1px solid ${tmpl.channel_type === 'business_api' ? '#93c5fd' : '#86efac'}`, borderRadius: '4px', padding: '1px 6px', fontSize: '10px', fontWeight: 600 }}>
-                                                            {tmpl.channel_type === 'business_api' ? 'WABA' : 'Personal'}
-                                                        </span>
-                                                        <button onClick={() => { setSelectedWaTemplateId(''); setWaBody(''); }}
-                                                            style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '12px', padding: 0 }}>✕</button>
+                                                    <div className="flex items-center gap-2 p-2 bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-md text-[12px]">
+                                                        <span className="font-semibold text-green-900 dark:text-green-200 flex-1">✓ {tmpl.name}</span>
+                                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${tmpl.channel_type === 'business_api' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200' : 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 border-green-200'}`}>
+                            {tmpl.channel_type === 'business_api' ? 'WABA' : 'Personal'}
+                        </span>
+                                                        <button onClick={() => { setSelectedWaTemplateId(''); setWaBody(''); }} className="text-gray-500 dark:text-gray-400">✕</button>
                                                     </div>
                                                 ) : null;
                                             })()}
@@ -7580,27 +7406,50 @@ function CheckpointFormInline({
 
                             {/* Voice Agent Config (inline when voice_call selected) */}
                             {nextChannels.includes('voice_call') && (
-                                <div style={{ marginTop: '12px', padding: '14px', background: '#f8faff', border: '1px solid #e0eaf5', borderRadius: '12px' }}>
-                                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#0b1957', marginBottom: '10px' }}>Voice Call Settings</div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                <div className="mt-3 p-4 rounded-xl border bg-blue-50/50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/50">
+                                    <div className="text-[13px] font-bold text-[#0b1957] dark:text-blue-300 mb-3">
+                                        Voice Call Settings
+                                    </div>
+                                    <div className="flex flex-col gap-3">
+                                        {/* AI Agent Selector */}
                                         <div>
-                                            <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '4px', display: 'block' }}>AI Agent</label>
+                                            <label className="text-[12px] font-semibold text-gray-700 dark:text-gray-300 mb-1 block">
+                                                AI Agent
+                                            </label>
                                             {voiceAgents.length > 0 ? (
-                                                <select value={selectedAgentId} onChange={e => {
-                                                    setSelectedAgentId(e.target.value);
-                                                    const agent = voiceAgents.find((a: any) => a.id === e.target.value);
-                                                    if (agent?.voice_id) setSelectedVoiceId(agent.voice_id);
-                                                }} style={{ width: '100%', border: '1px solid #e0eaf5', borderRadius: '8px', padding: '8px 10px', fontSize: '13px', background: '#fff', outline: 'none' }}>
-                                                    {voiceAgents.map((a: any) => <option key={a.id} value={a.id}>{a.name}{a.agent_language ? ` (${a.agent_language})` : ''}</option>)}
+                                                <select
+                                                    value={selectedAgentId}
+                                                    onChange={e => {
+                                                        setSelectedAgentId(e.target.value);
+                                                        const agent = voiceAgents.find((a: any) => a.id === e.target.value);
+                                                        if (agent?.voice_id) setSelectedVoiceId(agent.voice_id);
+                                                    }}
+                                                    className="w-full border border-blue-100 dark:border-blue-900 rounded-lg p-2.5 text-[13px] bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none"
+                                                >
+                                                    {voiceAgents.map((a: any) => (
+                                                        <option key={a.id} value={a.id}>
+                                                            {a.name}{a.agent_language ? ` (${a.agent_language})` : ''}
+                                                        </option>
+                                                    ))}
                                                 </select>
                                             ) : (
-                                                <div style={{ fontSize: '12px', color: '#9ca3af' }}>No agents found — <a href="/voice-agent" style={{ color: '#0b1957' }}>set up an agent</a></div>
+                                                <div className="text-[12px] text-gray-400 dark:text-gray-500">
+                                                    No agents found — <a href="/voice-agent" className="text-[#0b1957] dark:text-blue-400 font-semibold">set up an agent</a>
+                                                </div>
                                             )}
                                         </div>
+
+                                        {/* From Number Selector */}
                                         <div>
-                                            <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '4px', display: 'block' }}>From Number</label>
+                                            <label className="text-[12px] font-semibold text-gray-700 dark:text-gray-300 mb-1 block">
+                                                From Number
+                                            </label>
                                             {voiceNumbers.length > 0 ? (
-                                                <select value={selectedFromNumber} onChange={e => setSelectedFromNumber(e.target.value)} style={{ width: '100%', border: '1px solid #e0eaf5', borderRadius: '8px', padding: '8px 10px', fontSize: '13px', background: '#fff', outline: 'none' }}>
+                                                <select
+                                                    value={selectedFromNumber}
+                                                    onChange={e => setSelectedFromNumber(e.target.value)}
+                                                    className="w-full border border-blue-100 dark:border-blue-900 rounded-lg p-2.5 text-[13px] bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none"
+                                                >
                                                     {voiceNumbers.map((n: any) => {
                                                         const num = n.phone_number || n.number || n.phoneNumber || '';
                                                         const label = num + (n.number_type ? ` (${n.number_type})` : '') + (n.provider ? ` — ${n.provider}` : '');
@@ -7608,7 +7457,9 @@ function CheckpointFormInline({
                                                     })}
                                                 </select>
                                             ) : (
-                                                <div style={{ fontSize: '12px', color: '#9ca3af' }}>No phone numbers found — <a href="/voice-agent" style={{ color: '#0b1957' }}>add a number</a></div>
+                                                <div className="text-[12px] text-gray-400 dark:text-gray-500">
+                                                    No phone numbers found — <a href="/voice-agent" className="text-[#0b1957] dark:text-blue-400 font-semibold">add a number</a>
+                                                </div>
                                             )}
                                         </div>
                                     </div>
@@ -7617,12 +7468,15 @@ function CheckpointFormInline({
 
                             {/* LinkedIn Activity Config (inline when linkedin selected as follow-up channel in step 3) */}
                             {nextChannels.includes('linkedin') && (isInChannelConfiguration ? currentChannelBeingConfigured === 'linkedin' : true) && (
-                                <div style={{ marginTop: '12px', padding: '14px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '12px' }}>
-                                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#1e40af', marginBottom: '10px' }}>💼 LinkedIn Activity Settings</div>
-                                    <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>Select LinkedIn actions (multi-select):</div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-
-                                        {/* ── Option 1: Visit Profile ── */}
+                                <div className="mt-3 p-4 bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/50 rounded-xl">
+                                    <div className="text-[13px] font-bold text-[#1e40af] dark:text-blue-300 mb-3">
+                                        💼 LinkedIn Activity Settings
+                                    </div>
+                                    <div className="text-[12px] text-gray-500 dark:text-gray-400 mb-2">
+                                        Select LinkedIn actions (multi-select):
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        {/* LinkedIn Option Mappings */}
                                         {[
                                             { id: 'profile_view', label: 'Visit profile', desc: 'Visit their LinkedIn profile to warm up the connection', icon: '👁️' },
                                             { id: 'connect', label: 'Send connection request', desc: 'Send a personalised connection request', icon: '🤝' },
@@ -7630,26 +7484,17 @@ function CheckpointFormInline({
                                         ].map((opt) => {
                                             const isSelected = liChannelActions.includes(opt.id);
                                             return (
-                                                <div key={opt.id} style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-                                                    {/* Checkbox row */}
+                                                <div key={opt.id} className="flex flex-col">
                                                     <div
                                                         onClick={() => toggleLiChannelAction(opt.id)}
-                                                        style={{
-                                                            display: 'flex', alignItems: 'flex-start', gap: '10px',
-                                                            padding: '10px 12px',
-                                                            border: `1.5px solid ${isSelected ? '#3b82f6' : '#bfdbfe'}`,
-                                                            borderRadius: isSelected && (opt.id === 'connect' || opt.id === 'message') ? '10px 10px 0 0' : '10px',
-                                                            cursor: 'pointer',
-                                                            background: isSelected ? '#dbeafe' : '#fff',
-                                                            transition: 'all 0.15s',
-                                                        }}>
-                                                        <div style={{
-                                                            width: '18px', height: '18px', borderRadius: '4px', flexShrink: 0, marginTop: '1px',
-                                                            border: `2px solid ${isSelected ? '#3b82f6' : '#bfdbfe'}`,
-                                                            background: isSelected ? '#3b82f6' : 'transparent',
-                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                        }}>
-                                                            {isSelected && <span style={{ color: '#fff', fontSize: '11px', fontWeight: 700 }}>✓</span>}
+                                                        className={`flex items-start gap-2.5 p-3 border transition-all cursor-pointer ${
+                                                            isSelected
+                                                                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 rounded-t-xl'
+                                                                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-xl hover:border-gray-300 dark:hover:border-gray-600'
+                                                        }`}
+                                                    >
+                                                        <div className={`w-5 h-5 rounded flex items-center justify-center shrink-0 border ${isSelected ? 'border-blue-500 bg-blue-500' : 'border-gray-300 dark:border-gray-600'}`}>
+                                                            {isSelected && <span className="text-white text-[11px] font-bold">✓</span>}
                                                         </div>
                                                         <div style={{ flex: 1 }}>
                                                             <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e3a8a' }}>{opt.icon} {opt.label}</div>
@@ -8038,87 +7883,78 @@ function CheckpointFormInline({
 
                     {/* Step 2: Trigger Condition — options are dynamic based on primary channel */}
                     {step === 2 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div className="flex flex-col gap-2">
                             {/* Channel sequence badge */}
-                            <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                            <div className="text-[12px] text-gray-500 dark:text-gray-400 mb-1 flex items-center gap-1.5 flex-wrap">
                                 {nextChannels.map((ch, idx) => {
                                     const label = ch === 'voice_call' ? 'Voice Call' : ch === 'linkedin' ? 'LinkedIn' : ch.charAt(0).toUpperCase() + ch.slice(1);
                                     return (
-                                        <span key={ch} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <span style={{ background: '#e8ecfa', color: '#0b1957', padding: '2px 8px', borderRadius: '99px', fontWeight: 600, fontSize: '11px' }}>{label}</span>
-                                            {idx < nextChannels.length - 1 && <span style={{ color: '#9ca3af' }}>→</span>}
-                                        </span>
+                                        <span key={ch} className="flex items-center gap-1">
+                    <span className="bg-blue-50 dark:bg-blue-900/30 text-[#0b1957] dark:text-blue-300 px-2 py-0.5 rounded-full font-semibold text-[11px]">
+                        {label}
+                    </span>
+                                            {idx < nextChannels.length - 1 && <span className="text-gray-400 dark:text-gray-600">→</span>}
+                </span>
                                     );
                                 })}
                             </div>
-                            {triggerOptions.map((opt, i) => (
-                                <div key={opt.id} onClick={() => setTriggerCondition(opt.id)} style={optStyle(triggerCondition === opt.id)}>
-                                    <div style={numBadge(i + 1, triggerCondition === opt.id)}>{triggerCondition === opt.id ? '✓' : i + 1}</div>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 600 }}>{opt.label}</div>
-                                        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{opt.desc}</div>
+
+                            {/* Trigger Options */}
+                            {triggerOptions.map((opt, i) => {
+                                const isSelected = triggerCondition === opt.id;
+                                return (
+                                    <div
+                                        key={opt.id}
+                                        onClick={() => setTriggerCondition(opt.id)}
+                                        className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer border transition-all ${
+                                            isSelected
+                                                ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20'
+                                                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
+                                        }`}
+                                    >
+                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                                            isSelected
+                                                ? 'bg-blue-600 text-white'
+                                                : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                                        }`}>
+                                            {isSelected ? '✓' : i + 1}
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="font-semibold text-gray-900 dark:text-gray-100">{opt.label}</div>
+                                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{opt.desc}</div>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
 
                     {/* Step 3: Duration */}
                     {step === 3 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {['7', '14', '30', '60', '90'].map((d, i) => {
-                                const dNum = parseInt(d);
-                                const wd = Math.floor(dNum * 5 / 7);
-                                const perDay = Math.min(LINKEDIN_DAILY_LIMIT, Math.max(1, qualifiedLeadCount));
-                                const totalOverDuration = perDay * wd;
-                                const capped = qualifiedLeadCount > LINKEDIN_DAILY_LIMIT;
-                                return (
-                                    <div key={d} onClick={() => setDays(d)} style={optStyle(days === d)}>
-                                        <div style={numBadge(i + 1, days === d)}>{days === d ? '✓' : i + 1}</div>
-                                        <div style={{ flex: 1 }}>
-                                            <div style={{ fontWeight: 600 }}>{d} days</div>
-                                            <div style={{ fontSize: '11px', color: capped ? '#b45309' : '#6b7280', marginTop: '2px' }}>
-                                                {capped
-                                                    ? `Targets ${perDay}/day (capped from ${qualifiedLeadCount}; LinkedIn safe limit), ~${totalOverDuration} new leads over ${wd} working days`
-                                                    : `Targets ${perDay} new leads/day via pagination, ~${totalOverDuration} leads over ${wd} working days`}
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                            <div style={{ marginTop: '8px' }}>
-                                <input type="number" value={days} onChange={e => setDays(e.target.value)}
-                                    placeholder="Or enter custom days..."
-                                    style={{ width: '100%', border: '1px solid #e0eaf5', borderRadius: '10px', padding: '10px 14px', fontSize: '14px', outline: 'none', background: '#fafbff', fontFamily: 'inherit' }}
-                                />
-                            </div>
-                            {/* Warning when prospect-time qualified count exceeds LinkedIn's safe daily limit */}
-                            {exceedsLinkedInLimits && (
-                                <div style={{
-                                    padding: '10px 14px', borderRadius: '10px', fontSize: '12px', lineHeight: 1.5,
-                                    background: '#fef3c7', border: '1px solid #f59e0b', color: '#92400e', marginTop: '4px',
-                                }}>
-                                    <strong>LinkedIn safe-limit cap:</strong> Your ICP threshold matches {qualifiedLeadCount} leads, but LinkedIn's safe daily action limit is {LINKEDIN_DAILY_LIMIT}.
-                                    The campaign will source {safeLeadsPerDay} new qualified leads/day via pagination, totalling ~{safeLeadsPerDay * workingDays} over {workingDays} working days.
+                        <div className="flex flex-col gap-2">
+                            {['7', '14', '30', '60'].map((d) => (
+                                <div key={d} onClick={() => setDays(d)}
+                                     className={`p-3 rounded-xl cursor-pointer border ${days === d ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'}`}>
+                                    <div className="font-semibold text-gray-900 dark:text-gray-100">{d} days</div>
                                 </div>
-                            )}
+                            ))}
+                            <input type="number" value={days} onChange={e => setDays(e.target.value)}
+                                   placeholder="Custom days..."
+                                   className="w-full border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-sm bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none"
+                            />
                         </div>
                     )}
 
                     {/* Step 4: Campaign Name */}
                     {step === 4 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            <div style={{ display: 'flex', gap: '8px' }}>
-                                <input type="text" value={name} onChange={e => setName(e.target.value)}
-                                    placeholder="e.g. Q3 Outreach Strategy"
-                                    style={{ flex: 1, border: '1px solid #e0eaf5', borderRadius: '10px', padding: '10px 14px', fontSize: '14px', outline: 'none', background: '#fafbff', fontFamily: 'inherit', minWidth: 0 }}
-                                />
-                                <button onClick={suggestName} style={{
-                                    background: '#e8ecfa', border: '1.5px solid #0b1957', borderRadius: '10px', padding: '0 14px',
-                                    fontSize: '12px', fontWeight: 700, color: '#0b1957', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
-                                    transition: 'all 0.15s',
-                                }}>✨ Suggest</button>
-                            </div>
+                        <div className="flex gap-2">
+                            <input type="text" value={name} onChange={e => setName(e.target.value)}
+                                   placeholder="Campaign Name"
+                                   className="flex-1 border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-sm bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none"
+                            />
+                            <button onClick={suggestName} className="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-900 dark:text-indigo-300 font-bold rounded-xl text-xs border border-indigo-200 dark:border-indigo-700">
+                                ✨ Suggest
+                            </button>
                         </div>
                     )}
                 </div>
@@ -8132,43 +7968,53 @@ function CheckpointFormInline({
                     const dispTotal = skipsIcp ? 3 : totalSteps;
                     const isFirstStep = skipsIcp ? step <= 1 : step <= 0;
                     return (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '14px', maxWidth: '520px' }}>
-                            <div style={{ fontSize: '13px', color: '#9ca3af', fontWeight: 500 }}>{dispStep}/{dispTotal}</div>
-                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <div className="flex items-center justify-between mt-4 max-w-[520px]">
+                            <div className="text-[13px] font-medium text-gray-400 dark:text-gray-500">
+                                {dispStep}/{dispTotal}
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                {/* Back Button */}
                                 <button
                                     disabled={isFirstStep}
                                     onClick={handleBack}
-                                    style={{
-                                        width: '36px', height: '36px', borderRadius: '10px', border: '1px solid #e5e7eb',
-                                        background: isFirstStep ? '#f9fafb' : '#fff', cursor: isFirstStep ? 'default' : 'pointer',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s',
-                                    }}
+                                    className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-all ${
+                                        isFirstStep
+                                            ? 'bg-gray-50 dark:bg-gray-900 border-gray-100 dark:border-gray-800'
+                                            : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                                    }`}
                                 >
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={isFirstStep ? '#d1d5db' : '#0b1957'} strokeWidth="2.5" strokeLinecap="round"><path d="M15 18l-6-6 6-6" /></svg>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                         stroke={isFirstStep ? '#d1d5db' : '#0b1957'} className="dark:stroke-gray-300"
+                                         strokeWidth="2.5" strokeLinecap="round">
+                                        <path d="M15 18l-6-6 6-6" />
+                                    </svg>
                                 </button>
+
+                                {/* Forward/Launch Button */}
                                 {step < totalSteps - 1 ? (
                                     <button
                                         disabled={!canNext()}
                                         onClick={handleNext}
-                                        style={{
-                                            width: '36px', height: '36px', borderRadius: '10px', border: 'none',
-                                            background: canNext() ? '#0b1957' : '#e5e7eb', cursor: canNext() ? 'pointer' : 'default',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s',
-                                        }}
+                                        className={`w-9 h-9 rounded-xl border-none flex items-center justify-center transition-all ${
+                                            canNext()
+                                                ? 'bg-[#0b1957] dark:bg-blue-600'
+                                                : 'bg-gray-200 dark:bg-gray-700'
+                                        }`}
                                     >
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M9 18l6-6-6-6" /></svg>
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round">
+                                            <path d="M9 18l6-6-6-6" />
+                                        </svg>
                                     </button>
                                 ) : (
                                     <button
                                         disabled={!canNext() || launching}
                                         onClick={launchCampaign}
-                                        style={{
-                                            padding: '8px 20px', borderRadius: '10px', border: 'none',
-                                            background: canNext() && !launching ? '#10b981' : '#e5e7eb',
-                                            color: canNext() && !launching ? '#fff' : '#9ca3af',
-                                            fontSize: '13px', fontWeight: 700, cursor: canNext() && !launching ? 'pointer' : 'default',
-                                            display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.15s',
-                                        }}
+                                        className={`px-5 py-2 rounded-xl border-none flex items-center gap-1.5 transition-all text-[13px] font-bold ${
+                                            canNext() && !launching
+                                                ? 'bg-emerald-500 dark:bg-emerald-600 text-white'
+                                                : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500'
+                                        }`}
                                     >
                                         {launching ? 'Launching...' : 'Launch Campaign'}
                                     </button>
@@ -8182,7 +8028,6 @@ function CheckpointFormInline({
         </div>
     );
 }
-
 /* ═══════════════════════════════════════════════
    TARGETING FORM INLINE (typeform-style in chat)
    ═══════════════════════════════════════════════ */
@@ -8198,10 +8043,10 @@ const TG_QUESTIONS = [
 ];
 
 function TargetingFormInline({
-    step, setStep, nationality, setNationality, experienceLevel, setExperienceLevel,
-    companySize, setCompanySize, companyAge, setCompanyAge, education, setEducation,
-    skills, setSkills, postedRecently, setPostedRecently, currentTargeting, onConfirm, loading, setLoading
-}: {
+                                 step, setStep, nationality, setNationality, experienceLevel, setExperienceLevel,
+                                 companySize, setCompanySize, companyAge, setCompanyAge, education, setEducation,
+                                 skills, setSkills, postedRecently, setPostedRecently, currentTargeting, onConfirm, loading, setLoading
+                             }: {
     step: number; setStep: (s: number) => void;
     nationality: string[]; setNationality: React.Dispatch<React.SetStateAction<string[]>>;
     experienceLevel: string[]; setExperienceLevel: React.Dispatch<React.SetStateAction<string[]>>;
@@ -8225,22 +8070,33 @@ function TargetingFormInline({
     // Sync skillsRaw when the component re-opens with pre-existing skills
     React.useEffect(() => { setSkillsRaw(skills.join(', ')); }, [step === 5]); // eslint-disable-line react-hooks/exhaustive-deps
 
+    // Dark-mode adaptive inline styles using CSS custom variables fallback or clean dark switching
+    const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
+
     const baseBox: React.CSSProperties = {
-        background: '#fff', border: '1px solid #e0eaf5', borderRadius: '16px', padding: '24px',
-        maxWidth: '520px', boxShadow: '0 4px 20px rgba(23,37,96,0.06)', animation: 'fadeUp 0.3s ease both',
+        background: isDark ? '#1f2937' : '#fff',
+        border: isDark ? '1px solid #374151' : '1px solid #e0eaf5',
+        borderRadius: '16px', padding: '24px',
+        maxWidth: '520px',
+        boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.3)' : '0 4px 20px rgba(23,37,96,0.06)',
+        animation: 'fadeUp 0.3s ease both',
     };
 
     const optStyle = (selected: boolean): React.CSSProperties => ({
         display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px',
-        border: `2px solid ${selected ? '#0b1957' : '#e5e7eb'}`, background: selected ? '#e8ecfa' : '#fff',
+        border: `2px solid ${selected ? (isDark ? '#3b82f6' : '#0b1957') : (isDark ? '#4b5563' : '#e5e7eb')}`,
+        background: selected ? (isDark ? 'rgba(59,130,246,0.15)' : '#e8ecfa') : (isDark ? '#111827' : '#fff'),
         borderRadius: '12px', cursor: 'pointer', transition: 'all 0.15s', width: '100%',
-        fontSize: '14px', fontWeight: 500, color: selected ? '#0b1957' : '#374151',
+        fontSize: '14px', fontWeight: 500,
+        color: selected ? (isDark ? '#60a5fa' : '#0b1957') : (isDark ? '#e5e7eb' : '#374151'),
     });
 
     const numBadge = (n: number, selected: boolean): React.CSSProperties => ({
         width: '28px', height: '28px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: '12px', fontWeight: 700, flexShrink: 0, border: `2px solid ${selected ? '#0b1957' : '#d1d5db'}`,
-        background: selected ? '#0b1957' : 'transparent', color: selected ? '#fff' : '#6b7280',
+        fontSize: '12px', fontWeight: 700, flexShrink: 0,
+        border: `2px solid ${selected ? (isDark ? '#3b82f6' : '#0b1957') : (isDark ? '#6b7280' : '#d1d5db')}`,
+        background: selected ? (isDark ? '#3b82f6' : '#0b1957') : 'transparent',
+        color: selected ? '#fff' : '#6b7280',
     });
 
     const toggleSelection = (arr: string[], item: string, setter: any) => {
@@ -8257,44 +8113,60 @@ function TargetingFormInline({
 
     return (
         <div className="adv-bubble adv-bubble-ai fadeUp" style={{ marginBottom: '16px' }}>
-            <div className="adv-ai-avatar adv-ai-avatar-viz"><AgentVisualizer state="idle" size={36} /></div>
+            {/* Dark mode filter applied to the wrapper container of the visualizer */}
+            <div className="adv-ai-avatar adv-ai-avatar-viz dark:brightness-0">
+                <AgentVisualizer state="idle" size={36} />
+            </div>
             <div style={{ flex: 1, maxWidth: '540px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <div className="adv-ai-name">Targeting Filters</div>
-                    <button onClick={() => setStep(-1)}
-                        style={{
-                            background: 'none', border: 'none', cursor: 'pointer', padding: '0',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af'
-                        }}>
+                <div className="flex justify-between items-center mb-2">
+                    <div className="text-[11px] font-bold text-[#0b1957] dark:text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
+                        Targeting Filters
+                    </div>
+                    <button
+                        onClick={() => setStep(-1)}
+                        className="p-0.5 flex items-center justify-center text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 transition-colors"
+                    >
                         <X size={20} />
                     </button>
                 </div>
-                <div style={{ fontSize: '15px', fontWeight: 600, color: '#111827', marginBottom: '16px', lineHeight: 1.4 }}>
+                <div className="text-[15px] font-semibold text-gray-900 dark:text-gray-100 mb-4 leading-relaxed">
                     {q.question}
                 </div>
-
                 <div style={baseBox}>
                     {/* Step 0: Nationality */}
                     {step === 0 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div className="flex flex-col gap-3">
                             <input
-                                type="text" placeholder="Search nationalities..." value={searchQuery}
+                                type="text"
+                                placeholder="Search nationalities..."
+                                value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
-                                style={{
-                                    width: '100%', padding: '10px 12px', border: '1px solid #e5e7eb', borderRadius: '8px',
-                                    fontSize: '14px', marginBottom: '8px'
-                                }}
+                                className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 outline-none focus:border-blue-500 transition-colors"
                             />
-                            <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+
+                            <div className="max-h-[300px] overflow-y-auto space-y-1">
                                 {filteredNationalities.slice(0, 10).map((nat) => {
                                     const selected = nationality.includes(nat);
                                     return (
-                                        <div key={nat} onClick={() => toggleSelection(nationality, nat, setNationality)}
-                                            style={optStyle(selected)}>
-                                            <div style={numBadge(nationality.indexOf(nat) + 1 || 0, selected)}>
-                                                {selected ? '✓' : '○'}
+                                        <div
+                                            key={nat}
+                                            onClick={() => toggleSelection(nationality, nat, setNationality)}
+                                            className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors border ${
+                                                selected
+                                                    ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/40'
+                                                    : 'border-transparent bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                            }`}
+                                        >
+                                            <div className={`w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold border ${
+                                                selected
+                                                    ? 'bg-blue-600 border-blue-600 text-white'
+                                                    : 'border-gray-300 dark:border-gray-500 text-gray-400'
+                                            }`}>
+                                                {selected ? '✓' : ''}
                                             </div>
-                                            <div>{nat}</div>
+                                            <div className="text-[13px] font-medium text-gray-900 dark:text-gray-100">
+                                                {nat}
+                                            </div>
                                         </div>
                                     );
                                 })}
@@ -8309,11 +8181,11 @@ function TargetingFormInline({
                                 const selected = experienceLevel.includes(level);
                                 return (
                                     <div key={level} onClick={() => toggleSelection(experienceLevel, level, setExperienceLevel)}
-                                        style={optStyle(selected)}>
+                                         style={optStyle(selected)}>
                                         <div style={numBadge(experienceLevel.indexOf(level) + 1 || 0, selected)}>
                                             {selected ? '✓' : '○'}
                                         </div>
-                                        <div>{level}</div>
+                                        <div className="text-gray-900 dark:text-gray-100">{level}</div>
                                     </div>
                                 );
                             })}
@@ -8327,11 +8199,11 @@ function TargetingFormInline({
                                 const selected = companySize.includes(size);
                                 return (
                                     <div key={size} onClick={() => toggleSelection(companySize, size, setCompanySize)}
-                                        style={optStyle(selected)}>
+                                         style={optStyle(selected)}>
                                         <div style={numBadge(companySize.indexOf(size) + 1 || 0, selected)}>
                                             {selected ? '✓' : '○'}
                                         </div>
-                                        <div>{size}</div>
+                                        <div className="text-gray-900 dark:text-gray-100">{size}</div>
                                     </div>
                                 );
                             })}
@@ -8345,11 +8217,11 @@ function TargetingFormInline({
                                 const selected = companyAge.includes(age);
                                 return (
                                     <div key={age} onClick={() => toggleSelection(companyAge, age, setCompanyAge)}
-                                        style={optStyle(selected)}>
+                                         style={optStyle(selected)}>
                                         <div style={numBadge(companyAge.indexOf(age) + 1 || 0, selected)}>
                                             {selected ? '✓' : '○'}
                                         </div>
-                                        <div>{age}</div>
+                                        <div className="text-gray-900 dark:text-gray-100">{age}</div>
                                     </div>
                                 );
                             })}
@@ -8358,16 +8230,16 @@ function TargetingFormInline({
 
                     {/* Step 4: Education */}
                     {step === 4 && (
-                        <div className="p-3 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-[#000c3b] flex-shrink-0 flex gap-2">
+                        <div className="p-3 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 flex-shrink-0 flex flex-col gap-2">
                             {EDUCATION_OPTIONS.map((edu) => {
                                 const selected = education.includes(edu);
                                 return (
                                     <div key={edu} onClick={() => toggleSelection(education, edu, setEducation)}
-                                        style={optStyle(selected)}>
+                                         style={optStyle(selected)}>
                                         <div style={numBadge(education.indexOf(edu) + 1 || 0, selected)}>
                                             {selected ? '✓' : '○'}
                                         </div>
-                                        <div>{edu}</div>
+                                        <div className="text-gray-900 dark:text-gray-100">{edu}</div>
                                     </div>
                                 );
                             })}
@@ -8382,12 +8254,14 @@ function TargetingFormInline({
                                 value={skillsRaw}
                                 onChange={e => setSkillsRaw(e.target.value)}
                                 onBlur={e => setSkills(e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+                                className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-200 dark:border-gray-700 focus:border-blue-500"
                                 style={{
-                                    width: '100%', minHeight: '100px', padding: '12px', border: '1px solid #e5e7eb',
-                                    borderRadius: '8px', fontSize: '14px', fontFamily: 'inherit', resize: 'vertical'
+                                    width: '100%', minHeight: '100px', padding: '12px',
+                                    borderRadius: '8px', fontSize: '14px', fontFamily: 'inherit', resize: 'vertical',
+                                    outline: 'none', borderStyle: 'solid', borderWidth: '1px'
                                 }}
                             />
-                            <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '6px' }}>
+                            <div className="text-gray-400 dark:text-gray-500" style={{ fontSize: '11px', marginTop: '6px' }}>
                                 Separate multiple skills with commas — e.g. <em>Gas Detector, HVAC Controls, BMS</em>
                             </div>
                         </div>
@@ -8402,16 +8276,16 @@ function TargetingFormInline({
                                 style={{
                                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                                     padding: '16px 18px', borderRadius: '12px', cursor: 'pointer',
-                                    border: `2px solid ${postedRecently ? '#0b1957' : '#e5e7eb'}`,
-                                    background: postedRecently ? '#e8ecfa' : '#fff',
+                                    border: `2px solid ${postedRecently ? (isDark ? '#3b82f6' : '#0b1957') : (isDark ? '#4b5563' : '#e5e7eb')}`,
+                                    background: postedRecently ? (isDark ? 'rgba(59,130,246,0.15)' : '#e8ecfa') : (isDark ? '#111827' : '#fff'),
                                     transition: 'all 0.15s',
                                 }}
                             >
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                    <div style={{ fontSize: '14px', fontWeight: 600, color: postedRecently ? '#0b1957' : '#111827' }}>
+                                    <div style={{ fontSize: '14px', fontWeight: 600, color: postedRecently ? (isDark ? '#60a5fa' : '#0b1957') : (isDark ? '#f3f4f6' : '#111827') }}>
                                         📢 Posted on LinkedIn in last 3 months
                                     </div>
-                                    <div style={{ fontSize: '12px', color: '#6b7280', lineHeight: 1.4 }}>
+                                    <div className="text-gray-500 dark:text-gray-400" style={{ fontSize: '12px', lineHeight: 1.4 }}>
                                         Only show leads who have been active — posted, shared, or commented recently.
                                         <br />
                                         <span style={{ color: '#f59e0b', fontWeight: 500 }}>⚠ Sales Navigator only</span> — ignored for Classic API accounts.
@@ -8420,7 +8294,7 @@ function TargetingFormInline({
                                 {/* Toggle switch */}
                                 <div style={{
                                     width: '44px', height: '24px', borderRadius: '12px', flexShrink: 0, marginLeft: '16px',
-                                    background: postedRecently ? '#0b1957' : '#d1d5db', transition: 'background 0.2s', position: 'relative',
+                                    background: postedRecently ? (isDark ? '#3b82f6' : '#0b1957') : '#d1d5db', transition: 'background 0.2s', position: 'relative',
                                 }}>
                                     <div style={{
                                         width: '18px', height: '18px', borderRadius: '50%', background: '#fff',
@@ -8430,7 +8304,7 @@ function TargetingFormInline({
                                     }} />
                                 </div>
                             </div>
-                            <div style={{ fontSize: '11px', color: '#9ca3af', lineHeight: 1.5 }}>
+                            <div className="text-gray-400 dark:text-gray-500" style={{ fontSize: '11px', lineHeight: 1.5 }}>
                                 This filter is <strong>not saved</strong> between sessions — you must re-enable it each time you want it applied. It will not be auto-applied to campaigns or prospecting.
                             </div>
                         </div>
@@ -8438,7 +8312,7 @@ function TargetingFormInline({
 
                     {/* Step 7: Review */}
                     {step === 7 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        <div className="text-gray-900 dark:text-gray-100" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                             {nationality.length > 0 && <div><strong>Nationalities:</strong> {nationality.join(', ')}</div>}
                             {experienceLevel.length > 0 && <div><strong>Experience Level:</strong> {experienceLevel.join(', ')}</div>}
                             {companySize.length > 0 && <div><strong>Company Size:</strong> {companySize.join(', ')}</div>}
@@ -8454,12 +8328,13 @@ function TargetingFormInline({
 
                     {/* Skip Button - Inside the box */}
                     {step < totalSteps - 1 && (
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e5e7eb' }}>
+                        <div className="border-t border-gray-200 dark:border-gray-700" style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px', paddingTop: '12px' }}>
                             <button onClick={() => setStep(step + 1)}
-                                style={{
-                                    padding: '8px 14px', background: '#f9fafb', border: '1px solid #e5e7eb',
-                                    borderRadius: '8px', fontSize: '13px', fontWeight: 600, color: '#6b7280', cursor: 'pointer'
-                                }}>
+                                    className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                    style={{
+                                        padding: '8px 14px', borderStyle: 'solid', borderWidth: '1px',
+                                        borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer'
+                                    }}>
                                 Skip this
                             </button>
                         </div>
@@ -8468,47 +8343,47 @@ function TargetingFormInline({
 
                 {/* Navigation Buttons */}
                 <div style={{ display: 'flex', gap: '12px', marginTop: '16px', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                    <div className="text-gray-500 dark:text-gray-400" style={{ fontSize: '12px' }}>
                         Step {step + 1} of {totalSteps}
                     </div>
                     <div style={{ display: 'flex', gap: '10px' }}>
                         {step > 0 && (
                             <button onClick={() => setStep(step - 1)}
-                                style={{
-                                    padding: '10px 14px', background: '#f3f4f6', border: '1px solid #e5e7eb',
-                                    borderRadius: '10px', fontSize: '13px', fontWeight: 600, color: '#374151', cursor: 'pointer',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                }}>
+                                    className="bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300"
+                                    style={{
+                                        padding: '10px 14px', borderStyle: 'solid', borderWidth: '1px',
+                                        borderRadius: '10px', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                    }}>
                                 <ChevronLeft size={18} />
                             </button>
                         )}
                         {step < totalSteps - 1 && (
                             <button onClick={() => setStep(step + 1)}
-                                style={{
-                                    padding: '10px 14px', background: '#0b1957', color: '#fff', border: 'none',
-                                    borderRadius: '10px', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                }}>
+                                    className="bg-[#0b1957] dark:bg-blue-600 text-white"
+                                    style={{
+                                        padding: '10px 14px', border: 'none',
+                                        borderRadius: '10px', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                    }}>
                                 <ChevronRight size={18} />
                             </button>
                         )}
                         {step === totalSteps - 1 && (
                             <button onClick={onConfirm} disabled={loading}
-                                style={{
-                                    padding: '8px 16px', background: loading ? '#d1d5db' : '#10b981', color: '#fff', border: 'none',
-                                    borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: loading ? 'default' : 'pointer'
-                                }}>
+                                    style={{
+                                        padding: '8px 16px', background: loading ? '#d1d5db' : '#10b981', color: '#fff', border: 'none',
+                                        borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: loading ? 'default' : 'pointer'
+                                    }}>
                                 {loading ? 'Refining...' : 'Confirm & Refine'}
                             </button>
                         )}
                     </div>
                 </div>
             </div>
-
         </div>
     );
 }
-
 /* ═══════════════════════════════════════════════
    AI MESSAGE CONTEXT PANEL
    Inline expandable panel for AI Generate inputs.
@@ -9223,7 +9098,11 @@ const css = `
             .dark .adv-chat-body { background: #000724; }
             .dark .adv-chat-left { background: #000724; }
             .dark .adv-chat-left-empty .adv-chat-input-wrap { background: transparent; }
-
+            /* ── Chat Input Wrap ── */
+            .dark .adv-chat-input-wrap { 
+                background: #000724; 
+                border-top: 1px solid #000724; /* Prevents a light line appearing above the input */
+            }
             /* Text & Titles */
             .dark .adv-title { color: #ffffff; }
             .dark .adv-gemini-title { color: #ffffff; }
@@ -9275,11 +9154,22 @@ const css = `
 
             /* CHAT BUBBLES & MESSAGES */
             .dark .adv-user-msg { background: #2563eb; color: #ffffff; box-shadow: 0 2px 14px rgba(37, 99, 235, 0.3); }
-            .dark .adv-ai-avatar { background: linear-gradient(135deg, #2563eb, #1e40af); box-shadow: 0 3px 10px rgba(37, 99, 235, 0.3); }
+ 
             .dark .adv-ai-name { color: #60a5fa; }
             .dark .adv-ai-text { color: #e5e7eb; }
             .dark .adv-ai-h3 { color: #f3f4f6; }
-            .dark .adv-ai-bullet-dot { background: #2B7CFF; }
+            .dark .adv-ai-bullet {
+                color: #e5e7eb; /* Soft light grey text for readability */
+            }
+            .dark .adv-ai-bullet-dot {
+                background: #60a5fa; /* Lighter blue to pop against dark background */
+                opacity: 1;
+            }
+            /* Dark Mode Override */
+            .dark .adv-ai-text strong {
+                color: #ffffff; /* Pure white for maximum clarity against the dark chat background */
+                font-weight: 600;
+            }
             .dark .adv-ai-num-badge { background: linear-gradient(135deg, #253456, #1A2A43); color: #60a5fa; }
 
             /* LEADS PANEL */
@@ -9349,8 +9239,149 @@ const css = `
             /* MISC ELEMENTS */
             .dark .adv-gemini-sparkle { color: #2B7CFF; }
             .dark .adv-web-searched { background: #1A2A43; border-color: #000724; color: #7a8ba3; }
-            .dark .adv-thinking-wrap { color: #60a5fa; }
+            .dark .adv-thinking-wrap,
+            .dark .adv-thinking-word {
+              color: #ffffff !important;
+            }
             .dark .adv-gemini-logo { filter: brightness(0) invert(1); }
             :root { --header-start: #f0f3ff; --header-end: #e8ecfa; }
             .dark { --header-start: #000c3b; --header-end: #000724; }
+                        
+                        /* Update these in your existing css constant */
+            .dark .adv-attach-menu {
+                background: #000724;
+                border: 1px solid #1e293b;
+                box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+            }
+            
+            .dark .adv-attach-item:hover {
+                background: #1e293b;
+            }
+            
+            .dark .adv-attach-label {
+                color: #f3f4f6;
+            }
+            
+            .dark .adv-attach-sub {
+                color: #94a3b8;
+            }
+            
+            .dark .adv-attach-divider {
+                background: #1e293b;
+            }
+            /* Apply these styles in your global CSS or inside your dark mode media query */
+            .dark .adv-ai-body {
+                background-color: #000724; /* Your theme's dark background */
+                border-color: #1e293b;     /* A dark border to separate the AI body */
+                color: #e5e7eb;            /* Light grey text for better readability */
+            }
+            /* ── ADDITIONAL DARK MODE REFINEMENTS ── */
+            
+            /* 1. Improved Form Inputs for Dark Mode */
+            .dark .adv-ta,
+            .dark .adv-chat-ta {
+                color: #f9fafb !important;
+            }
+            
+            .dark .adv-ta::placeholder,
+            .dark .adv-chat-ta::placeholder {
+                color: #64748b !important;
+            }
+            
+            /* 2. Scrollbar Styling (So it doesn't stand out on dark themes) */
+            .dark ::-webkit-scrollbar {
+                width: 8px;
+                height: 8px;
+            }
+            .dark ::-webkit-scrollbar-track {
+                background: #000724;
+            }
+            .dark ::-webkit-scrollbar-thumb {
+                background: #1e293b;
+                border-radius: 4px;
+            }
+            .dark ::-webkit-scrollbar-thumb:hover {
+                background: #334155;
+            }
+            
+            /* 3. Markdown/Rich Text Link Cleanup */
+            .dark .adv-ai-text a {
+                color: #60a5fa !important;
+                text-decoration: underline;
+                text-decoration-color: rgba(96, 165, 250, 0.3);
+            }
+            .dark .adv-ai-text a:hover {
+                color: #93c5fd !important;
+            }
+            
+            /* 4. Enhanced Buttons and Dividers */
+            .dark .adv-ai-hr {
+                border-top: 1px solid #1e293b;
+            }
+            
+            .dark .adv-chat-input-foot {
+                border-top: 1px solid #1e293b !important;
+            }
+            
+            /* 5. Tooltip & Popover Fixes */
+            .dark .journey-tip {
+                background: #1e293b !important;
+                color: #f1f5f9 !important;
+                border: 1px solid #334155 !important;
+            }
+            .dark .journey-tip div {
+                border-top-color: #1e293b !important;
+            }
+            
+            /* 6. Specifically fix the "Source" link block for better contrast */
+            .dark .adv-ai-body a[target="_blank"] {
+                background: #0f172a !important;
+                border: 1px solid #1e293b !important;
+                color: #94a3b8 !important;
+            }
+            .dark .adv-ai-body a[target="_blank"]:hover {
+                background: #1e293b !important;
+                color: #f8fafc !important;
+            }
+            
+            /* 7. Ensure Code Blocks are readable in dark mode */
+            .dark .adv-ai-text code {
+                background: #1e293b !important;
+                color: #cbd5e1 !important;
+            }
+            
+            /* 8. Fix for the "Suggested Journey" labels */
+            .dark .adv-ai-name {
+                color: #60a5fa !important;
+            }
+            
+            /* --- Dark Mode (Matches image_58975a.png) --- */
+.dark .adv-ai-avatar {
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0px;
+}
+
+/* Forces the inner icon to turn pure white in dark mode */
+.dark .adv-ai-avatar-viz svg,
+.dark .adv-ai-avatar-viz img,
+.dark .adv-ai-avatar-viz * {
+  fill: #ffffff !important;
+  stroke: #ffffff !important;
+  color: #ffffff !important;
+}
+
+/* When dark mode is active, completely strip the wrapper and force the graphic to white */
+.dark .agent-avatar-wrapper {
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+/* This forces every possible layer inside the Visualizer (SVGs, paths, divs, text) to turn white */
+.dark .agent-avatar-wrapper * {
+  fill: #ffffff !important;
+  stroke: #ffffff !important;
+  color: #ffffff !important;
+}
             `;
