@@ -62,6 +62,7 @@ interface ConversationContextPanelProps {
   backendChannel?: 'personal' | 'waba';
   /** Force the panel to open on a specific tab */
   defaultTab?: 'assignment' | 'notes' | 'comments';
+  onFavoriteChat?: (id?: string) => void;
 }
 
 const tagColors: Record<ContactTag, string> = {
@@ -107,6 +108,7 @@ export const ConversationContextPanel = memo(function ConversationContextPanel({
   onClose,
   backendChannel = 'waba',
   defaultTab = 'assignment',
+  onFavoriteChat,
 }: ConversationContextPanelProps) {
   const { contact, channel, createdAt } = conversation;
   const [newComment, setNewComment] = useState('');
@@ -692,7 +694,7 @@ export const ConversationContextPanel = memo(function ConversationContextPanel({
             )}
             <div className="flex items-center gap-3 text-sm text-muted-foreground">
               <Clock className="h-4 w-4 flex-shrink-0" />
-              <span>Conversation started {formatDistanceToNow(createdAt, { addSuffix: true })}</span>
+              <span>Conversation started {createdAt ? formatDistanceToNow(new Date(createdAt), { addSuffix: true }) : 'recently'}</span>
             </div>
           </div>
 
@@ -1199,7 +1201,7 @@ export const ConversationContextPanel = memo(function ConversationContextPanel({
 
         {/* Favourites & lists */}
         <div className="py-2 border-t border-border dark:border-[#222d34]">
-          <div className="flex items-center px-6 py-3 cursor-pointer hover:bg-muted/50 dark:hover:bg-[#202c33] transition-colors" onClick={handleFavorite}>
+          <div className="flex items-center px-6 py-3 cursor-pointer hover:bg-muted/50 dark:hover:bg-[#202c33] transition-colors" onClick={() => onFavoriteChat?.(conversation.id)}>
             <Heart className="w-5 h-5 text-muted-foreground dark:text-white mr-6" />
             <span className="text-[16px] text-foreground dark:text-white flex-1">Add to favourites</span>
           </div>
