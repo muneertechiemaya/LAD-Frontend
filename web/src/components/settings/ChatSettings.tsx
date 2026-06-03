@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import KnowledgeBaseManager from './KnowledgeBaseManager';
 import dynamic from 'next/dynamic';
+import { fetchWithTenant } from '@/lib/fetch-with-tenant';
 
 // AIPlayground is a heavy client-only component (framer-motion, refs, browser
 // APIs). Loading it dynamically with ssr:false keeps it out of the SSR bundle
@@ -142,7 +143,7 @@ const APPROVED_TEMPLATES_API = '/api/whatsapp-conversations/followup-settings/te
 
 async function fetchApprovedTemplates(): Promise<WhatsAppApprovedTemplate[]> {
   try {
-    const res = await fetch(APPROVED_TEMPLATES_API);
+    const res = await fetchWithTenant(APPROVED_TEMPLATES_API);
     if (!res.ok) return [];
     const data = await res.json();
     if (!data?.success) return [];
@@ -157,7 +158,7 @@ async function fetchApprovedTemplates(): Promise<WhatsAppApprovedTemplate[]> {
 
 async function fetchShareableAssets(): Promise<ShareableAsset[]> {
   try {
-    const res = await fetch(SHAREABLE_ASSETS_API);
+    const res = await fetchWithTenant(SHAREABLE_ASSETS_API);
     if (!res.ok) return [];
     const data = await res.json();
     return Array.isArray(data?.assets) ? data.assets : [];
@@ -168,7 +169,7 @@ async function fetchShareableAssets(): Promise<ShareableAsset[]> {
 
 async function saveShareableAssets(assets: ShareableAsset[]): Promise<boolean> {
   try {
-    const res = await fetch(SHAREABLE_ASSETS_API, {
+    const res = await fetchWithTenant(SHAREABLE_ASSETS_API, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ assets }),
@@ -181,7 +182,7 @@ async function saveShareableAssets(assets: ShareableAsset[]): Promise<boolean> {
 
 async function fetchFollowupConfig(): Promise<FollowupTimingConfig> {
   try {
-    const res = await fetch(FOLLOWUP_CONFIG_API);
+    const res = await fetchWithTenant(FOLLOWUP_CONFIG_API);
     if (!res.ok) return DEFAULT_FOLLOWUP_CONFIG;
     const data = await res.json();
     if (!data.success) return DEFAULT_FOLLOWUP_CONFIG;
@@ -209,7 +210,7 @@ async function fetchFollowupConfig(): Promise<FollowupTimingConfig> {
 
 async function updateFollowupConfig(config: FollowupTimingConfig): Promise<boolean> {
   try {
-    const res = await fetch(FOLLOWUP_CONFIG_API, {
+    const res = await fetchWithTenant(FOLLOWUP_CONFIG_API, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(config),
@@ -222,7 +223,7 @@ async function updateFollowupConfig(config: FollowupTimingConfig): Promise<boole
 }
 
 async function fetchPrompts(): Promise<Prompt[]> {
-  const res = await fetch(PROMPTS_API);
+  const res = await fetchWithTenant(PROMPTS_API);
   const data = await res.json();
   // Node.js backend returns { success, prompts: [] }; Python returns { success, data: [] }
   const list = data.prompts ?? data.data ?? [];
@@ -230,7 +231,7 @@ async function fetchPrompts(): Promise<Prompt[]> {
 }
 
 async function updatePrompt(name: string, updates: Partial<Prompt>): Promise<boolean> {
-  const res = await fetch(`${PROMPTS_API}/${encodeURIComponent(name)}`, {
+  const res = await fetchWithTenant(`${PROMPTS_API}/${encodeURIComponent(name)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(updates),
@@ -240,7 +241,7 @@ async function updatePrompt(name: string, updates: Partial<Prompt>): Promise<boo
 }
 
 async function createPrompt(prompt: { name: string; prompt_text: string; channel: string }): Promise<boolean> {
-  const res = await fetch(PROMPTS_API, {
+  const res = await fetchWithTenant(PROMPTS_API, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(prompt),
@@ -250,7 +251,7 @@ async function createPrompt(prompt: { name: string; prompt_text: string; channel
 }
 
 async function deletePrompt(name: string): Promise<boolean> {
-  const res = await fetch(`${PROMPTS_API}/${encodeURIComponent(name)}`, {
+  const res = await fetchWithTenant(`${PROMPTS_API}/${encodeURIComponent(name)}`, {
     method: 'DELETE',
   });
   const data = await res.json();
@@ -269,8 +270,8 @@ const DEFAULT_CHAT_SETTINGS: ChatSettingsConfig = {
 async function fetchChatSettings(): Promise<ChatSettingsConfig> {
   // Load personal WA settings and WABA settings in parallel
   const [personalRes, wabaRes] = await Promise.allSettled([
-    fetch(`${SETTINGS_API}?channel=personal`),
-    fetch(`${SETTINGS_API}?channel=waba`),
+    fetchWithTenant(`${SETTINGS_API}?channel=personal`),
+    fetchWithTenant(`${SETTINGS_API}?channel=waba`),
   ]);
 
   // Personal WA
@@ -306,7 +307,7 @@ async function fetchChatSettings(): Promise<ChatSettingsConfig> {
 
 async function updateChatSettings(updates: Partial<ChatSettingsConfig>): Promise<boolean> {
   try {
-    const res = await fetch(SETTINGS_API, {
+    const res = await fetchWithTenant(SETTINGS_API, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates),
@@ -503,7 +504,12 @@ export function ChatSettings() {
       .finally(() => setLoading(false));
   }, []);
 
-  const filteredPrompts = prompts.filter((p) => (p.channel || 'waba') === activeChannel);
+  // Normalize legacy/ambiguous prompt channels to the canonical tab id so prompts
+  // aren't hidden. Older WABA-agent prompts are tagged 'whatsapp'/'business_whatsapp'
+  // (there is no such tab) — treat them as 'waba'. Personal WA stays 'personal_whatsapp'.
+  const normalizePromptChannel = (c?: string | null): string =>
+    !c || c === 'whatsapp' || c === 'business_whatsapp' ? 'waba' : c;
+  const filteredPrompts = prompts.filter((p) => normalizePromptChannel(p.channel) === activeChannel);
 
   const showToast = useCallback((message: string, type: 'success' | 'error') => {
     setToast({ message, type });
@@ -678,7 +684,7 @@ export function ChatSettings() {
     // WABA → PATCH (Python WABA service)
     let wabaOk = false;
     try {
-      const res = await fetch(`${SETTINGS_API}?channel=waba`, {
+      const res = await fetchWithTenant(`${SETTINGS_API}?channel=waba`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ typing_indicator: chatSettings.waba_typing_indicator }),
@@ -763,7 +769,7 @@ export function ChatSettings() {
   const handleSaveWebScraping = useCallback(async () => {
     setWebScrapingSaving(true);
     try {
-      const res = await fetch('/api/whatsapp-conversations/chat-settings/web-scraping', {
+      const res = await fetchWithTenant('/api/whatsapp-conversations/chat-settings/web-scraping', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -816,7 +822,7 @@ export function ChatSettings() {
     setWebChatBusy(true);
 
     try {
-      const res = await fetch(
+      const res = await fetchWithTenant(
         '/api/whatsapp-conversations/chat-settings/web-scraping/test-chat',
         {
           method: 'POST',
