@@ -303,7 +303,9 @@ export const IntegrationsSettings: React.FC = () => {
           const accounts = Array.isArray(data?.accounts) ? data.accounts : [];
           const connected = accounts.some((a: any) => a.status === 'connected');
           setStatus('whatsapp-personal', connected ? 'connected' : 'disconnected');
-          if (connected) try { localStorage.setItem('whatsappChannel', 'personal'); } catch {}
+          // NOTE: do NOT write localStorage.whatsappChannel here — it globally biased
+          // proxyClient routing to 'personal' for every unspecified call (sending WABA
+          // requests to the personal/WAPA service). Channel is now per-request/explicit.
           // Load the WAPA "AI Replies" master switch for the connected-account pill.
           // WAPA returns { success, settings: { ai_enabled, ... } }. Default ON.
           if (connected) {
