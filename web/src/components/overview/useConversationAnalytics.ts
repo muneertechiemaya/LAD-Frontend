@@ -5,9 +5,11 @@
  * conversation analytics (funnel + daily-volume spike + unconverted-topic
  * segments), served by LAD-Master-Agent via /api/analytics/overview.
  *
- * Two widgets (ConversationFunnel + ReengageTopics) read the SAME payload, so
- * this dedupes them onto ONE in-flight request and one cache entry per window,
- * with a tiny pub/sub so a refresh in one widget updates the other.
+ * The funnel + spike are fast SQL; topic extraction adds an LLM round-trip. So
+ * the funnel widget fetches with includeTopics=false (instant, and still renders
+ * if the LLM is down) while the Re-engage widget fetches topics separately. Each
+ * (window, includeTopics) pair is its own cache entry, deduped onto one in-flight
+ * request with a tiny pub/sub so a refresh updates every subscriber.
  */
 import { useCallback, useEffect, useState } from 'react';
 
@@ -71,13 +73,16 @@ interface Entry {
   promise: Promise<void> | null;
 }
 
-const entries = new Map<number, Entry>();
+const entries = new Map<string, Entry>();
 
-function getEntry(windowDays: number): Entry {
-  let e = entries.get(windowDays);
+const keyOf = (windowDays: number, includeTopics: boolean) =>
+  `${windowDays}:${includeTopics ? 1 : 0}`;
+
+function getEntry(key: string): Entry {
+  let e = entries.get(key);
   if (!e) {
     e = { state: { data: null, loading: false, error: null }, listeners: new Set(), promise: null };
-    entries.set(windowDays, e);
+    entries.set(key, e);
   }
   return e;
 }
@@ -87,17 +92,15 @@ function setState(e: Entry, next: State) {
   e.listeners.forEach((l) => l(next));
 }
 
-function load(windowDays: number, force: boolean): Promise<void> {
-  const e = getEntry(windowDays);
+function load(windowDays: number, includeTopics: boolean, force: boolean): Promise<void> {
+  const e = getEntry(keyOf(windowDays, includeTopics));
   if (e.promise && !force) return e.promise;
   if (e.state.data && !force) return Promise.resolve();
 
   setState(e, { ...e.state, loading: true, error: null });
 
-  const p = fetchWithTenant(`/api/analytics/overview?window_days=${windowDays}`, {
-    method: 'GET',
-    cache: 'no-store',
-  })
+  const url = `/api/analytics/overview?window_days=${windowDays}&include_topics=${includeTopics ? 1 : 0}`;
+  const p = fetchWithTenant(url, { method: 'GET', cache: 'no-store' })
     .then(async (r) => {
       const body = await r.json().catch(() => ({}));
       if (!r.ok) {
@@ -123,21 +126,22 @@ function load(windowDays: number, force: boolean): Promise<void> {
   return p;
 }
 
-export function useConversationAnalytics(windowDays = 30) {
-  const [state, setLocal] = useState<State>(() => getEntry(windowDays).state);
+export function useConversationAnalytics(windowDays = 30, includeTopics = true) {
+  const key = keyOf(windowDays, includeTopics);
+  const [state, setLocal] = useState<State>(() => getEntry(key).state);
 
   useEffect(() => {
-    const e = getEntry(windowDays);
+    const e = getEntry(key);
     setLocal(e.state);
     const listener = (s: State) => setLocal(s);
     e.listeners.add(listener);
-    void load(windowDays, false);
+    void load(windowDays, includeTopics, false);
     return () => {
       e.listeners.delete(listener);
     };
-  }, [windowDays]);
+  }, [key, windowDays, includeTopics]);
 
-  const refresh = useCallback(() => load(windowDays, true), [windowDays]);
+  const refresh = useCallback(() => load(windowDays, includeTopics, true), [windowDays, includeTopics]);
 
   return { ...state, refresh };
 }

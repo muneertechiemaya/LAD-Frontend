@@ -27,7 +27,9 @@ const fmtDay = (iso?: string) => {
 const STEP_COLORS = ['bg-blue-500', 'bg-indigo-500', 'bg-violet-500', 'bg-emerald-500'];
 
 export const ConversationFunnelWidget: React.FC<{ id: string }> = ({ id }) => {
-  const { data, loading, error, refresh } = useConversationAnalytics(WINDOW_DAYS);
+  // Funnel + spike are fast SQL — fetch WITHOUT topics so this renders instantly
+  // (and still works if topic extraction / the LLM is unavailable).
+  const { data, loading, error, refresh } = useConversationAnalytics(WINDOW_DAYS, false);
 
   const header = (
     <button

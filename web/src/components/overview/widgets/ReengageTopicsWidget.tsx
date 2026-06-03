@@ -35,7 +35,9 @@ function toMembers(topic: TopicSegment) {
 }
 
 export const ReengageTopicsWidget: React.FC<{ id: string }> = ({ id }) => {
-  const { data, loading, error, refresh } = useConversationAnalytics(WINDOW_DAYS);
+  // Topics need the LLM round-trip — fetched separately from the funnel so the
+  // funnel stays instant; this widget shows its own skeleton while labels resolve.
+  const { data, loading, error, refresh } = useConversationAnalytics(WINDOW_DAYS, true);
   const [active, setActive] = useState<TopicSegment | null>(null);
   const [sent, setSent] = useState<{ topic: string; total: number } | null>(null);
 
