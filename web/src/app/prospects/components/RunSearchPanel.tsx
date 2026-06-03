@@ -53,8 +53,8 @@ export function RunSearchPanel({ onRunComplete }: RunSearchPanelProps) {
             Discover new prospects
           </h2>
           <p className="mt-0.5 text-sm text-gray-500">
-            Runs Apollo + Sales Navigator using your active ICP, dedupes, and
-            emits matches to the Master Agent. Cost shown below per run.{' '}
+            Finds new prospects that match your active ICP and adds them to
+            your CRM. Cost shown below per run.{' '}
             <Link
               href="/settings/icp-search-strategy"
               className="text-blue-600 underline hover:no-underline"
@@ -108,7 +108,7 @@ function RunningStrip() {
   return (
     <div className="border-t border-gray-200 bg-blue-50 px-5 py-3 text-sm text-blue-700">
       <span className="inline-block animate-pulse">●</span>{' '}
-      Calling Apollo + Sales Navigator… typically 3–8s.
+      Finding prospects… typically 3–8s.
     </div>
   );
 }
@@ -192,15 +192,14 @@ function ResultStrip({
 
       {count > 0 && (
         <p className="mt-2 text-xs text-gray-600">
-          New prospects will appear in the table below within seconds as the
-          Master Agent ingests the fit events.
+          New prospects will appear in the table below within seconds.
         </p>
       )}
 
       {(result.emitErrors ?? 0) > 0 && (
         <p className="mt-1 text-xs text-amber-700">
-          ⚠ {result.emitErrors} fit event{result.emitErrors === 1 ? '' : 's'}{' '}
-          failed to reach the Master Agent. They will retry on the next run.
+          ⚠ {result.emitErrors} prospect{result.emitErrors === 1 ? '' : 's'}{' '}
+          could not be saved this run. They will retry on the next run.
         </p>
       )}
     </div>

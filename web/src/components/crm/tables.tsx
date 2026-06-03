@@ -358,9 +358,12 @@ function NameCell({ row, withCompany = false }: { row: CrmContact; withCompany?:
   return (
     <div className="flex items-center gap-2.5 min-w-0">
       <CrmAvatar name={row.name} initials={row.initials} />
-      <div className="min-w-0">
+      <div className="min-w-0 max-w-[260px] sm:max-w-[320px]">
         <p className="text-[12.5px] font-semibold text-[#172560] dark:text-white truncate">{row.name}</p>
-        <p className="text-[11px] text-slate-500 dark:text-[#7a8ba3] truncate">
+        <p
+          className="text-[11px] text-slate-500 dark:text-[#7a8ba3] truncate"
+          title={withCompany ? `${row.title} · ${row.company}` : row.title}
+        >
           {withCompany ? `${row.title} · ${row.company}` : row.title}
         </p>
       </div>
