@@ -954,16 +954,16 @@ export function CallOptions(props: CallOptionsProps) {
       <CardContent className="space-y-5">
         <div className="flex gap-3">
           <Button
-            variant={!useCsv ? "default" : "outline"}
-            className="flex-1 h-12 rounded-[10px]"
-            onClick={() => onUseCsvChange(false)}
+              variant={!useCsv ? "default" : "outline"}
+              className="flex-1 h-12 rounded-[10px] transition-colors dark:border-[#262831] dark:text-white dark:hover:bg-[#1a2a43] dark:hover:text-white"
+              onClick={() => onUseCsvChange(false)}
           >
             Single Call
           </Button>
           <Button
-            variant={useCsv ? "default" : "outline"}
-            className="flex-1 h-12 rounded-[10px]"
-            onClick={() => onUseCsvChange(true)}
+              variant={useCsv ? "default" : "outline"}
+              className="flex-1 h-12 rounded-[10px] transition-colors dark:border-[#262831] dark:text-white dark:hover:bg-[#1a2a43] dark:hover:text-white"
+              onClick={() => onUseCsvChange(true)}
           >
             Bulk List
           </Button>
