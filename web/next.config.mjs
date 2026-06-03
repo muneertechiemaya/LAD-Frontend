@@ -1,8 +1,10 @@
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const require = createRequire(import.meta.url);
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -25,17 +27,7 @@ const nextConfig = {
       '@tanstack/react-query': path.resolve(__dirname, '../node_modules/@tanstack/react-query'),
       '@tanstack/query-core': path.resolve(__dirname, '../node_modules/@tanstack/query-core'),
       'chart.js': path.resolve(__dirname, 'node_modules/chart.js/dist/chart.js'),
-      '@lad/frontend-features': path.resolve(__dirname, '../sdk'),
-      '@lad/frontend-features/ai-icp-assistant': path.resolve(__dirname, '../sdk/features/ai-icp-assistant'),
-      '@lad/frontend-features/billing': path.resolve(__dirname, '../sdk/features/billing'),
-      '@lad/frontend-features/campaigns': path.resolve(__dirname, '../sdk/features/campaigns'),
-      '@lad/sdk/features/ai-icp-assistant': path.resolve(__dirname, '../sdk/features/ai-icp-assistant'),
-      '@lad/frontend-features/conversations': path.resolve(__dirname, '../sdk/features/conversations'),
-      '@lad/frontend-features/overview': path.resolve(__dirname, '../sdk/features/overview'),
-      '@lad/frontend-features/voice-agent': path.resolve(__dirname, '../sdk/features/voice-agent'),
-      '@lad/frontend-features/deals-pipeline': path.resolve(__dirname, '../sdk/features/deals-pipeline'),
-      '@lad/frontend-features/apollo-leads': path.resolve(__dirname, '../sdk/features/apollo-leads'),
-      '@lad/frontend-features/dashboard': path.resolve(__dirname, '../sdk/features/dashboard'),
+      '@lad/frontend-features$': path.resolve(__dirname, '../sdk'),
       '@livekit/components-react': path.resolve(__dirname, '../node_modules/@livekit/components-react'),
       '@livekit/components-styles': path.resolve(__dirname, '../node_modules/@livekit/components-styles'),
       'livekit-client': path.resolve(__dirname, '../node_modules/livekit-client'),
@@ -56,17 +48,7 @@ const nextConfig = {
       '@tanstack/react-query': '../node_modules/@tanstack/react-query',
       '@tanstack/query-core': '../node_modules/@tanstack/query-core',
       'chart.js': './node_modules/chart.js/dist/chart.js',
-      '@lad/frontend-features': '../sdk',
-      '@lad/frontend-features/ai-icp-assistant': '../sdk/features/ai-icp-assistant',
-      '@lad/frontend-features/billing': '../sdk/features/billing',
-      '@lad/frontend-features/campaigns': '../sdk/features/campaigns',
-      '@lad/sdk/features/ai-icp-assistant': '../sdk/features/ai-icp-assistant',
-      '@lad/frontend-features/conversations': '../sdk/features/conversations',
-      '@lad/frontend-features/overview': '../sdk/features/overview',
-      '@lad/frontend-features/voice-agent': '../sdk/features/voice-agent',
-      '@lad/frontend-features/deals-pipeline': '../sdk/features/deals-pipeline',
-      '@lad/frontend-features/apollo-leads': '../sdk/features/apollo-leads',
-      '@lad/frontend-features/dashboard': '../sdk/features/dashboard',
+      '@lad/frontend-features$': '../sdk',
       '@livekit/components-react': '../node_modules/@livekit/components-react',
       '@livekit/components-styles': '../node_modules/@livekit/components-styles',
       'livekit-client': '../node_modules/livekit-client',
@@ -173,4 +155,21 @@ const nextConfig = {
   // Environment variables are handled via .env files and process.env
 };
 
-export default nextConfig;
+// Wrap with Sentry (source-map upload + tunneling) only when @sentry/nextjs is
+// installed — keeps `next.config` loading before `npm install @sentry/nextjs`.
+// Source-map upload activates only when SENTRY_ORG/PROJECT/AUTH_TOKEN are set.
+let exportedConfig = nextConfig;
+try {
+  const { withSentryConfig } = require('@sentry/nextjs');
+  exportedConfig = withSentryConfig(nextConfig, {
+    org: process.env.SENTRY_ORG,
+    project: process.env.SENTRY_PROJECT,
+    silent: !process.env.CI,
+    disableLogger: true,
+    widenClientFileUpload: true,
+  });
+} catch {
+  // @sentry/nextjs not installed yet — ship the plain config.
+}
+
+export default exportedConfig;

@@ -68,7 +68,24 @@ export function useMessageSettings() {
   return { settings, updateSetting };
 }
 
-export function MessageSettings() {
+interface MessageSettingsProps {
+  /** Controlled open state. When provided, the dialog is controlled by the parent. */
+  open?: boolean;
+  /** Notified whenever the dialog wants to open/close (controlled or uncontrolled). */
+  onOpenChange?: (open: boolean) => void;
+  /**
+   * Render the built-in gear trigger button. Set to false when opening from an
+   * external control (e.g. a dropdown menu item). Defaults to true so existing
+   * usages keep their gear button.
+   */
+  showTrigger?: boolean;
+}
+
+export function MessageSettings({
+  open: controlledOpen,
+  onOpenChange,
+  showTrigger = true,
+}: MessageSettingsProps = {}) {
   const { settings, updateSetting } = useMessageSettings();
 
   // Per-tenant inbound debounce — persisted server-side via the WABA
@@ -79,7 +96,19 @@ export function MessageSettings() {
   const [debounceSaving, setDebounceSaving] = useState(false);
   const [debounceError, setDebounceError] = useState<string | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [open, setOpen] = useState(false);
+
+  // Support both controlled usage (parent passes open/onOpenChange, e.g. opened
+  // from a menu item) and uncontrolled usage (the built-in gear trigger).
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = useCallback(
+    (next: boolean) => {
+      if (!isControlled) setInternalOpen(next);
+      onOpenChange?.(next);
+    },
+    [isControlled, onOpenChange],
+  );
 
   // Fetch current value when the modal first opens, so we don't hit the API
   // on every conversation page load for users who never open the menu.
@@ -145,22 +174,24 @@ export function MessageSettings() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8" title="Message settings">
-          <Settings className="h-4 w-4" />
-        </Button>
-      </DialogTrigger>
+      {showTrigger && (
+        <DialogTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8" title="Message settings">
+            <Settings className="h-4 w-4" />
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent
         showCloseButton={false}
-        className="sm:max-w-md sm:w-auto rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-xl"
+        className="sm:max-w-md sm:w-auto rounded-2xl bg-white dark:bg-[#161717] border border-slate-200 dark:border-[#222d34] shadow-xl"
       >
-        <DialogHeader className="px-5 py-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 rounded-t-2xl">
+        <DialogHeader className="px-5 py-4 bg-white dark:bg-[#161717] border-b border-slate-200 dark:border-[#222d34] rounded-t-2xl">
           <div className="flex items-center justify-between gap-4 w-full">
-            <DialogTitle className="text-base font-semibold text-slate-900 dark:text-slate-100">
+            <DialogTitle className="text-base font-semibold text-slate-900 dark:text-white">
               Message Settings
             </DialogTitle>
             <DialogClose
-              className="rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-[#a2a2a2] dark:hover:bg-[#1e2a30] dark:hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               aria-label="Close"
             >
               <X className="h-4 w-4" />
@@ -168,11 +199,11 @@ export function MessageSettings() {
           </div>
         </DialogHeader>
 
-        <div className="space-y-5 px-5 py-5 flex-1 overflow-y-auto bg-white dark:bg-slate-900 rounded-b-2xl">
+        <div className="space-y-5 px-5 py-5 flex-1 overflow-y-auto bg-white dark:bg-[#161717] rounded-b-2xl">
           <div className="flex items-center justify-between">
             <Label
               htmlFor="mark-read"
-              className="text-sm font-medium text-slate-700 dark:text-slate-200 cursor-pointer"
+              className="text-sm font-medium text-slate-700 dark:text-[#d1d7db] cursor-pointer"
             >
               Mark as read on open
             </Label>
@@ -186,7 +217,7 @@ export function MessageSettings() {
           <div className="flex items-center justify-between">
             <Label
               htmlFor="confirm-send"
-              className="text-sm font-medium text-slate-700 dark:text-slate-200 cursor-pointer"
+              className="text-sm font-medium text-slate-700 dark:text-[#d1d7db] cursor-pointer"
             >
               Confirm before send
             </Label>
@@ -200,9 +231,9 @@ export function MessageSettings() {
           <div className="space-y-2">
             <Label
               htmlFor="msg-delay"
-              className="text-sm font-medium text-slate-700 dark:text-slate-200"
+              className="text-sm font-medium text-slate-700 dark:text-[#d1d7db]"
             >
-              Message delay: <span className="font-semibold text-slate-900 dark:text-slate-100">{settings.messageDelay}s</span>
+              Message delay: <span className="font-semibold text-slate-900 dark:text-white">{settings.messageDelay}s</span>
             </Label>
             <input
               id="msg-delay"
@@ -214,7 +245,7 @@ export function MessageSettings() {
               onChange={(e) => updateSetting('messageDelay', Number(e.target.value))}
               className="w-full h-1.5 accent-primary cursor-pointer"
             />
-            <div className="flex justify-between text-[10px] text-slate-500 dark:text-slate-400">
+            <div className="flex justify-between text-[10px] text-slate-500 dark:text-[#a2a2a2]">
               <span>0s (instant)</span>
               <span>5s</span>
             </div>
@@ -223,16 +254,16 @@ export function MessageSettings() {
           <div className="space-y-2">
             <Label
               htmlFor="inbound-debounce"
-              className="text-sm font-medium text-slate-700 dark:text-slate-200 flex items-center"
+              className="text-sm font-medium text-slate-700 dark:text-[#d1d7db] flex items-center"
             >
               <span>
-                Inbound debounce: <span className="font-semibold text-slate-900 dark:text-slate-100">{inboundDebounce}s</span>
+                Inbound debounce: <span className="font-semibold text-slate-900 dark:text-white">{inboundDebounce}s</span>
               </span>
               {debounceSaving && (
-                <span className="ml-2 text-[10px] text-slate-500 dark:text-slate-400">saving…</span>
+                <span className="ml-2 text-[10px] text-slate-500 dark:text-[#a2a2a2]">saving…</span>
               )}
             </Label>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
+            <p className="text-[11px] text-slate-500 dark:text-[#a2a2a2] leading-snug">
               Time to wait after a customer message before generating a reply
               (helps coalesce typing bursts).
             </p>
@@ -247,7 +278,7 @@ export function MessageSettings() {
               onChange={(e) => onInboundDebounceChange(Number(e.target.value))}
               className="w-full h-1.5 accent-primary disabled:opacity-50 cursor-pointer"
             />
-            <div className="flex justify-between text-[10px] text-slate-500 dark:text-slate-400">
+            <div className="flex justify-between text-[10px] text-slate-500 dark:text-[#a2a2a2]">
               <span>0s (off)</span>
               <span>{INBOUND_DEBOUNCE_MAX}s</span>
             </div>
