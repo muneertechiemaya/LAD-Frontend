@@ -441,11 +441,22 @@ async function uploadMediaForMessage(file: File, channel?: string): Promise<stri
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err?.detail || err?.error || `Media upload failed (${res.status})`);
+    const errorMessage = err?.detail || err?.error || err?.message || `Media upload failed (${res.status})`;
+    console.error('[uploadMediaForMessage] Upload failed:', {
+      status: res.status,
+      statusText: res.statusText,
+      error: err,
+      uploadUrl,
+      channel,
+    });
+    throw new Error(errorMessage);
   }
 
   const data = await res.json();
-  if (!data?.media_id) throw new Error('No media_id returned from upload');
+  if (!data?.media_id) {
+    console.error('[uploadMediaForMessage] No media_id in response:', data);
+    throw new Error('No media_id returned from upload');
+  }
   return data.media_id as string;
 }
 
