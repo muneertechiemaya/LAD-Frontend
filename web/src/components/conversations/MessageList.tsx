@@ -169,7 +169,7 @@ export const MessageList = memo(function MessageList({
     }
     const msg = item.data as Message;
     return (
-      <div className="px-3 py-[3px]">
+      <div className="px-4 lg:px-8 py-[3px]">
         <MessageBubble
           message={msg}
           contact={contact}
@@ -183,7 +183,7 @@ export const MessageList = memo(function MessageList({
   };
 
   return (
-    <div className="flex-1 overflow-hidden bg-transparent flex flex-col">
+    <div className="flex-1 overflow-hidden bg-transparent flex flex-col mx-10">
       <Virtuoso
         ref={virtuosoRef}
         style={{ flex: 1 }}

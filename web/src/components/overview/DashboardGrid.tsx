@@ -44,6 +44,8 @@ import { AIInsightsWidget } from './widgets/AIInsightsWidget';
 import { QuickActionsWidget } from './widgets/QuickActionsWidget';
 import { CalendarWidget } from './widgets/CalendarWidget';
 import { BroadcastPerformanceWidget } from './widgets/BroadcastPerformanceWidget';
+import { ConversationFunnelWidget } from './widgets/ConversationFunnelWidget';
+import { ReengageTopicsWidget } from './widgets/ReengageTopicsWidget';
 // Utilities
 import { cn } from '@/lib/utils';
 import {
@@ -477,6 +479,10 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({ className, onLoadi
         return <CalendarWidget id={widgetId} />;
       case 'broadcast-performance':
         return <BroadcastPerformanceWidget id={widgetId} />;
+      case 'conversation-funnel':
+        return <ConversationFunnelWidget id={widgetId} />;
+      case 'reengage-topics':
+        return <ReengageTopicsWidget id={widgetId} />;
       default:
         return <div className="widget-card h-full flex items-center justify-center text-muted-foreground">Unknown widget</div>;
     }

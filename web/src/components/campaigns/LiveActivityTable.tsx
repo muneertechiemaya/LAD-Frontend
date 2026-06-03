@@ -97,7 +97,23 @@ function buildWorkflowSteps(
 // ─────────────────────────────────────────────────────────────────────────
 // Agent Insights — per-lead source links the agent gathered during enrichment
 // (web_presence + LinkedIn posts). Renders inside an expandable row.
+//
+// HIDDEN BY DEFAULT.
+// The Serper / LinkedIn-post enrichment routinely surfaces irrelevant matches
+// for common names (e.g. it returns "Indrajith Full Movie" results for a lead
+// named "Indrajith AS"), which makes the panel look broken to users. Flip
+// SHOW_AGENT_INSIGHT_SOURCES back to `true` after the enrichment pipeline has
+// stricter name-disambiguation in place — both the toggle button under each
+// lead row AND the expandable details panel will reappear.
+//
+// All the data wiring below (collecting `enrichmentSources`, `enrichmentCounts`,
+// `enrichmentLatestAt` from campaign-analytics events) is intentionally kept
+// live so the feature can be turned back on without re-implementing the
+// collection logic — only the two render sites in the table body honour the
+// flag.
 // ─────────────────────────────────────────────────────────────────────────
+const SHOW_AGENT_INSIGHT_SOURCES = false;
+
 
 interface EnrichmentSource {
   type: string;          // knowledge_graph | social | article | news | podcast | speaking | award | linkedin_post
@@ -1094,9 +1110,12 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
-                      {/* Agent Insights expand toggle — visible when sources exist OR
-                          when a personalization hook source is known. */}
-                      {((lead.enrichmentSources && lead.enrichmentSources.length > 0) ||
+                      {/* Agent Insights expand toggle — hidden by default
+                          (SHOW_AGENT_INSIGHT_SOURCES at top of file).
+                          Visible when sources exist OR when a personalization
+                          hook source is known, AND the feature flag is on. */}
+                      {SHOW_AGENT_INSIGHT_SOURCES &&
+                       ((lead.enrichmentSources && lead.enrichmentSources.length > 0) ||
                         lead.personalizationSource) && (
                         <button
                           type="button"
@@ -1198,7 +1217,10 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
                     )}
                   </TableCell>
                 </TableRow>
-                {expandedLeadId === lead.leadId && (
+                {/* Expanded Agent Insights row — gated by the same
+                    SHOW_AGENT_INSIGHT_SOURCES flag at the top of this file
+                    so it can never appear while the toggle is hidden. */}
+                {SHOW_AGENT_INSIGHT_SOURCES && expandedLeadId === lead.leadId && (
                   <TableRow className="bg-[#F8FAFC] dark:bg-[#000724]">
                     <TableCell colSpan={5} className="p-0">
                       <LeadInsightsPanel
