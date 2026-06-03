@@ -1888,16 +1888,16 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
                   <DropdownMenuItem className="focus:bg-accent dark:focus:bg-[#182229] focus:text-white dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4" onClick={onTogglePanel}>
                     <Info className="w-4 h-4" /> <span>Contact info</span>
                   </DropdownMenuItem>
-                  {/* <DropdownMenuItem className="focus:bg-accent dark:focus:bg-[#182229] focus:text-white dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4" onClick={() => setIsSearchOpen(true)}>
+                  <DropdownMenuItem className="focus:bg-accent dark:focus:bg-[#182229] focus:text-white dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4" onClick={() => setIsSearchOpen(true)}>
                     <Search className="w-4 h-4" /> <span>Search</span>
-                  </DropdownMenuItem> */}
+                  </DropdownMenuItem>
                   <DropdownMenuItem className="focus:bg-accent dark:focus:bg-[#182229] focus:text-white dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4">
                     <CheckSquare className="w-4 h-4" /> <span>Select messages</span>
                   </DropdownMenuItem>
-                  {/* <DropdownMenuItem className="focus:bg-accent dark:focus:bg-[#182229] focus:text-white dark:focus:text-white cursor-pointer py-2.5 px-4 flex justify-between group" onClick={() => onMuteChat?.(conversation?.id)}>
+                  <DropdownMenuItem className="focus:bg-accent dark:focus:bg-[#182229] focus:text-white dark:focus:text-white cursor-pointer py-2.5 px-4 flex justify-between group" onClick={() => onMuteChat?.(conversation?.id)}>
                     <div className="flex items-center gap-4"><BellOff className="w-4 h-4" /> <span>Mute notifications</span></div>
                     <ChevronRight className="w-4 h-4" />
-                  </DropdownMenuItem> */}
+                  </DropdownMenuItem>
                   <DropdownMenuItem className="focus:bg-accent dark:focus:bg-[#182229] focus:text-white dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4" onClick={() => onFavoriteChat?.(conversation?.id)}>
                     <Heart className={cn("w-4 h-4", isFav && "fill-current text-rose-500 dark:text-rose-400")} />
                     <span>{isFav ? 'Remove from favourites' : 'Add to favourites'}</span>
@@ -1928,15 +1928,15 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
                       )}
                     </DropdownMenuSubContent>
                   </DropdownMenuSub>
-                  {/* <DropdownMenuItem className="focus:bg-accent dark:focus:bg-[#182229] focus:text-white dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4" onClick={() => onCloseChat?.(conversation?.id)}>
+                  <DropdownMenuItem className="focus:bg-accent dark:focus:bg-[#182229] focus:text-white dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4" onClick={() => onCloseChat?.(conversation?.id)}>
                     <XCircle className="w-4 h-4" /> <span>Close chat</span>
-                  </DropdownMenuItem> */}
-                  {/* <DropdownMenuItem className="focus:bg-accent dark:focus:bg-[#182229] focus:text-white dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4">
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="focus:bg-accent dark:focus:bg-[#182229] focus:text-white dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4">
                     <Calendar className="w-4 h-4" /> <span>Schedule call</span>
-                  </DropdownMenuItem> */}
-                  {/* <DropdownMenuItem className="focus:bg-accent dark:focus:bg-[#182229] focus:text-white dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4" onClick={() => onBlockChat?.(conversation?.id)}>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="focus:bg-accent dark:focus:bg-[#182229] focus:text-white dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4" onClick={() => onBlockChat?.(conversation?.id)}>
                     <Ban className="w-4 h-4" /> <span>Block</span>
-                  </DropdownMenuItem> */}
+                  </DropdownMenuItem>
                   <DropdownMenuItem className="focus:bg-accent dark:focus:bg-[#182229] focus:text-white dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4" onClick={() => onClearChat?.(conversation?.id)}>
                     <MinusCircle className="w-4 h-4" /> <span>Clear chat</span>
                   </DropdownMenuItem>
