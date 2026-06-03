@@ -2331,6 +2331,10 @@ interface WABASidebarProps {
   onShowCreateGroupModal?: (selectedIds: string[]) => void;
   groupRefreshKey?: number;
   activeLastMsg?: Message | null;
+  // ── Infinite scroll (conversation-list pagination) ─────────────────────
+  loadMore?: () => void;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
 }
 
 type FilterTab = 'all' | 'unread' | 'favourites';
@@ -2355,6 +2359,9 @@ function WABASidebar({
   onShowCreateGroupModal,
   groupRefreshKey,
   activeLastMsg,
+  loadMore,
+  hasMore,
+  isLoadingMore,
 }: WABASidebarProps) {
   const [filterTab, setFilterTab] = useState<FilterTab>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -2396,7 +2403,12 @@ function WABASidebar({
   const [contactsSectionExpanded, setContactsSectionExpanded] = useState(true);
   const [importRefreshTrigger, setImportRefreshTrigger] = useState(0);
   const deferredNewChatSearch = useDeferredValue(newChatSearch.trim());
-  const deferredSidebarSearch = searchQuery.trim().toLowerCase();
+
+  console.log('[WABASidebar] Props:', {
+    contextStatuses: contextStatuses.length,
+    onContextStatusFilterChange: !!onContextStatusFilterChange,
+    contextStatusFilter,
+  });
 
   const normalizePhone = useCallback((value?: string) => (value || '').replace(/\D/g, ''), []);
   const conversationIdByLead = useMemo(() => {
@@ -2735,11 +2747,10 @@ function WABASidebar({
 
   const filteredConversations = useMemo(() => {
     const filtered = conversations.filter((conv) => {
-      const matchesSearch = deferredSidebarSearch
-        ? conv.contact?.name?.toLowerCase().includes(deferredSidebarSearch) ||
-        conv.contact?.phone?.toLowerCase().includes(deferredSidebarSearch)
-        : true;
-      if (!matchesSearch) return false;
+      // Search is delegated to the backend (name + phone ILIKE via the `search`
+      // query param in useConversations → getConversationsPage), so it finds chats
+      // beyond the loaded page. Re-filtering here would hide backend matches whose
+      // display name differs, so we intentionally skip client-side search filtering.
       if (filterTab === 'unread') return Boolean(conv.unreadCount && conv.unreadCount > 0);
       const extendedConv = conv as Conversation & { isFavorite?: boolean; favorite?: boolean; is_group?: boolean; isGroup?: boolean; groupId?: string };
       if (filterTab === 'favourites') return Boolean(extendedConv.is_favorite || extendedConv.isFavorite || extendedConv.favorite);
@@ -2762,7 +2773,7 @@ function WABASidebar({
       const bTime = new Date(getConversationLastMessageTimestamp(b) || b.updatedAt || b.createdAt || 0).getTime();
       return bTime - aTime;
     });
-  }, [conversations, contextStatusFilter, deferredSidebarSearch, filterTab, hideEmpty, selectedLabelIds, sortBy]);
+  }, [conversations, contextStatusFilter, filterTab, hideEmpty, selectedLabelIds, sortBy]);
 
   const unreadCount = conversations.filter((c) => c.unreadCount && c.unreadCount > 0).length;
 
@@ -2916,30 +2927,10 @@ function WABASidebar({
             value={searchQuery || ''}
             onChange={(e) => onSearchChange(e.target.value)}
           />
-          {searchQuery && (
-            <div className="absolute top-full mt-2 left-0 right-0 bg-white dark:bg-[#202c33] rounded-lg shadow-lg z-[999] max-h-60 overflow-y-auto border dark:border-[#2a3942]">
-              {filteredConversations.length > 0 ? (
-                filteredConversations.map((conv) => (
-                  <div
-                    key={conv.id}
-                    onClick={() => { onSelectConversation(conv.id); onSearchChange(''); }}
-                    className="flex items-center gap-3 p-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-[#2a3942]"
-                  >
-                    <Avatar className="w-10 h-10">
-                      <AvatarImage src={conv.contact?.avatar} />
-                      <AvatarFallback>{conv.contact?.name?.substring(0, 2).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="text-sm font-medium text-foreground dark:text-white">{conv.contact?.name}</p>
-                      <p className="text-xs text-muted-foreground dark:text-[#a2a2a2]">{conv.contact?.phone}</p>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="p-3 text-sm text-muted-foreground dark:text-[#8696a0] text-center">No results found</div>
-              )}
-            </div>
-          )}
+          {/* Search results render inline in the main conversation list below
+              (backend-filtered by name + phone). The old floating dropdown was
+              removed: it duplicated the list, capped results at max-h-60, and
+              overlapped the list because it only closed on select/clear. */}
         </div>
       </div>
 
@@ -3286,7 +3277,15 @@ function WABASidebar({
           </div>
         </TooltipProvider>
       )}
-      <div className="flex-1 overflow-y-auto mt-0 relative z-0">
+      <div
+        className="flex-1 overflow-y-auto mt-0 relative z-0"
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          if (hasMore && !isLoadingMore && el.scrollHeight - el.scrollTop - el.clientHeight < 320) {
+            loadMore?.();
+          }
+        }}
+      >
         {filterTab === 'favourites' ? (
           <div className="flex flex-col items-center justify-center p-8 text-center gap-4 h-[80%]">
             <div className="w-32 h-32 bg-muted/50 dark:bg-[#202c33] rounded-full flex items-center justify-center mb-4 relative">
@@ -4102,6 +4101,9 @@ export function WABusinessView({
     setSearchQuery,
     sendMessage,
     muteConversation,
+    loadMore,
+    hasMore,
+    isLoadingMore,
   } = useConversations({ channel });
 
   const [mockSelectedId, setMockSelectedId] = useState<string | null>(null);
@@ -4234,6 +4236,7 @@ const handleFavorite = useCallback(
     fetchWithTenant(`/api/whatsapp-conversations/conversations/context-statuses?channel=${channel}`)
       .then((r) => r.json())
       .then((data) => {
+        console.log('[Context Status] API response:', data);
         if (data.success && Array.isArray(data.data) && data.data.length > 0) {
           const statuses = (data.data as Array<{ value?: string; count?: number }>)
             .filter((s) => typeof s.value === 'string')
@@ -4242,12 +4245,15 @@ const handleFavorite = useCallback(
               label: formatContextStatus(s.value as string),
               count: Number(s.count || 0),
             }));
+          console.log('[Context Status] Setting statuses from API:', statuses);
           setContextStatuses(statuses);
         } else {
+          console.log('[Context Status] Using default statuses');
           setContextStatuses(DEFAULT_CONTEXT_STATUSES);
         }
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error('[Context Status] API error:', err);
         setContextStatuses(DEFAULT_CONTEXT_STATUSES);
       });
   }, [channel]);
@@ -4357,6 +4363,9 @@ const handleFavorite = useCallback(
               backendChannel={channel}
               onRefresh={invalidate}
               activeLastMsg={activeLastMsg}
+              loadMore={loadMore}
+              hasMore={hasMore}
+              isLoadingMore={isLoadingMore}
             />
           </motion.div>
         )}
