@@ -21,7 +21,6 @@ import {
 } from '@/components/crm/tables';
 import { STAGES, type CrmContact } from '@/components/crm/data';
 import { toCrmContacts, toKanbanLeads } from '@/components/crm/adapt';
-import { RunSearchPanel } from '@/app/prospects/components/RunSearchPanel';
 
 export const dynamic = 'force-dynamic';
 
@@ -119,17 +118,11 @@ export default function CrmPage() {
                 Deals Pipeline
               </h1>
               <p className="text-[13px] text-[#6b7280] dark:text-[#7a8ba3]">
-                Live cross-channel prospects from the Master Agent
+                Live cross-channel prospects across all your channels
               </p>
             </div>
           </div>
         </div>
-
-        {/* Run a SearchDispatcher discovery (Apollo + Sales Nav + ABM) on the
-            tenant's active ICP. Emits fit.*_discovered → prospect_state → this list. */}
-        <RunSearchPanel
-          onRunComplete={() => setTimeout(() => { void listQuery.refetch(); }, 1500)}
-        />
 
         {listQuery.isError && (
           <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 dark:border-rose-900/60 dark:bg-rose-950/30 p-4 text-[13px] text-rose-700 dark:text-rose-300">
@@ -144,7 +137,7 @@ export default function CrmPage() {
           <div className={EMPTY_BOX}>Loading prospects…</div>
         ) : !listQuery.isError && prospects.length === 0 ? (
           <div className={EMPTY_BOX}>
-            No prospects yet. As channel events flow into the Master Agent, they&apos;ll appear here.
+            No prospects yet. As your channels engage prospects, they&apos;ll appear here.
           </div>
         ) : (
           renderMain()

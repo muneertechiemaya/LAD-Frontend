@@ -11,7 +11,7 @@ import { BillingSettings } from '../../components/settings/BillingSettings';
 import { CreditsSettings } from '../../components/settings/CreditsSettings';
 import { BusinessProfileSettings } from '../../components/settings/BusinessProfileSettings';
 import { TeamManagement } from '../../components/settings/TeamManagement';
-import { Building2, Users, UserCircle, Globe, Plug, Terminal, CreditCard, Coins, Upload, MessageSquare, Target } from 'lucide-react';
+import { Building2, Users, UserCircle, Globe, Plug, Terminal, CreditCard, Coins, Upload, MessageSquare, Target, Crosshair } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 import { useAuth } from '@/contexts/AuthContext';
@@ -162,6 +162,13 @@ const SettingsPage: React.FC = () => {
                 {tab.label}
               </button>
             ))}
+            <button
+              onClick={() => router.push('/settings/icp-search-strategy')}
+              className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-all text-gray-700 hover:text-gray-900 hover:bg-white/50"
+            >
+              <Crosshair className="w-4 h-4" />
+              ICP Strategy
+            </button>
           </div>
         </div>
       </div>
