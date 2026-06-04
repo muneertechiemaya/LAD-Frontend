@@ -242,7 +242,7 @@ export interface UseConversationsReturn {
   };
   sendMessage: (payload: RichMessagePayload) => Promise<Message | void>;
   markAsResolved: (id: string) => void;
-  muteConversation: (id: string) => void;
+  muteConversation: (id?: string) => void;
   isLoading: boolean;
   error: Error | null;
   refetch: () => void;

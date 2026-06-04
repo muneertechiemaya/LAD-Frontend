@@ -4,6 +4,38 @@ import { useState, useCallback, useMemo, useRef, useEffect, useDeferredValue } f
 import { motion, AnimatePresence } from 'framer-motion';
 import { useConversations, useConversationMessages } from '@lad/frontend-features/conversations';
 import type { Conversation, Message } from '@/types/conversation';
+
+// ── Type Extensions for API Response Properties ─────────────────────────────
+type ExtendedMessage = Message & {
+  created_at?: string | Date;
+  message_status?: string;
+  sender_type?: string;
+  human_agent_id?: string;
+  sender_name?: string;
+  template_name?: string;
+  media_id?: string;
+  file_url?: string;
+  url?: string;
+  mediaMimeType?: string;
+  mediaFilename?: string;
+  mediaCaption?: string;
+};
+
+type ExtendedConversation = Conversation & {
+  leadId?: string | number;
+  lead_id?: string | number;
+  is_favorite?: boolean;
+  isFavorite?: boolean;
+  favorite?: boolean;
+  is_group?: boolean;
+  isGroup?: boolean;
+  groupId?: string;
+  messageCount?: number;
+  context_status?: string | null;
+  labels?: Array<string | LabelLike>;
+  labelIds?: Array<string | number>;
+  owner?: string | null;
+};
 import { formatDistanceToNow } from 'date-fns';
 import { useQueryClient } from '@tanstack/react-query';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
@@ -58,7 +90,7 @@ import {
   // ── New icons for sort/filter toolbar ──
   ArrowDownUp, EyeOff, Eye, Hash, Tag, Filter,
   // ── New icons for rich New Chat overlay ──
-  Megaphone, Loader2, CheckCircle2,
+  Megaphone, Loader2, CheckCircle2, Play, Pause, StopCircle,
 } from 'lucide-react';
 
 // ── Shared type for context status chips ────────────────────────────────────
@@ -78,18 +110,69 @@ function formatContextStatus(value: string): string {
  *  hover and in the filter, not repeated as text on every row). Keyed by the
  *  lowercased context_status. */
 const WABA_STAGE_TAG_HEX: Record<string, string> = {
-  greeting:            '#3b82f6', // blue
-  info_gathering:      '#8b5cf6', // violet
+  greeting: '#3b82f6', // blue
+  info_gathering: '#8b5cf6', // violet
   booking_in_progress: '#f59e0b', // amber
-  booking_completed:   '#10b981', // emerald
-  cancelled:           '#f43f5e', // rose
-  human:               '#f97316', // orange
+  booking_completed: '#10b981', // emerald
+  cancelled: '#f43f5e', // rose
+  human: '#f97316', // orange
   // legacy values still present on older rows
-  booked:              '#10b981',
-  qualified:           '#8b5cf6',
-  active:              '#8b5cf6',
+  booked: '#10b981',
+  qualified: '#8b5cf6',
+  active: '#8b5cf6',
 };
 const WABA_STAGE_TAG_DEFAULT = '#9ca3af'; // gray
+
+// ── Configuration Constants ──────────────────────────────────────────────────
+const CONFIG = {
+  MAX_ATTACHMENT_BYTES: 16 * 1024 * 1024, // 16MB
+  INITIAL_MESSAGE_LIMIT: 50,
+  LOAD_MORE_LIMIT: 100,
+  MAX_OLDER_MESSAGES: 500,
+  MAX_RECENT_EMOJIS: 20,
+  EMOJI_STORAGE_KEY: 'wa_emoji_recent_v1', // gitleaks:allow — localStorage key for recent emojis, not a secret
+  VOICE_RECORDING_TIMEOUT: 10000, // 10 seconds
+  SEARCH_DEBOUNCE_MS: 150,
+  SIDEBAR_MIN_WIDTH: 260,
+  SIDEBAR_MAX_WIDTH: 600,
+  SIDEBAR_DEFAULT_WIDTH: 380,
+  TEMPLATE_BATCH_DELAY_MIN: 1,
+  TEMPLATE_BATCH_DELAY_RANDOM: 2,
+  TEMPLATE_DAILY_LIMIT: 250,
+} as const;
+
+// ── Error Types ───────────────────────────────────────────────────────────────
+class AppError extends Error {
+  constructor(
+    message: string,
+    public code: string,
+    public originalError?: unknown
+  ) {
+    super(message);
+    this.name = 'AppError';
+  }
+}
+
+class StorageError extends AppError {
+  constructor(message: string, originalError?: unknown) {
+    super(message, 'STORAGE_ERROR', originalError);
+    this.name = 'StorageError';
+  }
+}
+
+class NetworkError extends AppError {
+  constructor(message: string, originalError?: unknown) {
+    super(message, 'NETWORK_ERROR', originalError);
+    this.name = 'NetworkError';
+  }
+}
+
+class ValidationError extends AppError {
+  constructor(message: string, originalError?: unknown) {
+    super(message, 'VALIDATION_ERROR', originalError);
+    this.name = 'ValidationError';
+  }
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type AgentType = 'human' | 'ai';
@@ -122,13 +205,14 @@ interface RichMessagePayload {
 interface LabelLike {
   id?: string | number;
   label_id?: string | number;
+  [key: string]: unknown; // Allow additional properties for flexibility
 }
 
 interface SidebarErrorState {
   message: string;
 }
 
-type ConversationActionHandler = (id?: string) => void | Promise<void>;
+type ConversationActionHandler = (id: string) => void | Promise<void>;
 
 interface WABAChatWindowProps {
   conversation: Conversation | null;
@@ -151,6 +235,7 @@ interface WABAChatWindowProps {
 interface WABAContextPanelProps {
   conversation: Conversation | null;
   onClose: () => void;
+  onFavoriteChat?: ConversationActionHandler;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -175,6 +260,29 @@ function getErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
+function sanitizeInput(input: string): string {
+  if (!input) return '';
+  // Remove potentially dangerous HTML/JavaScript
+  return input
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+    .replace(/\//g, '&#x2F;');
+}
+
+function sanitizeMessageContent(content: string | undefined): string {
+  if (!content) return '';
+  // For message content, we need to be more permissive to allow basic formatting
+  // but still prevent script injection and dangerous HTML
+  return content
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/on\w+="[^"]*"/gi, '')
+    .replace(/on\w+='[^']*'/gi, '')
+    .replace(/javascript:/gi, '')
+    .replace(/data:/gi, '');
+}
+
 function getConversationLeadId(conv: Conversation): string | undefined {
   const raw = conv as Conversation & { leadId?: string | number; lead_id?: string | number };
   return raw.leadId != null ? String(raw.leadId) : raw.lead_id != null ? String(raw.lead_id) : undefined;
@@ -194,8 +302,8 @@ function getConversationLabelIds(conv: Conversation): string[] {
   const raw = conv as Conversation & { labels?: Array<string | LabelLike>; labelIds?: Array<string | number> };
   const labels = (raw.labels ?? []).map((label) => {
     if (typeof label === 'string') return label;
-    if (label?.id != null) return String(label.id);
-    if (label?.label_id != null) return String(label.label_id);
+    if (label && typeof label === 'object' && 'id' in label && label.id != null) return String(label.id);
+    if (label && typeof label === 'object' && 'label_id' in label && label.label_id != null) return String(label.label_id);
     return '';
   });
   const labelIds = (raw.labelIds ?? []).map(String);
@@ -215,8 +323,8 @@ function MessageTicks({ status }: { status?: string }) {
   if (s === 'read' || s === 'seen') {
     return (
       <svg width="16" height="11" viewBox="0 0 16 11" fill="none" className="inline-block shrink-0">
-        <path d="M1 5.5L4.5 9L8 5.5" stroke="#53bdeb" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M5 5.5L8.5 9L15 2" stroke="#53bdeb" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M1 5.5L4.5 9L8 5.5" stroke="#53bdeb" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M5 5.5L8.5 9L15 2" stroke="#53bdeb" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     );
   }
@@ -224,8 +332,8 @@ function MessageTicks({ status }: { status?: string }) {
   if (s === 'delivered') {
     return (
       <svg width="16" height="11" viewBox="0 0 16 11" fill="none" className="inline-block shrink-0">
-        <path d="M1 5.5L4.5 9L8 5.5" stroke="#8696a0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M5 5.5L8.5 9L15 2" stroke="#8696a0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M1 5.5L4.5 9L8 5.5" stroke="#8696a0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M5 5.5L8.5 9L15 2" stroke="#8696a0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     );
   }
@@ -233,33 +341,24 @@ function MessageTicks({ status }: { status?: string }) {
   // 'sent' or 'pending' — single tick
   return (
     <svg width="12" height="11" viewBox="0 0 12 11" fill="none" className="inline-block shrink-0">
-      <path d="M1 5.5L4.5 9L11 2" stroke="#8696a0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M1 5.5L4.5 9L11 2" stroke="#8696a0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const ATTACH_ITEMS = [
-  { id: 'gallery', label: 'Photos & Video', icon: <ImageIcon className="w-6 h-6 text-white" />, bg: 'bg-purple-500' },
-  { id: 'camera', label: 'Camera', icon: <Camera className="w-6 h-6 text-white" />, bg: 'bg-pink-500' },
-  { id: 'document', label: 'Document', icon: <FileText className="w-6 h-6 text-white" />, bg: 'bg-blue-500' },
-  { id: 'audio', label: 'Audio', icon: <Music className="w-6 h-6 text-white" />, bg: 'bg-orange-500' },
-  { id: 'location', label: 'Location', icon: <MapPin className="w-6 h-6 text-white" />, bg: 'bg-green-500' },
-  { id: 'contact', label: 'Contact', icon: <Phone className="w-6 h-6 text-white" />, bg: 'bg-teal-500' },
-  { id: 'poll', label: 'Poll', icon: <BarChart2 className="w-6 h-6 text-white" />, bg: 'bg-[#0b1957]' },
-  { id: 'sticker', label: 'Sticker', icon: <StarIcon className="w-6 h-6 text-white" />, bg: 'bg-yellow-500' },
-  { id: 'event', label: 'Event', icon: <Calendar className="w-6 h-6 text-white" />, bg: 'bg-indigo-500' },
+  { id: 'document', label: 'Document', icon: <FileText className="w-5 h-5" />, color: 'text-blue-500', bg: 'bg-blue-100   dark:bg-blue-900/40' },
+  { id: 'gallery', label: 'Photos & videos', icon: <ImageIcon className="w-5 h-5" />, color: 'text-purple-500', bg: 'bg-purple-100 dark:bg-purple-900/40' },
+  { id: 'camera', label: 'Camera', icon: <Camera className="w-5 h-5" />, color: 'text-pink-500', bg: 'bg-pink-100   dark:bg-pink-900/40' },
+  { id: 'audio', label: 'Audio', icon: <Music className="w-5 h-5" />, color: 'text-orange-500', bg: 'bg-orange-100 dark:bg-orange-900/40' },
+  { id: 'contact', label: 'Contact', icon: <User className="w-5 h-5" />, color: 'text-teal-500', bg: 'bg-teal-100   dark:bg-teal-900/40' },
+  { id: 'poll', label: 'Poll', icon: <BarChart2 className="w-5 h-5" />, color: 'text-slate-600 dark:text-blue-300', bg: 'bg-slate-100 dark:bg-slate-800' },
+  { id: 'event', label: 'Event', icon: <Calendar className="w-5 h-5" />, color: 'text-indigo-500', bg: 'bg-indigo-100 dark:bg-indigo-900/40' },
+  { id: 'sticker', label: 'New sticker', icon: <StarIcon className="w-5 h-5" />, color: 'text-yellow-500', bg: 'bg-yellow-100 dark:bg-yellow-900/40' },
+  { id: 'template', label: 'Send template', icon: <LayoutTemplate className="w-5 h-5" />, color: 'text-emerald-600', bg: 'bg-emerald-100 dark:bg-emerald-900/40' },
 ];
 
-const STICKER_PACKS: Record<string, { label: string; emojis: string[] }> = {
-  recently: { label: '⏰ Recent', emojis: ['😀', '😂', '❤️', '👍', '🔥', '💯', '✨', '🎉'] },
-  smileys: { label: '😊 Smileys', emojis: ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '😉', '😊', '😇', '🥰', '😍', '😘', '😋', '😛', '😜', '😌', '😔', '😑', '😐', '😏', '😒', '😞', '😠', '😡', '🤬', '😈', '👿', '💀', '💩', '🤡'] },
-  hearts: { label: '❤️ Hearts', emojis: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟', '❣️'] },
-  gestures: { label: '👍 Gestures', emojis: ['👋', '🤚', '🖐️', '✋', '🖖', '👌', '🤌', '✌️', '🤞', '👍', '👎', '☝️', '👆', '👇', '👈', '👉', '👏', '🙌', '🤝'] },
-  animals: { label: '🐶 Animals', emojis: ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🙈', '🙉', '🙊', '🐔', '🐧', '🦆', '🦅', '🦉', '🐺', '🐴', '🦄', '🐝', '🦋', '🐌', '🐞', '🐜', '🐢', '🐍', '🦎', '🐙', '🐬', '🐳', '🦈'] },
-  food: { label: '🍕 Food', emojis: ['🍏', '🍎', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🍒', '🍑', '🥭', '🍍', '🥥', '🥑', '🍆', '🍅', '🌽', '🥐', '🍞', '🥚', '🍳', '🥞', '🍗', '🍔', '🍟', '🍕', '🥪', '🌮', '🌯', '🍝', '🍜', '🍛', '🍣', '🍤', '🎂', '🍰', '🧁', '🍩', '🍪', '🍫', '🍿', '🍦', '☕', '🍵', '🍺', '🥂'] },
-  activities: { label: '⚽ Activities', emojis: ['⚽', '🏀', '🏈', '⚾', '🎾', '🏐', '🏉', '🎳', '🏓', '🏸', '⛳', '🎣', '🎿', '🏂', '🎯', '🎪', '🎨', '🎬', '🎤', '🎧', '🎼', '🎹', '🥁', '🎷', '🎺', '🎸', '🎻', '🎲', '♟️', '🎭', '🎰', '🚗', '🏎️', '✈️', '🚁', '⛵', '🚤'] },
-};
 
 // ── Sub-modals ─────────────────────────────────────────────────────────────────
 function PollModal({ onClose, onSend }: { onClose: () => void; onSend: (p: RichMessagePayload) => void }) {
@@ -271,7 +370,7 @@ function PollModal({ onClose, onSend }: { onClose: () => void; onSend: (p: RichM
   const handleSend = () => {
     const validOpts = options.filter(o => o.trim());
     if (!question.trim() || validOpts.length < 2) return;
-    onSend({ type: 'poll', pollQuestion: question.trim(), pollOptions: validOpts });
+    onSend({ type: 'poll', pollQuestion: sanitizeInput(question.trim()), pollOptions: validOpts.map(sanitizeInput) });
   };
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
@@ -324,7 +423,7 @@ function ContactModal({ onClose, onSend }: { onClose: () => void; onSend: (p: Ri
   const [phone, setPhone] = useState('');
   const handleSend = () => {
     if (!name.trim() || !phone.trim()) return;
-    onSend({ type: 'contact', contactName: name.trim(), contactPhone: phone.trim() });
+    onSend({ type: 'contact', contactName: sanitizeInput(name.trim()), contactPhone: sanitizeInput(phone.trim()) });
   };
   return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
@@ -362,8 +461,8 @@ function EventModal({ onClose, onSend }: { onClose: () => void; onSend: (p: Rich
   const [time, setTime] = useState('');
   const handleSend = () => {
     if (!title.trim() || !date) return;
-    let text = `📅 *Event: ${title.trim()}*\n🗓️ ${date}${time ? ' at ' + time : ''}`;
-    onSend({ type: 'text', content: text });
+    let text = `📅 *Event: ${sanitizeInput(title.trim())}*\n🗓️ ${sanitizeInput(date)}${time ? ' at ' + sanitizeInput(time) : ''}`;
+    onSend({ type: 'text', content: sanitizeMessageContent(text) });
   };
   return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
@@ -415,12 +514,12 @@ function LocationModal({ onClose, onSend }: { onClose: () => void; onSend: (p: R
     navigator.geolocation.getCurrentPosition(
       pos => { setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setGpsStatus('done'); },
       () => setGpsStatus('error'),
-      { timeout: 10000 }
+      { timeout: CONFIG.VOICE_RECORDING_TIMEOUT }
     );
   };
   const handleSend = () => {
     if (coords) onSend({ type: 'location', latitude: coords.lat, longitude: coords.lng, locationName: 'My Location', locationAddress: `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}` });
-    else if (manual.trim()) onSend({ type: 'location', locationName: manual.trim(), locationAddress: manual.trim(), latitude: 0, longitude: 0 });
+    else if (manual.trim()) onSend({ type: 'location', locationName: sanitizeInput(manual.trim()), locationAddress: sanitizeInput(manual.trim()), latitude: 0, longitude: 0 });
   };
   return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
@@ -463,44 +562,246 @@ function LocationModal({ onClose, onSend }: { onClose: () => void; onSend: (p: R
   );
 }
 
-function StickerPicker({ onSelect, onClose }: { onSelect: (s: string) => void; onClose: () => void }) {
-  const [activePack, setActivePack] = useState('recently');
-  const packs = Object.entries(STICKER_PACKS);
-  const currentPack = STICKER_PACKS[activePack];
+const EMOJI_CATEGORIES = [
+  {
+  id: 'recent', label: 'Recently used', icon: '🕐',
+  emojis: [], // populated dynamically — see EmojiPicker state
+},
+  {
+    id: 'smileys', label: 'Smileys & People', icon: '😊',
+    emojis: [
+      '😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙',
+      '🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬',
+      '🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','🤯','🤠','🥳','🥸',
+      '😎','🤓','🧐','😕','😟','🙁','☹️','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱',
+      '😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻',
+      '👽','👾','🤖','😺','😸','😹','😻','😼','😽','🙀','😿','😾',
+      '👋','🤚','🖐️','✋','🖖','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','👍',
+      '👎','✊','👊','🤛','🤜','👏','🙌','👐','🤲','🤝','🙏','✍️','💅','🤳','💪','🦾','🦿','🦵','🦶',
+      '👂','🦻','👃','🫀','🫁','🧠','🦷','🦴','👀','👁️','👅','👄','💋','🩸',
+    ],
+  },
+  {
+    id: 'animals', label: 'Animals & Nature', icon: '🐶',
+    emojis: [
+      '🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🙈','🙉','🙊',
+      '🐔','🐧','🐦','🐤','🦆','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🐛','🦋','🐌','🐞','🐜',
+      '🦟','🦗','🦂','🐢','🐍','🦎','🦕','🦖','🦏','🦛','🐘','🦒','🦘','🐃','🐂','🐄','🐎','🐖',
+      '🐏','🐑','🦙','🐐','🦌','🐕','🐩','🦮','🐕‍🦺','🐈','🐈‍⬛','🐓','🦃','🦚','🦜','🦢','🦩','🕊️',
+      '🐇','🦝','🦨','🦡','🦦','🦥','🐁','🐀','🐿️','🦔','🐾','🐉','🐲','🌵','🎄','🌲','🌳','🌴',
+      '🌱','🌿','☘️','🍀','🎍','🎋','🍃','🍂','🍁','🍄','🌾','💐','🌷','🌹','🥀','🌺','🌸','🌼','🌻',
+      '🌞','🌝','🌛','🌜','🌚','🌕','🌖','🌗','🌘','🌑','🌒','🌓','🌔','🌙','🌟','⭐','🌠','☁️','⛅',
+    ],
+  },
+  {
+    id: 'food', label: 'Food & Drink', icon: '🍔',
+    emojis: [
+      '🍏','🍎','🍊','🍋','🍌','🍉','🍇','🍓','🫐','🍈','🍒','🍑','🥭','🍍','🥥','🥝','🍅','🫒','🥑',
+      '🍆','🥔','🥕','🌽','🌶️','🫑','🥒','🥬','🥦','🧄','🧅','🍄','🥜','🫘','🌰','🍞','🥐','🥖','🫓',
+      '🥨','🥯','🧀','🥚','🍳','🧈','🥞','🧇','🥓','🥩','🍗','🍖','🌭','🍔','🍟','🍕','🫔','🌮','🌯',
+      '🫙','🥙','🧆','🥚','🍿','🧂','🥫','🍱','🍘','🍙','🍚','🍛','🍜','🍝','🍠','🍢','🍣','🍤','🍥',
+      '🥮','🍡','🥟','🥠','🥡','🦀','🦞','🦐','🦑','🦪','🍦','🍧','🍨','🍩','🍪','🎂','🍰','🧁','🥧',
+      '🍫','🍬','🍭','🍮','🍯','🍼','🥛','☕','🍵','🧃','🥤','🧋','🍶','🍺','🍻','🥂','🍷','🥃','🍸',
+    ],
+  },
+  {
+    id: 'activities', label: 'Activities', icon: '⚽',
+    emojis: [
+      '⚽','🏀','🏈','⚾','🥎','🎾','🏐','🏉','🥏','🎱','🪀','🏓','🏸','🏒','🏑','🥍','🏏','🪃','🥅',
+      '⛳','🪁','🏹','🎣','🤿','🎽','🎿','🛷','🥌','🪂','🏋️','🤼','🤸','⛹️','🤺','🏇','🧘','🏄','🏊',
+      '🚣','🧗','🚵','🚴','🏆','🥇','🥈','🥉','🏅','🎖️','🏵️','🎗️','🎫','🎟️','🎪','🤹','🎭','🎨','🎬',
+      '🎤','🎧','🎼','🎹','🥁','🪘','🎷','🎺','🎸','🪕','🎻','🎲','♟️','🎯','🎳','🎰','🎮','🕹️',
+    ],
+  },
+  {
+    id: 'travel', label: 'Travel & Places', icon: '🚗',
+    emojis: [
+      '🚗','🚕','🚙','🚌','🚎','🏎️','🚓','🚑','🚒','🚐','🛻','🚚','🚛','🚜','🏍️','🛵','🚲','🛴','🛺',
+      '🚨','🚥','🚦','🛑','🚧','⛽','🚢','✈️','🛩️','🚀','🛸','🚁','🛶','⛵','🚤','🛥️','🛳️','⛴️','🚞',
+      '🚝','🚄','🚅','🚈','🚂','🚃','🚋','🚆','🚇','🚊','🚉','✈️','🛫','🛬','🛰️','🚀','🛸','🌍','🌎',
+      '🌏','🗺️','🏔️','⛰️','🌋','🗻','🏕️','🏖️','🏜️','🏝️','🏞️','🏟️','🏛️','🏗️','🏘️','🏚️','🏠','🏡',
+      '🏢','🏣','🏤','🏥','🏦','🏨','🏩','🏪','🏫','🏬','🏭','🏯','🏰','💒','🗼','🗽','⛪','🕌','🕍',
+    ],
+  },
+  {
+    id: 'objects', label: 'Objects', icon: '💡',
+    emojis: [
+      '⌚','📱','💻','⌨️','🖥️','🖨️','🖱️','🖲️','💽','💾','💿','📀','📷','📸','📹','🎥','📽️','🎞️','📞',
+      '☎️','📟','📠','📺','📻','🧭','⏱️','⏲️','⏰','🕰️','⌛','⏳','📡','🔋','🔌','💡','🔦','🕯️','🪔',
+      '🧯','🛢️','💸','💵','💴','💶','💷','💴','💰','💳','💎','⚖️','🧰','🔧','🔨','⚒️','🛠️','⛏️','🪛',
+      '🔩','⚙️','🗜️','🔗','⛓️','🧲','🔫','💣','🪓','🔪','🗡️','🛡️','🚬','⚰️','⚱️','🏺','🔮','📿','🧿',
+      '💈','⚗️','🔭','🔬','🩺','🩻','🩹','💊','💉','🩸','🧬','🦠','🧫','🧪','🌡️','🪤','🪣','🧴','🧷',
+      '🧹','🧺','🧻','🪣','🧼','🫧','🪥','🧽','🧯','🛒','🚪','🪞','🪟','🛋️','🪑','🚽','🪠','🚿','🛁',
+    ],
+  },
+  {
+    id: 'symbols', label: 'Symbols', icon: '❤️',
+    emojis: [
+      '❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❤️‍🔥','❤️‍🩹','💕','💞','💓','💗','💖','💘','💝','💟',
+      '☮️','✝️','☪️','🕉️','☸️','✡️','🔯','🕎','☯️','☦️','🛐','⛎','♈','♉','♊','♋','♌','♍','♎','♏',
+      '♐','♑','♒','♓','🆔','⚛️','🉑','☢️','☣️','📴','📳','🈶','🈚','🈸','🈺','🈷️','✴️','🆚','💮','🉐',
+      '㊙️','㊗️','🈴','🈵','🈹','🈲','🅰️','🅱️','🆎','🆑','🅾️','🆘','❌','⭕','🛑','⛔','📛','🚫','💯',
+      '💢','♨️','🚷','🚯','🚳','🚱','🔞','📵','🔕','🔇','🔈','🔉','🔊','📣','📢','👁️‍🗨️','💬','💭','🗯️',
+      '♠️','♣️','♥️','♦️','🃏','🀄','🎴','🔀','🔁','🔂','▶️','⏩','⏭️','⏯️','◀️','⏪','⏮️','🔼','⏫',
+      '🔽','⏬','⏸️','⏹️','⏺️','🎦','🔅','🔆','📶','📳','📴','🔱','⚜️','🔰','♻️','✅','🈯','💹','❇️',
+    ],
+  },
+];
+
+
+function EmojiPicker({ onSelect, onClose }: { onSelect: (s: string) => void; onClose: () => void }) {
+  const [activeCategory, setActiveCategory] = useState('recent');
+  const [searchQuery, setSearchQuery] = useState('');
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  // ── Dynamic recent emojis ──────────────────────────────────────────────
+  const [recentEmojis, setRecentEmojis] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem(CONFIG.EMOJI_STORAGE_KEY);
+      return stored ? (JSON.parse(stored) as string[]) : [];
+    } catch (err) {
+      console.error('Failed to load recent emojis from localStorage:', err);
+      return [];
+    }
+  });
+
+  const trackEmoji = useCallback((emoji: string) => {
+    setRecentEmojis(prev => {
+      const next = [emoji, ...prev.filter(e => e !== emoji)].slice(0, CONFIG.MAX_RECENT_EMOJIS);
+      try {
+        localStorage.setItem(CONFIG.EMOJI_STORAGE_KEY, JSON.stringify(next));
+      } catch (err) {
+        console.error('Failed to save recent emojis to localStorage:', err);
+        // Silently fail - recent emojis are non-critical
+      }
+      return next;
+    });
+  }, []);
+
+  // Patch the static 'recent' category with live data
+  const liveCategories = useMemo(
+    () => EMOJI_CATEGORIES.map(cat =>
+      cat.id === 'recent' ? { ...cat, emojis: recentEmojis } : cat
+    ),
+    [recentEmojis]
+  );
+
+  const filteredEmojis = useMemo(() => {
+    if (!searchQuery.trim()) return null;
+    const q = searchQuery.toLowerCase();
+    return EMOJI_CATEGORIES.flatMap(cat => cat.emojis).filter((_, i) => i < 200);
+  }, [searchQuery]);
+
+  const handleScroll = useCallback(() => {
+    if (!scrollRef.current) return;
+    const scrollTop = scrollRef.current.scrollTop;
+    for (const cat of liveCategories) {
+      const el = categoryRefs.current[cat.id];
+      if (el && el.offsetTop <= scrollTop + 40) {
+        setActiveCategory(cat.id);
+      }
+    }
+  }, []);
+
+  const scrollToCategory = (catId: string) => {
+    const el = categoryRefs.current[catId];
+    if (el && scrollRef.current) {
+      scrollRef.current.scrollTo({ top: el.offsetTop - 4, behavior: 'smooth' });
+    }
+    setActiveCategory(catId);
+  };
+
   return (
-      <div className="fixed left-3 right-3 bottom-20 z-[10000] bg-white dark:bg-[#0b142e] border border-gray-200 dark:border-[#262831] rounded-2xl shadow-xl w-auto max-h-[60vh] flex flex-col overflow-hidden lg:absolute lg:left-0 lg:right-auto lg:bottom-full lg:mb-2 lg:w-72 lg:max-h-[320px]">
-        <div className="px-4 py-2 border-b dark:border-[#262831] flex items-center justify-between shrink-0">
-          <span className="font-semibold text-sm text-gray-900 dark:text-white">Stickers</span>
-          <button type="button" onClick={onClose}><X className="w-4 h-4 text-gray-400 dark:text-[#7a8ba3] hover:text-gray-600 dark:hover:text-white" /></button>
+    <div
+      data-sticker-picker
+      className="absolute bottom-full left-0 mb-2 z-[10000] bg-white dark:bg-[#233138] rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+      style={{ width: 340, height: 350 }}
+    >
+      {/* Search */}
+      <div className="px-3 pt-3 pb-2 shrink-0">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 dark:text-[#8696a0]" />
+          <input
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Search emoji"
+            className="w-full pl-8 pr-3 py-1.5 bg-[#f0f2f5] dark:bg-[#2a3942] rounded-full text-[13px] text-foreground dark:text-[#e9edef] placeholder:text-gray-400 dark:placeholder:text-[#8696a0] focus:outline-none border-0"
+          />
         </div>
-        <div className="flex-1 overflow-y-auto px-3 py-2">
-          <div className="grid grid-cols-7 gap-1">
-            {currentPack.emojis.map((emoji) => (
+      </div>
+
+      {/* Category tabs */}
+      {!searchQuery && (
+        <div className="flex items-center gap-0 px-2 pb-1 border-b border-gray-100 dark:border-[#2a3942] shrink-0 overflow-x-auto no-scrollbar">
+          {liveCategories.map(cat => (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => scrollToCategory(cat.id)}
+              className={cn(
+                'flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-base transition-colors relative',
+                activeCategory === cat.id
+                  ? 'text-[#00a884]'
+                  : 'text-gray-500 dark:text-[#8696a0] hover:bg-gray-100 dark:hover:bg-[#2a3942]'
+              )}
+              title={cat.label}
+            >
+              {cat.icon}
+              {activeCategory === cat.id && (
+                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-[#00a884] rounded-full" />
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Emoji grid */}
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto px-2 py-1"
+        style={{ scrollbarWidth: 'thin' }}
+      >
+        {searchQuery ? (
+          <div className="grid grid-cols-8 gap-0.5">
+            {EMOJI_CATEGORIES.flatMap(c => c.emojis)
+              .filter((e, i, arr) => arr.indexOf(e) === i)
+              .slice(0, 120)
+              .map(emoji => (
                 <button
-                    type="button"
-                    key={emoji}
-                    onMouseDown={(e) => {
-                      // preventDefault stops the textarea from losing focus before setText fires
-                      e.preventDefault();
-                      onSelect(emoji);
-                    }}
-                    className="w-8 h-8 flex items-center justify-center text-xl hover:bg-gray-100 dark:hover:bg-[#1a2a43] rounded-lg transition-colors"
+                  key={emoji}
+                  type="button"
+                  onMouseDown={e => { e.preventDefault(); trackEmoji(emoji); onSelect(emoji); }}
+                  className="w-9 h-9 flex items-center justify-center text-xl hover:bg-gray-100 dark:hover:bg-[#2a3942] rounded-lg transition-colors"
                 >
                   {emoji}
                 </button>
-            ))}
+              ))}
           </div>
-        </div>
-        <div className="px-2 py-1.5 border-t dark:border-[#262831] flex items-center gap-1 overflow-x-auto shrink-0">
-          {packs.map(([key, pack]) => (
-              <button type="button" key={key} onClick={() => setActivePack(key)}
-                      className={cn('px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors',
-                          activePack === key ? 'bg-blue-100 dark:bg-[#1e293b] text-blue-600 dark:text-blue-400' : 'hover:bg-gray-100 dark:hover:bg-[#1a2a43] text-gray-600 dark:text-[#7a8ba3]')}>
-                {pack.label.split(' ')[0]}
-              </button>
-          ))}
-        </div>
+       ) : (
+          liveCategories.map(cat => (
+            <div key={cat.id} ref={el => { categoryRefs.current[cat.id] = el; }}>
+              <p className="text-[11px] font-semibold text-gray-400 dark:text-[#8696a0] uppercase tracking-wide px-1 pt-2 pb-1 sticky top-0 bg-white dark:bg-[#233138]">
+                {cat.label}
+              </p>
+              <div className="grid grid-cols-8 gap-0.5">
+                {cat.emojis.map((emoji, idx) => (
+                  <button
+                    key={`${cat.id}-${idx}`}
+                    type="button"
+                    onMouseDown={e => { e.preventDefault(); trackEmoji(emoji); onSelect(emoji); }}
+                    className="w-9 h-9 flex items-center justify-center text-xl hover:bg-gray-100 dark:hover:bg-[#2a3942] rounded-lg transition-colors"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))
+        )}
       </div>
+    </div>
   );
 }
 
@@ -508,8 +809,13 @@ function StickerPicker({ onSelect, onClose }: { onSelect: (s: string) => void; o
 /* WABAContextPanel                                                          */
 /* ========================================================================= */
 
-function WABAContextPanel({ conversation, onClose }: WABAContextPanelProps) {
+function WABAContextPanel({ conversation, onClose, onFavoriteChat }: WABAContextPanelProps) {
   if (!conversation) return null;
+  const isPanelFav = Boolean(
+    (conversation as any)?.is_favorite ||
+    (conversation as any)?.isFavorite ||
+    (conversation as any)?.favorite
+  );
 
   const mockImages = [
     'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop',
@@ -629,10 +935,16 @@ function WABAContextPanel({ conversation, onClose }: WABAContextPanelProps) {
 
         {/* Settings 2 */}
         <div className="py-2">
-          <div className="flex items-center px-6 py-3 cursor-pointer hover:bg-muted/50 dark:hover:bg-[#202c33] transition-colors">
-            <Heart className="w-5 h-5 text-muted-foreground dark:text-white mr-6" />
-            <span className="text-[16px] text-foreground dark:text-white flex-1">Add to favourites</span>
-          </div>
+          <button
+            type="button"
+            onClick={() => onFavoriteChat?.(conversation?.id)}
+            className="w-full flex items-center px-6 py-3 cursor-pointer hover:bg-muted/50 dark:hover:bg-[#202c33] transition-colors text-left"
+          >
+            <Heart className={cn("w-5 h-5 mr-6", isPanelFav ? "fill-rose-500 text-rose-500 dark:fill-rose-400 dark:text-rose-400" : "text-muted-foreground dark:text-white")} />
+            <span className="text-[16px] text-foreground dark:text-white flex-1">
+              {isPanelFav ? 'Remove from favourites' : 'Add to favourites'}
+            </span>
+          </button>
           <div className="flex items-center px-6 py-3 cursor-pointer hover:bg-muted/50 dark:hover:bg-[#202c33] transition-colors">
             <List className="w-5 h-5 text-muted-foreground dark:text-white mr-6" />
             <div className="flex-1 flex justify-between items-center">
@@ -685,10 +997,6 @@ function dedupeById(msgs: Message[]): Message[] {
   );
 }
 
-const INITIAL_LIMIT = 50;
-const LOAD_MORE_LIMIT = 100;
-const MAX_OLDER_MESSAGES = 500;
-const MAX_ATTACHMENT_BYTES = 16 * 1024 * 1024;
 
 function WABAChatWindow({
   conversation,
@@ -722,6 +1030,24 @@ function WABAChatWindow({
   const [addGroupsLoaded, setAddGroupsLoaded] = useState(false);
   const [addingGroupId, setAddingGroupId] = useState<string | null>(null);
   const [groupActionNote, setGroupActionNote] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const [isVoiceRecording, setIsVoiceRecording] = useState(false);
+const [isVoiceLocked, setIsVoiceLocked] = useState(false);
+const [voiceElapsed, setVoiceElapsed] = useState(0);
+const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+const audioChunksRef = useRef<Blob[]>([]);
+const audioStreamRef = useRef<MediaStream | null>(null);
+const voiceTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+const voiceStartPointerRef = useRef({ x: 0, y: 0 });
+const voiceAnimFrameRef = useRef<number | null>(null);
+const voiceAnalyserRef = useRef<AnalyserNode | null>(null);
+const waveCanvasRef = useRef<HTMLCanvasElement>(null);
+const micBtnRef = useRef<HTMLButtonElement>(null);
+const [voicePreviewUrl, setVoicePreviewUrl] = useState<string | null>(null);
+const [voicePreviewBlob, setVoicePreviewBlob] = useState<Blob | null>(null);
+const [isVoicePlaying, setIsVoicePlaying] = useState(false);
+const voicePreviewAudioRef = useRef<HTMLAudioElement | null>(null);
+const [voicePlayProgress, setVoicePlayProgress] = useState(0);
 
   const loadAddGroups = useCallback(async () => {
     if (addGroupsLoaded || addGroupsLoading) return;
@@ -792,17 +1118,43 @@ function WABAChatWindow({
   const [deletedForMeIds, setDeletedForMeIds] = useState<Set<string>>(new Set());
   const [deletedForEveryoneIds, setDeletedForEveryoneIds] = useState<Set<string>>(new Set());
 
-  const { messages: polledMessages, isLoading, total, isAgentTyping } = useConversationMessages(
+   const { messages: polledMessages, isLoading, total, isAgentTyping } = useConversationMessages(
     conversation?.id || null,
-    { limit: INITIAL_LIMIT },
+    { limit: CONFIG.INITIAL_MESSAGE_LIMIT },
     channel || 'waba'
   );
 
   const [olderMessages, setOlderMessages] = useState<Message[]>([]);
   const [loadingOlder, setLoadingOlder] = useState(false);
-  const [olderOffset, setOlderOffset] = useState(INITIAL_LIMIT);
+  const [olderOffset, setOlderOffset] = useState(CONFIG.INITIAL_MESSAGE_LIMIT);
 
   const prevConvId = useRef<string | null>(null);
+
+  // Cleanup effect for voice recording resources
+  useEffect(() => {
+    return () => {
+      // Clean up voice recording resources on unmount
+      if (voiceTimerRef.current) {
+        clearInterval(voiceTimerRef.current);
+        voiceTimerRef.current = null;
+      }
+      if (voiceAnimFrameRef.current) {
+        cancelAnimationFrame(voiceAnimFrameRef.current);
+        voiceAnimFrameRef.current = null;
+      }
+      if (voiceAnalyserRef.current) {
+        voiceAnalyserRef.current.disconnect();
+        voiceAnalyserRef.current = null;
+      }
+      if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach(t => t.stop());
+        audioStreamRef.current = null;
+      }
+      if (voicePreviewUrl) {
+        URL.revokeObjectURL(voicePreviewUrl);
+      }
+    };
+  }, [voicePreviewUrl]);
 
   useEffect(() => {
     pendingFilesRef.current = pendingFiles;
@@ -810,10 +1162,30 @@ function WABAChatWindow({
 
   useEffect(() => {
     return () => {
+      // Clean up pending file URLs on unmount
       pendingFilesRef.current.forEach((pf) => URL.revokeObjectURL(pf.previewUrl));
       pendingFilesRef.current = [];
     };
   }, []);
+
+  // Cleanup effect for conversation change
+  useEffect(() => {
+    if (conversation?.id && conversation.id !== prevConvId.current) {
+      prevConvId.current = conversation.id;
+      // Clean up pending files when conversation changes
+      setPendingFiles((prev) => {
+        prev.forEach((pf) => URL.revokeObjectURL(pf.previewUrl));
+        return [];
+      });
+      setText('');
+      setSendError(null);
+      setOwnershipError(null);
+      setOlderMessages([]);
+      setOlderOffset(CONFIG.INITIAL_MESSAGE_LIMIT);
+      setDeletedForMeIds(new Set());
+      setDeletedForEveryoneIds(new Set());
+    }
+  }, [conversation?.id]);
 
   // Sync owner → agentType
   useEffect(() => {
@@ -848,7 +1220,7 @@ function WABAChatWindow({
       setSendError(null);
       setOwnershipError(null);
       setOlderMessages([]);
-      setOlderOffset(INITIAL_LIMIT);
+      setOlderOffset(CONFIG.INITIAL_MESSAGE_LIMIT);
       setDeletedForMeIds(new Set());
       setDeletedForEveryoneIds(new Set());
     }
@@ -866,46 +1238,48 @@ function WABAChatWindow({
   }, [showStickers]);
 
   const normalizeStatus = (s: string | undefined): string => {
-  if (!s) return 'sent';
-  if (s === 'read' || s === 'seen') return 'read';
-  if (s === 'delivered' || s === 'delivered_to_device') return 'delivered';
-  if (s === 'failed' || s === 'error') return 'failed';
-  if (s === 'received') return 'sent'; // incoming messages treated as sent on display
-  return 'sent';
-};
+    if (!s) return 'sent';
+    if (s === 'read' || s === 'seen') return 'read';
+    if (s === 'delivered' || s === 'delivered_to_device') return 'delivered';
+    if (s === 'failed' || s === 'error') return 'failed';
+    if (s === 'received') return 'sent'; // incoming messages treated as sent on display
+    return 'sent';
+  };
 
-const normalizedPolledMessages = polledMessages.map((m) => ({
-  ...m,
-  status: normalizeStatus(
-    (m as Message & { message_status?: string }).status ||
-    (m as Message & { message_status?: string }).message_status
-  ),
-}));
+  const effectivePolledMessages = polledMessages;
 
-const baseMessages = dedupeById([...olderMessages, ...normalizedPolledMessages]);
-const allMessages = useMemo(
-  () =>
-    baseMessages
-      .filter((m) => !deletedForMeIds.has(m.id))
-      .map((m) => {
-        if (!deletedForEveryoneIds.has(m.id)) return m;
-        return {
-          ...m,
-          content: m.isOutgoing ? 'You deleted this message' : 'This message was deleted',
-          mediaId: undefined,
-          mediaType: undefined,
-          mediaMimeType: undefined,
-          mediaFilename: undefined,
-          mediaCaption: undefined,
-          templateName: undefined,
-          latitude: undefined,
-          longitude: undefined,
-          locationName: undefined,
-          locationAddress: undefined,
-        } as Message;
-      }),
-  [baseMessages, deletedForMeIds, deletedForEveryoneIds]
-);
+  const normalizedPolledMessages = effectivePolledMessages.map((m: Message) => ({
+    ...m,
+    status: normalizeStatus(
+      (m as Message & { message_status?: string }).status ||
+      (m as Message & { message_status?: string }).message_status
+    ),
+  }));
+
+  const baseMessages = dedupeById([...olderMessages, ...normalizedPolledMessages]);
+  const allMessages = useMemo(
+    () =>
+      baseMessages
+        .filter((m) => !deletedForMeIds.has(m.id))
+        .map((m) => {
+          if (!deletedForEveryoneIds.has(m.id)) return m;
+          return {
+            ...m,
+            content: m.isOutgoing ? 'You deleted this message' : 'This message was deleted',
+            mediaId: undefined,
+            mediaType: undefined,
+            mediaMimeType: undefined,
+            mediaFilename: undefined,
+            mediaCaption: undefined,
+            templateName: undefined,
+            latitude: undefined,
+            longitude: undefined,
+            locationName: undefined,
+            locationAddress: undefined,
+          } as Message;
+        }),
+    [baseMessages, deletedForMeIds, deletedForEveryoneIds]
+  );
   const hasMore = total > olderOffset;
 
   const matchingMessageIds = useMemo(() => {
@@ -926,7 +1300,7 @@ const allMessages = useMemo(
     try {
       const url =
         `/api/whatsapp-conversations/conversations/${conversation.id}/messages` +
-        `?limit=${LOAD_MORE_LIMIT}&offset=${olderOffset}&channel=${channel || 'waba'}`;
+        `?limit=${CONFIG.LOAD_MORE_LIMIT}&offset=${olderOffset}&channel=${channel || 'waba'}`;
       const res = await fetchWithTenant(url);
       if (!res.ok) return;
       const data = await res.json();
@@ -950,7 +1324,7 @@ const allMessages = useMemo(
           id: r.id,
           conversationId: r.conversation_id,
           content: r.content || '',
-          timestamp: new Date(r.created_at),
+          timestamp: r.created_at ? new Date(r.created_at as string | Date) : new Date(),
           isOutgoing,
           status: (() => {
             const s = r.message_status || r.status || '';
@@ -1046,8 +1420,8 @@ const allMessages = useMemo(
     const additions: PendingFile[] = [];
     try {
       for (const file of Array.from(files)) {
-        if (file.size > MAX_ATTACHMENT_BYTES) {
-          throw new Error(`${file.name} is larger than 16 MB`);
+        if (file.size > CONFIG.MAX_ATTACHMENT_BYTES) {
+          throw new Error(`${file.name} is larger than ${CONFIG.MAX_ATTACHMENT_BYTES / (1024 * 1024)} MB`);
         }
         const base64 = await readFileAsBase64(file);
         additions.push({
@@ -1061,7 +1435,8 @@ const allMessages = useMemo(
       setSendError(null);
     } catch (err: unknown) {
       additions.forEach((pf) => URL.revokeObjectURL(pf.previewUrl));
-      setSendError(getErrorMessage(err, 'Failed to read attachment'));
+      const error = err instanceof Error ? new ValidationError('Failed to read attachment', err) : new ValidationError('Failed to read attachment');
+      setSendError(error.message);
     } finally {
       setFileLoading(false);
     }
@@ -1106,7 +1481,8 @@ const allMessages = useMemo(
         if (sentIds.size > 0) {
           setPendingFiles((prev) => prev.filter((pf) => !sentIds.has(pf.id)));
         }
-        setSendError(getErrorMessage(err, 'Failed to send attachment'));
+        const error = err instanceof Error ? new NetworkError('Failed to send attachment', err) : new NetworkError('Failed to send attachment');
+        setSendError(error.message);
       } finally {
         setIsSending(false);
       }
@@ -1115,11 +1491,12 @@ const allMessages = useMemo(
     if (!text.trim()) return;
     setIsSending(true);
     try {
-      await Promise.resolve(onSendMessage({ type: 'text', content: text.trim() }));
+      await Promise.resolve(onSendMessage({ type: 'text', content: sanitizeMessageContent(text.trim()) }));
       setText('');
       if (textareaRef.current) textareaRef.current.style.height = 'auto';
     } catch (err: unknown) {
-      setSendError(getErrorMessage(err, 'Failed to send message'));
+      const error = err instanceof Error ? new NetworkError('Failed to send message', err) : new NetworkError('Failed to send message');
+      setSendError(error.message);
     } finally {
       setIsSending(false);
     }
@@ -1131,7 +1508,8 @@ const allMessages = useMemo(
     try {
       await Promise.resolve(onSendMessage(payload));
     } catch (err: unknown) {
-      setSendError(getErrorMessage(err, 'Failed to send message'));
+      const error = err instanceof Error ? new NetworkError('Failed to send message', err) : new NetworkError('Failed to send message');
+      setSendError(error.message);
       return;
     } finally {
       setIsSending(false);
@@ -1160,6 +1538,7 @@ const allMessages = useMemo(
       case 'poll': setShowPoll(true); break;
       case 'sticker': setShowStickers(true); break;
       case 'event': setShowEvent(true); break;
+      case 'template':  setIsTemplatePickerOpen(true); break;
     }
   }, []);
 
@@ -1240,7 +1619,160 @@ const allMessages = useMemo(
     }
   }, [conversationId, conversation?.id, backendChannel, channel]);
 
-    if (!conversation) {
+  const fmtDur = (s: number) => `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+
+  const stopVoiceTracks = useCallback(() => {
+    audioStreamRef.current?.getTracks().forEach(t => t.stop());
+    audioStreamRef.current = null;
+  }, []);
+
+  const stopVoiceRecording = useCallback(() => {
+    setIsVoiceRecording(false);
+    setIsVoiceLocked(false);
+    if (voiceTimerRef.current) {
+      clearInterval(voiceTimerRef.current);
+      voiceTimerRef.current = null;
+    }
+    if (voiceAnimFrameRef.current) {
+      cancelAnimationFrame(voiceAnimFrameRef.current);
+      voiceAnimFrameRef.current = null;
+    }
+    if (voiceAnalyserRef.current) {
+      voiceAnalyserRef.current.disconnect();
+      voiceAnalyserRef.current = null;
+    }
+  }, []);
+
+  const drawWaveform = useCallback(() => {
+    const analyser = voiceAnalyserRef.current;
+    const canvas = waveCanvasRef.current;
+    if (!analyser || !canvas) return;
+    const ctx = canvas.getContext('2d')!;
+    const W = canvas.offsetWidth; const H = canvas.offsetHeight;
+    canvas.width = W; canvas.height = H;
+    const buf = new Uint8Array(analyser.frequencyBinCount);
+    const draw = () => {
+      voiceAnimFrameRef.current = requestAnimationFrame(draw);
+      analyser.getByteTimeDomainData(buf);
+      ctx.clearRect(0, 0, W, H);
+      ctx.lineWidth = 2; ctx.strokeStyle = '#25d366'; ctx.beginPath();
+      const sw = W / buf.length; let x = 0;
+      buf.forEach((v, i) => {
+        const y = (v / 128) * H / 2;
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        x += sw;
+      });
+      ctx.lineTo(W, H / 2); ctx.stroke();
+    };
+    draw();
+  }, []);
+
+  const startVoiceRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioStreamRef.current = stream;
+      audioChunksRef.current = [];
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      const audioCtx = new AudioCtx();
+      const src = audioCtx.createMediaStreamSource(stream);
+      const analyser = audioCtx.createAnalyser(); analyser.fftSize = 256;
+      src.connect(analyser);
+      voiceAnalyserRef.current = analyser;
+
+      const mr = new MediaRecorder(stream);
+      mr.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
+      mr.start(100);
+      mediaRecorderRef.current = mr;
+
+      setIsVoiceRecording(true);
+      setIsVoiceLocked(false);
+      setVoiceElapsed(0);
+      voiceTimerRef.current = setInterval(() => setVoiceElapsed(s => s + 1), 1000);
+      drawWaveform();
+    } catch {
+      setSendError('Microphone permission denied');
+    }
+  }, [drawWaveform]);
+
+  const cancelVoiceRecording = useCallback(() => {
+    if (mediaRecorderRef.current?.state !== 'inactive') {
+      mediaRecorderRef.current!.onstop = null;
+      mediaRecorderRef.current!.stop();
+    }
+    stopVoiceTracks();
+    stopVoiceRecording();
+    if (voicePreviewAudioRef.current) {
+      voicePreviewAudioRef.current.pause();
+      voicePreviewAudioRef.current.src = '';
+    }
+    setVoicePreviewUrl(prev => { if (prev) URL.revokeObjectURL(prev); return null; });
+    setVoicePreviewBlob(null);
+    setIsVoicePlaying(false);
+    setVoicePlayProgress(0);
+  }, [stopVoiceTracks, stopVoiceRecording]);
+
+  const stopAndPreviewRecording = useCallback(() => {
+    const mr = mediaRecorderRef.current;
+    if (mr && mr.state !== 'inactive') {
+      mr.onstop = () => {
+        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const url = URL.createObjectURL(blob);
+        setVoicePreviewBlob(blob);
+        setVoicePreviewUrl(url);
+      };
+      mr.stop();
+    }
+    stopVoiceTracks();
+    stopVoiceRecording();
+  }, [stopVoiceTracks, stopVoiceRecording]);
+
+  const sendVoiceRecording = useCallback(async () => {
+    const blob = voicePreviewBlob;
+    if (!blob) return;
+    if (voicePreviewAudioRef.current) {
+      voicePreviewAudioRef.current.pause();
+      voicePreviewAudioRef.current.src = '';
+    }
+    setIsSending(true);
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve((reader.result as string).split(',')[1]);
+        reader.onerror = () => reject(new Error('Failed to read audio'));
+        reader.readAsDataURL(blob);
+      });
+      await Promise.resolve(onSendMessage({ type: 'audio', fileBase64: base64, filename: `voice_${Date.now()}.webm`, contentType: 'audio/webm' }));
+      setVoicePreviewUrl(prev => { if (prev) URL.revokeObjectURL(prev); return null; });
+      setVoicePreviewBlob(null);
+      setIsVoicePlaying(false);
+      setVoicePlayProgress(0);
+    } catch (err: unknown) {
+      const error = err instanceof Error ? new NetworkError('Failed to send voice message', err) : new NetworkError('Failed to send voice message');
+      setSendError(error.message);
+    } finally {
+      setIsSending(false);
+    }
+  }, [voicePreviewBlob, onSendMessage]);
+
+  const toggleVoicePlayback = useCallback(() => {
+    const audio = voicePreviewAudioRef.current;
+    if (!audio) return;
+    if (isVoicePlaying) {
+      audio.pause();
+      setIsVoicePlaying(false);
+    } else {
+      audio.play().catch(() => {});
+      setIsVoicePlaying(true);
+    }
+  }, [isVoicePlaying]);
+
+  const isFav = Boolean(
+    (conversation as ExtendedConversation)?.is_favorite ||
+    (conversation as ExtendedConversation)?.isFavorite ||
+    (conversation as ExtendedConversation)?.favorite
+  );
+
+  if (!conversation) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-[#f0f2f5] dark:bg-[#222e35] border-l border-border dark:border-[#222d34]">
         <div className="bg-white dark:bg-[#111b21] p-8 rounded-2xl max-w-sm w-full flex flex-col items-center text-center shadow-sm">
@@ -1358,9 +1890,6 @@ const allMessages = useMemo(
                   <DropdownMenuItem className="focus:bg-accent dark:focus:bg-[#182229] focus:text-white dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4" onClick={onTogglePanel}>
                     <Info className="w-4 h-4" /> <span>Contact info</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="focus:bg-accent dark:focus:bg-[#182229] focus:text-white dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4" onClick={() => setIsSearchOpen(true)}>
-                    <Search className="w-4 h-4" /> <span>Search</span>
-                  </DropdownMenuItem>
                   <DropdownMenuItem className="focus:bg-accent dark:focus:bg-[#182229] focus:text-white dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4">
                     <CheckSquare className="w-4 h-4" /> <span>Select messages</span>
                   </DropdownMenuItem>
@@ -1369,7 +1898,8 @@ const allMessages = useMemo(
                     <ChevronRight className="w-4 h-4" />
                   </DropdownMenuItem>
                   <DropdownMenuItem className="focus:bg-accent dark:focus:bg-[#182229] focus:text-white dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4" onClick={() => onFavoriteChat?.(conversation?.id)}>
-                    <Heart className="w-4 h-4" /> <span>Add to favourites</span>
+                    <Heart className={cn("w-4 h-4", isFav && "fill-current text-rose-500 dark:text-rose-400")} />
+                    <span>{isFav ? 'Remove from favourites' : 'Add to favourites'}</span>
                   </DropdownMenuItem>
                   <DropdownMenuSub onOpenChange={(o) => { if (o) loadAddGroups(); }}>
                     <DropdownMenuSubTrigger className="focus:bg-accent dark:focus:bg-[#182229] focus:text-white dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4">
@@ -1420,6 +1950,27 @@ const allMessages = useMemo(
       </div>
 
       {/* Messages */}
+      {/*
+        68 px = px-4 (16) + avatar w-10 (40) + gap-3 (12) — matches the
+        header's contact-name start position exactly.
+        We target both sides:
+          • ml-[68px]  on the incoming bubble container
+          • mr-[68px]  mirrors the indent on outgoing bubbles so the
+                       conversation feels balanced
+        The selectors below cover the two most common patterns MessageList
+        uses to mark direction.  Adjust the attribute/class names if your
+        MessageList uses different ones.
+      */}
+      <div className={cn(
+        "flex-1 overflow-hidden flex flex-col min-h-0",
+        // incoming bubbles — left indent aligns with header name
+        "[&_[data-incoming='true']>*:first-child]:ml-[68px]",
+        "[&_[data-role='user']>*:first-child]:ml-[68px]",
+        // outgoing bubbles — mirror indent from the right
+        "[&_[data-incoming='false']>*:first-child]:mr-[68px]",
+        "[&_[data-role='assistant']>*:first-child]:mr-[68px]",
+        "[&_[data-role='human_agent']>*:first-child]:mr-[68px]",
+      )}>
       <MessageList
         messages={allMessages}
         conversationId={conversation.id}
@@ -1432,6 +1983,7 @@ const allMessages = useMemo(
         searchText={searchText}
         highlightedMessageId={matchingMessageIds[searchMatchIndex]}
       />
+      </div>
 
       {/* ── Modals ── */}
       <AlertDialog open={showTakeoverDialog} onOpenChange={setShowTakeoverDialog}>
@@ -1464,19 +2016,21 @@ const allMessages = useMemo(
       <input ref={audioRef} type="file" multiple className="hidden" aria-label="Upload audio" onChange={handleFileChange} accept="audio/*" />
 
       {/* ── Template Picker ── */}
-      <TemplatePicker
-        open={isTemplatePickerOpen}
-        onOpenChange={setIsTemplatePickerOpen}
-        selectedCount={1}
-        onSend={handleTemplateSend}
-        sending={templateSending}
-        sendProgress={templateSendProgress}
-        channel={backendChannel ?? 'waba'}
-        isBulkSend={false}
-      />
+      <div className="[&_.dark\:bg-\\[\\#111b21\\]]:dark:bg-[rgb(22,23,23)] [&_[class*='dark:bg-']>div]:dark:bg-[rgb(22,23,23)]">
+        <TemplatePicker
+          open={isTemplatePickerOpen}
+          onOpenChange={setIsTemplatePickerOpen}
+          selectedCount={1}
+          onSend={handleTemplateSend}
+          sending={templateSending}
+          sendProgress={templateSendProgress}
+          channel={backendChannel ?? 'waba'}
+          isBulkSend={false}
+        />
+      </div>
 
       {/* Composer */}
-      <div className="p-3 px-4 bg-white dark:bg-[#161717] shrink-0 z-10 relative">
+      <div className="mt-4 p-3 px-4 bg-white dark:bg-[#161717] shrink-0 z-10 relative">
 
         {/* ── Pending file previews ── */}
         {(pendingFiles.length > 0 || fileLoading) && (
@@ -1507,102 +2061,80 @@ const allMessages = useMemo(
 
         <div className="flex items-end gap-2">
 
-          {/* ── Left icons — outside the pill ── */}
+          {/* ── Pill — attach + emoji + textarea all inside ── */}
+          <div className="flex-1 flex items-center bg-[#f0f2f5] dark:bg-[#171818] rounded-full px-2 h-[44px] gap-1">
 
-          {/* Attach menu */}
-          <div ref={attachBtnRef} className="relative flex-shrink-0">
-            <button
-              type="button"
-              onClick={() => setShowAttachMenu(v => !v)}
-              className={cn(
-                'w-9 h-9 flex items-center justify-center rounded-full transition-all duration-200 hover:bg-muted',
-                showAttachMenu
-                  ? 'text-[#00a884] rotate-45'
-                  : 'text-muted-foreground dark:text-white hover:text-foreground'
-              )}
-            >
-              <Plus className="w-5 h-5" />
-            </button>
-            {showAttachMenu && (
-              <div className="absolute bottom-full left-0 mb-2 w-64 bg-white dark:bg-[#2e2f2f] border border-gray-200 dark:border-[#3d3d3d] rounded-2xl shadow-xl p-3 z-40">
-                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2 px-1">Attach</p>
-                <div className="grid grid-cols-3 gap-1">
+            {/* Attach — inside pill */}
+            <div ref={attachBtnRef} className="relative flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowAttachMenu(v => !v)}
+                className={cn(
+                  'w-9 h-9 flex items-center justify-center rounded-full transition-all duration-200',
+                  showAttachMenu ? 'text-[#00a884] rotate-45' : 'text-muted-foreground dark:text-[#8696a0] hover:text-foreground'
+                )}
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+              {showAttachMenu && (
+                <div className="absolute bottom-full left-0 mb-2 w-[200px] bg-white dark:bg-[#233138] rounded-2xl shadow-2xl overflow-hidden z-40 py-1">
                   {ATTACH_ITEMS.map(item => (
                     <button
                       key={item.id}
                       onClick={() => handleAttachItem(item.id)}
-                      className="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-[#3d3d3d] transition-colors group"
+                      className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-[#182229] transition-colors text-left"
                     >
-                      <div className={cn('w-12 h-12 rounded-full flex items-center justify-center shadow-sm transition-transform group-hover:scale-105', item.bg)}>
-                        {item.icon}
+                      <div className={cn('w-7 h-7 rounded-full flex items-center justify-center shrink-0', item.bg, item.color)}>
+                        <span className="scale-75">{item.icon}</span>
                       </div>
-                      <span className="text-[10px] text-gray-500 dark:text-gray-300 font-medium leading-tight text-center">{item.label}</span>
+                      <span className="text-[13px] text-foreground dark:text-[#e9edef] font-normal">{item.label}</span>
                     </button>
                   ))}
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
 
-          {/* Emoji / Sticker — fixed position now anchored bottom-left of pill row */}
-          <div className="relative flex-shrink-0">
-            <button
-              type="button"
-              data-sticker-btn
-              aria-label={showStickers ? 'Hide stickers' : 'Show stickers'}
-              aria-pressed={showStickers ? 'true' : 'false'}
-              onClick={() => setShowStickers(v => !v)}
-              className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground dark:text-white hover:text-foreground transition-colors"
-            >
-              <Smile className="w-5 h-5" />
-            </button>
-            {showStickers && (
-              <div data-sticker-picker>
-                <StickerPicker
+            {/* Emoji — inside pill */}
+            <div className="relative flex-shrink-0">
+              <button
+                type="button"
+                data-sticker-btn
+                aria-label={showStickers ? 'Hide emoji' : 'Show emoji'}
+                aria-pressed={showStickers ? 'true' : 'false'}
+                onClick={() => setShowStickers(v => !v)}
+                className="w-9 h-9 flex items-center justify-center rounded-full text-muted-foreground dark:text-[#8696a0] hover:text-foreground transition-colors"
+              >
+                <Smile className="w-5 h-5" />
+              </button>
+              {showStickers && (
+                <EmojiPicker
                   onSelect={(emoji: string) => {
-                    // setText FIRST, then close, then focus — never call onClose from onSelect
                     setText(prev => prev + emoji);
                     setShowStickers(false);
                     setTimeout(() => textareaRef.current?.focus(), 0);
                   }}
                   onClose={() => setShowStickers(false)}
                 />
-              </div>
-            )}
-          </div>
+              )}
+            </div>
 
-          {/* Template button */}
-          <button
-            type="button"
-            onClick={() => setIsTemplatePickerOpen(true)}
-            className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground dark:text-white hover:text-foreground transition-colors flex-shrink-0"
-            title="Send template message"
-          >
-            <LayoutTemplate className="w-5 h-5" />
-          </button>
-
-          {/* ── Pill — text input only ── */}
-          <div className="flex-1 flex items-center bg-[#f0f2f5] dark:bg-[#2e2f2f] rounded-full px-4 h-[44px] gap-2">
+            {/* Textarea */}
             <Textarea
               ref={textareaRef}
               value={text}
               onChange={e => setText(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={pendingFiles.length > 0 ? 'Add a caption (optional)…' : 'Type a message'}
-              className="flex-1 bg-transparent border-0 text-foreground dark:text-[#e9edef] py-2.5 px-0 text-[15px] focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-[#8696a0] dark:placeholder:text-[#a2a2a2] resize-none min-h-[24px] max-h-[120px] self-center"
+              className="flex-1 bg-transparent border-0 text-foreground dark:text-[#e9edef] py-2.5 px-1 text-[15px] focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-[#8696a0] dark:placeholder:text-[#a2a2a2] resize-none min-h-[24px] max-h-[120px] self-center"
               rows={1}
             />
           </div>
 
-          {/* ── Right controls — AI take-over (Mr LAD) + send/mic, WhatsApp-style ── */}
-          {/* Agent type toggle — Mr LAD for AI; tap to hand control between AI and a human agent */}
+          {/* Agent toggle */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className={cn(
-                  'h-9 w-9 flex items-center justify-center rounded-full transition-colors hover:bg-muted flex-shrink-0',
-                  agentType === 'human' && 'text-orange-500'
-                )}
+                className={cn('h-9 w-9 flex items-center justify-center rounded-full transition-colors hover:bg-muted flex-shrink-0', agentType === 'human' && 'text-orange-500')}
                 title={agentType === 'human' ? 'Human agent — tap to hand back to Mr LAD' : 'Mr LAD is replying — tap to take over'}
               >
                 {agentType === 'human' ? <User className="h-5 w-5" /> : <img src={isDark ? '/logo-white.svg' : '/logo.svg'} alt="Mr LAD" className="h-7 w-7 object-contain" />}
@@ -1620,14 +2152,28 @@ const allMessages = useMemo(
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Send / mic */}
-          <div className="shrink-0 cursor-pointer transition-colors h-9 w-9 flex items-center justify-center" onClick={handleSend}>
-            {isSending
-              ? <Loader2 className="w-6 h-6 text-[#00a884] animate-spin" />
-              : (text.trim() || pendingFiles.length > 0)
-              ? <Send className="w-6 h-6 text-[#00a884] hover:text-[#008f6f]" />
-              : <Mic className="w-6 h-6 text-muted-foreground dark:text-white hover:text-foreground" />}
-          </div>
+         {/* Send / Mic */}
+{isSending ? (
+  <Loader2 className="w-6 h-6 text-[#00a884] animate-spin" />
+) : (text.trim() || pendingFiles.length > 0) ? (
+  <button
+    type="button"
+    className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full transition-colors text-[#00a884] hover:text-[#008f6f]"
+    onClick={handleSend}
+    aria-label="Send message"
+  >
+    <Send className="w-6 h-6" />
+  </button>
+) : (
+  <button
+    ref={micBtnRef}
+    className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full transition-colors text-muted-foreground dark:text-[#8696a0] hover:text-[#00a884] dark:hover:text-[#00a884]"
+    onClick={startVoiceRecording}
+    aria-label="Record voice message"
+  >
+    <Mic className="w-6 h-6" />
+  </button>
+)}
 
         </div>
 
@@ -1659,13 +2205,99 @@ const allMessages = useMemo(
             {templateSendResult.success ? '✓' : '✕'} {templateSendResult.message}
           </div>
         )}
-
-        {/* ── Hint bar ── */}
-        <p className="text-[10px] text-muted-foreground mt-1.5 px-1 hidden lg:block">
-          Enter to send · Shift+Enter for new line
-          {agentType === 'human' && <span className="ml-2 text-orange-500 font-medium">· You have manual control</span>}
-        </p>
       </div>
+      {/* ── Phase 1: Active recording ── */}
+      {isVoiceRecording && (
+        <div className="absolute inset-x-0 bottom-0 bg-[#f0f2f5] dark:bg-[#202c33] border-t border-border dark:border-[#2a3942] z-20 h-16 flex items-center px-3 gap-3">
+          <button
+            onClick={cancelVoiceRecording}
+            aria-label="Cancel recording"
+            className="shrink-0 w-10 h-10 flex items-center justify-center text-[#54656f] dark:text-[#8696a0] hover:text-red-500 dark:hover:text-red-400 transition-colors"
+          >
+            <Trash2 className="w-5 h-5" />
+          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" aria-hidden="true" />
+            <span className="text-sm font-medium tabular-nums text-[#111b21] dark:text-[#e9edef] min-w-[38px]">
+              {fmtDur(voiceElapsed)}
+            </span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <canvas ref={waveCanvasRef} className="w-full h-10" />
+          </div>
+          <button
+            onClick={stopAndPreviewRecording}
+            aria-label="Stop recording"
+            className="shrink-0 w-12 h-12 rounded-full bg-[#00a884] hover:bg-[#008f6f] flex items-center justify-center transition-colors"
+          >
+            <StopCircle className="w-5 h-5 text-white" />
+          </button>
+        </div>
+      )}
+
+      {/* ── Phase 2: Preview before sending ── */}
+      {!isVoiceRecording && voicePreviewUrl && (
+        <div className="absolute inset-x-0 bottom-0 bg-[#f0f2f5] dark:bg-[#202c33] border-t border-border dark:border-[#2a3942] z-20 h-16 flex items-center px-3 gap-3">
+          {/* Hidden audio element for preview playback */}
+          <audio
+            ref={voicePreviewAudioRef}
+            src={voicePreviewUrl}
+            onTimeUpdate={() => {
+              const a = voicePreviewAudioRef.current;
+              if (a && a.duration) setVoicePlayProgress((a.currentTime / a.duration) * 100);
+            }}
+            onEnded={() => { setIsVoicePlaying(false); setVoicePlayProgress(0); }}
+          />
+          {/* Discard */}
+          <button
+            onClick={cancelVoiceRecording}
+            aria-label="Discard recording"
+            className="shrink-0 w-10 h-10 flex items-center justify-center text-[#54656f] dark:text-[#8696a0] hover:text-red-500 dark:hover:text-red-400 transition-colors"
+          >
+            <Trash2 className="w-5 h-5" />
+          </button>
+          {/* Play / Pause */}
+          <button
+            onClick={toggleVoicePlayback}
+            aria-label={isVoicePlaying ? 'Pause' : 'Play preview'}
+            className="shrink-0 w-10 h-10 rounded-full bg-[#00a884] flex items-center justify-center hover:bg-[#008f6f] transition-colors"
+          >
+            {isVoicePlaying
+              ? <Pause className="w-5 h-5 text-white fill-white" />
+              : <Play className="w-5 h-5 text-white fill-white" />
+            }
+          </button>
+          {/* Duration */}
+          <span className="text-sm font-medium tabular-nums text-[#111b21] dark:text-[#e9edef] min-w-[38px]">
+            {fmtDur(voiceElapsed)}
+          </span>
+          {/* Live progress bar */}
+          <div
+            className="flex-1 min-w-0 h-1.5 bg-[#d1d7db] dark:bg-[#8696a0]/50 rounded-full overflow-hidden cursor-pointer"
+            onClick={(e) => {
+              const a = voicePreviewAudioRef.current;
+              if (!a || !a.duration) return;
+              const rect = e.currentTarget.getBoundingClientRect();
+              const pct = (e.clientX - rect.left) / rect.width;
+              a.currentTime = pct * a.duration;
+              setVoicePlayProgress(pct * 100);
+            }}
+          >
+            <div
+              className="h-full bg-[#00a884] rounded-full transition-none"
+              style={{ width: `${voicePlayProgress}%` }}
+            />
+          </div>
+          {/* Send */}
+          <button
+            onClick={sendVoiceRecording}
+            aria-label="Send voice message"
+            className="shrink-0 w-12 h-12 rounded-full bg-[#00a884] hover:bg-[#008f6f] flex items-center justify-center transition-colors"
+          >
+            <Send className="w-5 h-5 text-white" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -1797,6 +2429,8 @@ function WABASidebar({
   // ── Message settings dialog (reply delay + inbound debounce) ────────────
   const [showMessageSettings, setShowMessageSettings] = useState(false);
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
+  const [isGroupsPanelOpen, setIsGroupsPanelOpen] = useState(false);
+  const [selectedGroupsPanelIds, setSelectedGroupsPanelIds] = useState<Set<string>>(new Set());
   const [createGroupIds, setCreateGroupIds] = useState<string[]>([]);
 
   // ── Label library (fetched once if parent opts in) ─────────────────────
@@ -2170,19 +2804,23 @@ function WABASidebar({
         <TooltipProvider delayDuration={100}>
           <div className="flex items-center gap-2 text-muted-foreground dark:text-white">
 
-            {/* ── New Template ── onClick: open TemplatePicker (same as file 1) */}
+            {/* ── Broadcast Groups ── */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-muted transition-colors"
-                  onClick={() => setIsTemplatePickerOpen(true)}
-                  aria-label="New template"
+                  onClick={() => {
+                    setIsGroupsPanelOpen(true);
+                    setSelectedGroupsPanelIds(new Set());
+                  }}
+                  aria-label="Broadcast groups"
+                  title="Broadcast groups"
                 >
-                  <LayoutTemplate className="h-4 w-4" />
+                  <Users className="h-4 w-4" aria-hidden="true" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="z-[9999] bg-zinc-800 text-white border-0 text-[10px]">
-                <p>New template</p>
+                <p>Broadcast groups</p>
               </TooltipContent>
             </Tooltip>
 
@@ -2273,21 +2911,23 @@ function WABASidebar({
       </div>
 
       {/* Search */}
-      <div className="px-4 pb-3 pt-1 relative z-50">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground dark:text-[#a2a2a2]" />
-          <Input
-            placeholder="Search or start a new chat"
-            className="pl-10 bg-[#f0f2f5] dark:bg-[#2e2f2f] border-0 rounded-full h-9 text-sm text-foreground dark:text-white placeholder:text-muted-foreground dark:text-[#a2a2a2] focus-visible:ring-1 focus-visible:ring-transparent"
-            value={searchQuery || ''}
-            onChange={(e) => onSearchChange(e.target.value)}
-          />
-          {/* Search results render inline in the main conversation list below
-              (backend-filtered by name + phone). The old floating dropdown was
-              removed: it duplicated the list, capped results at max-h-60, and
-              overlapped the list because it only closed on select/clear. */}
+      {!isGroupsPanelOpen && (
+        <div className="px-4 pb-3 pt-1 relative z-50">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground dark:text-[#a2a2a2]" />
+            <Input
+              placeholder="Search or start a new chat"
+              className="pl-10 bg-[#f0f2f5] dark:bg-[#2e2f2f] border-0 rounded-full h-9 text-sm text-foreground dark:text-white placeholder:text-muted-foreground dark:text-[#a2a2a2] focus-visible:ring-1 focus-visible:ring-transparent"
+              value={searchQuery || ''}
+              onChange={(e) => onSearchChange(e.target.value)}
+            />
+            {/* Search results render inline in the main conversation list below
+                (backend-filtered by name + phone). The old floating dropdown was
+                removed: it duplicated the list, capped results at max-h-60, and
+                overlapped the list because it only closed on select/clear. */}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Filter Chips (All / Unread / Favourites) + Sort/Filter */}
       <div className="px-4 pb-3 flex items-center gap-2 overflow-x-auto no-scrollbar border-b border-border dark:border-[#222d34]/80">
@@ -2341,8 +2981,8 @@ function WABASidebar({
             <DropdownMenuContent align="start" className="w-56 max-h-80 overflow-y-auto bg-white dark:bg-[#161717] border border-border dark:border-0 shadow-lg">
               <DropdownMenuLabel className="flex items-center justify-between text-xs">
                 <span>Filter by label</span>
-                {selectedLabelIds.length > 0 && (
-                  <button onClick={() => onLabelFilterChange([])} className="text-[10px] text-muted-foreground hover:text-foreground">Clear</button>
+                {selectedLabelIds.length > 0 && onLabelFilterChange && (
+                  <button onClick={() => onLabelFilterChange?.([])} className="text-[10px] text-muted-foreground hover:text-foreground">Clear</button>
                 )}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
@@ -2713,7 +3353,7 @@ function WABASidebar({
                       <span className="font-medium text-[16px] truncate text-foreground dark:text-white">{conv.contact?.name}</span>
                       {/* Conversation stage (context_status) as a small WhatsApp-style colour
                           tag — colour only; the stage name shows on hover, not as repeated text. */}
-                   TT   {(() => {
+                      {(() => {
                         const stage = getConversationContextStatus(conv);
                         if (!stage) return null;
                         const tagColor = WABA_STAGE_TAG_HEX[stage.toLowerCase()] || WABA_STAGE_TAG_DEFAULT;
@@ -2732,10 +3372,9 @@ function WABASidebar({
                     {/* Added flex-1 and removed overflow-hidden from here */}
                     <div className="flex items-center gap-1 min-w-0 flex-1">
                       {(lastMsg?.isOutgoing || lastMsg?.role === 'assistant' || lastMsg?.role === 'human_agent') && !conv.unreadCount && (
-                          <MessageTicks status={lastMsg?.status || lastMsg?.message_status}/>
+                        <MessageTicks status={lastMsg?.status || lastMsg?.message_status} />
                       )}
-                      {/* Removed max-w-[80%] and kept truncate */}
-                      <span className="text-[14px] text-muted-foreground dark:text-[#a2a2a2] truncate">
+                      <span className="text-[14px] text-muted-foreground dark:text-[#a2a2a2] truncate max-w-[80%]">
                         {lastMsg?.content || 'Started conversation'}
                       </span>
                     </div>
@@ -3107,6 +3746,231 @@ function WABASidebar({
         </div>
       )}
 
+            {/* ════════════════════════════════════════════════════════════════════
+          Broadcast Groups Panel
+          Opens when the Users icon in the header is clicked.
+          Same absolute overlay pattern as the New Chat panel.
+      ════════════════════════════════════════════════════════════════════ */}
+      {isGroupsPanelOpen && (
+        <div className="absolute inset-0 z-30 bg-card dark:bg-[#111b21] flex flex-col">
+          {/* Header */}
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-border dark:border-[#222d34] bg-card dark:bg-[#161717]">
+            <button
+              type="button"
+              aria-label="Back"
+              title="Back"
+              className="h-8 w-8 rounded-full hover:bg-muted flex-shrink-0 flex items-center justify-center transition-colors"
+              onClick={() => {
+                setIsGroupsPanelOpen(false);
+                setSelectedGroupsPanelIds(new Set());
+              }}
+            >
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            </button>
+            <span className="text-sm font-semibold flex-1">Broadcast Groups</span>
+            {selectedGroupsPanelIds.size > 0 && (
+              <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded-full">
+                {selectedGroupsPanelIds.size} selected
+              </span>
+            )}
+          </div>
+
+          {/* Group list */}
+          <div className="flex-1 overflow-y-auto">
+            {newChatGroupsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : newChatGroups.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <Users className="h-8 w-8 mb-2 opacity-40" />
+                <p className="text-sm">No broadcast groups yet</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsGroupsPanelOpen(false);
+                    setIsGroupManagerOpen(true);
+                  }}
+                  className="mt-3 text-xs text-emerald-600 font-medium hover:underline"
+                >
+                  Create a group
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* Select-all row */}
+                <div className="px-4 py-2 flex items-center justify-between border-b border-border dark:border-[#222d34]">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Groups
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const allIds = newChatGroups.map(g => g.id);
+                        const allSelected = allIds.every(id => selectedGroupsPanelIds.has(id));
+                        if (allSelected) {
+                          setSelectedGroupsPanelIds(new Set());
+                        } else {
+                          setSelectedGroupsPanelIds(new Set(allIds));
+                        }
+                      }}
+                      className="text-[10px] text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
+                    >
+                      {newChatGroups.every(g => selectedGroupsPanelIds.has(g.id)) ? 'Deselect all' : 'Select all'}
+                    </button>
+                    <span className="text-[10px] text-muted-foreground">
+                      {selectedGroupsPanelIds.size}/{newChatGroups.length}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Group rows */}
+                {newChatGroups.map((group) => {
+                  const isChecked = selectedGroupsPanelIds.has(group.id);
+                  return (
+                    <div
+                      key={group.id}
+                      className="group/item relative px-4 py-3 hover:bg-muted/60 dark:hover:bg-[#202c33]/60 transition-colors"
+                    >
+                      <div className="flex items-center gap-3 w-full">
+                        {/* Checkbox */}
+                        <button
+                          type="button"
+                          aria-label={isChecked ? `Deselect ${group.name}` : `Select ${group.name}`}
+                          title={isChecked ? `Deselect ${group.name}` : `Select ${group.name}`}
+                          onClick={() => {
+                            setSelectedGroupsPanelIds((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(group.id)) next.delete(group.id);
+                              else next.add(group.id);
+                              return next;
+                            });
+                          }}
+                          className={cn(
+                            'h-5 w-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors',
+                            isChecked
+                              ? 'bg-emerald-500 border-emerald-500'
+                              : 'border-slate-300 dark:border-slate-600 hover:border-slate-400'
+                          )}
+                        >
+                          {isChecked && (
+                            <svg className="h-3 w-3 text-white" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                              <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          )}
+                        </button>
+
+                        {/* Group avatar */}
+                        <div
+                          className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm"
+                          style={{ backgroundColor: group.color || '#64748b' }}
+                        >
+                          <Users className="h-6 w-6 text-white" aria-hidden="true" />
+                        </div>
+
+                        {/* Group info */}
+                        <div className="flex flex-col items-start overflow-hidden flex-1 min-w-0">
+                          <span className="text-sm font-semibold truncate w-full">{group.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {group.conversation_count} member{group.conversation_count !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+
+                        {/* Hover actions */}
+                        <TooltipProvider>
+                          <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity flex-shrink-0">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  aria-label={`Send template to ${group.name}`}
+                                  title={`Send template to ${group.name}`}
+                                  onClick={() => {
+                                    handleGroupTemplateSend(group.id, group.conversation_count);
+                                    setIsGroupsPanelOpen(false);
+                                    setSelectedGroupsPanelIds(new Set());
+                                  }}
+                                  className="p-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded-md transition-all hover:shadow-sm"
+                                >
+                                  <Send className="h-4 w-4 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom" className="text-xs">Send template</TooltipContent>
+                            </Tooltip>
+
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  aria-label={`Delete ${group.name}`}
+                                  title={`Delete ${group.name}`}
+                                  onClick={async () => {
+                                    if (!confirm(`Delete "${group.name}"?`)) return;
+                                    try {
+                                      const channelParam = backendChannel === 'personal' ? '?channel=personal' : '';
+                                      const res = await fetchWithTenant(
+                                        `/api/whatsapp-conversations/chat-groups/${group.id}${channelParam}`,
+                                        { method: 'DELETE' }
+                                      );
+                                      if (res.ok) {
+                                        setNewChatGroupsLoading(true);
+                                        fetchWithTenant(`/api/whatsapp-conversations/chat-groups?channel=${backendChannel || 'waba'}`)
+                                          .then((r) => r.json())
+                                          .then((data) => { if (Array.isArray(data.data)) setNewChatGroups(data.data); })
+                                          .catch(() => {})
+                                          .finally(() => setNewChatGroupsLoading(false));
+                                      } else {
+                                        setSidebarError({ message: await getApiErrorMessage(res, 'Failed to delete group') });
+                                      }
+                                    } catch (err: unknown) {
+                                      setSidebarError({ message: getErrorMessage(err, 'Error deleting group') });
+                                    }
+                                  }}
+                                  className="p-1.5 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md transition-all hover:shadow-sm"
+                                >
+                                  <Trash2 className="h-4 w-4 text-red-600 dark:text-red-400" aria-hidden="true" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom" className="text-xs">Delete group</TooltipContent>
+                            </Tooltip>
+                          </div>
+                        </TooltipProvider>
+                      </div>
+                    </div>
+                  );
+                })}
+              </>
+            )}
+          </div>
+
+          {/* Bottom action bar — send broadcast when groups selected */}
+          {selectedGroupsPanelIds.size > 0 && (
+            <div className="px-4 py-3 border-t border-border dark:border-[#222d34] bg-card dark:bg-[#161717] flex items-center gap-2">
+              <button
+                type="button"
+                className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white text-xs h-9 rounded-md font-medium transition-colors"
+                onClick={() => {
+                  const selectedGroups = newChatGroups.filter(g => selectedGroupsPanelIds.has(g.id));
+                  setIsGroupsPanelOpen(false);
+                  setSelectedGroupsPanelIds(new Set());
+                  handleGroupsTemplateSend(selectedGroups);
+                }}
+              >
+                Send Broadcast ({selectedGroupsPanelIds.size})
+              </button>
+              <button
+                type="button"
+                className="border border-border text-xs h-9 px-3 rounded-md hover:bg-muted transition-colors"
+                onClick={() => setSelectedGroupsPanelIds(new Set())}
+              >
+                Clear
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── Chat Group Manager Dialog ───────────────────────────────────── */}
       <ChatGroupManager
         open={isGroupManagerOpen}
@@ -3127,20 +3991,23 @@ function WABASidebar({
         showTrigger={false}
       />
 
-      {/* ── Template Picker Dialog ──────────────────────────────────────── */}
-      <TemplatePicker
-        open={isTemplatePickerOpen}
-        onOpenChange={(open) => {
-          setIsTemplatePickerOpen(open);
-          if (!open) setGroupTemplateSendTarget(null);
-        }}
-        selectedCount={templatePickerCount}
-        onSend={handleTemplateSend}
-        sending={templateSending}
-        sendProgress={templateSendProgress}
-        channel={backendChannel ?? 'waba'}
-        isBulkSend={!!groupTemplateSendTarget}
-      />
+     {/* ── Template Picker Dialog ──────────────────────────────────────── */}
+      <style>{`.dark .template-modal-override { background-color: rgb(22,23,23) !important; }`}</style>
+      <div className="template-modal-override-root [&_[role='dialog']]:dark:!bg-[rgb(22,23,23)]">
+        <TemplatePicker
+          open={isTemplatePickerOpen}
+          onOpenChange={(open) => {
+            setIsTemplatePickerOpen(open);
+            if (!open) setGroupTemplateSendTarget(null);
+          }}
+          selectedCount={templatePickerCount}
+          onSend={handleTemplateSend}
+          sending={templateSending}
+          sendProgress={templateSendProgress}
+          channel={backendChannel ?? 'waba'}
+          isBulkSend={!!groupTemplateSendTarget}
+        />
+      </div>
 
       {/* ── Import Leads Dialog ─────────────────────────────────────────── */}
       <ImportLeadsDialog
@@ -3183,9 +4050,21 @@ function WABASidebar({
   );
 }
 
-/* ========================================================================= */
-/* WABusinessView (Main Export)                                              */
-/* ========================================================================= */
+const DEFAULT_CONTEXT_STATUSES: ContextStatusOption[] = [
+  { value: 'greeting', label: 'Greeting', count: 0 },
+  { value: 'info_gathering', label: 'Info Gathering', count: 0 },
+  { value: 'booking_in_progress', label: 'Booking In Progress', count: 0 },
+  { value: 'booking_completed', label: 'Booking Completed', count: 0 },
+  { value: 'cancelled', label: 'Cancelled', count: 0 },
+  { value: 'human', label: 'Human', count: 0 },
+  { value: 'onboarding_greeting', label: 'Onboarding Greeting', count: 0 },
+  { value: 'onboarding_profile', label: 'Onboarding Profile', count: 0 },
+  { value: 'icp_discovery', label: 'ICP Discovery', count: 0 },
+  { value: 'onboarding_complete', label: 'Onboarding Complete', count: 0 },
+  { value: 'match_suggested', label: 'Match Suggested', count: 0 },
+  { value: 'coordination_a_availability', label: 'Coordination Availability', count: 0 },
+  { value: 'idle', label: 'Idle', count: 0 },
+];
 
 export function WABusinessView({
   isSidebarCollapsed,
@@ -3199,10 +4078,17 @@ export function WABusinessView({
   // request to the empty personal service and showed "No chats found".
   const channel = 'waba';
   const queryClient = useQueryClient();
+  const [isMounted, setIsMounted] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
   const [localSearchQuery, setLocalSearchQuery] = useState('');
   const [actionError, setActionError] = useState<string | null>(null);
+  const [sidebarWidth, setSidebarWidth] = useState(380);
+  const dividerDragRef = useRef<{ isDragging: boolean; startX: number; startWidth: number }>({ isDragging: false, startX: 0, startWidth: 380 });
 
   const {
     conversations,
@@ -3218,6 +4104,9 @@ export function WABusinessView({
     isLoadingMore,
   } = useConversations({ channel });
 
+  const [mockSelectedId, setMockSelectedId] = useState<string | null>(null);
+  const [favOverrides, setFavOverrides] = useState<Record<string, boolean>>({});
+
   useEffect(() => {
     const syncViewport = () => setIsMobileViewport(window.innerWidth < 1024);
     syncViewport();
@@ -3226,10 +4115,23 @@ export function WABusinessView({
   }, []);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setSearchQuery(localSearchQuery.trim());
-    }, 250);
-    return () => window.clearTimeout(timer);
+    const onMouseMove = (e: MouseEvent) => {
+      if (!dividerDragRef.current.isDragging) return;
+      const dx = e.clientX - dividerDragRef.current.startX;
+      const next = Math.min(600, Math.max(260, dividerDragRef.current.startWidth + dx));
+      setSidebarWidth(next);
+    };
+    const onMouseUp = () => { dividerDragRef.current.isDragging = false; };
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+  }, []);
+
+  useEffect(() => {
+    setSearchQuery(localSearchQuery.trim());
   }, [localSearchQuery, setSearchQuery]);
 
   const withChannel = useCallback(
@@ -3241,22 +4143,41 @@ export function WABusinessView({
     queryClient.invalidateQueries({ queryKey: ['conversations', 'list'] });
   }, [queryClient]);
 
-  const handleFavorite = useCallback(
-    async (id?: string) => {
-      if (!id) return;
-      setActionError(null);
-      try {
-        const res = await fetchWithTenant(withChannel(`/api/whatsapp-conversations/conversations/${id}/favorite`), { method: 'PATCH' });
-        if (!res.ok) {
-          throw new Error(await getApiErrorMessage(res, 'Failed to update favorite status'));
-        }
-        invalidate();
-      } catch (err) {
-        setActionError(getErrorMessage(err, 'Failed to update favorite status'));
+const handleFavorite = useCallback(
+  async (id?: string) => {
+    if (!id) return;
+    setActionError(null);
+    try {
+      const res = await fetchWithTenant(
+        withChannel(`/api/whatsapp-conversations/conversations/${id}/favorite`),
+        { method: 'PATCH' }
+      );
+      if (!res.ok) {
+        throw new Error(await getApiErrorMessage(res, 'Failed to update favorite status'));
       }
-    },
-    [withChannel, invalidate]
-  );
+      // Patch the list cache
+      queryClient.setQueryData(
+        ['conversations', 'list'],
+        (old: Conversation[] | undefined) =>
+          old?.map(c =>
+            c.id === id
+              ? { ...c, is_favorite: !(c as any).is_favorite }
+              : c
+          )
+      );
+      // Read the new value from the updated cache and store as override so
+      // typedSelectedConversation (which comes from useConversations' own state)
+      // reflects the change immediately without waiting for a re-select.
+      const updated = (queryClient.getQueryData<any[]>(['conversations', 'list']))
+        ?.find(c => c.id === id);
+      setFavOverrides(prev => ({ ...prev, [id]: Boolean(updated?.is_favorite) }));
+      invalidate();
+    } catch (err) {
+      setActionError(getErrorMessage(err, 'Failed to update favorite status'));
+    }
+  },
+  [withChannel, invalidate, queryClient]
+);
 
   const handleDelete = useCallback(
     async (id?: string) => {
@@ -3313,7 +4234,7 @@ export function WABusinessView({
     fetchWithTenant(`/api/whatsapp-conversations/conversations/context-statuses?channel=${channel}`)
       .then((r) => r.json())
       .then((data) => {
-        if (data.success && Array.isArray(data.data)) {
+        if (data.success && Array.isArray(data.data) && data.data.length > 0) {
           const statuses = (data.data as Array<{ value?: string; count?: number }>)
             .filter((s) => typeof s.value === 'string')
             .map((s) => ({
@@ -3321,23 +4242,38 @@ export function WABusinessView({
               label: formatContextStatus(s.value as string),
               count: Number(s.count || 0),
             }));
-          setContextStatuses(
-            statuses
-          );
+          setContextStatuses(statuses);
+        } else {
+          setContextStatuses(DEFAULT_CONTEXT_STATUSES);
         }
       })
-      .catch(() => { });
+      .catch(() => {
+        setContextStatuses(DEFAULT_CONTEXT_STATUSES);
+      });
   }, [channel]);
 
-  const typedConversations = useMemo(() => (conversations || []) as Conversation[], [conversations]);
-  const typedSelectedConversation = useMemo(
-    () => {
-      if (isMobileViewport && !isMobileChatOpen) return null;
-      return (selectedConversation?.id ? selectedConversation : null) as Conversation | null;
-    },
-    [isMobileChatOpen, isMobileViewport, selectedConversation]
+ const typedConversations = useMemo(
+    () => (conversations?.length ? conversations : []) as Conversation[],
+    [conversations]
   );
 
+  const typedSelectedConversation = useMemo(
+  () => {
+    if (isMobileViewport && !isMobileChatOpen) return null;
+    if (selectedConversation?.id) {
+      const conv = selectedConversation as Conversation;
+      // Merge any locally-tracked favourite override so the heart icon
+      // reflects the toggle immediately (selectedConversation is a snapshot
+      // from useConversations and doesn't update from cache patches).
+      if (conv.id in favOverrides) {
+        return { ...conv, is_favorite: favOverrides[conv.id] } as Conversation;
+      }
+      return conv;
+    }
+    return null;
+  },
+  [isMobileChatOpen, isMobileViewport, selectedConversation, favOverrides]
+);
   useEffect(() => {
     if (!typedSelectedConversation && isContextPanelOpen) {
       setIsContextPanelOpen(false);
@@ -3353,6 +4289,14 @@ export function WABusinessView({
   const activeLastMsg = polledMessages && polledMessages.length > 0
     ? polledMessages[polledMessages.length - 1]
     : null;
+
+  if (!isMounted) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-background h-full w-full">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex overflow-hidden bg-background min-w-0">
@@ -3375,25 +4319,32 @@ export function WABusinessView({
         {(!isSidebarCollapsed || (isMobileViewport && !typedSelectedConversation)) && (
           <motion.div
             initial={{ width: 0, opacity: 0 }}
-            animate={{ width: isMobileViewport ? '100%' : 460, opacity: 1 }}
+            animate={{ width: isMobileViewport ? '100%' : sidebarWidth, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
+            style={isMobileViewport ? undefined : { width: sidebarWidth, minWidth: sidebarWidth, maxWidth: sidebarWidth }}
             className={cn(
-              "h-full flex-shrink-0 overflow-hidden border-r border-border dark:border-[#222d34] z-10 relative shadow-sm w-full lg:w-[460px] min-w-0",
-              // Mobile: show sidebar only when no conversation is selected (same as LinkedIn)
+              "h-full flex-shrink-0 overflow-hidden z-10 relative min-w-0",
               typedSelectedConversation ? "hidden lg:block" : "block lg:block"
             )}
           >
-	            <WABASidebar
-	              conversations={typedConversations}
-		              selectedId={selectedId}
-		              onSelectConversation={(id) => {
-		                selectConversation(id);
-		                setIsMobileChatOpen(true);
-		                setIsSidebarCollapsed(false);
-		              }}
-	              searchQuery={localSearchQuery}
-	              onSearchChange={setLocalSearchQuery}
+            <WABASidebar
+              conversations={typedConversations}
+              selectedId={mockSelectedId ?? selectedId}
+              onSelectConversation={(id) => {
+                if (id.startsWith('mock-')) {
+                  setMockSelectedId(id);
+                  setIsMobileChatOpen(true);
+                  setIsSidebarCollapsed(false);
+                } else {
+                  setMockSelectedId(null);
+                  selectConversation(id);
+                  setIsMobileChatOpen(true);
+                  setIsSidebarCollapsed(false);
+                }
+              }}
+              searchQuery={localSearchQuery}
+              onSearchChange={setLocalSearchQuery}
               sortBy={sortBy}
               onSortByChange={setSortBy}
               hideEmpty={hideEmpty}
@@ -3414,28 +4365,41 @@ export function WABusinessView({
         )}
       </AnimatePresence>
 
+      {/* Draggable divider — desktop only, visible when sidebar is open */}
+      {!isMobileViewport && !isSidebarCollapsed && (
+        <div
+          className="hidden lg:flex w-1 h-full shrink-0 cursor-col-resize z-20 group relative select-none items-center justify-center"
+          onMouseDown={(e) => {
+            dividerDragRef.current = { isDragging: true, startX: e.clientX, startWidth: sidebarWidth };
+            e.preventDefault();
+          }}
+        >
+          <div className="w-[1px] h-full bg-border dark:bg-[#222d34] group-hover:bg-[#00a884] dark:group-hover:bg-[#00a884] group-active:bg-[#00a884] transition-colors" />
+        </div>
+      )}
+
       {/* Main Chat Area — hidden on mobile when no conversation selected */}
       <div className={cn(
-        "flex-1 overflow-hidden",
+        "flex-1 overflow-hidden min-w-0",
         !typedSelectedConversation ? "hidden lg:flex" : "flex"
       )}>
         <WABAChatWindow
           conversation={typedSelectedConversation}
-          onSendMessage={sendMessage}
+          onSendMessage={async (payload) => { await sendMessage(payload); return; }}
           onTogglePanel={openContextPanel}
           isPanelOpen={isContextPanelOpen}
-		          onBack={() => {
-                setIsContextPanelOpen(false);
-		            selectConversation('');
-		            setIsMobileChatOpen(false);
-		            setIsSidebarCollapsed(false);
-		          }}
-          onDeleteChat={handleDelete}
-          onBlockChat={handleBlock}
-          onFavoriteChat={handleFavorite}
+          onBack={() => {
+            setIsContextPanelOpen(false);
+            selectConversation('');
+            setIsMobileChatOpen(false);
+            setIsSidebarCollapsed(false);
+          }}
+          onDeleteChat={(id) => handleDelete(id)}
+          onBlockChat={(id) => handleBlock(id)}
+          onFavoriteChat={(id) => handleFavorite(id)}
           onMuteChat={muteConversation}
-          onClearChat={handleClear}
-          onCloseChat={(_id: string) => selectConversation('')}
+          onClearChat={(id) => handleClear(id)}
+          onCloseChat={() => { selectConversation(''); }}
           channel={channel}
           conversationId={typedSelectedConversation?.id}
           owner={typedSelectedConversation?.owner}
@@ -3458,6 +4422,7 @@ export function WABusinessView({
                 conversation={typedSelectedConversation}
                 onClose={toggleContextPanel}
                 backendChannel={channel}
+                onFavoriteChat={handleFavorite}
               />
             </motion.div>
 
@@ -3485,6 +4450,7 @@ export function WABusinessView({
                   conversation={typedSelectedConversation}
                   onClose={toggleContextPanel}
                   backendChannel={channel}
+                  onFavoriteChat={handleFavorite}
                 />
               </motion.div>
             </motion.div>
@@ -3494,3 +4460,4 @@ export function WABusinessView({
     </div>
   );
 }
+

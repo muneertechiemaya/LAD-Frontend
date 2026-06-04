@@ -10,7 +10,9 @@ export type WidgetType =
   | 'ai-insights'
   | 'voice-agents'
   | 'quick-actions'
-  | 'broadcast-performance';
+  | 'broadcast-performance'
+  | 'conversation-funnel'
+  | 'reengage-topics';
 export type WidgetCategory =
   | 'analytics'
   | 'voice-agent'
@@ -178,6 +180,28 @@ export const WIDGET_CATALOG: Record<WidgetType, WidgetConfig> = {
     minSize: { w: 6, h: 3 },
     maxSize: { w: 12, h: 5 },
   },
+  'conversation-funnel': {
+    id: 'conversation-funnel',
+    type: 'conversation-funnel',
+    title: 'Enquiries & Bookings',
+    description: 'Conversation funnel from first enquiry to booking — drop-off, conversion rate and daily volume',
+    category: 'analytics',
+    icon: 'Users',
+    defaultSize: { w: 6, h: 4 },
+    minSize: { w: 4, h: 3 },
+    maxSize: { w: 12, h: 6 },
+  },
+  'reengage-topics': {
+    id: 'reengage-topics',
+    type: 'reengage-topics',
+    title: 'Re-engage by Topic',
+    description: 'Customers who asked about a topic but didn’t book — broadcast a tailored offer to win them back',
+    category: 'whatsapp',
+    icon: 'Megaphone',
+    defaultSize: { w: 6, h: 4 },
+    minSize: { w: 4, h: 3 },
+    maxSize: { w: 12, h: 6 },
+  },
 };
 // Widget categories for the library
 export const WIDGET_CATEGORIES: { id: WidgetCategory; label: string; icon: string }[] = [
@@ -193,7 +217,9 @@ export const DEFAULT_LAYOUT: WidgetLayoutItem[] = [
   { i: 'calls-today-1', x: 0, y: 0, w: 4, h: 2, minW: 3, minH: 2 },
   { i: 'answer-rate-1', x: 4, y: 0, w: 4, h: 2, minW: 3, minH: 2 },
   { i: 'calls-monthly-1', x: 8, y: 0, w: 4, h: 2, minW: 3, minH: 2 },
-  { i: 'broadcast-performance-1', x: 0, y: 2, w: 12, h: 3, minW: 6, minH: 3 },
+  { i: 'conversation-funnel-1', x: 0, y: 2, w: 6, h: 4, minW: 4, minH: 3 },
+  { i: 'reengage-topics-1', x: 6, y: 2, w: 6, h: 4, minW: 4, minH: 3 },
+  { i: 'broadcast-performance-1', x: 0, y: 6, w: 12, h: 3, minW: 6, minH: 3 },
   { i: 'calls-chart-1', x: 0, y: 5, w: 6, h: 4, minW: 4, minH: 3 },
   { i: 'voice-agents-1', x: 6, y: 5, w: 6, h: 4, minW: 4, minH: 3 },
   { i: 'credits-overview-1', x: 0, y: 9, w: 6, h: 4, minW: 4, minH: 3 },

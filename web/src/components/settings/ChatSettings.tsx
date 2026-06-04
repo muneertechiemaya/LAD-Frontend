@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import KnowledgeBaseManager from './KnowledgeBaseManager';
 import dynamic from 'next/dynamic';
+import { fetchWithTenant } from '@/lib/fetch-with-tenant';
 
 // AIPlayground is a heavy client-only component (framer-motion, refs, browser
 // APIs). Loading it dynamically with ssr:false keeps it out of the SSR bundle
@@ -142,7 +143,7 @@ const APPROVED_TEMPLATES_API = '/api/whatsapp-conversations/followup-settings/te
 
 async function fetchApprovedTemplates(): Promise<WhatsAppApprovedTemplate[]> {
   try {
-    const res = await fetch(APPROVED_TEMPLATES_API);
+    const res = await fetchWithTenant(APPROVED_TEMPLATES_API);
     if (!res.ok) return [];
     const data = await res.json();
     if (!data?.success) return [];
@@ -157,7 +158,7 @@ async function fetchApprovedTemplates(): Promise<WhatsAppApprovedTemplate[]> {
 
 async function fetchShareableAssets(): Promise<ShareableAsset[]> {
   try {
-    const res = await fetch(SHAREABLE_ASSETS_API);
+    const res = await fetchWithTenant(SHAREABLE_ASSETS_API);
     if (!res.ok) return [];
     const data = await res.json();
     return Array.isArray(data?.assets) ? data.assets : [];
@@ -168,7 +169,7 @@ async function fetchShareableAssets(): Promise<ShareableAsset[]> {
 
 async function saveShareableAssets(assets: ShareableAsset[]): Promise<boolean> {
   try {
-    const res = await fetch(SHAREABLE_ASSETS_API, {
+    const res = await fetchWithTenant(SHAREABLE_ASSETS_API, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ assets }),
@@ -181,7 +182,7 @@ async function saveShareableAssets(assets: ShareableAsset[]): Promise<boolean> {
 
 async function fetchFollowupConfig(): Promise<FollowupTimingConfig> {
   try {
-    const res = await fetch(FOLLOWUP_CONFIG_API);
+    const res = await fetchWithTenant(FOLLOWUP_CONFIG_API);
     if (!res.ok) return DEFAULT_FOLLOWUP_CONFIG;
     const data = await res.json();
     if (!data.success) return DEFAULT_FOLLOWUP_CONFIG;
@@ -209,7 +210,7 @@ async function fetchFollowupConfig(): Promise<FollowupTimingConfig> {
 
 async function updateFollowupConfig(config: FollowupTimingConfig): Promise<boolean> {
   try {
-    const res = await fetch(FOLLOWUP_CONFIG_API, {
+    const res = await fetchWithTenant(FOLLOWUP_CONFIG_API, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(config),
@@ -222,7 +223,7 @@ async function updateFollowupConfig(config: FollowupTimingConfig): Promise<boole
 }
 
 async function fetchPrompts(): Promise<Prompt[]> {
-  const res = await fetch(PROMPTS_API);
+  const res = await fetchWithTenant(PROMPTS_API);
   const data = await res.json();
   // Node.js backend returns { success, prompts: [] }; Python returns { success, data: [] }
   const list = data.prompts ?? data.data ?? [];
@@ -230,7 +231,7 @@ async function fetchPrompts(): Promise<Prompt[]> {
 }
 
 async function updatePrompt(name: string, updates: Partial<Prompt>): Promise<boolean> {
-  const res = await fetch(`${PROMPTS_API}/${encodeURIComponent(name)}`, {
+  const res = await fetchWithTenant(`${PROMPTS_API}/${encodeURIComponent(name)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(updates),
@@ -240,7 +241,7 @@ async function updatePrompt(name: string, updates: Partial<Prompt>): Promise<boo
 }
 
 async function createPrompt(prompt: { name: string; prompt_text: string; channel: string }): Promise<boolean> {
-  const res = await fetch(PROMPTS_API, {
+  const res = await fetchWithTenant(PROMPTS_API, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(prompt),
@@ -250,7 +251,7 @@ async function createPrompt(prompt: { name: string; prompt_text: string; channel
 }
 
 async function deletePrompt(name: string): Promise<boolean> {
-  const res = await fetch(`${PROMPTS_API}/${encodeURIComponent(name)}`, {
+  const res = await fetchWithTenant(`${PROMPTS_API}/${encodeURIComponent(name)}`, {
     method: 'DELETE',
   });
   const data = await res.json();
@@ -269,8 +270,8 @@ const DEFAULT_CHAT_SETTINGS: ChatSettingsConfig = {
 async function fetchChatSettings(): Promise<ChatSettingsConfig> {
   // Load personal WA settings and WABA settings in parallel
   const [personalRes, wabaRes] = await Promise.allSettled([
-    fetch(`${SETTINGS_API}?channel=personal`),
-    fetch(`${SETTINGS_API}?channel=waba`),
+    fetchWithTenant(`${SETTINGS_API}?channel=personal`),
+    fetchWithTenant(`${SETTINGS_API}?channel=waba`),
   ]);
 
   // Personal WA
@@ -306,7 +307,7 @@ async function fetchChatSettings(): Promise<ChatSettingsConfig> {
 
 async function updateChatSettings(updates: Partial<ChatSettingsConfig>): Promise<boolean> {
   try {
-    const res = await fetch(SETTINGS_API, {
+    const res = await fetchWithTenant(SETTINGS_API, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates),
@@ -356,14 +357,14 @@ function Toast({ message, type, onClose }: { message: string; type: 'success' | 
   }, [onClose]);
 
   return (
-      <div
-          className={`fixed bottom-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-white text-sm ${
-              type === 'success' ? 'bg-green-600' : 'bg-red-600'
-          }`}
-      >
-        {type === 'success' ? <CheckCircle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
-        {message}
-      </div>
+    <div
+      className={`fixed bottom-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-white text-sm ${
+        type === 'success' ? 'bg-green-600' : 'bg-red-600'
+      }`}
+    >
+      {type === 'success' ? <CheckCircle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+      {message}
+    </div>
   );
 }
 
@@ -376,6 +377,8 @@ export function ChatSettings() {
     campaign_frequency: { enabled: true, interval_hours: 24, max_daily_messages: 50 },
   });
   const [followupConfig, setFollowupConfig] = useState<FollowupTimingConfig>(DEFAULT_FOLLOWUP_CONFIG);
+  // Approved WhatsApp templates fetched from Meta — used to populate the
+  // template-picker dropdown for each follow-up stage + booking reminder.
   const [approvedTemplates, setApprovedTemplates] = useState<WhatsAppApprovedTemplate[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [savingFollowup, setSavingFollowup] = useState(false);
@@ -389,43 +392,54 @@ export function ChatSettings() {
   const [savingKb, setSavingKb] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
+  // Shareable assets — files (price list, brochure…) the AI can auto-attach
   const [shareableAssets, setShareableAssets] = useState<ShareableAsset[]>([]);
   const [savingAssets, setSavingAssets] = useState(false);
   const [loadingAssets, setLoadingAssets] = useState(true);
+  // Track which asset row is expanded for editing (others render as compact row).
+  // Newly-added (unsaved) assets are auto-expanded; saved ones collapse by default.
   const [expandedAssetIdx, setExpandedAssetIdx] = useState<number | null>(null);
+  // Per-row in-progress draft for the trigger-keywords text input.
+  // Without this the input filtered/dedupes mid-keystroke and the cursor
+  // jumped backwards as soon as the user typed a comma + space.
   const [triggerInputDrafts, setTriggerInputDrafts] = useState<Record<number, string>>({});
 
+  // AI Playground panel — testers can validate prompt + KB + assets without leaving the page
   const [playgroundOpen, setPlaygroundOpen] = useState(false);
 
+  // New prompt form
   const [showNewPrompt, setShowNewPrompt] = useState(false);
   const [newPromptName, setNewPromptName] = useState('');
   const [newPromptText, setNewPromptText] = useState('');
   const [creatingPrompt, setCreatingPrompt] = useState(false);
 
+  // Web scraping state
   const [newWebUrl, setNewWebUrl] = useState('');
   const [webScrapingSaving, setWebScrapingSaving] = useState(false);
   const [webScrapingDiagnostics, setWebScrapingDiagnostics] = useState<
-      Array<{
-        url: string;
-        ok: boolean;
-        chars: number;
-        error: string | null;
-        status: number | null;
-        content_type: string | null;
-        method?: string | null;
-        auto_discovered?: boolean;
-        discovered_from?: string | null;
-        discovery_method?: string | null;
-      }>
+    Array<{
+      url: string;
+      ok: boolean;
+      chars: number;
+      error: string | null;
+      status: number | null;
+      content_type: string | null;
+      method?: string | null;
+      auto_discovered?: boolean;
+      discovered_from?: string | null;
+      discovery_method?: string | null;
+    }>
   >([]);
 
+  // Web scraping test chat state — Claude-powered preview against scraped content
   const [showWebTestChat, setShowWebTestChat] = useState(false);
   const [webChatInput, setWebChatInput] = useState('');
   const [webChatBusy, setWebChatBusy] = useState(false);
   const [webChatMessages, setWebChatMessages] = useState<
-      { role: 'user' | 'assistant'; content: string; sources?: string[] }[]
+    { role: 'user' | 'assistant'; content: string; sources?: string[] }[]
   >([]);
 
+  // LinkedIn automation settings
   const [linkedinAutomation, setLinkedinAutomation] = useState<{
     auto_like_posts: boolean;
     auto_comment_posts: boolean;
@@ -437,6 +451,8 @@ export function ChatSettings() {
   });
   const [savingLinkedinAutomation, setSavingLinkedinAutomation] = useState(false);
 
+  // LinkedIn follow-up sequence settings (tenant-level cadence for the
+  // 4-touch post-acceptance sequence — see LinkedInAutoFollowupService).
   const DEFAULT_LI_FOLLOWUP_HOURS = [24, 72, 168, 336];
   const [linkedinFollowup, setLinkedinFollowup] = useState<{
     enabled: boolean;
@@ -447,6 +463,7 @@ export function ChatSettings() {
   });
   const [savingLinkedinFollowup, setSavingLinkedinFollowup] = useState(false);
 
+  // Load data on mount
   useEffect(() => {
     setLoadingTemplates(true);
     Promise.all([
@@ -458,92 +475,99 @@ export function ChatSettings() {
       fetchShareableAssets(),
       fetchApprovedTemplates(),
     ])
-        .then(([p, s, f, liSettings, liFollowup, assets, tmpl]) => {
-          setPrompts(Array.isArray(p) ? p : []);
-          setChatSettings(s);
-          setFollowupConfig(f);
-          if (liSettings?.success && liSettings.data) {
-            const rawDelay = Number(liSettings.data.ai_agent_reply_delay_seconds);
-            setLinkedinAutomation({
-              auto_like_posts:              !!liSettings.data.auto_like_posts,
-              auto_comment_posts:           !!liSettings.data.auto_comment_posts,
-              ai_agent_reply_delay_seconds: Number.isFinite(rawDelay) ? Math.max(0, Math.min(300, rawDelay)) : 0,
-            });
-          }
-          if (liFollowup?.success && liFollowup.data) {
-            setLinkedinFollowup({
-              enabled: liFollowup.data.enabled !== false,
-              schedule_hours: Array.isArray(liFollowup.data.schedule_hours) && liFollowup.data.schedule_hours.length > 0
-                  ? liFollowup.data.schedule_hours.map((v: any) => Number(v) || 0).filter((v: number) => v > 0)
-                  : DEFAULT_LI_FOLLOWUP_HOURS,
-            });
-          }
-          setShareableAssets(Array.isArray(assets) ? assets : []);
-          setLoadingAssets(false);
-          setApprovedTemplates(Array.isArray(tmpl) ? tmpl : []);
-          setLoadingTemplates(false);
-        })
-        .catch(() => { setLoadingAssets(false); setLoadingTemplates(false); })
-        .finally(() => setLoading(false));
+      .then(([p, s, f, liSettings, liFollowup, assets, tmpl]) => {
+        setPrompts(Array.isArray(p) ? p : []);
+        setChatSettings(s);
+        setFollowupConfig(f);
+        if (liSettings?.success && liSettings.data) {
+          const rawDelay = Number(liSettings.data.ai_agent_reply_delay_seconds);
+          setLinkedinAutomation({
+            auto_like_posts:              !!liSettings.data.auto_like_posts,
+            auto_comment_posts:           !!liSettings.data.auto_comment_posts,
+            ai_agent_reply_delay_seconds: Number.isFinite(rawDelay) ? Math.max(0, Math.min(300, rawDelay)) : 0,
+          });
+        }
+        if (liFollowup?.success && liFollowup.data) {
+          setLinkedinFollowup({
+            enabled: liFollowup.data.enabled !== false,
+            schedule_hours: Array.isArray(liFollowup.data.schedule_hours) && liFollowup.data.schedule_hours.length > 0
+              ? liFollowup.data.schedule_hours.map((v: any) => Number(v) || 0).filter((v: number) => v > 0)
+              : DEFAULT_LI_FOLLOWUP_HOURS,
+          });
+        }
+        setShareableAssets(Array.isArray(assets) ? assets : []);
+        setLoadingAssets(false);
+        setApprovedTemplates(Array.isArray(tmpl) ? tmpl : []);
+        setLoadingTemplates(false);
+      })
+      .catch(() => { setLoadingAssets(false); setLoadingTemplates(false); })
+      .finally(() => setLoading(false));
   }, []);
 
-  const filteredPrompts = prompts.filter((p) => (p.channel || 'waba') === activeChannel);
+  // Normalize legacy/ambiguous prompt channels to the canonical tab id so prompts
+  // aren't hidden. Older WABA-agent prompts are tagged 'whatsapp'/'business_whatsapp'
+  // (there is no such tab) — treat them as 'waba'. Personal WA stays 'personal_whatsapp'.
+  const normalizePromptChannel = (c?: string | null): string =>
+    !c || c === 'whatsapp' || c === 'business_whatsapp' ? 'waba' : c;
+  const filteredPrompts = prompts.filter((p) => normalizePromptChannel(p.channel) === activeChannel);
 
   const showToast = useCallback((message: string, type: 'success' | 'error') => {
     setToast({ message, type });
   }, []);
 
+  // ── Prompt actions ───────────────────────────────────────────
+
   const handleToggleActive = useCallback(
-      async (prompt: Prompt) => {
-        const ok = await updatePrompt(prompt.name, { is_active: !prompt.is_active });
-        if (ok) {
-          setPrompts((prev) =>
-              prev.map((p) => (p.name === prompt.name ? { ...p, is_active: !p.is_active } : p))
-          );
-          showToast(`${getLabel(prompt.name)} ${!prompt.is_active ? 'activated' : 'deactivated'}`, 'success');
-        } else {
-          showToast('Failed to update prompt', 'error');
-        }
-      },
-      [showToast]
+    async (prompt: Prompt) => {
+      const ok = await updatePrompt(prompt.name, { is_active: !prompt.is_active });
+      if (ok) {
+        setPrompts((prev) =>
+          prev.map((p) => (p.name === prompt.name ? { ...p, is_active: !p.is_active } : p))
+        );
+        showToast(`${getLabel(prompt.name)} ${!prompt.is_active ? 'activated' : 'deactivated'}`, 'success');
+      } else {
+        showToast('Failed to update prompt', 'error');
+      }
+    },
+    [showToast]
   );
 
   const handleSavePrompt = useCallback(
-      async (name: string) => {
-        const text = editedTexts[name];
-        if (!text) return;
-        setSavingPrompt(name);
-        const ok = await updatePrompt(name, { prompt_text: text });
-        if (ok) {
-          setPrompts((prev) =>
-              prev.map((p) => (p.name === name ? { ...p, prompt_text: text, version: (p.version || 0) + 1 } : p))
-          );
-          setEditedTexts((prev) => {
-            const next = { ...prev };
-            delete next[name];
-            return next;
-          });
-          showToast(`${getLabel(name)} saved`, 'success');
-        } else {
-          showToast('Failed to save prompt', 'error');
-        }
-        setSavingPrompt(null);
-      },
-      [editedTexts, showToast]
+    async (name: string) => {
+      const text = editedTexts[name];
+      if (!text) return;
+      setSavingPrompt(name);
+      const ok = await updatePrompt(name, { prompt_text: text });
+      if (ok) {
+        setPrompts((prev) =>
+          prev.map((p) => (p.name === name ? { ...p, prompt_text: text, version: (p.version || 0) + 1 } : p))
+        );
+        setEditedTexts((prev) => {
+          const next = { ...prev };
+          delete next[name];
+          return next;
+        });
+        showToast(`${getLabel(name)} saved`, 'success');
+      } else {
+        showToast('Failed to save prompt', 'error');
+      }
+      setSavingPrompt(null);
+    },
+    [editedTexts, showToast]
   );
 
   const handleDeletePrompt = useCallback(
-      async (name: string) => {
-        if (!confirm(`Delete "${getLabel(name)}"? This cannot be undone.`)) return;
-        const ok = await deletePrompt(name);
-        if (ok) {
-          setPrompts((prev) => prev.filter((p) => p.name !== name));
-          showToast(`${getLabel(name)} deleted`, 'success');
-        } else {
-          showToast('Failed to delete prompt', 'error');
-        }
-      },
-      [showToast]
+    async (name: string) => {
+      if (!confirm(`Delete "${getLabel(name)}"? This cannot be undone.`)) return;
+      const ok = await deletePrompt(name);
+      if (ok) {
+        setPrompts((prev) => prev.filter((p) => p.name !== name));
+        showToast(`${getLabel(name)} deleted`, 'success');
+      } else {
+        showToast('Failed to delete prompt', 'error');
+      }
+    },
+    [showToast]
   );
 
   const handleCreatePrompt = useCallback(async () => {
@@ -578,6 +602,8 @@ export function ChatSettings() {
     setCreatingPrompt(false);
   }, [newPromptName, newPromptText, activeChannel, showToast]);
 
+  // ── Knowledge Base save ──────────────────────────────────────
+
   const handleSaveKb = useCallback(async () => {
     setSavingKb(true);
     const ok = await updateChatSettings({ knowledge_base: chatSettings.knowledge_base });
@@ -585,6 +611,7 @@ export function ChatSettings() {
     setSavingKb(false);
   }, [chatSettings.knowledge_base, showToast]);
 
+  // ── Shareable Assets handlers ─────────────────────────────────
   const addShareableAsset = useCallback(() => {
     setShareableAssets((prev) => {
       const next = [
@@ -598,18 +625,19 @@ export function ChatSettings() {
           trigger_keywords: [],
         },
       ];
+      // Auto-expand the just-added row so the user can fill it in immediately
       setExpandedAssetIdx(next.length - 1);
       return next;
     });
   }, []);
 
   const updateShareableAsset = useCallback(
-      (idx: number, patch: Partial<ShareableAsset>) => {
-        setShareableAssets((prev) =>
-            prev.map((a, i) => (i === idx ? { ...a, ...patch } : a)),
-        );
-      },
-      [],
+    (idx: number, patch: Partial<ShareableAsset>) => {
+      setShareableAssets((prev) =>
+        prev.map((a, i) => (i === idx ? { ...a, ...patch } : a)),
+      );
+    },
+    [],
   );
 
   const removeShareableAsset = useCallback((idx: number) => {
@@ -618,6 +646,7 @@ export function ChatSettings() {
   }, []);
 
   const handleSaveShareableAssets = useCallback(async () => {
+    // Client-side validation matching backend rules
     for (const [i, a] of shareableAssets.entries()) {
       const url = (a.url || '').trim();
       if (!url) {
@@ -639,19 +668,23 @@ export function ChatSettings() {
     setSavingAssets(true);
     const ok = await saveShareableAssets(shareableAssets);
     showToast(ok ? 'Shareable assets saved' : 'Failed to save shareable assets',
-        ok ? 'success' : 'error');
-    if (ok) setExpandedAssetIdx(null);
+              ok ? 'success' : 'error');
+    if (ok) setExpandedAssetIdx(null); // Collapse all on successful save
     setSavingAssets(false);
   }, [shareableAssets, showToast]);
+
+  // ── Chat Behaviour save (typing indicator — separate per channel) ──
 
   const [savingBehaviour, setSavingBehaviour] = useState(false);
 
   const handleSaveBehaviour = useCallback(async () => {
     setSavingBehaviour(true);
+    // Personal WA → PUT (Node.js backend)
     const personalOk = await updateChatSettings({ typing_indicator: chatSettings.typing_indicator });
+    // WABA → PATCH (Python WABA service)
     let wabaOk = false;
     try {
-      const res = await fetch(`${SETTINGS_API}?channel=waba`, {
+      const res = await fetchWithTenant(`${SETTINGS_API}?channel=waba`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ typing_indicator: chatSettings.waba_typing_indicator }),
@@ -663,12 +696,16 @@ export function ChatSettings() {
     setSavingBehaviour(false);
   }, [chatSettings.typing_indicator, chatSettings.waba_typing_indicator, showToast]);
 
+  // ── Campaign Settings save ───────────────────────────────────
+
   const handleSaveCampaign = useCallback(async () => {
     setSavingSettings(true);
     const ok = await updateChatSettings({ campaign_frequency: chatSettings.campaign_frequency });
     showToast(ok ? 'Campaign settings saved' : 'Failed to save', ok ? 'success' : 'error');
     setSavingSettings(false);
   }, [chatSettings.campaign_frequency, showToast]);
+
+  // ── Follow-up Timing save ────────────────────────────────────
 
   const handleSaveFollowup = useCallback(async () => {
     setSavingFollowup(true);
@@ -695,9 +732,11 @@ export function ChatSettings() {
   }, [linkedinAutomation, showToast]);
 
   const handleSaveLinkedinFollowup = useCallback(async () => {
+    // Clamp + validate cadence before sending — backend re-validates but a
+    // fast frontend check gives the user immediate feedback.
     const cleanHours = (linkedinFollowup.schedule_hours || [])
-        .map((v) => Number(v))
-        .filter((v) => Number.isFinite(v) && v > 0 && v <= 24 * 365);
+      .map((v) => Number(v))
+      .filter((v) => Number.isFinite(v) && v > 0 && v <= 24 * 365);
     if (cleanHours.length === 0) {
       showToast('Add at least one positive hour value to the cadence', 'error');
       return;
@@ -730,7 +769,7 @@ export function ChatSettings() {
   const handleSaveWebScraping = useCallback(async () => {
     setWebScrapingSaving(true);
     try {
-      const res = await fetch('/api/whatsapp-conversations/chat-settings/web-scraping', {
+      const res = await fetchWithTenant('/api/whatsapp-conversations/chat-settings/web-scraping', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -772,6 +811,7 @@ export function ChatSettings() {
     const text = webChatInput.trim();
     if (!text || webChatBusy) return;
 
+    // Build the history payload from prior turns BEFORE we mutate state
     const historyForApi = webChatMessages.map((m) => ({
       role: m.role,
       content: m.content,
@@ -782,13 +822,13 @@ export function ChatSettings() {
     setWebChatBusy(true);
 
     try {
-      const res = await fetch(
-          '/api/whatsapp-conversations/chat-settings/web-scraping/test-chat',
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: text, history: historyForApi }),
-          },
+      const res = await fetchWithTenant(
+        '/api/whatsapp-conversations/chat-settings/web-scraping/test-chat',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text, history: historyForApi }),
+        },
       );
       const data = await res.json().catch(() => null);
       if (!res.ok) {
@@ -818,21 +858,23 @@ export function ChatSettings() {
   }, [webChatInput, webChatBusy, webChatMessages]);
 
   const updateStage = useCallback(
-      (
-          stage: keyof FollowupTimingConfig['stages'],
-          field: 'enabled' | 'delay_hours' | 'template_name',
-          value: boolean | number | string,
-      ) => {
-        setFollowupConfig((prev) => ({
-          ...prev,
-          stages: {
-            ...prev.stages,
-            [stage]: { ...prev.stages[stage], [field]: value },
-          },
-        }));
-      },
-      []
+    (
+      stage: keyof FollowupTimingConfig['stages'],
+      field: 'enabled' | 'delay_hours' | 'template_name',
+      value: boolean | number | string,
+    ) => {
+      setFollowupConfig((prev) => ({
+        ...prev,
+        stages: {
+          ...prev.stages,
+          [stage]: { ...prev.stages[stage], [field]: value },
+        },
+      }));
+    },
+    []
   );
+
+  // ── Render ───────────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -1825,6 +1867,7 @@ export function ChatSettings() {
                     ] as Array<{ key: keyof FollowupTimingConfig['stages']; label: string; desc: string; color: string }>
                 ).map(({ key, label, desc, color }) => {
                   const stage = followupConfig.stages[key];
+                  // Past 24h, free text is blocked by Meta — flag stages that need a template
                   const needsTemplate = stage.delay_hours > 24;
                   const templateMissing = needsTemplate && !(stage.template_name || '').trim();
                   return (
