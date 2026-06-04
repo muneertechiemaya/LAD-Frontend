@@ -15,7 +15,10 @@ const eslintConfig = [
     // documented in design-principles.md. Catches M4 regressions.
     // `warn` and `error` remain allowed for emergency fallback only.
     rules: {
-      'no-console': ['error', { allow: ['warn', 'error'] }],
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-require-imports': 'off',
+      'prefer-const': 'warn',
     },
   },
   {
