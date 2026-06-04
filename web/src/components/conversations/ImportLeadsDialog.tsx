@@ -61,7 +61,7 @@ interface ImportLeadsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onImportComplete: () => void;
-  channel?: 'personal' | 'waba' | 'gmail' | 'outlook';
+  channel?: 'personal' | 'waba' | 'gmail' | 'outlook' | 'custom';
   /** If provided (email mode), imported contacts are also added to this email group */
   emailGroupId?: string;
 }

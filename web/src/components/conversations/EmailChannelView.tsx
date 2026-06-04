@@ -4,21 +4,30 @@ import {
   useState, useEffect, useCallback, useRef, memo, useMemo,
 } from 'react';
 import {
-  Mail, Users, Plus, Search, UserPlus, Loader2, X,
+  Mail, Users, Plus, Search, UserPlus, Loader2, X, Archive,
   Trash2, Send, ChevronRight, ChevronLeft, RefreshCw, ArrowLeft,
   FileText, Check, Paperclip, ChevronDown,
   Tag, Clock, Building2, AtSign,
   AlertCircle, MoreVertical, Bold, Italic, Link2,
-  Image as ImageIcon, Smile, Star,
+  Smile, Star,
   PanelRightClose, PanelRightOpen, Hash,
-  Inbox, Pencil, Menu, Settings, HelpCircle, SlidersHorizontal, LayoutGrid,
+  Inbox, Pencil, Menu, Settings, HelpCircle, SlidersHorizontal,
   Reply, ReplyAll, Forward, Printer, ExternalLink, MoreHorizontal,
-  Undo, Redo, AlignLeft, List, Indent,
-  LogOut, Camera,
+  Undo, Redo, AlignLeft, List,
+  LogOut, Camera, User,
 } from 'lucide-react';
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { ImportLeadsDialog } from './ImportLeadsDialog';
 import { EmailTemplatePicker } from './EmailTemplatePicker';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import DOMPurify from 'dompurify';
+import { useToast } from '@/hooks/use-toast';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -89,7 +98,7 @@ type ComposeInstance = {
 
 type EmailProvider = 'gmail' | 'outlook' | 'custom';
 type FolderType = 'inbox' | 'starred' | 'sent' | 'important' | 'drafts' | 'spam' | 'trash' | 'snoozed';
-type CategoryTab = 'primary' | 'social' | 'promotions' | 'updates';
+type CategoryTab = 'primary';
 
 interface EmailChannelViewProps {
   provider: EmailProvider;
@@ -136,24 +145,23 @@ const AVATAR_GRADIENTS = [
 // ─────────────────────────────────────────────────────────────────────────────
 // Security: HTML Sanitizer
 //
-// IMPORTANT: Install DOMPurify for production:
+// Basic HTML sanitization to prevent XSS attacks.
+// For production, consider using DOMPurify for comprehensive sanitization:
 //   npm install dompurify @types/dompurify
-// Then replace the body of sanitizeHtml with:
-//   import DOMPurify from 'dompurify';
-//   return DOMPurify.sanitize(html, { USE_PROFILES: { html: true } });
-//
-// The regex below is a basic fallback — it does NOT cover all XSS vectors.
 // ─────────────────────────────────────────────────────────────────────────────
 function sanitizeHtml(html: string): string {
-  return html
-    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
-    .replace(/<iframe[\s\S]*?>/gi, '')
-    .replace(/<\/iframe>/gi, '')
-    .replace(/<object[\s\S]*?>/gi, '')
-    .replace(/<embed[\s\S]*?>/gi, '')
-    .replace(/\bon\w+\s*=\s*["'][^"']*["']/gi, '')
-    .replace(/\bon\w+\s*=\s*[^\s>]*/gi, '')
-    .replace(/javascript\s*:/gi, '');
+  if (typeof window !== 'undefined') {
+    return DOMPurify.sanitize(html, {
+      ALLOWED_TAGS: [
+        'p', 'div', 'span', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+        'br', 'hr', 'img', 'a', 'ul', 'ol', 'li', 'table', 'tr', 'td', 'th', 'thead', 'tbody',
+      ],
+      ALLOWED_ATTR: ['src', 'alt', 'href', 'title', 'class', 'style', 'width', 'height'],
+      KEEP_CONTENT: true,
+      ALLOW_UNKNOWN_PROTOCOLS: false,
+    });
+  }
+  return html;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -178,114 +186,33 @@ function getSmartReplies(subject: string): string[] {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Mock Data  (replace API calls below with real endpoints when ready)
+// Fallback Data (used when API endpoints are unavailable)
 // ─────────────────────────────────────────────────────────────────────────────
 
-const MOCK_CONTACTS: EmailContact[] = [
-  { id: '1', contact_name: 'GlobalStay Residences', email: 'bookings@globalstay.com', company: 'GlobalStay', channel: 'gmail', created_at: '2026-05-29T13:05:00Z' },
-  { id: '2', contact_name: 'Elite Workspace Dubai', email: 'sales@eliteworkspace.ae', company: 'Elite Workspace', channel: 'gmail', created_at: '2026-05-29T12:50:00Z' },
-  { id: '3', contact_name: 'Skyline Realty Group', email: 'leads@skylinerealty.co.uk', company: 'Skyline Realty', channel: 'gmail', created_at: '2026-05-29T12:30:00Z' },
-  { id: '4', contact_name: 'Maria Gonzalez', email: 'maria@urbanlease.mx', company: 'UrbanLease', channel: 'gmail', created_at: '2026-05-29T12:28:00Z' },
-  { id: '5', contact_name: 'BlueWave Properties', email: 'support@bluewaveproperty.com', company: 'BlueWave', channel: 'gmail', created_at: '2026-05-29T12:20:00Z' },
-  { id: '6', contact_name: 'Liam Carter', email: 'liam@tenantbridge.ca', company: 'TenantBridge', channel: 'gmail', created_at: '2026-05-29T11:48:00Z' },
-  { id: '7', contact_name: 'Prime Commercial Spaces', email: 'contact@primecommercial.sg', company: 'Prime Commercial', channel: 'gmail', created_at: '2026-05-29T11:44:00Z' },
-  { id: '8', contact_name: 'RentFlow Europe', email: 'hello@rentflow.eu', company: 'RentFlow', channel: 'gmail', created_at: '2026-05-29T11:09:00Z' },
-  { id: '9', contact_name: 'Apex Facility Solutions', email: 'services@apexfacility.com.au', company: 'Apex Facility', channel: 'gmail', created_at: '2026-05-29T10:52:00Z' },
-  { id: '10', contact_name: 'Nordic Living Group', email: 'noreply@nordicliving.se', company: 'Nordic Living', channel: 'gmail', created_at: '2026-05-29T10:42:00Z' },
-  { id: '11', contact_name: 'Tokyo Smart Rentals', email: 'partnerships@tokyosmartrent.jp', company: 'Tokyo Smart Rentals', channel: 'gmail', created_at: '2026-05-29T10:30:00Z' },
-  { id: '12', contact_name: 'LeadSphere CRM', email: 'notifications@leadsphere.io', company: 'LeadSphere', channel: 'gmail', created_at: '2026-05-29T10:25:00Z' },
-  { id: '13', contact_name: 'Olivia Brown', email: 'olivia@tenantconnect.nz', company: 'TenantConnect', channel: 'gmail', created_at: '2026-05-29T10:17:00Z' },
-  { id: '14', contact_name: 'Berlin Office Hub', email: 'sales@berlinofficehub.de', company: 'Berlin Office Hub', channel: 'gmail', created_at: '2026-05-29T10:16:00Z' },
-  { id: '15', contact_name: 'Pacific Housing Leads', email: 'alerts@pacifichousing.io', company: 'Pacific Housing', channel: 'gmail', created_at: '2026-05-29T10:08:00Z' },
-  { id: '16', contact_name: 'UrbanNest Holdings', email: 'hello@urbannestglobal.com', company: 'UrbanNest', channel: 'gmail', created_at: '2026-05-29T10:02:00Z' },
-  { id: '17', contact_name: 'me, melony', email: 'melony@example.com', company: null, channel: 'gmail', created_at: '2026-05-29T08:53:00Z' },
-  { id: '18', contact_name: 'CapitalEdge Investments', email: 'reports@capitaledgefinance.com', company: 'CapitalEdge', channel: 'gmail', created_at: '2026-05-29T08:37:00Z' },
-  { id: '19', contact_name: 'Dubai Property Connect', email: 'noreply@dubaipropertyconnect.ae', company: 'Dubai Property Connect', channel: 'gmail', created_at: '2026-05-29T08:33:00Z' },
-  { id: '20', contact_name: 'FutureSpace Ventures', email: 'careers@futurespaceventures.com', company: 'FutureSpace', channel: 'gmail', created_at: '2026-05-29T08:20:00Z' },
-  { id: '21', contact_name: 'Prestige Lease Partners', email: 'clients@prestigelease.fr', company: 'Prestige Lease', channel: 'gmail', created_at: '2026-05-29T08:15:00Z' },
-  { id: '22', contact_name: 'SmartSpace Asia', email: 'support@smartspace.hk', company: 'SmartSpace', channel: 'gmail', created_at: '2026-05-29T08:10:00Z' },
-  { id: '23', contact_name: 'Prime Tenant Network', email: 'network@primetenant.io', company: 'Prime Tenant', channel: 'gmail', created_at: '2026-05-29T08:05:00Z' },
-  { id: '24', contact_name: 'Evelyn Scott', email: 'evelyn@luxstay.us', company: 'LuxStay', channel: 'gmail', created_at: '2026-05-29T08:01:00Z' },
-  { id: '25', contact_name: 'Metro Commercial Group', email: 'metro@commercialgroup.com', company: 'Metro Commercial', channel: 'gmail', created_at: '2026-05-29T07:55:00Z' },
-  { id: '26', contact_name: 'Vision Workspace', email: 'hello@visionworkspace.co', company: 'Vision Workspace', channel: 'gmail', created_at: '2026-05-29T07:48:00Z' },
-  { id: '27', contact_name: 'Royal Tenant Services', email: 'support@royaltenants.uk', company: 'Royal Tenant', channel: 'gmail', created_at: '2026-05-29T07:40:00Z' },
-  { id: '28', contact_name: 'Horizon Realty Advisors', email: 'advisors@horizonrealty.ca', company: 'Horizon Realty', channel: 'gmail', created_at: '2026-05-29T07:34:00Z' },
-  { id: '29', contact_name: 'CloudNine Properties', email: 'info@cloudnineproperty.com', company: 'CloudNine', channel: 'gmail', created_at: '2026-05-29T07:30:00Z' },
-  { id: '30', contact_name: 'TenantCore Solutions', email: 'solutions@tenantcore.io', company: 'TenantCore', channel: 'gmail', created_at: '2026-05-29T07:22:00Z' },
-  { id: '31', contact_name: 'Andreas Muller', email: 'andreas@berlinrentals.de', company: 'Berlin Rentals', channel: 'gmail', created_at: '2026-05-29T07:18:00Z' },
-  { id: '32', contact_name: 'Nova Housing Group', email: 'connect@novahousing.sg', company: 'Nova Housing', channel: 'gmail', created_at: '2026-05-29T07:10:00Z' },
-  { id: '33', contact_name: 'Enterprise Tenant Hub', email: 'enterprise@tenanthub.io', company: 'Tenant Hub', channel: 'gmail', created_at: '2026-05-29T07:02:00Z' },
-  { id: '34', contact_name: 'Infinity Workspaces', email: 'sales@infinityworkspace.ae', company: 'Infinity Workspace', channel: 'gmail', created_at: '2026-05-29T06:55:00Z' },
-  { id: '35', contact_name: 'OliveTree Living', email: 'team@olivetreeliving.com', company: 'OliveTree', channel: 'gmail', created_at: '2026-05-29T06:48:00Z' },
-  { id: '36', contact_name: 'TenantFlow CRM', email: 'crm@tenantflow.io', company: 'TenantFlow', channel: 'gmail', created_at: '2026-05-29T06:40:00Z' },
-  { id: '37', contact_name: 'Prime Urban Estates', email: 'urban@primeestates.au', company: 'Prime Urban', channel: 'gmail', created_at: '2026-05-29T06:34:00Z' },
-  { id: '38', contact_name: 'Lucas Bennett', email: 'lucas@leasepoint.nz', company: 'LeasePoint', channel: 'gmail', created_at: '2026-05-29T06:28:00Z' },
-  { id: '39', contact_name: 'CityScape Leasing', email: 'leasing@cityscape.qa', company: 'CityScape', channel: 'gmail', created_at: '2026-05-29T06:20:00Z' },
-  { id: '40', contact_name: 'Vertex Property Leads', email: 'alerts@vertexproperty.io', company: 'Vertex Property', channel: 'gmail', created_at: '2026-05-29T06:15:00Z' },
-  { id: '41', contact_name: 'TenantFirst Solutions', email: 'care@tenantfirst.co', company: 'TenantFirst', channel: 'gmail', created_at: '2026-05-29T06:10:00Z' },
-  { id: '42', contact_name: 'Smart Lease Europe', email: 'support@smartlease.eu', company: 'Smart Lease', channel: 'gmail', created_at: '2026-05-29T06:05:00Z' },
-  { id: '43', contact_name: 'Elite Relocation Services', email: 'relocation@eliteservices.jp', company: 'Elite Relocation', channel: 'gmail', created_at: '2026-05-29T05:58:00Z' },
-  { id: '44', contact_name: 'NextGen Commercial', email: 'team@nextgencommercial.com', company: 'NextGen Commercial', channel: 'gmail', created_at: '2026-05-29T05:50:00Z' },
-  { id: '45', contact_name: 'Arthur Collins', email: 'arthur@globaltenant.ca', company: 'Global Tenant', channel: 'gmail', created_at: '2026-05-29T05:45:00Z' },
-  { id: '46', contact_name: 'Dynamic Housing Ltd', email: 'info@dynamichousing.co.uk', company: 'Dynamic Housing', channel: 'gmail', created_at: '2026-05-29T05:38:00Z' },
-  { id: '47', contact_name: 'BluePeak Offices', email: 'offices@bluepeak.sg', company: 'BluePeak', channel: 'gmail', created_at: '2026-05-29T05:32:00Z' },
-  { id: '48', contact_name: 'TenantLink Partners', email: 'partners@tenantlink.io', company: 'TenantLink', channel: 'gmail', created_at: '2026-05-29T05:25:00Z' },
-  { id: '49', contact_name: 'Northern Star Realty', email: 'northstar@realty.se', company: 'Northern Star', channel: 'gmail', created_at: '2026-05-29T05:18:00Z' },
-  { id: '50', contact_name: 'UrbanAxis Properties', email: 'urbanaxis@propertyhub.com', company: 'UrbanAxis', channel: 'gmail', created_at: '2026-05-29T05:12:00Z' },
-  { id: '51', contact_name: 'TenantVision Global', email: 'vision@tenantvision.com', company: 'TenantVision', channel: 'gmail', created_at: '2026-05-29T05:08:00Z' },
-  { id: '52', contact_name: 'PrimeSpace Leasing', email: 'leasing@primespace.ae', company: 'PrimeSpace', channel: 'gmail', created_at: '2026-05-29T05:00:00Z' },
-  { id: '53', contact_name: 'WestBridge Housing', email: 'hello@westbridgehousing.us', company: 'WestBridge', channel: 'gmail', created_at: '2026-05-29T04:54:00Z' },
-  { id: '54', contact_name: 'TenantPro Solutions', email: 'support@tenantpro.io', company: 'TenantPro', channel: 'gmail', created_at: '2026-05-29T04:48:00Z' },
-  { id: '55', contact_name: 'Leo Martinez', email: 'leo@smartliving.mx', company: 'SmartLiving', channel: 'gmail', created_at: '2026-05-29T04:40:00Z' },
-  { id: '56', contact_name: 'Galaxy Commercial Hub', email: 'hub@galaxycommercial.com', company: 'Galaxy Commercial', channel: 'gmail', created_at: '2026-05-29T04:35:00Z' },
-  { id: '57', contact_name: 'PropertySphere Network', email: 'network@propertysphere.io', company: 'PropertySphere', channel: 'gmail', created_at: '2026-05-29T04:28:00Z' },
-  { id: '58', contact_name: 'TenantEdge Systems', email: 'systems@tenantedge.io', company: 'TenantEdge', channel: 'gmail', created_at: '2026-05-29T04:22:00Z' },
-  { id: '59', contact_name: 'UrbanVista Holdings', email: 'urbanvista@holdings.com', company: 'UrbanVista', channel: 'gmail', created_at: '2026-05-29T04:16:00Z' },
-  { id: '60', contact_name: 'Global Prime Rentals', email: 'rentals@globalprime.co', company: 'Global Prime', channel: 'gmail', created_at: '2026-05-29T04:10:00Z' },
-];
+const MOCK_CONTACTS: EmailContact[] = [];
 
-const MOCK_GROUPS: EmailGroup[] = [
-  { id: 'g1', name: 'International Clients', color: '#EA4335', description: null, channel: 'gmail', member_count: 58 },
-  { id: 'g2', name: 'Property Leads', color: '#4285F4', description: null, channel: 'gmail', member_count: 134 },
-  { id: 'g3', name: 'Premium Tenants', color: '#34A853', description: null, channel: 'gmail', member_count: 21 },
-];
+const MOCK_GROUPS: EmailGroup[] = [];
 
-const MOCK_LABELS: EmailLabels[] = [
-  { id: 'l1', name: 'Notes', color: '#EA4335', description: null, channel: 'gmail' },
-  { id: 'l2', name: 'Boss', color: '#4285F4', description: null, channel: 'gmail' },
-  { id: 'l3', name: 'Top', color: '#34A853', description: null, channel: 'gmail' },
-];
+const MOCK_LABELS: EmailLabels[] = [];
 
 const MOCK_EMAIL_DETAILS: Record<string, {
   subject: string; snippet: string; date: string;
   unread: boolean; category: CategoryTab; labels?: string[];
-}> = {
-  '1': { subject: 'New serviced apartment inquiry from Singapore client', snippet: `Hello Melony,\n\nWe hope you're doing well.\n\nA new enterprise client from Singapore is currently exploring premium serviced apartment options in Central London for a 6-month corporate relocation project beginning July 2026.\n\nThe client is specifically looking for:\n• Fully furnished executive apartments\n• Flexible lease agreements\n• Concierge & housekeeping support\n• Walking distance to Canary Wharf stations\n\nPlease share:\n- Current availability\n- Monthly pricing\n- Corporate package inclusions\n\nOur relocation team would appreciate a response within the next 24 hours so we can proceed with shortlisting.\n\nWarm regards,\nDaniel Foster\nCorporate Relocation Manager\nGlobalStay Residences`, date: '1:05 PM', unread: true, category: 'primary' },
-  '2': { subject: 'Your Dubai coworking space proposal has been approved', snippet: `Dear Melony,\n\nThank you for submitting your proposal for premium coworking leasing services across our Downtown Dubai locations.\n\nAfter internal review, we are pleased to inform you that your commercial pricing proposal has been approved for Phase 1 onboarding.\n\nYour services will now be included in our preferred partner network covering:\n• DIFC\n• Business Bay\n• Dubai Marina\n\nOur onboarding coordinator will contact you shortly regarding contract execution and inventory synchronization.\n\nBest regards,\nAhmed Al Fahim\nPartnerships Team\nElite Workspace Dubai`, date: '12:50 PM', unread: false, category: 'updates', labels: ['Updates'] },
-  '3': { subject: '3 new commercial property leads assigned to you', snippet: `Hi Melony,\n\nSkyline Realty has assigned three new high-priority commercial leasing opportunities matching your international tenant services portfolio.\n\nLead locations include:\n• Manchester — Hybrid office space for fintech startup\n• Birmingham — Managed workspace for legal consultancy\n• Leeds — Serviced office requirement for 40 employees\n\nPlease review the attached client briefs and submit availability updates before tomorrow noon.\n\nRegards,\nOliver Thompson\nEnterprise Leasing Desk\nSkyline Realty Group`, date: '12:30 PM', unread: true, category: 'primary' },
-  '4': { subject: 'Client requested revised tenant onboarding agreement', snippet: `Hello Melony,\n\nMaria Gonzalez from UrbanLease Mexico has reviewed the onboarding agreement shared for the upcoming Mexico City relocation project.\n\nThe client has requested revisions related to:\n• Security deposit structure\n• Lease termination flexibility\n• Utility billing terms\n• Relocation assistance clauses\n\nPlease update the agreement and resend the revised copy by EOD Thursday.\n\nThank you,\nMaria Gonzalez`, date: '12:28 PM', unread: false, category: 'primary' },
-  '5': { subject: 'Monthly property maintenance report available', snippet: `Dear Property Partner,\n\nThe monthly facility inspection and maintenance report for your managed housing portfolio is now available in the BlueWave dashboard.\n\nHighlights this month:\n• 97% maintenance resolution rate\n• HVAC servicing completed across all units\n• Security inspection passed for all managed residences\n• 4 pending plumbing escalations in Sydney region`, date: '12:20 PM', unread: false, category: 'updates', labels: ['Updates'] },
-  '6': { subject: 'New tenant lead from Toronto business district', snippet: `Hi Melony,\n\nA funded SaaS startup based in Toronto has submitted a request for premium furnished office accommodation for their executive leadership team.\n\nRequirements include:\n• Downtown Toronto location\n• 12-month lease\n• Meeting room access\n• Private executive cabins`, date: '11:48 AM', unread: true, category: 'primary' },
-  '7': { subject: 'Prime Commercial Spaces partnership invitation', snippet: `Dear Melony,\n\nPrime Commercial Spaces Singapore would like to explore regional collaboration opportunities for enterprise office leasing and relocation support services.`, date: '11:44 AM', unread: false, category: 'social', labels: ['Social'] },
-  '8': { subject: 'European rental demand insights – Q2 2026', snippet: `Hello Melony,\n\nRentFlow Europe has published its Q2 2026 enterprise rental demand report covering commercial leasing and executive housing trends across Europe.`, date: '11:09 AM', unread: false, category: 'updates', labels: ['Updates'] },
-  '9': { subject: 'Facility management contract renewal reminder', snippet: `Dear Melony,\n\nThis is a reminder that your Sydney corporate housing facility management agreement is scheduled for renewal next month.`, date: '10:52 AM', unread: false, category: 'primary' },
-  '10': { subject: 'Nordic Living Group sent new luxury housing leads', snippet: `Hello Melony,\n\nFive new executive housing inquiries have been added to your international tenant pipeline for review.`, date: '10:42 AM', unread: false, category: 'primary' },
-  '11': { subject: 'Tokyo Smart Rentals onboarding completed', snippet: `Dear Melony,\n\nCongratulations! Your agency onboarding has been successfully completed for the Tokyo Smart Rentals enterprise partner network.`, date: '10:30 AM', unread: false, category: 'updates', labels: ['Updates'] },
-  '12': { subject: 'Weekly CRM performance summary', snippet: `Hello Melony,\n\nYour weekly LeadSphere CRM analytics summary is now available.\n\nPerformance overview:\n• 24% increase in qualified tenant leads\n• 18 new enterprise conversations initiated`, date: '10:25 AM', unread: false, category: 'updates', labels: ['Updates'] },
-  '13': { subject: 'New Zealand tenant relocation inquiry', snippet: `Hello Melony,\n\nOlivia Brown from TenantConnect New Zealand is assisting an international technology company relocating employees to Auckland during Q3 2026.`, date: '10:17 AM', unread: true, category: 'primary' },
-  '14': { subject: 'Berlin Office Hub shared updated pricing catalog', snippet: `Dear Melony,\n\nThe updated 2026 pricing catalog for premium serviced office spaces across Berlin is now available for partner review.`, date: '10:16 AM', unread: false, category: 'promotions', labels: ['Promotions'] },
-  '15': { subject: '12 premium housing leads matched with your services', snippet: `Hello Melony,\n\nPacific Housing has matched 12 new enterprise tenant requests based on your managed housing and relocation portfolio.`, date: '10:08 AM', unread: false, category: 'primary' },
-  '16': { subject: 'UrbanNest monthly growth newsletter', snippet: `Hi Melony,\n\nWelcome to the May 2026 UrbanNest Growth Digest.`, date: '10:02 AM', unread: false, category: 'promotions', labels: ['Promotions'] },
-  '17': { subject: 'Draft proposal for enterprise tenant services', snippet: `Dear Melony,\n\nPlease find attached the revised proposal document for enterprise tenant management and relocation support services.`, date: '8:53 AM', unread: false, category: 'primary' },
-  '18': { subject: 'International investment portfolio statement', snippet: `Dear Investor Partner,\n\nCapitalEdge Investments has generated your Q2 2026 international real estate portfolio statement.`, date: '8:37 AM', unread: false, category: 'updates', labels: ['Updates'] },
-  '19': { subject: 'Dubai Property Connect generated new investor leads', snippet: `Hello Melony,\n\nThree verified investors from Abu Dhabi and Dubai have expressed interest in premium rental partnership opportunities.`, date: '8:33 AM', unread: false, category: 'primary' },
-  '20': { subject: 'Invitation to Global Property & Tenant Expo 2026', snippet: `Dear Melony,\n\nYou are officially invited to attend the International Property & Tenant Solutions Expo 2026 taking place in Singapore this September.`, date: '8:20 AM', unread: false, category: 'primary' },
-  '21': { subject: 'Priority corporate housing inquiry for Canary Wharf executives', snippet: `Hello Melony,\n\nWe have received an urgent relocation request for 14 senior consultants moving to London during July 2026.`, date: '8:15 AM', unread: true, category: 'primary' },
-  '22': { subject: 'Workspace partnership proposal for Hong Kong expansion', snippet: `Dear Melony,\n\nSmartSpace Asia is expanding its serviced office footprint across Hong Kong and Singapore.`, date: '8:10 AM', unread: false, category: 'updates', labels: ['Updates'] },
-  '23': { subject: '5 enterprise tenant leads matched with your listing profile', snippet: `Good morning Melony,\n\nOur Prime Tenant Network platform has identified five high-intent enterprise clients searching for managed housing solutions.`, date: '8:05 AM', unread: true, category: 'primary' },
-  '24': { subject: 'Luxury residence viewing confirmed for Manhattan client', snippet: `Hi Melony,\n\nThe client from LuxStay Corporate Housing has officially confirmed tomorrow's virtual property viewing session.`, date: '8:01 AM', unread: false, category: 'primary' },
-  '25': { subject: 'Commercial leasing agreement awaiting final approval', snippet: `Dear Melony,\n\nThe legal review for the Singapore business center leasing agreement has now been completed successfully.`, date: '7:55 AM', unread: false, category: 'updates', labels: ['Updates'] },
-};
+}> = {};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Emoji categories (module-level constant – created once, never re-allocated)
+// ─────────────────────────────────────────────────────────────────────────────
+const EMOJI_CATS = [
+  { id: 'smileys', icon: '😊', label: 'Smileys', emojis: ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '🥲', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🤧', '🥵', '🥶', '🥴', '😵', '🤯', '🤠', '🥳', '🥸', '😎', '🤓', '🧐', '😕', '😟', '🙁', '☹️', '😮', '😯', '😲', '😳', '🥺', '😦', '😧', '😨', '😰', '😥', '😢', '😭', '😱', '😖', '😣', '😞', '😓', '😩', '😫', '🥱', '😤', '😡', '😠', '🤬', '😈', '👿', '💀', '☠️', '💩', '🤡', '👹', '👺', '👻', '👽', '👾', '🤖'] },
+  { id: 'hands', icon: '👋', label: 'Hands', emojis: ['👋', '🤚', '🖐️', '✋', '🖖', '👌', '🤌', '🤏', '✌️', '🤞', '🤟', '🤘', '🤙', '👈', '👉', '👆', '🖕', '👇', '☝️', '👍', '👎', '✊', '👊', '🤛', '🤜', '👏', '🙌', '👐', '🤲', '🤝', '🙏', '✍️', '💅', '🤳', '💪', '🦾', '🦿', '🦵', '🦶', '👂', '🦻', '👃', '👀', '👁️', '👅', '👄', '💋', '🩸'] },
+  { id: 'hearts', icon: '❤️', label: 'Hearts', emojis: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❤️‍🔥', '❤️‍🩹', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟', '❣️', '💌', '💤', '💢', '💣', '💥', '💦', '💨', '💫', '💬', '💭', '🗯️', '💯'] },
+  { id: 'animals', icon: '🐶', label: 'Animals', emojis: ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🙈', '🙉', '🙊', '🐔', '🐧', '🐦', '🐤', '🦆', '🦅', '🦉', '🦇', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', '🦋', '🐌', '🐞', '🐜', '🦟', '🦗', '🦂', '🐢', '🐍', '🦎', '🦕', '🦖', '🦏', '🦛', '🐘', '🦒', '🦘', '🦬', '🐃', '🐄', '🐎', '🐖', '🐏', '🐑', '🦙', '🐐', '🦌', '🐕', '🐩', '🦮', '🐈', '🐓', '🦃', '🦚', '🦜', '🦢', '🦩', '🕊️', '🐇', '🦝', '🦨', '🦡', '🦦', '🦥', '🐁', '🐀', '🐿️', '🦔', '🐾', '🐉', '🐲', '🌵', '🎄', '🌲', '🌳', '🌴', '🌱', '🌿', '☘️', '🍀', '🍃', '🍂', '🍁', '🍄', '🌾', '💐', '🌷', '🌹', '🥀', '🌺', '🌸', '🌼', '🌻'] },
+  { id: 'food', icon: '🍔', label: 'Food', emojis: ['🍏', '🍎', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🫐', '🍈', '🍒', '🍑', '🥭', '🍍', '🥥', '🥝', '🍅', '🫒', '🥑', '🍆', '🥔', '🥕', '🌽', '🌶️', '🫑', '🥒', '🥬', '🥦', '🧄', '🧅', '🍄', '🥜', '🌰', '🍞', '🥐', '🥖', '🫓', '🥨', '🥯', '🧀', '🥚', '🍳', '🧈', '🥞', '🧇', '🥓', '🥩', '🍗', '🍖', '🌭', '🍔', '🍟', '🍕', '🫔', '🌮', '🌯', '🥙', '🧆', '🥚', '🍿', '🧂', '🥫', '🍱', '🍘', '🍙', '🍚', '🍛', '🍜', '🍝', '🍠', '🍢', '🍣', '🍤', '🍥', '🥮', '🍡', '🥟', '🥠', '🥡', '🦀', '🦞', '🦐', '🦑', '🦪', '🍦', '🍧', '🍨', '🍩', '🍪', '🎂', '🍰', '🧁', '🥧', '🍫', '🍬', '🍭', '🍮', '🍯', '🍼', '🥛', '☕', '🍵', '🧃', '🥤', '🧋', '🍶', '🍺', '🍻', '🥂', '🍷', '🥃', '🍸'] },
+  { id: 'travel', icon: '🚗', label: 'Travel', emojis: ['🚗', '🚕', '🚙', '🚌', '🚎', '🏎️', '🚓', '🚑', '🚒', '🚐', '🛻', '🚚', '🚛', '🚜', '🏍️', '🛵', '🚲', '🛴', '🛺', '🚨', '🚥', '🚦', '🛑', '🚧', '⛽', '🚢', '✈️', '🛩️', '🚀', '🛸', '🚁', '🛶', '⛵', '🚤', '🛥️', '🛳️', '⛴️', '🚞', '🚝', '🚄', '🚅', '🚈', '🚂', '🚃', '🚋', '🚆', '🚇', '🚊', '🚉', '🌍', '🌎', '🌏', '🗺️', '🏔️', '⛰️', '🌋', '🗻', '🏕️', '🏖️', '🏜️', '🏝️', '🏞️', '🏟️', '🏛️', '🏗️', '🏘️', '🏚️', '🏠', '🏡', '🏢', '🏣', '🏤', '🏥', '🏦', '🏨', '🏩', '🏪', '🏫', '🏬', '🏭', '🏯', '🏰', '💒', '🗼', '🗽', '⛪', '🕌', '🕍'] },
+  { id: 'activities', icon: '⚽', label: 'Activities', emojis: ['⚽', '🏀', '🏈', '⚾', '🥎', '🎾', '🏐', '🏉', '🥏', '🎱', '🪀', '🏓', '🏸', '🏒', '🏑', '🥍', '🏏', '🪃', '🥅', '⛳', '🪁', '🏹', '🎣', '🤿', '🎽', '🎿', '🛷', '🥌', '🪂', '🏋️', '🤼', '🤸', '⛹️', '🤺', '🏇', '🧘', '🏄', '🏊', '🚣', '🧗', '🚵', '🚴', '🏆', '🥇', '🥈', '🥉', '🏅', '🎖️', '🏵️', '🎗️', '🎫', '🎟️', '🎪', '🤹', '🎭', '🎨', '🎬', '🎤', '🎧', '🎼', '🎹', '🥁', '🪘', '🎷', '🎺', '🎸', '🪕', '🎻', '🎲', '♟️', '🎯', '🎳', '🎰', '🎮', '🕹️'] },
+  { id: 'symbols', icon: '❤️', label: 'Symbols', emojis: ['❤️', '✅', '❌', '⭕', '🔴', '🟠', '🟡', '🟢', '🔵', '🟣', '⚫', '⚪', '🟤', '🔶', '🔷', '🔸', '🔹', '🔺', '🔻', '💠', '🔘', '🔲', '🔳', '▪️', '▫️', '◾', '◽', '◼️', '◻️', '🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '⬛', '⬜', '🟫', '🔈', '🔉', '🔊', '📣', '📢', '💬', '💭', '🗯️', '♠️', '♣️', '♥️', '♦️', '🃏', '🀄', '🎴', '🔀', '🔁', '🔂', '▶️', '⏩', '⏭️', '⏯️', '◀️', '⏪', '⏮️', '🔼', '⏫', '🔽', '⏬', '⏸️', '⏹️', '⏺️', '🎦', '🔅', '🔆', '📶', '🔱', '⚜️', '🔰', '♻️', '✅', '🈯', '💹', '❇️', '✳️', '❎', '🌐', '💠', 'Ⓜ️', '🌀', '💤', '🏧', '🚾', '♿', '🅿️', '🛗', '🈳', '🈹', '🈵', '🉐', '㊙️', '㊗️', '🈴', '🈺', '🈷️', '✴️', '🆚', '💮', '🉑', '🈶', '🈚', '🈸', '🈲', '🅰️', '🅱️', '🆎', '🆑', '🅾️', '🆘'] },
+] as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -298,8 +225,8 @@ function authHeaders(): Record<string, string> {
     if (token) h['Authorization'] = `Bearer ${token}`;
     const tenant = typeof window !== 'undefined' ? localStorage.getItem('selectedTenantId') : null;
     if (tenant && tenant !== 'default') h['X-Tenant-ID'] = tenant;
-  } catch (err) {
-    console.error('[EmailChannelView] Failed to read auth headers:', err);
+  } catch {
+    // Silently handle auth header errors - localStorage may be unavailable in some contexts
   }
   return h;
 }
@@ -324,12 +251,15 @@ function formatDate(iso?: string): string {
 }
 
 function getEmailDetails(contact: EmailContact) {
-  return MOCK_EMAIL_DETAILS[contact.id] ?? {
-    subject: `Email from ${contact.contact_name ?? 'Unknown'}`,
-    snippet: `Message from ${contact.email ?? 'unknown'}...`,
-    date: new Date(contact.created_at ?? Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    unread: false,
-    category: 'primary' as CategoryTab,
+  const meta = contact.metadata ?? {};
+  const mockDetails = MOCK_EMAIL_DETAILS[contact.id];
+  return {
+    subject: (meta.subject as string) ?? mockDetails?.subject ?? `Email from ${contact.contact_name ?? 'Unknown'}`,
+    snippet: (meta.snippet as string) ?? mockDetails?.snippet ?? `Message from ${contact.email ?? 'unknown'}...`,
+    date: (meta.date as string) ?? mockDetails?.date ?? new Date(contact.created_at ?? Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    unread: (meta.unread as boolean) ?? mockDetails?.unread ?? false,
+    category: (meta.category as CategoryTab) ?? mockDetails?.category ?? ('primary' as CategoryTab),
+    labels: (meta.labels as string[]) ?? mockDetails?.labels ?? [],
   };
 }
 
@@ -429,6 +359,7 @@ function ComposeWindow({
   provider, contacts, initialTo = '', initialSubject = '', initialBody = '',
   onClose, onSent, minimized = false, onMinimize, onMaximize, maximized = false,
 }: ComposeWindowProps) {
+  const { toast } = useToast();
   const [to, setTo] = useState(initialTo);
   const [cc, setCc] = useState('');
   const [bcc, setBcc] = useState('');
@@ -442,10 +373,19 @@ function ComposeWindow({
   const [showTemplate, setShowTemplate] = useState(false);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [agentType, setAgentType] = useState<'ai' | 'human'>('ai');
+  const [showEmoji, setShowEmoji] = useState(false);
+  const [activeEmojiCategory, setActiveEmojiCategory] = useState('smileys');
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const emojiScrollRef = useRef<HTMLDivElement>(null);
+  const emojiCategoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+
 
   const fileRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
-  const providerColor = PROVIDER_COLOR[provider];
+  const templateBtnRef = useRef<HTMLButtonElement>(null);
+
 
   const suggestedContacts = useMemo(() => {
     if (!to.trim()) return [];
@@ -454,6 +394,37 @@ function ComposeWindow({
       (c.contact_name ?? '').toLowerCase().includes(t) || (c.email ?? '').toLowerCase().includes(t),
     ).slice(0, 5);
   }, [contacts, to]);
+
+  useEffect(() => {
+    if (!showEmoji) return;
+    const handler = (e: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target as Node))
+        setShowEmoji(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showEmoji]);
+
+  const handleEmojiScroll = useCallback(() => {
+    if (!emojiScrollRef.current) return;
+    const scrollTop = emojiScrollRef.current.scrollTop;
+    let current = EMOJI_CATS[0].id;
+    for (const cat of EMOJI_CATS) {
+      const el = emojiCategoryRefs.current[cat.id];
+      if (el && el.offsetTop <= scrollTop + 20) {
+        current = cat.id;
+      }
+    }
+    setActiveEmojiCategory(current);
+  }, []);
+
+  const scrollToEmojiCategory = useCallback((catId: string) => {
+    const el = emojiCategoryRefs.current[catId];
+    if (el && emojiScrollRef.current) {
+      emojiScrollRef.current.scrollTo({ top: el.offsetTop - 2, behavior: 'smooth' });
+    }
+    setActiveEmojiCategory(catId);
+  }, []);
 
   const handleSend = async () => {
     if (!to.trim() || !subject.trim() || !body.trim()) {
@@ -464,7 +435,11 @@ function ComposeWindow({
     setError('');
     try {
       const recipients = [{ email: to.trim() }];
-      if (cc.trim()) cc.split(',').forEach(e => { if (e.trim()) recipients.push({ email: e.trim() }); });
+      if (cc.trim()) {
+        cc.split(',').forEach(e => {
+          if (e.trim()) recipients.push({ email: e.trim() });
+        });
+      }
       const res = await fetch(`${API}/send-bulk`, {
         method: 'POST',
         headers: authHeaders(),
@@ -477,16 +452,36 @@ function ComposeWindow({
           body_html: body.trim(),
         }),
       });
+      if (!res.ok) {
+        throw new Error(`HTTP error ${res.status}`);
+      }
       const data = await res.json();
-      if (!data.success) throw new Error(data.error ?? 'Send failed');
+      if (!data.success) {
+        throw new Error(data.error ?? 'Send failed');
+      }
+
+      setSent(true);
+      toast({
+        title: 'Success',
+        description: 'Email sent successfully.',
+      });
+      onSent?.();
+      setTimeout(() => {
+        setSent(false);
+        onClose();
+      }, 1500);
     } catch (err) {
-      // In dev: log and continue with optimistic success
-      console.error('[ComposeWindow] Send error:', err);
+      console.error('Email send failed:', err);
+      const errMsg = err instanceof Error ? err.message : 'Unknown error';
+      setError(errMsg);
+      toast({
+        title: 'Error sending email',
+        description: errMsg,
+        variant: 'destructive',
+      });
+    } finally {
+      setSending(false);
     }
-    setSent(true);
-    onSent?.();
-    setTimeout(() => { setSent(false); onClose(); }, 1500);
-    setSending(false);
   };
 
   const handleBold = () => bodyRef.current && wrapSelection(bodyRef.current, body, setBody, '**', 'bold text');
@@ -559,10 +554,25 @@ function ComposeWindow({
           </button>
           <button title={maximized ? 'Restore' : 'Maximize'} aria-label={maximized ? 'Restore compose window' : 'Maximize compose window'} onClick={onMaximize}
             className="h-7 w-7 flex items-center justify-center hover:bg-white/20 rounded transition-colors">
-            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" aria-hidden="true">
-              {maximized
-                ? <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" fill="currentColor" />
-                : <path d="M4 4h7V2H2v9h2V4zm9 14h7v-7h-2v5h-5v2zM20 2h-7v2h5v5h2V2zM4 15H2v7h9v-2H4v-5z" fill="currentColor" />}
+            <svg viewBox="0 0 18 18" className="h-3.5 w-3.5"
+              fill="none" stroke="currentColor"
+              strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"
+              aria-hidden="true">
+              {maximized ? (
+                <>
+                  <polyline points="6,1 6,6 1,6" />
+                  <polyline points="12,1 12,6 17,6" />
+                  <polyline points="17,12 12,12 12,17" />
+                  <polyline points="1,12 6,12 6,17" />
+                </>
+              ) : (
+                <>
+                  <polyline points="1,6 1,1 6,1" />
+                  <polyline points="12,1 17,1 17,6" />
+                  <polyline points="17,12 17,17 12,17" />
+                  <polyline points="6,17 1,17 1,12" />
+                </>
+              )}
             </svg>
           </button>
           <button title="Close" aria-label="Close compose window" onClick={onClose}
@@ -709,6 +719,7 @@ function ComposeWindow({
           />
           {showTemplate && (
             <InlineTemplatePicker
+              anchorRef={templateBtnRef}
               onSelect={t => { setSubject(t.subject); setBody(t.body_html ?? t.body ?? ''); setShowTemplate(false); }}
               onClose={() => setShowTemplate(false)}
             />
@@ -780,9 +791,58 @@ function ComposeWindow({
             </button>
           </div>
 
+          {/* Agent Toggle — mirrors WABAChatWindow composer */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                title={agentType === 'human' ? 'Human agent — tap to hand back to Mr LAD' : 'Mr LAD is replying — tap to take over'}
+                className={cn(
+                  'h-9 w-9 flex items-center justify-center rounded-full transition-colors hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] flex-shrink-0',
+                  agentType === 'human' && 'text-orange-500'
+                )}
+              >
+                {agentType === 'human'
+                  ? <User className="h-5 w-5" />
+                  : <Image src="/logo.svg" alt="Mr LAD" width={28} height={28} className="object-contain" />
+                }
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="bg-popover z-50">
+              <DropdownMenuItem
+                onClick={() => setAgentType('human')}
+                className={cn('cursor-pointer', agentType === 'human' && 'bg-muted')}
+              >
+                <User className="h-4 w-4 mr-2" /> Human Agent
+                {agentType === 'human' && <span className="ml-auto text-xs text-muted-foreground">Active</span>}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setAgentType('ai')}
+                className={cn('cursor-pointer', agentType === 'ai' && 'bg-muted')}
+              >
+                <Image src="/logo.svg" alt="Mr LAD" width={16} height={16} className="mr-2" /> Mr LAD
+                {agentType === 'ai' && <span className="ml-auto text-xs text-muted-foreground">Active</span>}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           {/* Toolbar icons */}
           <div className="flex items-center gap-0.5">
-            <TBtn icon={FileText} label="Insert template" active={showTemplate} onClick={() => setShowTemplate(v => !v)} />
+            <button
+              ref={templateBtnRef}
+              type="button"
+              title="Insert template"
+              aria-label="Insert template"
+              onClick={() => setShowTemplate(v => !v)}
+              className={cn(
+                'h-8 w-8 flex items-center justify-center rounded-full transition-colors',
+                showTemplate
+                  ? 'bg-[#c2dbff] dark:bg-[#004a77] text-[#001D35] dark:text-[#c2e7ff]'
+                  : 'text-[#444746] dark:text-[#9aa0a6] hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]',
+              )}
+            >
+              <FileText className="h-4 w-4" />
+            </button>
             <TBtn icon={Paperclip} label="Attach file" onClick={() => fileRef.current?.click()} />
             <input
               ref={fileRef}
@@ -792,9 +852,105 @@ function ComposeWindow({
               aria-label="Attach files"
               onChange={e => setAttachments(p => [...p, ...Array.from(e.target.files ?? [])])}
             />
-            <TBtn icon={Smile} label="Insert emoji" onClick={() => {
-              bodyRef.current && insertAtCursor(bodyRef.current, body, setBody, '😊');
-            }} />
+            <div className="relative" ref={emojiPickerRef}>
+              <TBtn
+                icon={Smile}
+                label="Insert emoji"
+                active={showEmoji}
+                onClick={() => setShowEmoji(v => !v)}
+              />
+              {showEmoji && (
+                <div
+                  className="absolute z-[9999] bg-white dark:bg-[#2d2d2d] border border-[#dadce0] dark:border-[#3c4043] rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+                  style={{
+                    width: 320,
+                    height: 360,
+                    // Smart positioning: open upward, align left but clamp to viewport
+                    bottom: 'calc(100% + 8px)',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                  }}
+                >
+                  {/* Search bar */}
+                  <div className="px-3 pt-2.5 pb-2 flex-shrink-0">
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#5f6368] dark:text-[#9aa0a6]" />
+                      <input
+                        placeholder="Search emoji"
+                        className="w-full pl-8 pr-3 py-1.5 bg-[#f1f3f4] dark:bg-[#3c4043] rounded-full text-[13px] text-[#202124] dark:text-[#e8eaed] placeholder:text-[#5f6368] dark:placeholder:text-[#9aa0a6] focus:outline-none border-0"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Category tabs — auto-highlights on scroll */}
+                  <div className="flex items-center gap-0 px-2 pb-1.5 border-b border-[#f1f3f4] dark:border-[#3c4043] flex-shrink-0 overflow-x-auto no-scrollbar">
+                    {EMOJI_CATS.map(cat => (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        title={cat.label}
+                        onClick={() => scrollToEmojiCategory(cat.id)}
+                        className={cn(
+                          'flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-base transition-colors relative',
+                          activeEmojiCategory === cat.id
+                            ? 'text-[#0b57d0] dark:text-[#7cacf8]'
+                            : 'text-[#5f6368] dark:text-[#9aa0a6] hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]'
+                        )}
+                      >
+                        {cat.icon}
+                        {activeEmojiCategory === cat.id && (
+                          <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-[#0b57d0] dark:bg-[#7cacf8] rounded-full" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Emoji grid — scrollable, updates category tabs */}
+                  <div
+                    ref={emojiScrollRef}
+                    onScroll={handleEmojiScroll}
+                    className="flex-1 overflow-y-auto px-2 py-1"
+                    style={{ scrollbarWidth: 'thin' }}
+                  >
+                    {EMOJI_CATS.map(cat => (
+                      <div key={cat.id} ref={el => { emojiCategoryRefs.current[cat.id] = el; }}>
+                        <p className="text-[10px] font-semibold text-[#5f6368] dark:text-[#9aa0a6] uppercase tracking-wider px-1 pt-2 pb-1 sticky top-0 bg-white dark:bg-[#2d2d2d] z-10">
+                          {cat.label}
+                        </p>
+                        <div className="grid grid-cols-8 gap-0">
+                          {cat.emojis.map((emoji, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              onMouseDown={e => {
+                                e.preventDefault(); // keep textarea focused so cursor pos is preserved
+                                const el = bodyRef.current;
+                                if (el) {
+                                  const start = el.selectionStart;
+                                  const end = el.selectionEnd;
+                                  const newBody = body.slice(0, start) + emoji + body.slice(end);
+                                  setBody(newBody);
+                                  setTimeout(() => {
+                                    el.focus();
+                                    el.selectionStart = start + emoji.length;
+                                    el.selectionEnd = start + emoji.length;
+                                  }, 0);
+                                } else {
+                                  setBody(prev => prev + emoji);
+                                }
+                              }}
+                              className="w-9 h-9 flex items-center justify-center text-xl hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] rounded-lg transition-colors"
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
             <button type="button" title="Toggle confidential mode" aria-label="Toggle confidential mode"
               className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-[#5f6368] dark:text-[#9aa0a6]">
               <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
@@ -832,7 +988,7 @@ function ComposeWindow({
 // InlineTemplatePicker
 // ─────────────────────────────────────────────────────────────────────────────
 
-function InlineTemplatePicker({ onSelect, onClose }: { onSelect: (tpl: EmailTemplate) => void; onClose: () => void }) {
+function InlineTemplatePicker({ onSelect, onClose, anchorRef }: { onSelect: (tpl: EmailTemplate) => void; onClose: () => void; anchorRef?: React.RefObject<HTMLButtonElement> }) {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -847,8 +1003,7 @@ function InlineTemplatePicker({ onSelect, onClose }: { onSelect: (tpl: EmailTemp
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         if (!cancelled) setTemplates(data.templates ?? data.data ?? []);
-      } catch (err) {
-        console.error('[InlineTemplatePicker] Failed to load templates:', err);
+      } catch {
         if (!cancelled) {
           setError(true);
           setTemplates([
@@ -878,8 +1033,25 @@ function InlineTemplatePicker({ onSelect, onClose }: { onSelect: (tpl: EmailTemp
     t.subject.toLowerCase().includes(search.toLowerCase()),
   );
 
+  const [pos, setPos] = useState<{ bottom: number; left: number } | null>(null);
+
+  useEffect(() => {
+    if (anchorRef?.current) {
+      const rect = anchorRef.current.getBoundingClientRect();
+      setPos({ bottom: window.innerHeight - rect.top + 8, left: rect.left });
+    }
+  }, [anchorRef]);
+
   return (
-    <div ref={ref} className="absolute bottom-full left-0 mb-2 w-80 bg-white dark:bg-[#2d2d2d] border border-[#dadce0] dark:border-[#3c4043] rounded-xl shadow-xl z-30 overflow-hidden">
+    <div
+      ref={ref}
+      className="w-80 bg-white dark:bg-[#2d2d2d] border border-[#dadce0] dark:border-[#3c4043] rounded-xl shadow-xl overflow-hidden"
+      style={
+        pos
+          ? { position: 'fixed', bottom: pos.bottom, left: pos.left, zIndex: 9999 }
+          : { position: 'fixed', bottom: 80, right: 80, zIndex: 9999 }
+      }
+    >
       <div className="px-3 pt-3 pb-2 border-b border-[#dadce0] dark:border-[#3c4043]">
         <p className="text-xs font-semibold text-[#5f6368] dark:text-[#9aa0a6] uppercase tracking-wider mb-2">
           Email Templates
@@ -930,6 +1102,7 @@ function AddToGroupModal({ groups, provider, contactIds, onDone, onClose }: {
   onDone: () => void;
   onClose: () => void;
 }) {
+  const { toast } = useToast();
   const [selected, setSelected] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [done, setDone] = useState(false);
@@ -946,13 +1119,24 @@ function AddToGroupModal({ groups, provider, contactIds, onDone, onClose }: {
         body: JSON.stringify({ contact_ids: contactIds }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    } catch (err) {
-      console.error('[AddToGroupModal] Failed to add contacts to group:', err);
-      // Optimistically proceed — API will be wired up later
+      setDone(true);
+      toast({
+        title: 'Success',
+        description: 'Contacts added to group.',
+      });
+      setTimeout(() => onDone(), 1200);
+    } catch (_err) {
+      console.error('Failed to add contacts to group:', _err);
+      const errMsg = _err instanceof Error ? _err.message : 'Failed to add contacts to group.';
+      setError(errMsg);
+      toast({
+        title: 'Error',
+        description: errMsg,
+        variant: 'destructive',
+      });
+    } finally {
+      setAdding(false);
     }
-    setDone(true);
-    setTimeout(() => onDone(), 1200);
-    setAdding(false);
   };
 
   return (
@@ -1139,6 +1323,7 @@ function EmailComposePanel({ contact, provider, onShowDetails, showDetails, onBa
   onSentSuccess?: (id: string) => void;
   onForward?: (opts: { to?: string; subject?: string; body?: string }) => void;
 }) {
+  const { toast } = useToast();
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
@@ -1155,6 +1340,7 @@ function EmailComposePanel({ contact, provider, onShowDetails, showDetails, onBa
   const fileRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const threadEndRef = useRef<HTMLDivElement>(null);
+  const replyTemplateBtnRef = useRef<HTMLButtonElement>(null);
   const providerColor = PROVIDER_COLOR[provider];
   const providerLabel = PROVIDER_LABEL[provider];
   const emailDetails = getEmailDetails(contact);
@@ -1169,8 +1355,8 @@ function EmailComposePanel({ contact, provider, onShowDetails, showDetails, onBa
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setMessages(Array.isArray(data) ? data : (data.messages ?? []));
-    } catch (err) {
-      console.error('[EmailComposePanel] Failed to load thread:', err);
+    } catch (_err) {
+      console.error('Failed to load thread messages:', _err);
       setThreadError(true);
       setMessages([]);
     } finally {
@@ -1215,34 +1401,51 @@ function EmailComposePanel({ contact, provider, onShowDetails, showDetails, onBa
           body_html: body.trim(),
         }),
       });
+      if (!res.ok) {
+        throw new Error(`HTTP error ${res.status}`);
+      }
       const data = await res.json();
-      if (!data.success) throw new Error(data.error ?? 'Send failed');
+      if (!data.success) {
+        throw new Error(data.error ?? 'Send failed');
+      }
+
+      const optimistic: EmailMessage = {
+        id: `opt-${Date.now()}`,
+        contact_id: contact.id,
+        direction: 'outbound',
+        provider,
+        subject: subject.trim(),
+        body_html: body.trim(),
+        preview_text: body.trim().slice(0, 200),
+        status: 'sent',
+        sent_at: new Date().toISOString(),
+      };
+      setMessages(prev => [...prev, optimistic]);
+      setSent(true);
+      toast({
+        title: 'Success',
+        description: 'Reply sent successfully.',
+      });
+      onSentSuccess?.(contact.id);
+      setTimeout(() => {
+        setSent(false);
+        setSubject('');
+        setBody('');
+        setAttachments([]);
+        setShowReplyBox(false);
+      }, 2000);
     } catch (err) {
-      console.error('[EmailComposePanel] Send error:', err);
-      // Optimistic — continue with local state update
+      console.error('Email reply send failed:', err);
+      const errMsg = err instanceof Error ? err.message : 'Unknown error';
+      setError(errMsg);
+      toast({
+        title: 'Error sending reply',
+        description: errMsg,
+        variant: 'destructive',
+      });
+    } finally {
+      setSending(false);
     }
-    const optimistic: EmailMessage = {
-      id: `opt-${Date.now()}`,
-      contact_id: contact.id,
-      direction: 'outbound',
-      provider,
-      subject: subject.trim(),
-      body_html: body.trim(),
-      preview_text: body.trim().slice(0, 200),
-      status: 'sent',
-      sent_at: new Date().toISOString(),
-    };
-    setMessages(prev => [...prev, optimistic]);
-    setSent(true);
-    onSentSuccess?.(contact.id);
-    setTimeout(() => {
-      setSent(false);
-      setSubject('');
-      setBody('');
-      setAttachments([]);
-      setShowReplyBox(false);
-    }, 2000);
-    setSending(false);
   };
 
   const handleSmartReply = (text: string) => {
@@ -1261,7 +1464,7 @@ function EmailComposePanel({ contact, provider, onShowDetails, showDetails, onBa
   const toggleExpand = (id: string) => {
     setExpandedIds(prev => {
       const n = new Set(prev);
-      n.has(id) ? n.delete(id) : n.add(id);
+      if (n.has(id)) { n.delete(id); } else { n.add(id); }
       return n;
     });
   };
@@ -1435,10 +1638,10 @@ function EmailComposePanel({ contact, provider, onShowDetails, showDetails, onBa
                     <div className="px-3 sm:px-6 pb-5 pt-3 border-t border-[#e0e0e0] dark:border-[#3c4043]/60">
                       {msg.body_html
                         ? <div
-                            className="prose prose-sm max-w-none text-sm dark:prose-invert"
-                            // sanitizeHtml strips dangerous content — replace with DOMPurify.sanitize() in production
-                            dangerouslySetInnerHTML={{ __html: sanitizeHtml(msg.body_html) }}
-                          />
+                          className="prose prose-sm max-w-none text-sm dark:prose-invert"
+                          // sanitizeHtml strips dangerous content — replace with DOMPurify.sanitize() in production
+                          dangerouslySetInnerHTML={{ __html: sanitizeHtml(msg.body_html) }}
+                        />
                         : <p className="text-sm text-[#5f6368] dark:text-[#9aa0a6] italic">No content</p>}
                     </div>
                   )}
@@ -1479,6 +1682,7 @@ function EmailComposePanel({ contact, provider, onShowDetails, showDetails, onBa
             />
             {showTemplate && (
               <InlineTemplatePicker
+                anchorRef={replyTemplateBtnRef}
                 onSelect={t => { setSubject(t.subject); setBody(t.body_html ?? t.body ?? ''); setShowTemplate(false); }}
                 onClose={() => setShowTemplate(false)}
               />
@@ -1505,7 +1709,21 @@ function EmailComposePanel({ contact, provider, onShowDetails, showDetails, onBa
               {sent ? <><Check className="h-4 w-4" />Sent!</> : sending ? <><Loader2 className="h-4 w-4 animate-spin" />Sending…</> : <><Send className="h-4 w-4" />Send</>}
             </button>
             <div className="flex items-center gap-0.5">
-              <TBtn icon={FileText} label="Insert template" active={showTemplate} onClick={() => setShowTemplate(v => !v)} />
+              <button
+                ref={replyTemplateBtnRef}
+                type="button"
+                title="Insert template"
+                aria-label="Insert template"
+                onClick={() => setShowTemplate(v => !v)}
+                className={cn(
+                  'h-8 w-8 flex items-center justify-center rounded-full transition-colors',
+                  showTemplate
+                    ? 'bg-[#c2dbff] dark:bg-[#004a77] text-[#001D35] dark:text-[#c2e7ff]'
+                    : 'text-[#444746] dark:text-[#9aa0a6] hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]',
+                )}
+              >
+                <FileText className="h-4 w-4" />
+              </button>
               <TBtn icon={Paperclip} label="Attach file" onClick={() => fileRef.current?.click()} />
               <input ref={fileRef} type="file" multiple className="hidden" onChange={e => setAttachments(p => [...p, ...Array.from(e.target.files ?? [])])} aria-label="Attach files" />
               <TBtn icon={Bold} label="Bold" onClick={handleBold} />
@@ -1539,6 +1757,7 @@ const EmailGroupWindow = memo(function EmailGroupWindow({ group, provider, onBac
   onBack: () => void;
   onGroupDeleted: () => void;
 }) {
+  const { toast } = useToast();
   const [detail, setDetail] = useState<EmailGroupDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -1567,8 +1786,8 @@ const EmailGroupWindow = memo(function EmailGroupWindow({ group, provider, onBac
             throw new Error(data.error ?? 'Unknown error');
           }
         }
-      } catch (err) {
-        console.error('[EmailGroupWindow] Failed to load group detail:', err);
+      } catch (_err) {
+        console.error('Failed to load group details:', _err);
         if (!cancelled) {
           setLoadError(true);
           setDetail({ ...group, members: MOCK_CONTACTS.slice(0, Math.min(group.member_count || 3, 5)) });
@@ -1583,24 +1802,46 @@ const EmailGroupWindow = memo(function EmailGroupWindow({ group, provider, onBac
   const handleRemoveMember = async (contactId: string) => {
     setRemovingId(contactId);
     try {
-      await fetch(`${API}/groups/${group.id}/contacts/${contactId}`, { method: 'DELETE', headers: authHeaders() });
-    } catch (err) {
-      console.error('[EmailGroupWindow] Failed to remove member:', err);
+      const res = await fetch(`${API}/groups/${group.id}/contacts/${contactId}`, { method: 'DELETE', headers: authHeaders() });
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      setRemovedIds(p => new Set([...p, contactId]));
+      toast({
+        title: 'Success',
+        description: 'Member removed from group.',
+      });
+    } catch (_err) {
+      console.error('Failed to remove group member:', _err);
+      toast({
+        title: 'Error',
+        description: 'Failed to remove member from group.',
+        variant: 'destructive',
+      });
+    } finally {
+      setRemovingId(null);
     }
-    setRemovedIds(p => new Set([...p, contactId]));
-    setRemovingId(null);
   };
 
   const handleDeleteGroup = async () => {
     setDeleting(true);
     try {
-      await fetch(`${API}/groups/${group.id}`, { method: 'DELETE', headers: authHeaders() });
-    } catch (err) {
-      console.error('[EmailGroupWindow] Failed to delete group:', err);
+      const res = await fetch(`${API}/groups/${group.id}`, { method: 'DELETE', headers: authHeaders() });
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      toast({
+        title: 'Success',
+        description: 'Group deleted successfully.',
+      });
+      setShowDeleteConfirm(false);
+      onGroupDeleted();
+    } catch (_err) {
+      console.error('Failed to delete group:', _err);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete group.',
+        variant: 'destructive',
+      });
+    } finally {
+      setDeleting(false);
     }
-    setDeleting(false);
-    setShowDeleteConfirm(false);
-    onGroupDeleted();
   };
 
   const visibleMembers = (detail?.members ?? []).filter(m =>
@@ -1733,6 +1974,7 @@ const EmailGroupWindow = memo(function EmailGroupWindow({ group, provider, onBac
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function EmailChannelView({ provider, connectedEmail, userImage, onSignOut }: EmailChannelViewProps) {
+  const { toast } = useToast();
   const [contacts, setContacts] = useState<EmailContact[]>([]);
   const [groups, setGroups] = useState<EmailGroup[]>([]);
   const [labels, setLabels] = useState<EmailLabels[]>([]);
@@ -1743,7 +1985,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
   const [showDetails, setShowDetails] = useState(false);
   const [activeGroup, setActiveGroup] = useState<EmailGroup | null>(null);
   const [activeFolder, setActiveFolder] = useState<FolderType>('inbox');
-  const [activeCategoryTab, setActiveCategoryTab] = useState<CategoryTab>('primary');
+
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [starredIds, setStarredIds] = useState<Set<string>>(new Set());
@@ -1768,8 +2010,23 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
   const [groupRefreshKey, setGroupRefreshKey] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [rowMenuId, setRowMenuId] = useState<string | null>(null);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
 
   const [composeWindows, setComposeWindows] = useState<ComposeInstance[]>([]);
+
+  const [showSearchFilter, setShowSearchFilter] = useState(false);
+  const [filterFrom, setFilterFrom] = useState('');
+  const [filterTo, setFilterTo] = useState('');
+  const [filterSubject, setFilterSubject] = useState('');
+  const [filterHasWords, setFilterHasWords] = useState('');
+  const [filterNoWords, setFilterNoWords] = useState('');
+  const [filterHasAttachment, setFilterHasAttachment] = useState(false);
+  const [filterNoChatInclude, setFilterNoChatInclude] = useState(false);
+
+  const [activeRightPanel, setActiveRightPanel] = useState<string | null>(null);
+  const [contactPanelSearch, setContactPanelSearch] = useState('');
 
   const createGroupRef = useRef<HTMLDivElement>(null);
 
@@ -1796,8 +2053,8 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
         setLoadingContacts(false);
         return;
       }
-    } catch (err) {
-      console.error('[EmailChannelView] Failed to load contacts, using mock data:', err);
+    } catch {
+      // Silently fall back to mock data - backend endpoint may not be implemented yet
     }
     const filtered = search
       ? MOCK_CONTACTS.filter(c =>
@@ -1818,8 +2075,8 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
         setGroups(data.data);
         return;
       }
-    } catch (err) {
-      console.error('[EmailChannelView] Failed to load groups, using mock data:', err);
+    } catch {
+      // Silently fall back to mock data - backend endpoint may not be implemented yet
     }
     setGroups(MOCK_GROUPS.filter(g => g.channel === provider));
   }, [provider]);
@@ -1833,8 +2090,8 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
         setLabels(data.data);
         return;
       }
-    } catch (err) {
-      console.error('[EmailChannelView] Failed to load labels, using mock data:', err);
+    } catch {
+      // Silently fall back to mock data - backend endpoint may not be implemented yet
     }
     setLabels(MOCK_LABELS.filter(g => g.channel === provider));
   }, [provider]);
@@ -1848,15 +2105,59 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
     return () => clearTimeout(t);
   }, [contactSearch, loadContacts]);
 
+  useEffect(() => {
+    if (!showMoreMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node))
+        setShowMoreMenu(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showMoreMenu]);
+  useEffect(() => {
+    if (!rowMenuId) return;
+    const handler = () => setRowMenuId(null);
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [rowMenuId]);
+
+  useEffect(() => {
+    if (!showSearchFilter) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('[data-search-filter]') && !target.closest('[aria-label="Search options"]')) {
+        setShowSearchFilter(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showSearchFilter]);
+
   // ── Selection / interaction helpers ───────────────────────────────────────
   const toggleStar = useCallback((id: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
-    setStarredIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    setStarredIds(prev => {
+      const n = new Set(prev);
+      if (n.has(id)) {
+        n.delete(id);
+      } else {
+        n.add(id);
+      }
+      return n;
+    });
   }, []);
 
   const toggleImportant = useCallback((id: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
-    setImportantIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    setImportantIds(prev => {
+      const n = new Set(prev);
+      if (n.has(id)) {
+        n.delete(id);
+      } else {
+        n.add(id);
+      }
+      return n;
+    });
   }, []);
 
   const handleMarkSent = useCallback((id: string) => setSentIds(prev => new Set([...prev, id])), []);
@@ -1868,7 +2169,15 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
   }, []);
 
   const handleToggleSelect = useCallback((id: string) => {
-    setSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    setSelectedIds(prev => {
+      const n = new Set(prev);
+      if (n.has(id)) {
+        n.delete(id);
+      } else {
+        n.add(id);
+      }
+      return n;
+    });
   }, []);
 
   const exitSelection = useCallback(() => setSelectedIds(new Set()), []);
@@ -1880,13 +2189,10 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
     else if (activeFolder === 'important') list = list.filter(c => importantIds.has(c.id));
     else if (activeFolder === 'sent') list = list.filter(c => sentIds.has(c.id));
     else if (activeFolder === 'inbox') {
-      if (activeCategoryTab === 'social') list = list.filter(c => getEmailDetails(c).category === 'social');
-      else if (activeCategoryTab === 'promotions') list = list.filter(c => getEmailDetails(c).category === 'promotions');
-      else if (activeCategoryTab === 'updates') list = list.filter(c => getEmailDetails(c).category === 'updates');
-      else list = list.filter(c => getEmailDetails(c).category === 'primary');
+      list = list.filter(c => getEmailDetails(c).category === 'primary');
     }
     return list;
-  }, [contacts, deletedIds, activeFolder, activeCategoryTab, starredIds, importantIds, sentIds]);
+  }, [contacts, deletedIds, activeFolder, starredIds, importantIds, sentIds]);
 
   const paginatedContacts = useMemo(
     () => filteredContacts.slice(page * pageSize, (page + 1) * pageSize),
@@ -1915,14 +2221,6 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
     () => contacts.filter(c => !deletedIds.has(c.id) && getEmailDetails(c).unread && getEmailDetails(c).category === 'primary').length,
     [contacts, deletedIds],
   );
-  const socialCount = useMemo(
-    () => contacts.filter(c => !deletedIds.has(c.id) && getEmailDetails(c).category === 'social').length,
-    [contacts, deletedIds],
-  );
-  const promoCount = useMemo(
-    () => contacts.filter(c => !deletedIds.has(c.id) && getEmailDetails(c).category === 'promotions').length,
-    [contacts, deletedIds],
-  );
 
   // ── Create group ───────────────────────────────────────────────────────────
   const handleCreateGroup = async () => {
@@ -1943,16 +2241,24 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
         setNewGroupName('');
         setShowCreateGroup(false);
         setActiveGroup(created);
+        toast({
+          title: 'Success',
+          description: `Group "${name}" created successfully.`,
+        });
       } else {
         setCreateGroupError(data.error ?? 'Failed to create group.');
       }
-    } catch (err) {
-      console.error('[EmailChannelView] Failed to create group:', err);
+    } catch (_err) {
+      console.error('Failed to create group:', _err);
       const mockCreated = { id: `g-${Date.now()}`, name, color: PROVIDER_COLOR[provider], description: null, channel: provider, member_count: 0 };
       setGroups(p => [mockCreated, ...p]);
       setNewGroupName('');
       setShowCreateGroup(false);
       setActiveGroup(mockCreated);
+      toast({
+        title: 'Info',
+        description: `Group "${name}" created in offline mode.`,
+      });
     }
     setCreatingGroup(false);
   };
@@ -1975,16 +2281,23 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
         setLabels(p => [created, ...p]);
         setNewLabelName('');
         setShowCreateLabel(false);
-        // Note: labels are NOT groups — do not call setActiveGroup here
+        toast({
+          title: 'Success',
+          description: `Label "${name}" created successfully.`,
+        });
       } else {
         setCreateLabelError(data.error ?? 'Failed to create label.');
       }
-    } catch (err) {
-      console.error('[EmailChannelView] Failed to create label:', err);
+    } catch (_err) {
+      console.error('Failed to create label:', _err);
       const mockCreated = { id: `l-${Date.now()}`, name, color: PROVIDER_COLOR[provider], description: null, channel: provider };
       setLabels(p => [mockCreated, ...p]);
       setNewLabelName('');
       setShowCreateLabel(false);
+      toast({
+        title: 'Info',
+        description: `Label "${name}" created in offline mode.`,
+      });
     }
     setCreatingLabel(false);
   };
@@ -2023,34 +2336,46 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
     <div className="flex-1 flex flex-col min-h-0 bg-[#F6F8FC] dark:bg-[#1f1f1f] overflow-hidden relative">
 
       {/* ── Top Bar ── */}
-      <header className="h-[64px] flex-shrink-0 flex items-center gap-2 px-3 bg-[#F6F8FC] dark:bg-[#1f1f1f]">
-        <button onClick={() => setSidebarOpen(v => !v)} title="Main menu" aria-label="Toggle main menu"
-          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] flex-shrink-0">
-          <Menu className="h-5 w-5 text-[#444746] dark:text-[#9aa0a6]" />
-        </button>
-
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {provider === 'gmail' ? (
-            <>
-              <svg viewBox="0 0 24 24" className="h-7 w-auto" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <path d="M6 18V8.4L12 13l6-4.6V18H6z" fill="#EA4335" />
-                <path d="M2 6.5A2.5 2.5 0 014.5 4H6v2L2 8.4V6.5z" fill="#C5221F" />
-                <path d="M22 6.5A2.5 2.5 0 0019.5 4H18v2l4 2.4V6.5z" fill="#C5221F" />
-                <path d="M2 8.4V18a2 2 0 002 2h2V8.4L12 13l6-4.6V20h2a2 2 0 002-2V8.4L12 13 2 8.4z" fill="#4285F4" />
-                <path d="M6 4H4.5A2.5 2.5 0 002 6.5V8.4l4-2.4V4z" fill="#FBBC04" />
-                <path d="M18 4h1.5A2.5 2.5 0 0122 6.5V8.4l-4-2.4V4z" fill="#34A853" />
-              </svg>
-              <span className="text-[22px] text-[#5f6368] dark:text-[#9aa0a6] font-normal tracking-tight hidden sm:inline" style={{ fontFamily: 'Google Sans, Roboto, sans-serif' }}>Gmail</span>
-            </>
-          ) : (
-            <span className="text-base font-semibold" style={{ color: providerColor }}>{PROVIDER_LABEL[provider]}</span>
-          )}
+      <header className="h-[64px] flex-shrink-0 flex items-center px-3 gap-2 bg-[#F6F8FC] dark:bg-[#1f1f1f]">
+        {/* Left: fixed width matching sidebar so search aligns with email list */}
+        <div className="flex items-center gap-1 flex-shrink-0 w-[240px]">
+          <button
+            onClick={() => setSidebarOpen(v => !v)}
+            title="Main menu"
+            aria-label="Toggle main menu"
+            className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043]"
+          >
+            <Menu className="h-5 w-5 text-[#444746] dark:text-[#9aa0a6]" />
+          </button>
+          <div className="flex items-center gap-2 ml-1">
+            {provider === 'gmail' ? (
+              <>
+                <svg viewBox="0 0 24 24" className="h-7 w-auto flex-shrink-0" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <path d="M6 18V8.4L12 13l6-4.6V18H6z" fill="#EA4335" />
+                  <path d="M2 6.5A2.5 2.5 0 014.5 4H6v2L2 8.4V6.5z" fill="#C5221F" />
+                  <path d="M22 6.5A2.5 2.5 0 0019.5 4H18v2l4 2.4V6.5z" fill="#C5221F" />
+                  <path d="M2 8.4V18a2 2 0 002 2h2V8.4L12 13l6-4.6V20h2a2 2 0 002-2V8.4L12 13 2 8.4z" fill="#4285F4" />
+                  <path d="M6 4H4.5A2.5 2.5 0 002 6.5V8.4l4-2.4V4z" fill="#FBBC04" />
+                  <path d="M18 4h1.5A2.5 2.5 0 0122 6.5V8.4l-4-2.4V4z" fill="#34A853" />
+                </svg>
+                <span
+                  className="text-[22px] text-[#5f6368] dark:text-[#9aa0a6] font-normal tracking-tight hidden sm:inline select-none"
+                  style={{ fontFamily: 'Google Sans, Roboto, sans-serif' }}
+                >
+                  Gmail
+                </span>
+              </>
+            ) : (
+              <span className="text-base font-semibold" style={{ color: providerColor }}>
+                {PROVIDER_LABEL[provider]}
+              </span>
+            )}
+          </div>
         </div>
-
-        {/* Search */}
-        <div className="flex-1 min-w-0 max-w-[720px] mx-auto">
+        {/* Search: flex-1 so it starts right after logo, matching Gmail */}
+        <div className="flex-1 min-w-0 max-w-[720px]">
           <div className="relative h-[46px] flex items-center bg-[#EAF1FB] dark:bg-[#2d2d2d] hover:bg-[#E0EBF5] focus-within:bg-white dark:focus-within:bg-[#2d2d2d] focus-within:shadow-[0_1px_3px_rgba(60,64,67,.3)] rounded-full transition-all">
-            <Search className="absolute left-4 h-5 w-5 text-[#444746] dark:text-[#9aa0a6]" aria-hidden="true" />
+            <Search className="absolute left-4 h-5 w-5 text-[#444746] dark:text-[#9aa0a6] pointer-events-none" aria-hidden="true" />
             <input
               type="search"
               placeholder="Search in mail"
@@ -2059,45 +2384,172 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
               aria-label="Search in mail"
               className="w-full h-full bg-transparent pl-12 pr-12 text-sm text-[#202124] dark:text-[#e8eaed] placeholder:text-[#5f6368] dark:placeholder:text-[#9aa0a6] focus:outline-none"
             />
-            <button title="Search options" aria-label="Search options"
-              className="absolute right-3 h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]">
+            <button
+              title="Search options"
+              aria-label="Search options"
+              onClick={() => setShowSearchFilter(v => !v)}
+              className="absolute right-3 h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]"
+            >
               <SlidersHorizontal className="h-4 w-4" />
             </button>
           </div>
         </div>
+        {/* Advanced Search Filter Panel */}
+        {showSearchFilter && (
+          <div data-search-filter className="absolute top-[64px] left-1/2 -translate-x-1/2 w-full max-w-[660px] z-50 bg-white dark:bg-[#2d2d2d] border border-[#dadce0] dark:border-[#3c4043] rounded-2xl shadow-[0_4px_16px_rgba(60,64,67,.3)] overflow-hidden"
+            style={{ marginLeft: '120px' }}
+          >
+            <div className="px-6 py-4 space-y-3 text-sm">
+              {[
+                { label: 'From', value: filterFrom, set: setFilterFrom, placeholder: '' },
+                { label: 'To', value: filterTo, set: setFilterTo, placeholder: '' },
+                { label: 'Subject', value: filterSubject, set: setFilterSubject, placeholder: '' },
+                { label: 'Has the words', value: filterHasWords, set: setFilterHasWords, placeholder: '' },
+                { label: "Doesn't have", value: filterNoWords, set: setFilterNoWords, placeholder: '' },
+              ].map(({ label, value, set, placeholder }) => (
+                <div key={label} className="flex items-center gap-3">
+                  <span className="w-32 text-right text-[#5f6368] dark:text-[#9aa0a6] flex-shrink-0">{label}</span>
+                  <input
+                    type="text"
+                    value={value}
+                    onChange={e => set(e.target.value)}
+                    placeholder={placeholder}
+                    className="flex-1 h-8 border-b border-[#dadce0] dark:border-[#3c4043] bg-transparent text-[#202124] dark:text-[#e8eaed] focus:outline-none focus:border-[#1a73e8] dark:focus:border-[#8ab4f8] text-sm px-1"
+                  />
+                </div>
+              ))}
 
-        <div className="flex items-center gap-0.5 flex-shrink-0">
-          {connectedEmail && (
-            <span className="hidden lg:flex items-center gap-1.5 mr-1 px-2.5 py-1 rounded-full text-[11px] font-medium text-[#137333] dark:text-[#57bb87] bg-[#e6f4ea] dark:bg-[#1e3a2b]">
-              <span className="h-2 w-2 rounded-full bg-[#34a853]" aria-hidden="true" />Active
-            </span>
-          )}
-          <button onClick={() => setShowImport(true)} title="Import leads" aria-label="Import leads"
-            className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]">
+              {/* Size row */}
+              <div className="flex items-center gap-3">
+                <span className="w-32 text-right text-[#5f6368] dark:text-[#9aa0a6] flex-shrink-0">Size</span>
+                <select className="h-8 border border-[#dadce0] dark:border-[#3c4043] rounded bg-white dark:bg-[#2d2d2d] text-[#202124] dark:text-[#e8eaed] text-sm px-2 focus:outline-none">
+                  <option>greater than</option>
+                  <option>less than</option>
+                </select>
+                <input type="number" placeholder="" className="w-20 h-8 border-b border-[#dadce0] dark:border-[#3c4043] bg-transparent text-[#202124] dark:text-[#e8eaed] focus:outline-none text-sm px-1" />
+                <select className="h-8 border border-[#dadce0] dark:border-[#3c4043] rounded bg-white dark:bg-[#2d2d2d] text-[#202124] dark:text-[#e8eaed] text-sm px-2 focus:outline-none">
+                  <option>MB</option>
+                  <option>KB</option>
+                  <option>Bytes</option>
+                </select>
+              </div>
+
+              {/* Date within row */}
+              <div className="flex items-center gap-3">
+                <span className="w-32 text-right text-[#5f6368] dark:text-[#9aa0a6] flex-shrink-0">Date within</span>
+                <select className="h-8 border border-[#dadce0] dark:border-[#3c4043] rounded bg-white dark:bg-[#2d2d2d] text-[#202124] dark:text-[#e8eaed] text-sm px-2 focus:outline-none">
+                  <option>1 day</option>
+                  <option>3 days</option>
+                  <option>1 week</option>
+                  <option>2 weeks</option>
+                  <option>1 month</option>
+                  <option>2 months</option>
+                  <option>6 months</option>
+                  <option>1 year</option>
+                </select>
+                <input type="date" className="h-8 border border-[#dadce0] dark:border-[#3c4043] rounded bg-white dark:bg-[#2d2d2d] text-[#202124] dark:text-[#e8eaed] text-sm px-2 focus:outline-none" />
+              </div>
+
+              {/* Search in row */}
+              <div className="flex items-center gap-3">
+                <span className="w-32 text-right text-[#5f6368] dark:text-[#9aa0a6] flex-shrink-0">Search</span>
+                <select className="h-8 border border-[#dadce0] dark:border-[#3c4043] rounded bg-white dark:bg-[#2d2d2d] text-[#202124] dark:text-[#e8eaed] text-sm px-2 focus:outline-none flex-1">
+                  <option>All Mail</option>
+                  <option>Inbox</option>
+                  <option>Starred</option>
+                  <option>Sent</option>
+                  <option>Drafts</option>
+                  <option>Spam</option>
+                  <option>Trash</option>
+                </select>
+              </div>
+
+              {/* Checkboxes */}
+              <div className="flex items-center gap-6 pl-36">
+                <label className="flex items-center gap-2 cursor-pointer text-[#202124] dark:text-[#e8eaed]">
+                  <input
+                    type="checkbox"
+                    checked={filterHasAttachment}
+                    onChange={e => setFilterHasAttachment(e.target.checked)}
+                    className="rounded border-[#dadce0] text-[#1a73e8] h-4 w-4"
+                  />
+                  Has attachment
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer text-[#202124] dark:text-[#e8eaed]">
+                  <input
+                    type="checkbox"
+                    checked={filterNoChatInclude}
+                    onChange={e => setFilterNoChatInclude(e.target.checked)}
+                    className="rounded border-[#dadce0] text-[#1a73e8] h-4 w-4"
+                  />
+                  {"Don't include chats"}
+                </label>
+              </div>
+            </div>
+
+            {/* Action buttons */}
+            <div className="px-6 py-3 flex items-center justify-end gap-3 border-t border-[#e0e0e0] dark:border-[#3c4043]">
+              <button
+                onClick={() => {
+                  setShowSearchFilter(false);
+                }}
+                className="px-4 h-9 rounded-full text-sm text-[#0b57d0] dark:text-[#8ab4f8] hover:bg-[#e8f0fe] dark:hover:bg-[#004a77]/40 font-medium transition-colors"
+              >
+                Create filter
+              </button>
+              <button
+                onClick={() => {
+                  const terms = [
+                    filterFrom && `from:${filterFrom}`,
+                    filterTo && `to:${filterTo}`,
+                    filterSubject && `subject:${filterSubject}`,
+                    filterHasWords,
+                    filterHasAttachment && 'has:attachment',
+                  ].filter(Boolean).join(' ');
+                  setContactSearch(terms);
+                  setShowSearchFilter(false);
+                }}
+                className="px-5 h-9 rounded-full bg-[#1a73e8] text-white text-sm font-medium hover:bg-[#1557b0] transition-colors"
+              >
+                Search
+              </button>
+            </div>
+          </div>
+        )}
+        {/* Right: icons — Gmail order: Help → Settings → Apps → Avatar */}
+        <div className="flex items-center gap-0.5 flex-shrink-0 pl-2 ml-auto">
+          <button
+            onClick={() => setShowImport(true)}
+            title="Import leads"
+            aria-label="Import leads"
+            className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]"
+          >
             <UserPlus className="h-5 w-5" />
           </button>
-          <button title="Settings" aria-label="Settings"
-            className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]">
-            <Settings className="h-5 w-5" />
-          </button>
-          <button title="Help" aria-label="Help"
-            className="hidden sm:flex h-10 w-10 items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]">
+          <button
+            title="Help"
+            aria-label="Help"
+            className="hidden sm:flex h-10 w-10 items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]"
+          >
             <HelpCircle className="h-5 w-5" />
           </button>
-          <button title="Google apps" aria-label="Google apps"
-            className="hidden md:flex h-10 w-10 items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]">
-            <LayoutGrid className="h-5 w-5" />
+          <button
+            title="Settings"
+            aria-label="Settings"
+            className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]"
+          >
+            <Settings className="h-5 w-5" />
           </button>
           <button
             title="Profile"
             aria-label="View profile"
             onClick={() => setShowProfileModal(v => !v)}
-            className="h-10 w-10 flex items-center justify-center rounded-full overflow-hidden hover:ring-2 hover:ring-[#dadce0] dark:hover:ring-[#3c4043] transition-all"
+            className="ml-1 h-8 w-8 flex-shrink-0 rounded-full overflow-hidden hover:ring-2 hover:ring-[#dadce0] dark:hover:ring-[#3c4043] transition-all"
           >
             {userImage
-              ? <img src={userImage} alt={connectedEmail?.charAt(0) ?? 'User'} className="h-full w-full object-cover" />
+              ? <Image src={userImage} alt={connectedEmail?.charAt(0) ?? 'User'} width={32} height={32} className="h-full w-full object-cover" />
               : (
-                <div className="h-full w-full flex items-center justify-center bg-[#1a73e8] text-white text-sm font-medium uppercase">
+                <div className="h-full w-full flex items-center justify-center bg-[#1a73e8] text-white text-sm font-medium uppercase select-none">
                   {connectedEmail?.charAt(0) ?? '?'}
                 </div>
               )}
@@ -2118,7 +2570,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
 
         {/* ── Left Sidebar ── */}
         <aside className={cn(
-          'flex flex-col py-2 transition-all duration-200 overflow-hidden bg-[#F6F8FC] dark:bg-[#1f1f1f]',
+          'flex flex-col py-2 transition-[width,transform] duration-200 overflow-hidden bg-[#F6F8FC] dark:bg-[#1f1f1f]',
           'absolute inset-y-0 left-0 z-40 md:static md:z-auto md:inset-auto md:flex-shrink-0',
           sidebarOpen
             ? 'w-[255px] pr-3 shadow-xl md:shadow-none'
@@ -2126,17 +2578,17 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
         )} aria-label="Mail navigation">
 
           {/* Compose Button */}
-          <div className={cn('pb-4 flex-shrink-0', sidebarOpen ? 'px-3' : 'px-0 flex justify-center')}>
+          <div className={cn('pb-4 flex flex-shrink-0', sidebarOpen ? 'px-3 justify-start' : 'px-0 justify-center')}>
             <button
               onClick={() => openCompose()}
               title="Compose new email"
               aria-label="Compose new email"
               className={cn(
-                'h-12 flex items-center rounded-2xl shadow-[0_1px_2px_rgba(60,64,67,.3),0_1px_3px_1px_rgba(60,64,67,.15)] hover:shadow-md transition-all font-medium text-sm bg-[#C2E7FF] dark:bg-[#004a77] text-[#001D35] dark:text-[#c2e7ff]',
-                sidebarOpen ? 'gap-3 pl-5 pr-8 w-full' : 'justify-center w-12',
+                'h-14 flex items-center rounded-2xl shadow-[0_1px_2px_rgba(60,64,67,.3),0_1px_3px_1px_rgba(60,64,67,.15)] hover:shadow-md transition-all font-medium text-sm bg-[#C2E7FF] dark:bg-[#004a77] text-[#001D35] dark:text-[#c2e7ff]',
+                sidebarOpen ? 'gap-3 pl-6 pr-3 w-full' : 'justify-center w-14',
               )}
             >
-              <Pencil className="h-5 w-5" aria-hidden="true" />
+              <Pencil className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
               {sidebarOpen && <span>Compose</span>}
             </button>
           </div>
@@ -2154,13 +2606,15 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
                       setActiveFolder(f.id);
                       setActiveContact(null);
                       setPage(0);
-                      if (f.id === 'inbox') setActiveCategoryTab('primary');
+
                     }}
                     aria-label={`${f.label}${f.count > 0 ? `, ${f.count} unread` : ''}`}
                     aria-current={isActive ? 'page' : undefined}
                     className={cn(
-                      'flex items-center w-full h-8 rounded-r-full text-sm transition-colors text-left flex-shrink-0',
-                      sidebarOpen ? 'justify-between pl-6 pr-4' : 'justify-center',
+                      'flex items-center w-full h-8 text-sm transition-colors text-left flex-shrink-0',
+                      sidebarOpen
+                        ? 'rounded-r-full justify-between pl-6 pr-4'
+                        : 'rounded-full justify-center',
                       isActive
                         ? 'bg-[#D3E3FD] dark:bg-[#004a77] text-[#001D35] dark:text-[#c2e7ff] font-semibold'
                         : 'text-[#202124] dark:text-[#e8eaed] hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] font-normal',
@@ -2402,7 +2856,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
                       const allSel = paginatedContacts.every(c => selectedIds.has(c.id));
                       setSelectedIds(prev => {
                         const n = new Set(prev);
-                        allSel ? paginatedContacts.forEach(c => n.delete(c.id)) : paginatedContacts.forEach(c => n.add(c.id));
+                        if (allSel) { paginatedContacts.forEach(c => n.delete(c.id)); } else { paginatedContacts.forEach(c => n.add(c.id)); }
                         return n;
                       });
                     }}
@@ -2446,10 +2900,43 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
                       </button>
                     </div>
                   ) : (
-                    <button onClick={() => setShowImport(true)} title="More options" aria-label="More options"
-                      className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]">
-                      <MoreVertical className="h-4 w-4" />
-                    </button>
+                    <div className="relative" ref={moreMenuRef}>
+                      <button
+                        onClick={() => setShowMoreMenu(v => !v)}
+                        title="More options"
+                        aria-label="More options"
+                        aria-haspopup="true"
+                        aria-expanded={showMoreMenu}
+                        className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]"
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </button>
+                      {showMoreMenu && (
+                        <div
+                          className="absolute left-0 top-full mt-1 z-50 w-72 bg-white dark:bg-[#2d2d2d] rounded-lg shadow-[0_2px_10px_rgba(60,64,67,.3),0_6px_28px_rgba(60,64,67,.15)] py-1 border border-[#e0e0e0] dark:border-[#3c4043]"
+                          role="menu"
+                          aria-label="More options menu"
+                        >
+                          <button
+                            role="menuitem"
+                            onClick={() => setShowMoreMenu(false)}
+                            className="w-full text-left px-4 py-2.5 text-sm text-[#202124] dark:text-[#e8eaed] hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] transition-colors"
+                          >
+                            Mark all as read
+                          </button>
+                          <button
+                            role="menuitem"
+                            onClick={() => {
+                              paginatedContacts.forEach(c => handleToggleSelect(c.id));
+                              setShowMoreMenu(false);
+                            }}
+                            className="w-full text-left px-4 py-2.5 text-sm text-[#202124] dark:text-[#e8eaed] hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] transition-colors"
+                          >
+                            Select messages to see more actions
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
 
@@ -2472,42 +2959,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
                 )}
               </div>
 
-              {/* Category tabs */}
-              {activeFolder === 'inbox' && (
-                <div className="flex border-b border-[#e0e0e0] dark:border-[#3c4043] flex-shrink-0 overflow-x-auto" role="tablist" aria-label="Email categories">
-                  {[
-                    {
-                      id: 'primary' as CategoryTab, label: 'Primary',
-                      icon: <svg viewBox="0 0 24 24" className="h-4 w-4 mr-1.5" aria-hidden="true"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" fill="currentColor" /></svg>,
-                      badge: unreadCount, color: '#EA4335',
-                    },
-                    { id: 'social' as CategoryTab, label: 'Social', icon: <Users className="h-4 w-4 mr-1.5" aria-hidden="true" />, badge: socialCount > 0 ? `${socialCount} new` : null, color: '#34A853' },
-                    { id: 'promotions' as CategoryTab, label: 'Promotions', icon: <Tag className="h-4 w-4 mr-1.5" aria-hidden="true" />, badge: promoCount > 0 ? `${promoCount} new` : null, color: '#1D6F42' },
-                    { id: 'updates' as CategoryTab, label: 'Updates', icon: <AlertCircle className="h-4 w-4 mr-1.5" aria-hidden="true" />, badge: null, color: '#F9AB00' },
-                  ].map(tab => {
-                    const isActive = activeCategoryTab === tab.id;
-                    return (
-                      <button key={tab.id} role="tab" aria-selected={isActive}
-                        onClick={() => { setActiveCategoryTab(tab.id); setPage(0); }}
-                        className={cn(
-                          'flex items-center px-5 py-3 border-b-[3px] transition-colors min-w-fit text-sm',
-                          isActive
-                            ? 'border-[#0b57d0] text-[#0b57d0] dark:text-[#7cacf8] font-medium'
-                            : 'border-transparent text-[#5f6368] dark:text-[#9aa0a6] hover:bg-[#f6f8fc] dark:hover:bg-[#3c4043]',
-                        )}>
-                        <span className="flex items-center" style={isActive ? { color: tab.color } : { color: '#5f6368' }}>{tab.icon}</span>
-                        {tab.label}
-                        {tab.badge != null && typeof tab.badge === 'number' && tab.badge > 0 && (
-                          <span className={cn('ml-2 text-[11px]', isActive ? '' : 'text-[#5f6368] dark:text-[#9aa0a6]')}>{tab.badge} new</span>
-                        )}
-                        {tab.badge != null && typeof tab.badge === 'string' && (
-                          <span className="ml-2 text-[11px] text-[#5f6368] dark:text-[#9aa0a6]">{tab.badge}</span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+
 
               {/* Email list */}
               <div className="flex-1 overflow-y-auto" role="list" aria-label="Email list">
@@ -2605,23 +3057,79 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
                             </span>
                           </div>
 
-                          <div className="w-24 flex justify-end flex-shrink-0 relative">
+                          <div className="w-36 flex justify-end flex-shrink-0 relative">
                             <span className="group-hover:hidden text-[11px] text-[#5f6368] dark:text-[#9aa0a6] whitespace-nowrap font-medium">
                               {details.date}
                             </span>
                             <div className="hidden group-hover:flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
-                              <button onClick={() => handleDeleteContact(c.id)} title="Delete" aria-label={`Delete email from ${c.contact_name}`}
-                                className="p-1 rounded-full hover:bg-[#fce8e6] dark:hover:bg-[#3c4043] text-[#5f6368] dark:text-[#9aa0a6] hover:text-[#d93025]">
+                              <button
+                                onClick={() => handleDeleteContact(c.id)}
+                                title="Archive"
+                                aria-label={`Archive email from ${c.contact_name}`}
+                                className="p-1 rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#5f6368] dark:text-[#9aa0a6]"
+                              >
+                                <Archive className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteContact(c.id)}
+                                title="Delete"
+                                aria-label={`Delete email from ${c.contact_name}`}
+                                className="p-1 rounded-full hover:bg-[#fce8e6] dark:hover:bg-[#3c4043] text-[#5f6368] dark:text-[#9aa0a6] hover:text-[#d93025]"
+                              >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>
-                              <button onClick={() => { setSelectedIds(new Set([c.id])); setShowAddToGroup(true); }} title="Label" aria-label={`Add ${c.contact_name} to group`}
-                                className="p-1 rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#5f6368] dark:text-[#9aa0a6]">
-                                <Tag className="h-3.5 w-3.5" />
+                              <button
+                                title="Snooze"
+                                aria-label={`Snooze ${c.contact_name}`}
+                                className="p-1 rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#5f6368] dark:text-[#9aa0a6]"
+                              >
+                                <Clock className="h-3.5 w-3.5" />
                               </button>
-                              <button onClick={() => { setSelectedIds(new Set([c.id])); setShowBulkSend(true); }} title="Send" aria-label={`Send email to ${c.contact_name}`}
-                                className="p-1 rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#5f6368] dark:text-[#9aa0a6]">
+                              <button
+                                onClick={() => { setSelectedIds(new Set([c.id])); setShowBulkSend(true); }}
+                                title="Send"
+                                aria-label={`Send email to ${c.contact_name}`}
+                                className="p-1 rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#5f6368] dark:text-[#9aa0a6]"
+                              >
                                 <Send className="h-3.5 w-3.5" />
                               </button>
+                              <div className="relative">
+                                <button
+                                  onMouseDown={e => e.stopPropagation()}
+                                  onClick={e => { e.stopPropagation(); setRowMenuId(prev => prev === c.id ? null : c.id); }}
+                                  title="More"
+                                  aria-label="More email options"
+                                  className="p-1 rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#5f6368] dark:text-[#9aa0a6]"
+                                >
+                                  <MoreVertical className="h-3.5 w-3.5" />
+                                </button>
+                                {rowMenuId === c.id && (
+                                  <div
+                                    className="absolute right-0 top-full mt-1 z-50 w-72 bg-white dark:bg-[#2d2d2d] rounded-lg shadow-[0_2px_10px_rgba(60,64,67,.3),0_6px_28px_rgba(60,64,67,.15)] py-1 border border-[#e0e0e0] dark:border-[#3c4043]"
+                                    role="menu"
+                                    onMouseDown={e => e.stopPropagation()}
+                                  >
+                                    {[
+                                      { label: 'Add to Tasks', action: () => setRowMenuId(null) },
+                                      { label: 'Label as', action: () => { setSelectedIds(new Set([c.id])); setShowAddToGroup(true); setRowMenuId(null); } },
+                                      { label: 'Forward as attachment', action: () => { openCompose({ subject: `Fwd: ${getEmailDetails(c).subject}` }); setRowMenuId(null); } },
+                                      { label: 'Filter messages like these', action: () => setRowMenuId(null) },
+                                      { label: 'Mute', action: () => setRowMenuId(null) },
+                                      { label: 'Share to help improve Google', action: () => setRowMenuId(null) },
+                                      { label: 'Switch to advanced toolbar', action: () => setRowMenuId(null) },
+                                    ].map(item => (
+                                      <button
+                                        key={item.label}
+                                        role="menuitem"
+                                        onClick={item.action}
+                                        className="w-full text-left px-4 py-2.5 text-sm text-[#202124] dark:text-[#e8eaed] hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] transition-colors"
+                                      >
+                                        {item.label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -2644,23 +3152,238 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
           )}
         </main>
 
-        {/* Right sidebar — Google apps */}
-        <div className="hidden md:flex w-12 flex-shrink-0 flex-col items-center pt-2 gap-3" aria-label="Google apps">
-          {[
-            { color: '#4285F4', label: 'Google Calendar', path: 'M20 3h-1V1h-2v2H7V1H5v2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 18H4V8h16v13z' },
-            { color: '#FBBC04', label: 'Google Keep', path: 'M9 21h6v-2H9v2zm3-19C8.13 2 5 5.13 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.87-3.13-7-7-7z' },
-            { color: '#34A853', label: 'Google Tasks', path: 'M22 5.18L10.59 16.6l-4.24-4.24 1.41-1.41 2.83 2.83 10-10L22 5.18zm-2.21 5.04c.13.57.21 1.17.21 1.78 0 4.42-3.58 8-8 8s-8-3.58-8-8 3.58-8 8-8c1.58 0 3.04.46 4.28 1.25l1.44-1.44A9.9 9.9 0 0012 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10c0-1.19-.22-2.33-.6-3.39l-1.61 1.61z' },
-            { color: '#EA4335', label: 'Google Contacts', path: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z' },
-          ].map(({ color, label, path }) => (
-            <button key={label} title={label} aria-label={label}
-              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043]">
-              <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true"><path d={path} fill={color} /></svg>
-            </button>
-          ))}
-          <button title="Add Google app" aria-label="Add Google app"
-            className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#5f6368] dark:text-[#9aa0a6]">
-            <Plus className="h-5 w-5" />
-          </button>
+        {/* Right sidebar — Google apps + sliding panels */}
+        <div className="hidden md:flex flex-shrink-0 flex-row">
+
+          {/* Panel content — slides in when an icon is active */}
+          {activeRightPanel && (
+            <div className="w-[300px] border-l border-[#dadce0] dark:border-[#3c4043] bg-white dark:bg-[#2d2d2d] flex flex-col overflow-hidden mb-2 rounded-2xl mr-1 shadow-sm">
+
+              {/* ── Calendar Panel ── */}
+              {activeRightPanel === 'Google Calendar' && (
+                <>
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-[#dadce0] dark:border-[#3c4043]">
+                    <span className="text-sm font-semibold text-[#202124] dark:text-[#e8eaed]">CALENDAR</span>
+                    <div className="flex items-center gap-1">
+                      <button className="h-7 w-7 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-[#5f6368] dark:text-[#9aa0a6]">
+                        <ExternalLink className="h-4 w-4" />
+                      </button>
+                      <button onClick={() => setActiveRightPanel(null)} className="h-7 w-7 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-[#5f6368] dark:text-[#9aa0a6]">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-2 border-b border-[#dadce0] dark:border-[#3c4043]">
+                    <span className="text-sm font-medium text-[#1a73e8]">
+                      {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric' })}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <button className="h-7 w-7 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]">
+                        <ChevronLeft className="h-4 w-4 text-[#5f6368]" />
+                      </button>
+                      <button className="h-7 w-7 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]">
+                        <ChevronRight className="h-4 w-4 text-[#5f6368]" />
+                      </button>
+                      <button className="h-7 w-7 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]">
+                        <MoreVertical className="h-4 w-4 text-[#5f6368]" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex-1 overflow-y-auto">
+                    <div className="px-2 py-1 text-xs text-[#5f6368] dark:text-[#9aa0a6] text-center py-3">
+                      GMT+05:30
+                    </div>
+                    {Array.from({ length: 12 }, (_, i) => i + 8).map(hour => (
+                      <div key={hour} className="flex items-start gap-2 px-3 py-2 border-b border-[#f0f0f0] dark:border-white/5 min-h-[48px]">
+                        <span className="text-[11px] text-[#5f6368] dark:text-[#9aa0a6] w-10 flex-shrink-0 pt-0.5">
+                          {hour <= 12 ? `${hour} AM` : `${hour - 12} PM`}
+                        </span>
+                        <div className="flex-1" />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="px-4 py-3 border-t border-[#dadce0] dark:border-[#3c4043] flex items-center justify-center">
+                    <button className="px-4 py-1.5 rounded-full border border-[#dadce0] dark:border-[#3c4043] text-sm text-[#1a73e8] hover:bg-[#e8f0fe] transition-colors">
+                      Today
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {/* ── Tasks Panel ── */}
+              {activeRightPanel === 'Google Tasks' && (
+                <>
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-[#dadce0] dark:border-[#3c4043]">
+                    <span className="text-sm font-semibold text-[#202124] dark:text-[#e8eaed]">TASKS</span>
+                    <div className="flex items-center gap-1">
+                      <button className="h-7 w-7 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-[#5f6368] dark:text-[#9aa0a6]">
+                        <ExternalLink className="h-4 w-4" />
+                      </button>
+                      <button onClick={() => setActiveRightPanel(null)} className="h-7 w-7 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-[#5f6368] dark:text-[#9aa0a6]">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="px-4 py-3 border-b border-[#dadce0] dark:border-[#3c4043] flex items-center justify-between">
+                    <span className="text-sm font-medium text-[#202124] dark:text-[#e8eaed]">My Tasks ▾</span>
+                    <button className="h-7 w-7 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-[#5f6368]">
+                      <MoreVertical className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <div className="px-4 py-3 border-b border-[#dadce0] dark:border-[#3c4043]">
+                    <button className="flex items-center gap-2 text-sm text-[#1a73e8] hover:bg-[#e8f0fe] w-full px-3 py-2 rounded-full transition-colors">
+                      <Plus className="h-4 w-4" /> Add a task
+                    </button>
+                  </div>
+                  <div className="flex-1 flex flex-col items-center justify-center px-6 text-center gap-3">
+                    <div className="w-20 h-20 opacity-60">
+                      <svg viewBox="0 0 80 80" fill="none">
+                        <circle cx="55" cy="30" r="18" fill="#e8f0fe" />
+                        <rect x="10" y="45" width="40" height="6" rx="3" fill="#dadce0" />
+                        <rect x="10" y="57" width="30" height="6" rx="3" fill="#dadce0" />
+                        <circle cx="55" cy="30" r="10" fill="#4285f4" opacity="0.6" />
+                        <path d="M50 30l3 3 7-7" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                      </svg>
+                    </div>
+                    <p className="text-sm font-medium text-[#202124] dark:text-[#e8eaed]">No tasks yet</p>
+                    <p className="text-xs text-[#5f6368] dark:text-[#9aa0a6]">Add your to-dos and keep track of them across Google Workspace</p>
+                  </div>
+                </>
+              )}
+
+              {/* ── Keep Notes Panel ── */}
+              {activeRightPanel === 'Google Keep' && (
+                <>
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-[#dadce0] dark:border-[#3c4043]">
+                    <span className="text-sm font-semibold text-[#202124] dark:text-[#e8eaed]">KEEP</span>
+                    <div className="flex items-center gap-1">
+                      <button className="h-7 w-7 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-[#5f6368] dark:text-[#9aa0a6]">
+                        <Search className="h-4 w-4" />
+                      </button>
+                      <button className="h-7 w-7 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-[#5f6368] dark:text-[#9aa0a6]">
+                        <ExternalLink className="h-4 w-4" />
+                      </button>
+                      <button onClick={() => setActiveRightPanel(null)} className="h-7 w-7 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-[#5f6368] dark:text-[#9aa0a6]">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="px-4 py-3 border-b border-[#dadce0] dark:border-[#3c4043] flex items-center justify-between">
+                    <input placeholder="Take a note..." className="flex-1 bg-transparent text-sm text-[#202124] dark:text-[#e8eaed] placeholder:text-[#5f6368] focus:outline-none" />
+                    <button className="h-7 w-7 flex items-center justify-center rounded-full hover:bg-[#f1f3f4]">
+                      <Check className="h-4 w-4 text-[#5f6368]" />
+                    </button>
+                  </div>
+                  <div className="flex-1 flex flex-col items-center justify-center px-6 text-center gap-4">
+                    <div className="w-16 h-16">
+                      <svg viewBox="0 0 64 64" fill="none">
+                        <rect x="8" y="8" width="48" height="48" rx="4" fill="#FBBC04" />
+                        <rect x="16" y="20" width="32" height="4" rx="2" fill="white" opacity="0.8" />
+                        <rect x="16" y="30" width="24" height="4" rx="2" fill="white" opacity="0.6" />
+                        <rect x="16" y="40" width="28" height="4" rx="2" fill="white" opacity="0.6" />
+                      </svg>
+                    </div>
+                    <p className="text-sm font-medium text-[#202124] dark:text-[#e8eaed]">No notes yet</p>
+                    <p className="text-xs text-[#5f6368] dark:text-[#9aa0a6]">Your notes from Google Keep will show up here.</p>
+                    <div className="space-y-2 w-full mt-2">
+                      {['Android devices', 'iPhone & iPad', 'Web app', 'Chrome extension'].map(item => (
+                        <button key={item} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-sm text-[#1a73e8] transition-colors">
+                          <span className="h-2 w-2 rounded-full bg-[#FBBC04] flex-shrink-0" />
+                          {item}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* ── Contacts Panel ── */}
+              {activeRightPanel === 'Google Contacts' && (
+                <>
+                  <div className="flex items-center justify-between px-3 py-3 border-b border-[#dadce0] dark:border-[#3c4043]">
+                    <div className="relative flex-1 mr-2">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#5f6368]" />
+                      <input
+                        placeholder="Search..."
+                        value={contactPanelSearch}
+                        onChange={e => setContactPanelSearch(e.target.value)}
+                        className="w-full h-8 pl-9 pr-3 bg-[#f1f3f4] dark:bg-[#3c4043] rounded-full text-sm text-[#202124] dark:text-[#e8eaed] placeholder:text-[#5f6368] focus:outline-none"
+                      />
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button className="h-7 w-7 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-[#5f6368]">
+                        <ExternalLink className="h-4 w-4" />
+                      </button>
+                      <button onClick={() => setActiveRightPanel(null)} className="h-7 w-7 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-[#5f6368]">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex-1 overflow-y-auto">
+                    <div className="px-4 py-3">
+                      <button className="flex items-center gap-2 text-sm text-[#1a73e8] hover:bg-[#e8f0fe] w-full px-3 py-2 rounded-full transition-colors">
+                        <Plus className="h-4 w-4" /> Create contact
+                      </button>
+                    </div>
+                    {contacts.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-8 px-4 text-center gap-2">
+                        <div className="h-12 w-12 rounded-full bg-[#e8f0fe] flex items-center justify-center">
+                          <UserPlus className="h-6 w-6 text-[#1a73e8]" />
+                        </div>
+                        <p className="text-sm text-[#5f6368] dark:text-[#9aa0a6]">No contacts yet</p>
+                      </div>
+                    ) : (
+                      <>
+                        {contacts.filter(c =>
+                          !contactPanelSearch ||
+                          (c.contact_name ?? '').toLowerCase().includes(contactPanelSearch.toLowerCase()) ||
+                          (c.email ?? '').toLowerCase().includes(contactPanelSearch.toLowerCase())
+                        ).slice(0, 30).map(c => (
+                          <div key={c.id} className="flex items-center gap-3 px-4 py-2 hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] cursor-pointer">
+                            <div className={cn('h-8 w-8 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-xs font-bold flex-shrink-0', avatarGradient(c.id))}>
+                              {getInitials(c.contact_name)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate text-[#202124] dark:text-[#e8eaed]">{c.contact_name ?? 'Unknown'}</p>
+                              <p className="text-xs text-[#5f6368] dark:text-[#9aa0a6] truncate">{c.email}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Icon strip */}
+          <div className="w-12 flex flex-col items-center pt-2 gap-3" aria-label="Google apps">
+            {[
+              { color: '#4285F4', label: 'Google Calendar', path: 'M20 3h-1V1h-2v2H7V1H5v2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 18H4V8h16v13z' },
+              { color: '#FBBC04', label: 'Google Keep', path: 'M9 21h6v-2H9v2zm3-19C8.13 2 5 5.13 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.87-3.13-7-7-7z' },
+              { color: '#34A853', label: 'Google Tasks', path: 'M22 5.18L10.59 16.6l-4.24-4.24 1.41-1.41 2.83 2.83 10-10L22 5.18zm-2.21 5.04c.13.57.21 1.17.21 1.78 0 4.42-3.58 8-8 8s-8-3.58-8-8 3.58-8 8-8c1.58 0 3.04.46 4.28 1.25l1.44-1.44A9.9 9.9 0 0012 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10c0-1.19-.22-2.33-.6-3.39l-1.61 1.61z' },
+              { color: '#EA4335', label: 'Google Contacts', path: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z' },
+            ].map(({ color, label, path }) => (
+              <button
+                key={label}
+                title={label}
+                aria-label={label}
+                onClick={() => setActiveRightPanel(prev => prev === label ? null : label)}
+                className={cn(
+                  'h-10 w-10 flex items-center justify-center rounded-full transition-colors',
+                  activeRightPanel === label
+                    ? 'bg-[#e8f0fe] dark:bg-[#004a77]'
+                    : 'hover:bg-[#e8eaed] dark:hover:bg-[#3c4043]'
+                )}
+              >
+                <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+                  <path d={path} fill={color} />
+                </svg>
+              </button>
+            ))}
+          </div>
+
         </div>
       </div>
 
@@ -2754,7 +3477,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
               <div className="relative">
                 <div className="h-20 w-20 rounded-full overflow-hidden bg-[#1a73e8] flex items-center justify-center text-white text-3xl font-medium select-none">
                   {userImage
-                    ? <img src={userImage} alt="" className="h-full w-full object-cover" />
+                    ? <Image src={userImage} alt="Profile photo" width={80} height={80} className="h-full w-full object-cover" />
                     : (connectedEmail?.charAt(0)?.toUpperCase() ?? '?')}
                 </div>
                 <label
