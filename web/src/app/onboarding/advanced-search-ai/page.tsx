@@ -4084,19 +4084,16 @@ export default function AdvancedSearchAIPage() {
                                     <h2 className="adv-panel-title m-0 text-gray-900 dark:text-gray-100">
                                         {inboundMode ? 'Your Imported Leads' : 'Your Lead Results'}
                                     </h2>
-
                                     {!inboundMode && totalResults > 0 && (
                                         <span className="text-[12px] text-gray-500 dark:text-gray-400 whitespace-nowrap">
             {((searchPage - 1) * leadCount) + 1}-{Math.min(searchPage * leadCount, totalResults)} of {totalResults}
         </span>
                                     )}
-
                                     {inboundMode && inboundLeads.length > 0 && (
                                         <span className="text-[12px] bg-blue-100 dark:bg-blue-900/50 text-[#0b1957] dark:text-blue-200 px-[10px] py-[3px] rounded-[20px] font-semibold">
             {inboundLeads.length} contacts
         </span>
                                     )}
-
                                     {!inboundMode && leads.length > 0 && totalResults === 0 && (
                                         <span className="text-[12px] bg-blue-100 dark:bg-blue-900/50 text-[#0b1957] dark:text-blue-200 px-[10px] py-[3px] rounded-[20px] font-semibold">
             {leads.length} contact{leads.length !== 1 ? 's' : ''}
@@ -4131,12 +4128,8 @@ export default function AdvancedSearchAIPage() {
                     </span>
                                                         <span className="adv-verified text-green-600 dark:text-green-400">✓</span>
                                                     </div>
-                                                    <div className="adv-lead-title text-xs text-gray-500 dark:text-gray-400 truncate">
-                                                        {lead.companyName || 'No company'}
-                                                    </div>
-
-                                                    {lead.email && (
-                                                        <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 overflow-hidden">
+                                                    <div className="adv-lead-title text-xs text-gray-500 dark:text-gray-400 truncate">{lead.companyName || 'No company'}</div>
+                                                    {lead.email && (<div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 overflow-hidden">
                                                             <span className="flex-shrink-0">✉️</span>
                                                             <span className="truncate">{lead.email}</span>
                                                         </div>
@@ -4249,7 +4242,11 @@ export default function AdvancedSearchAIPage() {
                                                 <div className="flex flex-col items-center gap-[4px] flex-shrink-0">
                                                     <button
                                                         className="adv-lead-action flex items-center justify-center w-[36px] h-[36px] rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700"
-                                                        onClick={(e) => { e.stopPropagation(); if (!lead.locked) handleViewSummary(lead); }}
+                                                        title="Generate Summary"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (!lead.locked) handleViewSummary(lead);
+                                                        }}
                                                     >
                                                         {lead.locked ? (
                                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0110 0v4" /></svg>
@@ -4259,10 +4256,18 @@ export default function AdvancedSearchAIPage() {
                                                     </button>
                                                     {!lead.locked && (
                                                         <div className="flex gap-[2px]">
-                                                            <button onClick={(e) => { e.stopPropagation(); toggleFeedback(lead.id, 'good'); }}
-                                                                    className={`p-[3px_5px] rounded-[6px] text-[14px] ${leadFeedback[lead.id] === 'good' ? 'bg-green-100 dark:bg-green-900' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}>👍</button>
-                                                            <button onClick={(e) => { e.stopPropagation(); toggleFeedback(lead.id, 'bad', lead.name); }}
-                                                                    className={`p-[3px_5px] rounded-[6px] text-[14px] ${leadFeedback[lead.id] === 'bad' ? 'bg-red-100 dark:bg-red-900' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}>👎</button>
+                                                            <button
+                                                                title="Good match"
+                                                                onClick={(e) => { e.stopPropagation(); toggleFeedback(lead.id, 'good'); }}
+                                                                    className={`p-[3px_5px] rounded-[6px] text-[14px] ${leadFeedback[lead.id] === 'good' ? 'bg-green-100 dark:bg-green-900' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
+                                                                👍
+                                                            </button>
+                                                            <button
+                                                                title="Bad match"
+                                                                onClick={(e) => { e.stopPropagation(); toggleFeedback(lead.id, 'bad', lead.name); }}
+                                                                    className={`p-[3px_5px] rounded-[6px] text-[14px] ${leadFeedback[lead.id] === 'bad' ? 'bg-red-100 dark:bg-red-900' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
+                                                                👎
+                                                            </button>
                                                         </div>
                                                     )}
                                                 </div>
@@ -4461,8 +4466,7 @@ export default function AdvancedSearchAIPage() {
                                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /></svg>
                                             Restart
                                         </button>
-                                        <button
-                                            onClick={() => setShowPlayground(false)}
+                                        <button onClick={() => setShowPlayground(false)}
                                             className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#000724] hover:bg-gray-50 dark:hover:bg-[#1A2A43] cursor-pointer text-gray-600 dark:text-gray-300 transition-all"
                                         >
                                             <X size={15} />
@@ -4470,6 +4474,9 @@ export default function AdvancedSearchAIPage() {
                                     </div>
                                 </div>
 
+                                {/* Profile completeness bar — math comes from the shared SDK helper so
+                                    the wizard / Settings / this drawer always agree. When pgIsComplete
+                                    we lock to 100% regardless of trailing blank optional fields. */}
                                 {(() => {
                                     const c = computeCompleteness(businessProfile as BusinessProfile);
                                     const filled = pgIsComplete ? c.total : c.filled;
@@ -4480,7 +4487,7 @@ export default function AdvancedSearchAIPage() {
                                             <div className="flex justify-between mb-1">
                                                 <span className="text-[11px] font-semibold text-gray-400 dark:text-gray-500">Profile completeness</span>
                                                 <span className={`text-[11px] font-bold ${pct >= 70 ? 'text-emerald-500' : 'text-[#0b1957] dark:text-blue-400'}`}>
-                        {pct}% ({filled}/{total} fields)
+                                            {pct}% ({filled}/{total} fields)
                     </span>
                                             </div>
                                             <div className="h-1.5 w-full bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
@@ -4490,6 +4497,9 @@ export default function AdvancedSearchAIPage() {
                                                 />
                                             </div>
 
+                                            {/* Edit affordance — once any field is filled, the tenant can jump
+                                                to the full editor (Settings → Business Profile) to change any of
+                                                the 14 values. The chat is for first capture; Settings is for edits. */}
                                             {filled > 0 && (
                                                 <button
                                                     onClick={() => router.push('/settings?tab=businessprofile')}
@@ -4522,7 +4532,8 @@ export default function AdvancedSearchAIPage() {
                                             onClick={pgStartConversation}
                                             className="flex items-center gap-2 px-7 py-3 rounded-xl border-none font-bold text-sm cursor-pointer transition-all shadow-[0_4px_14px_rgba(11,25,87,.4)] bg-gradient-to-br from-[#0b1957] to-[#1a3a8f] dark:from-blue-600 dark:to-blue-800 text-white"
                                         >
-                                            <Sparkles size={16} /> Start AI Setup
+                                            <Sparkles size={16} />
+                                            Start AI Setup
                                         </button>
                                     </div>
                                 )}
@@ -4568,6 +4579,7 @@ export default function AdvancedSearchAIPage() {
                                 {pgCurrentCard && !pgBusy && (() => {
                                     const card = pgCurrentCard;
                                     const fieldVal = pgCardValues[card.field];
+
                                     return (
                                         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 shadow-[0_2px_12px_rgba(0,0,0,.08)]">
                                             <div className="text-[12px] font-bold text-[#0b1957] dark:text-blue-300 mb-2.5 flex items-center gap-1.5">
@@ -4591,6 +4603,7 @@ export default function AdvancedSearchAIPage() {
                                                             type="button"
                                                             onClick={pgGenerateSuggestion}
                                                             disabled={pgSuggesting}
+                                                            title="Generate with AI"
                                                             className="absolute bottom-2 right-2 flex items-center gap-1 px-2.5 py-1 rounded-md border-none bg-gradient-to-br from-[#0b1957] to-[#1a3a8f] dark:from-blue-700 dark:to-blue-900 text-white text-[11.5px] font-semibold cursor-pointer disabled:bg-gray-300"
                                                         >
                                                             <Sparkles size={11} />
@@ -4729,6 +4742,7 @@ export default function AdvancedSearchAIPage() {
                                         </div>
                                     );
                                 })()}
+
                                 <div ref={pgMessagesEndRef} />
                             </div>
 
@@ -4756,9 +4770,7 @@ export default function AdvancedSearchAIPage() {
                                                 : 'bg-gray-200 dark:bg-gray-700 cursor-default'
                                         }`}
                                     >
-                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round">
-                                            <path d="M5 12h14M12 5l7 7-7 7" />
-                                        </svg>
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
                                     </button>
                                 </div>
                             )}
@@ -5482,12 +5494,12 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onStartTargeting,
 
                         {/* Workflow card */}
                         <div className="adv-rc adv-rc-leads flex flex-1 items-center gap-3 p-4 rounded-xl cursor-pointer border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800" onClick={() => onShowPanel('workflow')}>
-                            <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                            <div className="adv-rc-icon w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-indigo-900 dark:text-blue-300" strokeWidth="2"><circle cx="12" cy="5" r="2" /><circle cx="5" cy="19" r="2" /><circle cx="19" cy="19" r="2" /><path d="M12 7v4M9.5 17.5L12 11l2.5 6.5" /></svg>
                             </div>
-                            <div className="flex-1">
-                                <div className="text-[13px] font-bold text-gray-900 dark:text-gray-100">Workflow</div>
-                                <div className="text-[11px] text-indigo-900 dark:text-blue-300 font-medium">Live preview</div>
+                            <div className="flex-1 adv-rc-body">
+                                <div className="adv-rc-label text-[13px] font-bold text-gray-900 dark:text-gray-100">Workflow</div>
+                                <div className="adv-rc-sub text-[11px] text-indigo-900 dark:text-blue-300 font-medium">Live preview</div>
                             </div>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-gray-400 dark:text-gray-500" strokeWidth="2"><path d="M9 18l6-6-6-6" /></svg>
                         </div>
@@ -5708,7 +5720,6 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onStartTargeting,
                         <div className="text-[13px] font-bold text-[#0b1957] dark:text-blue-300 mb-4 tracking-[.01em]">
                             Contact Details
                         </div>
-
                         {/* Row 1: First Name + Last Name */}
                         <div className="flex gap-2.5 mb-2.5">
                             <div className="flex-1">
@@ -5722,14 +5733,12 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onStartTargeting,
                                        className="w-full p-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-[13px] text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 outline-none transition-colors" />
                             </div>
                         </div>
-
                         {/* Row 2: Company */}
                         <div className="mb-2.5">
                             <label className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 block mb-1">Company Name</label>
                             <input value={ldCompany} onChange={e => setLdCompany(e.target.value)} placeholder="Acme Corp"
                                    className="w-full p-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-[13px] text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 outline-none transition-colors" />
                         </div>
-
                         {/* Row 3: Website + Location */}
                         <div className="flex gap-2.5 mb-2.5">
                             <div className="flex-1">
@@ -5743,7 +5752,6 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onStartTargeting,
                                        className="w-full p-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-[13px] text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 outline-none transition-colors" />
                             </div>
                         </div>
-
                         {/* Row 4: Email + Phone */}
                         <div className="flex gap-2.5 mb-4">
                             <div className="flex-1">
@@ -5757,7 +5765,6 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onStartTargeting,
                                        className="w-full p-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-[13px] text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 outline-none transition-colors" />
                             </div>
                         </div>
-
                         {/* Submit button */}
                         <button
                             onClick={() => {
@@ -6835,6 +6842,7 @@ function CheckpointFormInline({
                                             : `✉️ Email detected — Email outreach recommended${hasLinkedInInfo ? ' · LinkedIn available' : ''}`}
                                 </div>
                             )}
+
                             {/* Channel Configuration Sequential UI */}
                             {isInChannelConfiguration && (
                                 <div className="mt-3 p-4 rounded-xl border-2 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
@@ -6858,8 +6866,9 @@ function CheckpointFormInline({
                                     </div>
                                 </div>
                             )}
+
                             {[
-                                // LinkedIn first — always shown
+                                // LinkedIn first — always shown (for non-direct; for direct contacts only if name+company detected)
                                 ...(hasLinkedInInfo ? [{
                                     id: 'linkedin', icon: '💼', label: 'LinkedIn',
                                     desc: isDirectContact
@@ -6928,6 +6937,7 @@ function CheckpointFormInline({
                                 </div>
                             )}
 
+
                             {/* Email Config (inline when email selected) */}
                             {nextChannels.includes('email') && (isInChannelConfiguration ? currentChannelBeingConfigured === 'email' : true) && (
                                 <div className="mt-3 p-4 rounded-xl border bg-blue-50/50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/50">
@@ -6991,7 +7001,6 @@ function CheckpointFormInline({
                                                 </select>
                                             </div>
                                         )}
-
                                         {/* Subject */}
                                         <div>
                                             <label className="text-[12px] font-semibold text-gray-700 dark:text-gray-300 mb-1 block">Subject <span className="text-red-500">*</span></label>
@@ -7018,7 +7027,6 @@ function CheckpointFormInline({
                                                 Placeholders: {'{{first_name}}'} {'{{last_name}}'} {'{{company}}'} {'{{title}}'} {'{{industry}}'}
                                             </div>
                                         </div>
-
                                         {/* Save as Template */}
                                         {!saveTemplateMode ? (
                                             <button
@@ -7541,8 +7549,6 @@ function CheckpointFormInline({
                                                 </div>
                                             )}
                                         </div>
-
-                                        {/* From Number Selector */}
                                         <div>
                                             <label className="text-[12px] font-semibold text-gray-700 dark:text-gray-300 mb-1 block">
                                                 From Number
@@ -7592,108 +7598,132 @@ function CheckpointFormInline({
                                                         onClick={() => toggleLiChannelAction(opt.id)}
                                                         className={`flex items-start gap-2.5 p-3 border transition-all cursor-pointer ${
                                                             isSelected
-                                                                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 rounded-t-xl'
+                                                                ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20 rounded-t-xl'
                                                                 : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-xl hover:border-gray-300 dark:hover:border-gray-600'
                                                         }`}
                                                     >
                                                         <div className={`w-5 h-5 rounded flex items-center justify-center shrink-0 border ${isSelected ? 'border-blue-500 bg-blue-500' : 'border-gray-300 dark:border-gray-600'}`}>
                                                             {isSelected && <span className="text-white text-[11px] font-bold">✓</span>}
                                                         </div>
-                                                        <div style={{ flex: 1 }}>
-                                                            <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e3a8a' }}>{opt.icon} {opt.label}</div>
-                                                            <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>{opt.desc}</div>
+                                                        <div className="flex-1">
+                                                            <div className="text-[13px] font-semibold text-[#1e3a8a] dark:text-blue-300">{opt.icon} {opt.label}</div>
+                                                            <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{opt.desc}</div>
                                                         </div>
                                                     </div>
 
                                                     {/* ── Expanded config for 'connect' ── */}
                                                     {opt.id === 'connect' && isSelected && (
-                                                        <div style={{ border: '1.5px solid #3b82f6', borderTop: 'none', borderRadius: '0 0 10px 10px', background: '#f0f6ff', padding: '12px' }}>
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                                                <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151' }}>Connection Message</label>
-                                                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                        <div className="border-x border-b border-blue-500 bg-[#f0f6ff] dark:bg-slate-900/40 rounded-b-xl p-3">
+                                                            <div className="flex justify-between items-center mb-2">
+                                                                <label className="text-[12px] font-semibold text-gray-700 dark:text-gray-300">Connection Message</label>
+                                                                <div className="flex gap-2 items-center">
                                                                     <button
                                                                         onClick={() => { setLiNewTmplCategory('linkedin_connection'); setShowLiConnTmplPanel(p => !p); setShowLiFollowTmplPanel(false); setShowLiNewTmplForm(false); }}
-                                                                        style={{ background: 'none', border: 'none', fontSize: '11px', fontWeight: 600, color: '#1e40af', cursor: 'pointer', padding: 0 }}>
+                                                                        className="bg-transparent border-none text-[11px] font-semibold text-blue-700 dark:text-blue-400 cursor-pointer p-0 hover:underline">
                                                                         {showLiConnTmplPanel ? '✕ Close' : '📋 Templates'}
                                                                     </button>
-                                                                    <button disabled={liFollowGenLoading} onClick={() => { setShowAiConnPanel(v => !v); setShowAiFollowPanel(false); }}
-                                                                        style={{ background: showAiConnPanel ? '#e8ecfa' : 'none', border: showAiConnPanel ? '1px solid #c2d6eb' : 'none', borderRadius: '6px', padding: showAiConnPanel ? '2px 7px' : 0, fontSize: '11px', fontWeight: 700, color: liFollowGenLoading ? '#9ca3af' : '#0b1957', cursor: liFollowGenLoading ? 'default' : 'pointer' }}>
+                                                                    <button
+                                                                        disabled={liFollowGenLoading}
+                                                                        onClick={() => { setShowAiConnPanel(v => !v); setShowAiFollowPanel(false); }}
+                                                                        className={`rounded-6 transition-all text-[11px] font-bold cursor-pointer ${
+                                                                            showAiConnPanel
+                                                                                ? 'bg-blue-100 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900/60 p-0.5 px-1.5'
+                                                                                : 'bg-transparent border-none p-0'
+                                                                        } ${liFollowGenLoading ? 'text-gray-400 dark:text-gray-600 cursor-default' : 'text-[#0b1957] dark:text-blue-400'}`}
+                                                                    >
                                                                         {liFollowGenLoading ? '⏳ Generating...' : (showAiConnPanel ? '✕ Close' : '✨ AI Generate')}
                                                                     </button>
                                                                 </div>
                                                             </div>
+
                                                             {/* Connection template browser */}
                                                             {showLiConnTmplPanel && (
-                                                                <div style={{ border: '1px solid #bfdbfe', borderRadius: '8px', background: '#fff', marginBottom: '8px', overflow: 'hidden' }}>
+                                                                <div className="border border-blue-200 dark:border-blue-900/60 rounded-lg bg-white dark:bg-gray-800 mb-2 overflow-hidden">
                                                                     {liTemplates.filter(t => t.category === 'linkedin_connection').length > 0 && !showLiNewTmplForm ? (
-                                                                        <div style={{ maxHeight: '160px', overflowY: 'auto' }}>
+                                                                        <div className="max-h-40 overflow-y-auto">
                                                                             {liTemplates.filter(t => t.category === 'linkedin_connection').map(tmpl => (
                                                                                 <div key={tmpl.id}
-                                                                                    onClick={() => { setSelectedLiConnTmplId(tmpl.id); setConnMsg(tmpl.content); setShowLiConnTmplPanel(false); }}
-                                                                                    style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '8px 10px', cursor: 'pointer', borderBottom: '1px solid #eff6ff', background: selectedLiConnTmplId === tmpl.id ? '#dbeafe' : 'transparent' }}>
-                                                                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                                                                        <div style={{ fontSize: '12px', fontWeight: 600, color: '#1e40af', marginBottom: '2px' }}>{tmpl.name}</div>
-                                                                                        <div style={{ fontSize: '11px', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tmpl.content}</div>
+                                                                                     onClick={() => { setSelectedLiConnTmplId(tmpl.id); setConnMsg(tmpl.content); setShowLiConnTmplPanel(false); }}
+                                                                                     className={`flex items-start gap-2 p-2 px-2.5 cursor-pointer border-b border-blue-50/40 dark:border-gray-700/50 ${selectedLiConnTmplId === tmpl.id ? 'bg-blue-100 dark:bg-blue-950/40' : 'background-transparent'}`}>
+                                                                                    <div className="flex-1 min-w-0">
+                                                                                        <div className="text-[12px] font-semibold text-blue-700 dark:text-blue-400 mb-0.5">{tmpl.name}</div>
+                                                                                        <div className="text-[11px] text-gray-700 dark:text-gray-300 overflow-hidden text-ellipsis whitespace-nowrap">{tmpl.content}</div>
                                                                                     </div>
-                                                                                    <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                                                                                    <div className="flex gap-1 shrink-0">
                                                                                         <button onClick={e => { e.stopPropagation(); setSelectedLiConnTmplId(tmpl.id); setConnMsg(tmpl.content); setShowLiConnTmplPanel(false); }}
-                                                                                            style={{ background: '#1e40af', color: '#fff', border: 'none', borderRadius: '4px', padding: '3px 8px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>Use</button>
+                                                                                                className="bg-blue-700 dark:bg-blue-600 text-white border-none rounded p-1 px-2 text-[11px] font-semibold cursor-pointer hover:bg-blue-800 dark:hover:bg-blue-700">Use</button>
                                                                                         <button onClick={e => deleteLiTemplate(tmpl.id, e)}
-                                                                                            style={{ background: 'none', border: '1px solid #fca5a5', color: '#dc2626', borderRadius: '4px', padding: '3px 6px', fontSize: '11px', cursor: 'pointer' }}>✕</button>
+                                                                                                className="bg-transparent border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 rounded p-1 px-1.5 text-[11px] cursor-pointer hover:bg-red-50 dark:hover:bg-red-950/30">✕</button>
                                                                                     </div>
                                                                                 </div>
                                                                             ))}
                                                                         </div>
                                                                     ) : !showLiNewTmplForm ? (
-                                                                        <div style={{ padding: '10px', textAlign: 'center', fontSize: '12px', color: '#6b7280' }}>No saved templates.</div>
+                                                                        <div className="p-2.5 text-center text-[12px] text-gray-500 dark:text-gray-400">No saved templates.</div>
                                                                     ) : null}
+
                                                                     {/* Create new template form */}
                                                                     {showLiNewTmplForm && liNewTmplCategory === 'linkedin_connection' ? (
-                                                                        <div style={{ padding: '10px', borderTop: liTemplates.filter(t => t.category === 'linkedin_connection').length > 0 ? '1px solid #bfdbfe' : 'none' }}>
-                                                                            <input value={liNewTmplName} onChange={e => setLiNewTmplName(e.target.value)} placeholder="Template name..." style={{ width: '100%', border: '1px solid #bfdbfe', borderRadius: '6px', padding: '6px 8px', fontSize: '12px', outline: 'none', marginBottom: '6px', boxSizing: 'border-box', fontFamily: 'inherit' }} />
-                                                                            <textarea value={liNewTmplBody} onChange={e => setLiNewTmplBody(e.target.value)} placeholder="Hi {{first_name}}, I would love to connect..." rows={3} style={{ width: '100%', border: '1px solid #bfdbfe', borderRadius: '6px', padding: '6px 8px', fontSize: '12px', outline: 'none', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: '6px' }} />
-                                                                            <div style={{ display: 'flex', gap: '6px' }}>
-                                                                                <button onClick={saveLiTemplate} disabled={liNewTmplSaving} style={{ flex: 1, background: '#1e40af', color: '#fff', border: 'none', borderRadius: '6px', padding: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>{liNewTmplSaving ? 'Saving...' : '💾 Save'}</button>
-                                                                                <button onClick={() => setShowLiNewTmplForm(false)} style={{ background: '#f3f4f6', border: 'none', borderRadius: '6px', padding: '6px 10px', fontSize: '12px', color: '#6b7280', cursor: 'pointer' }}>Cancel</button>
+                                                                        <div className={`p-2.5 ${liTemplates.filter(t => t.category === 'linkedin_connection').length > 0 ? 'border-t border-blue-200 dark:border-blue-900' : 'border-t-0'}`}>
+                                                                            <input value={liNewTmplName} onChange={e => setLiNewTmplName(e.target.value)} placeholder="Template name..." className="w-full border border-blue-200 dark:border-blue-900 rounded-md p-1.5 px-2 text-[12px] bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 outline-none mb-1.5 box-border font-inherit" />
+                                                                            <textarea value={liNewTmplBody} onChange={e => setLiNewTmplBody(e.target.value)} placeholder="Hi {{first_name}}, I would love to connect..." rows={3} className="w-full border border-blue-200 dark:border-blue-900 rounded-md p-1.5 px-2 text-[12px] bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 outline-none resize-vertical font-inherit box-border mb-1.5" />
+                                                                            <div className="flex gap-1.5">
+                                                                                <button onClick={saveLiTemplate} disabled={liNewTmplSaving} className="flex-1 bg-blue-700 dark:bg-blue-600 text-white border-none rounded-md p-1.5 text-[12px] font-semibold cursor-pointer disabled:opacity-50">{liNewTmplSaving ? 'Saving...' : '💾 Save'}</button>
+                                                                                <button onClick={() => setShowLiNewTmplForm(false)} className="bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 border-none rounded-md p-1.5 px-2.5 text-[12px] cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">Cancel</button>
                                                                             </div>
                                                                         </div>
                                                                     ) : (
-                                                                        <div style={{ padding: '6px 10px', borderTop: liTemplates.filter(t => t.category === 'linkedin_connection').length > 0 ? '1px solid #bfdbfe' : 'none' }}>
+                                                                        <div className={`p-1.5 px-2.5 ${liTemplates.filter(t => t.category === 'linkedin_connection').length > 0 ? 'border-t border-blue-200 dark:border-blue-900' : 'border-t-0'}`}>
                                                                             <button onClick={() => { setLiNewTmplCategory('linkedin_connection'); setShowLiNewTmplForm(true); }}
-                                                                                style={{ width: '100%', background: 'none', border: '1px dashed #93c5fd', borderRadius: '6px', padding: '5px', fontSize: '12px', fontWeight: 600, color: '#1e40af', cursor: 'pointer', textAlign: 'center' }}>
+                                                                                    className="w-full bg-transparent border border-dashed border-blue-300 dark:border-blue-800 rounded-md p-1 text-[12px] font-semibold text-blue-700 dark:text-blue-400 cursor-pointer text-center hover:bg-blue-50 dark:hover:bg-blue-950/20">
                                                                                 + Create New Template
                                                                             </button>
                                                                         </div>
                                                                     )}
                                                                 </div>
                                                             )}
+
                                                             {/* Selected template badge */}
                                                             {selectedLiConnTmplId && !showLiConnTmplPanel && (() => {
                                                                 const tmpl = liTemplates.find(t => t.id === selectedLiConnTmplId);
                                                                 return tmpl ? (
-                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '5px 8px', background: '#dbeafe', border: '1px solid #93c5fd', borderRadius: '6px', fontSize: '12px', marginBottom: '6px' }}>
-                                                                        <span style={{ fontWeight: 600, color: '#1e40af', flex: 1 }}>✓ {tmpl.name}</span>
-                                                                        <button onClick={() => { setSelectedLiConnTmplId(''); }} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '12px', padding: 0 }}>✕</button>
+                                                                    <div className="flex items-center gap-1.5 p-1 px-2 bg-blue-100 dark:bg-blue-950/40 border border-blue-300 dark:border-blue-900 rounded-md text-[12px] mb-1.5">
+                                                                        <span className="font-semibold text-blue-700 dark:text-blue-400 flex-1">✓ {tmpl.name}</span>
+                                                                        <button onClick={() => { setSelectedLiConnTmplId(''); }} className="bg-transparent border-none text-gray-400 dark:text-gray-500 cursor-pointer text-[12px] p-0 hover:text-gray-600">✕</button>
                                                                     </div>
                                                                 ) : null;
                                                             })()}
+
                                                             <textarea
                                                                 value={connMsg}
                                                                 onChange={e => setConnMsg(e.target.value.slice(0, 300))}
                                                                 placeholder={'Hi {{first_name}}, I noticed your work at {{company}} and would love to connect...'}
                                                                 rows={3}
                                                                 maxLength={300}
-                                                                style={{ width: '100%', border: `1px solid ${connMsg.length > 270 ? (connMsg.length >= 300 ? '#ef4444' : '#f59e0b') : '#bfdbfe'}`, borderRadius: '8px', padding: '8px 10px', fontSize: '13px', background: '#fff', outline: 'none', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                                                                className={`w-full border rounded-lg p-2 px-2.5 text-[13px] bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 outline-none resize-vertical font-inherit box-border ${
+                                                                    connMsg.length >= 300
+                                                                        ? 'border-red-500 dark:border-red-600'
+                                                                        : connMsg.length > 270
+                                                                            ? 'border-amber-500 dark:border-amber-600'
+                                                                            : 'border-blue-200 dark:border-blue-900'
+                                                                }`}
                                                             />
+
                                                             {/* Character counter */}
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '3px' }}>
-                                                                <div style={{ fontSize: '11px', color: '#9ca3af' }}>Placeholders: {'{{first_name}}'} {'{{last_name}}'} {'{{company}}'} {'{{title}}'} <span style={{ color: '#0b1957', fontWeight: 600 }}>{'{{web_insight}}'} {'{{recent_post}}'} {'{{article}}'} {'{{news}}'}</span> <span style={{ color: '#0b1957' }}>← AI-personalised at send time</span></div>
-                                                                <div style={{ fontSize: '11px', fontWeight: 700, flexShrink: 0, marginLeft: '8px', color: connMsg.length >= 300 ? '#ef4444' : connMsg.length > 270 ? '#f59e0b' : '#9ca3af', whiteSpace: 'nowrap' }}>
+                                                            <div className="flex justify-between items-center mt-1">
+                                                                <div className="text-[11px] text-gray-400 dark:text-gray-500">
+                                                                    Placeholders: {'{{first_name}}'} {'{{last_name}}'} {'{{company}}'} {'{{title}}'}{' '}
+                                                                    <span className="text-[#0b1957] dark:text-blue-400 font-semibold">{'{{web_insight}}'} {'{{recent_post}}'} {'{{article}}'} {'{{news}}'}</span>{' '}
+                                                                    <span className="text-gray-400 dark:text-gray-500">← AI-personalised at send time</span>
+                                                                </div>
+                                                                <div className={`text-[11px] font-bold shrink-0 ml-2 whitespace-nowrap ${
+                                                                    connMsg.length >= 300 ? 'text-red-500 dark:text-red-400' : connMsg.length > 270 ? 'text-amber-500 dark:text-amber-400' : 'text-gray-400 dark:text-gray-500'
+                                                                }`}>
                                                                     {connMsg.length}/300{connMsg.length >= 300 && ' ⚠️ limit reached'}
                                                                 </div>
                                                             </div>
                                                             {connMsg.length >= 300 && (
-                                                                <div style={{ fontSize: '11px', color: '#ef4444', marginTop: '2px', fontWeight: 500 }}>
+                                                                <div className="text-[11px] text-red-500 dark:text-red-400 mt-0.5 font-medium">
                                                                     LinkedIn hard limit is 300 characters. Message will be sent as-is — keep it concise.
                                                                 </div>
                                                             )}
@@ -7712,84 +7742,99 @@ function CheckpointFormInline({
 
                                                     {/* ── Expanded config for 'message' ── */}
                                                     {opt.id === 'message' && isSelected && (
-                                                        <div style={{ border: '1.5px solid #3b82f6', borderTop: 'none', borderRadius: '0 0 10px 10px', background: '#f0f6ff', padding: '12px' }}>
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                                                <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151' }}>Follow-up Message</label>
-                                                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                        <div className="border-x border-b border-blue-500 bg-[#f0f6ff] dark:bg-slate-900/40 rounded-b-xl p-3">
+                                                            <div className="flex justify-between items-center mb-2">
+                                                                <label className="text-[12px] font-semibold text-gray-700 dark:text-gray-300">Follow-up Message</label>
+                                                                <div className="flex gap-2 items-center">
                                                                     <button
                                                                         onClick={() => { setLiNewTmplCategory('linkedin_followup'); setShowLiFollowTmplPanel(p => !p); setShowLiConnTmplPanel(false); setShowLiNewTmplForm(false); }}
-                                                                        style={{ background: 'none', border: 'none', fontSize: '11px', fontWeight: 600, color: '#1e40af', cursor: 'pointer', padding: 0 }}>
+                                                                        className="bg-transparent border-none text-[11px] font-semibold text-blue-700 dark:text-blue-400 cursor-pointer p-0 hover:underline">
                                                                         {showLiFollowTmplPanel ? '✕ Close' : '📋 Templates'}
                                                                     </button>
-                                                                    <button disabled={liFollowGenLoading} onClick={() => { setShowAiFollowPanel(v => !v); setShowAiConnPanel(false); }}
-                                                                        style={{ background: showAiFollowPanel ? '#e8ecfa' : 'none', border: showAiFollowPanel ? '1px solid #c2d6eb' : 'none', borderRadius: '6px', padding: showAiFollowPanel ? '2px 7px' : 0, fontSize: '11px', fontWeight: 700, color: liFollowGenLoading ? '#9ca3af' : '#0b1957', cursor: liFollowGenLoading ? 'default' : 'pointer' }}>
+                                                                    <button
+                                                                        disabled={liFollowGenLoading}
+                                                                        onClick={() => { setShowAiFollowPanel(v => !v); setShowAiConnPanel(false); }}
+                                                                        className={`rounded-6 transition-all text-[11px] font-bold cursor-pointer ${
+                                                                            showAiFollowPanel
+                                                                                ? 'bg-blue-100 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900/60 p-0.5 px-1.5'
+                                                                                : 'bg-transparent border-none p-0'
+                                                                        } ${liFollowGenLoading ? 'text-gray-400 dark:text-gray-600 cursor-default' : 'text-[#0b1957] dark:text-blue-400'}`}
+                                                                    >
                                                                         {liFollowGenLoading ? '⏳ Generating...' : (showAiFollowPanel ? '✕ Close' : '✨ AI Generate')}
                                                                     </button>
                                                                 </div>
                                                             </div>
+
                                                             {/* Followup template browser */}
                                                             {showLiFollowTmplPanel && (
-                                                                <div style={{ border: '1px solid #bfdbfe', borderRadius: '8px', background: '#fff', marginBottom: '8px', overflow: 'hidden' }}>
+                                                                <div className="border border-blue-200 dark:border-blue-900/60 rounded-lg bg-white dark:bg-gray-800 mb-2 overflow-hidden">
                                                                     {liTemplates.filter(t => t.category === 'linkedin_followup').length > 0 && !showLiNewTmplForm ? (
-                                                                        <div style={{ maxHeight: '160px', overflowY: 'auto' }}>
+                                                                        <div className="max-h-40 overflow-y-auto">
                                                                             {liTemplates.filter(t => t.category === 'linkedin_followup').map(tmpl => (
                                                                                 <div key={tmpl.id}
-                                                                                    onClick={() => { setSelectedLiFollowTmplId(tmpl.id); setFollowMsg(tmpl.content); setShowLiFollowTmplPanel(false); }}
-                                                                                    style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '8px 10px', cursor: 'pointer', borderBottom: '1px solid #eff6ff', background: selectedLiFollowTmplId === tmpl.id ? '#dbeafe' : 'transparent' }}>
-                                                                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                                                                        <div style={{ fontSize: '12px', fontWeight: 600, color: '#1e40af', marginBottom: '2px' }}>{tmpl.name}</div>
-                                                                                        <div style={{ fontSize: '11px', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tmpl.content}</div>
+                                                                                     onClick={() => { setSelectedLiFollowTmplId(tmpl.id); setFollowMsg(tmpl.content); setShowLiFollowTmplPanel(false); }}
+                                                                                     className={`flex items-start gap-2 p-2 px-2.5 cursor-pointer border-b border-blue-50/40 dark:border-gray-700/50 ${selectedLiFollowTmplId === tmpl.id ? 'bg-blue-100 dark:bg-blue-950/40' : 'background-transparent'}`}>
+                                                                                    <div className="flex-1 min-w-0">
+                                                                                        <div className="text-[12px] font-semibold text-blue-700 dark:text-blue-400 mb-0.5">{tmpl.name}</div>
+                                                                                        <div className="text-[11px] text-gray-700 dark:text-gray-300 overflow-hidden text-ellipsis whitespace-nowrap">{tmpl.content}</div>
                                                                                     </div>
-                                                                                    <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                                                                                    <div className="flex gap-1 shrink-0">
                                                                                         <button onClick={e => { e.stopPropagation(); setSelectedLiFollowTmplId(tmpl.id); setFollowMsg(tmpl.content); setShowLiFollowTmplPanel(false); }}
-                                                                                            style={{ background: '#1e40af', color: '#fff', border: 'none', borderRadius: '4px', padding: '3px 8px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>Use</button>
+                                                                                                className="bg-blue-700 dark:bg-blue-600 text-white border-none rounded p-1 px-2 text-[11px] font-semibold cursor-pointer hover:bg-blue-800 dark:hover:bg-blue-700">Use</button>
                                                                                         <button onClick={e => deleteLiTemplate(tmpl.id, e)}
-                                                                                            style={{ background: 'none', border: '1px solid #fca5a5', color: '#dc2626', borderRadius: '4px', padding: '3px 6px', fontSize: '11px', cursor: 'pointer' }}>✕</button>
+                                                                                                className="bg-transparent border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 rounded p-1 px-1.5 text-[11px] cursor-pointer hover:bg-red-50 dark:hover:bg-red-950/30">✕</button>
                                                                                     </div>
                                                                                 </div>
                                                                             ))}
                                                                         </div>
                                                                     ) : !showLiNewTmplForm ? (
-                                                                        <div style={{ padding: '10px', textAlign: 'center', fontSize: '12px', color: '#6b7280' }}>No saved templates.</div>
+                                                                        <div className="p-2.5 text-center text-[12px] text-gray-500 dark:text-gray-400">No saved templates.</div>
                                                                     ) : null}
+
                                                                     {/* Create new template form */}
                                                                     {showLiNewTmplForm && liNewTmplCategory === 'linkedin_followup' ? (
-                                                                        <div style={{ padding: '10px', borderTop: liTemplates.filter(t => t.category === 'linkedin_followup').length > 0 ? '1px solid #bfdbfe' : 'none' }}>
-                                                                            <input value={liNewTmplName} onChange={e => setLiNewTmplName(e.target.value)} placeholder="Template name..." style={{ width: '100%', border: '1px solid #bfdbfe', borderRadius: '6px', padding: '6px 8px', fontSize: '12px', outline: 'none', marginBottom: '6px', boxSizing: 'border-box', fontFamily: 'inherit' }} />
-                                                                            <textarea value={liNewTmplBody} onChange={e => setLiNewTmplBody(e.target.value)} placeholder={'Hi {{first_name}}, great connecting! I wanted to share...'} rows={3} style={{ width: '100%', border: '1px solid #bfdbfe', borderRadius: '6px', padding: '6px 8px', fontSize: '12px', outline: 'none', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: '6px' }} />
-                                                                            <div style={{ display: 'flex', gap: '6px' }}>
-                                                                                <button onClick={saveLiTemplate} disabled={liNewTmplSaving} style={{ flex: 1, background: '#1e40af', color: '#fff', border: 'none', borderRadius: '6px', padding: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>{liNewTmplSaving ? 'Saving...' : '💾 Save'}</button>
-                                                                                <button onClick={() => setShowLiNewTmplForm(false)} style={{ background: '#f3f4f6', border: 'none', borderRadius: '6px', padding: '6px 10px', fontSize: '12px', color: '#6b7280', cursor: 'pointer' }}>Cancel</button>
+                                                                        <div className={`p-2.5 ${liTemplates.filter(t => t.category === 'linkedin_followup').length > 0 ? 'border-t border-blue-200 dark:border-blue-900' : 'border-t-0'}`}>
+                                                                            <input value={liNewTmplName} onChange={e => setLiNewTmplName(e.target.value)} placeholder="Template name..." className="w-full border border-blue-200 dark:border-blue-900 rounded-md p-1.5 px-2 text-[12px] bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 outline-none mb-1.5 box-border font-inherit" />
+                                                                            <textarea value={liNewTmplBody} onChange={e => setLiNewTmplBody(e.target.value)} placeholder={'Hi {{first_name}}, great connecting! I wanted to share...'} rows={3} className="w-full border border-blue-200 dark:border-blue-900 rounded-md p-1.5 px-2 text-[12px] bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 outline-none resize-vertical font-inherit box-border mb-1.5" />
+                                                                            <div className="flex gap-1.5">
+                                                                                <button onClick={saveLiTemplate} disabled={liNewTmplSaving} className="flex-1 bg-blue-700 dark:bg-blue-600 text-white border-none rounded-md p-1.5 text-[12px] font-semibold cursor-pointer disabled:opacity-50">{liNewTmplSaving ? 'Saving...' : '💾 Save'}</button>
+                                                                                <button onClick={() => setShowLiNewTmplForm(false)} className="bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 border-none rounded-md p-1.5 px-2.5 text-[12px] cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">Cancel</button>
                                                                             </div>
                                                                         </div>
                                                                     ) : (
-                                                                        <div style={{ padding: '6px 10px', borderTop: liTemplates.filter(t => t.category === 'linkedin_followup').length > 0 ? '1px solid #bfdbfe' : 'none' }}>
+                                                                        <div className={`p-1.5 px-2.5 ${liTemplates.filter(t => t.category === 'linkedin_followup').length > 0 ? 'border-t border-blue-200 dark:border-blue-900' : 'border-t-0'}`}>
                                                                             <button onClick={() => { setLiNewTmplCategory('linkedin_followup'); setShowLiNewTmplForm(true); }}
-                                                                                style={{ width: '100%', background: 'none', border: '1px dashed #93c5fd', borderRadius: '6px', padding: '5px', fontSize: '12px', fontWeight: 600, color: '#1e40af', cursor: 'pointer', textAlign: 'center' }}>
+                                                                                    className="w-full bg-transparent border border-dashed border-blue-300 dark:border-blue-800 rounded-md p-1 text-[12px] font-semibold text-blue-700 dark:text-blue-400 cursor-pointer text-center hover:bg-blue-50 dark:hover:bg-blue-950/20">
                                                                                 + Create New Template
                                                                             </button>
                                                                         </div>
                                                                     )}
                                                                 </div>
                                                             )}
+
                                                             {/* Selected template badge */}
                                                             {selectedLiFollowTmplId && !showLiFollowTmplPanel && (() => {
                                                                 const tmpl = liTemplates.find(t => t.id === selectedLiFollowTmplId);
                                                                 return tmpl ? (
-                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '5px 8px', background: '#dbeafe', border: '1px solid #93c5fd', borderRadius: '6px', fontSize: '12px', marginBottom: '6px' }}>
-                                                                        <span style={{ fontWeight: 600, color: '#1e40af', flex: 1 }}>✓ {tmpl.name}</span>
-                                                                        <button onClick={() => { setSelectedLiFollowTmplId(''); }} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '12px', padding: 0 }}>✕</button>
+                                                                    <div className="flex items-center gap-1.5 p-1 px-2 bg-blue-100 dark:bg-blue-950/40 border border-blue-300 dark:border-blue-900 rounded-md text-[12px] mb-1.5">
+                                                                        <span className="font-semibold text-blue-700 dark:text-blue-400 flex-1">✓ {tmpl.name}</span>
+                                                                        <button onClick={() => { setSelectedLiFollowTmplId(''); }} className="bg-transparent border-none text-gray-400 dark:text-gray-500 cursor-pointer text-[12px] p-0 hover:text-gray-600">✕</button>
                                                                     </div>
                                                                 ) : null;
                                                             })()}
+
                                                             <textarea
                                                                 value={followMsg}
                                                                 onChange={e => setFollowMsg(e.target.value)}
                                                                 placeholder={'Hi {{first_name}}, great connecting! I wanted to reach out about how we help companies like {{company}}...'}
                                                                 rows={3}
-                                                                style={{ width: '100%', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '8px 10px', fontSize: '13px', background: '#fff', outline: 'none', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                                                                className="w-full border border-blue-200 dark:border-blue-900 rounded-lg p-2 px-2.5 text-[13px] bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 outline-none resize-vertical font-inherit box-border"
                                                             />
-                                                            <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '3px' }}>Placeholders: {'{{first_name}}'} {'{{last_name}}'} {'{{company}}'} {'{{title}}'} <span style={{ color: '#0b1957', fontWeight: 600 }}>{'{{web_insight}}'} {'{{recent_post}}'} {'{{article}}'} {'{{news}}'}</span> <span style={{ color: '#0b1957' }}>← AI-personalised at send time</span></div>
+                                                            <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">
+                                                                Placeholders: {'{{first_name}}'} {'{{last_name}}'} {'{{company}}'} {'{{title}}'}{' '}
+                                                                <span className="text-[#0b1957] dark:text-blue-400 font-semibold">{'{{web_insight}}'} {'{{recent_post}}'} {'{{article}}'} {'{{news}}'}</span>{' '}
+                                                                <span className="text-gray-400 dark:text-gray-500">← AI-personalised at send time</span>
+                                                            </div>
 
                                                             {/* ── AI Generate inline panel (follow-up) ── */}
                                                             {showAiFollowPanel && <AiMsgContextPanel
@@ -8034,17 +8079,43 @@ function CheckpointFormInline({
 
                     {/* Step 3: Duration */}
                     {step === 3 && (
-                        <div className="flex flex-col gap-2">
-                            {['7', '14', '30', '60'].map((d) => (
-                                <div key={d} onClick={() => setDays(d)}
-                                     className={`p-3 rounded-xl cursor-pointer border ${days === d ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'}`}>
-                                    <div className="font-semibold text-gray-900 dark:text-gray-100">{d} days</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {['7', '14', '30', '60', '90'].map((d, i) => {
+                                const dNum = parseInt(d);
+                                const wd = Math.floor(dNum * 5 / 7);
+                                const perDay = Math.min(LINKEDIN_DAILY_LIMIT, Math.max(1, qualifiedLeadCount));
+                                const totalOverDuration = perDay * wd;
+                                const capped = qualifiedLeadCount > LINKEDIN_DAILY_LIMIT;
+                                return (
+                                    <div key={d} onClick={() => setDays(d)} style={optStyle(days === d)}>
+                                        <div style={numBadge(i + 1, days === d)}>{days === d ? '✓' : i + 1}</div>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontWeight: 600 }}>{d} days</div>
+                                            <div style={{ fontSize: '11px', color: capped ? '#b45309' : '#6b7280', marginTop: '2px' }}>
+                                                {capped
+                                                    ? `Targets ${perDay}/day (capped from ${qualifiedLeadCount}; LinkedIn safe limit), ~${totalOverDuration} new leads over ${wd} working days`
+                                                    : `Targets ${perDay} new leads/day via pagination, ~${totalOverDuration} leads over ${wd} working days`}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            <div style={{ marginTop: '8px' }}>
+                                <input type="number" value={days} onChange={e => setDays(e.target.value)}
+                                    placeholder="Or enter custom days..."
+                                    style={{ width: '100%', border: '1px solid #e0eaf5', borderRadius: '10px', padding: '10px 14px', fontSize: '14px', outline: 'none', background: '#fafbff', fontFamily: 'inherit' }}
+                                />
+                            </div>
+                            {/* Warning when prospect-time qualified count exceeds LinkedIn's safe daily limit */}
+                            {exceedsLinkedInLimits && (
+                                <div style={{
+                                    padding: '10px 14px', borderRadius: '10px', fontSize: '12px', lineHeight: 1.5,
+                                    background: '#fef3c7', border: '1px solid #f59e0b', color: '#92400e', marginTop: '4px',
+                                }}>
+                                    <strong>LinkedIn safe-limit cap:</strong> Your ICP threshold matches {qualifiedLeadCount} leads, but LinkedIn's safe daily action limit is {LINKEDIN_DAILY_LIMIT}.
+                                    The campaign will source {safeLeadsPerDay} new qualified leads/day via pagination, totalling ~{safeLeadsPerDay * workingDays} over {workingDays} working days.
                                 </div>
-                            ))}
-                            <input type="number" value={days} onChange={e => setDays(e.target.value)}
-                                   placeholder="Custom days..."
-                                   className="w-full border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-sm bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none"
-                            />
+                            )}
                         </div>
                     )}
 
@@ -8093,8 +8164,6 @@ function CheckpointFormInline({
                                         <path d="M15 18l-6-6 6-6" />
                                     </svg>
                                 </button>
-
-                                {/* Forward/Launch Button */}
                                 {step < totalSteps - 1 ? (
                                     <button
                                         disabled={!canNext()}
@@ -8131,6 +8200,7 @@ function CheckpointFormInline({
         </div>
     );
 }
+
 /* ═══════════════════════════════════════════════
    TARGETING FORM INLINE (typeform-style in chat)
    ═══════════════════════════════════════════════ */
@@ -8146,10 +8216,10 @@ const TG_QUESTIONS = [
 ];
 
 function TargetingFormInline({
-                                 step, setStep, nationality, setNationality, experienceLevel, setExperienceLevel,
-                                 companySize, setCompanySize, companyAge, setCompanyAge, education, setEducation,
-                                 skills, setSkills, postedRecently, setPostedRecently, currentTargeting, onConfirm, loading, setLoading
-                             }: {
+    step, setStep, nationality, setNationality, experienceLevel, setExperienceLevel,
+    companySize, setCompanySize, companyAge, setCompanyAge, education, setEducation,
+    skills, setSkills, postedRecently, setPostedRecently, currentTargeting, onConfirm, loading, setLoading
+}: {
     step: number; setStep: (s: number) => void;
     nationality: string[]; setNationality: React.Dispatch<React.SetStateAction<string[]>>;
     experienceLevel: string[]; setExperienceLevel: React.Dispatch<React.SetStateAction<string[]>>;
@@ -8217,7 +8287,7 @@ function TargetingFormInline({
     return (
         <div className="adv-bubble adv-bubble-ai fadeUp" style={{ marginBottom: '16px' }}>
             {/* Dark mode filter applied to the wrapper container of the visualizer */}
-            <div className="adv-ai-avatar adv-ai-avatar-viz dark:brightness-0">
+            <div className="adv-ai-avatar adv-ai-avatar-viz dark:opacity-85">
                 <AgentVisualizer state="idle" size={36} />
             </div>
             <div style={{ flex: 1, maxWidth: '540px' }}>
@@ -8235,6 +8305,7 @@ function TargetingFormInline({
                 <div className="text-[15px] font-semibold text-gray-900 dark:text-gray-100 mb-4 leading-relaxed">
                     {q.question}
                 </div>
+
                 <div style={baseBox}>
                     {/* Step 0: Nationality */}
                     {step === 0 && (
@@ -8484,9 +8555,11 @@ function TargetingFormInline({
                     </div>
                 </div>
             </div>
+
         </div>
     );
 }
+
 /* ═══════════════════════════════════════════════
    AI MESSAGE CONTEXT PANEL
    Inline expandable panel for AI Generate inputs.
