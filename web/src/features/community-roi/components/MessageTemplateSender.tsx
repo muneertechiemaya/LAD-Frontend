@@ -1,9 +1,40 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Send, Clock, Search, CheckCircle, AlertCircle, ChevronRight, ChevronLeft } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Send, Clock, Search, CheckCircle, AlertCircle, ChevronRight, ChevronLeft, X } from 'lucide-react';
 import { useScheduleMessages } from '@lad/frontend-features/community-roi';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
+
+// Render the modal at <body> via a portal so its `position: fixed` actually
+// pins to the viewport. Without this, any ancestor with a CSS transform / filter
+// / will-change becomes the fixed-positioning containing block — which happens
+// on the dashboard Overview because @dnd-kit applies a transform to widget
+// wrappers, clipping this modal inside the widget card (no visible footer,
+// broken scrolling). Falls through cleanly during SSR (document undefined).
+function ModalPortal({ children }: { children: React.ReactNode }) {
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => { setMounted(true); }, []);
+  if (!mounted || typeof document === 'undefined') return null;
+  return createPortal(children, document.body);
+}
+
+// Small × button shown in every step's header. The component originally lived
+// in a flow with a guaranteed Cancel/Back path, but once it's invoked from
+// elsewhere (e.g. the Overview Re-engage widget) callers expect a top-right
+// close affordance.
+function CloseButton({ onClose }: { onClose: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClose}
+      aria-label="Close"
+      className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+    >
+      <X className="w-5 h-5" />
+    </button>
+  );
+}
 
 interface MetaTemplate {
   name: string;
@@ -501,8 +532,10 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
   // ─── STEP 1: Template Selection ────────────────────────────────────────────
   if (step === 'template') {
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-2xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] flex flex-col">
+      <ModalPortal>
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
+        <div className="relative bg-white rounded-2xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+          <CloseButton onClose={onClose} />
           <h2 className="text-2xl font-bold text-slate-900 mb-1">Send Message</h2>
           <p className="text-sm text-slate-500 mb-5">Select a Meta-approved template to send</p>
 
@@ -614,6 +647,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
           </div>
         </div>
       </div>
+      </ModalPortal>
     );
   }
 
@@ -622,8 +656,10 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
     const paramCount = selectedTemplate?.parameter_count ?? 0;
 
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-2xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] flex flex-col">
+      <ModalPortal>
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
+        <div className="relative bg-white rounded-2xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+          <CloseButton onClose={onClose} />
           <h2 className="text-2xl font-bold text-slate-900 mb-1">Map Parameters</h2>
           <p className="text-sm text-slate-500 mb-5">
             Template: <span className="font-semibold text-indigo-600">{displayName(selectedTemplate?.name ?? '')}</span>
@@ -793,14 +829,17 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
           </div>
         </div>
       </div>
+      </ModalPortal>
     );
   }
 
   // ─── STEP 3: Member Selection ───────────────────────────────────────────────
   if (step === 'members') {
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-2xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+      <ModalPortal>
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
+        <div className="relative bg-white rounded-2xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+          <CloseButton onClose={onClose} />
           <h2 className="text-2xl font-bold text-slate-900 mb-1">Select Recipients</h2>
           <p className="text-sm text-slate-500 mb-5">
             Template: <span className="font-semibold text-indigo-600">{displayName(selectedTemplate?.name ?? '')}</span>
@@ -891,13 +930,16 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
           </div>
         </div>
       </div>
+      </ModalPortal>
     );
   }
 
   // ─── STEP 4: Confirm / Schedule ────────────────────────────────────────────
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl p-8 max-w-2xl w-full mx-4">
+    <ModalPortal>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
+      <div className="relative bg-white rounded-2xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <CloseButton onClose={onClose} />
         <h2 className="text-2xl font-bold text-slate-900 mb-5">
           {sendMode === 'instant' ? 'Confirm Send' : 'Schedule Message'}
         </h2>
@@ -971,6 +1013,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 };
 
