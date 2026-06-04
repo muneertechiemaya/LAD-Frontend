@@ -446,10 +446,11 @@ function ActivityHeatmap({ events, days = 30 }: { events: ProspectEvent[]; days?
           const meta = CH[c];
           const Icon = meta.Icon;
           const sum = cells.reduce((a, b) => a + b, 0);
+          const isIntentChannel = c === 'intent';
           return (
             <div key={c} className="flex items-center gap-3">
               <div className="flex items-center gap-1.5 w-24 shrink-0">
-                <Icon className="w-3.5 h-3.5" style={{ color: meta.color }} />
+                <Icon className={`w-3.5 h-3.5 ${isIntentChannel ? 'text-[#172560] dark:text-[#60a5fa]' : ''}`}                      style={isIntentChannel ? undefined : { color: meta?.color || 'currentColor' }}/>
                 <span className="text-[11.5px] font-medium text-[#172560] dark:text-white">{meta.label}</span>
               </div>
               <div

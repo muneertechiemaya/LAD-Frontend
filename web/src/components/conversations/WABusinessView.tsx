@@ -327,32 +327,32 @@ function ContactModal({ onClose, onSend }: { onClose: () => void; onSend: (p: Ri
     onSend({ type: 'contact', contactName: name.trim(), contactPhone: phone.trim() });
   };
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
-        <div className="px-5 py-4 border-b flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-teal-500 flex items-center justify-center"><Phone className="w-4 h-4 text-white" /></div>
-            <h3 className="font-semibold">Share Contact</h3>
-          </div>
-          <button type="button" aria-label="Close" onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
-        </div>
-        <div className="p-5 space-y-3">
-          {[{ label: 'Full Name *', value: name, set: setName, ph: 'John Doe' }, { label: 'Phone *', value: phone, set: setPhone, ph: '+971501234567' }].map(f => (
-            <div key={f.label}>
-              <label className="text-xs font-medium text-gray-500">{f.label}</label>
-              <input value={f.value} onChange={e => f.set(e.target.value)} placeholder={f.ph}
-                className="mt-1 w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none" />
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+        <div className="bg-white dark:bg-[#0b142e] rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden border dark:border-[#262831]">
+          <div className="px-5 py-4 border-b dark:border-[#262831] flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-teal-500 flex items-center justify-center"><Phone className="w-4 h-4 text-white" /></div>
+              <h3 className="font-semibold text-gray-900 dark:text-white">Share Contact</h3>
             </div>
-          ))}
-        </div>
-        <div className="px-5 py-4 border-t flex justify-end">
-          <button type="button" onClick={handleSend} disabled={!name.trim() || !phone.trim()}
-            className="px-4 py-2 text-sm font-semibold bg-teal-500 text-white rounded-xl hover:bg-teal-600 disabled:opacity-40">
-            Share Contact
-          </button>
+            <button type="button" aria-label="Close" onClick={onClose}><X className="w-5 h-5 text-gray-400 dark:text-[#7a8ba3] hover:text-gray-600 dark:hover:text-white" /></button>
+          </div>
+          <div className="p-5 space-y-3">
+            {[{ label: 'Full Name *', value: name, set: setName, ph: 'John Doe' }, { label: 'Phone *', value: phone, set: setPhone, ph: '+971501234567' }].map(f => (
+                <div key={f.label}>
+                  <label className="text-xs font-medium text-gray-500 dark:text-[#7a8ba3]">{f.label}</label>
+                  <input value={f.value} onChange={e => f.set(e.target.value)} placeholder={f.ph}
+                         className="mt-1 w-full px-3 py-2.5 border border-gray-200 dark:border-[#262831] bg-white dark:bg-[#1a2a43] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 rounded-xl text-sm focus:outline-none focus:border-teal-500 dark:focus:border-teal-500" />
+                </div>
+            ))}
+          </div>
+          <div className="px-5 py-4 border-t dark:border-[#262831] flex justify-end">
+            <button type="button" onClick={handleSend} disabled={!name.trim() || !phone.trim()}
+                    className="px-4 py-2 text-sm font-semibold bg-teal-500 text-white rounded-xl hover:bg-teal-600 disabled:opacity-40 transition-colors">
+              Share Contact
+            </button>
+          </div>
         </div>
       </div>
-    </div>
   );
 }
 
@@ -366,42 +366,42 @@ function EventModal({ onClose, onSend }: { onClose: () => void; onSend: (p: Rich
     onSend({ type: 'text', content: text });
   };
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
-        <div className="px-5 py-4 border-b flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center"><Calendar className="w-4 h-4 text-white" /></div>
-            <h3 className="font-semibold">Share Event</h3>
-          </div>
-          <button type="button" onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
-        </div>
-        <div className="p-5 space-y-3">
-          <div>
-            <label className="text-xs font-medium text-gray-500">Event Title *</label>
-            <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Team Meeting"
-              className="mt-1 w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none" />
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label htmlFor="event-date" className="text-xs font-medium text-gray-500">Date *</label>
-              <input id="event-date" type="date" value={date} onChange={e => setDate(e.target.value)}
-                className="mt-1 w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none" />
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+        <div className="bg-white dark:bg-[#0b142e] rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden border dark:border-[#262831]">
+          <div className="px-5 py-4 border-b dark:border-[#262831] flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center"><Calendar className="w-4 h-4 text-white" /></div>
+              <h3 className="font-semibold text-gray-900 dark:text-white">Share Event</h3>
             </div>
+            <button type="button" onClick={onClose}><X className="w-5 h-5 text-gray-400 dark:text-[#7a8ba3] hover:text-gray-600 dark:hover:text-white" /></button>
+          </div>
+          <div className="p-5 space-y-3">
             <div>
-              <label htmlFor="event-time" className="text-xs font-medium text-gray-500">Time</label>
-              <input id="event-time" type="time" value={time} onChange={e => setTime(e.target.value)}
-                className="mt-1 w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none" />
+              <label className="text-xs font-medium text-gray-500 dark:text-[#7a8ba3]">Event Title *</label>
+              <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Team Meeting"
+                     className="mt-1 w-full px-3 py-2.5 border border-gray-200 dark:border-[#262831] bg-white dark:bg-[#1a2a43] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 rounded-xl text-sm focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-500" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label htmlFor="event-date" className="text-xs font-medium text-gray-500 dark:text-[#7a8ba3]">Date *</label>
+                <input id="event-date" type="date" value={date} onChange={e => setDate(e.target.value)}
+                       className="mt-1 w-full px-3 py-2.5 border border-gray-200 dark:border-[#262831] bg-white dark:bg-[#1a2a43] text-gray-900 dark:text-white rounded-xl text-sm focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-500 color-scheme-light dark:color-scheme-dark" />
+              </div>
+              <div>
+                <label htmlFor="event-time" className="text-xs font-medium text-gray-500 dark:text-[#7a8ba3]">Time</label>
+                <input id="event-time" type="time" value={time} onChange={e => setTime(e.target.value)}
+                       className="mt-1 w-full px-3 py-2.5 border border-gray-200 dark:border-[#262831] bg-white dark:bg-[#1a2a43] text-gray-900 dark:text-white rounded-xl text-sm focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-500 color-scheme-light dark:color-scheme-dark" />
+              </div>
             </div>
           </div>
-        </div>
-        <div className="px-5 py-4 border-t flex justify-end">
-          <button type="button" onClick={handleSend} disabled={!title.trim() || !date}
-            className="px-4 py-2 text-sm font-semibold bg-indigo-500 text-white rounded-xl hover:bg-indigo-600 disabled:opacity-40">
-            Share Event
-          </button>
+          <div className="px-5 py-4 border-t dark:border-[#262831] flex justify-end">
+            <button type="button" onClick={handleSend} disabled={!title.trim() || !date}
+                    className="px-4 py-2 text-sm font-semibold bg-indigo-500 text-white rounded-xl hover:bg-indigo-600 disabled:opacity-40 transition-colors">
+              Share Event
+            </button>
+          </div>
         </div>
       </div>
-    </div>
   );
 }
 
@@ -423,41 +423,43 @@ function LocationModal({ onClose, onSend }: { onClose: () => void; onSend: (p: R
     else if (manual.trim()) onSend({ type: 'location', locationName: manual.trim(), locationAddress: manual.trim(), latitude: 0, longitude: 0 });
   };
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
-        <div className="px-5 py-4 border-b flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center"><MapPin className="w-4 h-4 text-white" /></div>
-            <h3 className="font-semibold">Share Location</h3>
-          </div>
-          <button type="button" onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
-        </div>
-        <div className="p-5 space-y-4">
-          <button type="button" onClick={getLocation} disabled={gpsStatus === 'loading'}
-            className="w-full flex items-center gap-3 p-3 border border-gray-200 rounded-xl hover:bg-green-50 transition-colors">
-            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-              {gpsStatus === 'loading' ? <Loader2 className="w-5 h-5 text-green-600 animate-spin" /> : <MapPin className="w-5 h-5 text-green-600" />}
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+        <div className="bg-white dark:bg-[#0b142e] rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden border dark:border-[#262831]">
+          <div className="px-5 py-4 border-b dark:border-[#262831] flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center"><MapPin className="w-4 h-4 text-white" /></div>
+              <h3 className="font-semibold text-gray-900 dark:text-white">Share Location</h3>
             </div>
-            <div className="text-left">
-              <p className="text-sm font-semibold">{gpsStatus === 'loading' ? 'Getting location…' : gpsStatus === 'done' ? '✓ Location found' : 'Send Current Location'}</p>
-              {coords && <p className="text-xs text-gray-500">{coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}</p>}
-              {gpsStatus === 'error' && <p className="text-xs text-red-500">Location access denied</p>}
-            </div>
-          </button>
-          <div>
-            <label className="text-xs font-medium text-gray-500">Or enter address</label>
-            <input value={manual} onChange={e => setManual(e.target.value)} placeholder="e.g. Dubai Mall, UAE"
-              className="mt-1 w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none" />
+            <button type="button" onClick={onClose}><X className="w-5 h-5 text-gray-400 dark:text-[#7a8ba3] hover:text-gray-600 dark:hover:text-white" /></button>
           </div>
-        </div>
-        <div className="px-5 py-4 border-t flex justify-end">
-          <button type="button" onClick={handleSend} disabled={!coords && !manual.trim()}
-            className="px-4 py-2 text-sm font-semibold bg-green-500 text-white rounded-xl hover:bg-green-600 disabled:opacity-40">
-            Share Location
-          </button>
+          <div className="p-5 space-y-4">
+            <button type="button" onClick={getLocation} disabled={gpsStatus === 'loading'}
+                    className="w-full flex items-center gap-3 p-3 border border-gray-200 dark:border-[#262831] bg-white dark:bg-[#1a2a43] rounded-xl hover:bg-green-50/50 dark:hover:bg-[#162e45] transition-colors group">
+              <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-950/50 flex items-center justify-center shrink-0">
+                {gpsStatus === 'loading' ? <Loader2 className="w-5 h-5 text-green-600 dark:text-green-400 animate-spin" /> : <MapPin className="w-5 h-5 text-green-600 dark:text-green-400" />}
+              </div>
+              <div className="text-left">
+                <p className="text-sm font-semibold text-gray-800 dark:text-slate-200 group-hover:text-green-700 dark:group-hover:text-green-400">
+                  {gpsStatus === 'loading' ? 'Getting location…' : gpsStatus === 'done' ? '✓ Location found' : 'Send Current Location'}
+                </p>
+                {coords && <p className="text-xs text-gray-500 dark:text-[#7a8ba3]">{coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}</p>}
+                {gpsStatus === 'error' && <p className="text-xs text-red-500 dark:text-red-400">Location access denied</p>}
+              </div>
+            </button>
+            <div>
+              <label className="text-xs font-medium text-gray-500 dark:text-[#7a8ba3]">Or enter address</label>
+              <input value={manual} onChange={e => setManual(e.target.value)} placeholder="e.g. Dubai Mall, UAE"
+                     className="mt-1 w-full px-3 py-2.5 border border-gray-200 dark:border-[#262831] bg-white dark:bg-[#1a2a43] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 rounded-xl text-sm focus:outline-none focus:border-green-500 dark:focus:border-green-500" />
+            </div>
+          </div>
+          <div className="px-5 py-4 border-t dark:border-[#262831] flex justify-end">
+            <button type="button" onClick={handleSend} disabled={!coords && !manual.trim()}
+                    className="px-4 py-2 text-sm font-semibold bg-green-500 text-white rounded-xl hover:bg-green-600 disabled:opacity-40 transition-colors">
+              Share Location
+            </button>
+          </div>
         </div>
       </div>
-    </div>
   );
 }
 
@@ -466,39 +468,39 @@ function StickerPicker({ onSelect, onClose }: { onSelect: (s: string) => void; o
   const packs = Object.entries(STICKER_PACKS);
   const currentPack = STICKER_PACKS[activePack];
   return (
-    <div className="fixed left-3 right-3 bottom-20 z-[10000] bg-white border border-gray-200 rounded-2xl shadow-xl w-auto max-h-[60vh] flex flex-col overflow-hidden lg:absolute lg:left-0 lg:right-auto lg:bottom-full lg:mb-2 lg:w-72 lg:max-h-[320px]">
-      <div className="px-4 py-2 border-b flex items-center justify-between shrink-0">
-        <span className="font-semibold text-sm">Stickers</span>
-        <button type="button" onClick={onClose}><X className="w-4 h-4 text-gray-400" /></button>
-      </div>
-      <div className="flex-1 overflow-y-auto px-3 py-2">
-        <div className="grid grid-cols-7 gap-1">
-          {currentPack.emojis.map((emoji) => (
-            <button
-              type="button"
-              key={emoji}
-              onMouseDown={(e) => {
-                // preventDefault stops the textarea from losing focus before setText fires
-                e.preventDefault();
-                onSelect(emoji);
-              }}
-              className="w-8 h-8 flex items-center justify-center text-xl hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              {emoji}
-            </button>
+      <div className="fixed left-3 right-3 bottom-20 z-[10000] bg-white dark:bg-[#0b142e] border border-gray-200 dark:border-[#262831] rounded-2xl shadow-xl w-auto max-h-[60vh] flex flex-col overflow-hidden lg:absolute lg:left-0 lg:right-auto lg:bottom-full lg:mb-2 lg:w-72 lg:max-h-[320px]">
+        <div className="px-4 py-2 border-b dark:border-[#262831] flex items-center justify-between shrink-0">
+          <span className="font-semibold text-sm text-gray-900 dark:text-white">Stickers</span>
+          <button type="button" onClick={onClose}><X className="w-4 h-4 text-gray-400 dark:text-[#7a8ba3] hover:text-gray-600 dark:hover:text-white" /></button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-3 py-2">
+          <div className="grid grid-cols-7 gap-1">
+            {currentPack.emojis.map((emoji) => (
+                <button
+                    type="button"
+                    key={emoji}
+                    onMouseDown={(e) => {
+                      // preventDefault stops the textarea from losing focus before setText fires
+                      e.preventDefault();
+                      onSelect(emoji);
+                    }}
+                    className="w-8 h-8 flex items-center justify-center text-xl hover:bg-gray-100 dark:hover:bg-[#1a2a43] rounded-lg transition-colors"
+                >
+                  {emoji}
+                </button>
+            ))}
+          </div>
+        </div>
+        <div className="px-2 py-1.5 border-t dark:border-[#262831] flex items-center gap-1 overflow-x-auto shrink-0">
+          {packs.map(([key, pack]) => (
+              <button type="button" key={key} onClick={() => setActivePack(key)}
+                      className={cn('px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors',
+                          activePack === key ? 'bg-blue-100 dark:bg-[#1e293b] text-blue-600 dark:text-blue-400' : 'hover:bg-gray-100 dark:hover:bg-[#1a2a43] text-gray-600 dark:text-[#7a8ba3]')}>
+                {pack.label.split(' ')[0]}
+              </button>
           ))}
         </div>
       </div>
-      <div className="px-2 py-1.5 border-t flex items-center gap-1 overflow-x-auto shrink-0">
-        {packs.map(([key, pack]) => (
-          <button type="button" key={key} onClick={() => setActivePack(key)}
-            className={cn('px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors',
-              activePack === key ? 'bg-blue-100 text-blue-600' : 'hover:bg-gray-100 text-gray-600')}>
-            {pack.label.split(' ')[0]}
-          </button>
-        ))}
-      </div>
-    </div>
   );
 }
 
@@ -2711,7 +2713,7 @@ function WABASidebar({
                       <span className="font-medium text-[16px] truncate text-foreground dark:text-white">{conv.contact?.name}</span>
                       {/* Conversation stage (context_status) as a small WhatsApp-style colour
                           tag — colour only; the stage name shows on hover, not as repeated text. */}
-                      {(() => {
+                   TT   {(() => {
                         const stage = getConversationContextStatus(conv);
                         if (!stage) return null;
                         const tagColor = WABA_STAGE_TAG_HEX[stage.toLowerCase()] || WABA_STAGE_TAG_DEFAULT;
@@ -2726,19 +2728,23 @@ function WABASidebar({
                       {time}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-1 min-w-0 overflow-hidden">
+                  <div className="flex justify-between items-center w-full gap-2">
+                    {/* Added flex-1 and removed overflow-hidden from here */}
+                    <div className="flex items-center gap-1 min-w-0 flex-1">
                       {(lastMsg?.isOutgoing || lastMsg?.role === 'assistant' || lastMsg?.role === 'human_agent') && !conv.unreadCount && (
-  <MessageTicks status={lastMsg?.status || lastMsg?.message_status} />
-)}
-                      <span className="text-[14px] text-muted-foreground dark:text-[#a2a2a2] truncate max-w-[80%]">
+                          <MessageTicks status={lastMsg?.status || lastMsg?.message_status}/>
+                      )}
+                      {/* Removed max-w-[80%] and kept truncate */}
+                      <span className="text-[14px] text-muted-foreground dark:text-[#a2a2a2] truncate">
                         {lastMsg?.content || 'Started conversation'}
                       </span>
                     </div>
+
                     {conv.unreadCount ? (
-                      <div className="w-[20px] h-[20px] rounded-full bg-[#25D366] dark:bg-[#00a884] text-[11px] font-bold text-white dark:text-[#111b21] flex items-center justify-center">
-                        {conv.unreadCount}
-                      </div>
+                        <div
+                            className="w-[20px] h-[20px] shrink-0 rounded-full bg-[#25D366] dark:bg-[#00a884] text-[11px] font-bold text-white dark:text-[#111b21] flex items-center justify-center">
+                          {conv.unreadCount}
+                        </div>
                     ) : null}
                   </div>
                 </div>

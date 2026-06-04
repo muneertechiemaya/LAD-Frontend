@@ -323,7 +323,7 @@ export function CreateWabaTemplateModal({ open, onOpenChange, onCreated }: Creat
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-h-[90vh] flex flex-col gap-0 p-0">
+      <DialogContent className="sm:w-[90vw] sm:h-[90vh] flex flex-col p-0 overflow-hidden">
         <DialogHeader className="px-6 pt-6 pb-4 border-b">
           <DialogTitle className="flex items-center gap-2">
             Create WhatsApp Template
@@ -655,68 +655,67 @@ export function CreateWabaTemplateModal({ open, onOpenChange, onCreated }: Creat
             </>
           ) : (
             /* ── Preview tab ── */
-            <div className="space-y-4">
-              <div className="max-w-xs mx-auto">
-                {/* Phone mock */}
-                <div className="bg-[#e5ddd5] rounded-2xl p-4 min-h-[200px]">
-                  <div className="bg-white rounded-xl shadow-sm overflow-hidden max-w-[280px] mx-auto">
-                    {/* Header */}
-                    {headerFmt !== 'NONE' && (
-                      <div className="bg-slate-100 px-3 py-2 border-b border-slate-200">
-                        {headerFmt === 'TEXT' ? (
-                          <p className="text-sm font-semibold text-slate-800">{previewHeader}</p>
-                        ) : (
-                          <div className="flex items-center gap-2 text-slate-500 text-xs">
-                            <span className="uppercase font-mono">{headerFmt}</span>
-                            {uploadStatus === 'done' && mediaFileName
-                              ? <span className="text-green-600 truncate max-w-[160px]">{mediaFileName}</span>
-                              : <span className="text-amber-500">Upload required</span>}
+              <div className="space-y-4">
+                <div className="max-w-xs mx-auto">
+                  {/* Phone mock */}
+                  <div className="bg-[#e5ddd5] dark:bg-[#1a202c] rounded-2xl p-4 min-h-[200px]">
+                    <div className="bg-white dark:bg-[#0b142e] rounded-xl shadow-sm overflow-hidden max-w-[280px] mx-auto border dark:border-[#262831]">
+                      {/* Header */}
+                      {headerFmt !== 'NONE' && (
+                          <div className="bg-slate-100 dark:bg-[#151f38] px-3 py-2 border-b border-slate-200 dark:border-[#262831]">
+                            {headerFmt === 'TEXT' ? (
+                                <p className="text-sm font-semibold text-slate-800 dark:text-white">{previewHeader}</p>
+                            ) : (
+                                <div className="flex items-center gap-2 text-slate-500 dark:text-[#7a8ba3] text-xs">
+                                  <span className="uppercase font-mono">{headerFmt}</span>
+                                  {uploadStatus === 'done' && mediaFileName
+                                      ? <span className="text-green-600 dark:text-green-400 truncate max-w-[160px]">{mediaFileName}</span>
+                                      : <span className="text-amber-500 dark:text-amber-400">Upload required</span>}
+                                </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    )}
+                      )}
 
-                    {/* Body */}
-                    <div className="px-3 py-3">
-                      <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">
-                        {previewBody || <span className="text-slate-400 italic">Body text appears here...</span>}
-                      </p>
+                      {/* Body */}
+                      <div className="px-3 py-3">
+                        <p className="text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">
+                          {previewBody || <span className="text-slate-400 dark:text-[#7a8ba3] italic">Body text appears here...</span>}
+                        </p>
+                      </div>
+
+                      {/* Footer */}
+                      {footerText && (
+                          <div className="px-3 pb-2">
+                            <p className="text-xs text-slate-400 dark:text-[#7a8ba3]/70">{footerText}</p>
+                          </div>
+                      )}
+
+                      {/* Buttons */}
+                      {buttons.filter(b => b.text).length > 0 && (
+                          <div className="border-t border-slate-100 dark:border-[#262831]">
+                            {buttons.filter(b => b.text).map(b => (
+                                <div key={b.id} className="px-3 py-2 text-center text-xs text-blue-600 dark:text-blue-400 font-medium border-b border-slate-100 dark:border-[#262831] last:border-0">
+                                  {b.text}
+                                </div>
+                            ))}
+                          </div>
+                      )}
                     </div>
+                  </div>
 
-                    {/* Footer */}
-                    {footerText && (
-                      <div className="px-3 pb-2">
-                        <p className="text-xs text-slate-400">{footerText}</p>
-                      </div>
-                    )}
-
-                    {/* Buttons */}
-                    {buttons.filter(b => b.text).length > 0 && (
-                      <div className="border-t border-slate-100">
-                        {buttons.filter(b => b.text).map(b => (
-                          <div key={b.id} className="px-3 py-2 text-center text-xs text-blue-600 font-medium border-b border-slate-100 last:border-0">
-                            {b.text}
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                  {/* Meta submission summary */}
+                  <div className="mt-4 p-3 bg-slate-50 dark:bg-[#1a2a43] rounded-lg border border-slate-200 dark:border-[#262831] space-y-1 text-xs">
+                    <p><span className="text-slate-500 dark:text-[#7a8ba3]">Name:</span> <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">{safeName || '—'}</span></p>
+                    <p><span className="text-slate-500 dark:text-[#7a8ba3]">Language:</span> <span className="text-slate-800 dark:text-slate-200">{LANGUAGES.find(l => l.code === language)?.label}</span></p>
+                    <p><span className="text-slate-500 dark:text-[#7a8ba3]">Category:</span> <span className="text-slate-800 dark:text-slate-200">{category}</span></p>
+                    <p><span className="text-slate-500 dark:text-[#7a8ba3]">Components:</span> <span className="text-slate-800 dark:text-slate-200">{buildComponents().map((c: any) => c.type).join(', ') || '—'}</span></p>
                   </div>
                 </div>
-
-                {/* Meta submission summary */}
-                <div className="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-1 text-xs">
-                  <p><span className="text-slate-500">Name:</span> <span className="font-mono font-semibold">{safeName || '—'}</span></p>
-                  <p><span className="text-slate-500">Language:</span> {LANGUAGES.find(l => l.code === language)?.label}</p>
-                  <p><span className="text-slate-500">Category:</span> {category}</p>
-                  <p><span className="text-slate-500">Components:</span> {buildComponents().map((c: any) => c.type).join(', ') || '—'}</p>
-                </div>
               </div>
-            </div>
           )}
         </div>
 
         <DialogFooter className="px-6 py-4 border-t">
-          <Button variant="ghost" onClick={handleClose} disabled={submitting}>Cancel</Button>
           {!result?.success && (
             <Button onClick={handleSubmit} disabled={!canSubmit || submitting}>
               {submitting

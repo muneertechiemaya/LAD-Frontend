@@ -320,16 +320,18 @@ export function TemplatePicker({
                 {selectedCount} conversation{selectedCount !== 1 ? 's' : ''}
               </Badge>
             </DialogTitle>
-            
+
             {channel === 'waba' && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-9 text-xs px-3 rounded-lg border-orange-200 text-orange-700 hover:bg-orange-50 transition-all"
-                onClick={() => setShowCreateModal(true)}
-              >
-                <Plus className="w-3.5 h-3.5 mr-1.5" /> New template
-              </Button>
+                <div className="mr-8"> {/* Added explicitly to push the button left, away from the hidden close 'X' */}
+                  <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-9 text-xs px-3 rounded-lg border-orange-200 text-orange-700 hover:bg-orange-100 hover:text-orange-800 transition-all"
+                      onClick={() => setShowCreateModal(true)}
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1.5" /> New template
+                  </Button>
+                </div>
             )}
           </div>
         </DialogHeader>
