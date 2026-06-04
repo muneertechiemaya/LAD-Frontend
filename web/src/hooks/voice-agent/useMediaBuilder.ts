@@ -51,7 +51,7 @@ export function useMediaBuilder() {
   const establishHold = useCallback(
     async (id: string) => {
       try {
-        console.log(`[MediaBuilder] Establishing hold for ${id}...`);
+        console.warn(`[MediaBuilder] Establishing hold for ${id}...`);
         
         const startTime = Date.now();
         const timeoutMs = 60000; // 1 minute
@@ -73,8 +73,8 @@ export function useMediaBuilder() {
               connected = true;
               break;
             }
-          } catch (e) {
-            console.log("[MediaBuilder] Worker status probe failed, retrying...");
+          } catch {
+            console.warn("[MediaBuilder] Worker status probe failed, retrying...");
           }
           // Wait 2 seconds before retrying
           await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -102,9 +102,10 @@ export function useMediaBuilder() {
             console.error("Hold request ended:", e);
           }
         });
-      } catch (e: any) {
+      } catch (e: unknown) {
         console.error("Failed to hold worker:", e);
-        throw new Error(e.message || "Something went wrong, Mr.LAD will fix it! Please try again later.");
+        const errMsg = e instanceof Error ? e.message : "Something went wrong, Mr.LAD will fix it! Please try again later.";
+        throw new Error(errMsg);
       }
     },
     [workerUrl],
@@ -122,7 +123,7 @@ export function useMediaBuilder() {
           },
           body: JSON.stringify({ call_id: id }),
         });
-        console.log(`[MediaBuilder] Released hold for ${id}`);
+        console.warn(`[MediaBuilder] Released hold for ${id}`);
       } catch (e) {
         console.error("Failed to release worker:", e);
       }
@@ -186,11 +187,12 @@ export function useMediaBuilder() {
         enable_upload: data.enable_upload,
       });
       setStep(data.step as MediaBuilderStep);
-    } catch (err: any) {
-      setError(err.message || "Failed to initialize Image Creation.");
+    } catch (err) {
+      const errorObj = err as Error;
+      setError(errorObj.message || "Failed to initialize Image Creation.");
       setStep("welcome");
     }
-  }, [sessionId, workerUrl]);
+  }, [sessionId, workerUrl, establishHold]);
 
   const uploadReference = useCallback(async (file: File) => {
     if (references.length >= 5) {
@@ -218,16 +220,19 @@ export function useMediaBuilder() {
       }
 
       const data = await res.json();
+      const newRef = {
+        filename: data.filename,
+        thumbnail: data.thumbnail,
+        path: data.path,
+      };
       setReferences((prev) => [
         ...prev,
-        {
-          filename: data.filename,
-          thumbnail: data.thumbnail,
-          path: data.path,
-        },
+        newRef,
       ]);
-    } catch (err: any) {
-      setError(err.message || "Failed to upload image reference.");
+      return newRef;
+    } catch (err) {
+      const errorObj = err as Error;
+      setError(errorObj.message || "Failed to upload image reference.");
     } finally {
       setIsUploading(false);
     }
@@ -251,8 +256,9 @@ export function useMediaBuilder() {
       if (res.ok) {
         setReferences((prev) => prev.filter((r) => r.path !== path));
       }
-    } catch (err: any) {
-      console.error("Failed to delete reference:", err);
+    } catch (err) {
+      const errorObj = err as Error;
+      console.error("Failed to delete reference:", errorObj);
     }
   }, [sessionId, workerUrl]);
 
@@ -273,6 +279,14 @@ export function useMediaBuilder() {
       messageToSend = userInput;
     } else if (Array.isArray(userInput)) {
       messageToSend = userInput.join(", ");
+    }
+
+    if (references.length > 0) {
+      if (step === "builder-image-output") {
+        messageToSend += ` from the generated image user selected the attachements for improvemnts`;
+      } else {
+        messageToSend += ` user has attached ${references.length} refrences with this request .`;
+      }
     }
 
     try {
@@ -306,13 +320,14 @@ export function useMediaBuilder() {
       
       // Clear references display once we transition past the reference guidance step
       setReferences([]);
-    } catch (err: any) {
-      setError(err.message || "Request failed.");
+    } catch (err) {
+      const errorObj = err as Error;
+      setError(errorObj.message || "Request failed.");
       setStep("welcome");
     } finally {
       setGenerating(false);
     }
-  }, [sessionId, step, uiPayload, workerUrl]);
+  }, [sessionId, step, uiPayload, workerUrl, references]);
 
   return {
     step,

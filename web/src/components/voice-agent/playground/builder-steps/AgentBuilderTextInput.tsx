@@ -89,6 +89,11 @@ export function AgentBuilderTextInput({
           <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
             References ({references.length}/5)
           </div>
+          {references.length > 0 && (
+            <div className="text-[10px] text-slate-500 font-medium italic mb-1 animate-in fade-in duration-200">
+              user has attached {references.length} references with this request.
+            </div>
+          )}
           <div className="flex flex-wrap gap-2 items-center">
             {references.map((ref) => (
               <div key={ref.path} className="relative w-12 h-12 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 shadow-sm group">

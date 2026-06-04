@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Image from "next/image";
-import { X, Sparkles, Image as ImageIcon, Video, ArrowLeft, Loader2 } from "lucide-react";
+import { X, Sparkles, Image as ImageIcon, Video, ArrowLeft } from "lucide-react";
 import { useMediaBuilder } from "@/hooks/voice-agent/useMediaBuilder";
 import { AgentBuilderTextInput } from "./builder-steps/AgentBuilderTextInput";
 import { AgentBuilderMCQ } from "./builder-steps/AgentBuilderMCQ";
@@ -284,6 +283,11 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
         onNext={(val) => mb.advanceStep(val)}
         phase={mb.uiPayload?.phase}
         generating={mb.generating}
+        references={mb.references}
+        onUpload={mb.uploadReference}
+        onRemove={mb.removeReference}
+        isUploading={mb.isUploading}
+        error={mb.error}
       />
     );
   }

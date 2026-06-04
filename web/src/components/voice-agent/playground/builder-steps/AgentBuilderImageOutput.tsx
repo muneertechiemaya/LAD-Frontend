@@ -1,7 +1,28 @@
 import React from "react";
-import { X, Sparkles, Download, Maximize2, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, Sparkles, Download, Maximize2, ChevronLeft, ChevronRight, Check, Loader2 } from "lucide-react";
 import { BuilderBottomInput } from "./BuilderBottomInput";
 import ReactMarkdown from "react-markdown";
+
+async function imageToFile(imgUrl: string, filename: string): Promise<File> {
+  try {
+    const response = await fetch(imgUrl);
+    const blob = await response.blob();
+    return new File([blob], filename, { type: blob.type || "image/png" });
+  } catch (err) {
+    if (imgUrl.startsWith("data:")) {
+      const arr = imgUrl.split(",");
+      const mime = arr[0].match(/:(.*?);/)?.[1] || "image/png";
+      const bstr = atob(arr[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+      }
+      return new File([u8arr], filename, { type: mime });
+    }
+    throw err;
+  }
+}
 
 export function AgentBuilderImageOutput({
   title = "Generated Concepts",
@@ -11,6 +32,11 @@ export function AgentBuilderImageOutput({
   onNext,
   phase,
   generating = false,
+  references = [],
+  onUpload,
+  onRemove,
+  isUploading = false,
+  error = "",
 }: {
   title?: string;
   description?: string;
@@ -19,10 +45,88 @@ export function AgentBuilderImageOutput({
   onNext?: (val?: string) => void;
   phase?: string;
   generating?: boolean;
+  references?: { filename: string; thumbnail: string; path: string }[];
+  onUpload?: (file: File) => Promise<{ filename: string; thumbnail: string; path: string } | undefined>;
+  onRemove?: (path: string) => Promise<void>;
+  isUploading?: boolean;
+  error?: string;
 }) {
   const [previewImage, setPreviewImage] = React.useState<string | null>(null);
   const [activeIndex, setActiveIndex] = React.useState(0);
   const carouselRef = React.useRef<HTMLDivElement>(null);
+  const [selectedPaths, setSelectedPaths] = React.useState<{ [idx: number]: string }>({});
+  const [uploadingIndices, setUploadingIndices] = React.useState<{ [idx: number]: boolean }>({});
+
+  const handleFilesSelected = (files: FileList) => {
+    if (onUpload) {
+      Array.from(files).forEach((file) => {
+        onUpload(file);
+      });
+    }
+  };
+
+  React.useEffect(() => {
+    setSelectedPaths((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      Object.keys(next).forEach((idxStr) => {
+        const idx = parseInt(idxStr, 10);
+        const path = next[idx];
+        const exists = references.some((ref) => ref.path === path);
+        if (!exists) {
+          delete next[idx];
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [references]);
+
+  const handleToggleSelection = async (imgUrl: string, idx: number) => {
+    if (uploadingIndices[idx]) return;
+
+    const isSelected = selectedPaths[idx] !== undefined;
+
+    if (isSelected) {
+      const pathToRemove = selectedPaths[idx];
+      setUploadingIndices((prev) => ({ ...prev, [idx]: true }));
+      try {
+        if (onRemove) {
+          await onRemove(pathToRemove);
+        }
+        setSelectedPaths((prev) => {
+          const next = { ...prev };
+          delete next[idx];
+          return next;
+        });
+      } catch (err) {
+        console.error("Error removing concept reference:", err);
+      } finally {
+        setUploadingIndices((prev) => ({ ...prev, [idx]: false }));
+      }
+    } else {
+      if (Object.keys(selectedPaths).length >= 5) {
+        alert("Maximum of 5 reference images allowed.");
+        return;
+      }
+
+      setUploadingIndices((prev) => ({ ...prev, [idx]: true }));
+      try {
+        const filename = `selected-concept-${idx + 1}.png`;
+        const file = await imageToFile(imgUrl, filename);
+        if (onUpload) {
+          const ref = await onUpload(file);
+          if (ref && ref.path) {
+            setSelectedPaths((prev) => ({ ...prev, [idx]: ref.path }));
+          }
+        }
+      } catch (err) {
+        console.error("Error uploading concept reference:", err);
+      } finally {
+        setUploadingIndices((prev) => ({ ...prev, [idx]: false }));
+      }
+    }
+  };
 
   const scrollToIndex = (index: number) => {
     if (!carouselRef.current || index < 0 || index >= images.length) return;
@@ -145,38 +249,73 @@ export function AgentBuilderImageOutput({
               className="flex overflow-x-auto gap-4 snap-x snap-mandatory w-full py-2 scroll-smooth"
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
-              {images.map((img, idx) => (
-                <div
-                  key={idx}
-                  className="relative w-[260px] shrink-0 aspect-square snap-center rounded-2xl overflow-hidden border border-slate-100 shadow-sm bg-slate-50 flex items-center justify-center group"
-                >
-                  <img
-                    src={img}
-                    alt={`Generated concept ${idx + 1}`}
-                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-102"
-                  />
-                  
-                  {/* Overlay controls with 50% opacity by default, 100% on hover */}
-                  <div className="absolute bottom-3 right-3 z-10 flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setPreviewImage(img)}
-                      className="p-1.5 bg-black/60 text-white rounded-lg transition-all active:scale-95 opacity-50 hover:opacity-100 flex items-center justify-center cursor-pointer shadow"
-                      title="Expand to full screen"
-                    >
-                      <Maximize2 className="size-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDownload(img, idx)}
-                      className="p-1.5 bg-black/60 text-white rounded-lg transition-all active:scale-95 opacity-50 hover:opacity-100 flex items-center justify-center cursor-pointer shadow"
-                      title="Download concept"
-                    >
-                      <Download className="size-3.5" />
-                    </button>
+              {images.map((img, idx) => {
+                const isSelected = selectedPaths[idx] !== undefined;
+                return (
+                  <div
+                    key={idx}
+                    className={`relative w-[260px] shrink-0 aspect-square snap-center rounded-2xl overflow-hidden border bg-slate-50 flex items-center justify-center group transition-all duration-300 ${
+                      isSelected
+                        ? "border-emerald-500 ring-2 ring-emerald-500/30 shadow-[0_0_16px_rgba(16,185,129,0.4)]"
+                        : "border-slate-100 shadow-sm"
+                    }`}
+                  >
+                    <img
+                      src={img}
+                      alt={`Generated concept ${idx + 1}`}
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-102"
+                    />
+
+                    {/* Selection circle button in top-right */}
+                    <div className="absolute top-3 right-3 z-30 group/tooltip flex items-center justify-center">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleSelection(img, idx);
+                        }}
+                        className={`size-7 rounded-full transition-all active:scale-95 flex items-center justify-center cursor-pointer shadow-md border ${
+                          isSelected
+                            ? "bg-emerald-500 border-emerald-600 text-white opacity-100"
+                            : "bg-white border-slate-200 text-slate-400 opacity-50 hover:opacity-100 hover:text-emerald-500"
+                        }`}
+                        disabled={uploadingIndices[idx]}
+                      >
+                        {uploadingIndices[idx] ? (
+                          <Loader2 className="size-4 text-emerald-500 animate-spin" />
+                        ) : isSelected ? (
+                          <Check className="size-4 stroke-[3.5] opacity-80" />
+                        ) : (
+                          <div className="size-3 rounded-full border border-slate-300" />
+                        )}
+                      </button>
+                      <span className="absolute top-9 right-0 hidden group-hover/tooltip:block bg-slate-900 text-white text-[10px] font-semibold px-2 py-1 rounded shadow-md whitespace-nowrap z-50 pointer-events-none transition-all">
+                        Attach this image for further improvements
+                      </span>
+                    </div>
+                    
+                    {/* Overlay controls with 50% opacity by default, 100% on hover */}
+                    <div className="absolute bottom-3 right-3 z-10 flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setPreviewImage(img)}
+                        className="p-1.5 bg-black/60 text-white rounded-lg transition-all active:scale-95 opacity-50 hover:opacity-100 flex items-center justify-center cursor-pointer shadow"
+                        title="Expand to full screen"
+                      >
+                        <Maximize2 className="size-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDownload(img, idx)}
+                        className="p-1.5 bg-black/60 text-white rounded-lg transition-all active:scale-95 opacity-50 hover:opacity-100 flex items-center justify-center cursor-pointer shadow"
+                        title="Download concept"
+                      >
+                        <Download className="size-3.5" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Next Carousel Button */}
@@ -290,11 +429,52 @@ export function AgentBuilderImageOutput({
         </div>
       )}
 
+      {/* Uploaded References Thumbnails Area */}
+      {(references.length > 0 || isUploading) && (
+        <div className="w-full flex flex-col px-8 mb-2 z-30 space-y-1 animate-in fade-in duration-200">
+          <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+            References ({references.length}/5)
+          </div>
+          <div className="flex flex-wrap gap-2 items-center">
+            {references.map((ref) => (
+              <div key={ref.path} className="relative w-10 h-10 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 shadow-sm group">
+                <img src={ref.thumbnail} alt={ref.filename} className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => onRemove?.(ref.path)}
+                  className="absolute top-0.5 right-0.5 bg-slate-900/70 hover:bg-slate-950 text-white rounded-full p-0.5 shadow-sm transition-colors cursor-pointer"
+                  aria-label="Remove image"
+                >
+                  <X className="size-2.5" />
+                </button>
+              </div>
+            ))}
+            {isUploading && (
+              <div className="w-10 h-10 rounded-lg border border-dashed border-slate-300 flex items-center justify-center bg-slate-50 animate-pulse">
+                <Loader2 className="size-3.5 text-slate-400 animate-spin" />
+              </div>
+            )}
+          </div>
+          {error && (
+            <div className="text-[10px] text-red-500 font-semibold mt-1">
+              {error}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Refinement input bar */}
       <div className="w-full flex flex-col mt-auto pb-4 pt-2 bg-gradient-to-t from-white via-white to-transparent relative z-20 border-t border-slate-50">
+        {references.length > 0 && (
+          <div className="text-[10px] text-slate-500 font-medium italic text-center px-6 mb-2 animate-in fade-in duration-200">
+            user has attached {references.length} references with this request.
+          </div>
+        )}
         <BuilderBottomInput
           onSend={(val) => onNext?.(val)}
           placeholder="Describe changes you want..."
+          enableUpload={true}
+          onFilesSelected={handleFilesSelected}
         />
       </div>
     </div>
