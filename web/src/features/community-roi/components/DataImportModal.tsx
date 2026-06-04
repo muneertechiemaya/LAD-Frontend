@@ -34,6 +34,19 @@ interface ImportOption {
 /** Whether the selected import type uses the member-files folder upload path */
 const isMemberFilesMode = (sheet: string) => sheet === 'member_files';
 
+/** Generate last 24 months as { value: 'YYYY-MM', label: 'Month YYYY' } */
+function getMonthOptions() {
+  const opts = [];
+  const now = new Date();
+  for (let i = 0; i < 24; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    opts.push({ value, label });
+  }
+  return opts;
+}
+
 export function DataImportModal() {
   const [open, setOpen] = useState(false);
   const [selectedSheet, setSelectedSheet] = useState<string>('all');
@@ -46,6 +59,14 @@ export function DataImportModal() {
   const [isExecuting, setIsExecuting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
+
+  // Default to current month (YYYY-MM)
+  const currentMonth = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  })();
+  const [meetingMonth, setMeetingMonth] = useState<string>(currentMonth);
+  const monthOptions = getMonthOptions();
 
   const { data: optionsData, isLoading: optionsLoading } = useDataImportOptions();
   const executeMutation = useExecuteImport();
@@ -94,6 +115,7 @@ export function DataImportModal() {
       const formData = new FormData();
       formData.append('file', selectedFile);
       formData.append('sheetType', selectedSheet);
+      formData.append('meetingMonth', meetingMonth);
 
       const response = await fetch('/api/community-roi/data-import/extract', {
         method: 'POST',
@@ -130,6 +152,7 @@ export function DataImportModal() {
 
       const formData = new FormData();
       selectedFiles.forEach(f => formData.append('files', f));
+      formData.append('meetingMonth', meetingMonth);
 
       const response = await fetch('/api/community-roi/data-import/extract-member-files', {
         method: 'POST',
@@ -161,9 +184,9 @@ export function DataImportModal() {
       setStep('execute');
 
       const sheetsToImport = memberMode
-        ? ['interactions', 'referrals', 'combination']
+        ? ['interactions', 'referrals', 'combination', 'profiles']
         : selectedSheet === 'all'
-        ? ['interactions', 'referrals', 'combination', 'tyfcb']
+        ? ['interactions', 'referrals', 'combination', 'tyfcb', 'profiles']
         : [selectedSheet];
 
       const response = await fetch('/api/community-roi/data-import/execute', {
@@ -197,6 +220,7 @@ export function DataImportModal() {
     setSelectedFile(null);
     setSelectedFiles([]);
     setExtractedData(null);
+    setMeetingMonth(currentMonth);
     setError(null);
   };
 
@@ -282,6 +306,24 @@ export function DataImportModal() {
                     {options.find((o: ImportOption) => o.id === selectedSheet)?.description}
                   </p>
                 )}
+              </div>
+
+              {/* ── Meeting month picker ── */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Meeting Month</label>
+                <Select value={meetingMonth} onValueChange={setMeetingMonth}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {monthOptions.map(o => (
+                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500">
+                  Tag this upload with the month the meetings took place — used to populate the Network Growth Graph.
+                </p>
               </div>
 
               {/* ── Folder picker (member_files mode) ── */}
