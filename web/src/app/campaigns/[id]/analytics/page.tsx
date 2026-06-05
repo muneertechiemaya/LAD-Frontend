@@ -591,8 +591,8 @@ export default function CampaignAnalyticsPage() {
           className="w-full flex items-center justify-between px-5 py-4 bg-white dark:bg-[#1a2a43] rounded-2xl border border-slate-200 dark:border-[#262831] shadow-sm hover:border-[#0b1957]/40 hover:shadow-md transition-all"
         >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#0b1957]/10 flex items-center justify-center">
-              <Send className="w-5 h-5 text-[#0b1957]" />
+            <div className="w-10 h-10 rounded-full bg-[#0b1957]/10 dark:bg-blue-500/20 flex items-center justify-center transition-colors">
+              <Send className="w-5 h-5 text-[#0b1957] dark:text-blue-400" />
             </div>
             <div className="text-left">
               <p className="font-bold text-[#1E293B] dark:text-white text-base">Send Follow-up</p>
@@ -655,7 +655,7 @@ export default function CampaignAnalyticsPage() {
               <Button
                 onClick={startBulkFollowup}
                 disabled={!selectedLeadIds.size || !bulkChannel || bulkStatus === 'running'}
-                className="bg-[#0b1957] hover:bg-[#1a2d8f] text-white rounded-xl h-9 px-4 gap-2 text-sm font-semibold shadow-sm"
+                className="bg-[#0b1957] hover:bg-[#1a2d8f] dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-xl h-9 px-4 gap-2 text-sm font-semibold shadow-sm transition-colors disabled:opacity-50"
               >
                 {bulkStatus === 'running' ? (
                   <><Loader2 className="w-4 h-4 animate-spin" />Sending {bulkDoneCount}/{selectedLeadIds.size}…</>
