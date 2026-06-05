@@ -25,9 +25,9 @@ export default function MembersTestPanel() {
 
   // Queries
   const { data: allMembers, isLoading: isLoadingList, error: listError } = useListMembers({ tenantId: typeof window !== 'undefined' ? localStorage.getItem('tenantId') as any : null });
-  const { data: member, isLoading: isLoadingMember } = selectedMemberId 
-    ? useMember(selectedMemberId as any)
-    : { data: null, isLoading: false };
+  const { data: member, isLoading: isLoadingMember } = useMember(
+    selectedMemberId ? (selectedMemberId as any) : undefined
+  );
   const { data: recommendations, isLoading: isLoadingRecs } = useTopContributors(5);
 
   // Client-side search filtering

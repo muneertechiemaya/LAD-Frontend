@@ -1511,7 +1511,7 @@ export default function DragDropEmailEditor({ htmlContent, subject, onContentCha
             <AlignLeft className="w-7 h-7 text-gray-300" />
           </div>
           <p className="text-sm font-semibold text-gray-700 mb-1">Your email is empty</p>
-          <p className="text-xs text-gray-400 mb-4">Click "Add Block" above to build your email</p>
+          <p className="text-xs text-gray-400 mb-4">Click &quot;Add Block&quot; above to build your email</p>
         </div>
       )}
 

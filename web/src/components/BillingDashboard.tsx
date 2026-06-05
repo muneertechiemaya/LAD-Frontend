@@ -95,7 +95,7 @@ export const BillingDashboard: React.FC<BillingDashboardProps> = ({ customerId }
         <div className="text-center">
           <Wallet className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold text-foreground mb-2">No Credit Balance</h3>
-          <p className="text-muted-foreground mb-6">You don't have any credits yet.</p>
+          <p className="text-muted-foreground mb-6">You don&apos;t have any credits yet.</p>
           <Link
             href="/wallet"
             className="inline-flex items-center px-4 py-2 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors duration-200"
@@ -214,7 +214,7 @@ export const BillingDashboard: React.FC<BillingDashboardProps> = ({ customerId }
                   <h3 className="text-sm font-medium text-yellow-800">Low Credit Balance</h3>
                   <div className="mt-2 text-sm text-yellow-700">
                     <p>
-                      You're running low on credits. Consider purchasing the <strong>Starter Plan</strong> (1,000 credits for $99)
+                      You&apos;re running low on credits. Consider purchasing the <strong>Starter Plan</strong> (1,000 credits for $99)
                       to continue using all features without interruption.
                     </p>
                   </div>
@@ -240,7 +240,7 @@ export const BillingDashboard: React.FC<BillingDashboardProps> = ({ customerId }
                   <h3 className="text-sm font-medium text-blue-800">High Usage Detected</h3>
                   <div className="mt-2 text-sm text-blue-700">
                     <p>
-                      You're using an average of {balance.monthlyUsage.toLocaleString()} credits per month.
+                      You&apos;re using an average of {balance.monthlyUsage.toLocaleString()} credits per month.
                       Consider the <strong>Professional Plan</strong> (3,000 credits for $199) for better value.
                     </p>
                   </div>
@@ -265,7 +265,7 @@ export const BillingDashboard: React.FC<BillingDashboardProps> = ({ customerId }
                   </svg>
                 </div>
                 <div className="ml-3">
-                  <h3 className="text-sm font-medium text-green-800">You're All Set!</h3>
+                  <h3 className="text-sm font-medium text-green-800">You&apos;re All Set!</h3>
                   <div className="mt-2 text-sm text-green-700">
                     <p>
                       You have plenty of credits for your current usage. Your balance of {balance.credits.toLocaleString()} credits

@@ -223,7 +223,7 @@ export function usePlayground({
           headers: getAuthHeaders(),
           body: JSON.stringify({ call_id: id }),
         });
-        console.log(`[Playground] Released hold for ${id}`);
+        console.warn(`[Playground] Released hold for ${id}`);
       } catch (e) {
         console.error("Failed to release worker:", e);
       }
@@ -255,14 +255,14 @@ export function usePlayground({
         if (onClose) onClose();
       }, HOLD_TIMEOUT_MS);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     [clearAllTimers, onClose, releaseHold],
   );
 
   const establishHold = useCallback(
     async (id: string) => {
       try {
-        console.log(`[Playground] Establishing hold for ${id}...`);
+        console.warn(`[Playground] Establishing hold for ${id}...`);
         const probe = await fetch(`${workerUrl}/worker-status`, {
           method: "GET",
           headers: getAuthHeaderOnly(),
@@ -302,7 +302,7 @@ export function usePlayground({
 
   const fetchAgents = useCallback(async () => {
     setLoadingAgents(true);
-    console.log(
+    console.warn(
       `[Playground] Fetching agents from ${workerUrl}/playground-agents...`,
     );
 
@@ -323,7 +323,7 @@ export function usePlayground({
       if (!resp.ok)
         throw new Error(`Agent list failed with status: ${resp.status}`);
       const data = await resp.json();
-      console.log(
+      console.warn(
         `[Playground] Received ${data.agents?.length || 0} agents from worker.`,
       );
       setAgents(data.agents || []);
@@ -396,7 +396,7 @@ export function usePlayground({
     }
     setError("");
     setConnecting(true);
-    console.log(
+    console.warn(
       `[Playground] Sending init request to ${workerUrl}/playground-init`,
     );
 
@@ -495,7 +495,7 @@ export function usePlayground({
       router.push("/settings?tab=api");
     },
     startGuidedJourney: async () => {
-      console.log("[Playground] Starting guided journey...");
+      console.warn("[Playground] Starting guided journey...");
       const newSessionId = `session-${Math.random().toString(36).substring(2, 9)}`;
       setBuilderSessionId(newSessionId);
       setBuilderData(null);
@@ -513,7 +513,7 @@ export function usePlayground({
 
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
-          console.log(`[Playground] Probing worker status, attempt ${attempt}/${maxAttempts}...`);
+          console.warn(`[Playground] Probing worker status, attempt ${attempt}/${maxAttempts}...`);
           const probe = await fetch(`${workerUrl}/worker-status`, {
             method: "GET",
             headers: getAuthHeaderOnly(),
@@ -555,7 +555,7 @@ export function usePlayground({
         }
 
         const data = await res.json();
-        console.log("[Playground] Agent responded:", data.step, data.question);
+        console.warn("[Playground] Agent responded:", data.step, data.question);
 
         // Set data and transition immediately
         setBuilderData({
@@ -579,7 +579,7 @@ export function usePlayground({
     advanceBuilderStep: async (userInput?: string | string[], action?: string) => {
       if (demoTimerRef.current) clearTimeout(demoTimerRef.current);
 
-      console.log(`[Playground] advanceBuilderStep — input: ${userInput}, action: ${action}`);
+      console.warn(`[Playground] advanceBuilderStep — input: ${userInput}, action: ${action}`);
 
       setStep("guided-journey"); // Show loading screen while waiting
 
@@ -597,7 +597,7 @@ export function usePlayground({
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
-        console.log("[Playground] Agent responded:", data.step, data.question);
+        console.warn("[Playground] Agent responded:", data.step, data.question);
 
         if (data.step === "config") {
           await fetchAgents();

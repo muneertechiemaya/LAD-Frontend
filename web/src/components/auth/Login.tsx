@@ -101,7 +101,7 @@ const Login: React.FC = () => {
           👋 Welcome Back!
         </h2>
         <p className="text-center text-gray-600 dark:text-gray-200 mb-6 text-sm">
-          We're happy to see you again. Please sign in.
+          We&apos;re happy to see you again. Please sign in.
         </p>
         {formErrors.submit && (
           <div className="mb-3 rounded-md border border-red-300 dark:border-red-600 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-sm px-3 py-2">

@@ -295,7 +295,7 @@ function InstagramConversationViewInner(): JSX.Element {
         // Roll back the optimistic update
         setConversations(prevConversations);
         setActiveConvMeta(prevMeta);
-        // eslint-disable-next-line no-console
+         
         console.error('[InstagramConversationView] ownership update failed:', err);
       } finally {
         setOwnerUpdating(false);
@@ -337,7 +337,7 @@ function InstagramConversationViewInner(): JSX.Element {
               }
             : m)),
         );
-        // eslint-disable-next-line no-console
+         
         console.error('[InstagramConversationView] react failed:', err);
       }
     },
@@ -368,7 +368,7 @@ function InstagramConversationViewInner(): JSX.Element {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
       } catch (err) {
         setMessages(prevMessages);
-        // eslint-disable-next-line no-console
+         
         console.error('[InstagramConversationView] unreact failed:', err);
       }
     },

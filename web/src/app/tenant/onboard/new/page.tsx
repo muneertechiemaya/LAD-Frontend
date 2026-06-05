@@ -504,7 +504,7 @@ function StepFeatures({ form, set }: { form: FormData; set: (k: keyof FormData, 
 
         <div className="border-t border-gray-800 pt-4 mt-4">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">New Features (Billing & ROI)</p>
-          <p className="text-xs text-gray-500 mb-3">These features will be initialized with the tenant's core schema.</p>
+          <p className="text-xs text-gray-500 mb-3">These features will be initialized with the tenant&apos;s core schema.</p>
           <div className="space-y-2">
             <label className="flex items-center gap-2 cursor-pointer">
               <input

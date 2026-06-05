@@ -500,7 +500,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
           if (data.failed > 0) {
             console.warn(`[TemplateSend] ${data.sent} sent, ${data.failed} failed`, data.results);
           } else {
-            console.log(`[TemplateSend] Complete — ${data.sent} sent`);
+            console.warn(`[TemplateSend] Complete — ${data.sent} sent`);
           }
         })
         .catch(err => console.error('[TemplateSend] Error:', err));

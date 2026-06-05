@@ -68,7 +68,7 @@ function encodeWAV(buffer: AudioBuffer, startSec: number, endSec: number): Blob 
   
   let offset = 44;
   for (let i = 0; i < interleaved.length; i++, offset += 2) {
-    let s = Math.max(-1, Math.min(1, interleaved[i]));
+    const s = Math.max(-1, Math.min(1, interleaved[i]));
     dataView.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
   }
   
@@ -819,7 +819,7 @@ Is the timing... correct? Or does it need... a bit more... tuning? Let's find ou
                           Script Preview
                         </span>
                         <div className="p-3.5 rounded-lg bg-muted/40 border text-sm text-foreground leading-relaxed font-medium min-h-[5rem] flex items-center">
-                          "{READING_SCRIPTS[selectedScriptIndex].text}"
+                          &quot;{READING_SCRIPTS[selectedScriptIndex].text}&quot;
                         </div>
                       </div>
 
@@ -853,7 +853,7 @@ Is the timing... correct? Or does it need... a bit more... tuning? Let's find ou
                       </div>
 
                       <div className="p-4 rounded-lg bg-muted/40 border text-sm sm:text-base text-foreground leading-relaxed font-medium min-h-[5.5rem] flex items-center shadow-inner">
-                        "{READING_SCRIPTS[selectedScriptIndex].text}"
+                        &quot;{READING_SCRIPTS[selectedScriptIndex].text}&quot;
                       </div>
 
                       <div className="space-y-3">

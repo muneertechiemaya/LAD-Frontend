@@ -521,7 +521,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate }: EmailTemp
                         <LayoutTemplate className="w-7 h-7 text-blue-500" />
                       </div>
                       <h2 className="text-xl font-bold text-gray-900 mb-2">Design your email</h2>
-                      <p className="text-sm text-gray-500">Choose how you'd like to create your email content.</p>
+                      <p className="text-sm text-gray-500">Choose how you&apos;d like to create your email content.</p>
                     </div>
 
                     <div className="space-y-3">
