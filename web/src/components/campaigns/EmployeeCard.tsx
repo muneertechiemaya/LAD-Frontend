@@ -417,7 +417,7 @@ export default function EmployeeCard({
                     <TooltipContent side="top" className="max-w-[260px]">
                       <p className="font-semibold mb-0.5">Click to reveal official email</p>
                       <p className="text-xs text-slate-200">
-                        Searches Fullenrich for the lead's corporate address
+                        Searches Fullenrich for the lead&apos;s corporate address
                         {personalDomain ? ` (the ${personalDomain} address looks personal)` : ''}.
                         Costs 2 credits on success.
                       </p>

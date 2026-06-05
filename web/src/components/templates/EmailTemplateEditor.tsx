@@ -343,8 +343,8 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
   // ── Preview content ───────────────────────────────────────────────────────
 
   const previewHtml = editorMode === 'html' || editorMode === 'dragdrop'
-      ? (template.body_html || '')
-      : `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.7;">${(template.body || '').replace(/\n/g, '<br/>')}</div>`;
+    ? (template.body_html || '')
+    : `<p style="font-family:Arial,sans-serif;font-size:15px;line-height:1.7;color:#374151;">${(template.body || '').replace(/\n/g, '<br/>')}</p>`;
 
   // ── Send test email ───────────────────────────────────────────────────────
 
@@ -578,7 +578,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
                               <LayoutTemplate className="w-7 h-7 text-blue-500 dark:text-blue-400" />
                             </div>
                             <h2 className="text-xl font-bold text-gray-909 dark:text-white mb-2">Design your email</h2>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Choose how you'd like to create your email content.</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Choose how you&apos;d like to create your email content.</p>
                           </div>
 
                           <div className="space-y-3">

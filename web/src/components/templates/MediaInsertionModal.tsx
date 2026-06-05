@@ -20,11 +20,11 @@ interface MediaInsertionModalProps {
 }
 
 export default function MediaInsertionModal({
-                                              isOpen,
-                                              onClose,
-                                              onInsert,
-                                              tenantId,
-                                            }: MediaInsertionModalProps) {
+  isOpen,
+  onClose,
+  onInsert,
+  tenantId,
+}: MediaInsertionModalProps) {
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
   const [selectedMedia, setSelectedMedia] = useState<MediaFile | null>(null);
   const [altText, setAltText] = useState('');
@@ -48,7 +48,7 @@ export default function MediaInsertionModal({
       // Source 1: localStorage — URLs saved immediately after each upload
       try {
         const stored: Array<{ url: string; name: string; uploadedAt: string }> =
-            JSON.parse(localStorage.getItem('email_media_uploads') || '[]');
+          JSON.parse(localStorage.getItem('email_media_uploads') || '[]');
         stored.forEach((entry) => {
           if (entry.url && !seen.has(entry.url)) {
             seen.add(entry.url);
@@ -230,7 +230,7 @@ export default function MediaInsertionModal({
                       <div className="bg-gray-50 dark:bg-[#000724] border border-gray-200 dark:border-gray-800 rounded-lg p-3">
                         <p className="text-xs font-semibold text-gray-700 dark:text-gray-400 mb-1">Generated HTML:</p>
                         <code className="text-xs text-gray-600 dark:text-gray-300 break-all">
-                          &lt;img src="{selectedMedia.url}" alt="{altText || selectedMedia.name}" /&gt;
+                          &lt;img src=&quot;{selectedMedia.url}&quot; alt=&quot;{altText || selectedMedia.name}&quot; /&gt;
                         </code>
                       </div>
                   )}

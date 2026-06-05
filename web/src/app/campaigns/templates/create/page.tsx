@@ -16,23 +16,23 @@ export default function CreateTemplatePage() {
   };
 
   return (
-      <div className="min-h-screen bg-[#F8F9FE] dark:bg-[#000724] transition-colors duration-200">
-        {/* Header */}
-        <div className="bg-white dark:bg-[#000c3b] border-b border-gray-200 dark:border-gray-800 px-8 py-6">
-          <div className="flex items-center gap-4">
-            <button
-                onClick={() => router.back()}
-                className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
-            >
-              ← Back
-            </button>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Create Email Template</h1>
-          </div>
+    <div className="min-h-screen bg-[#F8F9FE] dark:bg-[#000724]">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 px-8 py-6">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => router.back()}
+            className="text-gray-600 hover:text-gray-900"
+          >
+            ← Back
+          </button>
+          <h1 className="text-3xl font-bold text-gray-900">Create Email Template</h1>
         </div>
+      </div>
 
         {/* Content */}
         <div className="max-w-4xl mx-auto px-8 py-12">
-          <p className="text-gray-600 dark:text-gray-400 mb-8">Choose how you'd like to create your email template:</p>
+          <p className="text-gray-600 dark:text-gray-400 mb-8">Choose how you&apos;d like to create your email template:</p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Manual Editor Option */}

@@ -228,10 +228,6 @@ export default function GuidedFlowPanel() {
     setHasSelectedOption,
     onboardingMode,
   } = useOnboardingStore();
-  // Do not render form-based ICP questions when in CHAT mode
-  if (onboardingMode === 'CHAT') {
-    return null;
-  }
   const [currentStep, setCurrentStep] = useState<GuidedStep>('icp_questions');
   const [answers, setAnswers] = useState<GuidedAnswers>({});
   const [bestCustomersRawText, setBestCustomersRawText] = useState<string>('');
@@ -1087,7 +1083,7 @@ export default function GuidedFlowPanel() {
             }`}
           >
             <h3 className="mb-2 font-semibold text-[#1E293B] text-[15px]">
-              9. What was that person's role or title?
+              9. What was that person&apos;s role or title?
             </h3>
             <p className="mb-6 text-[#64748B] block text-[13px] italic">
               Example: Operations Manager, Founder, Finance Head
@@ -1227,7 +1223,7 @@ export default function GuidedFlowPanel() {
             }`}
           >
             <h3 className="mb-2 font-semibold text-[#1E293B] text-[15px]">
-              11. What's your company name?
+              11. What&apos;s your company name?
             </h3>
             <Input
               placeholder="Enter your company name"
@@ -2316,7 +2312,7 @@ export default function GuidedFlowPanel() {
                 )}
                 {hasEmail && hasLinkedIn && (
                   <p className="text-[#78350F] text-[13px]">
-                    • <strong>Email:</strong> If you're also using LinkedIn, the email will be sent after the delay period following the LinkedIn connection.
+                    • <strong>Email:</strong> If you&apos;re also using LinkedIn, the email will be sent after the delay period following the LinkedIn connection.
                   </p>
                 )}
                 {hasVoice && (
@@ -3291,6 +3287,10 @@ export default function GuidedFlowPanel() {
       </StepLayout>
     );
   };
+  // Do not render form-based ICP questions when in CHAT mode
+  if (onboardingMode === 'CHAT') {
+    return null;
+  }
   return (
     <div className="h-full w-full flex flex-col overflow-hidden">
       <div className="h-full w-full flex flex-col overflow-hidden">

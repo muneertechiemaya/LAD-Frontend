@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { logger } from "@/lib/logger";
 import type { SortConfig } from "@/utils/sortingUtils";
+import { sortCallLogs } from "@/utils/sortingUtils";
 
 // SDK Imports
 import {
@@ -742,7 +743,6 @@ export default function CallLogsPage() {
   // Apply sorting to filtered results for consistent ordering across pages
   const sortedFiltered = useMemo(() => {
     if (!sortConfig) return filtered;
-    const { sortCallLogs } = require("@/utils/sortingUtils");
     return sortCallLogs(filtered, sortConfig);
   }, [filtered, sortConfig]);
 

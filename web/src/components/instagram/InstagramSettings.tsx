@@ -2,6 +2,8 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+// Same-origin fetcher — hits the Next.js proxy at /api/instagram-conversations/*
+// rather than lib/api (which prepends NEXT_PUBLIC_BACKEND_URL = LAD_backend :3004).
 import { igGet as apiGet, igPost as apiPost, igPatch as apiPatch, igDelete as apiDelete } from './instagram-api';
 import { InstagramTenantOnboarding } from './InstagramTenantOnboarding';
 import {
@@ -54,6 +56,8 @@ const GOAL_TYPES = [
 ];
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
+  // Accounts comes first — it's the fundamental setup; nothing else
+  // works without at least one connected Instagram account.
   { id: 'accounts', label: 'Accounts', icon: Building2 },
   { id: 'goals',    label: 'AI Goals', icon: Target },
 ];
@@ -68,6 +72,7 @@ export const InstagramSettings: React.FC = () => {
     const params = new URLSearchParams(window.location.search);
     params.set('tab', tab);
     router.replace(`/instagram/settings?${params.toString()}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
   return (
@@ -82,33 +87,33 @@ export const InstagramSettings: React.FC = () => {
             Back to Integrations
           </button>
 
-          <header className="mb-8">
-            <h1 className="text-3xl font-semibold tracking-tight">Instagram AI</h1>
-            <p className="mt-1 text-sm text-neutral-600 dark:text-gray-400">
-              Manage connected Instagram accounts and AI Goals. Toggle AI replies, comments, and likes per account from the Accounts tab.
-            </p>
-          </header>
+        <header className="mb-8">
+          <h1 className="text-3xl font-semibold tracking-tight">Instagram AI</h1>
+          <p className="mt-1 text-sm text-neutral-600 dark:text-white/60">
+            Manage connected Instagram accounts and AI Goals. Toggle AI replies, comments, and likes per account from the Accounts tab.
+          </p>
+        </header>
 
-          <nav className="mb-6 flex gap-1 rounded-lg border border-neutral-200 bg-neutral-100/60 p-1 dark:border-blue-950/40 dark:bg-[#061033]/70">
-            {TABS.map((t) => {
-              const Icon = t.icon;
-              const active = tab === t.id;
-              return (
-                  <button
-                      key={t.id}
-                      onClick={() => setTab(t.id)}
-                      className={`flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition ${
-                          active
-                              ? 'bg-neutral-50 text-neutral-900 dark:bg-blue-600 dark:text-white shadow-sm'
-                              : 'text-neutral-600 hover:bg-neutral-200/60 dark:text-gray-400 dark:hover:bg-blue-950/40 dark:hover:text-gray-300'
-                      }`}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {t.label}
-                  </button>
-              );
-            })}
-          </nav>
+        <nav className="mb-6 flex gap-1 rounded-lg border border-neutral-200 bg-neutral-100/60 p-1 dark:border-white/10 dark:bg-white/5">
+          {TABS.map((t) => {
+            const Icon = t.icon;
+            const active = tab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={`flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition ${
+                  active
+                    ? 'bg-neutral-50 dark:bg-neutral-900 text-neutral-900 dark:text-white dark:bg-white dark:text-neutral-900'
+                    : 'text-neutral-600 hover:bg-neutral-200/60 dark:text-white/70 dark:hover:bg-white/5'
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {t.label}
+              </button>
+            );
+          })}
+        </nav>
 
           {tab === 'accounts' && <InstagramTenantOnboarding />}
           {tab === 'goals' && <AIGoalsPanel />}
@@ -188,55 +193,55 @@ const AIGoalsPanel: React.FC = () => {
             />
         )}
 
-        <div className="mt-4 space-y-3">
-          {goals.map((g) => (
-              <div key={g.id} className="rounded-xl border border-neutral-200 dark:border-blue-950/60 bg-neutral-100 dark:bg-[#061033]/50 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h4 className="text-base font-medium dark:text-white">{g.name}</h4>
-                      <span className="rounded bg-neutral-200 dark:bg-blue-950/60 px-1.5 py-0.5 text-xs text-neutral-800 dark:text-gray-300">{g.goal_type}</span>
-                      {g.applies_to_dms && <span className="rounded bg-violet-500/20 px-1.5 py-0.5 text-xs text-violet-600 dark:text-violet-300">DMs</span>}
-                      {g.applies_to_comments && <span className="rounded bg-pink-500/20 px-1.5 py-0.5 text-xs text-pink-600 dark:text-pink-300">Comments</span>}
-                    </div>
-                    {g.description && <p className="mt-1 text-sm text-neutral-600 dark:text-gray-400">{g.description}</p>}
-                    {g.call_to_action && (
-                        <p className="mt-2 text-xs text-neutral-500 dark:text-gray-400">CTA: <span className="text-neutral-800 dark:text-white/80">"{g.call_to_action}"</span></p>
-                    )}
-                    {g.target_url && (
-                        <p className="mt-1 text-xs text-neutral-500 dark:text-gray-400 break-all">Link: <span className="text-blue-600 dark:text-blue-400">{g.target_url}</span></p>
-                    )}
-                    {Array.isArray(g.keyword_triggers) && g.keyword_triggers.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {g.keyword_triggers.map((k) => (
-                              <span key={k} className="rounded bg-neutral-200 dark:bg-blue-950/40 px-1.5 py-0.5 text-[11px] text-neutral-700 dark:text-gray-300 border border-transparent dark:border-blue-950/60">{k}</span>
-                          ))}
-                        </div>
-                    )}
-                    <div className="mt-3 flex gap-4 text-xs text-neutral-600 dark:text-gray-400">
-                      <span>Impressions: <span className="text-neutral-900 dark:text-white font-medium">{g.impressions_count}</span></span>
-                      <span>Conversions: <span className="text-neutral-900 dark:text-white font-medium">{g.conversions_count}</span></span>
-                    </div>
+      <div className="mt-4 space-y-3">
+        {goals.map((g) => (
+          <div key={g.id} className="rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-100 dark:bg-white/5 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h4 className="text-base font-medium">{g.name}</h4>
+                  <span className="rounded bg-neutral-200 dark:bg-white/10 px-1.5 py-0.5 text-xs">{g.goal_type}</span>
+                  {g.applies_to_dms && <span className="rounded bg-violet-500/20 px-1.5 py-0.5 text-xs text-violet-200">DMs</span>}
+                  {g.applies_to_comments && <span className="rounded bg-pink-500/20 px-1.5 py-0.5 text-xs text-pink-200">Comments</span>}
+                </div>
+                {g.description && <p className="mt-1 text-sm text-neutral-600 dark:text-white/60">{g.description}</p>}
+                {g.call_to_action && (
+                  <p className="mt-2 text-xs text-neutral-500 dark:text-white/50">CTA: <span className="text-neutral-800 dark:text-white/80">&quot;{g.call_to_action}&quot;</span></p>
+                )}
+                {g.target_url && (
+                  <p className="mt-1 text-xs text-neutral-500 dark:text-white/50 break-all">Link: {g.target_url}</p>
+                )}
+                {Array.isArray(g.keyword_triggers) && g.keyword_triggers.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {g.keyword_triggers.map((k) => (
+                      <span key={k} className="rounded bg-neutral-200 dark:bg-white/10 px-1.5 py-0.5 text-[11px] text-neutral-700 dark:text-white/70">{k}</span>
+                    ))}
                   </div>
-                  <div className="flex flex-col items-end gap-3 flex-shrink-0">
-                    <ToggleSwitch
-                        checked={g.is_active}
-                        onChange={(v) => onToggle(g.id, v)}
-                        label={g.is_active ? 'Active' : 'Paused'}
-                    />
-                    <button
-                        onClick={() => onDelete(g.id)}
-                        className="rounded p-1.5 text-neutral-400 dark:text-gray-500 hover:bg-neutral-100 dark:hover:bg-blue-950/30 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                        title="Delete goal"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
+                )}
+                <div className="mt-3 flex gap-4 text-xs text-neutral-600 dark:text-white/60">
+                  <span>Impressions: <span className="text-white">{g.impressions_count}</span></span>
+                  <span>Conversions: <span className="text-white">{g.conversions_count}</span></span>
                 </div>
               </div>
-          ))}
-        </div>
-      </Section>
+              <div className="flex flex-col items-end gap-2">
+                <ToggleSwitch
+                  checked={g.is_active}
+                  onChange={(v) => onToggle(g.id, v)}
+                  label={g.is_active ? 'Active' : 'Paused'}
+                />
+                <button
+                  onClick={() => onDelete(g.id)}
+                  className="rounded p-1.5 text-neutral-400 dark:text-white/40 hover:bg-neutral-100 dark:hover:bg-white/5 hover:text-red-300"
+                  title="Delete goal"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Section>
   );
 };
 
@@ -492,6 +497,7 @@ const MetaConnectForm: React.FC<{ onAdd: (payload: any) => Promise<void> }> = ({
         instagram_username: username.trim() || undefined,
         display_name: displayName.trim() || undefined,
       });
+      // Reset on success
       setAppId(''); setAppSecret(''); setVerifyToken(''); setAccessToken('');
       setIgUserId(''); setUsername(''); setDisplayName(''); setVerified(null);
     } catch (e: any) {
@@ -502,56 +508,57 @@ const MetaConnectForm: React.FC<{ onAdd: (payload: any) => Promise<void> }> = ({
   };
 
   return (
-      <div className="space-y-3">
-        <p className="text-xs text-neutral-500 dark:text-gray-400">
-          Pull these values from Meta App Dashboard → Instagram → "Use cases" → "Customize". Required permissions:
-          <span className="text-neutral-700 dark:text-gray-300"> instagram_business_basic, instagram_manage_comments, instagram_business_manage_messages</span>.
-          Auto-liking comments is <span className="text-amber-600 dark:text-amber-400 font-medium">not supported</span> via Meta's official API.
-        </p>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Meta app ID">
-            <input value={appId} onChange={(e) => setAppId(e.target.value)} className={inputClass} placeholder="2020267418916137" />
-          </Field>
-          <Field label="Meta app secret">
-            <input type="password" value={appSecret} onChange={(e) => setAppSecret(e.target.value)} className={inputClass} placeholder="●●●●●●●●" />
-          </Field>
-          <Field label="Verify token (you make this up)">
-            <input value={verifyToken} onChange={(e) => setVerifyToken(e.target.value)} className={inputClass} placeholder="random-string-paste-into-meta-too" />
-          </Field>
-          <Field label="Long-lived access token">
-            <div className="flex gap-2">
-              <input type="password" value={accessToken} onChange={(e) => setAccessToken(e.target.value)} className={`${inputClass} flex-1`} placeholder="EAAB…" />
-              <button onClick={verifyToken_} disabled={verifying} className="rounded-md border border-neutral-300 dark:border-blue-950/60 px-2 py-1.5 text-xs text-neutral-800 dark:text-gray-300 hover:bg-neutral-100 dark:hover:bg-blue-950/40 disabled:opacity-50 transition-colors shrink-0">
-                {verifying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Verify'}
-              </button>
-            </div>
-          </Field>
-          <Field label="Instagram user ID">
-            <input value={igUserId} onChange={(e) => setIgUserId(e.target.value)} className={inputClass} placeholder="17841401281270777" />
-          </Field>
-          <Field label="Instagram handle (optional)">
-            <input value={username} onChange={(e) => setUsername(e.target.value)} className={inputClass} placeholder="@naveenyeluru" />
-          </Field>
-        </div>
-        {verified && (
-            <div className="mt-3 flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-900/40">
-              <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
-              Verified — id <code className="font-mono">{verified.id}</code>
-              {verified.username && <> · @{verified.username}</>}
-            </div>
-        )}
-        <div className="mt-4 rounded-md border border-neutral-200 dark:border-blue-950/40 bg-neutral-50 dark:bg-[#030a21]/50 p-3 text-xs text-neutral-600 dark:text-gray-400">
-          <div className="mb-1 font-medium text-neutral-800 dark:text-white/80">Set up the webhook on Meta side:</div>
-          <div className="break-all">Callback URL: <code className="text-neutral-800 dark:text-white/90">{`${typeof window !== 'undefined' ? window.location.origin : 'https://your-host'}/api/instagram-conversations/webhook/meta`}</code></div>
-          <div className="mt-1">Verify token: whatever you typed above (Meta will probe with it once).</div>
-          <div className="mt-1">Subscribe to fields: <code className="dark:text-gray-300">messages</code>, <code className="dark:text-gray-300">comments</code>, <code className="dark:text-gray-300">mentions</code>.</div>
-        </div>
-        <div className="mt-3 flex justify-end">
-          <button onClick={submit} disabled={saving} className="inline-flex items-center gap-2 rounded-md bg-blue-600 dark:bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700 dark:hover:bg-blue-700 disabled:opacity-50 transition-all shadow-md">
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />} Connect via Meta
-          </button>
-        </div>
+    <div>
+      <p className="text-xs text-neutral-500 dark:text-white/50 mb-3">
+        Pull these values from Meta App Dashboard → Instagram → &quot;Use cases&quot; → &quot;Customize&quot;. Required permissions:
+        <span className="text-neutral-700 dark:text-white/70"> instagram_business_basic, instagram_manage_comments, instagram_business_manage_messages</span>.
+        Auto-liking comments is <span className="text-amber-300">not supported</span> via Meta&apos;s official API.
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Meta app ID">
+          <input value={appId} onChange={(e) => setAppId(e.target.value)} className={inputClass} placeholder="2020267418916137" />
+        </Field>
+        <Field label="Meta app secret">
+          <input type="password" value={appSecret} onChange={(e) => setAppSecret(e.target.value)} className={inputClass} placeholder="●●●●●●●●" />
+        </Field>
+        <Field label="Verify token (you make this up)">
+          <input value={verifyToken} onChange={(e) => setVerifyToken(e.target.value)} className={inputClass} placeholder="random-string-paste-into-meta-too" />
+        </Field>
+        <Field label="Long-lived access token">
+          <div className="flex gap-2">
+            <input type="password" value={accessToken} onChange={(e) => setAccessToken(e.target.value)} className={`${inputClass} flex-1`} placeholder="EAAB…" />
+            <button onClick={verifyToken_} disabled={verifying} className="rounded-md border border-neutral-300 dark:border-white/20 px-2 py-1.5 text-xs text-neutral-800 dark:text-white/80 hover:bg-neutral-100 dark:hover:bg-white/5 disabled:opacity-50">
+              {verifying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Verify'}
+            </button>
+          </div>
+        </Field>
+        <Field label="Instagram user ID">
+          <input value={igUserId} onChange={(e) => setIgUserId(e.target.value)} className={inputClass} placeholder="17841401281270777" />
+        </Field>
+        <Field label="Instagram handle (optional)">
+          <input value={username} onChange={(e) => setUsername(e.target.value)} className={inputClass} placeholder="@naveenyeluru" />
+        </Field>
       </div>
+      {verified && (
+        <div className="mt-3 flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
+          <CheckCircle2 className="h-4 w-4" />
+          Verified — id <code className="font-mono">{verified.id}</code>
+          {verified.username && <> · @{verified.username}</>}
+        </div>
+      )}
+      {err && <div className="mt-2"><ErrorBanner message={err} /></div>}
+      <div className="mt-4 rounded-md border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-black/30 p-3 text-xs text-neutral-600 dark:text-white/60">
+        <div className="mb-1 font-medium text-neutral-800 dark:text-white/80">Set up the webhook on Meta side:</div>
+        <div>Callback URL: <code className="text-neutral-800 dark:text-white/90">{`${typeof window !== 'undefined' ? window.location.origin : 'https://your-host'}/api/instagram-conversations/webhook/meta`}</code></div>
+        <div>Verify token: whatever you typed above (Meta will probe with it once).</div>
+        <div>Subscribe to fields: <code>messages</code>, <code>comments</code>, <code>mentions</code>.</div>
+      </div>
+      <div className="mt-3 flex justify-end">
+        <button onClick={submit} disabled={saving} className="inline-flex items-center gap-2 rounded-md bg-white px-3 py-1.5 text-sm font-medium text-neutral-900 disabled:opacity-50">
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />} Connect via Meta
+        </button>
+      </div>
+    </div>
   );
 };
 

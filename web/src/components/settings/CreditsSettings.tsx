@@ -159,14 +159,14 @@ export const CreditsSettings: React.FC = () => {
                 />
               </div>
               {(selectedAmount || customAmount) && (
-                <div className="p-3 bg-blue-50 border border-blue-200 dark:bg-blue-950/20 dark:border-blue-900/40 rounded-lg">
-                  <p className="text-sm text-blue-800 dark:text-blue-400">
-                    <span className="font-semibold">You'll receive: </span>
+                  <div className="p-3 bg-blue-50 border border-blue-200 dark:bg-blue-950/20 dark:border-blue-900/40 rounded-lg">
+                    <p className="text-sm text-blue-800 dark:text-blue-400">
+                    <span className="font-semibold">You&apos;ll receive: </span>
                     {(() => {
                       const amount = parseFloat(customAmount) || selectedAmount || 0;
                       if (!amount || amount <= 0) return 'Select an amount';
                       const preset = presetAmounts.find(p => p.value === amount);
-                      const credits = preset ? preset.credits : Math.round(amount * 10.1); 
+                      const credits = preset ? preset.credits : Math.round(amount * 10.1);
                       return `${credits.toLocaleString()} credits for $${amount}`;
                     })()}
                   </p>

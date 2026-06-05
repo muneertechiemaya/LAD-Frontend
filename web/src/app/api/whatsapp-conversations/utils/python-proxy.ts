@@ -165,16 +165,16 @@ export async function proxyToPythonService(
     const cookieToken = req.cookies.get('access_token')?.value || req.cookies.get('token')?.value;
     if (cookieToken) {
       const tenantId = extractTenantIdFromJwt(cookieToken);
-      console.log(`[python-proxy] Extracted tenantId from cookie: ${tenantId}`);
+      console.warn(`[python-proxy] Extracted tenantId from cookie: ${tenantId}`);
       if (tenantId) {
         headers['X-Tenant-ID'] = tenantId;
       }
     } else {
-      console.log('[python-proxy] No access_token/token cookie found');
+      console.warn('[python-proxy] No access_token/token cookie found');
     }
   }
 
-  console.log(`[python-proxy] channel=${channel}, baseUrl=${resolvedBaseUrl}, path=${resolvedPath}, tenant=${headers['X-Tenant-ID'] || 'NONE'}, trace=${debugTraceId || 'none'}`);
+  console.warn(`[python-proxy] channel=${channel}, baseUrl=${resolvedBaseUrl}, path=${resolvedPath}, tenant=${headers['X-Tenant-ID'] || 'NONE'}, trace=${debugTraceId || 'none'}`);
 
   const fetchOptions: RequestInit = {
     method: req.method,

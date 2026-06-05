@@ -1085,32 +1085,32 @@ export function ChatSettings() {
           <KnowledgeBaseManager />
         </div>
 
-        {/* ── Shareable Assets ─────────────────────────────────────── */}
-        <div className="bg-white dark:bg-[#030a21]/60 rounded-lg border border-gray-200 dark:border-blue-950/40 shadow-sm">
-          <div className="p-6 border-b border-gray-100 dark:border-blue-950/40">
-            <div className="flex items-center gap-2 mb-1">
-              <BookOpen className="h-5 w-5 text-violet-600 dark:text-violet-400" />
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Shareable Assets</h2>
-            </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Files (price list, brochure, menu…) the AI agent can attach automatically
-              in WhatsApp when the customer asks. The system listens for the trigger
-              keywords in the AI's reply, downloads the file from the URL, and sends
-              it as a real attachment — so customers never see a raw link.
-            </p>
+      {/* ── Shareable Assets ─────────────────────────────────────── */}
+      <div className="bg-white dark:bg-[#030a21]/60 rounded-lg border border-gray-200 dark:border-blue-950/40 shadow-sm">
+        <div className="p-6 border-b border-gray-100 dark:border-blue-950/40">
+          <div className="flex items-center gap-2 mb-1">
+            <BookOpen className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Shareable Assets</h2>
           </div>
-          <div className="p-6 space-y-4">
-            {loadingAssets ? (
-                <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Loading assets…
-                </div>
-            ) : (
-                <>
-                  {shareableAssets.length === 0 && (
-                      <p className="text-sm text-gray-400 dark:text-gray-500 italic">
-                        No assets configured yet. Click "Add Asset" to register your first one.
-                      </p>
-                  )}
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Files (price list, brochure, menu…) the AI agent can attach automatically
+            in WhatsApp when the customer asks. The system listens for the trigger
+            keywords in the AI&apos;s reply, downloads the file from the URL, and sends
+            it as a real attachment — so customers never see a raw link.
+          </p>
+        </div>
+        <div className="p-6 space-y-4">
+          {loadingAssets ? (
+              <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading assets…
+            </div>
+          ) : (
+            <>
+              {shareableAssets.length === 0 && (
+                  <p className="text-sm text-gray-400 dark:text-gray-500 italic">
+                  No assets configured yet. Click &quot;Add Asset&quot; to register your first one.
+                </p>
+              )}
 
                   {shareableAssets.map((asset, idx) => {
                     const isExpanded = expandedAssetIdx === idx;
@@ -1264,49 +1264,60 @@ export function ChatSettings() {
                             </div>
                           </div>
 
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                              Trigger Keywords <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                type="text"
-                                placeholder="price list, pricing, rates, cost per session"
-                                value={
-                                  triggerInputDrafts[idx] !== undefined
-                                      ? triggerInputDrafts[idx]
-                                      : (asset.trigger_keywords || []).join(', ')
-                                }
-                                onChange={(e) =>
-                                    setTriggerInputDrafts((prev) => ({
-                                      ...prev,
-                                      [idx]: e.target.value,
-                                    }))
-                                }
-                                onBlur={(e) => {
-                                  const parsed = Array.from(new Set(
-                                      e.target.value
-                                          .split(',')
-                                          .map((s) => s.trim())
-                                          .filter(Boolean)
-                                  ));
-                                  updateShareableAsset(idx, { trigger_keywords: parsed });
-                                  setTriggerInputDrafts((prev) => {
-                                    const next = { ...prev };
-                                    delete next[idx];
-                                    return next;
-                                  });
-                                }}
-                                className="w-full px-3 py-2 border border-gray-300 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:focus:ring-blue-500"
-                            />
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              Comma-separated. The file is sent when ANY keyword appears in
-                              the AI's reply (matches plurals + variants — e.g. "pricelist"
-                              also matches "prices", "pricing", "price list").
-                            </p>
-                          </div>
-                        </div>
-                    );
-                  })}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Trigger Keywords <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="price list, pricing, rates, cost per session"
+                        // Show the raw in-progress text when editing, fall back
+                        // to the joined array otherwise.  Without this, every
+                        // keystroke ran .split(',').filter(Boolean) → typing
+                        // "price list," and a space would drop the trailing
+                        // empty token mid-edit, kicking the cursor backwards
+                        // and making it impossible to add more keywords.
+                        value={
+                          triggerInputDrafts[idx] !== undefined
+                            ? triggerInputDrafts[idx]
+                            : (asset.trigger_keywords || []).join(', ')
+                        }
+                        onChange={(e) =>
+                          // Hold the raw text in a per-row draft state — do NOT
+                          // split/filter on each keystroke (was the bug).
+                          setTriggerInputDrafts((prev) => ({
+                            ...prev,
+                            [idx]: e.target.value,
+                          }))
+                        }
+                        onBlur={(e) => {
+                          // Commit on blur: split + trim + dedupe + drop empties
+                          const parsed = Array.from(new Set(
+                            e.target.value
+                              .split(',')
+                              .map((s) => s.trim())
+                              .filter(Boolean)
+                          ));
+                          updateShareableAsset(idx, { trigger_keywords: parsed });
+                          // Clear the draft so the value field reflects the
+                          // canonical joined-array view (with our normalised spacing)
+                          setTriggerInputDrafts((prev) => {
+                            const next = { ...prev };
+                            delete next[idx];
+                            return next;
+                          });
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:focus:ring-blue-500"
+                      />
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Comma-separated. The file is sent when ANY keyword appears in
+                        the AI's reply (matches plurals + variants — e.g. "pricelist"
+                        also matches "prices", "pricing", "price list").
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
 
                   <div className="flex items-center justify-between pt-2">
                     <button
@@ -1633,7 +1644,7 @@ export function ChatSettings() {
           </div>
         </div>
 
-        {/* ── Section 3: Chat Behaviour ────────────────────────────── */}
+      {/* ── Section 3: Chat Behaviour ────────────────────────────── */}
         <div className="bg-white dark:bg-[#030a21]/60 rounded-lg border border-gray-200 dark:border-blue-950/40 shadow-sm">
           <div className="p-6 border-b border-gray-100 dark:border-blue-950/40">
             <div className="flex items-center gap-2 mb-1">
@@ -1645,37 +1656,37 @@ export function ChatSettings() {
             </p>
           </div>
           <div className="p-6 space-y-5">
-            {/* Typing indicator */}
-            <div>
-              <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Typing Indicator</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                Show "typing…" to the contact while the AI is composing a reply.
-                Configure separately for each channel.
-              </p>
+          {/* Typing indicator — per channel */}
+          <div>
+            <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Typing Indicator</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+              Show &quot;typing…&quot; to the contact while the AI is composing a reply.
+              Configure separately for each channel.
+            </p>
 
-              <div className="space-y-3 border border-gray-100 dark:border-blue-950/40 rounded-lg divide-y divide-gray-100 dark:divide-blue-950/40 overflow-hidden">
-                {/* Personal WhatsApp row */}
-                <div className="flex items-center justify-between px-4 py-3 bg-white dark:bg-transparent">
-                  <div className="flex items-center gap-2.5">
-                    <span className="h-2 w-2 rounded-full bg-emerald-400 flex-shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Personal WhatsApp</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Shows a "typing…" presence to the contact while replying</p>
-                    </div>
+            <div className="space-y-3 border border-gray-100 dark:border-blue-950/40 rounded-lg divide-y divide-gray-100 dark:divide-blue-950/40 overflow-hidden">
+              {/* Personal WhatsApp row */}
+              <div className="flex items-center justify-between px-4 py-3 bg-white dark:bg-transparent">
+                <div className="flex items-center gap-2.5">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Personal WhatsApp</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Shows a &quot;typing…&quot; presence to the contact while replying</p>
                   </div>
-                  <button
-                      onClick={() =>
-                          setChatSettings((prev) => ({ ...prev, typing_indicator: !prev.typing_indicator }))
-                      }
-                      title={chatSettings.typing_indicator ? 'On — click to disable' : 'Off — click to enable'}
-                  >
-                    {chatSettings.typing_indicator ? (
-                        <ToggleRight className="h-6 w-6 text-blue-500 dark:text-blue-400" />
-                    ) : (
-                        <ToggleLeft className="h-6 w-6 text-gray-300 dark:text-gray-600" />
-                    )}
-                  </button>
                 </div>
+                <button
+                  onClick={() =>
+                    setChatSettings((prev) => ({ ...prev, typing_indicator: !prev.typing_indicator }))
+                  }
+                  title={chatSettings.typing_indicator ? 'On — click to disable' : 'Off — click to enable'}
+                >
+                  {chatSettings.typing_indicator ? (
+                      <ToggleRight className="h-6 w-6 text-blue-500 dark:text-blue-400" />
+                  ) : (
+                      <ToggleLeft className="h-6 w-6 text-gray-300 dark:text-gray-600" />
+                  )}
+                </button>
+              </div>
 
                 {/* WABA row */}
                 <div className="flex items-center justify-between px-4 py-3 bg-white dark:bg-transparent">
@@ -1962,7 +1973,7 @@ export function ChatSettings() {
                 Booking Reminders
               </label>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Sent to the customer BEFORE their booking start time so they don't miss the session.
+                Sent to the customer BEFORE their booking start time so they don&apos;t miss the session.
                 Add as many reminders as you need (e.g. a 24h heads-up + a 3h nudge).
               </p>
             </div>

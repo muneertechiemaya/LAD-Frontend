@@ -67,7 +67,7 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
     // Single state update with everything
     set((state) => {
       const updatedNodes = [...state.nodes, newNode];
-      let updatedEdges = [...state.edges];
+      const updatedEdges = [...state.edges];
       // Auto-connect to previous node if exists and not a special node
       if (shouldAutoConnect && previousNodeId) {
         const previousNode = updatedNodes.find(n => n.id === previousNodeId);

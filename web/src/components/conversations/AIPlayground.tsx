@@ -776,7 +776,7 @@ export function AIPlayground({ onClose }: AIPlaygroundProps) {
                               would attach
                             </span>
                             <span className="text-muted-foreground text-[10px] truncate max-w-[120px]">
-                              triggered: "{att.matched_keyword}"
+                              triggered: &quot;{att.matched_keyword}&quot;
                             </span>
                           </div>
                         ))}

@@ -461,7 +461,7 @@ function EventModal({ onClose, onSend }: { onClose: () => void; onSend: (p: Rich
   const [time, setTime] = useState('');
   const handleSend = () => {
     if (!title.trim() || !date) return;
-    let text = `📅 *Event: ${sanitizeInput(title.trim())}*\n🗓️ ${sanitizeInput(date)}${time ? ' at ' + sanitizeInput(time) : ''}`;
+    const text = `📅 *Event: ${sanitizeInput(title.trim())}*\n🗓️ ${sanitizeInput(date)}${time ? ' at ' + sanitizeInput(time) : ''}`;
     onSend({ type: 'text', content: sanitizeMessageContent(text) });
   };
   return (

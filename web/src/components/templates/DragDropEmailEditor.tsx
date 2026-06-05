@@ -156,6 +156,8 @@ export function blocksToHtml(blocks: EmailBlock[]): string {
 }
 
 // ── HTML → Blocks parser (reverses blocksToHtml) ─────────────────────────────
+// Only recognises HTML produced by this editor (outer max-width:600px wrapper).
+// Returns null if the HTML wasn't created here so the editor starts fresh.
 
 function htmlToBlocks(html: string): EmailBlock[] | null {
   if (typeof window === 'undefined' || !html?.trim()) return null;
@@ -165,6 +167,7 @@ function htmlToBlocks(html: string): EmailBlock[] | null {
     const parser = new DOMParser();
     const doc    = parser.parseFromString(html, 'text/html');
 
+    // Must have our outer wrapper — bail if it doesn't
     const wrapper = doc.querySelector('div[style*="max-width:600px"]');
     if (!wrapper) return null;
 
@@ -176,6 +179,7 @@ function htmlToBlocks(html: string): EmailBlock[] | null {
       const styleStr = el.getAttribute('style') || '';
       const cs       = el.style;
 
+      // ── h1 ──────────────────────────────────────────────────────────────────
       if (tag === 'h1') {
         blocks.push({ id: uid(), type: 'h1', props: {
             content: el.textContent || '',
@@ -185,6 +189,7 @@ function htmlToBlocks(html: string): EmailBlock[] | null {
         continue;
       }
 
+      // ── h2 ──────────────────────────────────────────────────────────────────
       if (tag === 'h2') {
         blocks.push({ id: uid(), type: 'h2', props: {
             content: el.textContent || '',
@@ -194,6 +199,7 @@ function htmlToBlocks(html: string): EmailBlock[] | null {
         continue;
       }
 
+      // ── text (p) ─────────────────────────────────────────────────────────────
       if (tag === 'p') {
         blocks.push({ id: uid(), type: 'text', props: {
             content: el.innerHTML.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '') || '',
@@ -203,6 +209,7 @@ function htmlToBlocks(html: string): EmailBlock[] | null {
         continue;
       }
 
+      // ── divider (hr) ─────────────────────────────────────────────────────────
       if (tag === 'hr') {
         blocks.push({ id: uid(), type: 'divider', props: {
             color: cs.borderTopColor || '#e5e7eb',
@@ -210,8 +217,10 @@ function htmlToBlocks(html: string): EmailBlock[] | null {
         continue;
       }
 
+      // ── div — spacer / image / logo / button / footer / signature ────────────
       if (tag === 'div') {
 
+        // Spacer: only a height style, no meaningful children
         if (styleStr.includes('height:') && !el.textContent?.trim() && el.children.length === 0) {
           blocks.push({ id: uid(), type: 'spacer', props: {
               height: parseInt(cs.height) || 24,
@@ -219,11 +228,13 @@ function htmlToBlocks(html: string): EmailBlock[] | null {
           continue;
         }
 
+        // Footer: padding:24px 20px + text-align:center fingerprint
         if (styleStr.includes('padding:24px') && styleStr.includes('text-align:center')) {
           const props: Record<string, any> = {
             ...DEFAULT_PROPS.footer,
             bgColor:   cs.backgroundColor || '#f3f4f6',
           };
+          // Extract paragraphs: company name (font-weight:700), address, unsubscribe text
           const paras = Array.from(el.querySelectorAll('p'));
           const boldP = paras.find((p) => (p as HTMLElement).style.fontWeight === '700' || (p as HTMLElement).style.fontWeight === 'bold');
           if (boldP) props.companyName = boldP.textContent || '';
@@ -235,6 +246,7 @@ function htmlToBlocks(html: string): EmailBlock[] | null {
             props.unsubscribeLabel = unsubLink.textContent || 'Unsubscribe';
             props.unsubscribeUrl   = unsubLink.getAttribute('href') || '#';
           }
+          // Extract social links from <a><img alt="Facebook" /></a> pattern
           const socials: Record<string, string> = {};
           el.querySelectorAll('a').forEach((a) => {
             if (a === unsubLink) return;
@@ -248,23 +260,28 @@ function htmlToBlocks(html: string): EmailBlock[] | null {
           continue;
         }
 
+        // Signature: border-left fingerprint
         if (styleStr.includes('border-left:')) {
           const props: Record<string, any> = {
             ...DEFAULT_PROPS.signature,
             bgColor:     cs.backgroundColor                   || '#ffffff',
             accentColor: cs.borderLeftColor                   || '#0b1957',
           };
+          // Logo img (first img without an anchor parent)
           const logoImg = el.querySelector('img');
           if (logoImg) {
             props.logoSrc   = logoImg.getAttribute('src')   || '';
             props.logoAlt   = logoImg.getAttribute('alt')   || 'Logo';
             props.logoWidth = parseInt(logoImg.style.width) || 120;
           }
+          // Name: bold paragraph (font-weight:700)
           const namePara = el.querySelector('p[style*="font-weight:700"]');
           if (namePara) props.name = namePara.textContent || '';
+          // Other paragraphs: title, company
           const otherParas = Array.from(el.querySelectorAll('p')).filter((p) => p !== namePara);
           if (otherParas[0]) props.title   = otherParas[0].textContent || '';
           if (otherParas[1]) props.company = otherParas[1].textContent || '';
+          // Contact links
           const mailto = el.querySelector('a[href^="mailto:"]');
           const tel    = el.querySelector('a[href^="tel:"]');
           const web    = Array.from(el.querySelectorAll('a')).find((a) => !a.href.startsWith('mailto:') && !a.href.startsWith('tel:'));
@@ -275,6 +292,7 @@ function htmlToBlocks(html: string): EmailBlock[] | null {
           continue;
         }
 
+        // Logo: <div><a href="..."><img /></a></div>
         const logoAnchor = el.querySelector(':scope > a');
         if (logoAnchor && logoAnchor.querySelector('img')) {
           const img = logoAnchor.querySelector('img') as HTMLImageElement;
@@ -288,6 +306,7 @@ function htmlToBlocks(html: string): EmailBlock[] | null {
           continue;
         }
 
+        // Image: <div><img /></div>
         const img = el.querySelector(':scope > img');
         if (img) {
           const wStr = (img as HTMLElement).style.maxWidth || '100%';
@@ -300,6 +319,8 @@ function htmlToBlocks(html: string): EmailBlock[] | null {
           continue;
         }
 
+        // Button: <div><a style="background:...">Label</a></div>
+        // Must be single direct-child <a> with a background colour (distinguishes from inline links)
         const btnAnchor = el.querySelector(':scope > a[style*="background"]');
         if (btnAnchor && el.children.length === 1) {
           const bcs = (btnAnchor as HTMLElement).style;
@@ -313,6 +334,8 @@ function htmlToBlocks(html: string): EmailBlock[] | null {
           continue;
         }
 
+        // Fallback: any div with text/html content → rich text block
+        // (Catches text blocks written by this editor using <div> wrapper)
         if (el.innerHTML?.trim()) {
           blocks.push({ id: uid(), type: 'text', props: {
               content: el.innerHTML,
@@ -322,6 +345,7 @@ function htmlToBlocks(html: string): EmailBlock[] | null {
           continue;
         }
       }
+      // unknown element — skip
     }
 
     return blocks.length > 0 ? blocks : null;
@@ -550,6 +574,7 @@ function SignatureBlockEditor({ local, set, onCommit, inputCls, labelCls }: {
       const url  = data.url || data.data?.url;
       if (url) {
         set('logoSrc', url);
+        // Auto-commit so logo is saved without requiring the user to click ✓
         onCommit?.({ ...local, logoSrc: url });
       }
     } catch { /* non-fatal */ }
@@ -656,6 +681,7 @@ function ImageBlockEditor({
                           }: {
   local: Record<string, any>;
   set: (key: string, val: any) => void;
+  /** Called immediately after a successful upload to persist the URL to blocks state without requiring the user to click ✓. */
   onCommit?: (patch: Record<string, any>) => void;
   inputCls: string;
   labelCls: string;
@@ -664,12 +690,19 @@ function ImageBlockEditor({
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
 
+  /** Convert Google Drive share links to direct-embed URLs.
+   *  Handles:
+   *   - https://drive.google.com/file/d/FILE_ID/view?...
+   *   - https://drive.google.com/open?id=FILE_ID
+   *  Returns the URL unchanged if it's not a Drive link. */
   function toDirectImageUrl(url: string): string {
     try {
       const u = new URL(url);
       if (u.hostname !== 'drive.google.com') return url;
+      // /file/d/FILE_ID/...
       const fileMatch = u.pathname.match(/\/file\/d\/([^/]+)/);
       if (fileMatch) return `https://drive.google.com/uc?export=view&id=${fileMatch[1]}`;
+      // ?id=FILE_ID
       const idParam = u.searchParams.get('id');
       if (idParam) return `https://drive.google.com/uc?export=view&id=${idParam}`;
     } catch { /* not a valid URL yet — leave as-is */ }
@@ -695,6 +728,8 @@ function ImageBlockEditor({
         const altText = (!local.alt || local.alt === 'Image') ? file.name.replace(/\.[^.]+$/, '') : local.alt;
         set('src', url);
         set('alt', altText);
+        // Auto-commit: immediately propagate the new src to the parent blocks state
+        // so the image is saved even if the user doesn't click ✓ manually.
         onCommit?.({ ...local, src: url, alt: altText });
       }
     } catch (err) {
@@ -823,24 +858,30 @@ function RichTextEditor({
   const savedRangeRef = useRef<Range | null>(null);
   const colorInputRef = useRef<HTMLInputElement>(null);
 
+  // Set initial content once on mount only (avoids cursor jumping on every keystroke)
   useEffect(() => {
     if (editorRef.current) {
+      // Backward-compat: legacy plain-text content has no HTML tags → convert \n → <br>
       const hasHtml = /<[a-zA-Z]/.test(value || '');
       editorRef.current.innerHTML = hasHtml
           ? (value || '')
           : (value || '').replace(/\n/g, '<br>');
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Sync contenteditable HTML back to parent state
   const sync = useCallback(() => {
     onChange(editorRef.current?.innerHTML || '');
   }, [onChange]);
 
+  // Save caret/selection before toolbar interactions blur the editor
   const saveSelection = () => {
     const sel = window.getSelection();
     if (sel?.rangeCount) savedRangeRef.current = sel.getRangeAt(0).cloneRange();
   };
 
+  // Restore saved selection (used when colour picker causes editor blur)
   const restoreSelection = () => {
     if (!savedRangeRef.current) return;
     editorRef.current?.focus();
@@ -849,17 +890,22 @@ function RichTextEditor({
     sel?.addRange(savedRangeRef.current);
   };
 
+  // Run a document.execCommand and sync HTML immediately after
   const exec = (cmd: string, val?: string) => {
     editorRef.current?.focus();
     document.execCommand(cmd, false, val ?? '');
     setTimeout(sync, 0);
   };
 
+  // List insertion — falls back to insertHTML when execCommand list command fails
+  // (execCommand insertUnorderedList/insertOrderedList can silently fail if caret
+  //  is inside a <div> with no block content before it)
   const insertList = (type: 'ul' | 'ol') => {
     editorRef.current?.focus();
     const cmd = type === 'ul' ? 'insertUnorderedList' : 'insertOrderedList';
     const beforeHtml = editorRef.current?.innerHTML || '';
     document.execCommand(cmd, false, '');
+    // If innerHTML is unchanged the command did nothing — fall back to raw HTML insert
     if (editorRef.current?.innerHTML === beforeHtml) {
       const sel = window.getSelection();
       const selected = sel?.toString() || '';
@@ -873,6 +919,7 @@ function RichTextEditor({
     setTimeout(sync, 0);
   };
 
+  // Font-size: execCommand uses 1-7 sizes; we mark with 7 then replace with real px
   const setFontSize = (px: string) => {
     editorRef.current?.focus();
     document.execCommand('fontSize', false, '7');
@@ -885,12 +932,14 @@ function RichTextEditor({
     sync();
   };
 
+  // Insert a {{variable}} at current caret position
   const insertVariable = (variable: string) => {
     editorRef.current?.focus();
     document.execCommand('insertText', false, variable);
     setTimeout(sync, 0);
   };
 
+  // Link insertion — uses saved selection so focus loss doesn't break it
   const insertLink = () => {
     saveSelection();
     const url = window.prompt('Enter URL:', 'https://');
@@ -905,6 +954,8 @@ function RichTextEditor({
     }
     setTimeout(sync, 0);
   };
+
+  // ── Toolbar sub-components ─────────────────────────────────────────────────
 
   const Btn = ({
                  onClick, title, children,
@@ -1037,6 +1088,7 @@ function BlockEditor({
   const set = (key: string, val: any) => setLocal((p) => ({ ...p, [key]: val }));
   const handleSave = () => { onUpdate(local); onClose(); };
 
+  // Cursor-aware variable insert for plain inputs (h1, h2, button label)
   const insertVariable = (variable: string) => {
     if (['h1', 'h2'].includes(block.type)) {
       const el = inputRef.current;
@@ -1219,6 +1271,7 @@ function SortableBlock({
   const typeLabel = PALETTE.find((p) => p.type === block.type)?.label ?? block.type;
   const typeIcon  = PALETTE.find((p) => p.type === block.type)?.icon;
 
+  // Compact block preview
   const Preview = () => {
     const { props, type } = block;
     switch (type) {
@@ -1332,8 +1385,12 @@ export default function DragDropEmailEditor({ htmlContent, subject, onContentCha
   const [blocks, setBlocks] = useState<EmailBlock[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showPalette, setShowPalette] = useState(false);
+  // Track whether we've initialised from external htmlContent already
   const [initialised, setInitialised] = useState(false);
 
+  // On first mount: restore blocks from saved HTML (if it was generated by this editor).
+  // htmlToBlocks recognises the outer max-width:600px wrapper fingerprint.
+  // Returns null for arbitrary HTML → editor starts empty in that case.
   useEffect(() => {
     if (!initialised) {
       if (htmlContent?.trim()) {
@@ -1346,6 +1403,7 @@ export default function DragDropEmailEditor({ htmlContent, subject, onContentCha
     }
   }, []);
 
+  // Whenever blocks change → regenerate HTML
   useEffect(() => {
     if (initialised) onContentChange(blocksToHtml(blocks));
   }, [blocks]);
@@ -1425,7 +1483,7 @@ export default function DragDropEmailEditor({ htmlContent, subject, onContentCha
                 <AlignLeft className="w-7 h-7 text-gray-300 dark:text-gray-600" />
               </div>
               <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Your email is empty</p>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">Click "Add Block" above to build your email</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">Click &quot;Add Block&quot; above to build your email</p>
             </div>
         )}
 

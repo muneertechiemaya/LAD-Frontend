@@ -291,19 +291,24 @@ function EmptyState({ chromeless = false }: { chromeless?: boolean }) {
 export function BroadcastPerformance({
   templates, defaultTemplateId, onSelect, chromeless = false,
 }: BroadcastPerformanceProps) {
-  if (!templates || templates.length === 0) return <EmptyState chromeless={chromeless} />;
+  // Hooks MUST come before any early return (Rules of Hooks).
+  const isEmpty = !templates || templates.length === 0;
 
   const initialId = useMemo(() => {
+    if (isEmpty) return '';
     if (defaultTemplateId && templates.some(t => t.id === defaultTemplateId)) {
       return defaultTemplateId;
     }
     return templates[0].id;
-  }, [defaultTemplateId, templates]);
+  }, [isEmpty, defaultTemplateId, templates]);
 
   const [selectedId, setSelectedId] = useState<string>(initialId);
   useEffect(() => {
+    if (isEmpty) return;
     if (!templates.some(t => t.id === selectedId)) setSelectedId(initialId);
-  }, [templates, selectedId, initialId]);
+  }, [isEmpty, templates, selectedId, initialId]);
+
+  if (isEmpty) return <EmptyState chromeless={chromeless} />;
 
   const t = templates.find(x => x.id === selectedId) ?? templates[0];
   const idx = templates.findIndex(x => x.id === t.id);

@@ -311,11 +311,9 @@ export const LinkedInIntegration: React.FC = () => {
       const data = await Promise.race([dataPromise, timeoutPromise]) as any;
       // Handle response from backend (returns { success, accounts })
       if (data.accounts && Array.isArray(data.accounts)) {
-        console.debug('[LinkedIn] Loaded accounts:', data.accounts.length);
         setLinkedInConnections(data.accounts);
       } else if (data.connections && Array.isArray(data.connections)) {
         // Fallback for old format
-        console.debug('[LinkedIn] Loaded connections:', data.connections.length);
         setLinkedInConnections(data.connections);
       } else {
         // Single account format
@@ -1204,7 +1202,7 @@ export const LinkedInIntegration: React.FC = () => {
 
                     {/* Hint */}
                     <p className="text-xs text-gray-400 dark:text-gray-500 text-center leading-relaxed">
-                      Don't see the notification? Open the LinkedIn app manually and look for a security alert or login approval request.
+                      Don&apos;t see the notification? Open the LinkedIn app manually and look for a security alert or login approval request.
                     </p>
                   </div>
               ) : (
