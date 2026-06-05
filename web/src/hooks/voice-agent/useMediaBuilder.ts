@@ -22,6 +22,7 @@ export interface MediaUiPayload {
   description?: string;
   options?: { id: string; label: string }[];
   images?: string[];
+  video?: string;
   phase?: string;
   enable_upload?: boolean;
 }
@@ -183,6 +184,7 @@ export function useMediaBuilder() {
         description: data.description,
         options: data.options,
         images: data.images,
+        video: data.video,
         phase: data.phase,
         enable_upload: data.enable_upload,
       });
@@ -313,6 +315,7 @@ export function useMediaBuilder() {
         description: data.description,
         options: data.options,
         images: data.images,
+        video: data.video,
         phase: data.phase,
         enable_upload: data.enable_upload,
       });

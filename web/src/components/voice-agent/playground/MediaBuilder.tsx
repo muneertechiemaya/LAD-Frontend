@@ -279,6 +279,7 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
         title={mb.uiPayload?.question}
         description={mb.uiPayload?.description}
         images={mb.uiPayload?.images || []}
+        video={mb.uiPayload?.video}
         onClose={onClose}
         onNext={(val) => mb.advanceStep(val)}
         phase={mb.uiPayload?.phase}
