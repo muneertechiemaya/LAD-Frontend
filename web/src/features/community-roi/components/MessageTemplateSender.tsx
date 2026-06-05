@@ -484,6 +484,14 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
         }))
         .filter(m => m.phone); // skip members with no phone — WABA will reject them anyway
 
+      // Templates that attach each member's OWN cohesion-report PDF as the
+      // document header (resolved per-recipient by the WABA service) instead
+      // of a single shared document.
+      const MEMBER_REPORT_TEMPLATES = new Set(['cohesion_report_with_sheet']);
+      const attachMemberReport =
+        selectedTemplate.header_type === 'document' &&
+        MEMBER_REPORT_TEMPLATES.has(selectedTemplate.name);
+
       fetchWithTenant('/api/whatsapp-conversations/conversations/send-template-to-members', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -492,7 +500,10 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
           template_name: selectedTemplate.name,
           language_code: selectedTemplate.language_code || 'en',
           header_type:   selectedTemplate.header_type || '',
-          header_url:    headerMediaUrl,
+          // In per-member mode the WABA service supplies each member's document,
+          // so the shared header_url is irrelevant (omit to avoid confusion).
+          header_url:    attachMemberReport ? '' : headerMediaUrl,
+          attach_member_report: attachMemberReport,
         }),
       })
         .then(r => r.json())
