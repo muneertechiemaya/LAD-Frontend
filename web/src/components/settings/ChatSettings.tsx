@@ -1,5 +1,5 @@
 'use client';
-
+import { createPortal } from 'react-dom';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   MessageSquare,
@@ -2341,17 +2341,18 @@ export function ChatSettings() {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       {/* AI Playground side panel — opens over current page */}
-      {playgroundOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-[100] bg-black/30 dark:bg-black/60 backdrop-blur-sm"
-            onClick={() => setPlaygroundOpen(false)}
-          />
-          <div className="fixed top-0 right-0 z-[110] h-full w-full sm:w-[480px] bg-background dark:bg-[#030a21] border-l dark:border-blue-950/60 shadow-2xl">
-            <AIPlayground onClose={() => setPlaygroundOpen(false)} />
-          </div>
-        </>
-      )}
+        {playgroundOpen && typeof window !== 'undefined' && createPortal(
+            <>
+              {/* Backdrop layer to capture clicks outside the drawer */}
+              <div
+                  className="fixed inset-0 z-[140] bg-black/40 backdrop-blur-sm transition-opacity animate-in fade-in"
+                  onClick={() => setPlaygroundOpen(false)}
+              />
+              {/* Mount the playground cleanly. Its inner motion.div will automatically place it right here */}
+              <AIPlayground onClose={() => setPlaygroundOpen(false)} />
+            </>,
+            document.body
+        )}
     </div>
   );
 }
