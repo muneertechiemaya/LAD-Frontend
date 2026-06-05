@@ -196,8 +196,11 @@ export const useDashboardStore = create<DashboardState>()(
       //     the stat cards) rather than buried at the bottom from the v1
       //     append. Custom widget reorderings are lost — acceptable trade
       //     while the dashboard layout is still settling.
-      version: 2,
-      migrate: (persistedState: any, _version: number) => {
+      // v3: hard-reset to DEFAULT_LAYOUT so existing users get the new
+      //     conversation-analytics widgets (Enquiries & Bookings funnel +
+      //     Re-engage by Topic) at their intended slot under the stat cards.
+      version: 3,
+      migrate: (persistedState: Record<string, unknown>) => {
         if (!persistedState) return persistedState;
         return { ...persistedState, layout: DEFAULT_LAYOUT };
       },

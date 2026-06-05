@@ -125,7 +125,7 @@ export default function StepEditor({ step, onClose, campaignId }: StepEditorProp
         });
 
         localStorage.setItem(key, JSON.stringify(updatedMessages));
-        console.log('[StepEditor] Updated buffered messages with lead generation changes', updates);
+        console.warn('[StepEditor] Updated buffered messages with lead generation changes', updates);
       }
 
       // For message templates, update the corresponding message data

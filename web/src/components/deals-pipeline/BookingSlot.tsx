@@ -608,7 +608,7 @@ const BookingSlot: React.FC<BookingSlotProps> = ({
     } catch (error: any) {
       console.error('[BookingSlot.handleConfirmBooking] Error booking slot:', error);
       // Extract error message - the error.message should already contain the backend message
-      let errorMessage = error.message || 'Failed to book slot. Please try again.';
+      const errorMessage = error.message || 'Failed to book slot. Please try again.';
       // Check if it's an availability/unavailability error (should be shown as warning, not error)
       const isAvailabilityError =
         errorMessage.toLowerCase().includes('unavailable') ||

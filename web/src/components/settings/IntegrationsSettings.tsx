@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Settings2, Linkedin, Instagram, Smartphone, Bot, Clock, Lock, Server, Truck, X } from 'lucide-react';
+import { Search, Settings2, Linkedin, Instagram, Smartphone, Bot, Clock, Lock, Server, Truck, X, Power } from 'lucide-react';
 import { useCreditsBalance } from '@lad/frontend-features/billing';
 import { Input } from '@/components/ui/input';
 import { GoogleAuthIntegration } from './GoogleAuthIntegration';
@@ -206,6 +206,23 @@ export const IntegrationsSettings: React.FC = () => {
   const [activeView, setActiveView] = useState<IntegrationView>('grid');
   const [statusMap, setStatusMap] = useState<Record<string, ConnectionStatus>>({});
 
+  // ── WhatsApp "AI Replies" master switch (tenant/channel-level) ─────────────
+  // One flag per channel (chat_settings.ai_enabled), rendered as a pill on each
+  // connected WhatsApp card. null = not loaded yet → pill shows the default (ON) and
+  // is disabled until we know the real value. Mirrors the LinkedIn/Instagram
+  // connected-account AI-Replies toggles.
+  const [wabaAiEnabled, setWabaAiEnabled] = useState<boolean | null>(null);
+  const [wapaAiEnabled, setWapaAiEnabled] = useState<boolean | null>(null);
+  const [wabaAiSaving, setWabaAiSaving] = useState(false);
+  const [wapaAiSaving, setWapaAiSaving] = useState(false);
+  const [aiToggleToast, setAiToggleToast] = useState<{ kind: 'ok' | 'err'; message: string } | null>(null);
+  // Auto-dismiss the AI-Replies toast after a few seconds (mirrors LinkedIn/Instagram).
+  useEffect(() => {
+    if (!aiToggleToast) return;
+    const t = setTimeout(() => setAiToggleToast(null), 4500);
+    return () => clearTimeout(t);
+  }, [aiToggleToast]);
+
   const [showMindBodyModal, setShowMindBodyModal] = useState(false);
   const [mindBodyForm, setMindBodyForm] = useState({
     site_id: '',
@@ -286,7 +303,20 @@ export const IntegrationsSettings: React.FC = () => {
           const accounts = Array.isArray(data?.accounts) ? data.accounts : [];
           const connected = accounts.some((a: any) => a.status === 'connected');
           setStatus('whatsapp-personal', connected ? 'connected' : 'disconnected');
-          if (connected) try { localStorage.setItem('whatsappChannel', 'personal'); } catch {}
+          // NOTE: do NOT write localStorage.whatsappChannel here — it globally biased
+          // proxyClient routing to 'personal' for every unspecified call (sending WABA
+          // requests to the personal/WAPA service). Channel is now per-request/explicit.
+          // Load the WAPA "AI Replies" master switch for the connected-account pill.
+          // WAPA returns { success, settings: { ai_enabled, ... } }. Default ON.
+          if (connected) {
+            try {
+              const cs = await fetchWithTenant('/api/whatsapp-conversations/chat-settings');
+              if (cs.ok) {
+                const csData = await cs.json();
+                setWapaAiEnabled(csData?.settings?.ai_enabled !== false);
+              }
+            } catch { /* non-fatal — pill stays at its default (ON) */ }
+          }
         }
       } catch { setStatus('whatsapp-personal', 'disconnected'); }
 
@@ -300,6 +330,18 @@ export const IntegrationsSettings: React.FC = () => {
           const accounts = Array.isArray(data) ? data : (Array.isArray(data?.accounts) ? data.accounts : []);
           const active = accounts.some((a: any) => a.status === 'active' || a.status === 'connected');
           setStatus('whatsapp-ai', active ? 'connected' : 'disconnected');
+          // Load the WABA "AI Replies" master switch for the connected-account pill.
+          // WABA (?channel=waba) returns the settings dict directly with a top-level
+          // ai_enabled. Default ON.
+          if (active) {
+            try {
+              const cs = await fetchWithTenant('/api/whatsapp-conversations/chat-settings?channel=waba');
+              if (cs.ok) {
+                const csData = await cs.json();
+                setWabaAiEnabled(csData?.ai_enabled !== false);
+              }
+            } catch { /* non-fatal — pill stays at its default (ON) */ }
+          }
         }
       } catch { setStatus('whatsapp-ai', 'disconnected'); }
 
@@ -408,6 +450,58 @@ export const IntegrationsSettings: React.FC = () => {
   useEffect(() => {
     refreshStatuses();
   }, [tenantId, refreshStatuses]);
+
+  // Flip a WhatsApp channel's tenant-level "AI Replies" master switch. Optimistic UI;
+  // revert + toast on failure. Both calls go through the shared chat-settings proxy:
+  //   WABA → PATCH /api/settings           (?channel=waba), echoes top-level ai_enabled
+  //   WAPA → PUT /api/personal-whatsapp/chat-settings, echoes { settings: { ai_enabled } }
+  // Mirrors the LinkedIn/Instagram connected-account AI-Replies toggle.
+  const toggleWabaAi = useCallback(async () => {
+    if (wabaAiSaving) return;
+    const previous = wabaAiEnabled ?? true;
+    const next = !previous;
+    setWabaAiEnabled(next); // optimistic
+    setWabaAiSaving(true);
+    try {
+      const res = await fetchWithTenant('/api/whatsapp-conversations/chat-settings?channel=waba', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ai_enabled: next }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.detail || data?.error || 'Failed to update AI Replies');
+      if (typeof data?.ai_enabled === 'boolean') setWabaAiEnabled(data.ai_enabled); // reconcile
+    } catch (err) {
+      setWabaAiEnabled(previous); // revert
+      setAiToggleToast({ kind: 'err', message: err instanceof Error ? err.message : 'Could not update AI Replies.' });
+    } finally {
+      setWabaAiSaving(false);
+    }
+  }, [wabaAiEnabled, wabaAiSaving]);
+
+  const toggleWapaAi = useCallback(async () => {
+    if (wapaAiSaving) return;
+    const previous = wapaAiEnabled ?? true;
+    const next = !previous;
+    setWapaAiEnabled(next); // optimistic
+    setWapaAiSaving(true);
+    try {
+      const res = await fetchWithTenant('/api/whatsapp-conversations/chat-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ai_enabled: next }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.success === false) throw new Error(data?.error || data?.message || 'Failed to update AI Replies');
+      const serverVal = data?.settings?.ai_enabled;
+      if (typeof serverVal === 'boolean') setWapaAiEnabled(serverVal); // reconcile
+    } catch (err) {
+      setWapaAiEnabled(previous); // revert
+      setAiToggleToast({ kind: 'err', message: err instanceof Error ? err.message : 'Could not update AI Replies.' });
+    } finally {
+      setWapaAiSaving(false);
+    }
+  }, [wapaAiEnabled, wapaAiSaving]);
 
   const fetchAvailableClasses = async () => {
     setFetchingClasses(true);
@@ -824,6 +918,17 @@ export const IntegrationsSettings: React.FC = () => {
             </div>
           </div>
 
+          {/* AI-Replies toggle feedback — only surfaces on failure (mirrors LinkedIn). */}
+          {aiToggleToast && (
+            <div className={`flex items-center gap-2 rounded-lg border p-3 text-sm ${
+              aiToggleToast.kind === 'ok'
+                ? 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200'
+                : 'border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200'
+            }`}>
+              {aiToggleToast.message}
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filtered.map((integration) => {
               const isCreditGated = CREDIT_GATED_IDS.has(integration.id);
@@ -894,6 +999,29 @@ export const IntegrationsSettings: React.FC = () => {
                   <p className="text-xs text-muted-foreground line-clamp-2 mb-4 flex-1 leading-relaxed">
                     {integration.description}
                   </p>
+
+                  {/* AI Replies master switch — only on a CONNECTED WhatsApp card.
+                      Tenant/channel-level kill switch (chat_settings.ai_enabled): off
+                      stops AI replies for ALL chats on this account (messages still
+                      land in the inbox); on resumes. stopPropagation keeps a toggle
+                      click from triggering the card's navigate-on-click. */}
+                  {(integration.id === 'whatsapp-ai' || integration.id === 'whatsapp-personal') && status === 'connected' && (
+                    <div className="mb-3" onClick={(e) => e.stopPropagation()}>
+                      <AiToggleChip
+                        label="AI Replies"
+                        enabled={(integration.id === 'whatsapp-ai' ? wabaAiEnabled : wapaAiEnabled) ?? true}
+                        disabled={
+                          integration.id === 'whatsapp-ai'
+                            ? wabaAiEnabled === null || wabaAiSaving
+                            : wapaAiEnabled === null || wapaAiSaving
+                        }
+                        onToggle={integration.id === 'whatsapp-ai' ? toggleWabaAi : toggleWapaAi}
+                      />
+                      <p className="mt-1 text-[10px] text-muted-foreground leading-snug">
+                        Applies to all chats on this account
+                      </p>
+                    </div>
+                  )}
 
                   <div className="mt-auto">
                     {integration.comingSoon ? (
@@ -1255,3 +1383,34 @@ export const IntegrationsSettings: React.FC = () => {
     </>
   );
 };
+
+// ── AI Replies chip ──────────────────────────────────────────────────────────
+// Green pill toggle mirroring the LinkedIn/Instagram connected-account cards
+// (web/src/components/settings/LinkedInIntegration.tsx → AiToggleChip).
+function AiToggleChip({
+  label,
+  enabled,
+  onToggle,
+  disabled,
+}: {
+  label: string;
+  enabled: boolean;
+  onToggle: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      disabled={disabled}
+      className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${
+        enabled
+          ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200 dark:hover:bg-emerald-500/20'
+          : 'border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-100 dark:border-white/10 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/10'
+      }`}
+    >
+      <Power className="h-3 w-3" />
+      {label}: {enabled ? 'on' : 'off'}
+    </button>
+  );
+}

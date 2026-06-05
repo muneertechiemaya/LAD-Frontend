@@ -1,0 +1,36 @@
+name: ci
+
+on:
+  push:
+    branches: [develop, stage, main]
+  pull_request:
+    branches: [develop, stage, main]
+
+# Phase 0 — wire ESLint into CI (R6).
+# Note: pre-existing `console.log` statements will fail lint until M4 is complete.
+jobs:
+  web-ci:
+    name: lint (Next.js web)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          # Monorepo uses npm workspaces — the only lockfile is at the repo root
+          # (web/package-lock.json was removed in the workspaces migration).
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        # npm ci must run at the workspace root, not in web/, so it can resolve
+        # the root lockfile and install all workspaces.
+        run: npm ci
+        working-directory: .
+
+      - name: Lint
+        run: npm run lint

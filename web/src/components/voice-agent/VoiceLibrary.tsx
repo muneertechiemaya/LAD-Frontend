@@ -19,6 +19,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import WaveSurfer from 'wavesurfer.js';
 import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.esm.js';
 
@@ -67,21 +68,81 @@ function encodeWAV(buffer: AudioBuffer, startSec: number, endSec: number): Blob 
   
   let offset = 44;
   for (let i = 0; i < interleaved.length; i++, offset += 2) {
-    let s = Math.max(-1, Math.min(1, interleaved[i]));
+    const s = Math.max(-1, Math.min(1, interleaved[i]));
     dataView.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
   }
   
   return new Blob([dataView], { type: 'audio/wav' });
 }
 
+const READING_SCRIPTS = [
+  {
+    title: "Security & Consent",
+    type: "Privacy",
+    description: "Verifies identity and authorized voice profile usage. Recommended for secure and formal assistants.",
+    text: "I authorize this system to create a secure digital clone of my voice. I understand this voice profile will be used to generate clear and natural speech for my assistant, and I will maintain control over its use."
+  },
+  {
+    title: "Phonetic Narrative",
+    type: "Phonetic",
+    description: "Highest similarity and pronunciation precision. Acoustically rich in phonemes. Recommended for premium results.",
+    text: "The gentle morning sun broke through the soft fog, warming the ancient stone path. A small blue bird chirped happily from a branch of the giant oak tree, while the quiet stream below flowed steadily towards the distant lake. Every sound seemed perfectly clear in the peaceful valley."
+  },
+  {
+    title: "Conversational Pitch",
+    type: "Conversational",
+    description: "Natural cadence and active flow. Captured in a friendly tone. Recommended for customer-facing sales agents.",
+    text: "Hello, and thank you for reaching out to us today. We've been working hard to make our automated assistance experience incredibly smooth, fast, and natural. Please let me know how I can help you find what you're looking for."
+  }
+];
+
+const CLONE_LANGUAGES = [
+  { value: "en-US", label: "English (US Accent)" },
+  { value: "en-GB", label: "English (UK Accent)" },
+  { value: "en-IN", label: "English (Indian Accent)" },
+  { value: "en-AU", label: "English (Australian Accent)" },
+  { value: "ar", label: "English (with Arabic Accent) / Arabic" },
+  { value: "ml", label: "English (with Malayalam Accent) / Malayalam" },
+  { value: "ta", label: "English (with Tamil Accent) / Tamil" },
+  { value: "hi", label: "English (with Hindi Accent) / Hindi" },
+  { value: "gu", label: "English (with Gujarati Accent) / Gujarati" },
+  { value: "te", label: "English (with Telugu Accent) / Telugu" },
+  { value: "kn", label: "English (with Kannada Accent) / Kannada" },
+  { value: "mr", label: "English (with Marathi Accent) / Marathi" },
+  { value: "bn", label: "English (with Bengali Accent) / Bengali" },
+  { value: "pa", label: "English (with Punjabi Accent) / Punjabi" },
+  { value: "es", label: "Spanish (Español)" },
+  { value: "fr", label: "French (Français)" },
+  { value: "de", label: "German (Deutsch)" },
+  { value: "ja", label: "Japanese (日本語)" },
+  { value: "pt", label: "Portuguese (Português)" },
+  { value: "zh", label: "Chinese (中文)" },
+];
+
 export function VoiceLibrary({ voices, setVoices }: VoiceLibraryProps) {
   const { toast } = useToast();
   
   const [selectedVoice, setSelectedVoice] = useState<Voice | null>(null);
-  const [testText, setTestText] = useState("Hello! I am a newly cloned voice. How do I sound today?");
+  const [testText, setTestText] = useState(
+    `Hello... there!
+This is... a comprehensive, real-world test... of my cloned voice!
+Does it sound... natural?
+Let's see... how it handles commas, exclamation marks! And... most importantly... pauses.
+
+By breaking the text... like this... we can truly hear the cadence.
+So... what do you think?
+Is the timing... correct? Or does it need... a bit more... tuning? Let's find out!`
+  );
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [audioCache, setAudioCache] = useState<Record<string, { url: string; text: string }>>({});
+
+  const isCached = !!(
+    selectedVoice &&
+    audioCache[selectedVoice.id] &&
+    audioCache[selectedVoice.id].text.trim() === testText.trim()
+  );
 
   // Cloning states
   const [isCloneDialogOpen, setIsCloneDialogOpen] = useState(false);
@@ -91,11 +152,22 @@ export function VoiceLibrary({ voices, setVoices }: VoiceLibraryProps) {
   const [cloneFile, setCloneFile] = useState<File | null>(null);
   const [cloneMode, setCloneMode] = useState<"instant" | "pro">("instant");
   const [cloneEnhance, setCloneEnhance] = useState(false);
+  const [cloneLanguage, setCloneLanguage] = useState("en-US");
 
   // Recording states
   const [isRecording, setIsRecording] = useState(false);
+  const [recordingStep, setRecordingStep] = useState<"idle" | "script_select" | "recording">("idle");
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [selectedScriptIndex, setSelectedScriptIndex] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const isRecordingCancelledRef = useRef(false);
+  const dialogScrollContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // Real-time voice visualizer levels
+  const [audioLevels, setAudioLevels] = useState<number[]>(new Array(32).fill(0));
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
 
   // Wavesurfer states
   const waveformRef = useRef<HTMLDivElement>(null);
@@ -134,16 +206,16 @@ export function VoiceLibrary({ voices, setVoices }: VoiceLibraryProps) {
         
         wsRegions.clearRegions();
         
-        // Default region: 10s or full length
-        const end = Math.min(duration, cloneMode === "instant" ? 10 : 15);
+        // Default region: 15s or full length
+        const end = Math.min(duration, 15);
         wsRegions.addRegion({
           start: 0,
           end: end,
           color: 'rgba(59, 130, 246, 0.2)',
           drag: true,
           resize: true,
-          minLength: 5,
-          maxLength: cloneMode === "instant" ? 10.5 : 15,
+          minLength: 5.5,
+          maxLength: 15.5,
         });
         setTrimStart(0);
         setTrimEnd(end);
@@ -170,9 +242,47 @@ export function VoiceLibrary({ voices, setVoices }: VoiceLibraryProps) {
       setTrimStart(0);
       setTrimEnd(0);
       setAudioDuration(0);
+      setRecordingStep("idle");
+      setCloneLanguage("en-US");
       if (isRecording) stopRecording();
     }
   }, [isCloneDialogOpen]);
+
+  useEffect(() => {
+    if (recordingStep !== "idle") {
+      setTimeout(() => {
+        dialogScrollContainerRef.current?.scrollTo({
+          top: dialogScrollContainerRef.current.scrollHeight,
+          behavior: 'smooth'
+        });
+      }, 100);
+    }
+  }, [recordingStep]);
+
+  useEffect(() => {
+    let interval: any = null;
+    if (isRecording) {
+      setRecordingSeconds(0);
+      interval = setInterval(() => {
+        setRecordingSeconds((prev) => {
+          if (prev >= 24) {
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+              mediaRecorderRef.current.stop();
+              setIsRecording(false);
+              setRecordingStep("idle");
+            }
+            return 25;
+          }
+          return prev + 1;
+        });
+      }, 1000);
+    } else {
+      setRecordingSeconds(0);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isRecording]);
 
   useEffect(() => {
     if (cloneFile) {
@@ -199,35 +309,19 @@ export function VoiceLibrary({ voices, setVoices }: VoiceLibraryProps) {
       const regions = regionsRef.current.getRegions();
       if (regions.length > 0) {
         const region = regions[0];
-        const defaultLength = cloneMode === "instant" ? 10 : 15;
+        const defaultLength = 15;
         const newEnd = Math.min(audioDuration, region.start + defaultLength);
         region.onResize(newEnd - region.end, 'right');
       }
     }
   }, [cloneMode]);
 
-  const startRecording = async () => {
+  const checkMicPermission = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      audioChunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const file = new File([audioBlob], 'recording.webm', { type: 'audio/webm' });
-        setCloneFile(file);
-        stream.getTracks().forEach(track => track.stop());
-      };
-
-      mediaRecorder.start();
-      setIsRecording(true);
-      mediaRecorderRef.current = mediaRecorder;
+      // Permission granted! Release the stream immediately
+      stream.getTracks().forEach(track => track.stop());
+      setRecordingStep("script_select");
     } catch (err) {
       toast({
         title: "Microphone Access Denied",
@@ -237,11 +331,115 @@ export function VoiceLibrary({ voices, setVoices }: VoiceLibraryProps) {
     }
   };
 
+  const cancelScriptSelect = () => {
+    setRecordingStep("idle");
+  };
+
+  const stopAudioAnalyzer = () => {
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    if (audioContextRef.current) {
+      audioContextRef.current.close().catch(() => {});
+      audioContextRef.current = null;
+    }
+    setAudioLevels(new Array(32).fill(0));
+  };
+
+  const startRecording = async () => {
+    try {
+      isRecordingCancelledRef.current = false;
+      setRecordingSeconds(0);
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      audioChunksRef.current = [];
+
+      // Web Audio Analyzer Setup
+      let audioCtx: AudioContext | null = null;
+      let analyser: AnalyserNode | null = null;
+      let animationFrameId: number;
+
+      try {
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        audioCtx = new AudioContextClass();
+        const source = audioCtx.createMediaStreamSource(stream);
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 64; // 32 frequency bins
+        source.connect(analyser);
+
+        audioContextRef.current = audioCtx;
+
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+
+        const updateAnalyser = () => {
+          if (analyser && stream.active) {
+            analyser.getByteFrequencyData(dataArray);
+            // Convert byte data (0-255) to a scale (0 to 1)
+            const levels = Array.from(dataArray).map(val => val / 255);
+            setAudioLevels(levels);
+            animationFrameId = requestAnimationFrame(updateAnalyser);
+            animationFrameRef.current = animationFrameId;
+          }
+        };
+
+        updateAnalyser();
+      } catch (audioErr) {
+        console.warn("Web Audio API not supported or blocked in this browser:", audioErr);
+      }
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        stopAudioAnalyzer();
+        if (isRecordingCancelledRef.current) {
+          audioChunksRef.current = [];
+          setCloneFile(null);
+        } else {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          const file = new File([audioBlob], 'recording.webm', { type: 'audio/webm' });
+          setCloneFile(file);
+        }
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingStep("recording");
+      mediaRecorderRef.current = mediaRecorder;
+    } catch (err) {
+      toast({
+        title: "Microphone Access Denied",
+        description: "Please allow microphone access to record your voice.",
+        variant: "destructive"
+      });
+      setRecordingStep("idle");
+    }
+  };
+
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
+      setRecordingStep("idle");
+      stopAudioAnalyzer();
     }
+  };
+
+  const cancelRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      isRecordingCancelledRef.current = true;
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      setRecordingSeconds(0);
+      stopAudioAnalyzer();
+    }
+    setRecordingStep("idle");
   };
 
   const handleTestVoice = async () => {
@@ -252,6 +450,32 @@ export function VoiceLibrary({ voices, setVoices }: VoiceLibraryProps) {
         audioRef.current.pause();
       }
       setIsPlaying(false);
+      return;
+    }
+
+    const voiceId = selectedVoice.id;
+    const cached = audioCache[voiceId];
+    
+    // Check if the current test text matches the cached audio clip exactly
+    if (cached && cached.text.trim() === testText.trim()) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      
+      const audio = new Audio(cached.url);
+      audio.onended = () => setIsPlaying(false);
+      audioRef.current = audio;
+      
+      try {
+        await audio.play();
+        setIsPlaying(true);
+      } catch (error: any) {
+        toast({
+          title: "Playback Failed",
+          description: "Could not play cached audio. Please regenerate.",
+          variant: "destructive"
+        });
+      }
       return;
     }
 
@@ -270,7 +494,7 @@ export function VoiceLibrary({ voices, setVoices }: VoiceLibraryProps) {
         body: JSON.stringify({
           voice_id: selectedVoice.provider_voice_id || selectedVoice.id,
           text: testText,
-          language: "en"
+          language: selectedVoice.accent || "en-US"
         })
       });
 
@@ -282,6 +506,12 @@ export function VoiceLibrary({ voices, setVoices }: VoiceLibraryProps) {
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       
+      // Store in browser cache for this voice
+      setAudioCache(prev => ({
+        ...prev,
+        [voiceId]: { url, text: testText }
+      }));
+
       if (audioRef.current) {
         audioRef.current.pause();
       }
@@ -314,19 +544,19 @@ export function VoiceLibrary({ voices, setVoices }: VoiceLibraryProps) {
       return;
     }
 
-    if (cloneMode === "instant" && (trimEnd - trimStart) > 10.5) {
+    if (cloneMode === "instant" && (trimEnd - trimStart) > 15.5) {
       toast({
         title: "Audio Too Long",
-        description: "Instant Voice Cloning requires 10 seconds of audio. Please trim your clip.",
+        description: "Instant Voice Cloning requires a maximum of 15 seconds of audio. Please trim your clip.",
         variant: "destructive"
       });
       return;
     }
 
-    if ((trimEnd - trimStart) < 4.5) {
+    if ((trimEnd - trimStart) < 5.5) {
       toast({
         title: "Audio Too Short",
-        description: "Please provide at least 5 seconds of audio for a high-quality clone.",
+        description: "Please provide at least 6 seconds of audio for a high-quality clone.",
         variant: "destructive"
       });
       return;
@@ -349,7 +579,7 @@ export function VoiceLibrary({ voices, setVoices }: VoiceLibraryProps) {
       formData.append("clip", trimmedFile);
       formData.append("name", cloneName);
       formData.append("description", cloneDesc);
-      formData.append("language", "en");
+      formData.append("language", cloneLanguage);
       formData.append("mode", cloneMode);
       formData.append("enhance", cloneEnhance ? "true" : "false");
       formData.append("gender", cloneGender);
@@ -374,7 +604,7 @@ export function VoiceLibrary({ voices, setVoices }: VoiceLibraryProps) {
         id: newVoiceData.id,
         description: newVoiceData.description,
         gender: cloneGender,
-        accent: "unknown",
+        accent: newVoiceData.language || cloneLanguage,
         provider: "cartesia",
         provider_voice_id: newVoiceData.provider_voice_id
       };
@@ -434,7 +664,7 @@ export function VoiceLibrary({ voices, setVoices }: VoiceLibraryProps) {
                   Upload or record a clean audio clip. Use the handles to trim it to the required length.
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto px-2 custom-scrollbar">
+              <div ref={dialogScrollContainerRef} className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto px-2 custom-scrollbar">
                 <div className="grid gap-2">
                   <Label htmlFor="name">Voice Name</Label>
                   <Input 
@@ -474,6 +704,22 @@ export function VoiceLibrary({ voices, setVoices }: VoiceLibraryProps) {
                   </div>
                 </div>
 
+                <div className="grid gap-2">
+                  <Label htmlFor="cloneLanguage">Accent / Dialect</Label>
+                  <Select value={cloneLanguage} onValueChange={setCloneLanguage}>
+                    <SelectTrigger id="cloneLanguage" className="h-10 rounded-lg border-gray-200 focus:ring-2 focus:ring-primary w-full bg-background text-sm">
+                      <SelectValue placeholder="Select accent / dialect" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CLONE_LANGUAGES.map((lang) => (
+                        <SelectItem key={lang.value} value={lang.value}>
+                          {lang.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div className="flex flex-col gap-4 bg-muted/30 p-4 rounded-lg border">
                   {/* Clone Mode */}
                   <div className="space-y-3">
@@ -487,7 +733,7 @@ export function VoiceLibrary({ voices, setVoices }: VoiceLibraryProps) {
                       >
                         <span className="font-semibold text-xs">Instant Clone</span>
                         <span className="text-[10px] font-normal opacity-80 whitespace-normal text-center leading-tight">
-                          10s audio • 1 credit / char
+                          6-15s audio • 1 credit / char
                         </span>
                       </Button>
                       <Button 
@@ -530,8 +776,152 @@ export function VoiceLibrary({ voices, setVoices }: VoiceLibraryProps) {
                       </span>
                     )}
                   </Label>
-                  
-                  {!cloneFile ? (
+                                 {recordingStep === "script_select" ? (
+                    <div className="flex flex-col gap-4 p-4 rounded-xl border bg-card/50 shadow-sm animate-fade-in">
+                      <div className="space-y-2">
+                        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                          1. Select a script to speak aloud
+                        </span>
+                        <div className="grid grid-cols-1 gap-2">
+                          {READING_SCRIPTS.map((script, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => setSelectedScriptIndex(idx)}
+                              className={cn(
+                                "flex flex-col items-start text-left p-3 rounded-lg border transition-all duration-200",
+                                selectedScriptIndex === idx
+                                  ? "border-primary bg-primary/5 shadow-sm"
+                                  : "border-border hover:bg-muted/50"
+                              )}
+                            >
+                              <div className="flex items-center justify-between w-full">
+                                <span className="font-semibold text-sm text-foreground">{script.title}</span>
+                                <span className={cn(
+                                  "text-[10px] font-semibold px-2 py-0.5 rounded-full",
+                                  script.type === "Privacy" ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300" :
+                                  script.type === "Phonetic" ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300" :
+                                  "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300"
+                                )}>
+                                  {script.type}
+                                </span>
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1 leading-normal">
+                                {script.description}
+                              </p>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5 mt-1">
+                        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                          Script Preview
+                        </span>
+                        <div className="p-3.5 rounded-lg bg-muted/40 border text-sm text-foreground leading-relaxed font-medium min-h-[5rem] flex items-center">
+                          &quot;{READING_SCRIPTS[selectedScriptIndex].text}&quot;
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-end gap-3 mt-2 border-t pt-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={cancelScriptSelect}
+                          className="h-9 px-4 text-xs"
+                        >
+                          Back
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={startRecording}
+                          className="h-9 px-4 font-semibold gradient-primary"
+                        >
+                          <Mic className="w-4 h-4 mr-1.5" /> Start Recording
+                        </Button>
+                      </div>
+                    </div>
+                  ) : recordingStep === "recording" ? (
+                    <div className="flex flex-col gap-4 p-4 rounded-xl border bg-card/50 shadow-sm animate-fade-in">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                          Reading Script ({READING_SCRIPTS[selectedScriptIndex].type})
+                        </span>
+                        <span className="text-xs font-semibold text-primary">
+                          {READING_SCRIPTS[selectedScriptIndex].title}
+                        </span>
+                      </div>
+
+                      <div className="p-4 rounded-lg bg-muted/40 border text-sm sm:text-base text-foreground leading-relaxed font-medium min-h-[5.5rem] flex items-center shadow-inner">
+                        &quot;{READING_SCRIPTS[selectedScriptIndex].text}&quot;
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1.5 font-semibold text-red-600">
+                            <span className="h-2.5 w-2.5 rounded-full bg-red-600 animate-pulse" />
+                            Recording...
+                          </div>
+                          <span>
+                            0:{recordingSeconds < 10 ? `0${recordingSeconds}` : recordingSeconds} / 0:25
+                          </span>
+                        </div>
+                        
+                        {/* Real-time Voice Responsive Wave Progress Visualizer */}
+                        <div className="relative">
+                          <div className="flex items-center justify-between gap-1 h-14 w-full px-3 bg-muted/20 rounded-xl border border-muted/50 overflow-hidden">
+                            {Array.from({ length: 32 }).map((_, idx) => {
+                              const barProgress = (idx / 31) * 100;
+                              const progress = Math.min(100, (recordingSeconds / 25) * 100);
+                              const isActive = progress >= barProgress;
+                              
+                              // Real-time audio pitch/loudness level (0 to 1) for this bin
+                              const level = audioLevels[idx] || 0;
+                              
+                              // Oscillating base height configuration (between 16px and 40px)
+                              const baseHeight = idx % 4 === 0 ? 32 : idx % 3 === 0 ? 24 : idx % 2 === 0 ? 16 : 40;
+                              
+                              // Calculate dynamic height based on active mic input (with a sleek 15% baseline)
+                              const visualHeight = Math.max(6, baseHeight * (0.15 + level * 0.85));
+
+                              return (
+                                <div
+                                  key={idx}
+                                  className={cn(
+                                    "w-1.5 rounded-full transition-all duration-75 shadow-sm",
+                                    isActive 
+                                      ? "bg-red-600 dark:bg-red-500 shadow-red-500/10" 
+                                      : "bg-muted-foreground/35"
+                                  )}
+                                  style={{
+                                    height: `${visualHeight}px`,
+                                  }}
+                                />
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-end gap-3 mt-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={cancelRecording}
+                          className="text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={stopRecording}
+                          className="h-9 px-4 font-semibold bg-red-600 hover:bg-red-700 active:bg-red-800 text-white border border-red-700 hover:text-white shadow-sm transition-colors"
+                        >
+                          <StopCircle className="w-4 h-4 mr-1.5" /> Stop & Save
+                        </Button>
+                      </div>
+                    </div>
+                  ) : !cloneFile ? (
                     <div className="grid grid-cols-2 gap-3">
                       <label htmlFor="dropzone-file" className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer bg-muted/20 hover:bg-muted/50 transition-colors">
                         <div className="flex flex-col items-center justify-center pt-5 pb-6">
@@ -552,23 +942,12 @@ export function VoiceLibrary({ voices, setVoices }: VoiceLibraryProps) {
                       </label>
                       
                       <button 
-                        onClick={isRecording ? stopRecording : startRecording}
-                        className={cn(
-                          "flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer transition-colors",
-                          isRecording ? "border-red-500/50 bg-red-500/10 text-red-600" : "bg-muted/20 hover:bg-muted/50 border-muted-foreground/25"
-                        )}
+                        type="button"
+                        onClick={checkMicPermission}
+                        className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer bg-muted/20 hover:bg-muted/50 border-muted-foreground/25 transition-colors"
                       >
-                        {isRecording ? (
-                          <>
-                            <StopCircle className="w-6 h-6 mb-2 animate-pulse" />
-                            <p className="text-xs font-semibold">Stop Recording</p>
-                          </>
-                        ) : (
-                          <>
-                            <Mic className="w-6 h-6 mb-2 text-muted-foreground" />
-                            <p className="text-xs font-semibold">Record Mic</p>
-                          </>
-                        )}
+                        <Mic className="w-6 h-6 mb-2 text-muted-foreground" />
+                        <p className="text-xs font-semibold">Record Mic</p>
                       </button>
                     </div>
                   ) : (
@@ -600,14 +979,16 @@ export function VoiceLibrary({ voices, setVoices }: VoiceLibraryProps) {
                   )}
                 </div>
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsCloneDialogOpen(false)} disabled={isCloning}>
-                  Cancel
-                </Button>
-                <Button onClick={handleCloneSubmit} disabled={isCloning || !cloneName || !cloneFile} className="gradient-primary">
-                  {isCloning ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Cloning...</> : 'Clone Selected Region'}
-                </Button>
-              </DialogFooter>
+              {!isRecording && recordingStep === "idle" && (
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsCloneDialogOpen(false)} disabled={isCloning}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleCloneSubmit} disabled={isCloning || !cloneName || !cloneFile} className="gradient-primary">
+                    {isCloning ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Cloning...</> : 'Clone Selected Region'}
+                  </Button>
+                </DialogFooter>
+              )}
             </DialogContent>
           </Dialog>
         </div>
@@ -666,30 +1047,52 @@ export function VoiceLibrary({ voices, setVoices }: VoiceLibraryProps) {
               <div className="space-y-4 animate-fade-in">
                 <div className="p-4 bg-muted/30 rounded-lg border">
                   <h3 className="font-medium">{selectedVoice.description || "Unnamed Voice"}</h3>
-                  <div className="flex gap-4 mt-2 text-sm text-muted-foreground">
+                  <div className="flex flex-wrap gap-x-6 gap-y-2 mt-2 text-sm text-muted-foreground">
                     <div><span className="font-medium">Provider ID:</span> {selectedVoice.provider_voice_id || 'N/A'}</div>
                     <div><span className="font-medium">Provider:</span> {selectedVoice.provider}</div>
+                    <div><span className="font-medium">Dialect / Accent:</span> {CLONE_LANGUAGES.find(l => l.value === selectedVoice.accent)?.label || selectedVoice.accent || 'Default (US Accent)'}</div>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Text to Speak</Label>
+                  <div className="flex justify-between items-center">
+                    <Label htmlFor="test-text">Text to Speak</Label>
+                    <span className={cn(
+                      "text-xs transition-colors duration-200",
+                      testText.length >= 450 
+                        ? "text-amber-600 dark:text-amber-500 font-semibold" 
+                        : "text-muted-foreground"
+                    )}>
+                      {testText.length} / 500 characters
+                    </span>
+                  </div>
                   <Textarea 
+                    id="test-text"
                     rows={6}
                     value={testText}
-                    onChange={(e) => setTestText(e.target.value)}
+                    onChange={(e) => setTestText(e.target.value.slice(0, 500))}
+                    maxLength={500}
                     placeholder="Enter the text you want the voice to say..."
                     className="resize-none"
                   />
                 </div>
 
-                <div className="flex justify-end pt-2">
+                <div className="flex justify-between items-center pt-2">
+                  <div className="text-xs">
+                    {isCached && !isGenerating && !isPlaying && (
+                      <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-500 font-medium animate-fade-in">
+                        <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                        Audio cached browser-side
+                      </span>
+                    )}
+                  </div>
                   <Button 
                     onClick={handleTestVoice} 
                     disabled={isGenerating || !testText}
                     className={cn(
-                      "min-w-32 transition-all duration-300",
-                      isPlaying && "bg-primary/10 border-primary text-primary hover:bg-primary/20"
+                      "min-w-36 transition-all duration-300 shadow-sm",
+                      isPlaying && "bg-primary/10 border-primary text-primary hover:bg-primary/20",
+                      isCached && !isPlaying && !isGenerating && "bg-emerald-600 hover:bg-emerald-700 hover:text-white text-white border-emerald-700"
                     )}
                     variant={isPlaying ? "outline" : "default"}
                   >
@@ -697,6 +1100,8 @@ export function VoiceLibrary({ voices, setVoices }: VoiceLibraryProps) {
                       <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...</>
                     ) : isPlaying ? (
                       <><Square className="h-4 w-4 mr-2" /> Stop Playback</>
+                    ) : isCached ? (
+                      <><Play className="h-4 w-4 mr-2" /> Play Again</>
                     ) : (
                       <><Play className="h-4 w-4 mr-2" /> Generate & Play</>
                     )}

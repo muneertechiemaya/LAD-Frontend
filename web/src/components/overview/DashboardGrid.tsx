@@ -44,6 +44,8 @@ import { AIInsightsWidget } from './widgets/AIInsightsWidget';
 import { QuickActionsWidget } from './widgets/QuickActionsWidget';
 import { CalendarWidget } from './widgets/CalendarWidget';
 import { BroadcastPerformanceWidget } from './widgets/BroadcastPerformanceWidget';
+import { ConversationFunnelWidget } from './widgets/ConversationFunnelWidget';
+import { ReengageTopicsWidget } from './widgets/ReengageTopicsWidget';
 // Utilities
 import { cn } from '@/lib/utils';
 import {
@@ -391,7 +393,7 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({ className, onLoadi
         leadName: call.leadName || 'Unknown Lead',
         agentName: call.agentName || 'AI Assistant',
         status: call.status,
-        duration: formatDuration(call as any),
+        duration: formatDuration(call as BackendCallLog),
         date: formatCallDate(call.startedAt || call.call_date || ''),
       })),
     [calls]
@@ -477,6 +479,10 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({ className, onLoadi
         return <CalendarWidget id={widgetId} />;
       case 'broadcast-performance':
         return <BroadcastPerformanceWidget id={widgetId} />;
+      case 'conversation-funnel':
+        return <ConversationFunnelWidget id={widgetId} />;
+      case 'reengage-topics':
+        return <ReengageTopicsWidget id={widgetId} />;
       default:
         return <div className="widget-card h-full flex items-center justify-center text-muted-foreground">Unknown widget</div>;
     }
@@ -556,7 +562,7 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({ className, onLoadi
         <div className="mt-6 p-4 border-2 border-dashed border-accent/30 rounded-xl text-center">
           <p className="text-sm text-muted-foreground">
             🎯 <span className="font-medium">Drag widgets</span> by their header to reorder •
-            <span className="font-medium"> Click "+ Add Widget"</span> to add more
+            <span className="font-medium"> Click &quot;+ Add Widget&quot;</span> to add more
           </p>
         </div>
       )}

@@ -8,15 +8,20 @@ import { ProfileSummaryDialog } from '@/components/campaigns';
 import AgentVisualizer from '@/components/ui/AgentVisualizer';
 import { useOnboardingStore } from '@/store/onboardingStore';
 import WorkflowPreviewPanel from '@/components/onboarding/WorkflowPreviewPanel';
+import { MediaGenerationModal } from '@/components/voice-agent/MediaGenerationModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmailTemplates, useCreateEmailTemplate } from '@lad/frontend-features/email-templates';
 import { useConnectedEmailSenders } from '@lad/frontend-features/email-senders';
 import {
     useLinkedInSearch,
+    useRunSearch,
     useAIChat,
     useCampaignCreation,
     useVoiceAgent,
     useBilling,
+    useBusinessProfile,
+    computeCompleteness,
+    type BusinessProfile,
 } from '@lad/frontend-features/ai-icp-assistant';
 
 /* ═══════════════════════════════════════════════
@@ -116,6 +121,39 @@ function toArr(v: any): string[] {
     if (Array.isArray(v)) return v.filter((x: any) => typeof x === 'string' && x.trim());
     if (typeof v === 'string' && v.trim()) return [v];
     return [];
+}
+
+const ICP_LEADS_PROMPT = 'Get leads from my active ICP';
+const isIcpLeadsPrompt = (s: string) => s.trim().toLowerCase() === ICP_LEADS_PROMPT.toLowerCase();
+
+/** Map SearchDispatcher candidates (ProspectCandidate) → the page's LeadProfile shape,
+ *  so an ICP-discovery run drops into the same leads list/panel the LinkedIn search uses. */
+function candidatesToLeadProfiles(candidates: any[]): LeadProfile[] {
+    return (candidates || []).map((c, i) => {
+        const fullName = String(c.full_name || '').trim();
+        const parts = fullName.split(/\s+/).filter(Boolean);
+        const email = c.email && !String(c.email).startsWith('email_not_unlocked@') ? c.email : undefined;
+        const conf = typeof c.source_confidence === 'number' ? c.source_confidence : 0;
+        const match: 'strong' | 'moderate' | 'weak' = conf >= 0.8 ? 'strong' : conf >= 0.5 ? 'moderate' : 'weak';
+        return {
+            id: String(c.apollo_id || c.linkedin_url || `icp-${i}`),
+            name: fullName || c.company_name || `Prospect ${i + 1}`,
+            first_name: parts[0] || '',
+            last_name: parts.slice(1).join(' ') || '',
+            headline: c.headline || c.job_title || '',
+            location: c.company_country || '',
+            current_company: c.company_name || '',
+            profile_url: c.linkedin_url || '',
+            profile_picture: '',
+            industry: c.company_industry || '',
+            network_distance: '',
+            email,
+            phone: c.phone_e164 || undefined,
+            icp_score: Math.round(conf * 100),
+            match_level: match,
+            icp_reasoning: `${match[0].toUpperCase()}${match.slice(1)} match to your ICP`,
+        };
+    });
 }
 
 function buildOutreachJourney(leads: LeadProfile[], targeting: LeadTargeting | null): OutreachStep[] {
@@ -443,6 +481,7 @@ export default function AdvancedSearchAIPage() {
 
     // Initialize SDK hooks
     const linkedInSearch = useLinkedInSearch();
+    const icpSearch = useRunSearch();
     const aiChat = useAIChat();
     const campaignCreation = useCampaignCreation();
     const { fetchLeadSummaryPreview, saveProspectFeedback, generateProspectSummary } = campaignCreation;
@@ -714,6 +753,7 @@ export default function AdvancedSearchAIPage() {
     // ── AI Playground state ──────────────────────────────────────────────────
     // ── AI Playground (chat-based business profiling) ────────────────────────
     const [showPlayground, setShowPlayground] = useState(false);
+    const [showMediaModal, setShowMediaModal] = useState(false);
     const [pgChatHistory, setPgChatHistory] = useState<Array<{ role: 'user' | 'assistant'; content: string; card?: any }>>([]);
     const [pgInput, setPgInput] = useState('');
     const [pgBusy, setPgBusy] = useState(false);
@@ -723,6 +763,11 @@ export default function AdvancedSearchAIPage() {
     const [pgIsComplete, setPgIsComplete] = useState(false);
     const [pgSuggesting, setPgSuggesting] = useState(false);  // AI suggestion loading
     const pgMessagesEndRef = useRef<HTMLDivElement>(null);
+    // The 17-key business profile (14 core + 3 optional). Persisted server-side
+    // by /api/ai-playground/chat on every turn — the hook handles the initial
+    // load + exposes the shared completeness math used by Settings and the
+    // wizard's Company step.
+    const { profile: loadedProfile, loading: profileLoading } = useBusinessProfile();
     const [businessProfile, setBusinessProfile] = useState<Record<string, string>>({
         companyName: '', industry: '', website: '', companyDescription: '',
         productsServices: '', targetCustomers: '', icpJobTitles: '',
@@ -730,14 +775,27 @@ export default function AdvancedSearchAIPage() {
         sampleConversation: '', operatingHours: '', timezone: '',
         geographicFocus: '', valueProposition: '', competitors: '', campaignTone: '',
     });
+    const [bpHydrated, setBpHydrated] = useState(false);
 
-    // Load profile from localStorage on mount
+    // Hydrate local state once when the hook's initial load completes.
+    // We keep `businessProfile` as a local Record<string, string> because the
+    // chat continues to mutate it through many setBusinessProfile calls — the
+    // backend persists each turn via /api/ai-playground/chat, no client write
+    // needed here.
     useEffect(() => {
-        try {
-            const stored = localStorage.getItem('lad_business_profile');
-            if (stored) setBusinessProfile(prev => ({ ...prev, ...JSON.parse(stored) }));
-        } catch { }
-    }, []);
+        if (!profileLoading && !bpHydrated) {
+            const next: Record<string, string> = {};
+            for (const k of Object.keys(businessProfile)) {
+                const v = (loadedProfile as Record<string, unknown>)[k];
+                if (typeof v === 'string') next[k] = v;
+            }
+            if (Object.keys(next).length > 0) {
+                setBusinessProfile(prev => ({ ...prev, ...next }));
+            }
+            setBpHydrated(true);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [profileLoading, bpHydrated, loadedProfile]);
 
     // Auto-scroll playground chat — also fires when busy clears (card widget appears)
     useEffect(() => {
@@ -777,19 +835,15 @@ export default function AdvancedSearchAIPage() {
                     }
                 }
                 if (data.profile) {
+                    // Persistence is handled server-side by /api/ai-playground/chat
+                    // — no client write needed. The hook will re-fetch on demand
+                    // (Settings / wizard refresh).
                     setBusinessProfile(prev => ({ ...prev, ...data.profile }));
-                    try { localStorage.setItem('lad_business_profile', JSON.stringify({ ...businessProfile, ...data.profile })); } catch { }
                 }
                 if (data.isComplete) {
                     setPgIsComplete(true);
-                    // Explicitly persist the final complete profile to DB so lead-chat always has full context
-                    const finalProfile = { ...businessProfile, ...(data.profile || {}) };
-                    fetch('/api/ai-playground', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        credentials: 'include',
-                        body: JSON.stringify({ profile: finalProfile }),
-                    }).catch(() => { });
+                    // The final profile is already persisted by the chat endpoint's
+                    // own upsertIcpProfile call — no duplicate POST here.
                 }
             }
         } catch { }
@@ -803,7 +857,7 @@ export default function AdvancedSearchAIPage() {
         let value = pgCardValues[field];
         if (type === 'tags') {
             // Flush any pending tag input (supports comma-separated like "CEO, VP of Sales")
-            let committed = Array.isArray(value) ? [...value] : [];
+            const committed = Array.isArray(value) ? [...value] : [];
             if (pgTagInput.trim()) {
                 const pending = pgTagInput.split(',').map((s: string) => s.trim()).filter(Boolean);
                 pending.forEach((t: string) => { if (!committed.includes(t)) committed.push(t); });
@@ -1129,7 +1183,7 @@ export default function AdvancedSearchAIPage() {
                 }
             }
         } catch { }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+         
     }, []); // Run once on mount
 
     // ── Clear / Restart campaign setup ──────────────────────────────────────
@@ -1164,7 +1218,7 @@ export default function AdvancedSearchAIPage() {
         setLastTargeting(null); setLoadingMore(false); setNoMoreLeads(false);
         setFilteredLeads([]); setShowFilteredLeads(false);
         setWebSearchEnabled(false);
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, []);  
 
     useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
@@ -1524,6 +1578,62 @@ export default function AdvancedSearchAIPage() {
     };
 
     /* ── Landing submit ── */
+    // ── ICP discovery (SearchDispatcher) — runs Apollo + Sales Nav on the active ICP,
+    //    maps results into the same `leads` list so the existing campaign flow works. ──
+    const handleIcpLeadsSearch = useCallback(async (promptText: string) => {
+        const uid = `u-${Date.now()}`;
+        const lid = `l-${Date.now()}`;
+        setMessages(p => [...p,
+            { id: uid, role: 'user', text: promptText, ts: new Date() },
+            { id: lid, role: 'ai', text: '', ts: new Date(), loading: true },
+        ]);
+        setBusy(true);
+        setMsgCount(c => c + 1);
+        setIsSearching(true);
+        setActivities([]);
+        try {
+            const res = await icpSearch.run({ maxResults: 25, triggeredBy: 'manual' });
+            setIsSearching(false);
+            if (!res || res.success === false || res.error === 'no_active_icp') {
+                const msg = res?.error === 'no_active_icp'
+                    ? "You don't have an active ICP yet. Define one in Settings → ICP Search Strategy, then run this again."
+                    : `ICP search couldn't complete${res?.error ? `: ${res.error}` : ''}.`;
+                setMessages(p => p.map(m => m.id === lid ? { ...m, loading: false, text: msg } : m));
+                return;
+            }
+            const mapped = candidatesToLeadProfiles(res.candidates || []);
+            const n = mapped.length;
+            // Summarise the result set so the campaign card (gated by msg.targeting) and
+            // the outreach-journey preview render exactly like a normal search.
+            const icpTargeting: LeadTargeting = {
+                job_titles: [...new Set(mapped.map(l => l.headline).filter(Boolean))].slice(0, 6),
+                industries: [...new Set(mapped.map(l => l.industry).filter(Boolean))].slice(0, 6),
+                locations: [...new Set(mapped.map(l => l.location).filter(Boolean))].slice(0, 6),
+                keywords: [],
+                profile_language: [],
+            };
+            setLeads(mapped);
+            setFilteredLeads([]);
+            setTargeting(n > 0 ? icpTargeting : null);
+            setMessages(p => p.map(m => m.id === lid ? {
+                ...m,
+                loading: false,
+                text: n > 0
+                    ? `Found ${n} prospect${n === 1 ? '' : 's'} matching your active ICP. Review them and create your outreach campaign.`
+                    : 'No prospects matched your active ICP on this run. Try widening the ICP or raising the result cap in your search strategy.',
+                leads: n > 0 ? mapped.slice(0, 3) : undefined,
+                targeting: n > 0 ? icpTargeting : undefined,
+                outreach_journey: n > 0 ? buildOutreachJourney(mapped, icpTargeting) : undefined,
+            } : m));
+            if (n > 0) setTimeout(() => setShowPanel('leads'), 300);
+        } catch (e: any) {
+            setIsSearching(false);
+            setMessages(p => p.map(m => m.id === lid ? { ...m, loading: false, text: `ICP search failed: ${e?.message || 'unknown error'}` } : m));
+        } finally {
+            setBusy(false);
+        }
+    }, [icpSearch]);
+
     const onLandingSubmit = useCallback(() => {
         if (!input.trim()) return;
         addToHistory(input.trim());
@@ -1818,6 +1928,10 @@ export default function AdvancedSearchAIPage() {
 
     const doSend = useCallback(async (text: string, opts?: { targetingOverride?: LeadTargeting }) => {
         if (!text.trim() || busy) return;
+        // ICP chip sentinel → run the SearchDispatcher (Apollo + Sales Nav on the active
+        // ICP), not the LinkedIn pipeline. Placed here so every submit path is covered
+        // (landing onLandingSubmit + chat onChatSend both funnel through doSend).
+        if (isIcpLeadsPrompt(text)) { await handleIcpLeadsSearch(text); return; }
         // Enforce 10-message limit only when user has no credits
         if (creditBalance !== null && creditBalance <= 0 && msgCount >= 10) return;
         const uid = `u-${Date.now()}`;
@@ -1947,7 +2061,7 @@ export default function AdvancedSearchAIPage() {
                     phone: inboundLeads.filter(l => l.phone).length,
                     website: inboundLeads.filter(l => l.website).length,
                 };
-                let summaryParts = [`📊 **Your uploaded leads summary:**\n\n• **Total Leads:** ${counts.total}`];
+                const summaryParts = [`📊 **Your uploaded leads summary:**\n\n• **Total Leads:** ${counts.total}`];
                 if (counts.linkedin > 0) summaryParts.push(`• **LinkedIn Profiles:** ${counts.linkedin}`);
                 if (counts.email > 0) summaryParts.push(`• **Email Addresses:** ${counts.email}`);
                 if (counts.whatsapp > 0) summaryParts.push(`• **WhatsApp Numbers:** ${counts.whatsapp}`);
@@ -2749,12 +2863,6 @@ export default function AdvancedSearchAIPage() {
                                         if (nonMatching.length > 0) {
                                             setFilteredLeads(prev => [...nonMatching, ...prev]);
                                         }
-                                        console.log('[Nationality] Annotation complete', {
-                                            total: realLeads.length,
-                                            matching: matching.length,
-                                            nonMatching: nonMatching.length,
-                                            targets: nationalityFilters,
-                                        });
                                     }
                                 } catch (inferErr) {
                                     console.warn('[Nationality] Annotation failed', inferErr);
@@ -3515,6 +3623,14 @@ export default function AdvancedSearchAIPage() {
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /></svg>
                         VP of Sales in UK SaaS
                     </button>
+                    <button className="adv-chip" onClick={() => { setInput(ICP_LEADS_PROMPT); taRef.current?.focus(); }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" /></svg>
+                        Get leads from my active ICP
+                    </button>
+                    <button className="adv-chip" onClick={() => setShowMediaModal(true)}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
+                        Media Generation
+                    </button>
                 </div>
 
                 {/* Recent searches */}
@@ -3879,6 +3995,14 @@ export default function AdvancedSearchAIPage() {
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="19" y1="8" x2="19" y2="14" /><line x1="22" y1="11" x2="16" y2="11" /></svg>
                                 Strengthen client relationships
 
+                            </button>
+                            <button className="adv-gemini-chip" onClick={() => { setInput(ICP_LEADS_PROMPT); taRef.current?.focus(); }}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" /></svg>
+                                Get leads from my active ICP
+                            </button>
+                            <button className="adv-gemini-chip" onClick={() => setShowMediaModal(true)}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
+                                Media Generation
                             </button>
                         </div>
                     )}
@@ -4483,18 +4607,14 @@ export default function AdvancedSearchAIPage() {
                                     </div>
                                 </div>
 
-                                {/* Profile completeness bar */}
+                                {/* Profile completeness bar — math comes from the shared SDK helper so
+                                    the wizard / Settings / this drawer always agree. When pgIsComplete
+                                    we lock to 100% regardless of trailing blank optional fields. */}
                                 {(() => {
-                                    // Optional/supplementary fields not part of the core conversation flow
-                                    const optionalFields = new Set(['website', 'sampleConversation', 'competitors']);
-                                    const coreProfile = Object.fromEntries(
-                                        Object.entries(businessProfile).filter(([k]) => !optionalFields.has(k))
-                                    );
-                                    const filled = pgIsComplete
-                                        ? Object.keys(coreProfile).length
-                                        : Object.values(coreProfile).filter(v => v).length;
-                                    const total = Object.keys(coreProfile).length;
-                                    const pct = Math.round((filled / total) * 100);
+                                    const c = computeCompleteness(businessProfile as BusinessProfile);
+                                    const filled = pgIsComplete ? c.total : c.filled;
+                                    const total = c.total;
+                                    const pct = pgIsComplete ? 100 : c.pct;
                                     return (
                                         <div style={{ marginTop: 10 }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
@@ -4508,6 +4628,26 @@ export default function AdvancedSearchAIPage() {
                                                     width: `${pct}%`, transition: 'width .5s ease',
                                                 }} />
                                             </div>
+
+                                            {/* Edit affordance — once any field is filled, the tenant can jump
+                                                to the full editor (Settings → Business Profile) to change any of
+                                                the 14 values. The chat is for first capture; Settings is for edits. */}
+                                            {filled > 0 && (
+                                                <button
+                                                    onClick={() => router.push('/settings?tab=businessprofile')}
+                                                    style={{
+                                                        marginTop: 8, width: '100%', padding: '7px 10px',
+                                                        borderRadius: 8, border: '1px solid #c7d2fe',
+                                                        background: '#fff', color: '#0b1957',
+                                                        fontSize: 11.5, fontWeight: 600, cursor: 'pointer',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                                                    }}
+                                                    title="Open the Business Profile editor to change any saved field"
+                                                >
+                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                                                    Review &amp; edit your {total} fields
+                                                </button>
+                                            )}
                                         </div>
                                     );
                                 })()}
@@ -4523,7 +4663,7 @@ export default function AdvancedSearchAIPage() {
                                         <div style={{ textAlign: 'center' }}>
                                             <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', marginBottom: 6 }}>Define Your Ideal Customer Profile</div>
                                             <div style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.6 }}>
-                                                Answer a few questions about your business and I'll identify exactly who you should target for outreach.
+                                                Answer a few questions about your business and I&apos;ll identify exactly who you should target for outreach.
                                             </div>
                                         </div>
                                         <button
@@ -4843,6 +4983,8 @@ export default function AdvancedSearchAIPage() {
                         </div>
                     </div>
                 )}
+
+                <MediaGenerationModal isOpen={showMediaModal} onClose={() => setShowMediaModal(false)} />
 
                 {/* Credit Recharge Modal */}
                 {showRechargeModal && (
@@ -6105,7 +6247,7 @@ function CheckpointFormInline({
                 }
             })
             .catch(() => { });
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, []);  
 
     // SDK hook — connected Gmail / Outlook accounts from integration tab
     const { data: connectedSenders = [] } = useConnectedEmailSenders();
@@ -6161,7 +6303,7 @@ function CheckpointFormInline({
             .then(r => r.json())
             .then(d => { if (d.success) setWaTemplates(d.data || []); })
             .catch(() => { });
-    }, [nextChannels, waTemplatesLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [nextChannels, waTemplatesLoaded]);  
 
     // LinkedIn follow-up config (when linkedin selected as next channel in step 3)
     // Multi-select: 'profile_view' | 'connect' | 'message'
@@ -6194,7 +6336,7 @@ function CheckpointFormInline({
         if (!waAccountId || !whatsAppAccounts.length) return;
         const acc = whatsAppAccounts.find((a: any) => a.id === waAccountId);
         if (acc) setWaNewTmplChannelType(acc.account_type === 'business_api' ? 'business_api' : 'personal_whatsapp');
-    }, [waAccountId, whatsAppAccounts]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [waAccountId, whatsAppAccounts]);  
 
     // Fetch LinkedIn message templates once when LinkedIn channel is first enabled
     useEffect(() => {
@@ -6204,7 +6346,7 @@ function CheckpointFormInline({
             .then(r => r.json())
             .then(d => { if (d.success) setLiTemplates(d.data || []); })
             .catch(() => { });
-    }, [nextChannels, liTemplatesLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [nextChannels, liTemplatesLoaded]);  
 
     // Toggle a LinkedIn channel action (multi-select) with dependency auto-select:
     // - selecting 'connect'  → also selects 'profile_view'
@@ -6392,7 +6534,6 @@ function CheckpointFormInline({
 
     const toggleAction = (a: string) => {
         const newActions = actions.includes(a) ? actions.filter(x => x !== a) : [...actions, a];
-        console.log('✅ Action toggled:', a, '→ Actions now:', newActions);
         setActions(newActions);
     };
     const toggleNextChannel = (ch: string) => {
@@ -6559,7 +6700,6 @@ function CheckpointFormInline({
             endDate.setDate(endDate.getDate() + campaignDays);
             const actionSteps: any[] = [];
             let orderIdx = 1;
-            console.log('🔍 Building actionSteps:', { inboundMode, isDirectContact, liChannelActions, nextChannels });
             if (!isDirectContact && nextChannels.includes('linkedin')) {
                 // Primary LinkedIn steps — configured in channels step via liChannelActions
                 const liDelayConfig = { delayDays: parseInt(channelDelays.linkedin?.days) || 0, delayHours: parseInt(channelDelays.linkedin?.hours) || 0 };
@@ -6569,7 +6709,6 @@ function CheckpointFormInline({
                 // Default to profile visit if no specific action selected
                 if (liChannelActions.length === 0) actionSteps.push({ type: 'linkedin_visit', title: 'Visit LinkedIn Profile', channel: 'linkedin', order_index: orderIdx++, config: { ...liDelayConfig } });
             }
-            console.log('📋 Primary LinkedIn actionSteps:', actionSteps);
 
             if (isDirectContact && nextChannels.length > 0) {
                 // Direct contact (phone/email only): add channel steps immediately — no LinkedIn trigger needed
@@ -6836,15 +6975,6 @@ function CheckpointFormInline({
                     ...actionSteps,
                 ],
             };
-            console.log('📤 Campaign creation payload:', {
-                name: payload.name,
-                stepsCount: payload.steps?.length || 0,
-                steps: payload.steps || [],
-                actionSteps: actionSteps,
-                actions: actions,
-                inboundMode: inboundMode,
-                isDirectContact: isDirectContact
-            });
             const data = await campaignCreation.createCampaign(payload);
             if (data?.success) { window.location.href = '/campaigns'; }
             else { alert('Failed to launch campaign: ' + (data?.error || 'Unknown error')); setLaunching(false); }
@@ -7913,7 +8043,7 @@ function CheckpointFormInline({
                                                 }} onClick={() => setEnableDailyPosts(!enableDailyPosts)}>
                                                     <div>
                                                         <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>📝 Fetch live LinkedIn posts</div>
-                                                        <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>Pulls the lead's recent LinkedIn posts before each send</div>
+                                                        <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>Pulls the lead&apos;s recent LinkedIn posts before each send</div>
                                                     </div>
                                                     <div style={{
                                                         width: '32px', height: '18px', borderRadius: '99px', flexShrink: 0,
@@ -8085,7 +8215,7 @@ function CheckpointFormInline({
                                     padding: '10px 14px', borderRadius: '10px', fontSize: '12px', lineHeight: 1.5,
                                     background: '#fef3c7', border: '1px solid #f59e0b', color: '#92400e', marginTop: '4px',
                                 }}>
-                                    <strong>LinkedIn safe-limit cap:</strong> Your ICP threshold matches {qualifiedLeadCount} leads, but LinkedIn's safe daily action limit is {LINKEDIN_DAILY_LIMIT}.
+                                    <strong>LinkedIn safe-limit cap:</strong> Your ICP threshold matches {qualifiedLeadCount} leads, but LinkedIn&apos;s safe daily action limit is {LINKEDIN_DAILY_LIMIT}.
                                     The campaign will source {safeLeadsPerDay} new qualified leads/day via pagination, totalling ~{safeLeadsPerDay * workingDays} over {workingDays} working days.
                                 </div>
                             )}
@@ -8536,7 +8666,7 @@ function AiMsgContextPanel({
             {/* Header */}
             <div style={{ fontSize: '12px', fontWeight: 700, color: '#0b1957', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 ✨ AI Generate — tell us about your offer
-                <span style={{ fontWeight: 400, color: '#9ca3af', fontSize: '11px' }}>Will use lead's web presence &amp; posts</span>
+                <span style={{ fontWeight: 400, color: '#9ca3af', fontSize: '11px' }}>Will use lead&apos;s web presence &amp; posts</span>
             </div>
 
             {/* Value prop */}
@@ -8936,14 +9066,12 @@ const css = `
                 gap: 10px;
                 padding: 0 20px 20px;
                 width: 100%;
-                max-width: 100%;
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
-                scrollbar-width: none;
-                animation: fadeUp 0.5s ease 0.15s both;
+                max-width: 70%;
+                margin: 0 auto;
+                flex-wrap: wrap;
                 justify-content: center;
+                animation: fadeUp 0.5s ease 0.15s both;
             }
-            .adv-gemini-chips::-webkit-scrollbar {display:none; }
             .adv-gemini-chip {
                 display: inline-flex;
                 align-items: center;

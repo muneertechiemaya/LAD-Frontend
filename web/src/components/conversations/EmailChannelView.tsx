@@ -1225,7 +1225,7 @@ const EmailGroupWindow = memo(function EmailGroupWindow({
         <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/40">
           <div className="bg-card border border-border rounded-xl shadow-xl p-5 mx-4 w-full max-w-sm">
             <h3 className="font-semibold text-sm mb-2 flex items-center gap-2">
-              <Trash2 className="h-4 w-4 text-red-500" /> Delete "{group.name}"?
+              <Trash2 className="h-4 w-4 text-red-500" /> Delete &quot;{group.name}&quot;?
             </h3>
             <p className="text-xs text-muted-foreground mb-4">
               This group and all its members will be permanently deleted.

@@ -76,18 +76,18 @@ const Footer = memo(function Footer() {
             <h4 className="text-lg font-semibold mb-4">Legal</h4>
             <ul className="space-y-2">
               <li>
-                <Link href="#" className="text-gray-300 hover:text-white transition-colors">
+                <Link href="/privacy-policy" className="text-gray-300 hover:text-white transition-colors">
                   Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-gray-300 hover:text-white transition-colors">
+                <Link href="/terms-of-service" className="text-gray-300 hover:text-white transition-colors">
                   Terms of Service
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-gray-300 hover:text-white transition-colors">
-                  Cookie Policy
+                <Link href="/cookies-policy" className="text-gray-300 hover:text-white transition-colors">
+                  Cookies Policy
                 </Link>
               </li>
               <li>

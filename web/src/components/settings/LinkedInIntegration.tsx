@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { CheckCircle2, AlertCircle, Loader2, ExternalLink, ChevronDown, ChevronUp, Eye, EyeOff, X } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Loader2, ExternalLink, ChevronDown, ChevronUp, Eye, EyeOff, X, Power } from 'lucide-react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, DialogHeader } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { getApiBaseUrl } from '@/lib/api-utils';
@@ -47,6 +47,15 @@ interface LinkedInStatusResponse {
   connections: LinkedInAccount[];
   totalConnections: number;
 }
+// Tenant-level LinkedIn automation config (one per tenant, derived from the
+// active social_linkedin_accounts metadata). Returned by
+// GET /api/social-integration/linkedin/automation-settings wrapped in { data }.
+interface LinkedInAutomationSettings {
+  auto_like_posts: boolean;
+  auto_comment_posts: boolean;
+  ai_agent_enabled: boolean;
+  ai_agent_reply_delay_seconds: number;
+}
 type AuthMethod = 'credentials' | 'cookies';
 export const LinkedInIntegration: React.FC = () => {
   const [linkedInConnections, setLinkedInConnections] = useState<LinkedInAccount[]>([]);
@@ -77,8 +86,26 @@ export const LinkedInIntegration: React.FC = () => {
   // Yes/No auto-polling states
   const [yesNoPolling, setYesNoPolling] = useState<NodeJS.Timeout | null>(null);
   const [autoResolving, setAutoResolving] = useState(false);
+  // ── AI Replies (tenant-level LinkedIn AI agent) ────────────────────────────
+  // ai_agent_enabled is stored once per tenant, so every connected account shares
+  // the same flag. We hold the full settings object (not just the boolean) so a
+  // PUT can resend auto_like_posts / auto_comment_posts / reply-delay unchanged —
+  // the backend rebuilds all four keys, so omitting them would clobber them.
+  const [automationSettings, setAutomationSettings] = useState<LinkedInAutomationSettings | null>(null);
+  const [aiRepliesSaving, setAiRepliesSaving] = useState(false);
+  const [aiToast, setAiToast] = useState<{ kind: 'ok' | 'err'; message: string } | null>(null);
+  // Auto-dismiss the AI Replies toast after a few seconds (mirrors Instagram).
+  useEffect(() => {
+    if (!aiToast) return;
+    const t = setTimeout(() => setAiToast(null), 4500);
+    return () => clearTimeout(t);
+  }, [aiToast]);
   useEffect(() => {
     checkLinkedInConnection();
+    // Fetch the tenant's AI-agent setting on mount and whenever the account
+    // count changes (connect/disconnect). Deliberately NOT in the 30s poll so
+    // an in-flight optimistic toggle isn't overwritten mid-flight.
+    void fetchAutomationSettings();
     // Start polling status every 30 seconds if any connection is active
     const pollInterval = setInterval(() => {
       if (linkedInConnections.some(conn => conn.connected)) {
@@ -284,11 +311,9 @@ export const LinkedInIntegration: React.FC = () => {
       const data = await Promise.race([dataPromise, timeoutPromise]) as any;
       // Handle response from backend (returns { success, accounts })
       if (data.accounts && Array.isArray(data.accounts)) {
-        console.debug('[LinkedIn] Loaded accounts:', data.accounts.length);
         setLinkedInConnections(data.accounts);
       } else if (data.connections && Array.isArray(data.connections)) {
         // Fallback for old format
-        console.debug('[LinkedIn] Loaded connections:', data.connections.length);
         setLinkedInConnections(data.connections);
       } else {
         // Single account format
@@ -305,6 +330,63 @@ export const LinkedInIntegration: React.FC = () => {
       setLinkedInConnections([]);
     } finally {
       setLoading(false);
+    }
+  };
+  // GET the tenant's LinkedIn automation settings. Response is { success, data }.
+  // Failure is non-fatal: we leave settings unloaded and keep the pill disabled
+  // (so a toggle can never PUT a partial/clobbering payload).
+  const fetchAutomationSettings = async () => {
+    try {
+      const res = await apiGet<{ success?: boolean; data?: LinkedInAutomationSettings }>(
+        '/api/social-integration/linkedin/automation-settings'
+      );
+      if (res?.data) {
+        setAutomationSettings(res.data);
+      }
+    } catch (error) {
+      // Non-fatal — see note above.
+    }
+  };
+  // Flip the tenant-level AI agent on/off. Optimistic UI, then PUT the FULL set
+  // (only ai_agent_enabled changed) so the backend's jsonb rebuild preserves
+  // auto_like_posts / auto_comment_posts / reply-delay. Reverts + toasts on
+  // failure (mirrors Instagram's per-account AI toggle).
+  const toggleAiReplies = async () => {
+    if (!automationSettings || aiRepliesSaving) return;
+    const previous = automationSettings;
+    const next = !previous.ai_agent_enabled;
+    // Optimistic — all cards read this one flag, so they flip together.
+    setAutomationSettings({ ...previous, ai_agent_enabled: next });
+    setAiRepliesSaving(true);
+    try {
+      const response = await fetch(
+        `${getApiBaseUrl()}/api/social-integration/linkedin/automation-settings`,
+        {
+          method: 'PUT',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            auto_like_posts: previous.auto_like_posts,
+            auto_comment_posts: previous.auto_comment_posts,
+            ai_agent_enabled: next,
+            ai_agent_reply_delay_seconds: previous.ai_agent_reply_delay_seconds,
+          }),
+        }
+      );
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.error || data?.message || 'Failed to update AI Replies');
+      }
+      // Reconcile with the server's authoritative copy.
+      if (data.data) setAutomationSettings(data.data as LinkedInAutomationSettings);
+    } catch (error) {
+      // Roll back the optimistic flip and surface the error.
+      setAutomationSettings(previous);
+      setAiToast({
+        kind: 'err',
+        message: error instanceof Error ? error.message : 'Could not update AI Replies.',
+      });
+    } finally {
+      setAiRepliesSaving(false);
     }
   };
   const handleConnect = async () => {
@@ -670,12 +752,30 @@ export const LinkedInIntegration: React.FC = () => {
             })()}
           </div>
         </div>
+        {/* AI Replies toggle feedback — only surfaces on failure (mirrors Instagram). */}
+        {aiToast && (
+          <div
+            className={`mb-4 flex items-center gap-2 rounded-lg border p-3 text-sm ${
+              aiToast.kind === 'ok'
+                ? 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200'
+                : 'border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200'
+            }`}
+          >
+            {aiToast.kind === 'ok' ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+            {aiToast.message}
+          </div>
+        )}
         {/* Display all connected LinkedIn accounts */}
         {linkedInConnections.length > 0 && (
           <div className="mb-6 space-y-3">
             <h4 className="font-medium text-gray-900 text-sm mb-2">
               Connected Accounts ({linkedInConnections.length})
             </h4>
+            {linkedInConnections.length > 1 && (
+              <p className="text-xs text-gray-500 -mt-1 mb-1">
+                AI Replies is account-wide — toggling it on any card applies to all your connected LinkedIn accounts.
+              </p>
+            )}
             {linkedInConnections.map((account, index) => {
               const accountStatusDisplay = getStatusDisplay(account.status, account.connected);
               const AccountStatusIcon = accountStatusDisplay.icon;
@@ -743,6 +843,17 @@ export const LinkedInIntegration: React.FC = () => {
                         {disconnecting[account.id || 'default'] ? 'Disconnecting...' : 'Disconnect'}
                       </button>
                     </div>
+                  </div>
+                  {/* AI Replies — tenant-level LinkedIn AI agent. Every connected
+                      account binds to the same flag; toggling persists via the
+                      automation-settings API and survives a refresh. */}
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <AiToggleChip
+                      label="AI Replies"
+                      enabled={automationSettings?.ai_agent_enabled ?? true}
+                      disabled={!automationSettings || aiRepliesSaving}
+                      onToggle={toggleAiReplies}
+                    />
                   </div>
                 </div>
               );
@@ -1087,7 +1198,7 @@ export const LinkedInIntegration: React.FC = () => {
 
                 {/* Hint */}
                 <p className="text-xs text-gray-400 text-center leading-relaxed">
-                  Don't see the notification? Open the LinkedIn app manually and look for a security alert or login approval request.
+                  Don&apos;t see the notification? Open the LinkedIn app manually and look for a security alert or login approval request.
                 </p>
               </div>
             ) : (
@@ -1149,3 +1260,34 @@ export const LinkedInIntegration: React.FC = () => {
     </>
   );
 };
+
+// ── AI Replies chip ──────────────────────────────────────────────────────────
+// Green pill toggle mirroring Instagram's connected-account cards
+// (components/instagram/InstagramTenantOnboarding.tsx → AiToggleChip).
+function AiToggleChip({
+  label,
+  enabled,
+  onToggle,
+  disabled,
+}: {
+  label: string;
+  enabled: boolean;
+  onToggle: () => void;
+  disabled?: boolean;
+}): JSX.Element {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      disabled={disabled}
+      className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${
+        enabled
+          ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200 dark:hover:bg-emerald-500/20'
+          : 'border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-100 dark:border-white/10 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/10'
+      }`}
+    >
+      <Power className="h-3 w-3" />
+      {label}: {enabled ? 'on' : 'off'}
+    </button>
+  );
+}

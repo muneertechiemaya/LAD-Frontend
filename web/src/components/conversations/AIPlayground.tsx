@@ -80,6 +80,20 @@ const CHANNELS = [
 
 type ChannelValue = typeof CHANNELS[number]["value"];
 
+// ── Conversation stages (WABA state machine) ───────────────────────────────────
+// Lets a tester preview how a sectioned ("## STAGE:") prompt is scoped, and how
+// the bot replies in each stage. Sent as `context_status` to the playground
+// /chat endpoint; the live pipeline computes this per turn from the state
+// machine. Stateless preview — does NOT run the real transitions or booking
+// handlers (those only exist in process_inbound_message on the live pipeline).
+const STAGES: { value: string; label: string }[] = [
+  { value: "greeting",            label: "Greeting" },
+  { value: "info_gathering",      label: "Info gathering" },
+  { value: "booking_in_progress", label: "Booking in progress" },
+  { value: "booking_completed",   label: "Booking completed" },
+  { value: "cancelled",           label: "Cancelled" },
+];
+
 function getChannelConfig(channel: string) {
   return CHANNELS.find((c) => c.value === channel) ?? CHANNELS[0];
 }
@@ -203,6 +217,10 @@ export function AIPlayground({ onClose }: AIPlaygroundProps) {
   const [knowledgeBase, setKnowledgeBase]     = useState<string>("");
   const [showKnowledgeBase, setShowKnowledgeBase] = useState(false);
   const [showPromptDropdown, setShowPromptDropdown] = useState(false);
+  // Conversation-stage selector (WABA) — previews stage-scoped prompts.
+  const [selectedStage, setSelectedStage] = useState<string>("greeting");
+  // Echo of what the backend actually scoped to (stage + assembled prompt size).
+  const [stageInfo, setStageInfo] = useState<{ stage: string; chars: number } | null>(null);
 
   // Chat state
   const [messages, setMessages]   = useState<ChatMessage[]>([]);
@@ -374,11 +392,18 @@ export function AIPlayground({ onClose }: AIPlaygroundProps) {
           conversation_history: messages.map((m) => ({ role: m.role, content: m.content })),
           knowledge_base:       knowledgeBase || undefined,
           ai_model:             settings?.ai_model,
+          context_status:       selectedStage,
         }),
       });
       const data = await res.json();
 
       if (data.success && data.response) {
+        // Surface what the backend scoped the prompt to (stage + char count),
+        // so the tester can confirm e.g. booking_completed dropped the
+        // greeting/slot prose.
+        if (data.stage_used) {
+          setStageInfo({ stage: data.stage_used, chars: data.system_prompt_chars ?? 0 });
+        }
         setMessages([
           ...history,
           {
@@ -399,7 +424,7 @@ export function AIPlayground({ onClose }: AIPlaygroundProps) {
       setIsSending(false);
       setTimeout(() => inputRef.current?.focus(), 50);
     }
-  }, [inputValue, isSending, messages, systemPrompt, selectedPromptId, knowledgeBase, settings]);
+  }, [inputValue, isSending, messages, systemPrompt, selectedPromptId, knowledgeBase, settings, selectedStage]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -506,6 +531,30 @@ export function AIPlayground({ onClose }: AIPlaygroundProps) {
                   );
                 })}
               </div>
+
+              {/* ── Conversation stage (preview stage-scoped prompt) ─── */}
+              {(selectedChannel === "whatsapp" || selectedChannel === "all") && (
+                <div className="flex items-center gap-2 mb-2">
+                  <label className="text-[11px] font-medium text-muted-foreground shrink-0">
+                    Stage
+                  </label>
+                  <select
+                    value={selectedStage}
+                    onChange={(e) => setSelectedStage(e.target.value)}
+                    title="Preview how a sectioned (## STAGE:) prompt scopes + how the bot replies in this stage. Stateless — does not run real transitions or bookings."
+                    className="flex-1 text-xs bg-background border border-border rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary/50"
+                  >
+                    {STAGES.map((s) => (
+                      <option key={s.value} value={s.value}>{s.label}</option>
+                    ))}
+                  </select>
+                  {stageInfo && (
+                    <span className="text-[10px] text-muted-foreground shrink-0 whitespace-nowrap">
+                      scoped: {stageInfo.stage} · {stageInfo.chars} chars
+                    </span>
+                  )}
+                </div>
+              )}
 
               {/* ── Prompt dropdown (filtered by channel) ──────────── */}
               <div className="relative" ref={dropdownRef}>
@@ -727,7 +776,7 @@ export function AIPlayground({ onClose }: AIPlaygroundProps) {
                               would attach
                             </span>
                             <span className="text-muted-foreground text-[10px] truncate max-w-[120px]">
-                              triggered: "{att.matched_keyword}"
+                              triggered: &quot;{att.matched_keyword}&quot;
                             </span>
                           </div>
                         ))}

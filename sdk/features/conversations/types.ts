@@ -240,9 +240,9 @@ export interface UseConversationsReturn {
     linkedin: number;
     gmail: number;
   };
-  sendMessage: (payload: RichMessagePayload) => void;
+  sendMessage: (payload: RichMessagePayload) => Promise<Message | void>;
   markAsResolved: (id: string) => void;
-  muteConversation: (id: string) => void;
+  muteConversation: (id?: string) => void;
   isLoading: boolean;
   error: Error | null;
   refetch: () => void;
