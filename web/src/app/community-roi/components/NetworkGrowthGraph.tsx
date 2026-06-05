@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { X, TrendingUp, Users, Handshake, DollarSign, ArrowUpRight, Loader2, Zap } from 'lucide-react'
+import { X, Users, Handshake, DollarSign, ArrowUpRight, Loader2, Zap } from 'lucide-react'
 import {
   ComposedChart,
   Area,
@@ -28,12 +28,15 @@ interface MonthRow {
 
 // ─── Custom tooltip ────────────────────────────────────────────────────────────
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+interface TooltipEntry { dataKey: string; name: string; color: string; value: number }
+interface TooltipProps { active?: boolean; payload?: TooltipEntry[]; label?: string }
+
+const CustomTooltip = ({ active, payload, label }: TooltipProps) => {
   if (!active || !payload?.length) return null
   return (
     <div className="bg-white border border-slate-200 rounded-xl shadow-lg p-4 text-xs">
       <p className="font-bold text-slate-700 mb-2">{label?.replace('\n', ' · ')}</p>
-      {payload.map((entry: any) => (
+      {payload.map((entry) => (
         <div key={entry.dataKey} className="flex items-center gap-2 mb-1">
           <span className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
           <span className="text-slate-500">{entry.name}:</span>
@@ -91,7 +94,7 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
       .then(r => r.json())
       .then(json => {
         if (json?.success && Array.isArray(json.data) && json.data.length > 0) {
-          const rows: MonthRow[] = json.data.map((r: any) => ({
+          const rows: MonthRow[] = json.data.map((r: Record<string, unknown>) => ({
             month:          r.month,
             // Format 'YYYY-MM' → 'May 2026' for axis label
             weekLabel: (() => {

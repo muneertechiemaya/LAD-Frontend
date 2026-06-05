@@ -867,7 +867,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium mb-0.5">Extract contacts from any webpage</p>
                   <p className="text-xs text-muted-foreground">
-                    Paste a URL — member directories, team pages, chapter listings, etc. We'll fetch the
+                    Paste a URL — member directories, team pages, chapter listings, etc. We&apos;ll fetch the
                     page (JavaScript-rendered pages supported) and use AI to pull out names, phones,
                     emails, companies, and social profiles.
                   </p>

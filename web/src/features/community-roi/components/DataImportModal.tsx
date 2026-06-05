@@ -53,7 +53,7 @@ export function DataImportModal() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [step, setStep] = useState<'select' | 'extract' | 'execute' | 'complete'>('select');
-  const [extractedData, setExtractedData] = useState<any>(null);
+  const [extractedData, setExtractedData] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
@@ -131,8 +131,8 @@ export function DataImportModal() {
       const result = await response.json();
       setExtractedData(result.data);
       setStep('extract');
-    } catch (err: any) {
-      setError(`Extraction failed: ${err.message}`);
+    } catch (err) {
+      setError(`Extraction failed: ${err instanceof Error ? err.message : String(err)}`);
       setStep('select');
     } finally {
       setIsExtracting(false);
@@ -168,8 +168,8 @@ export function DataImportModal() {
       const result = await response.json();
       setExtractedData(result.data);
       setStep('extract');
-    } catch (err: any) {
-      setError(`Extraction failed: ${err.message}`);
+    } catch (err) {
+      setError(`Extraction failed: ${err instanceof Error ? err.message : String(err)}`);
       setStep('select');
     } finally {
       setIsExtracting(false);
@@ -206,8 +206,8 @@ export function DataImportModal() {
         setOpen(false);
         resetState();
       }, 3000);
-    } catch (err: any) {
-      setError(`Import execution failed: ${err.message}`);
+    } catch (err) {
+      setError(`Import execution failed: ${err instanceof Error ? err.message : String(err)}`);
       setStep('execute');
     } finally {
       setIsExecuting(false);
@@ -234,7 +234,7 @@ export function DataImportModal() {
     e.stopPropagation();
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
-      handleFileSelect({ target: { files } } as any);
+      handleFileSelect({ target: { files } } as React.ChangeEvent<HTMLInputElement>);
     }
   };
 
@@ -297,7 +297,7 @@ export function DataImportModal() {
                 {memberMode && (
                   <p className="text-xs text-gray-600 mt-1">
                     Select a folder containing individual member .xlsx files (e.g.
-                    BNI_Rising_Phoenix/). Each file's "Cohesion" sheet is read and mapped to:
+                    BNI_Rising_Phoenix/). Each file&apos;s &quot;Cohesion&quot; sheet is read and mapped to:
                     interactions (type 1), referrals (type 2), and relationship scores (type 3).
                   </p>
                 )}
@@ -337,7 +337,7 @@ export function DataImportModal() {
                     type="file"
                     accept=".xlsx"
                     multiple
-                    // @ts-ignore — non-standard but widely supported
+                    // @ts-expect-error — webkitdirectory is non-standard but widely supported
                     webkitdirectory=""
                     onChange={handleFolderSelect}
                     className="hidden"
@@ -487,7 +487,7 @@ export function DataImportModal() {
               </h4>
               <div className="text-xs text-blue-800 space-y-1">
                 {extractedData.recordCounts &&
-                  Object.entries(extractedData.recordCounts).map(([k, v]: [string, any]) => {
+                  Object.entries(extractedData.recordCounts as Record<string, unknown>).map(([k, v]) => {
                     // Skip nested objects (like relationship_scores_by_type)
                     if (typeof v === 'object' && v !== null) {
                       return null;

@@ -752,7 +752,7 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
                                   {i + 1}
                                 </div>
                                 <p className="text-xs text-slate-700 leading-relaxed italic line-clamp-4">
-                                  "{String(text).slice(0, 280)}"
+                                  &quot;{String(text).slice(0, 280)}&quot;
                                 </p>
                               </div>
                             </div>

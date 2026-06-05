@@ -1358,7 +1358,7 @@ export default function ChatPanel({ campaignId }: ChatPanelProps = {}) {
   };
   const processPlatformSelection = async (platforms: string[]) => {
     // Handle "all" option
-    let newPlatforms = platforms.includes('all')
+    const newPlatforms = platforms.includes('all')
       ? ['linkedin', 'instagram', 'whatsapp', 'email', 'voice']
       : platforms;
     // Filter out duplicates - only add platforms not already selected

@@ -857,7 +857,7 @@ export default function AdvancedSearchAIPage() {
         let value = pgCardValues[field];
         if (type === 'tags') {
             // Flush any pending tag input (supports comma-separated like "CEO, VP of Sales")
-            let committed = Array.isArray(value) ? [...value] : [];
+            const committed = Array.isArray(value) ? [...value] : [];
             if (pgTagInput.trim()) {
                 const pending = pgTagInput.split(',').map((s: string) => s.trim()).filter(Boolean);
                 pending.forEach((t: string) => { if (!committed.includes(t)) committed.push(t); });
@@ -1183,7 +1183,7 @@ export default function AdvancedSearchAIPage() {
                 }
             }
         } catch { }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+         
     }, []); // Run once on mount
 
     // ── Clear / Restart campaign setup ──────────────────────────────────────
@@ -1218,7 +1218,7 @@ export default function AdvancedSearchAIPage() {
         setLastTargeting(null); setLoadingMore(false); setNoMoreLeads(false);
         setFilteredLeads([]); setShowFilteredLeads(false);
         setWebSearchEnabled(false);
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, []);  
 
     useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
@@ -2061,7 +2061,7 @@ export default function AdvancedSearchAIPage() {
                     phone: inboundLeads.filter(l => l.phone).length,
                     website: inboundLeads.filter(l => l.website).length,
                 };
-                let summaryParts = [`📊 **Your uploaded leads summary:**\n\n• **Total Leads:** ${counts.total}`];
+                const summaryParts = [`📊 **Your uploaded leads summary:**\n\n• **Total Leads:** ${counts.total}`];
                 if (counts.linkedin > 0) summaryParts.push(`• **LinkedIn Profiles:** ${counts.linkedin}`);
                 if (counts.email > 0) summaryParts.push(`• **Email Addresses:** ${counts.email}`);
                 if (counts.whatsapp > 0) summaryParts.push(`• **WhatsApp Numbers:** ${counts.whatsapp}`);
@@ -2863,12 +2863,6 @@ export default function AdvancedSearchAIPage() {
                                         if (nonMatching.length > 0) {
                                             setFilteredLeads(prev => [...nonMatching, ...prev]);
                                         }
-                                        console.log('[Nationality] Annotation complete', {
-                                            total: realLeads.length,
-                                            matching: matching.length,
-                                            nonMatching: nonMatching.length,
-                                            targets: nationalityFilters,
-                                        });
                                     }
                                 } catch (inferErr) {
                                     console.warn('[Nationality] Annotation failed', inferErr);
@@ -4669,7 +4663,7 @@ export default function AdvancedSearchAIPage() {
                                         <div style={{ textAlign: 'center' }}>
                                             <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', marginBottom: 6 }}>Define Your Ideal Customer Profile</div>
                                             <div style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.6 }}>
-                                                Answer a few questions about your business and I'll identify exactly who you should target for outreach.
+                                                Answer a few questions about your business and I&apos;ll identify exactly who you should target for outreach.
                                             </div>
                                         </div>
                                         <button
@@ -6253,7 +6247,7 @@ function CheckpointFormInline({
                 }
             })
             .catch(() => { });
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, []);  
 
     // SDK hook — connected Gmail / Outlook accounts from integration tab
     const { data: connectedSenders = [] } = useConnectedEmailSenders();
@@ -6309,7 +6303,7 @@ function CheckpointFormInline({
             .then(r => r.json())
             .then(d => { if (d.success) setWaTemplates(d.data || []); })
             .catch(() => { });
-    }, [nextChannels, waTemplatesLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [nextChannels, waTemplatesLoaded]);  
 
     // LinkedIn follow-up config (when linkedin selected as next channel in step 3)
     // Multi-select: 'profile_view' | 'connect' | 'message'
@@ -6342,7 +6336,7 @@ function CheckpointFormInline({
         if (!waAccountId || !whatsAppAccounts.length) return;
         const acc = whatsAppAccounts.find((a: any) => a.id === waAccountId);
         if (acc) setWaNewTmplChannelType(acc.account_type === 'business_api' ? 'business_api' : 'personal_whatsapp');
-    }, [waAccountId, whatsAppAccounts]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [waAccountId, whatsAppAccounts]);  
 
     // Fetch LinkedIn message templates once when LinkedIn channel is first enabled
     useEffect(() => {
@@ -6352,7 +6346,7 @@ function CheckpointFormInline({
             .then(r => r.json())
             .then(d => { if (d.success) setLiTemplates(d.data || []); })
             .catch(() => { });
-    }, [nextChannels, liTemplatesLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [nextChannels, liTemplatesLoaded]);  
 
     // Toggle a LinkedIn channel action (multi-select) with dependency auto-select:
     // - selecting 'connect'  → also selects 'profile_view'
@@ -6540,7 +6534,6 @@ function CheckpointFormInline({
 
     const toggleAction = (a: string) => {
         const newActions = actions.includes(a) ? actions.filter(x => x !== a) : [...actions, a];
-        console.log('✅ Action toggled:', a, '→ Actions now:', newActions);
         setActions(newActions);
     };
     const toggleNextChannel = (ch: string) => {
@@ -6707,7 +6700,6 @@ function CheckpointFormInline({
             endDate.setDate(endDate.getDate() + campaignDays);
             const actionSteps: any[] = [];
             let orderIdx = 1;
-            console.log('🔍 Building actionSteps:', { inboundMode, isDirectContact, liChannelActions, nextChannels });
             if (!isDirectContact && nextChannels.includes('linkedin')) {
                 // Primary LinkedIn steps — configured in channels step via liChannelActions
                 const liDelayConfig = { delayDays: parseInt(channelDelays.linkedin?.days) || 0, delayHours: parseInt(channelDelays.linkedin?.hours) || 0 };
@@ -6717,7 +6709,6 @@ function CheckpointFormInline({
                 // Default to profile visit if no specific action selected
                 if (liChannelActions.length === 0) actionSteps.push({ type: 'linkedin_visit', title: 'Visit LinkedIn Profile', channel: 'linkedin', order_index: orderIdx++, config: { ...liDelayConfig } });
             }
-            console.log('📋 Primary LinkedIn actionSteps:', actionSteps);
 
             if (isDirectContact && nextChannels.length > 0) {
                 // Direct contact (phone/email only): add channel steps immediately — no LinkedIn trigger needed
@@ -6984,15 +6975,6 @@ function CheckpointFormInline({
                     ...actionSteps,
                 ],
             };
-            console.log('📤 Campaign creation payload:', {
-                name: payload.name,
-                stepsCount: payload.steps?.length || 0,
-                steps: payload.steps || [],
-                actionSteps: actionSteps,
-                actions: actions,
-                inboundMode: inboundMode,
-                isDirectContact: isDirectContact
-            });
             const data = await campaignCreation.createCampaign(payload);
             if (data?.success) { window.location.href = '/campaigns'; }
             else { alert('Failed to launch campaign: ' + (data?.error || 'Unknown error')); setLaunching(false); }
@@ -8061,7 +8043,7 @@ function CheckpointFormInline({
                                                 }} onClick={() => setEnableDailyPosts(!enableDailyPosts)}>
                                                     <div>
                                                         <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>📝 Fetch live LinkedIn posts</div>
-                                                        <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>Pulls the lead's recent LinkedIn posts before each send</div>
+                                                        <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>Pulls the lead&apos;s recent LinkedIn posts before each send</div>
                                                     </div>
                                                     <div style={{
                                                         width: '32px', height: '18px', borderRadius: '99px', flexShrink: 0,
@@ -8233,7 +8215,7 @@ function CheckpointFormInline({
                                     padding: '10px 14px', borderRadius: '10px', fontSize: '12px', lineHeight: 1.5,
                                     background: '#fef3c7', border: '1px solid #f59e0b', color: '#92400e', marginTop: '4px',
                                 }}>
-                                    <strong>LinkedIn safe-limit cap:</strong> Your ICP threshold matches {qualifiedLeadCount} leads, but LinkedIn's safe daily action limit is {LINKEDIN_DAILY_LIMIT}.
+                                    <strong>LinkedIn safe-limit cap:</strong> Your ICP threshold matches {qualifiedLeadCount} leads, but LinkedIn&apos;s safe daily action limit is {LINKEDIN_DAILY_LIMIT}.
                                     The campaign will source {safeLeadsPerDay} new qualified leads/day via pagination, totalling ~{safeLeadsPerDay * workingDays} over {workingDays} working days.
                                 </div>
                             )}
@@ -8684,7 +8666,7 @@ function AiMsgContextPanel({
             {/* Header */}
             <div style={{ fontSize: '12px', fontWeight: 700, color: '#0b1957', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 ✨ AI Generate — tell us about your offer
-                <span style={{ fontWeight: 400, color: '#9ca3af', fontSize: '11px' }}>Will use lead's web presence &amp; posts</span>
+                <span style={{ fontWeight: 400, color: '#9ca3af', fontSize: '11px' }}>Will use lead&apos;s web presence &amp; posts</span>
             </div>
 
             {/* Value prop */}

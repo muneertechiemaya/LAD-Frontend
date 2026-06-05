@@ -451,7 +451,7 @@ export default function InboundDataForm({ onSubmit, onCancel, isSubmitting = fal
 
 
 
-              then upload it back. We'll analyze and set up your campaign automatically.
+              then upload it back. We&apos;ll analyze and set up your campaign automatically.
             </p>
             <button
               onClick={downloadTemplate}
@@ -779,7 +779,7 @@ export default function InboundDataForm({ onSubmit, onCancel, isSubmitting = fal
                   })()}
                 </div>
                 <p className="text-xs text-green-700 mt-3">
-                  âœ¨ I'll ask relevant setup questions based on these channels
+                  âœ¨ I&apos;ll ask relevant setup questions based on these channels
                 </p>
               </div>
             )}
