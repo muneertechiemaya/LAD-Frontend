@@ -295,8 +295,7 @@ const AddMembersPanel = memo(function AddMembersPanel({
         headers: authHeaders(),
         body: JSON.stringify({ conversation_ids: Array.from(selected) }),
       });
-      const data = await res.json();
-      console.log('[AddMembersPanel] add result:', data);
+      await res.json();
       onMembersAdded();
     } catch (err) {
       console.error('Error adding members:', err);
@@ -327,7 +326,6 @@ const AddMembersPanel = memo(function AddMembersPanel({
         setCreateError(data?.error || data?.message || 'Failed to create contact');
         return;
       }
-      console.log('[AddMembersPanel] contact created:', data);
       // Reset form
       setNewContactName('');
       setNewContactPhone('');
@@ -1156,7 +1154,7 @@ const GroupInfoPanel = memo(function GroupInfoPanel({
                 <h3 className="font-semibold text-sm">Delete group?</h3>
               </div>
               <p className="text-xs text-muted-foreground mb-4">
-                <span className="font-medium text-foreground">"{detail.name}"</span> and all its members will be permanently deleted. This cannot be undone.
+                <span className="font-medium text-foreground">&quot;{detail.name}&quot;</span> and all its members will be permanently deleted. This cannot be undone.
               </p>
               <div className="flex gap-2">
                 <Button
@@ -1220,10 +1218,8 @@ export const GroupChatWindow = memo(function GroupChatWindow({
       .then(([detailResult, messagesResult]) => {
         if (detailResult.status === 'fulfilled') {
           const detailRes = detailResult.value;
-          console.log('[GroupChatWindow] detail response:', detailRes);
           if (detailRes?.success) {
             setDetail(detailRes.data);
-            console.log('[GroupChatWindow] members count:', detailRes.data?.members?.length, detailRes.data?.members);
           } else {
             setDetailError(detailRes?.error || 'Unable to load group info');
           }

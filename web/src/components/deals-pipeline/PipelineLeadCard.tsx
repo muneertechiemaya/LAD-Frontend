@@ -19,7 +19,7 @@ import {
   User as UserIcon, Mail, Phone, Clock, Paperclip, MessageSquare, FileText, GripVertical,
   Trash2, MoreVertical, Building2, DollarSign, Calendar, Flag, CheckCircle2,
   AlertCircle, TrendingUp, TrendingDown, X, Edit, Save, XCircle, Plus,
-  UserCircle, UserStar, AlertTriangle, FolderTree, Ban, Sparkles, CheckCheck, Copy, Archive, Tag, Linkedin
+  UserCircle, UserStar, AlertTriangle, FolderTree, Ban, Sparkles, CheckCheck, Copy, Archive, Tag, Linkedin, Globe
 } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';

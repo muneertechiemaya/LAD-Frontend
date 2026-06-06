@@ -43,21 +43,8 @@ const H = 320;
 const CENTER = { x: W / 2, y: 150 };
 
 export default function WarmPathPanel({ wp, prospect, open, onToggle }: WarmPathPanelProps) {
-  if (!wp?.top_connection) {
-    return (
-      <LadCard>
-        <LadCardHeader title="Warm Path" subtitle="Routes from your network to this prospect" />
-        <div className="grid place-items-center h-32 text-[12.5px] text-slate-500 dark:text-[#7a8ba3]">
-          <div className="text-center">
-            <RouteOff className="w-5 h-5 mx-auto mb-2 opacity-50" />
-            No paths found yet.
-          </div>
-        </div>
-      </LadCard>
-    );
-  }
-
   const childDefs = useMemo<ChildDef[]>(() => {
+    if (!wp?.top_connection) return [];
     const out: ChildDef[] = [];
     out.push({
       id: 'champion',
@@ -128,6 +115,20 @@ export default function WarmPathPanel({ wp, prospect, open, onToggle }: WarmPath
     ox: number;
     oy: number;
   } | null>(null);
+
+  if (!wp?.top_connection) {
+    return (
+      <LadCard>
+        <LadCardHeader title="Warm Path" subtitle="Routes from your network to this prospect" />
+        <div className="grid place-items-center h-32 text-[12.5px] text-slate-500 dark:text-[#7a8ba3]">
+          <div className="text-center">
+            <RouteOff className="w-5 h-5 mx-auto mb-2 opacity-50" />
+            No paths found yet.
+          </div>
+        </div>
+      </LadCard>
+    );
+  }
 
   const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 

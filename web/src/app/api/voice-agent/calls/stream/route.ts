@@ -21,10 +21,6 @@ export async function GET(req: NextRequest) {
         req.cookies.get('token')?.value ||
         req.cookies.get('access_token')?.value;
 
-    // --- DEBUG (remove after fix) ---
-    console.log('[SSE Proxy] HIT — token present:', !!token, '| preview:', token?.substring(0, 30));
-    // ---------------------------------
-
     const headers: Record<string, string> = {
         Accept: 'text/event-stream',
         'Cache-Control': 'no-cache',

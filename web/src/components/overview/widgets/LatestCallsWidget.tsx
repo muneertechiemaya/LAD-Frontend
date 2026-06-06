@@ -42,7 +42,7 @@ export const LatestCallsWidget: React.FC<LatestCallsWidgetProps> = ({
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <p className="text-sm font-medium">No calls yet</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Your AI assistants haven't placed any calls.
+              Your AI assistants haven&apos;t placed any calls.
             </p>
           </div>
         ) : (

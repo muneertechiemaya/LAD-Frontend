@@ -115,7 +115,7 @@ const StickyScrollFeatures = () => {
             Ready to scale without limits?
           </h3>
           <p className="text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Join teams that are already closing 10-15x more deals with LAD's safe automation platform.
+            Join teams that are already closing 10-15x more deals with LAD&apos;s safe automation platform.
           </p>
 
           <motion.div

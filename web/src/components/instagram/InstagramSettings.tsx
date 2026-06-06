@@ -209,7 +209,7 @@ const AIGoalsPanel: React.FC = () => {
                 </div>
                 {g.description && <p className="mt-1 text-sm text-neutral-600 dark:text-white/60">{g.description}</p>}
                 {g.call_to_action && (
-                  <p className="mt-2 text-xs text-neutral-500 dark:text-white/50">CTA: <span className="text-neutral-800 dark:text-white/80">"{g.call_to_action}"</span></p>
+                  <p className="mt-2 text-xs text-neutral-500 dark:text-white/50">CTA: <span className="text-neutral-800 dark:text-white/80">&quot;{g.call_to_action}&quot;</span></p>
                 )}
                 {g.target_url && (
                   <p className="mt-1 text-xs text-neutral-500 dark:text-white/50 break-all">Link: {g.target_url}</p>
@@ -513,9 +513,9 @@ const MetaConnectForm: React.FC<{ onAdd: (payload: any) => Promise<void> }> = ({
   return (
     <div>
       <p className="text-xs text-neutral-500 dark:text-white/50 mb-3">
-        Pull these values from Meta App Dashboard → Instagram → "Use cases" → "Customize". Required permissions:
+        Pull these values from Meta App Dashboard → Instagram → &quot;Use cases&quot; → &quot;Customize&quot;. Required permissions:
         <span className="text-neutral-700 dark:text-white/70"> instagram_business_basic, instagram_manage_comments, instagram_business_manage_messages</span>.
-        Auto-liking comments is <span className="text-amber-300">not supported</span> via Meta's official API.
+        Auto-liking comments is <span className="text-amber-300">not supported</span> via Meta&apos;s official API.
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Meta app ID">

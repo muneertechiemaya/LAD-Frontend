@@ -32,7 +32,7 @@ export default function CreateTemplatePage() {
 
       {/* Content */}
       <div className="max-w-4xl mx-auto px-8 py-12">
-        <p className="text-gray-600 mb-8">Choose how you'd like to create your email template:</p>
+        <p className="text-gray-600 mb-8">Choose how you&apos;d like to create your email template:</p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Manual Editor Option */}
