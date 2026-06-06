@@ -1,11 +1,22 @@
-import { memo, useRef, useEffect } from 'react';
+import { memo, useRef, useEffect, useState } from 'react';
 import { Conversation, ContactTag } from '@/types/conversation';
 import { ChannelIcon } from './ChannelIcon';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
-import { Pin, Star, Lock, CheckSquare, Square } from 'lucide-react';
+import { Pin, Star, Lock, CheckSquare, Square, ChevronDown, MoreVertical, Archive, Trash2, Bell, BellOff, Bookmark, MessageSquare, List, X } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 
 interface ConversationListItemProps {
   conversation: Conversation;
@@ -15,6 +26,13 @@ interface ConversationListItemProps {
   isChecked?: boolean;
   onContextStatusClick?: (status: string) => void;
   onDoubleClick?: () => void;
+  onArchive?: (id: string) => void;
+  onDelete?: (id: string) => void;
+  onMute?: (id: string, duration?: string) => void;
+  onPin?: (id: string) => void;
+  onFavorite?: (id: string) => void;
+  onMarkUnread?: (id: string) => void;
+  onClearChat?: (id: string) => void;
 }
 
 const tagConfig: Record<ContactTag, { label: string; className: string }> = {
@@ -62,11 +80,23 @@ export const ConversationListItem = memo(function ConversationListItem({
   isChecked = false,
   onContextStatusClick,
   onDoubleClick,
+  onArchive,
+  onDelete,
+  onMute,
+  onPin,
+  onFavorite,
+  onMarkUnread,
+  onClearChat,
 }: ConversationListItemProps) {
   const { contact, lastMessage, unreadCount, channel, updatedAt } = conversation;
   const hasUnread = unreadCount > 0;
   const clickCountRef = useRef(0);
   const clickTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const [isHovered, setIsHovered] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [clearChatModal, setClearChatModal] = useState(false);
+  const [deleteChatModal, setDeleteChatModal] = useState(false);
+  const [addToListModal, setAddToListModal] = useState(false);
 
   const handleItemClick = () => {
     clickCountRef.current += 1;
@@ -102,10 +132,10 @@ export const ConversationListItem = memo(function ConversationListItem({
   const labels = conversation.labels || [];
 
   return (
+    <>
     <div
-      onClick={handleItemClick}
       className={cn(
-        'conversation-item flex items-start gap-3 p-3 border-b border-border/50 cursor-pointer transition-colors',
+        'conversation-item group flex items-start gap-3 p-3 border-b border-border/50 cursor-pointer transition-colors relative',
         isSelected && 'conversation-item-active bg-primary/5',
         hasUnread && 'conversation-item-unread',
         isChecked && 'bg-primary/10'
@@ -122,6 +152,78 @@ export const ConversationListItem = memo(function ConversationListItem({
           ) : (
             <Square className="h-4 w-4 text-muted-foreground" />
           )}
+        </div>
+      )}
+
+      {/* Dropdown menu trigger - shows on hover */}
+      {!isSelectMode && (
+        <div className="flex-shrink-0 pt-1 relative z-20">
+          <DropdownMenu open={showDropdown} onOpenChange={setShowDropdown}>
+            <DropdownMenuTrigger asChild>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowDropdown(!showDropdown);
+                }}
+                className={cn(
+                  'h-8 w-8 rounded-full flex items-center justify-center transition-all duration-150',
+                  'opacity-0 group-hover:opacity-100',
+                  showDropdown && 'opacity-100',
+                  'bg-gray-100 dark:bg-gray-800'
+                )}
+              >
+                <ChevronDown className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 bg-white dark:bg-[#233138] border-gray-200 dark:border-[#374045]">
+              <DropdownMenuItem onClick={() => { onArchive?.(conversation.id); setShowDropdown(false); }} className="text-gray-900 dark:text-[#e9edef] hover:bg-gray-100 dark:hover:bg-[#374045]">
+                <Archive className="h-4 w-4 mr-2" />
+                Archive Chat
+              </DropdownMenuItem>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="text-gray-900 dark:text-[#e9edef] hover:bg-gray-100 dark:hover:bg-[#374045]">
+                  <Bell className="h-4 w-4 mr-2" />
+                  Mute Notifications
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="bg-white dark:bg-[#233138] border-gray-200 dark:border-[#374045]">
+                  <DropdownMenuItem onClick={() => { onMute?.(conversation.id, '8h'); setShowDropdown(false); }} className="text-gray-900 dark:text-[#e9edef] hover:bg-gray-100 dark:hover:bg-[#374045]">
+                    8 Hours
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => { onMute?.(conversation.id, '1w'); setShowDropdown(false); }} className="text-gray-900 dark:text-[#e9edef] hover:bg-gray-100 dark:hover:bg-[#374045]">
+                    1 Week
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => { onMute?.(conversation.id, 'always'); setShowDropdown(false); }} className="text-gray-900 dark:text-[#e9edef] hover:bg-gray-100 dark:hover:bg-[#374045]">
+                    Always
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              <DropdownMenuItem onClick={() => { onPin?.(conversation.id); setShowDropdown(false); }} className="text-gray-900 dark:text-[#e9edef] hover:bg-gray-100 dark:hover:bg-[#374045]">
+                <Pin className="h-4 w-4 mr-2" />
+                {conversation.is_pinned ? 'Unpin Chat' : 'Pin Chat'}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { onMarkUnread?.(conversation.id); setShowDropdown(false); }} className="text-gray-900 dark:text-[#e9edef] hover:bg-gray-100 dark:hover:bg-[#374045]">
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Mark as Unread
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { onFavorite?.(conversation.id); setShowDropdown(false); }} className="text-gray-900 dark:text-[#e9edef] hover:bg-gray-100 dark:hover:bg-[#374045]">
+                <Star className="h-4 w-4 mr-2" />
+                {conversation.is_favorite ? 'Remove from Favorites' : 'Add to Favorites'}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { setAddToListModal(true); setShowDropdown(false); }} className="text-gray-900 dark:text-[#e9edef] hover:bg-gray-100 dark:hover:bg-[#374045]">
+                <List className="h-4 w-4 mr-2" />
+                Add to List
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-gray-200 dark:bg-[#374045]" />
+              <DropdownMenuItem onClick={() => { setClearChatModal(true); setShowDropdown(false); }} className="text-gray-900 dark:text-[#e9edef] hover:bg-gray-100 dark:hover:bg-[#374045]">
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Clear Chat
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { setDeleteChatModal(true); setShowDropdown(false); }} className="text-red-600 dark:text-red-500 hover:bg-gray-100 dark:hover:bg-[#374045]">
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Chat
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       )}
 
@@ -243,5 +345,110 @@ export const ConversationListItem = memo(function ConversationListItem({
         </div>
       </div>
     </div>
+
+    {/* Clear Chat Confirmation Modal */}
+    <Dialog open={clearChatModal} onOpenChange={setClearChatModal}>
+      <DialogContent className="sm:max-w-sm p-0 overflow-hidden bg-white dark:bg-[rgb(22,23,23)]" showCloseButton={false}>
+        <DialogTitle className="sr-only">Clear Chat</DialogTitle>
+        <div className="flex flex-col">
+          <div className="p-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-[#e9edef] mb-2">Clear all messages?</h2>
+            <p className="text-gray-600 dark:text-[#8696a0] text-sm">This will permanently delete all messages in this chat.</p>
+          </div>
+          <div className="flex gap-2 p-4 pt-0">
+            <button
+              onClick={() => setClearChatModal(false)}
+              className="flex-1 px-4 py-2 bg-gray-100 dark:bg-[#2a3942] hover:bg-gray-200 dark:hover:bg-[#374045] text-gray-900 dark:text-[#e9edef] rounded-lg font-medium transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                onClearChat?.(conversation.id);
+                setClearChatModal(false);
+              }}
+              className="flex-1 px-4 py-2 bg-[#d5485d] hover:bg-[#e5395e] text-white rounded-lg font-medium transition-colors"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+
+    {/* Delete Chat Confirmation Modal */}
+    <Dialog open={deleteChatModal} onOpenChange={setDeleteChatModal}>
+      <DialogContent className="sm:max-w-sm p-0 overflow-hidden bg-white dark:bg-[rgb(22,23,23)]" showCloseButton={false}>
+        <DialogTitle className="sr-only">Delete Chat</DialogTitle>
+        <div className="flex flex-col">
+          <div className="p-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-[#e9edef] mb-2">Delete this chat permanently?</h2>
+            <p className="text-gray-600 dark:text-[#8696a0] text-sm">This will delete the chat and all messages permanently.</p>
+          </div>
+          <div className="flex gap-2 p-4 pt-0">
+            <button
+              onClick={() => setDeleteChatModal(false)}
+              className="flex-1 px-4 py-2 bg-gray-100 dark:bg-[#2a3942] hover:bg-gray-200 dark:hover:bg-[#374045] text-gray-900 dark:text-[#e9edef] rounded-lg font-medium transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                onDelete?.(conversation.id);
+                setDeleteChatModal(false);
+              }}
+              className="flex-1 px-4 py-2 bg-[#d5485d] hover:bg-[#e5395e] text-white rounded-lg font-medium transition-colors"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+
+    {/* Add to List Modal */}
+    <Dialog open={addToListModal} onOpenChange={setAddToListModal}>
+      <DialogContent className="sm:max-w-sm p-0 overflow-hidden bg-white dark:bg-[rgb(22,23,23)]" showCloseButton={false}>
+        <DialogTitle className="sr-only">Add to List</DialogTitle>
+        <div className="flex flex-col">
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-[#e9edef]">Add to List</h2>
+            <button
+              onClick={() => setAddToListModal(false)}
+              className="h-8 w-8 rounded-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            >
+              <X className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+            </button>
+          </div>
+          <div className="p-4 space-y-2">
+            <button
+              onClick={() => setAddToListModal(false)}
+              className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-[#374045] text-gray-900 dark:text-[#e9edef] transition-colors"
+            >
+              Work
+            </button>
+            <button
+              onClick={() => setAddToListModal(false)}
+              className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-[#374045] text-gray-900 dark:text-[#e9edef] transition-colors"
+            >
+              Family
+            </button>
+            <button
+              onClick={() => setAddToListModal(false)}
+              className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-[#374045] text-gray-900 dark:text-[#e9edef] transition-colors"
+            >
+              Friends
+            </button>
+            <button
+              onClick={() => setAddToListModal(false)}
+              className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-[#374045] text-gray-900 dark:text-[#e9edef] transition-colors"
+            >
+              Custom...
+            </button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 });

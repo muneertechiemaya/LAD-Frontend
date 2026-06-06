@@ -195,6 +195,22 @@ function ContactModal({ onClose, onSend }: { onClose: () => void; onSend: (p: Ri
           </div>
           <button onClick={onClose}><X className="w-5 h-5 text-gray-400 hover:text-gray-600"/></button>
         </div>
+        {/* Contact card preview with name on top */}
+        {(name.trim() || phone.trim()) && (
+          <div className="mx-5 mt-4 p-4 bg-gradient-to-br from-teal-50 to-teal-100 rounded-xl border border-teal-200">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-teal-500 flex items-center justify-center text-white font-semibold text-lg">
+                {name.trim() ? name.trim().charAt(0).toUpperCase() : '?'}
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-[#1E293B] text-lg">{name.trim() || 'Contact Name'}</p>
+                <p className="text-sm text-gray-600">{phone.trim() || 'Phone Number'}</p>
+                {email.trim() && <p className="text-xs text-gray-500 mt-0.5">{email.trim()}</p>}
+                {company.trim() && <p className="text-xs text-gray-500">{company.trim()}</p>}
+              </div>
+            </div>
+          </div>
+        )}
         <div className="p-5 space-y-3">
           {fields.map(f=>(
             <div key={f.label}>
@@ -547,15 +563,18 @@ export const MessageComposer = memo(function MessageComposer({
   const handleSend = useCallback(() => {
     if (disabled) return;
 
-    // Send each pending file as its own message
+    // Send each pending file as its own message (caption only on the last — WhatsApp style)
     if (pendingFiles.length > 0) {
-      for (const pf of pendingFiles) {
+      const captionText = message.trim();
+      for (let i = 0; i < pendingFiles.length; i++) {
+        const pf = pendingFiles[i];
+        const isLast = i === pendingFiles.length - 1;
         onSendMessage({
           type:        pf.mediaType as RichMessageType,
           fileBase64:  pf.base64,
           filename:    pf.file.name,
           contentType: pf.file.type,
-          caption:     message.trim() || undefined,
+          caption:     isLast ? (captionText || undefined) : undefined,
         });
         URL.revokeObjectURL(pf.previewUrl);
       }
@@ -706,38 +725,63 @@ export const MessageComposer = memo(function MessageComposer({
       <input ref={documentRef} type="file" multiple className="hidden" onChange={handleFileChange} accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar"/>
       <input ref={audioRef}    type="file" multiple className="hidden" onChange={handleFileChange} accept="audio/*"/>
 
-      {/* ── Pending file previews ── */}
+      {/* ── Pending file previews with message input area ── */}
       {(pendingFiles.length > 0 || fileLoading) && (
-        <div className="flex flex-wrap gap-2 mb-3">
+        <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
           {fileLoading && (
-            <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5 text-sm text-blue-700">
-              <Loader2 className="h-3.5 w-3.5 animate-spin"/>
+            <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-sm text-blue-700 mb-2">
+              <Loader2 className="h-4 w-4 animate-spin"/>
               <span>Reading file…</span>
             </div>
           )}
-          {pendingFiles.map(pf => (
-            <div key={pf.id} className="flex items-center gap-2 bg-secondary/50 rounded-lg px-3 py-1.5 text-sm max-w-[200px]">
-              {pf.mediaType === 'image' ? (
-                <img src={pf.previewUrl} alt={pf.file.name} className="h-7 w-7 rounded object-cover shrink-0"/>
-              ) : pf.mediaType === 'video' ? (
-                <div className="h-7 w-7 rounded bg-purple-100 flex items-center justify-center shrink-0">
-                  <ImageIcon className="h-4 w-4 text-purple-600"/>
-                </div>
-              ) : pf.mediaType === 'audio' ? (
-                <div className="h-7 w-7 rounded bg-orange-100 flex items-center justify-center shrink-0">
-                  <Music className="h-4 w-4 text-orange-600"/>
-                </div>
-              ) : (
-                <div className="h-7 w-7 rounded bg-blue-100 flex items-center justify-center shrink-0">
-                  <FileText className="h-4 w-4 text-blue-600"/>
-                </div>
-              )}
-              <span className="truncate text-xs">{pf.file.name}</span>
-              <button onClick={()=>removePendingFile(pf.id)} className="text-muted-foreground hover:text-foreground shrink-0">
-                <X className="h-3.5 w-3.5"/>
-              </button>
-            </div>
-          ))}
+          <div className="flex flex-wrap gap-2 mb-2">
+            {pendingFiles.map(pf => (
+              <div key={pf.id} className="relative group">
+                {pf.mediaType === 'image' || pf.mediaType === 'video' ? (
+                  <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                    <img src={pf.previewUrl} alt={pf.file.name} className="w-full h-full object-cover"/>
+                    <button
+                      onClick={()=>removePendingFile(pf.id)}
+                      className="absolute top-1 right-1 bg-black/60 hover:bg-black/80 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="h-3 w-3"/>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-20 h-20 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center p-2 relative group">
+                    {pf.mediaType === 'audio' ? (
+                      <Music className="h-6 w-6 text-orange-500"/>
+                    ) : (
+                      <FileText className="h-6 w-6 text-blue-500"/>
+                    )}
+                    <span className="text-[10px] text-gray-600 dark:text-gray-400 mt-1 truncate w-full text-center">{pf.file.name}</span>
+                    <button
+                      onClick={()=>removePendingFile(pf.id)}
+                      className="absolute top-1 right-1 bg-black/60 hover:bg-black/80 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="h-3 w-3"/>
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+            {/* + Add more button */}
+            <button
+              onClick={()=>galleryRef.current?.click()}
+              className="w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex flex-col items-center justify-center hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+            >
+              <Plus className="h-6 w-6 text-gray-400"/>
+              <span className="text-[10px] text-gray-500 mt-1">Add more</span>
+            </button>
+          </div>
+          {/* Message input for caption */}
+          <Textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Add a caption..."
+            className="min-h-[60px] resize-none text-sm"
+            onKeyDown={handleKeyDown}
+          />
         </div>
       )}
 

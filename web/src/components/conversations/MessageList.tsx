@@ -1,8 +1,10 @@
-import { memo, useMemo, useRef, useEffect, useCallback } from 'react';
+import { memo, useMemo, useRef, useEffect, useCallback, useState } from 'react';
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
 import { Message } from '@/types/conversation';
 import { MessageBubble } from './MessageBubble';
 import { DateSeparator } from './DateSeparator';
+import { WhatsAppMediaViewer } from './WhatsAppMediaViewer';
+import { buildMediaGallery } from './media-utils';
 import { isSameDay } from 'date-fns';
 import { Loader2, ChevronUp } from 'lucide-react';
 
@@ -29,6 +31,7 @@ interface MessageListProps {
   onLoadMore?: () => void;
   searchText?: string;
   highlightedMessageId?: string;
+  channel?: 'waba' | 'personal';
 }
 
 interface ListItem {
@@ -100,8 +103,20 @@ export const MessageList = memo(function MessageList({
   onLoadMore,
   searchText,
   highlightedMessageId,
+  channel = 'waba',
 }: MessageListProps) {
   const virtuosoRef = useRef<VirtuosoHandle>(null);
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+
+  const mediaGallery = useMemo(
+    () => buildMediaGallery(messages, channel),
+    [messages, channel],
+  );
+
+  const handleMediaClick = useCallback((message: Message) => {
+    const idx = mediaGallery.findIndex((item) => item.id === message.id);
+    if (idx !== -1) setViewerIndex(idx);
+  }, [mediaGallery]);
 
   // Build list items: prepend the "load older" header item, then date + messages
   const listItems = useMemo<ListItem[]>(() => {
@@ -126,6 +141,7 @@ export const MessageList = memo(function MessageList({
 
   // Scroll to bottom on conversation switch (instant)
   useEffect(() => {
+    setViewerIndex(null);
     if (!virtuosoRef.current || listItems.length === 0) return;
     virtuosoRef.current.scrollToIndex({ index: listItems.length - 1, behavior: 'auto' });
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -175,8 +191,10 @@ export const MessageList = memo(function MessageList({
           contact={contact}
           onAgentClick={onAgentClick}
           onDeleteMessage={onDeleteMessage}
+          onMediaClick={handleMediaClick}
           searchText={searchText}
           isHighlighted={msg.id === highlightedMessageId}
+          channel={channel}
         />
       </div>
     );
@@ -205,6 +223,16 @@ export const MessageList = memo(function MessageList({
         }}
       />
       {isAgentTyping && <TypingIndicator />}
+
+      {viewerIndex !== null && mediaGallery.length > 0 && (
+        <WhatsAppMediaViewer
+          items={mediaGallery}
+          initialIndex={viewerIndex}
+          contactName={contact?.name}
+          contactAvatar={contact?.avatar}
+          onClose={() => setViewerIndex(null)}
+        />
+      )}
     </div>
   );
 });

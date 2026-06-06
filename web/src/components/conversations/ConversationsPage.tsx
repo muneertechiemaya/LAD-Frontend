@@ -187,6 +187,39 @@ function ChannelConversationView({
     } catch {}
   }, [withChannel, invalidate]);
 
+  const handleArchiveConversation = useCallback(async (id: string) => {
+    try {
+      const res = await fetchWithTenant(withChannel(`${CONV_API}/${id}/archive`), { method: 'PATCH' });
+      if (res.ok) invalidate();
+    } catch {}
+  }, [withChannel, invalidate]);
+
+  const handleMuteConversation = useCallback(async (id: string, duration?: string) => {
+    try {
+      const body = duration ? { duration } : {};
+      const res = await fetchWithTenant(withChannel(`${CONV_API}/${id}/mute`), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) invalidate();
+    } catch {}
+  }, [withChannel, invalidate]);
+
+  const handleMarkUnreadConversation = useCallback(async (id: string) => {
+    try {
+      const res = await fetchWithTenant(withChannel(`${CONV_API}/${id}/unread`), { method: 'PATCH' });
+      if (res.ok) invalidate();
+    } catch {}
+  }, [withChannel, invalidate]);
+
+  const handleClearChat = useCallback(async (id: string) => {
+    try {
+      const res = await fetchWithTenant(withChannel(`${CONV_API}/${id}/messages`), { method: 'DELETE' });
+      if (res.ok) invalidate();
+    } catch {}
+  }, [withChannel, invalidate]);
+
   const handleBulkAction = useCallback(async (action: string, ids: string[]) => {
     try {
       let res: Response | undefined;
@@ -266,6 +299,13 @@ function ChannelConversationView({
               onSortByChange={setSortBy}
               selectedLabelIds={selectedLabelIds}
               onLabelFilterChange={setSelectedLabelIds}
+              onArchiveConversation={handleArchiveConversation}
+              onDeleteConversation={handleDelete}
+              onMuteConversation={handleMuteConversation}
+              onPinConversation={handlePin}
+              onFavoriteConversation={handleFavorite}
+              onMarkUnreadConversation={handleMarkUnreadConversation}
+              onClearChat={handleClearChat}
             />
           </motion.div>
         )}
@@ -376,6 +416,13 @@ function ChannelConversationView({
                     onSortByChange={setSortBy}
                     selectedLabelIds={selectedLabelIds}
                     onLabelFilterChange={setSelectedLabelIds}
+                    onArchiveConversation={handleArchiveConversation}
+                    onDeleteConversation={handleDelete}
+                    onMuteConversation={handleMuteConversation}
+                    onPinConversation={handlePin}
+                    onFavoriteConversation={handleFavorite}
+                    onMarkUnreadConversation={handleMarkUnreadConversation}
+                    onClearChat={handleClearChat}
                   />
                 )}
               </div>

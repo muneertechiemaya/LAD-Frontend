@@ -58,6 +58,7 @@ import {
   DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu';
 import { MessageList } from './MessageList';
+import { mergeCachedPreview, setCachedMediaPreview } from './mediaPreviewCache';
 import { ConversationContextPanel } from './ConversationContextPanel';
 import {
   Tooltip,
@@ -74,12 +75,18 @@ import { CreateBroadcastGroupModal } from './CreateBroadcastGroupModal';
 import { MessageSettings } from './MessageSettings';
 import { MrLadAvatar } from './MrLadAvatar';
 import { useTheme } from '@/contexts/ThemeContext';
+import { GroupChatWindow } from './GroupChatWindow';
 
 import { Textarea } from '@/components/ui/textarea';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 import {
   X, Video, Phone, Ban, ThumbsDown, Trash2, User, Camera, Music, MapPin, BarChart2, Star as StarIcon,
@@ -91,6 +98,8 @@ import {
   ArrowDownUp, EyeOff, Eye, Hash, Tag, Filter,
   // ── New icons for rich New Chat overlay ──
   Megaphone, Loader2, CheckCircle2, Play, Pause, StopCircle,
+  // ── Icons for dropdown menu ──
+  Archive, Pin, Reply,
 } from 'lucide-react';
 
 // ── Shared type for context status chips ────────────────────────────────────
@@ -216,7 +225,7 @@ type ConversationActionHandler = (id: string) => void | Promise<void>;
 
 interface WABAChatWindowProps {
   conversation: Conversation | null;
-  onSendMessage: (payload: RichMessagePayload) => void | Promise<void>;
+  onSendMessage: (payload: RichMessagePayload) => void | Promise<void> | Promise<Message | void>;
   onTogglePanel?: () => void;
   isPanelOpen?: boolean;
   onBack?: () => void;
@@ -348,15 +357,16 @@ function MessageTicks({ status }: { status?: string }) {
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const ATTACH_ITEMS = [
-  { id: 'document', label: 'Document', icon: <FileText className="w-5 h-5" />, color: 'text-blue-500', bg: 'bg-blue-100   dark:bg-blue-900/40' },
-  { id: 'gallery', label: 'Photos & videos', icon: <ImageIcon className="w-5 h-5" />, color: 'text-purple-500', bg: 'bg-purple-100 dark:bg-purple-900/40' },
-  { id: 'camera', label: 'Camera', icon: <Camera className="w-5 h-5" />, color: 'text-pink-500', bg: 'bg-pink-100   dark:bg-pink-900/40' },
-  { id: 'audio', label: 'Audio', icon: <Music className="w-5 h-5" />, color: 'text-orange-500', bg: 'bg-orange-100 dark:bg-orange-900/40' },
-  { id: 'contact', label: 'Contact', icon: <User className="w-5 h-5" />, color: 'text-teal-500', bg: 'bg-teal-100   dark:bg-teal-900/40' },
-  { id: 'poll', label: 'Poll', icon: <BarChart2 className="w-5 h-5" />, color: 'text-slate-600 dark:text-blue-300', bg: 'bg-slate-100 dark:bg-slate-800' },
-  { id: 'event', label: 'Event', icon: <Calendar className="w-5 h-5" />, color: 'text-indigo-500', bg: 'bg-indigo-100 dark:bg-indigo-900/40' },
-  { id: 'sticker', label: 'New sticker', icon: <StarIcon className="w-5 h-5" />, color: 'text-yellow-500', bg: 'bg-yellow-100 dark:bg-yellow-900/40' },
-  { id: 'template', label: 'Send template', icon: <LayoutTemplate className="w-5 h-5" />, color: 'text-emerald-600', bg: 'bg-emerald-100 dark:bg-emerald-900/40' },
+  { id: 'document', label: 'Document',       icon: <FileText       className="w-5 h-5" />, color: 'text-blue-500',                      bg: 'bg-blue-100   dark:bg-blue-900/40' },
+  { id: 'gallery',  label: 'Photos & videos', icon: <ImageIcon      className="w-5 h-5" />, color: 'text-purple-500',                    bg: 'bg-purple-100 dark:bg-purple-900/40' },
+  { id: 'camera',   label: 'Camera',          icon: <Camera         className="w-5 h-5" />, color: 'text-pink-500',                      bg: 'bg-pink-100   dark:bg-pink-900/40' },
+  { id: 'audio',    label: 'Audio',           icon: <Music          className="w-5 h-5" />, color: 'text-orange-500',                    bg: 'bg-orange-100 dark:bg-orange-900/40' },
+  { id: 'location', label: 'Location',        icon: <MapPin         className="w-5 h-5" />, color: 'text-green-600',                     bg: 'bg-green-100  dark:bg-green-900/40' },
+  { id: 'contact',  label: 'Contact',         icon: <User           className="w-5 h-5" />, color: 'text-teal-500',                      bg: 'bg-teal-100   dark:bg-teal-900/40' },
+  { id: 'poll',     label: 'Poll',            icon: <BarChart2      className="w-5 h-5" />, color: 'text-slate-600 dark:text-blue-300',  bg: 'bg-slate-100  dark:bg-slate-800' },
+  { id: 'event',    label: 'Event',           icon: <Calendar       className="w-5 h-5" />, color: 'text-indigo-500',                    bg: 'bg-indigo-100 dark:bg-indigo-900/40' },
+  { id: 'sticker',  label: 'New sticker',     icon: <StarIcon       className="w-5 h-5" />, color: 'text-yellow-500',                    bg: 'bg-yellow-100 dark:bg-yellow-900/40' },
+  { id: 'template', label: 'Send template',   icon: <LayoutTemplate className="w-5 h-5" />, color: 'text-emerald-600',                   bg: 'bg-emerald-100 dark:bg-emerald-900/40' },
 ];
 
 
@@ -418,38 +428,160 @@ function PollModal({ onClose, onSend }: { onClose: () => void; onSend: (p: RichM
   );
 }
 
-function ContactModal({ onClose, onSend }: { onClose: () => void; onSend: (p: RichMessagePayload) => void }) {
+function ContactModal({ onClose, onSend, backendChannel }: { onClose: () => void; onSend: (p: RichMessagePayload) => void; backendChannel?: 'personal' | 'waba' }) {
+  const [tab, setTab] = useState<'pick' | 'manual'>('pick');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const handleSend = () => {
-    if (!name.trim() || !phone.trim()) return;
-    onSend({ type: 'contact', contactName: sanitizeInput(name.trim()), contactPhone: sanitizeInput(phone.trim()) });
+  const [search, setSearch] = useState('');
+  const [contacts, setContacts] = useState<Array<{ name: string; phone: string }>>([]);
+  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    setLoading(true);
+    const ch = backendChannel || 'waba';
+    // WABA: conversations endpoint has contacts; personal: use contacts endpoint
+    const url = ch === 'personal'
+      ? '/api/whatsapp-conversations/contacts?channel=personal&limit=500'
+      : '/api/whatsapp-conversations/conversations?channel=waba&limit=500';
+    fetchWithTenant(url)
+      .then(r => r.json())
+      .then(data => {
+        const raw = (
+          Array.isArray(data?.data) ? data.data :
+          Array.isArray(data?.contacts) ? data.contacts :
+          Array.isArray(data) ? data : []
+        ) as Array<Record<string, unknown>>;
+        setContacts(
+          raw.map(r => ({
+            name: String(r.lead_name || r.name || r.contact_name || (r.contact as any)?.name || ''),
+            phone: String(r.lead_phone || r.phone || (r.contact as any)?.phone || ''),
+          })).filter(c => c.name || c.phone)
+        );
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [backendChannel]);
+  const filtered = search.trim()
+    ? contacts.filter(c =>
+        c.name.toLowerCase().includes(search.toLowerCase()) ||
+        c.phone.includes(search)
+      )
+    : contacts;
+  const sendContact = (contactName: string, contactPhone: string) => {
+    if (!contactName.trim() && !contactPhone.trim()) return;
+    onSend({
+      type: 'contact',
+      contactName: sanitizeInput(contactName.trim()),
+      contactPhone: sanitizeInput(contactPhone.trim()),
+    });
+    onClose();
   };
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
-        <div className="px-5 py-4 border-b flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-teal-500 flex items-center justify-center"><Phone className="w-4 h-4 text-white" /></div>
-            <h3 className="font-semibold">Share Contact</h3>
-          </div>
-          <button type="button" aria-label="Close" onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50">
+      <div className="bg-white dark:bg-[#111b21] w-full sm:max-w-sm sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+        {/* Header */}
+        <div className="px-4 py-3 border-b dark:border-[#2a3942] flex items-center gap-3">
+          <button type="button" onClick={onClose} className="text-gray-500 dark:text-[#8696a0]">
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <h3 className="font-semibold text-gray-900 dark:text-[#e9edef] flex-1">Share Contact</h3>
         </div>
-        <div className="p-5 space-y-3">
-          {[{ label: 'Full Name *', value: name, set: setName, ph: 'John Doe' }, { label: 'Phone *', value: phone, set: setPhone, ph: '+971501234567' }].map(f => (
-            <div key={f.label}>
-              <label className="text-xs font-medium text-gray-500">{f.label}</label>
-              <input value={f.value} onChange={e => f.set(e.target.value)} placeholder={f.ph}
-                className="mt-1 w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none" />
-            </div>
+        {/* Tabs */}
+        <div className="flex border-b dark:border-[#2a3942]">
+          {(['pick', 'manual'] as const).map(t => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setTab(t)}
+              className={cn(
+                'flex-1 py-2.5 text-sm font-medium transition-colors',
+                tab === t
+                  ? 'text-[#00a884] border-b-2 border-[#00a884]'
+                  : 'text-gray-500 dark:text-[#8696a0] hover:text-gray-700'
+              )}
+            >
+              {t === 'pick' ? 'Choose contact' : 'Enter manually'}
+            </button>
           ))}
         </div>
-        <div className="px-5 py-4 border-t flex justify-end">
-          <button type="button" onClick={handleSend} disabled={!name.trim() || !phone.trim()}
-            className="px-4 py-2 text-sm font-semibold bg-teal-500 text-white rounded-xl hover:bg-teal-600 disabled:opacity-40">
-            Share Contact
-          </button>
-        </div>
+        {tab === 'pick' ? (
+          <>
+            {/* Search */}
+            <div className="px-4 py-2 bg-gray-50 dark:bg-[#202c33] border-b dark:border-[#2a3942]">
+              <div className="flex items-center gap-2 bg-white dark:bg-[#2a3942] rounded-lg px-3 py-2">
+                <Search className="w-4 h-4 text-gray-400 shrink-0" />
+                <input
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Search contacts…"
+                  className="flex-1 bg-transparent text-sm outline-none text-gray-900 dark:text-[#e9edef] placeholder:text-gray-400"
+                />
+              </div>
+            </div>
+            {/* Contact list */}
+            <div className="flex-1 overflow-y-auto divide-y dark:divide-[#2a3942]">
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-5 h-5 animate-spin text-[#00a884]" />
+                </div>
+              ) : filtered.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                  <User className="w-8 h-8 mb-2 opacity-40" />
+                  <p className="text-sm">{search ? 'No matches' : 'No contacts'}</p>
+                  <button
+                    type="button"
+                    onClick={() => setTab('manual')}
+                    className="mt-2 text-xs text-[#00a884] hover:underline"
+                  >
+                    Enter manually instead
+                  </button>
+                </div>
+              ) : (
+                filtered.map((c, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => sendContact(c.name, c.phone)}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-[#202c33] text-left"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center shrink-0 text-teal-700 dark:text-teal-400 font-semibold">
+                      {(c.name || c.phone)[0]?.toUpperCase() || '?'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 dark:text-[#e9edef] truncate">{c.name || 'Unknown'}</p>
+                      <p className="text-xs text-gray-500 dark:text-[#8696a0] truncate">{c.phone}</p>
+                    </div>
+                    <Send className="w-4 h-4 text-[#00a884] shrink-0 opacity-0 group-hover:opacity-100" />
+                  </button>
+                ))
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="p-5 space-y-3">
+            {[
+              { label: 'Full Name', value: name, set: setName, ph: 'John Doe' },
+              { label: 'Phone', value: phone, set: setPhone, ph: '+971501234567' },
+            ].map(f => (
+              <div key={f.label}>
+                <label className="text-xs font-medium text-gray-500 dark:text-[#8696a0]">{f.label}</label>
+                <input
+                  value={f.value}
+                  onChange={e => f.set(e.target.value)}
+                  placeholder={f.ph}
+                  className="mt-1 w-full px-3 py-2.5 border border-gray-200 dark:border-[#2a3942] rounded-xl text-sm focus:outline-none bg-white dark:bg-[#2a3942] text-gray-900 dark:text-[#e9edef]"
+                />
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => sendContact(name, phone)}
+              disabled={!name.trim() && !phone.trim()}
+              className="w-full py-2.5 text-sm font-semibold bg-[#00a884] text-white rounded-xl hover:bg-[#00956f] disabled:opacity-40 mt-2"
+            >
+              Share Contact
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -507,54 +639,215 @@ function EventModal({ onClose, onSend }: { onClose: () => void; onSend: (p: Rich
 function LocationModal({ onClose, onSend }: { onClose: () => void; onSend: (p: RichMessagePayload) => void }) {
   const [gpsStatus, setGpsStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [manual, setManual] = useState('');
+  const [locationName, setLocationName] = useState('');
+  const [locationAddress, setLocationAddress] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Array<{ display_name: string; lat: string; lon: string }>>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [tab, setTab] = useState<'current' | 'search'>('current');
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mapUrl = coords
+    ? `https://www.openstreetmap.org/export/embed.html?bbox=${coords.lng - 0.005},${coords.lat - 0.005},${coords.lng + 0.005},${coords.lat + 0.005}&layer=mapnik&marker=${coords.lat},${coords.lng}`
+    : null;
   const getLocation = () => {
     if (!navigator.geolocation) { setGpsStatus('error'); return; }
     setGpsStatus('loading');
     navigator.geolocation.getCurrentPosition(
-      pos => { setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setGpsStatus('done'); },
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setCoords({ lat, lng });
+        setGpsStatus('done');
+        // Reverse-geocode for a nice address
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
+            { headers: { 'Accept-Language': 'en' } }
+          );
+          const data = await res.json();
+          const name = data.name || data.address?.road || 'My Location';
+          const addr = data.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+          setLocationName(name);
+          setLocationAddress(addr);
+        } catch {
+          setLocationName('My Location');
+          setLocationAddress(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+        }
+      },
       () => setGpsStatus('error'),
       { timeout: CONFIG.VOICE_RECORDING_TIMEOUT }
     );
   };
+  const handleSearch = (q: string) => {
+    setSearchQuery(q);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    if (!q.trim()) { setSearchResults([]); return; }
+    searchDebounceRef.current = setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5`,
+          { headers: { 'Accept-Language': 'en' } }
+        );
+        const data = await res.json();
+        setSearchResults(Array.isArray(data) ? data : []);
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 400);
+  };
+  const selectResult = (r: { display_name: string; lat: string; lon: string }) => {
+    const lat = parseFloat(r.lat);
+    const lng = parseFloat(r.lon);
+    setCoords({ lat, lng });
+    const parts = r.display_name.split(', ');
+    setLocationName(parts[0] || r.display_name);
+    setLocationAddress(r.display_name);
+    setSearchResults([]);
+    setSearchQuery('');
+    setTab('current');
+  };
   const handleSend = () => {
-    if (coords) onSend({ type: 'location', latitude: coords.lat, longitude: coords.lng, locationName: 'My Location', locationAddress: `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}` });
-    else if (manual.trim()) onSend({ type: 'location', locationName: sanitizeInput(manual.trim()), locationAddress: sanitizeInput(manual.trim()), latitude: 0, longitude: 0 });
+    if (!coords) return;
+    onSend({
+      type: 'location',
+      latitude: coords.lat,
+      longitude: coords.lng,
+      locationName: sanitizeInput(locationName || 'Location'),
+      locationAddress: sanitizeInput(locationAddress || `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`),
+    });
+    onClose();
   };
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
-        <div className="px-5 py-4 border-b flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center"><MapPin className="w-4 h-4 text-white" /></div>
-            <h3 className="font-semibold">Share Location</h3>
-          </div>
-          <button type="button" onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
-        </div>
-        <div className="p-5 space-y-4">
-          <button type="button" onClick={getLocation} disabled={gpsStatus === 'loading'}
-            className="w-full flex items-center gap-3 p-3 border border-gray-200 rounded-xl hover:bg-green-50 transition-colors">
-            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-              {gpsStatus === 'loading' ? <Loader2 className="w-5 h-5 text-green-600 animate-spin" /> : <MapPin className="w-5 h-5 text-green-600" />}
-            </div>
-            <div className="text-left">
-              <p className="text-sm font-semibold">{gpsStatus === 'loading' ? 'Getting location…' : gpsStatus === 'done' ? '✓ Location found' : 'Send Current Location'}</p>
-              {coords && <p className="text-xs text-gray-500">{coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}</p>}
-              {gpsStatus === 'error' && <p className="text-xs text-red-500">Location access denied</p>}
-            </div>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50">
+      <div className="bg-white dark:bg-[#111b21] w-full sm:max-w-sm sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        {/* Header */}
+        <div className="px-4 py-3 border-b dark:border-[#2a3942] flex items-center gap-3">
+          <button type="button" onClick={onClose} className="text-gray-500 dark:text-[#8696a0] hover:text-gray-700 dark:hover:text-white">
+            <ArrowLeft className="w-5 h-5" />
           </button>
-          <div>
-            <label className="text-xs font-medium text-gray-500">Or enter address</label>
-            <input value={manual} onChange={e => setManual(e.target.value)} placeholder="e.g. Dubai Mall, UAE"
-              className="mt-1 w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none" />
+          <h3 className="font-semibold text-gray-900 dark:text-[#e9edef] flex-1">Share location</h3>
+        </div>
+        {/* Search bar */}
+        <div className="px-4 py-2 border-b dark:border-[#2a3942] bg-gray-50 dark:bg-[#202c33]">
+          <div className="flex items-center gap-2 bg-white dark:bg-[#2a3942] rounded-lg px-3 py-2">
+            <Search className="w-4 h-4 text-gray-400 shrink-0" />
+            <input
+              value={searchQuery}
+              onChange={e => { handleSearch(e.target.value); setTab('search'); }}
+              onFocus={() => setTab('search')}
+              placeholder="Search for a place or address"
+              className="flex-1 bg-transparent text-sm outline-none text-gray-900 dark:text-[#e9edef] placeholder:text-gray-400 dark:placeholder:text-[#8696a0]"
+            />
+            {searchLoading && <Loader2 className="w-4 h-4 text-green-500 animate-spin shrink-0" />}
+            {searchQuery && !searchLoading && (
+              <button type="button" onClick={() => { setSearchQuery(''); setSearchResults([]); }}>
+                <X className="w-4 h-4 text-gray-400" />
+              </button>
+            )}
           </div>
         </div>
-        <div className="px-5 py-4 border-t flex justify-end">
-          <button type="button" onClick={handleSend} disabled={!coords && !manual.trim()}
-            className="px-4 py-2 text-sm font-semibold bg-green-500 text-white rounded-xl hover:bg-green-600 disabled:opacity-40">
-            Share Location
-          </button>
-        </div>
+        {/* Search results */}
+        {tab === 'search' && searchResults.length > 0 && (
+          <div className="overflow-y-auto divide-y dark:divide-[#2a3942]">
+            {searchResults.map((r, i) => {
+              const parts = r.display_name.split(', ');
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => selectResult(r)}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-[#202c33] text-left"
+                >
+                  <div className="w-9 h-9 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center shrink-0">
+                    <MapPin className="w-4 h-4 text-green-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 dark:text-[#e9edef] truncate">{parts[0]}</p>
+                    <p className="text-xs text-gray-500 dark:text-[#8696a0] truncate">{parts.slice(1).join(', ')}</p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {/* Main content */}
+        {(tab === 'current' || searchResults.length === 0) && (
+          <>
+            {/* Map preview */}
+            {mapUrl ? (
+              <div className="relative w-full h-48 bg-gray-100 dark:bg-[#202c33]">
+                <iframe
+                  src={mapUrl}
+                  className="w-full h-full border-0"
+                  title="Location map"
+                  loading="lazy"
+                />
+                {/* Overlay pin */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="flex flex-col items-center -mt-4">
+                    <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center shadow-lg">
+                      <MapPin className="w-4 h-4 text-white fill-white" />
+                    </div>
+                    <div className="w-2 h-2 rounded-full bg-green-700 mt-0.5 opacity-50" />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="w-full h-48 bg-gray-100 dark:bg-[#202c33] flex items-center justify-center">
+                <div className="text-center text-gray-400 dark:text-[#8696a0]">
+                  <MapPin className="w-8 h-8 mx-auto mb-1 opacity-40" />
+                  <p className="text-xs">No location selected</p>
+                </div>
+              </div>
+            )}
+            {/* Current location button */}
+            <button
+              type="button"
+              onClick={getLocation}
+              disabled={gpsStatus === 'loading'}
+              className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-[#202c33] w-full border-b dark:border-[#2a3942] transition-colors"
+            >
+              <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center shrink-0">
+                {gpsStatus === 'loading'
+                  ? <Loader2 className="w-5 h-5 text-green-600 animate-spin" />
+                  : <MapPin className="w-5 h-5 text-green-600" />}
+              </div>
+              <div className="text-left flex-1">
+                <p className="text-sm font-semibold text-gray-900 dark:text-[#e9edef]">
+                  {gpsStatus === 'loading' ? 'Getting your location…' : 'Send your current location'}
+                </p>
+                {coords && locationAddress && (
+                  <p className="text-xs text-gray-500 dark:text-[#8696a0] truncate">{locationAddress}</p>
+                )}
+                {gpsStatus === 'error' && (
+                  <p className="text-xs text-red-500">Location access denied. Try searching above.</p>
+                )}
+              </div>
+              {gpsStatus === 'done' && <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />}
+            </button>
+            {/* Selected location info + send */}
+            {coords && (
+              <div className="px-4 py-3 bg-white dark:bg-[#111b21]">
+                <div className="flex items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-[#e9edef] truncate">{locationName || 'Selected Location'}</p>
+                    <p className="text-xs text-gray-500 dark:text-[#8696a0] truncate">{locationAddress}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleSend}
+                    className="shrink-0 w-10 h-10 rounded-full bg-[#00a884] hover:bg-[#00956f] flex items-center justify-center shadow transition-colors"
+                  >
+                    <Send className="w-5 h-5 text-white" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
@@ -1018,9 +1311,10 @@ function WABAChatWindow({
   const [agentType, setAgentType] = useState<AgentType>(owner === 'human_agent' ? 'human' : 'ai');
   const [showTakeoverDialog, setShowTakeoverDialog] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
-  const [showStickers, setShowStickers] = useState(false);
-  const [showPoll, setShowPoll] = useState(false);
-  const [showContact, setShowContact] = useState(false);
+  const [showStickers,  setShowStickers]  = useState(false);
+  const [showPoll,      setShowPoll]      = useState(false);
+  const [showContact,   setShowContact]   = useState(false);
+  const [showLocation,  setShowLocation]  = useState(false);
 
   // ── "Add to Group" (broadcast groups) ───────────────────────────────────
   const [addGroups, setAddGroups] = useState<{ id: string; name: string; conversation_count?: number }[]>([]);
@@ -1091,7 +1385,6 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
     }
   }, [conversationId, addingGroupId, backendChannel]);
   const [showEvent, setShowEvent] = useState(false);
-  const [showLocation, setShowLocation] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [fileLoading, setFileLoading] = useState(false);
   const [isTemplatePickerOpen, setIsTemplatePickerOpen] = useState(false);
@@ -1100,6 +1393,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
   const [templateSendResult, setTemplateSendResult] = useState<{ success: boolean; message: string } | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
+  const [pendingOutgoing, setPendingOutgoing] = useState<Message[]>([]);
   const [ownershipError, setOwnershipError] = useState<string | null>(null);
   const [ownershipUpdating, setOwnershipUpdating] = useState(false);
 
@@ -1182,6 +1476,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
       setOlderOffset(CONFIG.INITIAL_MESSAGE_LIMIT);
       setDeletedForMeIds(new Set());
       setDeletedForEveryoneIds(new Set());
+      setPendingOutgoing([]);
     }
   }, [conversation?.id]);
 
@@ -1208,23 +1503,6 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
   }, [showAttachMenu]);
 
   useEffect(() => {
-    if (conversation?.id && conversation.id !== prevConvId.current) {
-      prevConvId.current = conversation.id;
-      setPendingFiles((prev) => {
-        prev.forEach((pf) => URL.revokeObjectURL(pf.previewUrl));
-        return [];
-      });
-      setText('');
-      setSendError(null);
-      setOwnershipError(null);
-      setOlderMessages([]);
-      setOlderOffset(CONFIG.INITIAL_MESSAGE_LIMIT);
-      setDeletedForMeIds(new Set());
-      setDeletedForEveryoneIds(new Set());
-    }
-  }, [conversation?.id]);
-
-  useEffect(() => {
     if (!showStickers) return;
     const h = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
@@ -1246,15 +1524,39 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
 
   const effectivePolledMessages = polledMessages;
 
-  const normalizedPolledMessages = effectivePolledMessages.map((m: Message) => ({
-    ...m,
-    status: normalizeStatus(
-      (m as Message & { message_status?: string }).status ||
-      (m as Message & { message_status?: string }).message_status
-    ),
-  }));
+  const normalizedPolledMessages = effectivePolledMessages.map((m: Message) => {
+    const raw = m as Message & { message_status?: string; type?: string; file_url?: string; url?: string };
+    const inferredType = String(raw.type || '').toLowerCase();
+    const inferredMediaType =
+      inferredType === 'image' || inferredType === 'video' || inferredType === 'audio' || inferredType === 'document'
+        ? inferredType
+        : undefined;
+    const enriched = {
+      ...m,
+      status: normalizeStatus(raw.status || raw.message_status),
+      mediaType: m.mediaType || inferredMediaType || undefined,
+      mediaId: m.mediaId || (raw as any).file_url || (raw as any).url || undefined,
+    } as Message;
+    return mergeCachedPreview(enriched);
+  });
 
-  const baseMessages = dedupeById([...olderMessages, ...normalizedPolledMessages]);
+  // If the API call throws but the image was actually sent (backend sent it to WhatsApp
+  // but returned a non-2xx), the optimistic message stays 'failed' while polling picks up
+  // the real server message — causing a ghost duplicate. Remove failed optimistic media
+  // messages when a matching real server message has arrived (same direction + mediaType
+  // + within a 60-second window).
+  const pendingOutgoingCleaned = pendingOutgoing.filter((m) => {
+    if (m.status !== 'failed' || !m.mediaType) return true; // keep non-failed / non-media
+    return !normalizedPolledMessages.some(
+      (pm) =>
+        pm.isOutgoing &&
+        pm.mediaType === m.mediaType &&
+        Math.abs(new Date(pm.timestamp).getTime() - new Date(m.timestamp).getTime()) < 60_000
+    );
+  });
+
+  const baseMessages = dedupeById([...olderMessages, ...normalizedPolledMessages, ...pendingOutgoingCleaned]);
+
   const allMessages = useMemo(
     () =>
       baseMessages
@@ -1306,11 +1608,11 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
 
       const mapped: Message[] = raw.map((r) => {
         const rawRole = r.role || 'user';
-        const rawType = String(r.type || '').toLowerCase();
-        const inferredMediaTypeFromRawType =
-          rawType === 'image' || rawType === 'video' || rawType === 'audio' || rawType === 'document'
-            ? rawType
-            : undefined;
+        const rawType = String(r.type || r.message_type || '').toLowerCase();
+          const inferredMediaTypeFromRawType =
+            rawType === 'image' || rawType === 'video' || rawType === 'audio' || rawType === 'document'
+              ? rawType
+              : undefined;
         const meta =
           typeof r.metadata === 'string'
             ? (() => { try { return JSON.parse(r.metadata); } catch { return {}; } })()
@@ -1348,15 +1650,15 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
           locationName: meta.location_name || r.location_name || undefined,
           locationAddress: meta.location_address || r.location_address || undefined,
           mediaId: meta.media_id || r.media_id || r.mediaId || r.file_url || r.url || undefined,
-          mediaType: meta.message_type || meta.media_type || r.message_type || r.media_type || r.mediaType || inferredMediaTypeFromRawType || undefined,
+          mediaType: inferredMediaTypeFromRawType || meta.message_type || meta.media_type || r.message_type || r.media_type || r.mediaType || undefined,
           mediaMimeType: meta.mime_type || r.mime_type || r.content_type || r.media_mime_type || undefined,
           mediaFilename: meta.filename || r.filename || r.media_filename || undefined,
           mediaCaption: meta.caption || r.caption || undefined,
         } as Message;
-      });
+      }).map((m) => mergeCachedPreview(m));
 
-      setOlderMessages((prev) => dedupeById([...mapped, ...prev]).slice(-MAX_OLDER_MESSAGES));
-      const nextOffsetIncrement = raw.length > 0 ? raw.length : LOAD_MORE_LIMIT;
+      setOlderMessages((prev) => dedupeById([...mapped, ...prev]).slice(-CONFIG.MAX_OLDER_MESSAGES));
+      const nextOffsetIncrement = raw.length > 0 ? raw.length : CONFIG.LOAD_MORE_LIMIT;
       setOlderOffset((prev) => prev + nextOffsetIncrement);
     } catch (err: unknown) {
       setSendError(getErrorMessage(err, 'Failed to load older messages'));
@@ -1459,31 +1761,108 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
     setSendError(null);
     if (pendingFiles.length > 0) {
       setIsSending(true);
+      const filesToSend = [...pendingFiles]; // snapshot before clearing
+      const captionText = text.trim();
+      const optimisticIds: string[] = filesToSend.map((pf) => `pending-${pf.id}`);
+      const optimisticMsgs = filesToSend.map((pf, index) => {
+        const isLast = index === filesToSend.length - 1;
+        return {
+          id: `pending-${pf.id}`,
+          conversationId: conversation?.id || conversationId || '',
+          content: '',
+          timestamp: new Date(),
+          isOutgoing: true,
+          status: 'sent' as const,
+          sender: { id: 'agent', name: 'You' },
+          mediaType: pf.mediaType,
+          mediaFilename: pf.file.name,
+          mediaMimeType: pf.file.type,
+          mediaCaption: isLast ? (captionText || undefined) : undefined,
+          fileBase64: pf.base64,
+          contentType: pf.file.type,
+        } as Message & { fileBase64: string; contentType: string };
+      });
+
+      // ── Optimistically clear composer immediately (WhatsApp-like UX) ──
+      setPendingFiles([]);
+      setText('');
+      if (textareaRef.current) textareaRef.current.style.height = 'auto';
+      // Clear hidden file inputs so the same file can be re-selected later
+      if (galleryRef.current) galleryRef.current.value = '';
+      if (cameraRef.current) cameraRef.current.value = '';
+      if (documentRef.current) documentRef.current.value = '';
+      if (audioRef.current) audioRef.current.value = '';
+
+      setPendingOutgoing((prev) => [...prev, ...optimisticMsgs]);
+
       const sentIds = new Set<string>();
       try {
-        for (const pf of pendingFiles) {
-          await Promise.resolve(onSendMessage({
+        for (let i = 0; i < filesToSend.length; i++) {
+          const pf = filesToSend[i];
+          const isLast = i === filesToSend.length - 1;
+          const result = await Promise.resolve(onSendMessage({
             type: pf.mediaType,
             fileBase64: pf.base64,
             filename: pf.file.name,
             contentType: pf.file.type,
-            caption: text.trim() || undefined,
+            caption: isLast ? (captionText || undefined) : undefined,
           }));
+          // Cache the base64 preview keyed by returned message ID so the
+          // image renders even when the server doesn't return a media URL.
+          const cacheKey =
+            result && typeof result === 'object' && 'id' in result
+              ? (result.id as string)
+              : `pending-file-${pf.id}`;
+          setCachedMediaPreview(cacheKey, {
+            base64: pf.base64,
+            contentType: pf.file.type,
+            filename: pf.file.name,
+          });
+          // Also cache by the optimistic pending ID so the gallery finds it
+          setCachedMediaPreview(`pending-${pf.id}`, {
+            base64: pf.base64,
+            contentType: pf.file.type,
+            filename: pf.file.name,
+          });
           sentIds.add(pf.id);
           URL.revokeObjectURL(pf.previewUrl);
         }
-        setPendingFiles([]);
-        setText('');
-        if (textareaRef.current) textareaRef.current.style.height = 'auto';
       } catch (err: unknown) {
-        if (sentIds.size > 0) {
-          setPendingFiles((prev) => prev.filter((pf) => !sentIds.has(pf.id)));
-        }
-        const error = err instanceof Error ? new NetworkError('Failed to send attachment', err) : new NetworkError('Failed to send attachment');
+        // ── Real WhatsApp behaviour on failure ──────────────────────────────
+        // Files are NEVER restored to the input box.
+        // The unsent optimistic messages stay in the chat but their status
+        // becomes 'failed' so a red error icon appears in place of the tick.
+        // The image preview remains fully visible.
+        const unsentOptimisticIds = filesToSend
+          .filter((pf) => !sentIds.has(pf.id))
+          .map((pf) => `pending-${pf.id}`);
+        setPendingOutgoing((prev) =>
+          prev.map((m) =>
+            unsentOptimisticIds.includes(m.id)
+              ? { ...m, status: 'failed' as const }
+              : m
+          )
+        );
+        const error = err instanceof Error
+          ? new NetworkError('Failed to send attachment', err)
+          : new NetworkError('Failed to send attachment');
         setSendError(error.message);
-      } finally {
+        // Only remove successfully sent optimistic messages in finally.
+        // Failed ones stay in chat with the red error icon.
+        const successOptimisticIds = filesToSend
+          .filter((pf) => sentIds.has(pf.id))
+          .map((pf) => `pending-${pf.id}`);
+        if (successOptimisticIds.length > 0) {
+          setPendingOutgoing((prev) =>
+            prev.filter((m) => !successOptimisticIds.includes(m.id))
+          );
+        }
         setIsSending(false);
+        return;
       }
+      // Success path: remove ALL optimistic messages (server will provide real ones via polling)
+      setPendingOutgoing((prev) => prev.filter((m) => !optimisticIds.includes(m.id)));
+      setIsSending(false);
       return;
     }
     if (!text.trim()) return;
@@ -1498,7 +1877,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
     } finally {
       setIsSending(false);
     }
-  }, [isSending, pendingFiles, text, onSendMessage]);
+  }, [isSending, pendingFiles, text, onSendMessage, conversation?.id, conversationId]);
 
   const handleRichSend = useCallback(async (payload: RichMessagePayload) => {
     setSendError(null);
@@ -1980,6 +2359,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
         onLoadMore={handleLoadMore}
         searchText={searchText}
         highlightedMessageId={matchingMessageIds[searchMatchIndex]}
+        channel={backendChannel || channel || 'waba'}
       />
       </div>
 
@@ -2003,7 +2383,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
       </AlertDialog>
 
       {showPoll && <PollModal onClose={() => setShowPoll(false)} onSend={handleRichSend} />}
-      {showContact && <ContactModal onClose={() => setShowContact(false)} onSend={handleRichSend} />}
+      {showContact && <ContactModal onClose={() => setShowContact(false)} onSend={handleRichSend} backendChannel={backendChannel} />}
       {showEvent && <EventModal onClose={() => setShowEvent(false)} onSend={handleRichSend} />}
       {showLocation && <LocationModal onClose={() => setShowLocation(false)} onSend={handleRichSend} />}
 
@@ -2030,30 +2410,63 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
       {/* Composer */}
       <div className="mt-4 p-3 px-4 bg-white dark:bg-[#161717] shrink-0 z-10 relative">
 
-        {/* ── Pending file previews ── */}
+        {/* ── Pending file previews — WhatsApp-style thumbnail strip ── */}
         {(pendingFiles.length > 0 || fileLoading) && (
-          <div className="flex flex-wrap gap-2 mb-2">
+          <div className="mb-3">
             {fileLoading && (
-              <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5 text-sm text-blue-700">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" /><span>Reading file…</span>
+              <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl px-3 py-2 text-sm text-blue-700 dark:text-blue-300">
+                <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" /><span>Reading file…</span>
               </div>
             )}
-            {pendingFiles.map(pf => (
-              <div key={pf.id} className="flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-1.5 text-sm max-w-[200px]">
-                {pf.mediaType === 'image'
-                  ? <img src={pf.previewUrl} alt={pf.file.name} className="h-7 w-7 rounded object-cover shrink-0" />
-                  : pf.mediaType === 'video'
-                    ? <div className="h-7 w-7 rounded bg-purple-100 flex items-center justify-center shrink-0"><ImageIcon className="h-4 w-4 text-purple-600" /></div>
-                    : pf.mediaType === 'audio'
-                      ? <div className="h-7 w-7 rounded bg-orange-100 flex items-center justify-center shrink-0"><Music className="h-4 w-4 text-orange-600" /></div>
-                      : <div className="h-7 w-7 rounded bg-blue-100 flex items-center justify-center shrink-0"><FileText className="h-4 w-4 text-blue-600" /></div>
-                }
-                <span className="truncate text-xs">{pf.file.name}</span>
-                <button type="button" aria-label="Remove file" onClick={() => removePendingFile(pf.id)} className="text-gray-400 hover:text-gray-600 shrink-0">
-                  <X className="h-3.5 w-3.5" />
-                </button>
+            {pendingFiles.length > 0 && (
+              <div className="flex items-end gap-2 overflow-x-auto pb-1">
+                {pendingFiles.map(pf => (
+                  <div
+                    key={pf.id}
+                    className="relative flex-shrink-0 group/thumb"
+                  >
+                    {pf.mediaType === 'image' ? (
+                      <div className="relative w-[72px] h-[72px] rounded-xl overflow-hidden border-2 border-[#00a884]/40 shadow-sm">
+                        <img
+                          src={pf.previewUrl}
+                          alt={pf.file.name}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/10 transition-colors" />
+                      </div>
+                    ) : pf.mediaType === 'video' ? (
+                      <div className="relative w-[72px] h-[72px] rounded-xl overflow-hidden bg-purple-100 dark:bg-purple-900/30 border-2 border-purple-300/40 flex flex-col items-center justify-center gap-1 shadow-sm">
+                        <Video className="w-7 h-7 text-purple-500" />
+                        <span className="text-[9px] text-purple-600 dark:text-purple-400 font-medium px-1 text-center truncate w-full">Video</span>
+                      </div>
+                    ) : pf.mediaType === 'audio' ? (
+                      <div className="relative w-[72px] h-[72px] rounded-xl overflow-hidden bg-orange-100 dark:bg-orange-900/30 border-2 border-orange-300/40 flex flex-col items-center justify-center gap-1 shadow-sm">
+                        <Music className="w-7 h-7 text-orange-500" />
+                        <span className="text-[9px] text-orange-600 dark:text-orange-400 font-medium px-1 text-center truncate w-full">Audio</span>
+                      </div>
+                    ) : (
+                      <div className="relative w-[72px] h-[72px] rounded-xl overflow-hidden bg-blue-100 dark:bg-blue-900/30 border-2 border-blue-300/40 flex flex-col items-center justify-center gap-1 shadow-sm px-1">
+                        <FileText className="w-7 h-7 text-blue-500" />
+                        <span className="text-[9px] text-blue-600 dark:text-blue-400 font-medium text-center truncate w-full leading-tight">{pf.file.name.split('.').pop()?.toUpperCase()}</span>
+                      </div>
+                    )}
+                    {/* Remove button */}
+                    <button
+                      type="button"
+                      aria-label="Remove file"
+                      onClick={() => removePendingFile(pf.id)}
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-gray-700 dark:bg-gray-600 text-white flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-opacity shadow-md z-10"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                    {/* Filename tooltip on non-image */}
+                    {pf.mediaType !== 'image' && (
+                      <p className="mt-1 text-[9px] text-muted-foreground dark:text-[#8696a0] truncate max-w-[72px] text-center">{pf.file.name}</p>
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
         )}
 
@@ -2328,13 +2741,17 @@ interface WABASidebarProps {
   onShowCreateGroupModal?: (selectedIds: string[]) => void;
   groupRefreshKey?: number;
   activeLastMsg?: Message | null;
+  // ── Group selection for chat window ─────────────────────────────────────
+  onGroupSelect?: (group: ChatGroup) => void;
+  onOpenGroupInfo?: (group: ChatGroup) => void;
+  activeGroup?: ChatGroup | null;
   // ── Infinite scroll (conversation-list pagination) ─────────────────────
   loadMore?: () => void;
   hasMore?: boolean;
   isLoadingMore?: boolean;
 }
 
-type FilterTab = 'all' | 'unread' | 'favourites';
+type FilterTab = 'all' | 'unread' | 'favourites' | 'groups';
 
 function WABASidebar({
   conversations,
@@ -2359,6 +2776,9 @@ function WABASidebar({
   loadMore,
   hasMore,
   isLoadingMore,
+  onGroupSelect,
+  onOpenGroupInfo,
+  activeGroup,
 }: WABASidebarProps) {
   const [filterTab, setFilterTab] = useState<FilterTab>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -2400,6 +2820,12 @@ function WABASidebar({
   const [contactsSectionExpanded, setContactsSectionExpanded] = useState(true);
   const [importRefreshTrigger, setImportRefreshTrigger] = useState(0);
   const deferredNewChatSearch = useDeferredValue(newChatSearch.trim());
+
+  // ── Dropdown menu state for contact actions ───────────────────────────────
+  const [showDropdown, setShowDropdown] = useState<Record<string, boolean>>({});
+  const [clearChatModal, setClearChatModal] = useState<string | null>(null);
+  const [deleteChatModal, setDeleteChatModal] = useState<string | null>(null);
+  const [addToListModal, setAddToListModal] = useState<string | null>(null);
 
   const normalizePhone = useCallback((value?: string) => (value || '').replace(/\D/g, ''), []);
   const conversationIdByLead = useMemo(() => {
@@ -2460,7 +2886,7 @@ function WABASidebar({
     return () => { cancelled = true; };
   }, [onLabelFilterChange]);
 
-  // ── Load groups whenever New Chat panel is open or group manager closes ─
+  // ── Load groups eagerly and whenever the panel opens ─────────────────
   useEffect(() => {
     const groupsChannel = backendChannel || 'waba';
     setNewChatGroupsLoading(true);
@@ -2469,7 +2895,7 @@ function WABASidebar({
       .then((data) => { if (Array.isArray(data.data)) setNewChatGroups(data.data); })
       .catch(() => { })
       .finally(() => setNewChatGroupsLoading(false));
-  }, [isNewChatOpen, isGroupManagerOpen, backendChannel, groupRefreshKey]);
+  }, [isNewChatOpen, isGroupsPanelOpen, isGroupManagerOpen, backendChannel, groupRefreshKey]);
 
   // ── Load contacts when New Chat panel opens ────────────────────────────
   useEffect(() => {
@@ -2745,6 +3171,7 @@ function WABASidebar({
       if (filterTab === 'unread') return Boolean(conv.unreadCount && conv.unreadCount > 0);
       const extendedConv = conv as Conversation & { isFavorite?: boolean; favorite?: boolean; is_group?: boolean; isGroup?: boolean; groupId?: string };
       if (filterTab === 'favourites') return Boolean(extendedConv.is_favorite || extendedConv.isFavorite || extendedConv.favorite);
+      if (filterTab === 'groups') return Boolean((extendedConv as any).is_group || (extendedConv as any).isGroup || (extendedConv as any).groupId);
       if (hideEmpty && !conv.lastMessage && !conv.messageCount && !conv.messages?.length) return false;
       if (contextStatusFilter !== 'all' && getConversationContextStatus(conv) !== contextStatusFilter) return false;
       if (selectedLabelIds.length > 0) {
@@ -2766,6 +3193,36 @@ function WABASidebar({
     });
   }, [conversations, contextStatusFilter, filterTab, hideEmpty, selectedLabelIds, sortBy]);
 
+  const combinedItems = useMemo(() => {
+    const chatItems = filteredConversations.map(conv => ({
+      type: 'chat' as const,
+      id: conv.id,
+      timestamp: new Date(getConversationLastMessageTimestamp(conv) || conv.updatedAt || conv.createdAt || 0).getTime(),
+      name: conv.contact?.name || conv.contact?.phone || '',
+      data: conv,
+    }));
+
+    const showGroupsInMainList = filterTab === 'all';
+    const groupItems = showGroupsInMainList
+      ? newChatGroups.map(group => ({
+          type: 'group' as const,
+          id: group.id,
+          timestamp: new Date(group.created_at || 0).getTime(),
+          name: group.name,
+          data: group,
+        }))
+      : [];
+
+    const allItems = [...chatItems, ...groupItems];
+
+    return allItems.sort((a, b) => {
+      if (sortBy === 'name') {
+        return a.name.localeCompare(b.name);
+      }
+      return b.timestamp - a.timestamp;
+    });
+  }, [filteredConversations, newChatGroups, filterTab, sortBy]);
+
   const unreadCount = conversations.filter((c) => c.unreadCount && c.unreadCount > 0).length;
 
   // ── Label toggle helper ────────────────────────────────────────────────
@@ -2784,8 +3241,9 @@ function WABASidebar({
   const templatePickerCount = groupTemplateSendTarget?.count ?? selectedChatIds.size;
 
   return (
-    // IMPORTANT: `relative` here is what allows the absolute overlay to cover this column only
-    <div className="h-full flex flex-col overflow-visible bg-background text-foreground dark:bg-[#161717] relative">
+    <>
+      {/* IMPORTANT: `relative` here is what allows the absolute overlay to cover this column only */}
+      <div className="h-full flex flex-col overflow-visible bg-background text-foreground dark:bg-[#161717] relative">
       {sidebarError && (
         <div className="mx-4 mt-2 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-800 dark:bg-red-950/60 dark:text-red-200">
           <div className="flex items-center justify-between gap-3">
@@ -2943,6 +3401,20 @@ function WABASidebar({
             {tab === 'unread' ? `Unread${unreadCount > 0 ? ` ${unreadCount}` : ''}` : tab.charAt(0).toUpperCase() + tab.slice(1)}
           </button>
         ))}
+
+        <button
+  type="button"
+  onClick={() => setFilterTab(filterTab === 'groups' ? 'all' : 'groups')}
+  className={cn(
+    'px-3 py-1.5 rounded-full text-[14px] font-medium whitespace-nowrap shrink-0 transition-colors border flex items-center gap-1',
+    filterTab === 'groups'
+      ? 'bg-[#0a332c] dark:bg-[#1a342a] text-[#00a884] border-transparent'
+      : 'bg-muted/50 dark:bg-[#161717] dark:border-[#2e2f2f] text-muted-foreground dark:text-[#a2a2a2] hover:bg-muted dark:hover:bg-[#2a3942]'
+  )}
+>
+  <Users className="h-3.5 w-3.5" />
+  Groups
+</button>
 
         {/* ── Hide Empty button — same pill style ── */}
         {onHideEmptyChange && (
@@ -3301,12 +3773,93 @@ function WABASidebar({
             </p>
             <button className="mt-4 text-[#00a884] text-[15px] font-medium hover:underline">Add to Favourites</button>
           </div>
-        ) : filteredConversations.length === 0 ? (
+        ) : filterTab === 'groups' ? (
+          /* ── Broadcast groups list ─────────────────────────────────────── */
+          newChatGroupsLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : newChatGroups.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+              <Users className="h-8 w-8 mb-2 opacity-40" />
+              <p className="text-sm">No broadcast groups yet</p>
+              <button
+                type="button"
+                onClick={() => setIsGroupManagerOpen(true)}
+                className="mt-3 text-xs text-[#00a884] font-medium hover:underline"
+              >
+                Create a group
+              </button>
+            </div>
+          ) : (
+            newChatGroups.map((group) => (
+              <div
+                key={group.id}
+                onClick={() => onGroupSelect?.(group)}
+                className="flex items-center gap-4 py-2 px-4 mx-2 cursor-pointer transition-colors rounded-xl hover:bg-muted/30 dark:hover:bg-[#2e2f2f]/50"
+              >
+                <div className="w-11 h-11 rounded-full bg-emerald-100 dark:bg-emerald-950/30 flex items-center justify-center shrink-0">
+                  <Users className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <div className="flex-1 min-w-0 py-1">
+                  <div className="flex justify-between items-center mb-0.5 gap-2">
+                    <span className="font-medium text-[16px] truncate text-foreground dark:text-white">
+                      {group.name}
+                    </span>
+                    <span className="text-xs text-muted-foreground dark:text-[#8696a0] shrink-0">
+                      Broadcast
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm text-muted-foreground dark:text-[#8696a0] truncate">
+                      {(group as any).member_count ?? (group as any).memberCount ?? (group as any).conversation_count ?? 0} members
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))
+          )
+        ) : combinedItems.length === 0 ? (
           <div className="p-4 text-center text-sm text-muted-foreground dark:text-[#8696a0]">
             No chats found for this filter.
           </div>
         ) : (
-          filteredConversations.map((conv) => {
+          combinedItems.map((item) => {
+            if (item.type === 'group') {
+              const group = item.data;
+              const isSelected = activeGroup?.id === group.id;
+              return (
+                <div
+                  key={group.id}
+                  onClick={() => onGroupSelect?.(group)}
+                  className={cn(
+                    'flex items-center gap-4 py-2 px-4 mx-2 cursor-pointer transition-colors rounded-xl',
+                    isSelected ? 'bg-[#d9fdd3] dark:bg-[#2e2f2f]' : 'hover:bg-muted/30 dark:hover:bg-[#2e2f2f]/50'
+                  )}
+                >
+                  <div className="w-11 h-11 rounded-full bg-emerald-100 dark:bg-emerald-950/30 flex items-center justify-center shrink-0">
+                    <Users className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div className="flex-1 min-w-0 py-1">
+                    <div className="flex justify-between items-center mb-0.5 gap-2">
+                      <span className="font-semibold text-[16px] truncate text-foreground dark:text-white">
+                        {group.name}
+                      </span>
+                      <span className="text-xs text-muted-foreground dark:text-[#8696a0] shrink-0 bg-muted/60 dark:bg-muted/10 px-2 py-0.5 rounded">
+                        Group
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm text-muted-foreground dark:text-[#8696a0] truncate">
+                        {(group as any).member_count ?? (group as any).memberCount ?? (group as any).conversation_count ?? 0} members
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
+            const conv = item.data;
             const isSelected = selectedId === conv.id;
             const initials = conv.contact?.name?.substring(0, 2).toUpperCase();
             const convLastMessage = (conv as Conversation & { lastMessage?: Message }).lastMessage;
@@ -3323,7 +3876,7 @@ function WABASidebar({
                 key={conv.id}
                 onClick={() => isSelectMode ? toggleSelectChat(conv.id) : onSelectConversation(conv.id)}
                 className={cn(
-                  'flex items-center gap-4 py-2 px-4 mx-2 cursor-pointer transition-colors rounded-xl',
+                  'group flex items-center gap-4 py-2 px-4 mx-2 cursor-pointer transition-colors rounded-xl',
                   isSelectMode && selectedChatIds.has(conv.id)
                     ? 'bg-emerald-50 dark:bg-emerald-950/20'
                     : isSelected ? 'bg-[#d9fdd3] dark:bg-[#2e2f2f]' : 'hover:bg-muted/30 dark:hover:bg-[#2e2f2f]/50'
@@ -3348,7 +3901,7 @@ function WABASidebar({
                 <div className="flex-1 min-w-0 py-1">
                   <div className="flex justify-between items-center mb-0.5 gap-2">
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="font-medium text-[16px] truncate text-foreground dark:text-white">{conv.contact?.name}</span>
+                      <span className="font-semibold text-[16px] truncate text-foreground dark:text-white">{conv.contact?.name}</span>
                       {/* Conversation stage (context_status) as a small WhatsApp-style colour
                           tag — colour only; the stage name shows on hover, not as repeated text. */}
                       {(() => {
@@ -3372,7 +3925,14 @@ function WABASidebar({
                         <MessageTicks status={lastMsg?.status || lastMsg?.message_status} />
                       )}
                       <span className="text-[14px] text-muted-foreground dark:text-[#a2a2a2] truncate max-w-[80%]">
-                        {lastMsg?.content || 'Started conversation'}
+                        {(() => {
+                          if (!lastMsg) return 'Started conversation';
+                          const mt = (lastMsg as any).mediaType;
+                          if (mt === 'image' || mt === 'video') return '📷 Photo';
+                          if (mt === 'document') return `📄 ${(lastMsg as any).mediaFilename || 'Document'}`;
+                          if (mt === 'audio') return '🎵 Audio';
+                          return lastMsg.content || 'Started conversation';
+                        })()}
                       </span>
                     </div>
                     {conv.unreadCount ? (
@@ -3382,6 +3942,75 @@ function WABASidebar({
                     ) : null}
                   </div>
                 </div>
+                {/* Dropdown menu trigger - shows on hover */}
+                {!isSelectMode && (
+                  <div className="flex-shrink-0 relative z-20">
+                    <DropdownMenu open={showDropdown[conv.id]} onOpenChange={(open) => setShowDropdown(prev => ({ ...prev, [conv.id]: open }))}>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowDropdown(prev => ({ ...prev, [conv.id]: !prev[conv.id] }));
+                          }}
+                          className={cn(
+                            'h-8 w-8 rounded-full flex items-center justify-center transition-all duration-150',
+                            'opacity-0 group-hover:opacity-100',
+                            showDropdown[conv.id] && 'opacity-100',
+                            'bg-gray-100 dark:bg-gray-800'
+                          )}
+                        >
+                          <ChevronDown className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56 bg-white dark:bg-[rgb(22,23,23)] border-gray-200 dark:border-[#374045]">
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setShowDropdown(prev => ({ ...prev, [conv.id]: false })); }} className="text-gray-900 dark:text-[#e9edef] hover:bg-gray-100 dark:hover:bg-[#374045]">
+                          <Archive className="h-4 w-4 mr-2" />
+                          Archive chat
+                        </DropdownMenuItem>
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger className="text-gray-900 dark:text-[#e9edef] hover:bg-gray-100 dark:hover:bg-[#374045]">
+                            <Bell className="h-4 w-4 mr-2" />
+                            Mute notifications
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent className="bg-white dark:bg-[rgb(22,23,23)] border-gray-200 dark:border-[#374045]">
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setShowDropdown(prev => ({ ...prev, [conv.id]: false })); }} className="text-gray-900 dark:text-[#e9edef] hover:bg-gray-100 dark:hover:bg-[#374045]">
+                              8 Hours
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setShowDropdown(prev => ({ ...prev, [conv.id]: false })); }} className="text-gray-900 dark:text-[#e9edef] hover:bg-gray-100 dark:hover:bg-[#374045]">
+                              1 Week
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setShowDropdown(prev => ({ ...prev, [conv.id]: false })); }} className="text-gray-900 dark:text-[#e9edef] hover:bg-gray-100 dark:hover:bg-[#374045]">
+                              Always
+                            </DropdownMenuItem>
+                          </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setShowDropdown(prev => ({ ...prev, [conv.id]: false })); }} className="text-gray-900 dark:text-[#e9edef] hover:bg-gray-100 dark:hover:bg-[#374045]">
+                          <Pin className="h-4 w-4 mr-2" />
+                          Pin chat
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setShowDropdown(prev => ({ ...prev, [conv.id]: false })); }} className="text-gray-900 dark:text-[#e9edef] hover:bg-gray-100 dark:hover:bg-[#374045]">
+                          Mark as unread
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setShowDropdown(prev => ({ ...prev, [conv.id]: false })); }} className="text-gray-900 dark:text-[#e9edef] hover:bg-gray-100 dark:hover:bg-[#374045]">
+                          <Star className="h-4 w-4 mr-2" />
+                          Add to favourites
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setShowDropdown(prev => ({ ...prev, [conv.id]: false })); }} className="text-gray-900 dark:text-[#e9edef] hover:bg-gray-100 dark:hover:bg-[#374045]">
+                          <List className="h-4 w-4 mr-2" />
+                          Add to list
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator className="bg-gray-200 dark:bg-[#374045]" />
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setClearChatModal(conv.id); setShowDropdown(prev => ({ ...prev, [conv.id]: false })); }} className="text-gray-900 dark:text-[#e9edef] hover:bg-gray-100 dark:hover:bg-[#374045]">
+                          Clear chat
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setDeleteChatModal(conv.id); setShowDropdown(prev => ({ ...prev, [conv.id]: false })); }} className="text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-[#374045]">
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete chat
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                )}
               </div>
             );
           })
@@ -3395,653 +4024,258 @@ function WABASidebar({
       {isNewChatOpen && (
         <div className="absolute inset-0 z-30 bg-card dark:bg-[#111b21] flex flex-col">
           {/* Header */}
-          <div className="flex items-center gap-3 px-4 py-3 border-b border-border dark:border-[#222d34] bg-card dark:bg-[#161717]">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border dark:border-[#222d34]">
+            <h3 className="text-[16px] font-semibold text-foreground dark:text-[#e9edef]">New chat</h3>
             <button
-              className="h-8 w-8 rounded-full hover:bg-muted flex-shrink-0 flex items-center justify-center transition-colors"
-              onClick={() => {
-                setIsNewChatOpen(false);
-                setNewChatSearch('');
-                setSelectedNewChatIds(new Set());
-                setSelectedNewChatGroupIds(new Set());
-              }}
+              type="button"
+              onClick={() => setIsNewChatOpen(false)}
+              className="p-1 hover:bg-muted dark:hover:bg-[#2e2f2f] rounded-full transition-colors"
             >
-              <ArrowLeft className="h-4 w-4" />
+              <X className="h-5 w-5 text-muted-foreground dark:text-[#8696a0]" />
             </button>
-            <span className="text-sm font-semibold flex-1">New chat</span>
-            {(selectedNewChatIds.size > 0 || selectedNewChatGroupIds.size > 0) && (
-              <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded-full">
-                {selectedNewChatIds.size + selectedNewChatGroupIds.size} selected
-              </span>
-            )}
           </div>
-
           {/* Search */}
-          <div className="px-3 py-2 border-b border-border dark:border-[#222d34]">
+          <div className="px-4 py-3">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground dark:text-[#8696a0]" />
               <Input
-                placeholder="Search name or number"
+                type="text"
+                placeholder="Search or start new chat"
                 value={newChatSearch}
                 onChange={(e) => setNewChatSearch(e.target.value)}
-                className="pl-9 h-9 bg-secondary/50 dark:bg-[#2e2f2f] rounded-full border-0"
-                autoFocus
+                className="pl-10 bg-muted/50 dark:bg-[#202c33] border-border dark:border-[#374045] text-foreground dark:text-[#e9edef] placeholder:text-muted-foreground dark:placeholder-[#8696a0]"
               />
             </div>
           </div>
-
-          {/* Quick Action Buttons */}
-          <div className="flex flex-col border-b border-border dark:border-[#222d34]">
-            {/* Import Leads */}
-            <button
-              onClick={() => {
-                setIsNewChatOpen(false);
-                setNewChatSearch('');
-                setIsImportDialogOpen(true);
-              }}
-              className="flex items-center gap-3 px-4 py-3 hover:bg-muted dark:hover:bg-[#202c33] transition-colors"
-            >
-              <div className="h-10 w-10 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
-                <UserPlus className="h-5 w-5 text-white" />
-              </div>
-              <span className="text-sm font-medium">Import Leads</span>
-            </button>
-
-            {/* New Broadcast */}
-            <button
-              onClick={() => {
-                setIsNewChatOpen(false);
-                setNewChatSearch('');
-                setIsGroupManagerOpen(true);
-              }}
-              className="flex items-center gap-3 px-4 py-3 hover:bg-muted dark:hover:bg-[#202c33] transition-colors"
-            >
-              <div className="h-10 w-10 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
-                <Megaphone className="h-5 w-5 text-white" />
-              </div>
-              <span className="text-sm font-medium">New Broadcast</span>
-            </button>
-          </div>
-
-          {/* Scrollable Groups & Contacts list */}
+          {/* Content */}
           <div className="flex-1 overflow-y-auto">
-            {(() => {
-              const searchLower = newChatSearch.toLowerCase();
-
-              const filteredGroups = searchLower
-                ? newChatGroups.filter((g) => g.name.toLowerCase().includes(searchLower))
-                : newChatGroups;
-
-              const contactSource = newChatContacts;
-              const filteredContacts = searchLower
-                ? contactSource.filter((c) =>
-                  (c.contact?.name || '').toLowerCase().includes(searchLower) ||
-                  (c.contact?.phone || '').includes(searchLower)
-                )
-                : contactSource;
-              const contactsLoadedAll = newChatContactsTotal > 0 && newChatContacts.length >= newChatContactsTotal;
-              const noResults = filteredGroups.length === 0 && filteredContacts.length === 0 && !newChatContactsLoading;
-
-              return (
-                <>
-                  {/* ── Groups Section ── */}
-                  {filteredGroups.length > 0 && (
-                    <>
-                      <div className="px-4 py-2 flex items-center justify-between">
-                        <button
-                          onClick={() => setGroupsSectionExpanded(v => !v)}
-                          className="flex items-center gap-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
-                        >
-                          {groupsSectionExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-                          Groups
-                        </button>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => {
-                              const allGroupIds = filteredGroups.map(g => g.id);
-                              const allSelected = allGroupIds.every(id => selectedNewChatGroupIds.has(id));
-                              if (allSelected) {
-                                setSelectedNewChatGroupIds(prev => {
-                                  const next = new Set(prev);
-                                  allGroupIds.forEach(id => next.delete(id));
-                                  return next;
-                                });
-                              } else {
-                                setSelectedNewChatGroupIds(prev => new Set([...prev, ...allGroupIds]));
-                              }
-                            }}
-                            className="text-[10px] text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
-                          >
-                            {filteredGroups.every(g => selectedNewChatGroupIds.has(g.id)) ? 'Deselect all' : 'Select all'}
-                          </button>
-                          <span className="text-[10px] text-muted-foreground">
-                            {selectedNewChatGroupIds.size}/{filteredGroups.length}
-                          </span>
-                        </div>
-                      </div>
-
-                      {groupsSectionExpanded && filteredGroups.map((group) => {
-                        const isChecked = selectedNewChatGroupIds.has(group.id);
-                        return (
-                          <div
-                            key={group.id}
-                            className="group/item relative px-4 py-3 hover:bg-muted/60 dark:hover:bg-[#202c33]/60 transition-colors rounded-lg mx-2 my-1"
-                          >
-                            <div className="flex items-center gap-3 w-full">
-                              {/* Checkbox */}
-                              <button
-                                onClick={() => {
-                                  setSelectedNewChatGroupIds((prev) => {
-                                    const next = new Set(prev);
-                                    if (next.has(group.id)) next.delete(group.id);
-                                    else next.add(group.id);
-                                    return next;
-                                  });
-                                }}
-                                className={cn(
-                                  'h-5 w-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors',
-                                  isChecked
-                                    ? 'bg-emerald-500 border-emerald-500'
-                                    : 'border-slate-300 dark:border-slate-600 hover:border-slate-400'
-                                )}
-                              >
-                                {isChecked && (
-                                  <svg className="h-3 w-3 text-white" viewBox="0 0 12 12" fill="none">
-                                    <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                  </svg>
-                                )}
-                              </button>
-                              {/* Group avatar */}
-                              <div
-                                className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm"
-                                style={{ backgroundColor: group.color || '#64748b' }}
-                              >
-                                <Users className="h-6 w-6 text-white" />
-                              </div>
-                              {/* Group info */}
-                              <div className="flex flex-col items-start overflow-hidden flex-1 min-w-0">
-                                <span className="text-sm font-semibold truncate w-full text-left">{group.name}</span>
-                                <span className="text-xs text-muted-foreground">
-                                  {group.conversation_count} member{group.conversation_count !== 1 ? 's' : ''}
-                                </span>
-                              </div>
-                              {/* Hover action buttons */}
-                              <TooltipProvider>
-                                <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity flex-shrink-0">
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <button
-                                        onClick={() => {
-                                          handleGroupTemplateSend(group.id, group.conversation_count);
-                                          setIsNewChatOpen(false);
-                                          setNewChatSearch('');
-                                          setSelectedNewChatIds(new Set());
-                                          setSelectedNewChatGroupIds(new Set());
-                                        }}
-                                        className="p-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded-md transition-all hover:shadow-sm"
-                                      >
-                                        <Send className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                                      </button>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="bottom" className="text-xs">Send template</TooltipContent>
-                                  </Tooltip>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <button
-                                        onClick={async () => {
-                                          if (!confirm(`Delete "${group.name}"?`)) return;
-                                          try {
-                                            const channelParam = backendChannel === 'personal' ? '?channel=personal' : '';
-                                            const res = await fetchWithTenant(
-                                              `/api/whatsapp-conversations/chat-groups/${group.id}${channelParam}`,
-                                              { method: 'DELETE' }
-                                            );
-                                            if (res.ok) {
-                                              setNewChatGroupsLoading(true);
-                                              fetchWithTenant(`/api/whatsapp-conversations/chat-groups?channel=${backendChannel || 'waba'}`)
-                                                .then((r) => r.json())
-                                                .then((data) => { if (Array.isArray(data.data)) setNewChatGroups(data.data); })
-                                                .catch(() => { })
-                                                .finally(() => setNewChatGroupsLoading(false));
-                                            } else {
-                                              setSidebarError({ message: await getApiErrorMessage(res, 'Failed to delete group') });
-                                            }
-                                          } catch (err: unknown) {
-                                            setSidebarError({ message: getErrorMessage(err, 'Error deleting group') });
-                                          }
-                                        }}
-                                        className="p-1.5 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md transition-all hover:shadow-sm"
-                                      >
-                                        <Trash2 className="h-4 w-4 text-red-600 dark:text-red-400" />
-                                      </button>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="bottom" className="text-xs">Delete group</TooltipContent>
-                                  </Tooltip>
-                                </div>
-                              </TooltipProvider>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </>
-                  )}
-
-                  {/* ── Contacts Section ── */}
-                  {filteredContacts.length > 0 && (
-                    <>
-                      <div className="px-4 py-2 flex items-center justify-between">
-                        <button
-                          onClick={() => setContactsSectionExpanded(v => !v)}
-                          className="flex items-center gap-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
-                        >
-                          {contactsSectionExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-                          Contacts
-                        </button>
-                        <span className="text-[10px] text-muted-foreground">
-                          {newChatContactsTotal > 0 ? newChatContactsTotal : filteredContacts.length}
-                          {!contactsLoadedAll && newChatContactsTotal > 0 && (
-                            <span className="text-amber-500 ml-1">({newChatContacts.length} loaded…)</span>
-                          )}
-                        </span>
-                      </div>
-
-                      {contactsSectionExpanded && filteredContacts.map((conv) => {
-                        return (
-                          <button
-                            key={conv.id}
-                            onClick={() => openChatFromNewContact(conv)}
-                            className="flex items-center gap-3 px-4 py-2.5 w-full hover:bg-muted dark:hover:bg-[#202c33] transition-colors"
-                          >
-                            <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center flex-shrink-0 text-sm font-semibold text-slate-600 dark:text-slate-300">
-                              {(conv.contact?.name || '?')[0]?.toUpperCase()}
-                            </div>
-                            <div className="flex flex-col items-start overflow-hidden">
-                              <span className="text-sm font-medium truncate w-full text-left">
-                                {conv.contact?.name || conv.contact?.phone || 'Unknown'}
-                              </span>
-                              {conv.contact?.phone && conv.contact?.name && (
-                                <span className="text-xs text-muted-foreground truncate w-full text-left">
-                                  {conv.contact.phone}
-                                </span>
-                              )}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </>
-                  )}
-
-                  {/* No results */}
-                  {noResults && newChatSearch && (
-                    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                      <Search className="h-8 w-8 mb-2 opacity-40" />
-                      <p className="text-sm">No contacts or groups found</p>
-                    </div>
-                  )}
-
-                  {newChatGroupsLoading && (
-                    <div className="flex items-center justify-center py-4">
-                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                    </div>
-                  )}
-                  {newChatContactsLoading && (
-                    <p className="text-[10px] text-center text-muted-foreground py-2">Loading all contacts…</p>
-                  )}
-                </>
-              );
-            })()}
-          </div>
-
-          {/* Bottom action bar — visible when items are selected */}
-          {(selectedNewChatIds.size > 0 || selectedNewChatGroupIds.size > 0) && (
-            <div className="px-4 py-3 border-t border-border dark:border-[#222d34] bg-card dark:bg-[#161717] flex items-center gap-2">
+            {/* Groups Section */}
+            <div className="mb-4">
               <button
-                className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white text-xs h-9 rounded-md font-medium transition-colors"
-                onClick={() => {
-                  if (selectedNewChatGroupIds.size > 0) {
-                    const selectedGroups = newChatGroups.filter(g => selectedNewChatGroupIds.has(g.id));
-                    setIsNewChatOpen(false);
-                    setNewChatSearch('');
-                    setSelectedNewChatIds(new Set());
-                    setSelectedNewChatGroupIds(new Set());
-                    handleGroupsTemplateSend(selectedGroups);
-                    return;
-                  }
-                  if (selectedNewChatIds.size === 1) {
-                    const id = Array.from(selectedNewChatIds)[0];
-                    setIsNewChatOpen(false);
-                    setNewChatSearch('');
-                    setSelectedNewChatIds(new Set());
-                    setSelectedNewChatGroupIds(new Set());
-                    onSelectConversation(id);
-                    return;
-                  }
-                  const ids = Array.from(selectedNewChatIds);
+                type="button"
+                onClick={() => setGroupsSectionExpanded(!groupsSectionExpanded)}
+                className="flex items-center gap-2 px-4 py-2 w-full hover:bg-muted/50 dark:hover:bg-[#2e2f2f]/50 transition-colors"
+              >
+                <ChevronRight className={cn("h-4 w-4 transition-transform", groupsSectionExpanded && "rotate-90")} />
+                <span className="text-sm font-medium text-muted-foreground dark:text-[#8696a0]">Broadcast groups</span>
+              </button>
+              {groupsSectionExpanded && (
+                <div className="px-4">
+                  {newChatGroupsLoading && newChatGroups.length === 0 ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : newChatGroups.length === 0 ? (
+                    <div className="text-sm text-muted-foreground dark:text-[#8696a0] py-2">No groups</div>
+                  ) : (
+                    newChatGroups.map((group) => (
+                      <div
+                        key={group.id}
+                        onClick={() => {
+                          setSelectedNewChatGroupIds(prev => {
+                            const next = new Set(prev);
+                            if (next.has(group.id)) next.delete(group.id); else next.add(group.id);
+                            return next;
+                          });
+                        }}
+                        className={cn(
+                          "flex items-center gap-3 py-2 px-2 cursor-pointer rounded-lg hover:bg-muted/30 dark:hover:bg-[#2e2f2f]/50 transition-colors",
+                          selectedNewChatGroupIds.has(group.id) && "bg-muted/50 dark:bg-[#2e2f2f]/50"
+                        )}
+                      >
+                        <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-950/30 flex items-center justify-center shrink-0">
+                          <Users className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-foreground dark:text-[#e9edef] truncate">{group.name}</div>
+                          <div className="text-xs text-muted-foreground dark:text-[#8696a0]">{group.conversation_count ?? 0} contacts</div>
+                        </div>
+                        {selectedNewChatGroupIds.has(group.id) && (
+                          <CheckSquare className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+            {/* Contacts Section */}
+            <div>
+              <button
+                type="button"
+                onClick={() => setContactsSectionExpanded(!contactsSectionExpanded)}
+                className="flex items-center gap-2 px-4 py-2 w-full hover:bg-muted/50 dark:hover:bg-[#2e2f2f]/50 transition-colors"
+              >
+                <ChevronRight className={cn("h-4 w-4 transition-transform", contactsSectionExpanded && "rotate-90")} />
+                <span className="text-sm font-medium text-muted-foreground dark:text-[#8696a0]">Contacts</span>
+              </button>
+              {contactsSectionExpanded && (
+                <div className="px-4">
+                  {newChatContactsLoading ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : newChatContacts.length === 0 ? (
+                    <div className="text-sm text-muted-foreground dark:text-[#8696a0] py-2">No contacts found</div>
+                  ) : (
+                    newChatContacts.map((contact) => (
+                      <div
+                        key={contact.id}
+                        onClick={() => {
+                          setSelectedNewChatIds(prev => {
+                            const next = new Set(prev);
+                            if (next.has(contact.id)) next.delete(contact.id); else next.add(contact.id);
+                            return next;
+                          });
+                        }}
+                        className={cn(
+                          "flex items-center gap-3 py-2 px-2 cursor-pointer rounded-lg hover:bg-muted/30 dark:hover:bg-[#2e2f2f]/50 transition-colors",
+                          selectedNewChatIds.has(contact.id) && "bg-muted/50 dark:bg-[#2e2f2f]/50"
+                        )}
+                      >
+                        <Avatar className="w-10 h-10 shrink-0">
+                          <AvatarImage src={contact.contact?.avatar} />
+                          <AvatarFallback>{contact.contact?.name?.substring(0, 2).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-foreground dark:text-[#e9edef] truncate">{contact.contact?.name}</div>
+                          <div className="text-xs text-muted-foreground dark:text-[#8696a0]">{contact.contact?.phone}</div>
+                        </div>
+                        {selectedNewChatIds.has(contact.id) && (
+                          <CheckSquare className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+          {/* Footer */}
+          <div className="p-4 border-t border-border dark:border-[#222d34]">
+            <button
+              type="button"
+              onClick={() => {
+                if (selectedNewChatIds.size > 0 || selectedNewChatGroupIds.size > 0) {
                   setIsNewChatOpen(false);
                   setNewChatSearch('');
                   setSelectedNewChatIds(new Set());
                   setSelectedNewChatGroupIds(new Set());
-                  setCreateGroupIds(ids);
-                  setIsCreateGroupOpen(true);
-                  onShowCreateGroupModal?.(ids);
-                }}
-              >
-                {selectedNewChatGroupIds.size > 0 ? 'Send Broadcast' : selectedNewChatIds.size > 1 ? 'Create Group' : 'Open Chat'}
-              </button>
-              <button
-                className="border border-border text-xs h-9 px-3 rounded-md hover:bg-muted transition-colors"
-                onClick={() => {
-                  setSelectedNewChatIds(new Set());
-                  setSelectedNewChatGroupIds(new Set());
-                }}
-              >
-                Clear
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-            {/* ════════════════════════════════════════════════════════════════════
-          Broadcast Groups Panel
-          Opens when the Users icon in the header is clicked.
-          Same absolute overlay pattern as the New Chat panel.
-      ════════════════════════════════════════════════════════════════════ */}
-      {isGroupsPanelOpen && (
-        <div className="absolute inset-0 z-30 bg-card dark:bg-[#111b21] flex flex-col">
-          {/* Header */}
-          <div className="flex items-center gap-3 px-4 py-3 border-b border-border dark:border-[#222d34] bg-card dark:bg-[#161717]">
-            <button
-              type="button"
-              aria-label="Back"
-              title="Back"
-              className="h-8 w-8 rounded-full hover:bg-muted flex-shrink-0 flex items-center justify-center transition-colors"
-              onClick={() => {
-                setIsGroupsPanelOpen(false);
-                setSelectedGroupsPanelIds(new Set());
+                }
               }}
+              disabled={selectedNewChatIds.size === 0 && selectedNewChatGroupIds.size === 0}
+              className="w-full bg-[#00a884] hover:bg-[#008f6f] text-white dark:text-[#111b21] font-medium text-sm py-2.5 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+              {selectedNewChatIds.size + selectedNewChatGroupIds.size > 0
+                ? `Start chat (${selectedNewChatIds.size + selectedNewChatGroupIds.size})`
+                : 'Select contacts'}
             </button>
-            <span className="text-sm font-semibold flex-1">Broadcast Groups</span>
-            {selectedGroupsPanelIds.size > 0 && (
-              <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded-full">
-                {selectedGroupsPanelIds.size} selected
-              </span>
-            )}
           </div>
- 
-          {/* Group list */}
-          <div className="flex-1 overflow-y-auto">
-            {newChatGroupsLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-              </div>
-            ) : newChatGroups.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                <Users className="h-8 w-8 mb-2 opacity-40" />
-                <p className="text-sm">No broadcast groups yet</p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsGroupsPanelOpen(false);
-                    setIsGroupManagerOpen(true);
-                  }}
-                  className="mt-3 text-xs text-emerald-600 font-medium hover:underline"
-                >
-                  Create a group
-                </button>
-              </div>
-            ) : (
-              <>
-                {/* Select-all row */}
-                <div className="px-4 py-2 flex items-center justify-between border-b border-border dark:border-[#222d34]">
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    Groups
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const allIds = newChatGroups.map(g => g.id);
-                        const allSelected = allIds.every(id => selectedGroupsPanelIds.has(id));
-                        if (allSelected) {
-                          setSelectedGroupsPanelIds(new Set());
-                        } else {
-                          setSelectedGroupsPanelIds(new Set(allIds));
-                        }
-                      }}
-                      className="text-[10px] text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
-                    >
-                      {newChatGroups.every(g => selectedGroupsPanelIds.has(g.id)) ? 'Deselect all' : 'Select all'}
-                    </button>
-                    <span className="text-[10px] text-muted-foreground">
-                      {selectedGroupsPanelIds.size}/{newChatGroups.length}
-                    </span>
-                  </div>
-                </div>
- 
-                {/* Group rows */}
-                {newChatGroups.map((group) => {
-                  const isChecked = selectedGroupsPanelIds.has(group.id);
-                  return (
-                    <div
-                      key={group.id}
-                      className="group/item relative px-4 py-3 hover:bg-muted/60 dark:hover:bg-[#202c33]/60 transition-colors"
-                    >
-                      <div className="flex items-center gap-3 w-full">
-                        {/* Checkbox */}
-                        <button
-                          type="button"
-                          aria-label={isChecked ? `Deselect ${group.name}` : `Select ${group.name}`}
-                          title={isChecked ? `Deselect ${group.name}` : `Select ${group.name}`}
-                          onClick={() => {
-                            setSelectedGroupsPanelIds((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(group.id)) next.delete(group.id);
-                              else next.add(group.id);
-                              return next;
-                            });
-                          }}
-                          className={cn(
-                            'h-5 w-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors',
-                            isChecked
-                              ? 'bg-emerald-500 border-emerald-500'
-                              : 'border-slate-300 dark:border-slate-600 hover:border-slate-400'
-                          )}
-                        >
-                          {isChecked && (
-                            <svg className="h-3 w-3 text-white" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-                              <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                          )}
-                        </button>
- 
-                        {/* Group avatar */}
-                        <div
-                          className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm"
-                          style={{ backgroundColor: group.color || '#64748b' }}
-                        >
-                          <Users className="h-6 w-6 text-white" aria-hidden="true" />
-                        </div>
- 
-                        {/* Group info */}
-                        <div className="flex flex-col items-start overflow-hidden flex-1 min-w-0">
-                          <span className="text-sm font-semibold truncate w-full">{group.name}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {group.conversation_count} member{group.conversation_count !== 1 ? 's' : ''}
-                          </span>
-                        </div>
- 
-                        {/* Hover actions */}
-                        <TooltipProvider>
-                          <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity flex-shrink-0">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <button
-                                  type="button"
-                                  aria-label={`Send template to ${group.name}`}
-                                  title={`Send template to ${group.name}`}
-                                  onClick={() => {
-                                    handleGroupTemplateSend(group.id, group.conversation_count);
-                                    setIsGroupsPanelOpen(false);
-                                    setSelectedGroupsPanelIds(new Set());
-                                  }}
-                                  className="p-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded-md transition-all hover:shadow-sm"
-                                >
-                                  <Send className="h-4 w-4 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
-                                </button>
-                              </TooltipTrigger>
-                              <TooltipContent side="bottom" className="text-xs">Send template</TooltipContent>
-                            </Tooltip>
- 
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <button
-                                  type="button"
-                                  aria-label={`Delete ${group.name}`}
-                                  title={`Delete ${group.name}`}
-                                  onClick={async () => {
-                                    if (!confirm(`Delete "${group.name}"?`)) return;
-                                    try {
-                                      const channelParam = backendChannel === 'personal' ? '?channel=personal' : '';
-                                      const res = await fetchWithTenant(
-                                        `/api/whatsapp-conversations/chat-groups/${group.id}${channelParam}`,
-                                        { method: 'DELETE' }
-                                      );
-                                      if (res.ok) {
-                                        setNewChatGroupsLoading(true);
-                                        fetchWithTenant(`/api/whatsapp-conversations/chat-groups?channel=${backendChannel || 'waba'}`)
-                                          .then((r) => r.json())
-                                          .then((data) => { if (Array.isArray(data.data)) setNewChatGroups(data.data); })
-                                          .catch(() => {})
-                                          .finally(() => setNewChatGroupsLoading(false));
-                                      } else {
-                                        setSidebarError({ message: await getApiErrorMessage(res, 'Failed to delete group') });
-                                      }
-                                    } catch (err: unknown) {
-                                      setSidebarError({ message: getErrorMessage(err, 'Error deleting group') });
-                                    }
-                                  }}
-                                  className="p-1.5 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md transition-all hover:shadow-sm"
-                                >
-                                  <Trash2 className="h-4 w-4 text-red-600 dark:text-red-400" aria-hidden="true" />
-                                </button>
-                              </TooltipTrigger>
-                              <TooltipContent side="bottom" className="text-xs">Delete group</TooltipContent>
-                            </Tooltip>
-                          </div>
-                        </TooltipProvider>
-                      </div>
-                    </div>
-                  );
-                })}
-              </>
-            )}
-          </div>
- 
-          {/* Bottom action bar — send broadcast when groups selected */}
-          {selectedGroupsPanelIds.size > 0 && (
-            <div className="px-4 py-3 border-t border-border dark:border-[#222d34] bg-card dark:bg-[#161717] flex items-center gap-2">
-              <button
-                type="button"
-                className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white text-xs h-9 rounded-md font-medium transition-colors"
-                onClick={() => {
-                  const selectedGroups = newChatGroups.filter(g => selectedGroupsPanelIds.has(g.id));
-                  setIsGroupsPanelOpen(false);
-                  setSelectedGroupsPanelIds(new Set());
-                  handleGroupsTemplateSend(selectedGroups);
-                }}
-              >
-                Send Broadcast ({selectedGroupsPanelIds.size})
-              </button>
-              <button
-                type="button"
-                className="border border-border text-xs h-9 px-3 rounded-md hover:bg-muted transition-colors"
-                onClick={() => setSelectedGroupsPanelIds(new Set())}
-              >
-                Clear
-              </button>
-            </div>
-          )}
         </div>
       )}
-
-      {/* ── Chat Group Manager Dialog ───────────────────────────────────── */}
-      <ChatGroupManager
-        open={isGroupManagerOpen}
-        onOpenChange={setIsGroupManagerOpen}
-        onSendTemplateToGroup={handleGroupTemplateSend}
-        onSendTemplateToGroups={handleGroupsTemplateSend}
-        onSelectGroup={(group) => {
-          setIsGroupManagerOpen(false);
-          handleGroupTemplateSend(group.id, group.conversation_count);
-        }}
-        channel={backendChannel}
-      />
-
-      {/* ── Message Settings Dialog (reply delay + inbound debounce) ─────── */}
-      <MessageSettings
-        open={showMessageSettings}
-        onOpenChange={setShowMessageSettings}
-        showTrigger={false}
-      />
-
-     {/* ── Template Picker Dialog ──────────────────────────────────────── */}
-      <style>{`.dark .template-modal-override { background-color: rgb(22,23,23) !important; }`}</style>
-      <div className="template-modal-override-root [&_[role='dialog']]:dark:!bg-[rgb(22,23,23)]">
-        <TemplatePicker
-          open={isTemplatePickerOpen}
-          onOpenChange={(open) => {
-            setIsTemplatePickerOpen(open);
-            if (!open) setGroupTemplateSendTarget(null);
-          }}
-          selectedCount={templatePickerCount}
-          onSend={handleTemplateSend}
-          sending={templateSending}
-          sendProgress={templateSendProgress}
-          channel={backendChannel ?? 'waba'}
-          isBulkSend={!!groupTemplateSendTarget}
-        />
       </div>
 
-      {/* ── Import Leads Dialog ─────────────────────────────────────────── */}
-      <ImportLeadsDialog
-        open={isImportDialogOpen}
-        onOpenChange={setIsImportDialogOpen}
-        channel={backendChannel}
-        onImportComplete={() => {
-          onRefresh?.();
-          setImportRefreshTrigger((prev) => prev + 1);
-        }}
-      />
+      {/* Clear Chat Confirmation Modal */}
+      <AlertDialog open={!!clearChatModal} onOpenChange={() => setClearChatModal(null)}>
+        <AlertDialogContent className="bg-white dark:bg-[#233138] border-gray-200 dark:border-[#374045]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-gray-900 dark:text-[#e9edef]">Clear chat?</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-600 dark:text-[#8696a0]">
+              This will remove all messages from this chat. The chat will remain in your list.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="text-gray-900 dark:text-[#e9edef] hover:bg-gray-100 dark:hover:bg-[#374045]">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (clearChatModal) {
+                  setClearChatModal(null);
+                  // Handle clear chat logic here
+                }
+              }}
+              className="bg-[#00a884] hover:bg-[#008f6f] text-white dark:text-[#111b21]"
+            >
+              Clear chat
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-      <CreateBroadcastGroupModal
-        open={isCreateGroupOpen}
-        onOpenChange={setIsCreateGroupOpen}
-        selectedIds={createGroupIds}
-        channel={backendChannel}
-        onSuccess={() => {
-          onRefresh?.();
-          setCreateGroupIds([]);
-        }}
-      />
+      {/* Delete Chat Confirmation Modal */}
+      <AlertDialog open={!!deleteChatModal} onOpenChange={() => setDeleteChatModal(null)}>
+        <AlertDialogContent className="bg-white dark:bg-[#233138] border-gray-200 dark:border-[#374045]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-gray-900 dark:text-[#e9edef]">Delete chat?</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-600 dark:text-[#8696a0]">
+              This will permanently delete this chat and all its messages. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="text-gray-900 dark:text-[#e9edef] hover:bg-gray-100 dark:hover:bg-[#374045]">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deleteChatModal) {
+                  setDeleteChatModal(null);
+                  // Handle delete chat logic here
+                }
+              }}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Delete chat
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-      {/* ── Broadcast schedule summary toast ───────────────────────────── */}
-      {sendSummary && sendSummary.queued > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-start gap-3 bg-card border border-border shadow-xl rounded-xl px-4 py-3 max-w-sm w-full">
-          <div className="text-green-500 mt-0.5">✓</div>
-          <div className="flex-1 text-sm">
-            <p className="font-semibold">Broadcast started</p>
-            <p className="text-muted-foreground text-xs mt-0.5">
-              Sent <strong>{sendSummary.sent}</strong> today.{' '}
-              <strong>{sendSummary.queued}</strong> remaining scheduled across{' '}
-              <strong>{sendSummary.scheduledDays}</strong> day{sendSummary.scheduledDays !== 1 ? 's' : ''} — continues at 9:00 AM daily.
-            </p>
+      {/* Add to List Modal */}
+      <Dialog open={!!addToListModal} onOpenChange={() => setAddToListModal(null)}>
+        <DialogContent className="bg-white dark:bg-[#233138] border-gray-200 dark:border-[#374045]">
+          <DialogTitle className="text-gray-900 dark:text-[#e9edef]">Add to list</DialogTitle>
+          <div className="space-y-2">
+            <button
+              type="button"
+              onClick={() => {
+                setAddToListModal(null);
+                // Handle add to Work list
+              }}
+              className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-[#374045] text-gray-900 dark:text-[#e9edef] transition-colors"
+            >
+              Work
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAddToListModal(null);
+                // Handle add to Family list
+              }}
+              className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-[#374045] text-gray-900 dark:text-[#e9edef] transition-colors"
+            >
+              Family
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAddToListModal(null);
+                // Handle add to Friends list
+              }}
+              className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-[#374045] text-gray-900 dark:text-[#e9edef] transition-colors"
+            >
+              Friends
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAddToListModal(null);
+                // Handle add to Custom list
+              }}
+              className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-[#374045] text-gray-900 dark:text-[#e9edef] transition-colors"
+            >
+              Custom...
+            </button>
           </div>
-          <button className="text-muted-foreground hover:text-foreground text-xs mt-0.5" onClick={() => setSendSummary(null)}>✕</button>
-        </div>
-      )}
-    </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -4101,6 +4335,47 @@ export function WABusinessView({
 
   const [mockSelectedId, setMockSelectedId] = useState<string | null>(null);
   const [favOverrides, setFavOverrides] = useState<Record<string, boolean>>({});
+  const [activeGroup, setActiveGroup] = useState<ChatGroup | null>(null);
+  const [groupMemberSelected, setGroupMemberSelected] = useState(false);
+  const [groupInfoAutoOpen, setGroupInfoAutoOpen] = useState(false);
+  const [groupRefreshKey, setGroupRefreshKey] = useState(0);
+
+  const handleSelectGroup = useCallback((group: ChatGroup) => {
+    setActiveGroup(group);
+    setGroupMemberSelected(false);
+    setGroupInfoAutoOpen(false);
+    // Clear selected conversation when selecting a group
+    selectConversation('');
+    // Clear mock selected ID when selecting a group
+    setMockSelectedId(null);
+    // Close contact info panel when selecting a group
+    setIsContextPanelOpen(false);
+  }, [selectConversation]);
+
+  const handleOpenGroupInfo = useCallback((group: ChatGroup) => {
+    setActiveGroup(group);
+    setGroupMemberSelected(false);
+    setGroupInfoAutoOpen(true);
+    // Clear selected conversation when opening group info
+    selectConversation('');
+    // Clear mock selected ID when opening group info
+    setMockSelectedId(null);
+    // Close contact info panel when opening group info
+    setIsContextPanelOpen(false);
+  }, [selectConversation]);
+
+  const handleBackFromGroup = useCallback(() => {
+    setActiveGroup(null);
+    setGroupMemberSelected(false);
+    setGroupInfoAutoOpen(false);
+  }, []);
+
+  const handleGroupDeleted = useCallback(() => {
+    setActiveGroup(null);
+    setGroupMemberSelected(false);
+    setGroupInfoAutoOpen(false);
+    setGroupRefreshKey(k => k + 1);
+  }, []);
 
   useEffect(() => {
     const syncViewport = () => setIsMobileViewport(window.innerWidth < 1024);
@@ -4331,11 +4606,19 @@ const handleFavorite = useCallback(
                   setMockSelectedId(id);
                   setIsMobileChatOpen(true);
                   setIsSidebarCollapsed(false);
+                  // Clear activeGroup when selecting a mock conversation
+                  setActiveGroup(null);
+                  // Close group info panel when selecting a mock conversation
+                  setGroupInfoAutoOpen(false);
                 } else {
                   setMockSelectedId(null);
                   selectConversation(id);
                   setIsMobileChatOpen(true);
                   setIsSidebarCollapsed(false);
+                  // Clear activeGroup when selecting a conversation
+                  setActiveGroup(null);
+                  // Close group info panel when selecting a conversation
+                  setGroupInfoAutoOpen(false);
                 }
               }}
               searchQuery={localSearchQuery}
@@ -4355,6 +4638,9 @@ const handleFavorite = useCallback(
               loadMore={loadMore}
               hasMore={hasMore}
               isLoadingMore={isLoadingMore}
+              onGroupSelect={handleSelectGroup}
+              onOpenGroupInfo={handleOpenGroupInfo}
+              activeGroup={activeGroup}
             />
           </motion.div>
         )}
@@ -4378,33 +4664,45 @@ const handleFavorite = useCallback(
         "flex-1 overflow-hidden min-w-0",
         !typedSelectedConversation ? "hidden lg:flex" : "flex"
       )}>
-        <WABAChatWindow
-          conversation={typedSelectedConversation}
-          onSendMessage={async (payload) => { await sendMessage(payload); return; }}
-          onTogglePanel={openContextPanel}
-          isPanelOpen={isContextPanelOpen}
-          onBack={() => {
-            setIsContextPanelOpen(false);
-            selectConversation('');
-            setIsMobileChatOpen(false);
-            setIsSidebarCollapsed(false);
-          }}
-          onDeleteChat={(id) => handleDelete(id)}
-          onBlockChat={(id) => handleBlock(id)}
-          onFavoriteChat={(id) => handleFavorite(id)}
-          onMuteChat={muteConversation}
-          onClearChat={(id) => handleClear(id)}
-          onCloseChat={() => { selectConversation(''); }}
-          channel={channel}
-          conversationId={typedSelectedConversation?.id}
-          owner={typedSelectedConversation?.owner}
-          backendChannel={channel}
-        />
+        {activeGroup && !groupMemberSelected ? (
+          <GroupChatWindow
+            groupId={activeGroup.id}
+            groupName={activeGroup.name}
+            groupColor={activeGroup.color}
+            onBack={handleBackFromGroup}
+            onGroupDeleted={handleGroupDeleted}
+            autoOpenInfo={groupInfoAutoOpen}
+            channel={channel}
+          />
+        ) : (
+          <WABAChatWindow
+            conversation={typedSelectedConversation}
+            onSendMessage={async (payload) => sendMessage(payload)}
+            onTogglePanel={openContextPanel}
+            isPanelOpen={isContextPanelOpen}
+            onBack={() => {
+              setIsContextPanelOpen(false);
+              selectConversation('');
+              setIsMobileChatOpen(false);
+              setIsSidebarCollapsed(false);
+            }}
+            onDeleteChat={(id) => handleDelete(id)}
+            onBlockChat={(id) => handleBlock(id)}
+            onFavoriteChat={(id) => handleFavorite(id)}
+            onMuteChat={muteConversation}
+            onClearChat={(id) => handleClear(id)}
+            onCloseChat={() => { selectConversation(''); }}
+            channel={channel}
+            conversationId={typedSelectedConversation?.id}
+            owner={typedSelectedConversation?.owner}
+            backendChannel={channel}
+          />
+        )}
       </div>
 
       {/* Context Panel (Contact Info) */}
       <AnimatePresence mode="wait">
-        {isContextPanelOpen && typedSelectedConversation && (
+        {isContextPanelOpen && typedSelectedConversation && !activeGroup && (
           <>
             <motion.div
               initial={{ width: 0, opacity: 0 }}

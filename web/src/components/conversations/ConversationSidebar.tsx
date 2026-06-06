@@ -99,6 +99,14 @@ interface ConversationSidebarProps {
   /** Server-side label filter — UUID list. Empty = no filter. */
   selectedLabelIds?: string[];
   onLabelFilterChange?: (ids: string[]) => void;
+  // ── Conversation actions ────────────────────────────────────────────────
+  onArchiveConversation?: (id: string) => void;
+  onDeleteConversation?: (id: string) => void;
+  onMuteConversation?: (id: string, duration?: string) => void;
+  onPinConversation?: (id: string) => void;
+  onFavoriteConversation?: (id: string) => void;
+  onMarkUnreadConversation?: (id: string) => void;
+  onClearChat?: (id: string) => void;
 }
 
 // LinkedIn is omitted here — it now has its own top-level tab in ConversationsPage.
@@ -179,6 +187,13 @@ export const ConversationSidebar = memo(function ConversationSidebar({
   onSortByChange,
   selectedLabelIds = [],
   onLabelFilterChange,
+  onArchiveConversation,
+  onDeleteConversation,
+  onMuteConversation,
+  onPinConversation,
+  onFavoriteConversation,
+  onMarkUnreadConversation,
+  onClearChat,
 }: ConversationSidebarProps) {
   // Tenant's label library — loaded once for the filter dropdown. Kept here
   // (rather than in the parent) so the sidebar is self-contained: callers
@@ -340,60 +355,49 @@ export const ConversationSidebar = memo(function ConversationSidebar({
         ? raw // already shaped as Conversation
         : { id: raw.id, contact: { name: raw.lead_name || raw.name || raw.contact_name || '', phone: raw.lead_phone || raw.phone || '' } } as unknown as Conversation;
 
-    if (ch === 'personal') {
-      // Personal WA: load from /contacts endpoint (wa_contacts table)
-      // Paginated background loading with delay + retry to avoid ECONNRESET on large tables
-      const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
+    const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-      const fetchPage = async (offset: number, retries = 1): Promise<{ raw: any[]; total: number } | null> => {
-        try {
-          const r = await fetchWithTenant(
-            `/api/whatsapp-conversations/contacts?channel=personal&limit=${PAGE_SIZE}&offset=${offset}`
-          );
-          if (!r.ok) return null;
-          const data = await r.json();
-          const raw: any[] = data.contacts || data.data || [];
-          const total: number = data.total || 0;
-          return { raw, total };
-        } catch (_) {
-          if (retries > 0) {
-            await sleep(500); // wait longer before retry
-            return fetchPage(offset, retries - 1);
-          }
-          return null;
+    const fetchPage = async (offset: number, retries = 1): Promise<{ raw: any[]; total: number } | null> => {
+      try {
+        // Use dedicated contacts endpoint for both personal and WABA.
+        // This supports full limit/offset pagination for 550+ contacts.
+        // The conversations endpoint only returns the sidebar's current page (e.g. 3 items).
+        const url = `/api/whatsapp-conversations/contacts?channel=${ch}&limit=${PAGE_SIZE}&offset=${offset}`;
+        const r = await fetchWithTenant(url);
+        if (!r.ok) return null;
+        const data = await r.json();
+        const raw: any[] = data.contacts || data.data || (Array.isArray(data) ? data : []);
+        const total: number = data.total || data.count || 0;
+        return { raw, total };
+      } catch (_) {
+        if (retries > 0) {
+          await sleep(500);
+          return fetchPage(offset, retries - 1);
         }
-      };
+        return null;
+      }
+    };
 
-      const loadPage = async (offset: number, accumulated: Conversation[]) => {
-        const result = await fetchPage(offset);
-        if (!result) return; // give up on this page, keep what we have
-        const { raw, total } = result;
-        const mapped = raw.map(mapContact);
-        const all = [...accumulated, ...mapped];
-        setNewChatContacts(all);
-        setNewChatContactsTotal(total);
-        // Keep fetching until all loaded, with a small delay to avoid overwhelming the backend
-        if (all.length < total && raw.length === PAGE_SIZE) {
-          await sleep(150);
-          await loadPage(offset + PAGE_SIZE, all);
-        }
-      };
+    const loadPage = async (offset: number, accumulated: Conversation[]) => {
+      const result = await fetchPage(offset);
+      if (!result) return; // give up on this page, keep what we have
+      const { raw, total } = result;
+      const mapped = raw.map(mapContact);
+      const all = [...accumulated, ...mapped];
+      setNewChatContacts(all);
+      if (total > 0) setNewChatContactsTotal(total);
+      else if (offset === 0) setNewChatContactsTotal(all.length);
+      // Keep fetching until all loaded, with a small delay to avoid overwhelming the backend
+      if (raw.length === PAGE_SIZE && (total === 0 || all.length < total)) {
+        await sleep(150);
+        await loadPage(offset + PAGE_SIZE, all);
+      } else if (total === 0) {
+        // Server didn't return a total — update total once we know we've loaded everything
+        setNewChatContactsTotal(all.length);
+      }
+    };
 
-      loadPage(0, []).finally(() => setNewChatContactsLoading(false));
-    } else {
-      // WABA: load from conversations endpoint — map through mapContact so
-      // lead_name/lead_phone are normalised into { contact: { name, phone } }
-      fetchWithTenant(`/api/whatsapp-conversations/conversations?channel=waba&limit=500`)
-        .then((r) => r.json())
-        .then((data) => {
-          const raw: any[] = Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
-          const list: Conversation[] = raw.map(mapContact);
-          setNewChatContacts(list);
-          setNewChatContactsTotal(data.total || list.length);
-        })
-        .catch(() => {})
-        .finally(() => setNewChatContactsLoading(false));
-    }
+    loadPage(0, []).finally(() => setNewChatContactsLoading(false));
   }, [isNewChatOpen, backendChannel, importRefreshTrigger]); // re-fetch when panel opens, channel changes, or after import
 
   // Named-only filter: hide contacts with unknown/unresolved names
@@ -452,6 +456,36 @@ export const ConversationSidebar = memo(function ConversationSidebar({
 
     return list;
   }, [conversations, activeGroup, groupConversationIds, namedOnly]);
+
+  const combinedItems = useMemo(() => {
+    const chatItems = filteredConversations.map(conv => ({
+      type: 'chat' as const,
+      id: conv.id,
+      timestamp: new Date(conv.updatedAt || conv.createdAt || 0).getTime(),
+      name: conv.contact?.name || conv.contact?.phone || '',
+      data: conv,
+    }));
+
+    const showGroupsInMainList = !activeGroup;
+    const groupItems = showGroupsInMainList
+      ? newChatGroups.map(group => ({
+          type: 'group' as const,
+          id: group.id,
+          timestamp: new Date(group.created_at || 0).getTime(),
+          name: group.name,
+          data: group,
+        }))
+      : [];
+
+    const allItems = [...chatItems, ...groupItems];
+
+    return allItems.sort((a, b) => {
+      if (sortBy === 'name') {
+        return a.name.localeCompare(b.name);
+      }
+      return b.timestamp - a.timestamp;
+    });
+  }, [filteredConversations, newChatGroups, activeGroup, sortBy]);
 
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds((prev) => {
@@ -662,7 +696,48 @@ export const ConversationSidebar = memo(function ConversationSidebar({
 
   const renderItem = useCallback(
     (index: number) => {
-      const conversation = filteredConversations[index];
+      const item = combinedItems[index];
+      if (!item) return null;
+
+      if (item.type === 'group') {
+        const group = item.data;
+        const isActive = activeGroup?.id === group.id;
+        return (
+          <div
+            key={group.id}
+            onClick={() => {
+              if (isActive) {
+                setActiveGroup(null);
+                onGroupSelect?.(null as any);
+              } else {
+                handleSelectGroup(group);
+              }
+            }}
+            className={cn(
+              'flex items-center gap-4 py-3 px-4 cursor-pointer transition-colors border-b border-border',
+              isActive ? 'bg-[#d9fdd3] dark:bg-muted' : 'hover:bg-muted/50'
+            )}
+          >
+            <div
+              className="h-11 w-11 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm"
+              style={{ backgroundColor: group.color || '#64748b' }}
+            >
+              <Users className="h-5 w-5 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex justify-between items-center mb-0.5">
+                <span className="font-semibold text-sm truncate">{group.name}</span>
+                <span className="text-[10px] text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded">Group</span>
+              </div>
+              <div className="text-xs text-muted-foreground truncate">
+                {group.conversation_count} member{group.conversation_count !== 1 ? 's' : ''}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      const conversation = item.data;
       return (
         <ConversationListItem
           key={conversation.id}
@@ -676,10 +751,17 @@ export const ConversationSidebar = memo(function ConversationSidebar({
             setIsSelectMode(true);
             setSelectedIds(new Set([conversation.id]));
           }}
+          onArchive={onArchiveConversation}
+          onDelete={onDeleteConversation}
+          onMute={onMuteConversation}
+          onPin={onPinConversation}
+          onFavorite={onFavoriteConversation}
+          onMarkUnread={onMarkUnreadConversation}
+          onClearChat={onClearChat}
         />
       );
     },
-    [filteredConversations, selectedId, onSelectConversation, isSelectMode, selectedIds, toggleSelect, handleContextStatusClick]
+    [combinedItems, selectedId, onSelectConversation, isSelectMode, selectedIds, toggleSelect, handleContextStatusClick, activeGroup, handleSelectGroup, onGroupSelect, onArchiveConversation, onDeleteConversation, onMuteConversation, onPinConversation, onFavoriteConversation, onMarkUnreadConversation, onClearChat]
   );
 
   const itemContent = useCallback(
@@ -1069,9 +1151,83 @@ export const ConversationSidebar = memo(function ConversationSidebar({
         </TooltipProvider>
       )}
 
+      {/* ── Groups Section in Main Sidebar ── */}
+      {newChatGroups.length > 0 && (
+        <div className="border-b border-border">
+          {/* Header row */}
+          <div className="px-3 py-1.5 flex items-center justify-between">
+            <button
+              onClick={() => setGroupsSectionExpanded(v => !v)}
+              className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
+            >
+              {groupsSectionExpanded
+                ? <ChevronDown className="h-3 w-3" />
+                : <ChevronRight className="h-3 w-3" />}
+              <Users className="h-3 w-3" />
+              Groups ({newChatGroups.length})
+            </button>
+            <button
+              onClick={() => setIsGroupManagerOpen(true)}
+              className="text-[10px] text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
+              title="Manage groups"
+            >
+              Manage
+            </button>
+          </div>
+
+          {/* Group chips — horizontal scroll */}
+          {groupsSectionExpanded && (
+            <div className="px-2 pb-2 flex gap-1.5 overflow-x-auto custom-scrollbar-x">
+              {newChatGroupsLoading && (
+                <div className="flex items-center gap-1.5 px-2 py-1 text-xs text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Loading…
+                </div>
+              )}
+              {newChatGroups.map((group) => {
+                const isActive = activeGroup?.id === group.id;
+                return (
+                  <button
+                    key={group.id}
+                    onClick={() => {
+                      if (isActive) {
+                        setActiveGroup(null);
+                        onGroupSelect?.(null as any);
+                      } else {
+                        handleSelectGroup(group);
+                      }
+                    }}
+                    className={cn(
+                      'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-all flex-shrink-0',
+                      isActive
+                        ? 'text-white shadow-sm'
+                        : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
+                    )}
+                    style={isActive ? { backgroundColor: group.color || '#10b981' } : {}}
+                    title={`${group.name} — ${group.conversation_count} contacts`}
+                  >
+                    <span
+                      className="h-2 w-2 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: isActive ? 'rgba(255,255,255,0.6)' : (group.color || '#64748b') }}
+                    />
+                    {group.name}
+                    <span className={cn(
+                      'text-[9px] font-bold rounded-full px-1',
+                      isActive ? 'bg-white/20 text-white' : 'bg-border text-muted-foreground'
+                    )}>
+                      {group.conversation_count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Conversation List - Virtualized with Infinite Scroll */}
       <div className="flex-1 overflow-hidden flex flex-col">
-        {filteredConversations.length === 0 ? (
+        {combinedItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4">
             <MessageSquare className="h-12 w-12 mb-3 opacity-40" />
             <p className="text-sm font-medium">No conversations found</p>
@@ -1080,7 +1236,7 @@ export const ConversationSidebar = memo(function ConversationSidebar({
         ) : (
           <Virtuoso
             style={{ height: '100%' }}
-            totalCount={filteredConversations.length}
+            totalCount={combinedItems.length}
             itemContent={itemContent}
             className="custom-scrollbar"
             endReached={hasMore ? onLoadMore : undefined}
@@ -1184,7 +1340,11 @@ export const ConversationSidebar = memo(function ConversationSidebar({
                 : newChatGroups;
 
               // Filter contacts — use newChatContacts once loaded, fall back to prop while loading
-              const contactSource = newChatContacts.length > 0 ? newChatContacts : conversations;
+              // Only fall back to conversations prop if API hasn't returned anything yet
+              // (avoids showing just 3 sidebar conversations when API is slow or fails)
+              const contactSource = newChatContacts.length > 0
+                ? newChatContacts
+                : (!newChatContactsLoading ? conversations : []);
               const filteredContacts = searchLower
                 ? contactSource.filter((c) =>
                     (c.contact?.name || '').toLowerCase().includes(searchLower) ||
@@ -1197,6 +1357,14 @@ export const ConversationSidebar = memo(function ConversationSidebar({
 
               return (
                 <>
+                  {/* ── Groups loading indicator ── */}
+                  {newChatGroupsLoading && (
+                    <div className="flex items-center gap-2 px-4 py-3 text-xs text-muted-foreground">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Loading groups…
+                    </div>
+                  )}
+
                   {/* ── Groups Section ── */}
                   {filteredGroups.length > 0 && (
                     <>

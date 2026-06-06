@@ -193,6 +193,7 @@ export const ChatWindow = memo(function ChatWindow({
           hasMore={hasMore}
           isLoadingMore={loadingOlder}
           onLoadMore={handleLoadMore}
+          channel={backendChannel}
         />
       )}
 

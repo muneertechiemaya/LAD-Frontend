@@ -61,18 +61,39 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Preserve multipart Content-Type (includes boundary — must not be overwritten)
-  const contentType = req.headers.get('content-type');
-  if (contentType) headers['Content-Type'] = contentType;
+  const contentType = req.headers.get('content-type') || 'application/json';
+  headers['Content-Type'] = contentType;
 
   try {
+    const isJson = contentType.includes('application/json');
+    const body = isJson ? await req.text() : req.body;
+
     const response = await fetch(targetUrl, {
       method: 'POST',
       headers,
-      body: req.body,
-      // @ts-ignore — required for streaming body in Node.js fetch
-      duplex: 'half',
+      body: body as BodyInit,
+      ...(isJson ? {} : { duplex: 'half' } as RequestInit),
     });
+
+    const respContentType = response.headers.get('content-type') || '';
+    if (!respContentType.includes('application/json')) {
+      const text = await response.text();
+      console.error('[templates/upload-media proxy] Non-JSON response:', {
+        status: response.status,
+        preview: text.substring(0, 200),
+        targetUrl,
+      });
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Conversation service returned non-JSON response',
+          detail: response.status === 404
+            ? 'Upload endpoint not found — check WABA_SERVICE_URL / BNI_SERVICE_URL env vars'
+            : text.substring(0, 300),
+        },
+        { status: response.status >= 500 ? 502 : response.status },
+      );
+    }
 
     const data = await response.json();
     return NextResponse.json(data, { status: response.status });
