@@ -1418,7 +1418,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
 
   const [olderMessages, setOlderMessages] = useState<Message[]>([]);
   const [loadingOlder, setLoadingOlder] = useState(false);
-  const [olderOffset, setOlderOffset] = useState(CONFIG.INITIAL_MESSAGE_LIMIT);
+  const [olderOffset, setOlderOffset] = useState<number>(CONFIG.INITIAL_MESSAGE_LIMIT);
 
   const prevConvId = useRef<string | null>(null);
 
@@ -3868,7 +3868,7 @@ function WABASidebar({
               lastMsg = activeLastMsg;
             }
             const time = lastMsg
-              ? formatDistanceToNow(new Date(lastMsg.timestamp || lastMsg.created_at || new Date()), { addSuffix: false })
+              ? formatDistanceToNow(new Date(lastMsg.timestamp || (lastMsg as Message & { created_at?: string }).created_at || new Date()), { addSuffix: false })
               : '';
 
             return (
@@ -3922,7 +3922,7 @@ function WABASidebar({
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-1 min-w-0 overflow-hidden">
                       {(lastMsg?.isOutgoing || lastMsg?.role === 'assistant' || lastMsg?.role === 'human_agent') && !conv.unreadCount && (
-                        <MessageTicks status={lastMsg?.status || lastMsg?.message_status} />
+                        <MessageTicks status={lastMsg?.status || (lastMsg as (Message & { message_status?: string }) | undefined)?.message_status} />
                       )}
                       <span className="text-[14px] text-muted-foreground dark:text-[#a2a2a2] truncate max-w-[80%]">
                         {(() => {
