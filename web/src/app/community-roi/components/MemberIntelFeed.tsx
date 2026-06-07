@@ -357,7 +357,7 @@ function MemberIntelCard({ member, onViewProfile }: MemberIntelCardProps) {
                 )}
                 {topAction.suggested_message_hook && (
                   <p className="text-[10px] text-violet-500 italic line-clamp-2 border-t border-violet-100 pt-1 mt-1">
-                    "{topAction.suggested_message_hook}"
+                    &quot;{topAction.suggested_message_hook}&quot;
                   </p>
                 )}
                 {topAction.channel && (

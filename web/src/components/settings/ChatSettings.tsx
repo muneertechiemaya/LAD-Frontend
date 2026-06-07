@@ -1097,7 +1097,7 @@ export function ChatSettings() {
           <p className="text-sm text-gray-500">
             Files (price list, brochure, menu…) the AI agent can attach automatically
             in WhatsApp when the customer asks. The system listens for the trigger
-            keywords in the AI's reply, downloads the file from the URL, and sends
+            keywords in the AI&apos;s reply, downloads the file from the URL, and sends
             it as a real attachment — so customers never see a raw link.
           </p>
         </div>
@@ -1110,7 +1110,7 @@ export function ChatSettings() {
             <>
               {shareableAssets.length === 0 && (
                 <p className="text-sm text-gray-400 italic">
-                  No assets configured yet. Click "Add Asset" to register your first one.
+                  No assets configured yet. Click &quot;Add Asset&quot; to register your first one.
                 </p>
               )}
 
@@ -1315,8 +1315,8 @@ export function ChatSettings() {
                       />
                       <p className="text-xs text-gray-500 mt-1">
                         Comma-separated. The file is sent when ANY keyword appears in
-                        the AI's reply (matches plurals + variants — e.g. "pricelist"
-                        also matches "prices", "pricing", "price list").
+                        the AI&apos;s reply (matches plurals + variants — e.g. &quot;pricelist&quot;
+                        also matches &quot;prices&quot;, &quot;pricing&quot;, &quot;price list&quot;).
                       </p>
                     </div>
                   </div>
@@ -1664,7 +1664,7 @@ export function ChatSettings() {
           <div>
             <p className="text-sm font-medium text-gray-800 mb-1">Typing Indicator</p>
             <p className="text-xs text-gray-500 mb-3">
-              Show "typing…" to the contact while the AI is composing a reply.
+              Show &quot;typing…&quot; to the contact while the AI is composing a reply.
               Configure separately for each channel.
             </p>
 
@@ -1675,7 +1675,7 @@ export function ChatSettings() {
                   <span className="h-2 w-2 rounded-full bg-emerald-400 flex-shrink-0" />
                   <div>
                     <p className="text-sm font-medium text-gray-800">Personal WhatsApp</p>
-                    <p className="text-xs text-gray-500">Shows a "typing…" presence to the contact while replying</p>
+                    <p className="text-xs text-gray-500">Shows a &quot;typing…&quot; presence to the contact while replying</p>
                   </div>
                 </div>
                 <button
@@ -1977,7 +1977,7 @@ export function ChatSettings() {
                 Booking Reminders
               </label>
               <p className="text-xs text-gray-500">
-                Sent to the customer BEFORE their booking start time so they don't miss the session.
+                Sent to the customer BEFORE their booking start time so they don&apos;t miss the session.
                 Add as many reminders as you need (e.g. a 24h heads-up + a 3h nudge).
               </p>
             </div>

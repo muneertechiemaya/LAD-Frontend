@@ -230,7 +230,7 @@ export default function MediaInsertionModal({
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
                   <p className="text-xs font-semibold text-gray-700 mb-1">Generated HTML:</p>
                   <code className="text-xs text-gray-600 break-all">
-                    &lt;img src="{selectedMedia.url}" alt="{altText || selectedMedia.name}" /&gt;
+                    &lt;img src=&quot;{selectedMedia.url}&quot; alt=&quot;{altText || selectedMedia.name}&quot; /&gt;
                   </code>
                 </div>
               )}

@@ -664,7 +664,7 @@ export const EmailTemplatePicker = memo(function EmailTemplatePicker({
               <div className="rounded-lg border border-border bg-muted/30 p-3">
                 <p className="text-xs font-medium mb-2 flex items-center gap-1.5">
                   <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-                  Sending to {group.member_count} recipient{group.member_count !== 1 ? 's' : ''} in "{group.name}"
+                  Sending to {group.member_count} recipient{group.member_count !== 1 ? 's' : ''} in &quot;{group.name}&quot;
                 </p>
                 <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto">
                   {group.members.slice(0, 10).map(m => (

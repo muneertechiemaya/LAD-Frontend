@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import {
   Dialog,
+  DialogActions,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -231,11 +232,10 @@ export default function TemplateManagerModal({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="rounded-lg h-8 w-8 p-0"
+                      className={`rounded-lg h-8 w-8 p-0 ${!template.is_active ? 'text-green-600' : ''}`}
                       onClick={() => handleToggleActive(template)}
                       disabled={updateMutation.isPending}
                       title={template.is_active ? 'Deactivate' : 'Activate'}
-                      className={!template.is_active ? 'text-green-600' : ''}
                     >
                       {template.is_active ? (
                         <EyeOff className="h-4 w-4" />
@@ -246,10 +246,9 @@ export default function TemplateManagerModal({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="rounded-lg h-8 w-8 p-0"
+                      className="rounded-lg h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
                       onClick={() => handleDelete(template)}
                       disabled={deleteMutation.isPending}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
                       title="Delete Template"
                     >
                       <Trash2 className="h-4 w-4" />
