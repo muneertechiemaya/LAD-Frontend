@@ -84,10 +84,10 @@ export default function SocialProofSection() {
           className="text-center mb-16"
         >
           <h2 className="text-4xl lg:text-5xl font-bold text-foreground mb-4">
-            Trusted by <span className="text-primary">Hundreds of Businesses</span>
+            Teams Are Hiring <span className="text-primary">AI Employees</span>
           </h2>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            Join successful companies that have already transformed their sales process
+            Join the companies that have already put an AI workforce to work on their sales and marketing
           </p>
         </motion.div>
 

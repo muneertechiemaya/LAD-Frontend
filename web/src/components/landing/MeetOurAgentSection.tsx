@@ -81,7 +81,7 @@ function AgentCard({ agent, index }: { agent: Agent; index: number }) {
 
             {/* Action Button with Glow */}
             <button className="w-full bg-primary hover:shadow-lg hover:shadow-primary/50 text-white font-bold py-3 px-4 rounded-xl transition-all duration-300 transform uppercase text-sm tracking-wide border border-white/20">
-              Unlock Agent
+              Hire this employee
             </button>
           </div>
         </div>
@@ -94,55 +94,55 @@ export default function MeetOurAgentSection() {
   const agents: Agent[] = [
     {
       id: 1,
-      name: "Alex",
-      role: "Sales Agent",
+      name: "Maya",
+      role: "The Prospector",
       description:
-        "Expert sales closer who transforms leads into revenue. Handles negotiations, objection handling, and seals deals with AI-powered sales intelligence.",
-      videoSrc: "/agent-alex.mp4",
+        "Finds your ideal customers across professional networks and opens personalized conversations that get replies.",
+      videoSrc: "/agent-maya.mp4",
       icon: <Zap className="w-5 h-5" />,
     },
     {
       id: 2,
-      name: "Maya",
-      role: "Lead Generation Agent",
+      name: "Alex",
+      role: "The Rep",
       description:
-        "Master prospector who identifies high-value leads and initiates meaningful conversations. Builds targeted lists and warms up prospects for sales.",
-      videoSrc: "/agent-maya.mp4",
+        "Chats instantly on WhatsApp, answers questions, qualifies leads, and books meetings — day or night.",
+      videoSrc: "/agent-alex.mp4",
       icon: <MessageSquare className="w-5 h-5" />,
     },
     {
       id: 3,
-      name: "Travel",
-      role: "Campaign Manager Agent",
+      name: "Max",
+      role: "The Caller",
       description:
-        "Orchestrates multi-channel campaigns with precision. Manages outreach timing, sequences, and channels across LinkedIn, email, WhatsApp and SMS for maximum conversions.",
-      videoSrc: "/agent-luna.mp4",
+        "Makes and takes calls, follows up by phone, and never misses a lead — in any timezone.",
+      videoSrc: "/agent-max.mp4",
       icon: <TrendingUp className="w-5 h-5" />,
     },
     {
       id: 4,
-      name: "Max",
-      role: "Growth Agent",
+      name: "Luna",
+      role: "The Social Manager",
       description:
-        "Specializes in rapid scaling and market penetration. Analyzes growth loops and optimizes conversion funnels to maximize your business reach.",
-      videoSrc: "/agent-max.mp4",
+        "Turns Instagram DMs and comments into booked conversations, so no inbound ever slips through.",
+      videoSrc: "/agent-luna.mp4",
       icon: <Zap className="w-5 h-5" />,
     },
     {
       id: 5,
       name: "Ava",
-      role: "Marketing Agent",
+      role: "The Nurturer",
       description:
-        "Crafts compelling narratives and data-driven marketing strategies. Optimizes ad spend and enhances brand visibility across all digital touchpoints.",
+        "Keeps every inbox warm with timely, personalized follow-ups until each lead is ready to talk.",
       videoSrc: "/agent-ava.mp4",
       icon: <MessageSquare className="w-5 h-5" />,
     },
     {
       id: 6,
       name: "Emma",
-      role: "Operations Agent",
+      role: "The Analyst",
       description:
-        "Streamlines internal workflows and automates repetitive tasks. Ensures your business runs like a well-oiled machine with intelligent process management.",
+        "Reads every conversation across channels and shows you what is working — a 360 view of each lead.",
       videoSrc: "/agent-Emma.mp4",
       icon: <TrendingUp className="w-5 h-5" />,
     },
@@ -158,10 +158,10 @@ export default function MeetOurAgentSection() {
         {/* Section Header */}
         <div className="text-center mb-16">
           <h2 className="text-4xl lg:text-5xl font-bold text-foreground mb-4">
-            Meet Our <span className="text-primary">AI Agents</span>
+            Meet Your <span className="text-primary">AI Employees</span>
           </h2>
           <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-            Meet the specialized AI agents that work 24/7 to grow your business through intelligent automation
+            A specialized team of AI employees that works 24/7 to find your customers, start conversations, and book meetings
           </p>
         </div>
 

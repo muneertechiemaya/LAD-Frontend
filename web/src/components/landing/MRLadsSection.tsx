@@ -72,7 +72,7 @@ export default function MRLadsSection() {
             Mr LADS
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed font-medium">
-            24/7 auto-connect with your dream leads, start conversations, build relationships and create interest and book appointments for your services - assisted by AI.
+            Meet Mr LAD — your AI workforce for sales and marketing. Hire AI employees that find your ideal customers, start conversations, build relationships, and book meetings for your business 24/7.
           </p>
         </motion.div>
 
@@ -105,7 +105,7 @@ export default function MRLadsSection() {
           style={{ y: contentY }}
         >
           <p className="text-center text-muted-foreground mb-12 text-sm">
-            More than 12,000 teams use our software and close deals with companies like:
+            More than 12,000 teams have put their AI workforce to work and close deals with companies like:
           </p>
         </motion.div>
       </div>

@@ -35,12 +35,12 @@ export default function PricingHero() {
       variants={containerVariants}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <motion.h1 
+        <motion.h1
           variants={itemVariants}
           className="text-4xl md:text-6xl font-bold text-[#222B45] mb-6"
         >
-          Simple, credit-based
-          <span className="text-blue-600 ml-3">pricing</span>
+          Hire your AI team —
+          <span className="text-blue-600 ml-3">pick a plan</span>
         </motion.h1>
         <motion.p 
           variants={itemVariants}

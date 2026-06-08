@@ -9,7 +9,7 @@ export default function PricingBreakdown() {
       emoji: "📞",
       credits: "3",
       unit: "credits per minute",
-      subtitle: "(Cartesia TTS)",
+      subtitle: "(Standard voice)",
       examples: [
         { duration: "5 mins", cost: "15 cr" },
         { duration: "10 mins", cost: "30 cr" },
@@ -25,7 +25,7 @@ export default function PricingBreakdown() {
       emoji: "🎙️",
       credits: "4",
       unit: "credits per minute",
-      subtitle: "(ElevenLabs TTS)",
+      subtitle: "(Premium voice)",
       examples: [
         { duration: "5 mins", cost: "20 cr" },
         { duration: "10 mins", cost: "40 cr" },

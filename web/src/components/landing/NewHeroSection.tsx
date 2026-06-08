@@ -335,12 +335,12 @@ export default function NewHeroSection() {
           >
             {/* Main Heading */}
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-3 leading-tight">
-              Meet your AI sales co-pilot
+              Hire AI employees that grow your business
             </h2>
 
             {/* Description */}
             <p className="text-muted-foreground mb-6 leading-relaxed">
-              Automatically engage leads on LinkedIn, email, WhatsApp, and voice calls. More outreach, more conversations, more closed deals.
+              Mr LAD gives you a full team of AI employees that find your ideal customers, start real conversations, follow up, and book meetings across LinkedIn, WhatsApp, Instagram, and voice — while you focus on closing.
             </p>
 
             {/* CTA Buttons */}
@@ -351,7 +351,7 @@ export default function NewHeroSection() {
                   whileTap={{ scale: 0.95 }}
                   className="px-6 py-3 bg-primary text-primary-foreground rounded-lg font-semibold flex items-center gap-2 hover:shadow-lg transition-shadow"
                 >
-                  Get Started
+                  Hire your AI team
                   <ArrowRight className="w-4 h-4" />
                 </motion.button>
               </Link>
@@ -360,7 +360,7 @@ export default function NewHeroSection() {
                 whileTap={{ scale: 0.95 }}
                 className="px-6 py-3 border border-border bg-background text-foreground rounded-lg font-semibold hover:bg-background/80 transition-colors"
               >
-                Watch Demo
+                See them in action
               </motion.button>
             </div>
 
