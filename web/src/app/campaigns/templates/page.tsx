@@ -30,6 +30,13 @@ import CreatePersonalWaTemplateModal, {
 type TabType = 'email' | 'whatsapp' | 'linkedin' | 'instagram';
 type WaMode = 'business' | 'personal'; // business = WABA, personal = WAPA
 
+// WhatsApp Templates sub-tabs. Personal (WAPA) is TEMPORARILY HIDDEN — re-add the
+// commented entry below to restore it (the toggle auto-reappears with 2+ modes).
+const WA_MODES: { key: WaMode; label: string; hint: string }[] = [
+  { key: 'business', label: 'Business (WABA)', hint: 'Meta-approved templates' },
+  // { key: 'personal', label: 'Personal (WAPA)', hint: 'No approval needed' },
+];
+
 interface WATemplate {
   id: string;
   name: string;
@@ -460,26 +467,25 @@ export default function TemplatesPage() {
         {/* ── WhatsApp Tab (Business / Personal) ────────────────── */}
         {activeTab === 'whatsapp' && (
           <div>
-            {/* Business / Personal segmented toggle */}
-            <div className="inline-flex p-1 mb-6 bg-white dark:bg-[#1a2a43] border border-[#E2E8F0] dark:border-[#262831] rounded-xl">
-              {([
-                { key: 'business', label: 'Business (WABA)', hint: 'Meta-approved templates' },
-                { key: 'personal', label: 'Personal (WAPA)', hint: 'No approval needed' },
-              ] as { key: WaMode; label: string; hint: string }[]).map(m => (
-                <button
-                  key={m.key}
-                  onClick={() => setWaMode(m.key)}
-                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                    waMode === m.key
-                      ? 'bg-[#0b1957] text-white shadow-sm'
-                      : 'text-[#64748B] dark:text-[#7a8ba3] hover:text-[#1E293B] dark:hover:text-white'
-                  }`}
-                  title={m.hint}
-                >
-                  {m.label}
-                </button>
-              ))}
-            </div>
+            {/* Business / Personal segmented toggle — hidden while only one mode is available */}
+            {WA_MODES.length > 1 && (
+              <div className="inline-flex p-1 mb-6 bg-white dark:bg-[#1a2a43] border border-[#E2E8F0] dark:border-[#262831] rounded-xl">
+                {WA_MODES.map(m => (
+                  <button
+                    key={m.key}
+                    onClick={() => setWaMode(m.key)}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                      waMode === m.key
+                        ? 'bg-[#0b1957] text-white shadow-sm'
+                        : 'text-[#64748B] dark:text-[#7a8ba3] hover:text-[#1E293B] dark:hover:text-white'
+                    }`}
+                    title={m.hint}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* ── WABA (Business) ── */}
             {waMode === 'business' && (
