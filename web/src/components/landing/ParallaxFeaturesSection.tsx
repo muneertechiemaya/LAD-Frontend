@@ -10,7 +10,7 @@ const StickyScrollFeatures = () => {
     {
       title: 'Conversations Started/Month',
       description:
-        'Your AI employees open 1,000+ personalized conversations with the right people every month — at a steady, human pace that keeps your accounts in good standing.',
+        'Mr LAD opens 1,000+ personalized conversations with the right people every month — at a steady, human pace that keeps your accounts in good standing.',
       stat: '1,000+',
       icon: <Lock className="w-12 h-12 text-white" />,
       color: 'from-blue-500 to-cyan-500',
@@ -25,9 +25,9 @@ const StickyScrollFeatures = () => {
       ),
     },
     {
-      title: 'Every Channel, One Team',
+      title: 'Every Channel, One Employee',
       description:
-        'Your AI employees work LinkedIn, WhatsApp, Instagram, email, and voice at once, with personalized messages — coordinated across every channel so nothing slips through.',
+        'Mr LAD works LinkedIn, WhatsApp, Instagram, email, and voice at once, with personalized messages — coordinated across every channel so nothing slips through.',
       stat: '2,000+',
       icon: <Zap className="w-12 h-12 text-white" />,
       color: 'from-cyan-500 to-blue-500',
@@ -44,7 +44,7 @@ const StickyScrollFeatures = () => {
     {
       title: 'Faster Lead Qualification',
       description:
-        'Your AI employees qualify leads in real-time, saving your team hours of manual research. They handle every conversation and answer questions across all channels.',
+        'Mr LAD qualifies leads in real-time, saving your team hours of manual research. He handles every conversation and answers questions across all channels.',
       stat: '10x',
       icon: <Users className="w-12 h-12 text-white" />,
       color: 'from-purple-500 to-pink-500',
@@ -61,7 +61,7 @@ const StickyScrollFeatures = () => {
     {
       title: 'A Full Calendar, On Autopilot',
       description:
-        'Scale your pipeline without hiring more reps. Your AI employees follow up, qualify, and book meetings straight onto your calendar — synced to your CRM in real time.',
+        'Scale your pipeline without hiring more reps. Mr LAD follows up, qualifies, and books meetings straight onto your calendar — synced to your CRM in real time.',
       stat: '5-7x',
       icon: <TrendingUp className="w-12 h-12 text-white" />,
       color: 'from-green-500 to-emerald-500',
@@ -92,12 +92,12 @@ const StickyScrollFeatures = () => {
           className="text-center mb-16"
         >
           <h2 className="text-4xl lg:text-5xl font-bold text-foreground mb-4">
-            What Your AI Employees
+            What Mr LAD
             <br />
-            <span className="text-primary">Do Every Day</span>
+            <span className="text-primary">Does Every Day</span>
           </h2>
           <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-            Mr LAD gives you a full team of AI employees that work every channel, around the clock — reaching thousands of qualified prospects every month so your calendar stays full.
+            Mr LAD is one AI Sales Employee who works every channel, around the clock — reaching thousands of qualified prospects every month so your calendar stays full.
           </p>
         </motion.div>
 
@@ -112,10 +112,10 @@ const StickyScrollFeatures = () => {
           className="mt-20 pt-12 border-t border-border text-center"
         >
           <h3 className="text-2xl md:text-3xl font-bold text-foreground mb-4">
-            Ready to build your AI workforce?
+            Ready to hire Mr LAD?
           </h3>
           <p className="text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Join teams that are already booking 10-15x more meetings with a full team of AI employees working every channel.
+            Join teams that are already booking 10-15x more meetings with one AI Sales Employee working every channel.
           </p>
 
           <motion.div
@@ -124,7 +124,7 @@ const StickyScrollFeatures = () => {
             className="inline-block"
           >
             <button className="px-10 py-4 bg-primary text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-shadow">
-              Build your AI workforce
+              Hire Mr LAD
             </button>
           </motion.div>
 

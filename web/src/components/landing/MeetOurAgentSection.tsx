@@ -81,7 +81,7 @@ function AgentCard({ agent, index }: { agent: Agent; index: number }) {
 
             {/* Action Button with Glow */}
             <button className="w-full bg-primary hover:shadow-lg hover:shadow-primary/50 text-white font-bold py-3 px-4 rounded-xl transition-all duration-300 transform uppercase text-sm tracking-wide border border-white/20">
-              Hire this employee
+              See him in action
             </button>
           </div>
         </div>
@@ -94,55 +94,55 @@ export default function MeetOurAgentSection() {
   const agents: Agent[] = [
     {
       id: 1,
-      name: "Maya",
-      role: "The Prospector",
+      name: "On LinkedIn",
+      role: "Prospecting",
       description:
-        "Finds your ideal customers across professional networks and opens personalized conversations that get replies.",
+        "He finds your ideal customers across professional networks and opens personalized conversations that get replies.",
       videoSrc: "/agent-maya.mp4",
       icon: <Zap className="w-5 h-5" />,
     },
     {
       id: 2,
-      name: "Alex",
-      role: "The Rep",
+      name: "On WhatsApp",
+      role: "Conversations",
       description:
-        "Chats instantly on WhatsApp, answers questions, qualifies leads, and books meetings — day or night.",
+        "He chats instantly on WhatsApp, answers questions, qualifies leads, and books meetings — day or night.",
       videoSrc: "/agent-alex.mp4",
       icon: <MessageSquare className="w-5 h-5" />,
     },
     {
       id: 3,
-      name: "Max",
-      role: "The Caller",
+      name: "On Voice",
+      role: "Calls",
       description:
-        "Makes and takes calls, follows up by phone, and never misses a lead — in any timezone.",
+        "He makes and takes calls, follows up by phone, and never misses a lead — in any timezone.",
       videoSrc: "/agent-max.mp4",
       icon: <TrendingUp className="w-5 h-5" />,
     },
     {
       id: 4,
-      name: "Luna",
-      role: "The Social Manager",
+      name: "On Instagram",
+      role: "Social",
       description:
-        "Turns Instagram DMs and comments into booked conversations, so no inbound ever slips through.",
+        "He turns Instagram DMs and comments into booked conversations, so no inbound ever slips through.",
       videoSrc: "/agent-luna.mp4",
       icon: <Zap className="w-5 h-5" />,
     },
     {
       id: 5,
-      name: "Ava",
-      role: "The Nurturer",
+      name: "On Email",
+      role: "Nurture",
       description:
-        "Keeps every inbox warm with timely, personalized follow-ups until each lead is ready to talk.",
+        "He keeps every inbox warm with timely, personalized follow-ups until each lead is ready to talk.",
       videoSrc: "/agent-ava.mp4",
       icon: <MessageSquare className="w-5 h-5" />,
     },
     {
       id: 6,
-      name: "Emma",
-      role: "The Analyst",
+      name: "Insights",
+      role: "Analytics",
       description:
-        "Reads every conversation across channels and shows you what is working — a 360 view of each lead.",
+        "He reads every conversation across channels and shows you what is working — a 360 view of each lead.",
       videoSrc: "/agent-Emma.mp4",
       icon: <TrendingUp className="w-5 h-5" />,
     },
@@ -158,10 +158,10 @@ export default function MeetOurAgentSection() {
         {/* Section Header */}
         <div className="text-center mb-16">
           <h2 className="text-4xl lg:text-5xl font-bold text-foreground mb-4">
-            Meet Your <span className="text-primary">AI Employees</span>
+            One Employee. <span className="text-primary">Every Channel.</span>
           </h2>
           <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-            A specialized team of AI employees that works 24/7 to find your customers, start conversations, and book meetings
+            Mr LAD is one AI Sales Employee — not a team of hires to manage. He prospects, chats, calls, and posts across every channel, doing the work of a whole team.
           </p>
         </div>
 

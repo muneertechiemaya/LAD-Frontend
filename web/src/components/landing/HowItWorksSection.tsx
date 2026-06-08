@@ -75,7 +75,7 @@ function AITakeoverMockUI() {
         </div>
         <div className="flex justify-start">
           <div className="px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground max-w-[70%] flex items-center gap-2">
-            <span className="text-xs px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-700 font-semibold">AI Employee</span>
+            <span className="text-xs px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-700 font-semibold">Mr LAD</span>
             <span>We use HubSpot...</span>
           </div>
         </div>
@@ -161,7 +161,7 @@ export default function HowItWorksSection() {
     {
       id: 0,
       step: '01',
-      title: 'Hire Your AI Team',
+      title: 'Hire Mr LAD',
       description: 'Connect your channels in minutes — LinkedIn, WhatsApp, Instagram, email, and voice',
       icon: <Zap className="w-6 h-6 text-white" />,
       duration: '2 mins',
@@ -176,8 +176,8 @@ export default function HowItWorksSection() {
     {
       id: 1,
       step: '02',
-      title: 'Train Them On Your Business',
-      description: 'Teach your AI employees your ideal customer, your offers, and your brand voice',
+      title: 'Train Him On Your Business',
+      description: 'Teach Mr LAD your ideal customer, your offers, and your brand voice',
       icon: <Users className="w-6 h-6 text-white" />,
       duration: '5 mins',
       color: 'from-purple-500 to-pink-500',
@@ -191,8 +191,8 @@ export default function HowItWorksSection() {
     {
       id: 2,
       step: '03',
-      title: 'They Go To Work',
-      description: 'Your AI employees start real conversations and qualify leads around the clock',
+      title: 'He Goes To Work',
+      description: 'Mr LAD starts real conversations and qualifies leads around the clock',
       icon: <MessageSquare className="w-6 h-6 text-white" />,
       duration: 'Automatic',
       color: 'from-orange-500 to-red-500',
@@ -207,7 +207,7 @@ export default function HowItWorksSection() {
       id: 3,
       step: '04',
       title: 'You Get Booked Meetings',
-      description: 'Your AI employees qualify, follow up, and book meetings straight onto your calendar',
+      description: 'Mr LAD qualifies, follows up, and books meetings straight onto your calendar',
       icon: <TrendingUp className="w-6 h-6 text-white" />,
       duration: 'Varies',
       color: 'from-green-500 to-emerald-500',
@@ -222,7 +222,7 @@ export default function HowItWorksSection() {
       id: 4,
       step: '05',
       title: 'See What Is Working',
-      description: 'Your AI team logs every touch and shows you what is driving results',
+      description: 'Mr LAD logs every touch and shows you what is driving results',
       icon: <BarChart3 className="w-6 h-6 text-white" />,
       duration: 'Daily',
       color: 'from-cyan-500 to-blue-500',
@@ -314,7 +314,7 @@ export default function HowItWorksSection() {
             How It <span className="text-primary">Works</span>
           </h2>
           <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-            Five simple steps to hire your AI team, put them to work, and watch the meetings land on your calendar
+            Five simple steps to hire Mr LAD, put him to work, and watch the meetings land on your calendar
           </p>
         </motion.div>
 
@@ -442,14 +442,14 @@ export default function HowItWorksSection() {
         {/* CTA */}
         <motion.div className="text-center" variants={stepBubbleVariants} custom={4}>
           <p className="text-muted-foreground mb-6 text-lg">
-            Ready to put your AI team to work?
+            Ready to put Mr LAD to work?
           </p>
           <motion.button
             whileHover={{ scale: 1.05, boxShadow: '0 20px 40px rgba(11, 25, 87, 0.3)' }}
             whileTap={{ scale: 0.95 }}
             className="px-10 py-4 bg-primary text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-shadow"
           >
-            Hire your AI team
+            Hire Mr LAD
           </motion.button>
         </motion.div>
       </div>

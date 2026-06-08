@@ -35,7 +35,7 @@ export default function CTASection() {
   const ctaOptions = [
     {
       type: 'primary',
-      label: 'Hire your AI team',
+      label: 'Hire Mr LAD',
       description: 'Get 100 credits to test',
       icon: <Zap className="w-6 h-6" />,
       action: '/onboarding',
@@ -43,7 +43,7 @@ export default function CTASection() {
     },
     {
       type: 'secondary',
-      label: 'See them in action',
+      label: 'See him in action',
       description: 'Watch a 15 min demo',
       icon: <Calendar className="w-6 h-6" />,
       action: '/demo',
@@ -109,10 +109,10 @@ export default function CTASection() {
           className="text-center mb-12"
         >
           <h2 className="text-4xl lg:text-5xl font-bold text-white mb-4">
-            Hire Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">AI Team</span> Today
+            Hire <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">Mr LAD</span> Today
           </h2>
           <p className="text-xl text-white/80 max-w-2xl mx-auto">
-            Join 500+ businesses putting AI employees to work across every channel, 24/7
+            Join 500+ businesses putting Mr LAD to work across every channel, 24/7
           </p>
         </motion.div>
 

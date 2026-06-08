@@ -222,7 +222,7 @@ export default function StandardPlans() {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    {(plan as any).enterprise ? 'Contact for Pricing' : 'Hire your AI team'}
+                    {(plan as any).enterprise ? 'Contact for Pricing' : 'Hire Mr LAD'}
                   </motion.button>
                 </Link>
               </motion.div>

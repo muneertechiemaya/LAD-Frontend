@@ -5,19 +5,19 @@ import { CheckCircle2 } from "lucide-react";
 export default function CloneYourselfSection() {
   const steps = [
     {
-      title: "Train your AI employees in 3 simple steps",
+      title: "Train Mr LAD in 3 simple steps",
       description:
         "On your own, or with our proven playbooks.",
     },
     {
-      title: "They work every channel at once",
+      title: "He works every channel at once",
       description:
         "LinkedIn, WhatsApp, Instagram, email, and voice — coordinated as one team.",
     },
     {
       title: "On brand, every time",
       description:
-        "Your AI employees learn your offers and brand voice, so every conversation sounds like you.",
+        "Mr LAD learns your offers and brand voice, so every conversation sounds like you.",
     },
   ];
 
@@ -27,7 +27,7 @@ export default function CloneYourselfSection() {
         {/* Centered Title */}
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4 leading-tight">
-            Clone your best rep and let AI employees run your{" "}
+            Clone your best rep and let Mr LAD run your{" "}
             <span className="text-primary">entire outreach</span>
           </h2>
         </div>

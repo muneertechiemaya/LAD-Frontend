@@ -8,17 +8,17 @@ export default function HeroParallaxSection() {
 
 export const products = [
   {
-    title: "The Prospector",
+    title: "Mr LAD Prospects",
     link: "#",
     thumbnail: "/Linkedin Sales Automation_05.jpg",
   },
   {
-    title: "AI Employees for Sales",
+    title: "Your AI Sales Employee",
     link: "#",
     thumbnail: "/Ai sales Agent_04.jpg",
   },
   {
-    title: "Every Channel, One Team",
+    title: "Every Channel, One Employee",
     link: "#",
     thumbnail: "/Multi-Channel Outreach_03.jpg",
   },
@@ -33,12 +33,12 @@ export const products = [
     thumbnail: "/Deal Closing_01.jpg",
   },
   {
-    title: "The Nurturer",
+    title: "Mr LAD Nurtures",
     link: "#",
     thumbnail: "/Email Campaigns_06.jpg",
   },
   {
-    title: "The Rep on WhatsApp",
+    title: "Mr LAD on WhatsApp",
     link: "#",
     thumbnail: "/WhatsApp Integration_7.jpg",
   },
@@ -48,7 +48,7 @@ export const products = [
     thumbnail: "/SMS Automation_08.jpg",
   },
   {
-    title: "The Analyst",
+    title: "Mr LAD Reports",
     link: "#",
     thumbnail: "/Analytics Dashboard_09.jpg",
   },
