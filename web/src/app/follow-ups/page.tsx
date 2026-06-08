@@ -554,7 +554,7 @@ export default function FollowUpsPage() {
                       <div>
                         <h3 className="font-medium text-gray-900">Automated ICP Follow-ups</h3>
                         <p className="text-sm text-gray-500 mt-0.5">
-                          Automatically follow up with members who haven't completed their profile
+                          Automatically follow up with members who haven&apos;t completed their profile
                         </p>
                       </div>
                       <button

@@ -56,7 +56,7 @@ const ContactPage = memo(function ContactPage() {
             Get in Touch
           </h1>
           <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-            Have questions? We'd love to hear from you. Send us a message and we'll respond as soon as possible.
+            Have questions? We&apos;d love to hear from you. Send us a message and we&apos;ll respond as soon as possible.
           </p>
         </motion.div>
 
@@ -75,7 +75,7 @@ const ContactPage = memo(function ContactPage() {
               <h3 className="text-xl font-bold text-[#0b1957] dark:text-white">Email</h3>
             </div>
             <p className="text-gray-600 dark:text-white">support@techiemaya.com</p>
-            <p className="text-gray-500 dark:text-white/80 text-sm mt-2">We'll get back to you within 24 hours</p>
+            <p className="text-gray-500 dark:text-white/80 text-sm mt-2">We&apos;ll get back to you within 24 hours</p>
           </motion.div>
 
           <motion.div
@@ -129,7 +129,7 @@ const ContactPage = memo(function ContactPage() {
                 className="mb-6 p-4 bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700 rounded-lg"
               >
                 <p className="text-green-800 dark:text-green-300 font-medium">
-                  ✓ Thank you! Your message has been sent successfully. We'll get back to you soon.
+                  ✓ Thank you! Your message has been sent successfully. We&apos;ll get back to you soon.
                 </p>
               </motion.div>
             )}

@@ -54,7 +54,7 @@ function OutreachMockUI() {
             <span className="text-xs text-muted-foreground">Template</span>
             <span className="text-xs px-2 py-1 rounded-full bg-blue-500/10 text-blue-600 font-semibold">AI Personalized</span>
           </div>
-          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">"Hi [Name], noticed your sales team is using [Platform]..."</p>
+          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">&quot;Hi [Name], noticed your sales team is using [Platform]...&quot;</p>
         </div>
       </div>
     </div>

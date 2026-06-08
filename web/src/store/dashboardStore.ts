@@ -200,7 +200,7 @@ export const useDashboardStore = create<DashboardState>()(
       //     conversation-analytics widgets (Enquiries & Bookings funnel +
       //     Re-engage by Topic) at their intended slot under the stat cards.
       version: 3,
-      migrate: (persistedState: any, _version: number) => {
+      migrate: (persistedState: Record<string, unknown>) => {
         if (!persistedState) return persistedState;
         return { ...persistedState, layout: DEFAULT_LAYOUT };
       },

@@ -114,7 +114,7 @@ async function handler(
     // Forward request to backend
     // Use redirect:'manual' so OAuth callback 302s are passed through to the browser
     // instead of being silently followed by fetch() (which would break OAuth flows).
-    console.log(`[PROXY] Forwarding ${req.method} to: ${url}`);
+    console.warn(`[PROXY] Forwarding ${req.method} to: ${url}`);
     const response = await fetch(url, {
       method: req.method,
       headers,

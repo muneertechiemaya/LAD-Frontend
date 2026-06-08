@@ -64,7 +64,7 @@ export default function InteractivePricingCalculator() {
           Pricing Calculator
         </h3>
         <p className="text-[#8F9BB3] dark:text-gray-400 mb-8">
-          Adjust these values to see how many credits you'll need
+          Adjust these values to see how many credits you&apos;ll need
         </p>
 
         {/* Sliders Section */}

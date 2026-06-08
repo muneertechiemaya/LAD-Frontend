@@ -159,7 +159,7 @@ export const CreditsSettings: React.FC = () => {
               {(selectedAmount || customAmount) && (
                 <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-sm text-blue-800">
-                    <span className="font-semibold">You'll receive: </span>
+                    <span className="font-semibold">You&apos;ll receive: </span>
                     {(() => {
                       const amount = parseFloat(customAmount) || selectedAmount || 0;
                       if (!amount || amount <= 0) return 'Select an amount';

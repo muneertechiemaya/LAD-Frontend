@@ -604,7 +604,7 @@ export default function PricingPage() {
                 Can I get a refund on credits?
               </h3>
               <p className="text-gray-600">
-                We offer a 7-day money-back guarantee on credit purchases if you're not satisfied with our service 
+                We offer a 7-day money-back guarantee on credit purchases if you&apos;re not satisfied with our service
                 and have used less than 10% of your purchased credits.
               </p>
             </div>

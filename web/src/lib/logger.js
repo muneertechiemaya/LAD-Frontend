@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 class Logger {
     constructor(options = {}) {
         this.prefix = options.prefix || '[LAD]';
