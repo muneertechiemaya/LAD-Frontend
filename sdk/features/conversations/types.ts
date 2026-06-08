@@ -71,6 +71,14 @@ export interface Message {
   mediaFilename?: string;
   /** Optional caption attached to the media */
   mediaCaption?: string;
+
+  // ── Contact card message fields ───────────────────────────────────────────
+  /** Name of the contact (for inbound/outbound contact card messages) */
+  contactName?: string;
+  /** Phone number of the contact */
+  contactPhone?: string;
+  /** Email of the contact */
+  contactEmail?: string;
 }
 
 export interface Attachment {

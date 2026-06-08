@@ -342,8 +342,8 @@ const AddMembersPanel = memo(function AddMembersPanel({
   }, [groupId, channel, newContactName, newContactPhone, newContactEmail, contactSource, loadContactsPage, onMembersAdded]);
 
   return (
-    <div className="absolute inset-0 z-10 bg-card flex flex-col">
-      <div className="h-14 px-4 flex items-center gap-3 border-b border-border flex-shrink-0">
+    <div className="absolute inset-0 z-10 bg-card dark:bg-[#161717] flex flex-col">
+      <div className="h-14 px-4 flex items-center gap-3 border-b border-border dark:border-[#222d34] flex-shrink-0">
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
@@ -861,7 +861,7 @@ const GroupInfoPanel = memo(function GroupInfoPanel({
   }, [groupId, channel, onGroupDeleted]);
 
   return (
-    <div className="w-[340px] h-full flex flex-col bg-card border-l border-border flex-shrink-0 overflow-hidden relative">
+    <div className="w-[340px] h-full flex flex-col bg-card dark:bg-[#161717] border-l border-border dark:border-[#222d34] flex-shrink-0 overflow-hidden relative">
       {/* Add Members overlay */}
       {showAddMembers && (
         <AddMembersPanel
@@ -874,7 +874,7 @@ const GroupInfoPanel = memo(function GroupInfoPanel({
       )}
 
       {/* Header */}
-      <div className="h-14 px-4 flex items-center gap-3 border-b border-border flex-shrink-0">
+      <div className="h-14 px-4 flex items-center gap-3 border-b border-border dark:border-[#222d34] flex-shrink-0">
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
           <X className="h-4 w-4" />
         </Button>
@@ -883,7 +883,7 @@ const GroupInfoPanel = memo(function GroupInfoPanel({
 
       <div className="flex-1 overflow-y-auto custom-scrollbar">
         {/* Group avatar + name */}
-        <div className="flex flex-col items-center py-6 px-4 border-b border-border">
+        <div className="flex flex-col items-center py-6 px-4 border-b border-border dark:border-[#222d34]">
           <div
             className="h-20 w-20 rounded-full flex items-center justify-center text-white font-bold text-2xl mb-3"
             style={{ backgroundColor: groupColor }}
@@ -898,14 +898,14 @@ const GroupInfoPanel = memo(function GroupInfoPanel({
 
         {/* Description */}
         {detail.description && (
-          <div className="px-4 py-3 border-b border-border">
+          <div className="px-4 py-3 border-b border-border dark:border-[#222d34]">
             <p className="text-xs text-muted-foreground mb-1">Description</p>
             <p className="text-sm">{detail.description}</p>
           </div>
         )}
 
         {/* Quick actions */}
-        <div className="px-2 py-2 border-b border-border">
+        <div className="px-2 py-2 border-b border-border dark:border-[#222d34]">
           <button
             onClick={() => setIsMuted(!isMuted)}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted/50 transition-colors"
@@ -923,7 +923,7 @@ const GroupInfoPanel = memo(function GroupInfoPanel({
         </div>
 
         {/* Campaign integrations */}
-        <div className="px-2 py-2 border-b border-border">
+        <div className="px-2 py-2 border-b border-border dark:border-[#222d34]">
           <div className="px-2 pb-2">
             <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
               Campaign Integrations
@@ -1000,7 +1000,7 @@ const GroupInfoPanel = memo(function GroupInfoPanel({
         </div>
 
         {/* Encryption notice */}
-        <div className="px-4 py-3 border-b border-border flex items-start gap-3">
+        <div className="px-4 py-3 border-b border-border dark:border-[#222d34] flex items-start gap-3">
           <Lock className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
           <p className="text-xs text-muted-foreground">
             Messages are end-to-end encrypted. Only people in this chat can read or listen to them.
@@ -1008,7 +1008,7 @@ const GroupInfoPanel = memo(function GroupInfoPanel({
         </div>
 
         {/* Members section */}
-        <div className="border-b border-border">
+        <div className="border-b border-border dark:border-[#222d34]">
           <div className="px-4 pt-3 pb-2 flex items-center justify-between">
             <span className="text-xs font-medium text-muted-foreground">
               {detail.member_count} members
@@ -1345,11 +1345,7 @@ export const GroupChatWindow = memo(function GroupChatWindow({
       {/* Main chat column */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Group Header */}
-        <div className="h-16 px-4 flex items-center gap-3 bg-card border-b border-border flex-shrink-0">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onBack}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-
+        <div className="h-16 px-4 flex items-center gap-3 bg-card border-b border-border dark:border-[#222d34] flex-shrink-0">
           <div
             className="h-10 w-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0 cursor-pointer"
             style={{ backgroundColor: groupColor }}
@@ -1411,8 +1407,8 @@ export const GroupChatWindow = memo(function GroupChatWindow({
             onGroupDeleted={onGroupDeleted ?? onBack}
           />
         ) : (
-          <div className="w-[340px] h-full flex flex-col bg-card border-l border-border flex-shrink-0 overflow-hidden">
-            <div className="h-14 px-4 flex items-center gap-3 border-b border-border flex-shrink-0">
+          <div className="w-[340px] h-full flex flex-col bg-card dark:bg-[#161717] border-l border-border dark:border-[#222d34] flex-shrink-0 overflow-hidden">
+            <div className="h-14 px-4 flex items-center gap-3 border-b border-border dark:border-[#222d34] flex-shrink-0">
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowInfoPanel(false)}>
                 <X className="h-4 w-4" />
               </Button>
