@@ -103,7 +103,7 @@ export default function StandardPlans() {
           className="text-center mb-12"
         >
           <h2 className="text-3xl font-bold text-[#222B45] mb-4">
-            Plans for Every AI Team
+            A Plan for Every Business
           </h2>
           <p className="text-xl text-[#8F9BB3]">
             Choose the plan that fits your business needs. Credits included
