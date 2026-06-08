@@ -8,47 +8,47 @@ export default function HeroParallaxSection() {
 
 export const products = [
   {
-    title: "LinkedIn Safe Automation",
+    title: "Mr LAD Prospects",
     link: "#",
     thumbnail: "/Linkedin Sales Automation_05.jpg",
   },
   {
-    title: "AI Sales Agent",
+    title: "Your AI Sales Employee",
     link: "#",
     thumbnail: "/Ai sales Agent_04.jpg",
   },
   {
-    title: "Multi-Channel Outreach",
+    title: "Every Channel, One Employee",
     link: "#",
     thumbnail: "/Multi-Channel Outreach_03.jpg",
   },
   {
-    title: "Lead Qualification",
+    title: "Qualifies Every Lead",
     link: "#",
     thumbnail: "/Lead Qualification_02.jpg",
   },
   {
-    title: "Deal Closing",
+    title: "Books the Meeting",
     link: "#",
     thumbnail: "/Deal Closing_01.jpg",
   },
   {
-    title: "Email Campaigns",
+    title: "Mr LAD Nurtures",
     link: "#",
     thumbnail: "/Email Campaigns_06.jpg",
   },
   {
-    title: "WhatsApp Integration",
+    title: "Mr LAD on WhatsApp",
     link: "#",
     thumbnail: "/WhatsApp Integration_7.jpg",
   },
   {
-    title: "SMS Automation",
+    title: "Follows Up Instantly",
     link: "#",
     thumbnail: "/SMS Automation_08.jpg",
   },
   {
-    title: "Analytics Dashboard",
+    title: "Mr LAD Reports",
     link: "#",
     thumbnail: "/Analytics Dashboard_09.jpg",
   },
@@ -58,27 +58,27 @@ export const products = [
     thumbnail: "/Real-Time Tracking_10.jpg",
   },
   {
-    title: "Personalization Engine",
+    title: "Personalized Research",
     link: "#",
     thumbnail: "/Personalization Engine_15.jpg",
   },
   {
-    title: "Conversation AI",
+    title: "Holds Real Conversations",
     link: "#",
     thumbnail: "/Conversation_Ai_14.jpg",
   },
   {
-    title: "Team Collaboration",
+    title: "Works With Your Team",
     link: "#",
     thumbnail: "/Team Collebration_13.jpg",
   },
   {
-    title: "Custom Workflows",
+    title: "Trained On Your Business",
     link: "#",
     thumbnail: "/custom workflows_12.jpg",
   },
   {
-    title: "API Integration",
+    title: "Syncs With Your CRM",
     link: "#",
     thumbnail: "/API Integration_11.jpg",
   },
