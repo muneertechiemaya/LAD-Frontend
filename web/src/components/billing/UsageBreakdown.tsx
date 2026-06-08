@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useMemo } from 'react';
 import { BarChart3, TrendingUp, Calendar, Filter, DollarSign } from 'lucide-react';
-import { useUsage, useUsageAggregation } from '@/sdk/features/billing';
+import { useUsage, useUsageAggregation } from '@lad/frontend-features/billing';
 import { LoadingSpinner } from '../LoadingSpinner';
 type GroupBy = 'feature' | 'component' | 'provider' | 'model';
 type TimeRange = '7d' | '30d' | '90d';
@@ -22,15 +22,14 @@ export const UsageBreakdown: React.FC = () => {
   }, [timeRange]);
   // Fetch aggregated usage for charts and totals
   const { data: aggregation, isLoading: loadingAgg } = useUsageAggregation({
-    startDate,
-    endDate,
-    groupBy,
+    from: startDate,
+    to: endDate,
     featureKey: selectedFeature !== 'all' ? selectedFeature : undefined,
   });
   // Fetch detailed usage for row-level breakdown
   const { data: usageData, isLoading: loadingUsage } = useUsage({
-    startDate,
-    endDate,
+    from: startDate,
+    to: endDate,
     featureKey: selectedFeature !== 'all' ? selectedFeature : undefined,
     limit: 100,
   });
@@ -38,7 +37,7 @@ export const UsageBreakdown: React.FC = () => {
   // Extract unique features for filter
   const features = useMemo(() => {
     if (!usageData?.events) return [];
-    const featureSet = new Set(usageData.events.map((e) => e.feature_key));
+    const featureSet = new Set(usageData.events.map((e) => e.featureKey));
     return Array.from(featureSet).sort();
   }, [usageData]);
   const formatCurrency = (amount: number) => {
@@ -59,8 +58,14 @@ export const UsageBreakdown: React.FC = () => {
   if (isLoading) {
     return <LoadingSpinner size="md" message="Loading usage breakdown..." />;
   }
-  const totalCost = aggregation?.total || 0;
-  const groups = aggregation?.groups || [];
+  const aggregationRows = aggregation || [];
+  const totalCost = aggregationRows.reduce((sum, row) => sum + (row.totalCost || 0), 0);
+  const groups = aggregationRows.map((row) => ({
+    groupValue: row.featureKey,
+    count: row.eventCount,
+    totalCost: row.totalCost,
+    percentage: totalCost > 0 ? (row.totalCost / totalCost) * 100 : 0,
+  }));
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -141,7 +146,7 @@ export const UsageBreakdown: React.FC = () => {
             <div className="text-sm text-gray-600">
               <div className="font-medium">Total Events</div>
               <div className="text-2xl font-bold text-gray-900">
-                {usageData?.total || 0}
+                {usageData?.summary.totalEvents || 0}
               </div>
             </div>
           </div>
@@ -226,25 +231,25 @@ export const UsageBreakdown: React.FC = () => {
               {(usageData?.events || []).slice(0, 50).map((event) => (
                 <tr key={event.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {formatDate(event.created_at)}
+                    {formatDate(event.createdAt)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {event.feature_key}
+                    {event.featureKey}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {event.component_type}
+                    -
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {event.provider || '-'}
+                    -
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {event.model || '-'}
+                    -
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {event.quantity} {event.unit}
+                    -
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                    {formatCurrency(parseFloat(event.cost))}
+                    {formatCurrency(event.totalCost)}
                   </td>
                 </tr>
               ))}
@@ -254,7 +259,7 @@ export const UsageBreakdown: React.FC = () => {
         {usageData?.events && usageData.events.length > 50 && (
           <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 text-center">
             <p className="text-sm text-gray-600">
-              Showing 50 of {usageData.total} events.{' '}
+              Showing 50 of {usageData.summary.totalEvents} events.{' '}
               <button className="text-blue-600 hover:text-blue-700 font-medium">
                 Load more
               </button>

@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '../../hooks/use-toast';
-import { Voice } from '@/types/agent';
+import { Voice, AgentGender } from '@/types/agent';
 import { cn } from '@/lib/utils';
 import { safeStorage } from '@lad/shared/storage';
 import {
@@ -177,7 +177,7 @@ Is the timing... correct? Or does it need... a bit more... tuning? Let's find ou
   const [trimEnd, setTrimEnd] = useState(0);
   const [audioDuration, setAudioDuration] = useState(0);
   const [isWsPlaying, setIsWsPlaying] = useState(false);
-  const [cloneGender, setCloneGender] = useState("neutral");
+  const [cloneGender, setCloneGender] = useState<AgentGender>("neutral");
 
   const initWaveSurfer = () => {
     if (waveformRef.current && !wavesurferRef.current) {
@@ -606,6 +606,7 @@ Is the timing... correct? Or does it need... a bit more... tuning? Let's find ou
         gender: cloneGender,
         accent: newVoiceData.language || cloneLanguage,
         provider: "cartesia",
+        voice_sample_url: newVoiceData.voice_sample_url || "",
         provider_voice_id: newVoiceData.provider_voice_id
       };
       

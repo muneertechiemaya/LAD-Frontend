@@ -1,7 +1,6 @@
 'use client';
-import { ReactNode } from 'react';
 import { RequireFeature } from '@/components/RequireFeature';
 
-export default function CampaignsLayout({ children }: { children: ReactNode }) {
+export default function CampaignsLayout({ children }: LayoutProps<'/campaigns'>) {
   return <RequireFeature featureKey="campaigns">{children}</RequireFeature>;
 }

@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { Lead } from '@/components/leads/types';
+import { Lead } from '@/features/deals-pipeline/types';
 interface LeadsFilters {
   searchQuery: string;
   stage: string | null;

@@ -122,7 +122,7 @@ export function SearchStrategyEditor({
         <ul className="divide-y divide-gray-100">
           {order.map((b, idx) => {
             const cfg = value[b] || {};
-            const enabled = !!cfg.enabled;
+            const enabled = !!(cfg as { enabled?: boolean }).enabled;
             return (
               <li key={b} className="flex items-center gap-4 px-5 py-3">
                 <div className="flex flex-col gap-0.5 text-xs">

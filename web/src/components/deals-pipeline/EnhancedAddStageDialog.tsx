@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { X, Plus } from 'lucide-react';
-import { Stage } from '../store/slices/pipelineSlice';
+import { Stage } from '@/features/deals-pipeline/store/slices/pipelineSlice';
 
 interface EnhancedAddStageDialogProps {
   open: boolean;

@@ -286,7 +286,7 @@ export default function OnboardNewMembersModal({
                 <label className="flex items-start gap-3 cursor-pointer">
                   <Checkbox
                     checked={sendTemplate}
-                    onChange={(e) => setSendTemplate(e.target.checked)}
+                    onChange={(e) => setSendTemplate((e.target as HTMLInputElement).checked)}
                     className="mt-1"
                   />
                   <div>

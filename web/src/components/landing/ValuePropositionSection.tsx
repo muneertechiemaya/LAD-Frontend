@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import { Clock, DollarSign, TrendingUp, Zap } from 'lucide-react';
 
 export default function ValuePropositionSection() {
@@ -54,7 +54,7 @@ export default function ValuePropositionSection() {
     }
   };
 
-  const itemVariants = {
+  const itemVariants: Variants = {
     hidden: { opacity: 0, y: 50 },
     visible: {
       opacity: 1,

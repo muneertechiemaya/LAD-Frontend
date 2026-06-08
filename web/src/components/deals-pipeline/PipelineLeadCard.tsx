@@ -1847,7 +1847,7 @@ const PipelineLeadCard: React.FC<PipelineLeadCardProps> = ({
                   value={String(tab.index)}
                   className="flex flex-col mt-0 p-6"
                 >
-                  {tab.content}
+                  <>{tab.content}</>
                 </TabsContent>
               ))}
             </Tabs>
@@ -1991,7 +1991,7 @@ const PipelineLeadCard: React.FC<PipelineLeadCardProps> = ({
                   onSelect={() => handleStatusChange(statusOption.key)}
                   className="flex items-center gap-2"
                 >
-                  {getStatusIcon(statusOption.key)}
+                  <>{getStatusIcon(statusOption.key)}</>
                   <span>{statusOption.label}</span>
                 </DropdownMenuItem>
               ))}

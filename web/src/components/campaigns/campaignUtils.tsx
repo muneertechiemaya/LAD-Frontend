@@ -396,7 +396,7 @@ export const renderActionChips = (campaign: Campaign) => {
             </Badge>
           </TooltipTrigger>
           <TooltipContent>
-            {tooltipContent}
+            <>{tooltipContent}</>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>

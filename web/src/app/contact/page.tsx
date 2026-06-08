@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, memo } from 'react';
+import { useState } from 'react';
 import { Mail, Phone, MapPin, Send } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-const ContactPage = memo(function ContactPage() {
+function ContactPage() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -216,6 +216,6 @@ const ContactPage = memo(function ContactPage() {
       </div>
     </div>
   );
-});
+}
 
 export default ContactPage;

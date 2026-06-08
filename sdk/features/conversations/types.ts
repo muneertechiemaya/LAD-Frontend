@@ -247,10 +247,12 @@ export interface UseConversationsReturn {
     whatsapp: number;
     linkedin: number;
     gmail: number;
+    outlook: number;
+    instagram: number;
   };
   sendMessage: (payload: RichMessagePayload) => Promise<Message | void>;
   markAsResolved: (id: string) => void;
-  muteConversation: (id?: string) => void;
+  muteConversation: (id: string) => void;
   isLoading: boolean;
   error: Error | null;
   refetch: () => void;

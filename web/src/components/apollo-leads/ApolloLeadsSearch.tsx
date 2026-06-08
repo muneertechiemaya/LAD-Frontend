@@ -4,7 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { useFeatureFlag, FeatureGate } from '../../featureFlags';
+import { useFeatureFlag, FeatureGate } from '../featureFlags';
 interface Company {
   id: string;
   name: string;
@@ -38,12 +38,15 @@ const ApolloLeadsSearch: React.FC = () => {
     if (!searchKeywords.trim()) return;
     setLoading(true);
     try {
-      const params = new URLSearchParams({
+      const paramEntries: Record<string, string> = {
         keywords: searchKeywords,
         limit: '50',
         page: '1',
-        ...filters
-      });
+      };
+      for (const [key, value] of Object.entries(filters)) {
+        if (value !== undefined) paramEntries[key] = String(value);
+      }
+      const params = new URLSearchParams(paramEntries);
       const response = await fetch(`/api/apollo-leads/search?${params}`);
       const data = await response.json();
       if (data.success) {

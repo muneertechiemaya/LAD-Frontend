@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, AxiosResponse, AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { safeStorage } from '@lad/shared/storage';  
+import { safeStorage } from '@lad/shared/storage';
+import { logger } from '@/lib/logger';
 // Use backend URL directly
 const API_BASE_URL: string = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 const API_TIMEOUT_MS: number = Number(process.env.NEXT_PUBLIC_API_TIMEOUT_MS) || 120000;

@@ -19,7 +19,7 @@ import { useTenant } from '@/contexts/TenantContext';
 
 type ActiveTab = 'businessprofile' | 'team' | 'accounts' | 'website' | 'integrations' | 'chat' | 'api' | 'billing' | 'credits';
 
-const SettingsPage: React.FC = () => {
+const SettingsPage = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const dispatch = useDispatch();

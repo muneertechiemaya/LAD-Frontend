@@ -1,8 +1,16 @@
 // app/api/webhooks/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
-import type { WebhookEvent } from '@clerk/nextjs/server';
 import { Webhook } from 'svix';
+
+// Minimal local shape for the verified webhook payload. Previously imported as
+// `WebhookEvent` from `@clerk/nextjs/server`, but that package is not a
+// dependency of this project (auth is custom JWT, not Clerk). Only `type` and
+// `data.id` are read below, so a local type avoids an unused dependency.
+type WebhookEvent = {
+  type: string;
+  data: { id?: string; [key: string]: unknown };
+};
 import { logger } from '@/lib/logger';
 
 // Conditional Prisma import to avoid build errors

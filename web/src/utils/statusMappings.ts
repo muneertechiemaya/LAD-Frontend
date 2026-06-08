@@ -109,7 +109,7 @@ export const getStageOptions = (stages: StageOption[] = []): Array<{ key: string
  * @returns Lead object with additional status_label and stage_label properties and normalized field names
  */
 export const enhanceLeadWithLabels = (lead: Lead | null | undefined, stages: StageOption[] = []): Lead => {
-  if (!lead) return lead as Lead;
+  if (!lead) return lead as unknown as Lead;
   // Use the comprehensive field normalization utility
   const normalizedLead = normalizeFieldNames(lead);
   return {

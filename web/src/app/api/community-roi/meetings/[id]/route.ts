@@ -15,7 +15,8 @@ function getToken(req: NextRequest): string {
   return req.cookies.get('token')?.value || ''
 }
 
-interface RouteParams { params: { id: string } }
+// Next.js 16 provides route-handler `params` as a Promise; handlers await it.
+interface RouteParams { params: Promise<{ id: string }> }
 
 export async function PATCH(req: NextRequest, { params }: RouteParams) {
   try {

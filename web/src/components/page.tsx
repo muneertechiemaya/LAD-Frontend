@@ -92,12 +92,6 @@ export default function CampaignAnalyticsPage() {
   ].filter(Boolean);
   // Chart data for AnalyticsCharts
   const extendedAnalytics = analytics as any;
-  const leadsOverTime = extendedAnalytics?.charts?.leads_over_time?.length
-    ? extendedAnalytics.charts.leads_over_time
-    : [
-        { date: 'Today', leads: analytics?.overview?.total_leads ?? 0 },
-        { date: 'Yesterday', leads: Math.max((analytics?.overview?.total_leads ?? 0) - 2, 0) },
-      ];
   const channelBreakdownRaw = extendedAnalytics?.charts?.channel_breakdown?.length
     ? extendedAnalytics.charts.channel_breakdown
     : [
@@ -253,7 +247,7 @@ export default function CampaignAnalyticsPage() {
           </div>
         </div>
         <div className={isDarkMode ? 'analytics-dark' : ''}>
-          <AnalyticsCharts data={{ leadsOverTime, channelBreakdown, funnel }} />
+          <AnalyticsCharts data={{ timeline: [], funnel, steps: [], leadStatus: [], channelBreakdown, campaignType: 'mixed' }} />
         </div>
       </div>
       {/* Channel Performance Cards */}

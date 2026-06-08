@@ -78,7 +78,7 @@ const DashboardSkeleton: React.FC = () => {
   );
 };
 
-const Dashboard: React.FC = () => {
+const Dashboard = () => {
   const [isDashboardLoading, setIsDashboardLoading] = React.useState(true);
 
   return (

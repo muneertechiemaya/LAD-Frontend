@@ -1,7 +1,15 @@
 import React from "react";
 import { BuilderBottomInput } from "./BuilderBottomInput";
 import { X, Sparkles, Loader2 } from "lucide-react";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { type Components } from "react-markdown";
+
+const descriptionMarkdownComponents: Components = {
+  strong: ({ node, ref, ...props }) => <strong className="font-bold" {...props} />,
+  p: ({ node, ref, ...props }) => <p className="leading-relaxed" {...props} />,
+  ul: ({ node, ref, ...props }) => <ul className="list-disc pl-4 space-y-1 text-left my-2" {...props} />,
+  ol: ({ node, ref, ...props }) => <ol className="list-decimal pl-4 space-y-1 text-left my-2" {...props} />,
+  li: ({ node, ref, ...props }) => <li className="text-slate-500 font-medium" {...props} />,
+};
 
 export function AgentBuilderTextInput({
   question = "Enter your business's name.",
@@ -66,13 +74,7 @@ export function AgentBuilderTextInput({
             {description && (
                <div className="mt-4 text-xs md:text-sm text-slate-500 text-center leading-relaxed font-medium">
                  <ReactMarkdown
-                   components={{
-                     strong: ({ node, ...props }) => <strong className="font-bold" {...props} />,
-                     p: ({ node, ...props }) => <p className="leading-relaxed" {...props} />,
-                     ul: ({ node, ...props }) => <ul className="list-disc pl-4 space-y-1 text-left my-2" {...props} />,
-                     ol: ({ node, ...props }) => <ol className="list-decimal pl-4 space-y-1 text-left my-2" {...props} />,
-                     li: ({ node, ...props }) => <li className="text-slate-500 font-medium" {...props} />,
-                   }}
+                   components={descriptionMarkdownComponents}
                  >
                    {description}
                  </ReactMarkdown>

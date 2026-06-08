@@ -38,8 +38,12 @@ export function useUpdateLead() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (params: UpdateLeadParams) =>
-      api.updateLead(params.id, params),
+    mutationFn: (params: UpdateLeadParams) => {
+      if (params.id == null) {
+        throw new Error("updateLead requires an id");
+      }
+      return api.updateLead(params.id, params);
+    },
     onSuccess: (_, variables) => {
       // Invalidate specific lead and lists
       queryClient.invalidateQueries({

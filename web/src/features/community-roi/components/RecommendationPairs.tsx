@@ -392,7 +392,7 @@ export const RecommendationPairs: React.FC = () => {
           memberName={data?.weeks?.[0]?.pairs?.[0]?.member_a || 'Member'}
           noInteractionCount={0}
           recommendations={data?.weeks?.flatMap(w => w.pairs) || []}
-          allMembers={members || []}
+          allMembers={members?.data || []}
           onClose={() => setShowMessageSender(false)}
           onSuccess={(result) => {
             setShowMessageSender(false);

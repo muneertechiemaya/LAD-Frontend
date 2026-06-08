@@ -143,7 +143,7 @@ export function isVideoMessage(message: Message): boolean {
 export function buildMediaGallery(messages: Message[], channel: 'waba' | 'personal' = 'waba'): MediaViewerItem[] {
   return messages
     .filter((m) => isImageMessage(m) || isVideoMessage(m))
-    .map((m) => {
+    .map((m): MediaViewerItem | null => {
       const raw = m as MessageWithMedia;
       const url = getMessageMediaUrl(m, channel);
       // Include the item if we have ANY source: url, fileBase64, or mediaId.
@@ -168,7 +168,7 @@ export function buildMediaGallery(messages: Message[], channel: 'waba' | 'person
         mediaId: m.mediaId,
         fileBase64: raw.fileBase64,
         contentType: raw.contentType,
-      } satisfies MediaViewerItem;
+      };
     })
     .filter((item): item is MediaViewerItem => item !== null);
 }

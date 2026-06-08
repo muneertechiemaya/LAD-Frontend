@@ -300,7 +300,7 @@ export function Sidebar() {
   // Pipeline, Make a Call, …) to fresh accounts on first login. Now an
   // unassigned user sees an empty sidebar — the right signal to assign
   // them features in Settings → Team.
-  const baseNav = isHydrated
+  const baseNav: NavItem[] = isHydrated
     ? allNavItems.filter(hasNavAccess).map(item => ({
         ...item,
         children: item.children?.filter(hasNavAccess),
@@ -312,7 +312,7 @@ export function Sidebar() {
   // tenant users. The backend independently enforces the same gate.
   const isSuperAdmin =
     isHydrated && (user?.email || '').toLowerCase().trim() === SUPER_ADMIN_EMAIL;
-  const nav = isSuperAdmin
+  const nav: NavItem[] = isSuperAdmin
     ? [
         ...baseNav,
         {
@@ -441,7 +441,7 @@ export function Sidebar() {
 
                 {hasChildren && (
                   <div className="pl-10 space-y-0.5 mt-1 border-l-2 border-white/10 ml-4">
-                    {n.children.map((child) => {
+                    {n.children?.map((child) => {
                       const ChildIcon = child.icon;
                       const childActive = pathname === child.href || pathname.startsWith(child.href + '/');
                       return (

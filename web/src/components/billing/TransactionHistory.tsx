@@ -28,8 +28,8 @@ export const TransactionHistory: React.FC = () => {
   // Fetch transactions
   const { data: txData, isLoading } = useTransactions({
     type: transactionType !== 'all' ? transactionType : undefined,
-    startDate,
-    endDate,
+    from: startDate,
+    to: endDate,
     limit: 200,
   });
 

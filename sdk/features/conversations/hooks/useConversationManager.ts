@@ -98,7 +98,7 @@ export function useConversations(hookOptions?: UseConversationsOptions): UseConv
 
   // Unread counts
   const unreadCounts = useMemo(() => {
-    const counts = { all: 0, whatsapp: 0, linkedin: 0, gmail: 0 };
+    const counts = { all: 0, whatsapp: 0, linkedin: 0, gmail: 0, outlook: 0, instagram: 0 };
     allConversations.forEach((conv) => {
       counts.all += conv.unreadCount;
       counts[conv.channel] += conv.unreadCount;

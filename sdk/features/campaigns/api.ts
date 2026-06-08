@@ -470,7 +470,7 @@ export async function revealLeadPhone(
     throw new Error(response.data.error || 'Failed to reveal phone');
   }
   return {
-    phone: response.data.phone || null,
+    phone: response.data.phone || '',
     from_cache: response.data.from_cache,
     credits_used: response.data.credits_used,
     processing: response.data.processing,

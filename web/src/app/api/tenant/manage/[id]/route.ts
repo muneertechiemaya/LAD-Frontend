@@ -23,9 +23,10 @@ function extractToken(req: NextRequest): string | null {
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { searchParams } = new URL(req.url);
     const env = searchParams.get('environment') || 'develop';
     const token = extractToken(req);
@@ -33,7 +34,7 @@ export async function GET(
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
     const resp = await fetch(
-      `${getBackendBase()}/api/admin/tenants/${params.id}?environment=${env}`,
+      `${getBackendBase()}/api/admin/tenants/${id}?environment=${env}`,
       { method: 'GET', headers }
     );
     const data = await resp.json().catch(() => ({}));

@@ -16,6 +16,15 @@ import {
   convertAPIQuestionToLegacy,
 } from '@/lib/icpQuestionsConfig';
 /**
+ * The onboarding ICP answer endpoint also returns a corrected answer and a set
+ * of clickable options (e.g. for industry selection). These fields are not part
+ * of the shared SDK `ICPAnswerResponse` type yet, so we widen it locally.
+ */
+type ICPAnswerResponseWithOptions = ICPAnswerResponse & {
+  correctedAnswer?: string | null;
+  options?: Array<{ text: string; value: string }>;
+};
+/**
  * Process user answer and get next step
  */
 export async function processAnswer(
@@ -122,7 +131,7 @@ export async function processAnswer(
       completed_platform_actions: completedPlatforms,
       completed_delay_platforms: completedDelayPlatforms
     };
-    const response: ICPAnswerResponse = await processICPAnswer({
+    const response: ICPAnswerResponseWithOptions = await processICPAnswer({
       currentStepIndex: apiStepIndex,
       userAnswer: userInput,
       category: 'lead_generation',

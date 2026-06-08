@@ -25,7 +25,7 @@ export default function CampaignDetailPage() {
   // Campaign loading is handled by useCampaign hook above
   // Use React Query hook for campaign data
   const { data: campaign, isLoading: campaignLoading, error: campaignError, refetch } = useCampaign(
-    campaignId && campaignId !== 'new' ? campaignId : null
+    campaignId && campaignId !== 'new' ? campaignId : ''
   );
   useEffect(() => {
     if (campaignError) {
@@ -73,7 +73,7 @@ export default function CampaignDetailPage() {
           steps: campaignData.steps,
         });
         // Redirect to the newly created campaign
-        router.push(`/campaigns/${response.data.id}`);
+        router.push(`/campaigns/${response.id}`);
       } else {
         // Update existing campaign
         await updateCampaign(campaignId, {

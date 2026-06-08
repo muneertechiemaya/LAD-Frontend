@@ -5,6 +5,7 @@ function cn(...classes: Array<string | false | null | undefined>): string {
 export interface SliderProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type' | 'onChange'> {
   value?: number;
   onValueChange?: (value: number) => void;
+  onChange?: React.ChangeEventHandler<HTMLInputElement>;
   min?: number;
   max?: number;
   step?: number;

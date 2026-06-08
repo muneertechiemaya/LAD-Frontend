@@ -215,7 +215,7 @@ const AddMembersPanel = memo(function AddMembersPanel({
         if (src === 'personal') {
           setSavedContacts(raw.map((c, idx) => ({
             id: String((c as Record<string,unknown>).id || (c as Record<string,unknown>).whatsapp_id || (c as Record<string,unknown>).phone || `pwa-${page}-${idx}`),
-            lead_name: (c.name || c.contact_name || c.phone) as string | null,
+            lead_name: (c.name || c.contact_name || c.phone || '') as string,
             lead_phone: c.phone as string | null,
             lead_email: null,
             lead_company: null,
@@ -224,7 +224,7 @@ const AddMembersPanel = memo(function AddMembersPanel({
         } else {
           setSavedContacts(raw.map((c, idx) => ({
             id: String(c.id || `waba-${page}-${idx}`),
-            lead_name: (c.lead_name || c.contact_name || c.name) as string | null,
+            lead_name: (c.lead_name || c.contact_name || c.name || '') as string,
             lead_phone: (c.lead_phone || c.phone) as string | null,
             lead_email: (c.lead_email || c.email) as string | null,
             lead_company: null,

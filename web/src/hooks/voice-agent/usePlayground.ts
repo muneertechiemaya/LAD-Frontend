@@ -167,7 +167,7 @@ export function usePlayground({
     };
   };
 
-  const getAuthHeaderOnly = () => {
+  const getAuthHeaderOnly = (): Record<string, string> => {
     const token = safeStorage.getItem("token");
     return token ? { Authorization: `Bearer ${token}` } : {};
   };

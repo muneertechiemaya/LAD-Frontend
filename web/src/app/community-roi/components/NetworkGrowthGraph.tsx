@@ -26,6 +26,15 @@ interface MonthRow {
   tyfcbAed: number
 }
 
+/** Raw row shape as returned by the network-growth API (before normalisation) */
+interface RawMonthRow {
+  month: string           // 'YYYY-MM'
+  uniqueMeetings?: number | string | null
+  uniqueReferrals?: number | string | null
+  upgrades?: number | string | null
+  tyfcbAed?: number | string | null
+}
+
 // ─── Custom tooltip ────────────────────────────────────────────────────────────
 
 interface TooltipEntry { dataKey: string; name: string; color: string; value: number }
@@ -94,7 +103,7 @@ export function NetworkGrowthGraph({ onClose }: NetworkGrowthGraphProps) {
       .then(r => r.json())
       .then(json => {
         if (json?.success && Array.isArray(json.data) && json.data.length > 0) {
-          const rows: MonthRow[] = json.data.map((r: Record<string, unknown>) => ({
+          const rows: MonthRow[] = json.data.map((r: RawMonthRow) => ({
             month:          r.month,
             // Format 'YYYY-MM' → 'May 2026' for axis label
             weekLabel: (() => {

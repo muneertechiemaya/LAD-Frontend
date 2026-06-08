@@ -16,8 +16,8 @@ import {
   setEditingLead,
   resetEditingLead
 } from '@/store/slices/uiSlice';
-import type { Lead } from '../types';
-import { Stage } from '../store/slices/pipelineSlice';
+import type { Lead } from '@/features/deals-pipeline/types';
+import { Stage } from '@/features/deals-pipeline/store/slices/pipelineSlice';
 interface EditLeadDialogProps {
   open: boolean;
   onClose: () => void;

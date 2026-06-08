@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { Brain, Zap, Users, TrendingUp, MessageSquare, Phone, ArrowRight, CheckCircle2 } from 'lucide-react';
 
@@ -84,7 +84,7 @@ export default function FeaturesSection() {
     }
   };
 
-  const itemVariants = {
+  const itemVariants: Variants = {
     hidden: { y: 50, opacity: 0, rotateX: -20 },
     visible: {
       y: 0,

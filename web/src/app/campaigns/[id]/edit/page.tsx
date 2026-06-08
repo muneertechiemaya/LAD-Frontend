@@ -28,8 +28,8 @@ export default function CampaignEditPage() {
     workflowPreview,
   } = useOnboardingStore();
   // Use SDK hook for campaign data
-  const { data: campaign, isPending: campaignLoading, error: campaignError } = useCampaign(
-    campaignId && campaignId !== 'new' ? campaignId : null
+  const { data: campaign, isLoading: campaignLoading, error: campaignError } = useCampaign(
+    campaignId && campaignId !== 'new' ? campaignId : ''
   );
   // Load campaign into workflow editor when it loads
   useEffect(() => {
@@ -187,7 +187,6 @@ export default function CampaignEditPage() {
             Back
           </Button>
           <Input
-            size="default"
             value={campaignName}
             onChange={(e) => setCampaignName(e.target.value)}
             placeholder="Campaign name"

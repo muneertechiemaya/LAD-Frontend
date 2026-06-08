@@ -142,8 +142,7 @@ export function CreditsHighlightCard({
                         enabled: true,
                         backgroundColor: "rgba(0, 0, 0, 0.8)",
                         padding: 12,
-                        borderRadius: 8,
-                        titleFont: { size: 13, weight: "600" },
+                        titleFont: { size: 13, weight: 600 },
                         bodyFont: { size: 12 },
                       } 
                     },

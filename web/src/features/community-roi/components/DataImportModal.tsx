@@ -31,6 +31,23 @@ interface ImportOption {
   icon: string;
 }
 
+/** Per-sheet record counts returned by the extract endpoints. Named counts are
+ *  numbers; some keys (e.g. relationship_scores_by_type) carry nested objects,
+ *  hence the index signature also allows object values. */
+interface ImportRecordCounts {
+  interactions?: number;
+  referrals?: number;
+  relationship_scores?: number;
+  combination?: number;
+  [key: string]: number | Record<string, unknown> | undefined;
+}
+
+/** Shape of `result.data` returned by the extract / extract-member-files endpoints. */
+interface ExtractedImportData {
+  recordCounts?: ImportRecordCounts;
+  filesProcessed?: number;
+}
+
 /** Whether the selected import type uses the member-files folder upload path */
 const isMemberFilesMode = (sheet: string) => sheet === 'member_files';
 
@@ -53,7 +70,7 @@ export function DataImportModal() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [step, setStep] = useState<'select' | 'extract' | 'execute' | 'complete'>('select');
-  const [extractedData, setExtractedData] = useState<Record<string, unknown> | null>(null);
+  const [extractedData, setExtractedData] = useState<ExtractedImportData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
@@ -487,7 +504,7 @@ export function DataImportModal() {
               </h4>
               <div className="text-xs text-blue-800 space-y-1">
                 {extractedData.recordCounts &&
-                  Object.entries(extractedData.recordCounts as Record<string, unknown>).map(([k, v]) => {
+                  Object.entries(extractedData.recordCounts).map(([k, v]) => {
                     // Skip nested objects (like relationship_scores_by_type)
                     if (typeof v === 'object' && v !== null) {
                       return null;

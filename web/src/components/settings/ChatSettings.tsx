@@ -372,10 +372,7 @@ function Toast({ message, type, onClose }: { message: string; type: 'success' | 
 
 export function ChatSettings() {
   const [prompts, setPrompts] = useState<Prompt[]>([]);
-  const [chatSettings, setChatSettings] = useState<ChatSettingsConfig>({
-    knowledge_base: '',
-    campaign_frequency: { enabled: true, interval_hours: 24, max_daily_messages: 50 },
-  });
+  const [chatSettings, setChatSettings] = useState<ChatSettingsConfig>(DEFAULT_CHAT_SETTINGS);
   const [followupConfig, setFollowupConfig] = useState<FollowupTimingConfig>(DEFAULT_FOLLOWUP_CONFIG);
   // Approved WhatsApp templates fetched from Meta — used to populate the
   // template-picker dropdown for each follow-up stage + booking reminder.

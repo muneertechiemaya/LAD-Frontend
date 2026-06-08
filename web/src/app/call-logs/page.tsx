@@ -21,6 +21,7 @@ import {
   useBatchStats,
   useCallLogsLeadStatus,
   type CallLog,
+  type CallLogResponse,
   type BatchPayload,
   type VoiceAgentBatch,
   type BatchStats,
@@ -35,6 +36,58 @@ import { ScrollText } from "lucide-react";
 import { categorizeLead } from "@/utils/leadCategorization";
 
 type TimeFilter = "all" | "current" | "previous" | "batch";
+
+// The batch-status endpoint returns a loosely-shaped payload that may be
+// wrapped under `batch` / `result` / `data`, or be the batch object itself.
+// The SDK's BatchApiResponse only models a subset, so model the runtime shape
+// locally for the defensive field probing below.
+interface BatchStatusEntry {
+  call_log_id?: string;
+  agent_name?: string;
+  lead_name?: string;
+  status?: string;
+  call_status?: string;
+  started_at?: string;
+  created_at?: string;
+  call_duration?: number;
+  duration_seconds?: number;
+  cost?: number;
+  batch_status?: string;
+  batch_id?: string;
+  lead_score?: number;
+  score?: number;
+  lead_category?: string;
+  category?: string;
+}
+
+interface BatchStatusData {
+  status?: string;
+  entries?: BatchStatusEntry[];
+  results?: BatchStatusEntry[];
+  call_logs?: BatchStatusEntry[];
+  logs?: BatchStatusEntry[];
+  total_calls?: number;
+  completed_calls?: number;
+  failed_calls?: number;
+  started_at?: string;
+  created_at?: string;
+}
+
+type BatchStatusResponse = BatchStatusData & {
+  batch?: BatchStatusData;
+  result?: BatchStatusData;
+  data?: BatchStatusData;
+};
+
+// Row shape returned by the call-logs list endpoint, augmented with the
+// legacy/alias fields the mapping below reads but that the SDK type omits.
+type CallLogRow = CallLogResponse & {
+  score?: number;
+  category?: string;
+  disposition?: string;
+  leadScore?: number;
+  analysis?: CallLogResponse["analysis"] & { category?: string };
+};
 
 export default function CallLogsPage() {
   const router = useRouter();
@@ -219,7 +272,8 @@ export default function CallLogsPage() {
   useEffect(() => {
     if (!batchJobId || !batchStatusQuery.data) return;
 
-    const batch = batchStatusQuery.data.batch || batchStatusQuery.data.result || batchStatusQuery.data.data || batchStatusQuery.data;
+    const resp = batchStatusQuery.data as BatchStatusResponse;
+    const batch = resp.batch || resp.result || resp.data || resp;
     if (!batch || typeof batch !== 'object') return;
 
     const status = (batch.status || "").toLowerCase();
@@ -244,7 +298,8 @@ export default function CallLogsPage() {
     if ((timeFilter === "batch" || timeFilter === "current") && batchJobId && batchStatusQuery.data) {
       logger.debug("[Call Logs] Processing batch data", { batchJobId });
 
-      const batch = batchStatusQuery.data.batch || batchStatusQuery.data.result || batchStatusQuery.data.data || batchStatusQuery.data;
+      const resp = batchStatusQuery.data as BatchStatusResponse;
+      const batch = resp.batch || resp.result || resp.data || resp;
 
       if (!batch || typeof batch !== 'object') {
         setItems([]);
@@ -253,7 +308,7 @@ export default function CallLogsPage() {
       }
 
       const batchStatus = batch.status || "";
-      const results = batch.entries || batch.results || batch.call_logs || batch.logs || (Array.isArray(batch) ? batch : []);
+      const results: BatchStatusEntry[] = batch.entries || batch.results || batch.call_logs || batch.logs || (Array.isArray(batch) ? batch : []);
 
       const logs: CallLog[] = results.map((r, idx) => {
         const score = r.lead_score ?? r.score ?? 0;
@@ -422,11 +477,11 @@ export default function CallLogsPage() {
     }
 
     // Handle normal call logs (All Time, Today, Current system-wide, etc.)
+    // Date filters (today/month/custom) drive `dateFilter`, not `timeFilter`,
+    // so the "all" branch already covers those — `timeFilter` is only ever
+    // "all" | "current" | "previous" | "batch".
     if (
       (timeFilter === "all" ||
-        timeFilter === "today" ||
-        timeFilter === "month" ||
-        timeFilter === "custom" ||
         (timeFilter === "current" && !batchJobId)) &&
       activeCallLogsQuery.data
     ) {
@@ -435,7 +490,7 @@ export default function CallLogsPage() {
         logsCount: activeCallLogsQuery.data.logs?.length,
       });
 
-      const logs: CallLog[] = (activeCallLogsQuery.data.logs || []).map((r) => {
+      const logs: CallLog[] = (activeCallLogsQuery.data.logs || []).map((r: CallLogRow) => {
         const leadName =
           [r.lead_first_name, r.lead_last_name].filter(Boolean).join(" ") || "";
 
@@ -726,8 +781,7 @@ export default function CallLogsPage() {
 
       const matchStatus = !statusFilter ||
         i.status?.toLowerCase().includes(statusFilter.toLowerCase()) ||
-        (statusFilter === "ended" && i.status?.toLowerCase() === "completed") ||
-        (statusFilter === "completed" && i.status?.toLowerCase() === "ended");
+        (statusFilter === "ended" && i.status?.toLowerCase() === "completed");
 
       const matchTag = !leadTagFilter || i.lead_category?.toLowerCase() === leadTagFilter.toLowerCase();
 

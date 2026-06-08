@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import { Zap, Users, MessageSquare, TrendingUp, CheckCircle2, Check, BarChart3, Mail, MessageCircle, Smartphone, Linkedin } from 'lucide-react';
 
 // Inline Mock UI Components
@@ -260,7 +260,7 @@ export default function HowItWorksSection() {
     }
   };
 
-  const stepBubbleVariants = {
+  const stepBubbleVariants: Variants = {
     hidden: { opacity: 0, scale: 0.5, y: 20 },
     visible: (i: number) => ({
       opacity: 1,
@@ -275,7 +275,7 @@ export default function HowItWorksSection() {
     })
   };
 
-  const lineVariants = {
+  const lineVariants: Variants = {
     hidden: { pathLength: 0, opacity: 0 },
     visible: {
       pathLength: 1,
@@ -288,7 +288,7 @@ export default function HowItWorksSection() {
     }
   };
 
-  const panelVariants = {
+  const panelVariants: Variants = {
     initial: { opacity: 0, y: 20, scale: 0.97 },
     animate: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 200, damping: 25 } },
     exit: { opacity: 0, y: -20, scale: 0.97, transition: { duration: 0.25 } }

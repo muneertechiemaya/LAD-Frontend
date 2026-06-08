@@ -1,7 +1,6 @@
 'use client';
-import { ReactNode } from 'react';
 import { RequireFeature } from '@/components/RequireFeature';
 
-export default function MakeCallLayout({ children }: { children: ReactNode }) {
+export default function MakeCallLayout({ children }: LayoutProps<'/make-call'>) {
   return <RequireFeature featureKey="voice-agent">{children}</RequireFeature>;
 }

@@ -1,6 +1,7 @@
 "use client";
 import { useConversations } from '@lad/frontend-features/conversations';
 import { NotificationBell } from './conversations/NotificationBell';
+import type { Conversation } from '@/types/conversation';
 import { useEffect, useState } from 'react';
 
 export function TopHeader() {
@@ -26,7 +27,7 @@ export function TopHeader() {
       <div className="flex-1" />
       <div className="flex items-center gap-4">
         <NotificationBell
-          conversations={allConversations}
+          conversations={allConversations as Conversation[]}
           onNotificationClick={(conversationId) => selectConversation(conversationId)}
         />
       </div>

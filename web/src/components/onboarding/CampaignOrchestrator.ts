@@ -13,6 +13,11 @@ import {
   type ICPAnswerResponse,
 } from '@lad/frontend-features/ai-icp-assistant';
 import { logger } from '@/lib/logger';
+/**
+ * Some backend ICP question payloads carry an optional `allowSkip` flag for
+ * optional steps that is not part of the shared SDK `ICPQuestion` type.
+ */
+type CampaignICPQuestion = APIICPQuestion & { allowSkip?: boolean };
 export interface CampaignState {
   step: number; // 1-7
   icp_industries: string[];
@@ -69,13 +74,13 @@ export function useCampaignOrchestrator(
     setIsProcessingAI(true);
     try {
       // Get first question from backend
-      const response = await fetchICPQuestionByStep(1);
-      if (response.success && response.question) {
-        setCurrentQuestion(response.question);
+      const question = await fetchICPQuestionByStep(1);
+      if (question) {
+        setCurrentQuestion(question);
         // Show question in chat
         addAIMessage({
           role: 'ai',
-          content: response.question.question,
+          content: question.question,
           timestamp: new Date(),
         });
       }
@@ -112,7 +117,7 @@ export function useCampaignOrchestrator(
         }
       }
     }
-    if (inputLower === 'skip' && currentQuestion.allowSkip) {
+    if (inputLower === 'skip' && (currentQuestion as CampaignICPQuestion).allowSkip) {
       // Handle skip for optional steps
       await processSkip();
       return;
@@ -198,15 +203,15 @@ export function useCampaignOrchestrator(
         };
       }
       // Get question from backend
-      const contextParam = step === 7 ? encodeURIComponent(JSON.stringify(context)) : undefined;
-      const response = await fetchICPQuestionByStep(step, contextParam, 'lead_generation');
-      if (response.success && response.question) {
-        setCurrentQuestion(response.question);
+      const contextParam = step === 7 ? encodeURIComponent(JSON.stringify(context)) : 'lead_generation';
+      const question = await fetchICPQuestionByStep(step, contextParam);
+      if (question) {
+        setCurrentQuestion(question);
         setState({ ...currentState, step });
         // Show question in chat
         addAIMessage({
           role: 'ai',
-          content: response.question.question,
+          content: question.question,
           timestamp: new Date(),
         });
       }
@@ -230,13 +235,13 @@ export function useCampaignOrchestrator(
       leads_per_day: currentState.leads_per_day,
       campaign_days: currentState.campaign_days,
     };
-    const response = await fetchICPQuestionByStep(7, encodeURIComponent(JSON.stringify(context)), 'lead_generation');
-    if (response.success && response.question) {
-      setCurrentQuestion(response.question);
+    const question = await fetchICPQuestionByStep(7, encodeURIComponent(JSON.stringify(context)));
+    if (question) {
+      setCurrentQuestion(question);
       setState({ ...currentState, step: 7 });
       addAIMessage({
         role: 'ai',
-        content: response.question.question,
+        content: question.question,
         timestamp: new Date(),
       });
     }

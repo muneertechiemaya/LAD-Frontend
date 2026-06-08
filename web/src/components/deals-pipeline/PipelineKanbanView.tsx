@@ -4,7 +4,7 @@ import { DragOverlay } from '@dnd-kit/core';
 import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable';
 import PipelineStageColumn from './PipelineStageColumn';
 import PipelineLeadCard from './PipelineLeadCard';
-import { Stage } from '../store/slices/pipelineSlice';
+import { Stage } from '@/features/deals-pipeline/store/slices/pipelineSlice';
 import type { Lead } from '@/features/deals-pipeline/types';
 import { User } from '@/store/slices/usersSlice';
 interface LeadsByStage {

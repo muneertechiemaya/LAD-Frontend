@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import { v4 as uuidv4 } from "uuid";
 
 export interface ChatMessage {
   id: string;
@@ -22,7 +21,7 @@ export function useBuilderAgent({ workerUrl, tenantId, userId }: UseBuilderAgent
   const [error, setError] = useState<string | null>(null);
   
   // Keep the same session ID per component lifecycle to accumulate state in ADK
-  const sessionIdRef = useRef<string>(uuidv4());
+  const sessionIdRef = useRef<string>(crypto.randomUUID());
 
   const sendMessage = useCallback(
     async (text?: string, actionPayload?: any) => {
@@ -33,7 +32,7 @@ export function useBuilderAgent({ workerUrl, tenantId, userId }: UseBuilderAgent
       setUiPayload(null);
 
       if (text) {
-        setMessages((prev) => [...prev, { id: uuidv4(), type: "user", text }]);
+        setMessages((prev) => [...prev, { id: crypto.randomUUID(), type: "user", text }]);
       }
 
       try {
@@ -63,7 +62,7 @@ export function useBuilderAgent({ workerUrl, tenantId, userId }: UseBuilderAgent
           if (event.type === "message" && event.text) {
             setMessages((prev) => [
               ...prev,
-              { id: event.id || uuidv4(), type: "agent", text: event.text },
+              { id: event.id || crypto.randomUUID(), type: "agent", text: event.text },
             ]);
           } else if (event.type === "ui" && event.payload) {
             setUiPayload(event.payload);

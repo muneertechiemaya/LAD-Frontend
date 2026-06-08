@@ -74,6 +74,7 @@ interface CallLog {
   call_cost?: number;
   batch_id?: string;
   lead_category?: string;
+  lead_score?: number;
   lead_tags?: string[];
   signed_recording_url?: string;
   recording_url?: string;

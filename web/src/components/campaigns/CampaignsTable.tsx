@@ -185,10 +185,6 @@ export default function CampaignsTable({ campaigns, loading, onMenuOpen }: Campa
       pagination,
       columnSizing,
     },
-    columnSizingInfo: {
-      start: 0,
-      delta: 0,
-    },
   });
 
   return (

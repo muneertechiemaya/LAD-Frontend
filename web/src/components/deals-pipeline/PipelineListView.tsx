@@ -68,7 +68,10 @@ interface Lead {
   stage?: string;
   amount?: number | string;
   assignee?: string;
+  assigned_to_id?: string | number | null;
+  assignee_id?: string | number | null;
   source?: string;
+  created_at?: string;
   tags?: string[]; // API returns this field
   lead_tags?: string[]; // Legacy field
   lead_category?: string; // Legacy field
@@ -413,17 +416,18 @@ const PipelineListView: React.FC<PipelineListViewProps> = ({
         return currentFilters.assignees.includes(assigneeId);
       });
     }
-    if (currentFilters.dateRange?.start || currentFilters.dateRange?.end) {
+    const dateRange = currentFilters.dateRange;
+    if (dateRange?.start || dateRange?.end) {
       filtered = filtered.filter(lead => {
         const leadDate = lead.created_at ? new Date(lead.created_at as string) : null;
         if (!leadDate) return false;
-        
-        if (currentFilters.dateRange.start) {
-          const startDate = new Date(currentFilters.dateRange.start);
+
+        if (dateRange.start) {
+          const startDate = new Date(dateRange.start);
           if (leadDate < startDate) return false;
         }
-        if (currentFilters.dateRange.end) {
-          const endDate = new Date(currentFilters.dateRange.end);
+        if (dateRange.end) {
+          const endDate = new Date(dateRange.end);
           endDate.setHours(23, 59, 59, 999);
           if (leadDate > endDate) return false;
         }

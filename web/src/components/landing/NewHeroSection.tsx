@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import {
   Linkedin,
   MessageCircle,
@@ -27,7 +27,7 @@ const containerVariants = {
   },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 30 },
   visible: (custom: number = 0) => ({
     opacity: 1,
@@ -41,7 +41,7 @@ const itemVariants = {
   }),
 };
 
-const cardVariants = {
+const cardVariants: Variants = {
   hidden: { opacity: 0, x: -50, rotateZ: -5 },
   visible: (custom: number = 0) => ({
     opacity: 1,
@@ -56,7 +56,7 @@ const cardVariants = {
   }),
 };
 
-const rightCardVariants = {
+const rightCardVariants: Variants = {
   hidden: { opacity: 0, x: 50, rotateZ: 5 },
   visible: (custom: number = 0) => ({
     opacity: 1,
@@ -71,7 +71,7 @@ const rightCardVariants = {
   }),
 };
 
-const characterVariants = {
+const characterVariants: Variants = {
   hidden: { opacity: 0, x: 100, rotateY: -10, scale: 0.8 },
   visible: {
     opacity: 1,

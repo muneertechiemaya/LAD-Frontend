@@ -14,7 +14,7 @@ export interface Conversation {
   unread?: number;
   unreadCount?: number;
   lastMessage?: unknown;
-  lastMessageTime?: string | number;
+  lastMessageTime?: string | number | null;
   updatedAt?: string | number;
   createdAt?: string | number;
   owner?: string | null;
@@ -264,9 +264,13 @@ export const selectConversationsByUserLeads = createSelector(
   }
 );
 // Unified action to mark conversation as read in both slices
-export const markConversationAsReadUnified = createAsyncThunk(
+export const markConversationAsReadUnified = createAsyncThunk<
+  string | number,
+  string | number,
+  { dispatch: AppDispatch }
+>(
   'conversation/markAsReadUnified',
-  async (conversationId: string | number, { dispatch }: { dispatch: AppDispatch }) => {
+  async (conversationId, { dispatch }) => {
     // Update conversation slice
     dispatch(markConversationRead(conversationId));
     // Update notification slice

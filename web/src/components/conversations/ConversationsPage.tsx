@@ -116,7 +116,7 @@ function ChannelConversationView({
     if (activeGroup) setGroupMemberSelected(true);
   }, [selectConversation, activeGroup]);
 
-  const toggleSidebar = useCallback(() => setIsSidebarCollapsed((p) => !p), []);
+  const toggleSidebar = useCallback(() => setIsSidebarCollapsed(!isSidebarCollapsed), [isSidebarCollapsed, setIsSidebarCollapsed]);
   const toggleContextPanel = useCallback(() => setIsContextPanelOpen((p) => !p), []);
 
   // ── CRM actions — fetchWithTenant already sends ?channel= from localStorage,

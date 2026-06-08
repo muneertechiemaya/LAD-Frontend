@@ -203,17 +203,17 @@ export default function CustomNode({ data, id, selected, type: nodeType }: NodeP
       {/* For condition nodes, add two source handles for TRUE/FALSE branches */}
       {stepType === 'condition' ? (
         <>
-          <Handle 
-            type="source" 
-            position={Position.BottomLeft} 
-            id="false" 
-            style={{ background: '#EF4444' }} 
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            id="false"
+            style={{ background: '#EF4444', left: '25%' }}
           />
-          <Handle 
-            type="source" 
-            position={Position.BottomRight} 
-            id="true" 
-            style={{ background: '#10B981' }} 
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            id="true"
+            style={{ background: '#10B981', left: '75%' }}
           />
         </>
       ) : (

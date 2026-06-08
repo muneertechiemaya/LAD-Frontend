@@ -31,6 +31,8 @@ const generateMessages = (conversationId: string, count: number, channel: Channe
       "Our legal team has approved the agreement.",
       "Looking forward to the kickoff meeting.",
     ],
+    outlook: [],
+    instagram: [],
   };
 
   const contents = sampleContents[channel];

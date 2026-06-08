@@ -408,7 +408,7 @@ function ComposeWindow({
   const handleEmojiScroll = useCallback(() => {
     if (!emojiScrollRef.current) return;
     const scrollTop = emojiScrollRef.current.scrollTop;
-    let current = EMOJI_CATS[0].id;
+    let current: (typeof EMOJI_CATS)[number]['id'] = EMOJI_CATS[0].id;
     for (const cat of EMOJI_CATS) {
       const el = emojiCategoryRefs.current[cat.id];
       if (el && el.offsetTop <= scrollTop + 20) {

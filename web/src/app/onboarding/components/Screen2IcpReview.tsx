@@ -267,7 +267,7 @@ export default function Screen2IcpReview({
 
         {saveError && (
           <div className="rounded-lg border border-rose-200 bg-rose-50 text-rose-700 px-3 py-2 text-[12px] flex items-center gap-2">
-            <AlertCircle className="w-4 h-4" /> {saveError}
+            <AlertCircle className="w-4 h-4" /> {saveError.message}
           </div>
         )}
       </div>

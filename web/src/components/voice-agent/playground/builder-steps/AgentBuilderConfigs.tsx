@@ -1,7 +1,12 @@
 import React, { useState } from "react";
 import { X, Sparkles, Volume2, Music, Speech, Move } from "lucide-react";
 import { cn } from "@/lib/utils";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { type Components } from "react-markdown";
+
+const descriptionMarkdownComponents: Components = {
+  strong: ({ node, ref, ...props }) => <strong className="font-bold text-[#0b1957]" {...props} />,
+  p: ({ node, ref, ...props }) => <p className="leading-relaxed" {...props} />,
+};
 
 export interface VoiceConfigPayload {
   speed: number;
@@ -78,10 +83,7 @@ export function AgentBuilderConfigs({
           {description && (
             <div className="text-xs text-slate-500 leading-relaxed font-medium">
               <ReactMarkdown
-                components={{
-                  strong: ({ ...props }) => <strong className="font-bold text-[#0b1957]" {...props} />,
-                  p: ({ ...props }) => <p className="leading-relaxed" {...props} />,
-                }}
+                components={descriptionMarkdownComponents}
               >
                 {description}
               </ReactMarkdown>

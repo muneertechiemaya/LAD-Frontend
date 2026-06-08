@@ -52,7 +52,7 @@ export const DATE_FIELDS: string[] = [
  * @returns Object with camelCase field names
  */
 export const normalizeFieldNames = <T extends Record<string, unknown>>(obj: T | null | undefined): T => {
-  if (!obj || typeof obj !== 'object') return obj as T;
+  if (!obj || typeof obj !== 'object') return obj as unknown as T;
   const normalized = { ...obj } as T;
   // Add camelCase versions of snake_case fields
   Object.entries(DB_TO_UI_FIELD_MAP).forEach(([dbField, uiField]) => {

@@ -136,7 +136,7 @@ class UserPreferencesService {
         }
       });
     };
-    flatten(preferences as Record<string, unknown>);
+    flatten(preferences as unknown as Record<string, unknown>);
     return flattened;
   }
   // Helper to set nested object values

@@ -16,7 +16,7 @@ import {
   DollarSign,
   Calendar
 } from 'lucide-react';
-import type { Lead } from '../types';
+import type { Lead } from '@/features/deals-pipeline/types';
 import { formatDate } from '@/utils/dateTime';
 interface LeadDetailsDialogProps {
   open: boolean;

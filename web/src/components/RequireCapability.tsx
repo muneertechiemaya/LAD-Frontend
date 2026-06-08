@@ -25,7 +25,9 @@ export const RequireCapability: React.FC<RequireCapabilityProps> = ({
   fallback,
   showMessage = true,
 }) => {
-  const { hasCapability } = useAuth();
+  const { user } = useAuth();
+  const hasCapability = (cap: string): boolean =>
+    Array.isArray(user?.capabilities) && user.capabilities.includes(cap);
   if (hasCapability(capability)) {
     return <>{children}</>;
   }

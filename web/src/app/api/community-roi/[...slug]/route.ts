@@ -35,6 +35,15 @@ interface RouteParams {
   };
 }
 
+// Next.js 16 provides route-handler `params` as a Promise. The exported
+// handlers receive this shape and await it before delegating to
+// handleRequest (which works with the already-resolved params above).
+interface RouteContext {
+  params: Promise<{
+    slug: string[];
+  }>;
+}
+
 async function handleRequest(
   req: NextRequest,
   { params }: RouteParams,
@@ -175,27 +184,27 @@ async function handleRequest(
   }
 }
 
-export async function GET(req: NextRequest, { params }: RouteParams) {
+export async function GET(req: NextRequest, { params }: RouteContext) {
   const resolvedParams = await params;
   return handleRequest(req, { params: resolvedParams }, 'GET');
 }
 
-export async function POST(req: NextRequest, { params }: RouteParams) {
+export async function POST(req: NextRequest, { params }: RouteContext) {
   const resolvedParams = await params;
   return handleRequest(req, { params: resolvedParams }, 'POST');
 }
 
-export async function PUT(req: NextRequest, { params }: RouteParams) {
+export async function PUT(req: NextRequest, { params }: RouteContext) {
   const resolvedParams = await params;
   return handleRequest(req, { params: resolvedParams }, 'PUT');
 }
 
-export async function PATCH(req: NextRequest, { params }: RouteParams) {
+export async function PATCH(req: NextRequest, { params }: RouteContext) {
   const resolvedParams = await params;
   return handleRequest(req, { params: resolvedParams }, 'PATCH');
 }
 
-export async function DELETE(req: NextRequest, { params }: RouteParams) {
+export async function DELETE(req: NextRequest, { params }: RouteContext) {
   const resolvedParams = await params;
   return handleRequest(req, { params: resolvedParams }, 'DELETE');
 }

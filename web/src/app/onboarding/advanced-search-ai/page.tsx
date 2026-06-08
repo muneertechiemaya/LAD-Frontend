@@ -62,6 +62,8 @@ interface LeadProfile {
     locked?: boolean;
     phone?: string;
     email?: string;
+    website?: string;
+    instagram?: string;
     icp_score?: number;
     match_level?: 'strong' | 'moderate' | 'weak';
     icp_reasoning?: string;
@@ -104,6 +106,8 @@ interface ChatMsg {
     sources?: Array<{ title: string; url: string }>;
     leadDetailForm?: boolean;
     outreach_journey?: OutreachStep[];
+    abmData?: unknown; // Opaque ABM company payload attached to the message
+    nextBestActions?: unknown[]; // ABM next-best-action suggestions
 }
 
 interface OutreachStep {
@@ -2702,7 +2706,7 @@ export default function AdvancedSearchAIPage() {
                         setPendingLocationRequest({
                             intent: previewIntent,
                             originalQuery: text,
-                            abmType: extractedAbmType,
+                            abmType: extractedAbmType ?? '',
                             personName: extractedPersonName ?? undefined,
                             companyName: extractedCompanyName ?? undefined,
                         });

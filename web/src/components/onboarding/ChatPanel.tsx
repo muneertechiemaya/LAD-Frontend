@@ -23,6 +23,7 @@ import { logger } from '@/lib/logger';
 import { toast } from '@/hooks/use-toast';
 type FlowState =
   | 'initial'
+  | 'idle' // Inert reset state: awaiting a fresh user query (no active sub-flow)
   | 'platform_selection'
   | 'platform_confirmation' // New: Wait for user to confirm platforms
   | 'platform_features'
@@ -3286,7 +3287,7 @@ When complete, present the comprehensive ICP profile focused on the TARGET CUSTO
                       timestamp: new Date(),
                     });
                     // Reset to let the user type a new query
-                    setFlowState('');
+                    setFlowState('idle');
                     setIsProcessingAI(false);
                     return;
                   }

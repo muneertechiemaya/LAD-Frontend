@@ -21,13 +21,17 @@ const getAuthHeaders = () => {
 interface LinkedInAccount {
   id?: string;
   connected: boolean;
-  status?: 'connected' | 'disconnected' | 'stopped' | 'checkpoint' | 'unknown' | 'error';
+  status?: 'connected' | 'active' | 'disconnected' | 'inactive' | 'stopped' | 'checkpoint' | 'credentials_expired' | 'unknown' | 'error';
   profileName?: string;
   accountName?: string; // Account name from database
   profileUrl?: string;
   email?: string;
   connectedAt?: string;
   connectionMethod?: string;
+  metadata?: {
+    email?: string;
+    [key: string]: unknown;
+  };
   checkpoint?: {
     required: boolean;
     type?: string;

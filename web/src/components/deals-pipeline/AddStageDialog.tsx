@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Plus } from 'lucide-react';
-import { Stage } from '../store/slices/pipelineSlice';
+import { Stage } from '@/features/deals-pipeline/store/slices/pipelineSlice';
 import { cn } from '@/lib/utils';
 
 interface StageColor {

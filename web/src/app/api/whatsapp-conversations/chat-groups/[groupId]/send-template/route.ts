@@ -26,7 +26,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ gro
     method: req.method,
     headers: forwardedHeaders,
     body: req.body,
-    // @ts-expect-error duplex is required for streaming bodies in Node 18+
     duplex: 'half',
   });
 

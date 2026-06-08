@@ -21,7 +21,7 @@ import {
   Globe,
   Sparkles,
 } from 'lucide-react';
-import { Workbook } from 'exceljs';
+import { Workbook, type CellValue } from 'exceljs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -447,9 +447,12 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
 
         // Parse header
         const headerRow = worksheet.getRow(1);
-        const headers = headerRow.values
-          ?.map((h) => String(h || '').trim().toLowerCase().replace(/['"]/g, ''))
-          .filter((h) => h) || [];
+        // exceljs returns row.values as a sparse 1-based array (index 0 empty);
+        // narrow the CellValue[] | {...} union to the array form before mapping.
+        const headerValues = headerRow.values;
+        const headers = (Array.isArray(headerValues) ? headerValues : [])
+          .map((h: CellValue) => String(h || '').trim().toLowerCase().replace(/['"]/g, ''))
+          .filter((h: string) => h);
 
         const nameIdx = headers.findIndex((h) => h === 'name' || h === 'full name' || h === 'fullname');
         const phoneIdx = headers.findIndex((h) => h === 'phone' || h === 'whatsapp' || h === 'mobile' || h === 'phone number');
@@ -462,7 +465,10 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
         const parsedLeads: LeadEntry[] = [];
         for (let i = 2; i <= worksheet.rowCount; i++) {
           const row = worksheet.getRow(i);
-          const cells = row.values || [];
+          // row.values is a sparse 1-based array at runtime; narrow the union so
+          // numeric indexing (cells[idx + 1]) is type-safe.
+          const rowValues = row.values;
+          const cells: CellValue[] = Array.isArray(rowValues) ? rowValues : [];
           const name = nameIdx >= 0 ? String(cells[nameIdx + 1] || '').trim() : '';
           if (!name) continue;
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import {
   Search,
@@ -32,7 +32,7 @@ const containerVariants = {
   },
 };
 
-const stepVariants = {
+const stepVariants: Variants = {
   hidden: { opacity: 0, scale: 0.5, y: 20 },
   visible: (custom: number = 0) => ({
     opacity: 1,
@@ -47,7 +47,7 @@ const stepVariants = {
   }),
 };
 
-const lineVariants = {
+const lineVariants: Variants = {
   hidden: { pathLength: 0, opacity: 0 },
   visible: {
     pathLength: 1,

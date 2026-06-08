@@ -21,6 +21,7 @@ import {
   Camera,
   MessageSquare,
   AlertCircle,
+  type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -45,7 +46,7 @@ interface LeadImportChatProps {
 
 interface ChannelConfig {
   label: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: LucideIcon;
   color: string;
   emoji: string;
 }

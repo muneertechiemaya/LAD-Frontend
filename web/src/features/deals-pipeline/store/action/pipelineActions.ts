@@ -22,6 +22,7 @@ import {
   loadMoreLeads
 } from '../slices/leadsSlice';
 import * as pipelineService from '@lad/frontend-features/deals-pipeline';
+import type { CreateLeadParams } from '@lad/frontend-features/deals-pipeline';
 import { AppDispatch, RootState } from '../../../../store/store';
 import { Stage } from '../slices/pipelineSlice';
 import { Lead } from '../../types';
@@ -204,7 +205,7 @@ export const fetchLeadsAction = (page: number = 1, limit: number = 50): AppThunk
 export const createLeadAction = (leadData: Partial<Lead>): AppThunk => async (dispatch) => {
   try {
     logger.debug('[Redux] Creating lead:', leadData);
-    const newLead = await pipelineService.createLead(leadData);
+    const newLead = await pipelineService.createLead(leadData as CreateLeadParams);
     dispatch(addLead(newLead));
     logger.debug('[Redux] Lead created successfully:', newLead.id);
   } catch (error) {
