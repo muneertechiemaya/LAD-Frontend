@@ -30,12 +30,12 @@ export default function PricingPage() {
             <span className="text-blue-600 dark:text-blue-400 ml-3">pricing</span>
           </h1>
           <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto mb-8">
-            Buy credits once, use them for any feature. No subscriptions, no monthly fees, no expiration.
+            Buy credits once, use them for any feature. No subscriptions, no monthly fees. Credits are valid for 1 month.
           </p>
           <div className="flex flex-wrap justify-center gap-8 text-sm text-gray-500">
             <div className="flex items-center">
               <Shield className="h-4 w-4 mr-2" />
-              Credits Never Expire
+              Credits Valid for 1 Month
             </div>
             <div className="flex items-center">
               <Zap className="h-4 w-4 mr-2" />
@@ -582,7 +582,7 @@ export default function PricingPage() {
                 Do credits expire?
               </h3>
               <p className="text-gray-600">
-                No! Credits never expire. Buy once and use them whenever you need, at your own pace. There are no 
+                Yes — credits are valid for 1 month from purchase. Use them whenever you need within that month, at your own pace. There are no 
                 monthly subscriptions or recurring fees.
               </p>
             </div>
@@ -629,7 +629,7 @@ export default function PricingPage() {
               </h3>
               <p className="text-gray-600">
                 Choose a plan that fits your needs, sign up, and start using all features immediately. 
-                Credits are added to your account upon purchase and never expire.
+                Credits are added to your account upon purchase and are valid for 1 month.
               </p>
             </div>
           </div>
@@ -642,7 +642,7 @@ export default function PricingPage() {
             Start with Starter plan today
           </h2>
           <p className="text-xl text-blue-100 mb-8">
-            Get started with 1,000 credits for just $99. No subscriptions. Credits never expire.
+            Get started with 1,000 credits for just $99. No subscriptions. Credits valid for 1 month.
           </p>
           <div className="flex flex-row gap-4 justify-center">
             <button

@@ -254,7 +254,7 @@ export default function InteractivePricingCalculator() {
                 💡 Pro Tip
               </p>
               <p className="text-sm text-gray-700 dark:text-gray-300">
-                Credits never expire! Buy once and use them at your own pace. Pricing shown is based on tier selections, but actual usage may vary based on your needs.
+                Credits are valid for 1 month. Buy and use them at your own pace. Pricing shown is based on tier selections, but actual usage may vary based on your needs.
               </p>
             </div>
           </div>

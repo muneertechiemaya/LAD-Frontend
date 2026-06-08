@@ -49,7 +49,7 @@ const AgentGuide = () => {
     },
     {
       threshold: 0.74,
-      message: "💰 Find the plan that fits your team — credits never expire!",
+      message: "💰 Find the plan that fits your team — credits are valid for 1 month!",
     },
     {
       threshold: 0.9,

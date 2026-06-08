@@ -47,14 +47,14 @@ export default function PricingHero() {
           className="text-xl text-[#8F9BB3] max-w-3xl mx-auto mb-8"
         >
           Buy credits once, use them for any feature. No subscriptions, no
-          monthly fees, no expiration.
+          monthly fees. Credits are valid for 1 month.
         </motion.p>
         <motion.div 
           variants={itemVariants}
           className="flex flex-wrap justify-center gap-8 text-sm text-gray-500"
         >
           {[
-            { icon: Shield, text: "Credits Never Expire" },
+            { icon: Shield, text: "Credits Valid for 1 Month" },
             { icon: Zap, text: "Use Across All Features" },
             { icon: Users, text: "No Hidden Fees" }
           ].map((item, index) => (

@@ -437,7 +437,7 @@ export const UsageCalculator: React.FC = () => {
         {/* Additional Info */}
         <div className="mt-12 text-center">
           <p className="text-sm text-gray-600">
-            This calculator provides estimates based on current pricing. All Standard plans include credits that never expire.
+            This calculator provides estimates based on current pricing. All Standard plans include credits valid for 1 month.
           </p>
         </div>
       </div>
