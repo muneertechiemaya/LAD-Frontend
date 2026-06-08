@@ -1,6 +1,6 @@
 'use client';
 import React, { useMemo, useState, useEffect } from 'react';
-import { Workflow, Play, GitBranch, Zap, ArrowRightLeft, ArrowUpDown, Plus, X, ChevronRight, ChevronLeft, Linkedin, Mail, MessageCircle, Phone, UserPlus, Send, Eye } from 'lucide-react';
+import { Workflow, Play, GitBranch, Zap, ArrowRightLeft, ArrowUpDown, Plus, X, ChevronRight, ChevronLeft, Linkedin, Mail, MessageCircle, Phone, UserPlus, Send, Eye, Globe, Instagram } from 'lucide-react';
 import { useOnboardingStore, WorkflowPreviewStep } from '@/store/onboardingStore';
 import { StepType } from '@/types/campaign';
 import ReactFlow, {
@@ -35,10 +35,12 @@ interface WorkflowPreviewPanelProps {
 }
 
 const PLATFORMS: any[] = [
-  { id: 'linkedin', label: 'LinkedIn', icon: <Linkedin className="w-4 h-4" />, color: '#0077b5', desc: 'Social outreach' },
-  { id: 'email',    label: 'Email',    icon: <Mail className="w-4 h-4" />,     color: '#ea4335', desc: 'Direct mailing' },
-  { id: 'whatsapp', label: 'WhatsApp', icon: <MessageCircle className="w-4 h-4" />, color: '#25d366', desc: 'Instant messaging' },
-  { id: 'voice',    label: 'Voice',    icon: <Phone className="w-4 h-4" />,    color: '#8b5cf6', desc: 'AI Phone calls' },
+  { id: 'linkedin',  label: 'LinkedIn',  icon: <Linkedin className="w-4 h-4" />, color: '#0077b5', desc: 'Social outreach' },
+  { id: 'email',     label: 'Email',     icon: <Mail className="w-4 h-4" />,     color: '#ea4335', desc: 'Direct mailing' },
+  { id: 'whatsapp',  label: 'WhatsApp',  icon: <MessageCircle className="w-4 h-4" />, color: '#25d366', desc: 'Instant messaging' },
+  { id: 'voice',     label: 'Voice',     icon: <Phone className="w-4 h-4" />,    color: '#8b5cf6', desc: 'AI Phone calls' },
+  { id: 'instagram', label: 'Instagram', icon: <Instagram className="w-4 h-4" />, color: '#e1306c', desc: 'Direct Messages' },
+  { id: 'website',   label: 'Website',   icon: <Globe className="w-4 h-4" />,     color: '#6b21a8', desc: 'Page Visits' },
 ];
 
 const PLATFORM_ACTIONS: Record<string, any[]> = {
@@ -55,6 +57,12 @@ const PLATFORM_ACTIONS: Record<string, any[]> = {
   ],
   voice: [
     { type: 'voice_agent_call', title: 'AI Call', icon: <Phone className="w-4 h-4" />, desc: 'AI voice interaction' },
+  ],
+  instagram: [
+    { type: 'instagram_dm', title: 'Instagram DM', icon: <Instagram className="w-4 h-4" />, desc: 'Send Direct Message' },
+  ],
+  website: [
+    { type: 'website_visit', title: 'Website Visit', icon: <Globe className="w-4 h-4" />, desc: 'Visit lead website' },
   ],
 };
 
@@ -217,6 +225,8 @@ export default function WorkflowPreviewPanel({
                 : step.type.includes('email') ? '#ea4335'
                   : step.type.includes('whatsapp') ? '#25d366'
                     : step.type.includes('voice') ? '#8b5cf6'
+                    : step.type.includes('instagram') ? '#e1306c'
+                    : step.type.includes('website') ? '#6b21a8'
                       : step.type === 'delay' ? '#6b7280' : '#6366f1';
               return (
                 <div key={step.id} style={{

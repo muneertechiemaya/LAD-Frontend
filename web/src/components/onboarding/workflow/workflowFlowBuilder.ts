@@ -47,7 +47,7 @@ function buildBranchingTree(steps: WorkflowPreviewStep[]): TreeNode {
 
   // Multi-channel follow-up steps (email, whatsapp, voice)
   const followUpChannelSteps = steps.filter(s =>
-    ['email_send', 'whatsapp_send', 'voice_agent_call'].includes(s.type)
+    ['email_send', 'whatsapp_send', 'voice_agent_call', 'website_visit', 'instagram_dm'].includes(s.type)
   );
   const hasCondition = steps.some(s => s.type === 'wait_for_condition');
   const conditionStep = steps.find(s => s.type === 'wait_for_condition');
@@ -77,7 +77,12 @@ function buildBranchingTree(steps: WorkflowPreviewStep[]): TreeNode {
     } else {
       condNode.branches = followUpChannelSteps.map(ch => ({
         label: ch.title.replace(/^Send /, '').replace(/ Message$/, ''),
-        color: ch.type.includes('email') ? '#ea4335' : ch.type.includes('whatsapp') ? '#25d366' : '#8b5cf6',
+        color: ch.type.includes('email') ? '#ea4335'
+          : ch.type.includes('whatsapp') ? '#25d366'
+          : ch.type.includes('voice') ? '#8b5cf6'
+          : ch.type.includes('instagram') ? '#e1306c'
+          : ch.type.includes('website') ? '#6b21a8'
+          : '#9ca3af',
         child: {
           id: ch.id, type: ch.type, title: ch.title,
           description: ch.description,
