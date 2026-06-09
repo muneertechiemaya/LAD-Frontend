@@ -206,7 +206,7 @@ export const CreditsSettings: React.FC = () => {
             <div>
               <h4 className="font-medium text-gray-900 dark:text-white mb-1">Purchase Credits</h4>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Add credits to your wallet at any time. Credits never expire and can be used across all services.
+                Add credits to your wallet at any time. Credits are valid for 1 month and can be used across all services.
               </p>
             </div>
           </div>

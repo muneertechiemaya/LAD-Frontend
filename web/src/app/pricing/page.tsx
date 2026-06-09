@@ -30,12 +30,12 @@ export default function PricingPage() {
             <span className="text-blue-600 dark:text-blue-400 ml-3">pricing</span>
           </h1>
           <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto mb-8">
-            Buy credits once, use them for any feature. No subscriptions, no monthly fees, no expiration.
+            Buy credits once, use them for any feature. No subscriptions, no monthly fees. Credits are valid for 1 month.
           </p>
           <div className="flex flex-wrap justify-center gap-8 text-sm text-gray-500">
             <div className="flex items-center">
               <Shield className="h-4 w-4 mr-2" />
-              Credits Never Expire
+              Credits Valid for 1 Month
             </div>
             <div className="flex items-center">
               <Zap className="h-4 w-4 mr-2" />
@@ -425,7 +425,7 @@ export default function PricingPage() {
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Voice Calls - Cartesia */}
+            {/* Voice Calls - Standard */}
             <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 border border-blue-200">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Voice Calls</h3>
@@ -434,7 +434,7 @@ export default function PricingPage() {
               <div className="mb-4">
                 <div className="text-3xl font-bold text-blue-600">3</div>
                 <div className="text-sm text-gray-600">credits per minute</div>
-                <div className="text-xs text-gray-500 mt-1">(Cartesia TTS)</div>
+                <div className="text-xs text-gray-500 mt-1">(Standard voice)</div>
               </div>
               <div className="space-y-2 text-sm text-gray-700">
                 <div className="flex justify-between">
@@ -456,7 +456,7 @@ export default function PricingPage() {
                 </div>
               </div>
             </div>
-            {/* Voice Calls - ElevenLabs */}
+            {/* Voice Calls - Premium */}
             <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-6 border border-purple-200">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Premium Voice</h3>
@@ -465,7 +465,7 @@ export default function PricingPage() {
               <div className="mb-4">
                 <div className="text-3xl font-bold text-purple-600">4</div>
                 <div className="text-sm text-gray-600">credits per minute</div>
-                <div className="text-xs text-gray-500 mt-1">(ElevenLabs TTS)</div>
+                <div className="text-xs text-gray-500 mt-1">(Premium voice)</div>
               </div>
               <div className="space-y-2 text-sm text-gray-700">
                 <div className="flex justify-between">
@@ -494,17 +494,13 @@ export default function PricingPage() {
                 <div className="text-2xl">🎯</div>
               </div>
               <div className="mb-4">
-                <div className="text-3xl font-bold text-orange-600">1-10</div>
+                <div className="text-3xl font-bold text-orange-600">2-10</div>
                 <div className="text-sm text-gray-600">credits per lead</div>
               </div>
               <div className="space-y-2 text-sm text-gray-700">
                 <div className="flex justify-between">
-                  <span>Email + LinkedIn URL</span>
+                  <span>Email</span>
                   <span className="font-medium">2 credits</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>LinkedIn Connection</span>
-                  <span className="font-medium">1 credit</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Template Message</span>
@@ -534,6 +530,14 @@ export default function PricingPage() {
               <div className="space-y-2 text-sm text-gray-700">
                 <div className="flex justify-between">
                   <span>LinkedIn</span>
+                  <span className="font-medium">50 cr/mo</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>WhatsApp</span>
+                  <span className="font-medium">50 cr/mo</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Instagram</span>
                   <span className="font-medium">50 cr/mo</span>
                 </div>
                 <div className="flex justify-between">
@@ -582,7 +586,7 @@ export default function PricingPage() {
                 Do credits expire?
               </h3>
               <p className="text-gray-600">
-                No! Credits never expire. Buy once and use them whenever you need, at your own pace. There are no 
+                Yes — credits are valid for 1 month from purchase. Use them whenever you need within that month, at your own pace. There are no 
                 monthly subscriptions or recurring fees.
               </p>
             </div>
@@ -618,9 +622,9 @@ export default function PricingPage() {
                 How much do specific features cost?
               </h3>
               <p className="text-gray-600">
-                Voice calls: 3 cr/min (Cartesia) or 4 cr/min (ElevenLabs) • Email + LinkedIn URL: 2 credits • 
-                LinkedIn Connection: 1 credit • Template Message: 5 credits • Phone reveal: 10 credits • 
-                Platform connections: LinkedIn 50 cr/mo, Google/Outlook 20 cr/mo. See detailed pricing above.
+                Voice calls: 3 cr/min (Standard) or 4 cr/min (Premium) • Email: 2 credits • 
+                Template Message: 5 credits • Phone reveal: 10 credits •
+                Platform connections: LinkedIn/WhatsApp/Instagram 50 cr/mo, Google/Outlook 20 cr/mo. See detailed pricing above.
               </p>
             </div>
             <div>
@@ -629,7 +633,7 @@ export default function PricingPage() {
               </h3>
               <p className="text-gray-600">
                 Choose a plan that fits your needs, sign up, and start using all features immediately. 
-                Credits are added to your account upon purchase and never expire.
+                Credits are added to your account upon purchase and are valid for 1 month.
               </p>
             </div>
           </div>
@@ -642,7 +646,7 @@ export default function PricingPage() {
             Start with Starter plan today
           </h2>
           <p className="text-xl text-blue-100 mb-8">
-            Get started with 1,000 credits for just $99. No subscriptions. Credits never expire.
+            Get started with 1,000 credits for just $99. No subscriptions. Credits valid for 1 month.
           </p>
           <div className="flex flex-row gap-4 justify-center">
             <button

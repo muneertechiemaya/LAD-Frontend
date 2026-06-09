@@ -8,9 +8,9 @@ import { StickyScroll } from '@/components/ui/sticky-scroll-reveal';
 const StickyScrollFeatures = () => {
   const content = [
     {
-      title: 'Safe Connections/Month',
+      title: 'Conversations Started/Month',
       description:
-        'Connect with 1,000+ verified professionals monthly while staying within LinkedIn safe limits. Our algorithm mimics human behavior with randomized volume, speed, and breaks to avoid restrictions.',
+        'Mr LAD opens 1,000+ personalized conversations with the right people every month — at a steady, human pace that keeps your accounts in good standing.',
       stat: '1,000+',
       icon: <Lock className="w-12 h-12 text-white" />,
       color: 'from-blue-500 to-cyan-500',
@@ -19,15 +19,15 @@ const StickyScrollFeatures = () => {
           <div className="text-center">
             <Lock className="w-16 h-16 text-white mx-auto mb-4" />
             <p className="text-white text-xl font-bold">1,000+</p>
-            <p className="text-white/80 text-sm">Safe Connections/Month</p>
+            <p className="text-white/80 text-sm">Conversations Started/Month</p>
           </div>
         </div>
       ),
     },
     {
-      title: 'Multi-Channel Outreach',
+      title: 'Every Channel, One Employee',
       description:
-        'Reach prospects across LinkedIn, Email, WhatsApp, and SMS with AI-personalized messages. Coordinate campaigns across all channels simultaneously for maximum impact and engagement.',
+        'Mr LAD works LinkedIn, WhatsApp, Instagram, email, and voice at once, with personalized messages — coordinated across every channel so nothing slips through.',
       stat: '2,000+',
       icon: <Zap className="w-12 h-12 text-white" />,
       color: 'from-cyan-500 to-blue-500',
@@ -44,7 +44,7 @@ const StickyScrollFeatures = () => {
     {
       title: 'Faster Lead Qualification',
       description:
-        'AI agents qualify leads in real-time, saving your team hours of manual research. Automatic conversation handling with intelligent objection handling across all channels.',
+        'Mr LAD qualifies leads in real-time, saving your team hours of manual research. He handles every conversation and answers questions across all channels.',
       stat: '10x',
       icon: <Users className="w-12 h-12 text-white" />,
       color: 'from-purple-500 to-pink-500',
@@ -59,9 +59,9 @@ const StickyScrollFeatures = () => {
       ),
     },
     {
-      title: 'Revenue Growth Potential',
+      title: 'A Full Calendar, On Autopilot',
       description:
-        'Scale your sales pipeline exponentially without hiring more reps. Close deals 5-7x faster with AI-assisted negotiations and automated deal tracking with real-time analytics.',
+        'Scale your pipeline without hiring more reps. Mr LAD follows up, qualifies, and books meetings straight onto your calendar — synced to your CRM in real time.',
       stat: '5-7x',
       icon: <TrendingUp className="w-12 h-12 text-white" />,
       color: 'from-green-500 to-emerald-500',
@@ -70,7 +70,7 @@ const StickyScrollFeatures = () => {
           <div className="text-center">
             <TrendingUp className="w-16 h-16 text-white mx-auto mb-4" />
             <p className="text-white text-xl font-bold">5-7x</p>
-            <p className="text-white/80 text-sm">Revenue Growth</p>
+            <p className="text-white/80 text-sm">More Meetings Booked</p>
           </div>
         </div>
       ),
@@ -92,12 +92,12 @@ const StickyScrollFeatures = () => {
           className="text-center mb-16"
         >
           <h2 className="text-4xl lg:text-5xl font-bold text-foreground mb-4">
-            Crush LinkedIn
+            What Mr LAD
             <br />
-            <span className="text-primary">Limits Safe & Fast</span>
+            <span className="text-primary">Does Every Day</span>
           </h2>
           <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-            LAD is built with enterprise-grade safety controls. Connect with thousands of qualified prospects monthly without hitting platform restrictions.
+            Mr LAD is one AI Sales Employee who works every channel, around the clock — reaching thousands of qualified prospects every month so your calendar stays full.
           </p>
         </motion.div>
 
@@ -112,10 +112,10 @@ const StickyScrollFeatures = () => {
           className="mt-20 pt-12 border-t border-border text-center"
         >
           <h3 className="text-2xl md:text-3xl font-bold text-foreground mb-4">
-            Ready to scale without limits?
+            Ready to hire Mr LAD?
           </h3>
           <p className="text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Join teams that are already closing 10-15x more deals with LAD&apos;s safe automation platform.
+            Join teams that are already booking 10-15x more meetings with one AI Sales Employee working every channel.
           </p>
 
           <motion.div
@@ -124,7 +124,7 @@ const StickyScrollFeatures = () => {
             className="inline-block"
           >
             <button className="px-10 py-4 bg-primary text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-shadow">
-              Get Started Free
+              Hire Mr LAD
             </button>
           </motion.div>
 
