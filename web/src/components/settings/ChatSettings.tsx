@@ -878,212 +878,214 @@ export function ChatSettings() {
 
   if (loading) {
     return (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-6 w-6 animate-spin text-gray-400 dark:text-blue-500" />
-        </div>
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-6 w-6 animate-spin text-gray-400 dark:text-blue-500" />
+      </div>
     );
   }
 
   return (
-      <div className="space-y-6 relative text-gray-900 dark:text-white">
-        {/* ── Test in Playground button ─────────────────────── */}
-        <div className="flex justify-end mb-2">
-          <button
-              type="button"
-              onClick={() => setPlaygroundOpen(true)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-[#0B1957] dark:bg-blue-600 rounded-xl shadow-md hover:opacity-90 dark:hover:bg-blue-700 transition-all active:scale-95"
-              title="Open the AI Playground to test your prompts, knowledge base, and shareable assets"
-          >
-            <FlaskConical className="h-4 w-4" />
-            Test in AI Playground
-          </button>
+    <div className="space-y-6 relative text-gray-900 dark:text-white">
+      {/* ── Sticky "Test in Playground" button ─────────────────────── */}
+      {/* ── Test in Playground button ─────────────────────── */}
+      <div className="flex justify-end mb-2">
+        <button
+          type="button"
+          onClick={() => setPlaygroundOpen(true)}
+          className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-[#0B1957] dark:bg-blue-600 rounded-xl shadow-md hover:opacity-90 dark:hover:bg-blue-700 transition-all active:scale-95"
+          title="Open the AI Playground to test your prompts, knowledge base, and shareable assets"
+        >
+          <FlaskConical className="h-4 w-4" />
+          Test in AI Playground
+        </button>
+      </div>
+
+      {/* ── Section 1: System Prompts ─────────────────────────────── */}
+      <div className="bg-white dark:bg-[#030a21]/60 rounded-lg border border-gray-200 dark:border-blue-950/40 shadow-sm">
+        <div className="p-6 border-b border-gray-100 dark:border-blue-950/40">
+          <div className="flex items-center gap-2 mb-1">
+            <MessageSquare className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">System Prompts</h2>
+          </div>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Manage AI conversation prompts for each channel. Edit prompt text to customize agent behavior.
+          </p>
         </div>
 
-        {/* ── Section 1: System Prompts ─────────────────────────────── */}
-        <div className="bg-white dark:bg-[#030a21]/60 rounded-lg border border-gray-200 dark:border-blue-950/40 shadow-sm">
-          <div className="p-6 border-b border-gray-100 dark:border-blue-950/40">
-            <div className="flex items-center gap-2 mb-1">
-              <MessageSquare className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">System Prompts</h2>
-            </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Manage AI conversation prompts for each channel. Edit prompt text to customize agent behavior.
-            </p>
+        {/* Channel tabs */}
+        <div className="border-b border-gray-100 dark:border-blue-950/40 overflow-x-auto hide-scrollbar">
+          <div className="flex gap-1 -mb-px px-6 min-w-max flex-nowrap">
+            {CHANNELS.map((ch) => (
+              <button
+                key={ch.id}
+                onClick={() => setActiveChannel(ch.id)}
+                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
+                  activeChannel === ch.id
+                    ? 'border-[#0B1957] text-[#0B1957] dark:border-blue-500 dark:text-blue-400'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-blue-950/50'
+                }`}
+              >
+                <span className={`h-2 w-2 rounded-full ${ch.color}`} />
+                {ch.label}
+              </button>
+            ))}
           </div>
+        </div>
 
-          {/* Channel tabs */}
-          <div className="border-b border-gray-100 dark:border-blue-950/40 overflow-x-auto hide-scrollbar">
-            <div className="flex gap-1 -mb-px px-6 min-w-max flex-nowrap">
-              {CHANNELS.map((ch) => (
-                  <button
-                      key={ch.id}
-                      onClick={() => setActiveChannel(ch.id)}
-                      className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
-                          activeChannel === ch.id
-                              ? 'border-[#0B1957] text-[#0B1957] dark:border-blue-500 dark:text-blue-400'
-                              : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-blue-950/50'
-                      }`}
+        {/* Prompts list */}
+        <div className="divide-y divide-gray-100 dark:divide-blue-950/40">
+          {filteredPrompts.length === 0 ? (
+            <div className="px-6 py-12 text-center text-gray-400 dark:text-gray-500">
+              <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-40" />
+              <p className="text-sm">No prompts for {CHANNELS.find((c) => c.id === activeChannel)?.label}</p>
+              <p className="text-xs mt-1">Create one to get started</p>
+            </div>
+          ) : (
+            filteredPrompts.map((prompt) => {
+              const isExpanded = expandedPrompt === prompt.name;
+              const hasEdit = editedTexts[prompt.name] !== undefined;
+
+              return (
+                <div key={prompt.name} className="group">
+                  {/* Prompt header row */}
+                  <div
+                    className="flex items-center gap-3 px-6 py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-[#061033]/40 transition-colors"
+                    onClick={() => setExpandedPrompt(isExpanded ? null : prompt.name)}
                   >
-                    <span className={`h-2 w-2 rounded-full ${ch.color}`} />
-                    {ch.label}
-                  </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Prompts list */}
-          <div className="divide-y divide-gray-100 dark:divide-blue-950/40">
-            {filteredPrompts.length === 0 ? (
-                <div className="px-6 py-12 text-center text-gray-400 dark:text-gray-500">
-                  <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                  <p className="text-sm">No prompts for {CHANNELS.find((c) => c.id === activeChannel)?.label}</p>
-                  <p className="text-xs mt-1">Create one to get started</p>
-                </div>
-            ) : (
-                filteredPrompts.map((prompt) => {
-                  const isExpanded = expandedPrompt === prompt.name;
-                  const hasEdit = editedTexts[prompt.name] !== undefined;
-
-                  return (
-                      <div key={prompt.name} className="group">
-                        {/* Prompt header row */}
-                        <div
-                            className="flex items-center gap-3 px-6 py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-[#061033]/40 transition-colors"
-                            onClick={() => setExpandedPrompt(isExpanded ? null : prompt.name)}
-                        >
-                          {isExpanded ? (
-                              <ChevronDown className="h-4 w-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
-                          ) : (
-                              <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
-                          )}
-                          <span className="text-sm font-medium text-gray-800 dark:text-gray-200 flex-1">
+                    {isExpanded ? (
+                      <ChevronDown className="h-4 w-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                    )}
+                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200 flex-1">
                       {getLabel(prompt.name)}
                     </span>
-                          <span className="text-[10px] text-gray-400 dark:text-gray-500 font-mono mr-2">v{prompt.version || 1}</span>
+                    <span className="text-[10px] text-gray-400 dark:text-gray-500 font-mono mr-2">v{prompt.version || 1}</span>
 
-                          {/* Active toggle */}
-                          <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleToggleActive(prompt);
-                              }}
-                              className="flex-shrink-0"
-                              title={prompt.is_active ? 'Active — click to deactivate' : 'Inactive — click to activate'}
-                          >
-                            {prompt.is_active ? (
-                                <ToggleRight className="h-5 w-5 text-blue-500 dark:text-blue-400" />
-                            ) : (
-                                <ToggleLeft className="h-5 w-5 text-gray-300 dark:text-gray-600" />
-                            )}
-                          </button>
-
-                          {/* Delete */}
-                          <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeletePrompt(prompt.name);
-                              }}
-                              className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                              title="Delete prompt"
-                          >
-                            <Trash2 className="h-3.5 w-3.5 text-red-400 dark:text-red-500 hover:text-red-600 dark:hover:text-red-400" />
-                          </button>
-                        </div>
-
-                        {/* Expanded editor */}
-                        {isExpanded && (
-                            <div className="px-6 pb-4">
-                      <textarea
-                          className="w-full h-64 p-3 text-sm font-mono border border-gray-200 dark:border-blue-950/60 rounded-lg resize-y focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 bg-gray-50 dark:bg-[#061033]/70 dark:text-white"
-                          value={hasEdit ? editedTexts[prompt.name] : prompt.prompt_text}
-                          onChange={(e) =>
-                              setEditedTexts((prev) => ({ ...prev, [prompt.name]: e.target.value }))
-                          }
-                          placeholder="Enter prompt text..."
-                      />
-                              <div className="flex items-center justify-between mt-2">
-                        <span className="text-[10px] text-gray-400 dark:text-gray-500">
-                          {prompt.updated_at
-                              ? `Last updated: ${new Date(prompt.updated_at).toLocaleDateString()}`
-                              : ''}
-                        </span>
-                                <button
-                                    onClick={() => handleSavePrompt(prompt.name)}
-                                    disabled={!hasEdit || savingPrompt === prompt.name}
-                                    className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors dark:bg-blue-600 dark:hover:bg-blue-700"
-                                >
-                                  {savingPrompt === prompt.name ? (
-                                      <Loader2 className="h-3 w-3 animate-spin" />
-                                  ) : (
-                                      <Save className="h-3 w-3" />
-                                  )}
-                                  Save Changes
-                                </button>
-                              </div>
-                            </div>
-                        )}
-                      </div>
-                  );
-                })
-            )}
-          </div>
-
-          {/* Add new prompt */}
-          <div className="px-6 py-3 border-t border-gray-100 dark:border-blue-950/40">
-            {!showNewPrompt ? (
-                <button
-                    onClick={() => setShowNewPrompt(true)}
-                    className="flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  Add New Prompt
-                </button>
-            ) : (
-                <div className="space-y-3 p-4 rounded-lg border border-blue-100 dark:border-blue-950/50 bg-blue-50/30 dark:bg-blue-950/20">
-                  <input
-                      type="text"
-                      placeholder="Prompt name (e.g. WELCOME_MESSAGE)"
-                      value={newPromptName}
-                      onChange={(e) => setNewPromptName(e.target.value)}
-                      className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-blue-950/60 bg-white dark:bg-[#061033]/70 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
-                      autoFocus
-                  />
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">Channel:</label>
-                    <select
-                        value={newPromptName ? activeChannel : activeChannel}
-                        onChange={(e) => setActiveChannel(e.target.value)}
-                        className="flex-1 px-3 py-1.5 text-xs border border-gray-200 dark:border-blue-950/60 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 bg-white dark:bg-[#061033] dark:text-white"
-                    >
-                      {CHANNELS.map((ch) => (
-                          <option key={ch.id} value={ch.id} className="dark:bg-[#030a21]">{ch.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <textarea
-                      placeholder="Enter the prompt text..."
-                      value={newPromptText}
-                      onChange={(e) => setNewPromptText(e.target.value)}
-                      className="w-full h-32 px-3 py-2 text-sm font-mono border border-gray-200 dark:border-blue-950/60 bg-white dark:bg-[#061033]/70 dark:text-white rounded-md resize-y focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
-                  />
-                  <div className="flex items-center gap-2">
+                    {/* Active toggle */}
                     <button
-                        onClick={handleCreatePrompt}
-                        disabled={!newPromptName.trim() || !newPromptText.trim() || creatingPrompt}
-                        className="w-full flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed dark:bg-blue-600 dark:hover:bg-blue-700"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleActive(prompt);
+                      }}
+                      className="flex-shrink-0"
+                      title={prompt.is_active ? 'Active — click to deactivate' : 'Inactive — click to activate'}
                     >
-                      {creatingPrompt ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-                      Create Prompt
+                      {prompt.is_active ? (
+                        <ToggleRight className="h-5 w-5 text-blue-500 dark:text-blue-400" />
+                      ) : (
+                        <ToggleLeft className="h-5 w-5 text-gray-300 dark:text-gray-600" />
+                      )}
+                    </button>
+
+                    {/* Delete */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeletePrompt(prompt.name);
+                      }}
+                      className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Delete prompt"
+                    >
+                      <Trash2 className="h-3.5 w-3.5 text-red-400 dark:text-red-500 hover:text-red-600 dark:hover:text-red-400" />
                     </button>
                   </div>
+
+                  {/* Expanded editor */}
+                  {isExpanded && (
+                    <div className="px-6 pb-4">
+                      <textarea
+                        className="w-full h-64 p-3 text-sm font-mono border border-gray-200 dark:border-blue-950/60 rounded-lg resize-y focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 bg-gray-50 dark:bg-[#061033]/70 dark:text-white"
+                        value={hasEdit ? editedTexts[prompt.name] : prompt.prompt_text}
+                        onChange={(e) =>
+                          setEditedTexts((prev) => ({ ...prev, [prompt.name]: e.target.value }))
+                        }
+                        placeholder="Enter prompt text..."
+                      />
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="text-[10px] text-gray-400 dark:text-gray-500">
+                          {prompt.updated_at
+                            ? `Last updated: ${new Date(prompt.updated_at).toLocaleDateString()}`
+                            : ''}
+                        </span>
+                        <button
+                          onClick={() => handleSavePrompt(prompt.name)}
+                          disabled={!hasEdit || savingPrompt === prompt.name}
+                          className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors dark:bg-blue-600 dark:hover:bg-blue-700"
+                        >
+                          {savingPrompt === prompt.name ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Save className="h-3 w-3" />
+                          )}
+                          Save Changes
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-            )}
-          </div>
+              );
+            })
+          )}
         </div>
 
-        <div className="bg-white dark:bg-[#030a21]/60 rounded-lg border border-gray-200 dark:border-blue-950/40 shadow-sm">
-          <KnowledgeBaseManager />
+        {/* Add new prompt */}
+        <div className="px-6 py-3 border-t border-gray-100 dark:border-blue-950/40">
+          {!showNewPrompt ? (
+            <button
+              onClick={() => setShowNewPrompt(true)}
+              className="flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add New Prompt
+            </button>
+          ) : (
+            <div className="space-y-3 p-4 rounded-lg border border-blue-100 dark:border-blue-950/50 bg-blue-50/30 dark:bg-blue-950/20">
+              <input
+                type="text"
+                placeholder="Prompt name (e.g. WELCOME_MESSAGE)"
+                value={newPromptName}
+                onChange={(e) => setNewPromptName(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-blue-950/60 bg-white dark:bg-[#061033]/70 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+                autoFocus
+              />
+              {/* Channel selector — pre-fills from active tab but user can override */}
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">Channel:</label>
+                <select
+                  value={newPromptName ? activeChannel : activeChannel}
+                  onChange={(e) => setActiveChannel(e.target.value)}
+                  className="flex-1 px-3 py-1.5 text-xs border border-gray-200 dark:border-blue-950/60 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 bg-white dark:bg-[#061033] dark:text-white"
+                >
+                  {CHANNELS.map((ch) => (
+                    <option key={ch.id} value={ch.id} className="dark:bg-[#030a21]">{ch.label}</option>
+                  ))}
+                </select>
+              </div>
+              <textarea
+                placeholder="Enter the prompt text..."
+                value={newPromptText}
+                onChange={(e) => setNewPromptText(e.target.value)}
+                className="w-full h-32 px-3 py-2 text-sm font-mono border border-gray-200 dark:border-blue-950/60 bg-white dark:bg-[#061033]/70 dark:text-white rounded-md resize-y focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+              />
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleCreatePrompt}
+                  disabled={!newPromptName.trim() || !newPromptText.trim() || creatingPrompt}
+                  className="w-full flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed dark:bg-blue-600 dark:hover:bg-blue-700"
+                >
+                  {creatingPrompt ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                  Create Prompt
+                </button>
+              </div>
+            </div>
+          )}
         </div>
+      </div>
+
+      <div className="bg-white dark:bg-[#030a21]/60 rounded-lg border border-gray-200 dark:border-blue-950/40 shadow-sm">
+        <KnowledgeBaseManager />
+      </div>
 
       {/* ── Shareable Assets ─────────────────────────────────────── */}
       <div className="bg-white dark:bg-[#030a21]/60 rounded-lg border border-gray-200 dark:border-blue-950/40 shadow-sm">
@@ -1101,168 +1103,170 @@ export function ChatSettings() {
         </div>
         <div className="p-6 space-y-4">
           {loadingAssets ? (
-              <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
               <Loader2 className="h-4 w-4 animate-spin" /> Loading assets…
             </div>
           ) : (
             <>
               {shareableAssets.length === 0 && (
-                  <p className="text-sm text-gray-400 dark:text-gray-500 italic">
+                <p className="text-sm text-gray-400 dark:text-gray-500 italic">
                   No assets configured yet. Click &quot;Add Asset&quot; to register your first one.
                 </p>
               )}
 
-                  {shareableAssets.map((asset, idx) => {
-                    const isExpanded = expandedAssetIdx === idx;
+              {shareableAssets.map((asset, idx) => {
+                const isExpanded = expandedAssetIdx === idx;
 
-                    if (!isExpanded) {
-                      const triggers = (asset.trigger_keywords || []).join(', ');
-                      return (
-                          <div
-                              key={idx}
-                              className="flex items-center justify-between border border-gray-200 dark:border-blue-950/40 rounded-lg p-3 bg-white dark:bg-transparent hover:bg-gray-50 dark:hover:bg-[#061033]/40 cursor-pointer transition-colors"
-                              onClick={() => setExpandedAssetIdx(idx)}
-                          >
-                            <div className="flex items-center gap-3 min-w-0 flex-1">
-                              <BookOpen className="h-5 w-5 text-violet-500 dark:text-violet-400 flex-shrink-0" />
-                              <div className="min-w-0 flex-1">
-                                <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                                  {asset.filename || asset.key || `Asset #${idx + 1}`}
-                                </div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                  {triggers ? `Triggers: ${triggers}` : 'No trigger keywords set'}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2 flex-shrink-0">
-                              <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500" />
-                              <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    removeShareableAsset(idx);
-                                  }}
-                                  className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1"
-                                  title="Remove this asset"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            </div>
+                // ── Compact (collapsed) row — like a Knowledge Base folder ──
+                if (!isExpanded) {
+                  const triggers = (asset.trigger_keywords || []).join(', ');
+                  return (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between border border-gray-200 dark:border-blue-950/40 rounded-lg p-3 bg-white dark:bg-transparent hover:bg-gray-50 dark:hover:bg-[#061033]/40 cursor-pointer transition-colors"
+                      onClick={() => setExpandedAssetIdx(idx)}
+                    >
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <BookOpen className="h-5 w-5 text-violet-500 dark:text-violet-400 flex-shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                            {asset.filename || asset.key || `Asset #${idx + 1}`}
                           </div>
-                      );
-                    }
-
-                    return (
-                        <div
-                            key={idx}
-                            className="border border-violet-300 dark:border-blue-900/50 rounded-lg p-4 space-y-3 bg-gray-50 dark:bg-[#061033]/50"
+                          <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                            {triggers ? `Triggers: ${triggers}` : 'No trigger keywords set'}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeShareableAsset(idx);
+                          }}
+                          className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1"
+                          title="Remove this asset"
                         >
-                          <div className="flex items-start justify-between">
-                            <button
-                                type="button"
-                                onClick={() => setExpandedAssetIdx(null)}
-                                className="text-xs font-semibold text-violet-600 dark:text-violet-400 uppercase tracking-wide hover:text-violet-700 dark:hover:text-violet-300 flex items-center gap-1"
-                                title="Collapse"
-                            >
-                              <ChevronDown className="h-3 w-3" />
-                              Asset #{idx + 1}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => removeShareableAsset(idx)}
-                                className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                                title="Remove this asset"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div>
-                              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                Display Filename
-                              </label>
-                              <input
-                                  type="text"
-                                  placeholder="Price_List.pdf"
-                                  value={asset.filename || ''}
-                                  onChange={(e) =>
-                                      updateShareableAsset(idx, { filename: e.target.value })
-                                  }
-                                  className="w-full px-3 py-2 border border-gray-300 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:focus:ring-blue-500"
-                              />
-                            </div>
+                // ── Expanded editor (existing detailed form) ──
+                return (
+                  <div
+                    key={idx}
+                    className="border border-violet-300 dark:border-blue-900/50 rounded-lg p-4 space-y-3 bg-gray-50 dark:bg-[#061033]/50"
+                  >
+                    <div className="flex items-start justify-between">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedAssetIdx(null)}
+                        className="text-xs font-semibold text-violet-600 dark:text-violet-400 uppercase tracking-wide hover:text-violet-700 dark:hover:text-violet-300 flex items-center gap-1"
+                        title="Collapse"
+                      >
+                        <ChevronDown className="h-3 w-3" />
+                        Asset #{idx + 1}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeShareableAsset(idx)}
+                        className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                        title="Remove this asset"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
 
-                            <div>
-                              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                Internal Key (optional)
-                              </label>
-                              <input
-                                  type="text"
-                                  placeholder="price_list"
-                                  value={asset.key || ''}
-                                  onChange={(e) =>
-                                      updateShareableAsset(idx, { key: e.target.value })
-                                  }
-                                  className="w-full px-3 py-2 border border-gray-300 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:focus:ring-blue-500"
-                              />
-                            </div>
-                          </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Display Filename
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Price_List.pdf"
+                          value={asset.filename || ''}
+                          onChange={(e) =>
+                            updateShareableAsset(idx, { filename: e.target.value })
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:focus:ring-blue-500"
+                        />
+                      </div>
 
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                              File URL <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                type="url"
-                                placeholder="https://drive.google.com/uc?export=download&id=…"
-                                value={asset.url}
-                                onChange={(e) =>
-                                    updateShareableAsset(idx, { url: e.target.value })
-                                }
-                                className="w-full px-3 py-2 border border-gray-300 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:focus:ring-blue-500"
-                            />
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              Must be a publicly downloadable URL. For Google Drive use
-                              <code className="text-xs bg-gray-200 dark:bg-blue-950 px-1 mx-1 rounded dark:text-gray-300">uc?export=download&id=…</code>
-                              format (not the share-view link).
-                            </p>
-                          </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Internal Key (optional)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="price_list"
+                          value={asset.key || ''}
+                          onChange={(e) =>
+                            updateShareableAsset(idx, { key: e.target.value })
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div>
-                              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                MIME Type
-                              </label>
-                              <input
-                                  type="text"
-                                  placeholder="application/pdf"
-                                  value={asset.mime_type || 'application/pdf'}
-                                  onChange={(e) =>
-                                      updateShareableAsset(idx, { mime_type: e.target.value })
-                                  }
-                                  className="w-full px-3 py-2 border border-gray-300 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:focus:ring-blue-500"
-                              />
-                            </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        File URL <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="url"
+                        placeholder="https://drive.google.com/uc?export=download&id=…"
+                        value={asset.url}
+                        onChange={(e) =>
+                          updateShareableAsset(idx, { url: e.target.value })
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:focus:ring-blue-500"
+                      />
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Must be a publicly downloadable URL. For Google Drive use
+                        <code className="text-xs bg-gray-200 dark:bg-blue-950 px-1 mx-1 rounded dark:text-gray-300">uc?export=download&id=…</code>
+                        format (not the share-view link).
+                      </p>
+                    </div>
 
-                            <div>
-                              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                Send As
-                              </label>
-                              <select
-                                  value={asset.media_type || 'document'}
-                                  onChange={(e) =>
-                                      updateShareableAsset(idx, {
-                                        media_type: e.target.value as 'document' | 'image',
-                                      })
-                                  }
-                                  className="w-full px-3 py-2 border border-gray-300 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:focus:ring-blue-500"
-                              >
-                                <option value="document" className="dark:bg-[#030a21]">Document (file)</option>
-                                <option value="image" className="dark:bg-[#030a21]">Image (preview)</option>
-                              </select>
-                            </div>
-                          </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          MIME Type
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="application/pdf"
+                          value={asset.mime_type || 'application/pdf'}
+                          onChange={(e) =>
+                            updateShareableAsset(idx, { mime_type: e.target.value })
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:focus:ring-blue-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Send As
+                        </label>
+                        <select
+                          value={asset.media_type || 'document'}
+                          onChange={(e) =>
+                            updateShareableAsset(idx, {
+                              media_type: e.target.value as 'document' | 'image',
+                            })
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:focus:ring-blue-500"
+                        >
+                          <option value="document" className="dark:bg-[#030a21]">Document (file)</option>
+                          <option value="image" className="dark:bg-[#030a21]">Image (preview)</option>
+                        </select>
+                      </div>
+                    </div>
 
                     <div>
                       <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1311,351 +1315,351 @@ export function ChatSettings() {
                       />
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                         Comma-separated. The file is sent when ANY keyword appears in
-                        the AI's reply (matches plurals + variants — e.g. "pricelist"
-                        also matches "prices", "pricing", "price list").
+                        the AI&apos;s reply (matches plurals + variants — e.g. &quot;pricelist&quot;
+                        also matches &quot;prices&quot;, &quot;pricing&quot;, &quot;price list&quot;).
                       </p>
                     </div>
                   </div>
                 );
               })}
 
-                  <div className="flex items-center justify-between pt-2">
-                    <button
-                        type="button"
-                        onClick={addShareableAsset}
-                        className="inline-flex items-center gap-1 text-sm font-medium text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300"
-                    >
-                      <Plus className="h-4 w-4" /> Add Asset
-                    </button>
-
-                    <button
-                        type="button"
-                        onClick={handleSaveShareableAssets}
-                        disabled={savingAssets}
-                        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-violet-600 dark:bg-violet-600 rounded-md hover:bg-violet-700 dark:hover:bg-violet-700 disabled:opacity-50"
-                    >
-                      {savingAssets ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                          <Save className="h-4 w-4" />
-                      )}
-                      Save Assets
-                    </button>
-                  </div>
-                </>
-            )}
-          </div>
-        </div>
-
-        {/* ── Section 2.5: Company Website Context ─────────────────── */}
-        <div className="bg-white dark:bg-[#030a21]/60 rounded-lg border border-gray-200 dark:border-blue-950/40 shadow-sm">
-          <div className="p-6 border-b border-gray-100 dark:border-blue-950/40">
-            <div className="flex items-center gap-2 mb-1">
-              <Globe className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Company Website Context</h2>
-            </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Let the AI answer WhatsApp questions using content from your website or blog pages.
-              URLs are scraped once when you save and the text is cached — no live requests on each reply.
-            </p>
-          </div>
-          <div className="p-6 space-y-5">
-            {/* Enable toggle */}
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Enable Website Context</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  When ON, scraped website content is included in every WhatsApp AI reply
-                </p>
-              </div>
-              <button
-                  onClick={() =>
-                      setChatSettings((prev) => ({
-                        ...prev,
-                        web_scraping_enabled: !prev.web_scraping_enabled,
-                      }))
-                  }
-                  title={chatSettings.web_scraping_enabled ? 'On — click to disable' : 'Off — click to enable'}
-              >
-                {chatSettings.web_scraping_enabled ? (
-                    <ToggleRight className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                ) : (
-                    <ToggleLeft className="h-6 w-6 text-gray-300 dark:text-gray-600" />
-                )}
-              </button>
-            </div>
-
-            {/* URL list */}
-            <div>
-              <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">Website URLs</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                Add your company website homepage, about page, pricing page, blog, FAQ, etc.
-              </p>
-
-              {chatSettings.web_scraping_urls.length > 0 && (
-                  <div className="mb-3 border border-gray-100 dark:border-blue-950/40 rounded-lg divide-y divide-gray-100 dark:divide-blue-950/40 overflow-hidden">
-                    {chatSettings.web_scraping_urls.map((url, idx) => (
-                        <div key={idx} className="flex items-center justify-between px-3 py-2.5 bg-white dark:bg-[#061033]/30 hover:bg-gray-50 dark:hover:bg-[#061033]/60">
-                          <div className="flex items-center gap-2 overflow-hidden min-w-0">
-                            <Globe className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
-                            <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{url}</span>
-                          </div>
-                          <button
-                              onClick={() =>
-                                  setChatSettings((prev) => ({
-                                    ...prev,
-                                    web_scraping_urls: prev.web_scraping_urls.filter((_, i) => i !== idx),
-                                  }))
-                              }
-                              className="ml-2 p-1 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded flex-shrink-0 transition-colors"
-                              title="Remove URL"
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                    ))}
-                  </div>
-              )}
-
-              {/* Add URL input */}
-              <div className="flex gap-2">
-                <input
-                    type="url"
-                    placeholder="https://yourcompany.com/about"
-                    value={newWebUrl}
-                    onChange={(e) => setNewWebUrl(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        const u = newWebUrl.trim();
-                        if (u && (u.startsWith('http://') || u.startsWith('https://')) &&
-                            !chatSettings.web_scraping_urls.includes(u)) {
-                          setChatSettings((prev) => ({
-                            ...prev,
-                            web_scraping_urls: [...prev.web_scraping_urls, u],
-                          }));
-                          setNewWebUrl('');
-                        }
-                      }
-                    }}
-                    className="flex-1 px-3 py-2 text-sm border border-gray-200 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
-                />
+              <div className="flex items-center justify-between pt-2">
                 <button
-                    onClick={() => {
-                      const u = newWebUrl.trim();
-                      if (!u) return;
-                      if (!u.startsWith('http://') && !u.startsWith('https://')) return;
-                      if (chatSettings.web_scraping_urls.includes(u)) return;
+                  type="button"
+                  onClick={addShareableAsset}
+                  className="inline-flex items-center gap-1 text-sm font-medium text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300"
+                >
+                  <Plus className="h-4 w-4" /> Add Asset
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSaveShareableAssets}
+                  disabled={savingAssets}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-violet-600 dark:bg-violet-600 rounded-md hover:bg-violet-700 dark:hover:bg-violet-700 disabled:opacity-50"
+                >
+                  {savingAssets ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  Save Assets
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* ── Section 2.5: Company Website Context ─────────────────── */}
+      <div className="bg-white dark:bg-[#030a21]/60 rounded-lg border border-gray-200 dark:border-blue-950/40 shadow-sm">
+        <div className="p-6 border-b border-gray-100 dark:border-blue-950/40">
+          <div className="flex items-center gap-2 mb-1">
+            <Globe className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Company Website Context</h2>
+          </div>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Let the AI answer WhatsApp questions using content from your website or blog pages.
+            URLs are scraped once when you save and the text is cached — no live requests on each reply.
+          </p>
+        </div>
+        <div className="p-6 space-y-5">
+          {/* Enable toggle */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Enable Website Context</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                When ON, scraped website content is included in every WhatsApp AI reply
+              </p>
+            </div>
+            <button
+              onClick={() =>
+                setChatSettings((prev) => ({
+                  ...prev,
+                  web_scraping_enabled: !prev.web_scraping_enabled,
+                }))
+              }
+              title={chatSettings.web_scraping_enabled ? 'On — click to disable' : 'Off — click to enable'}
+            >
+              {chatSettings.web_scraping_enabled ? (
+                <ToggleRight className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              ) : (
+                <ToggleLeft className="h-6 w-6 text-gray-300 dark:text-gray-600" />
+              )}
+            </button>
+          </div>
+
+          {/* URL list */}
+          <div>
+            <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">Website URLs</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+              Add your company website homepage, about page, pricing page, blog, FAQ, etc.
+            </p>
+
+            {chatSettings.web_scraping_urls.length > 0 && (
+              <div className="mb-3 border border-gray-100 dark:border-blue-950/40 rounded-lg divide-y divide-gray-100 dark:divide-blue-950/40 overflow-hidden">
+                {chatSettings.web_scraping_urls.map((url, idx) => (
+                  <div key={idx} className="flex items-center justify-between px-3 py-2.5 bg-white dark:bg-[#061033]/30 hover:bg-gray-50 dark:hover:bg-[#061033]/60">
+                    <div className="flex items-center gap-2 overflow-hidden min-w-0">
+                      <Globe className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
+                      <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{url}</span>
+                    </div>
+                    <button
+                      onClick={() =>
+                        setChatSettings((prev) => ({
+                          ...prev,
+                          web_scraping_urls: prev.web_scraping_urls.filter((_, i) => i !== idx),
+                        }))
+                      }
+                      className="ml-2 p-1 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded flex-shrink-0 transition-colors"
+                      title="Remove URL"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add URL input */}
+            <div className="flex gap-2">
+              <input
+                type="url"
+                placeholder="https://yourcompany.com/about"
+                value={newWebUrl}
+                onChange={(e) => setNewWebUrl(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const u = newWebUrl.trim();
+                    if (u && (u.startsWith('http://') || u.startsWith('https://')) &&
+                        !chatSettings.web_scraping_urls.includes(u)) {
                       setChatSettings((prev) => ({
                         ...prev,
                         web_scraping_urls: [...prev.web_scraping_urls, u],
                       }));
                       setNewWebUrl('');
-                    }}
-                    disabled={
-                        !newWebUrl.trim() ||
-                        (!newWebUrl.trim().startsWith('http://') && !newWebUrl.trim().startsWith('https://'))
                     }
-                    className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-blue-700 border border-blue-200 bg-blue-50 rounded-md hover:bg-blue-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors dark:border-blue-950/40 dark:bg-blue-950/40 dark:text-blue-400 dark:hover:bg-blue-950/70"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  Add
-                </button>
-              </div>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5">Press Enter or click Add. Must start with https://</p>
+                  }
+                }}
+                className="flex-1 px-3 py-2 text-sm border border-gray-200 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+              />
+              <button
+                onClick={() => {
+                  const u = newWebUrl.trim();
+                  if (!u) return;
+                  if (!u.startsWith('http://') && !u.startsWith('https://')) return;
+                  if (chatSettings.web_scraping_urls.includes(u)) return;
+                  setChatSettings((prev) => ({
+                    ...prev,
+                    web_scraping_urls: [...prev.web_scraping_urls, u],
+                  }));
+                  setNewWebUrl('');
+                }}
+                disabled={
+                  !newWebUrl.trim() ||
+                  (!newWebUrl.trim().startsWith('http://') && !newWebUrl.trim().startsWith('https://'))
+                }
+                className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-blue-700 border border-blue-200 bg-blue-50 rounded-md hover:bg-blue-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors dark:border-blue-950/40 dark:bg-blue-950/40 dark:text-blue-400 dark:hover:bg-blue-950/70"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add
+              </button>
             </div>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5">Press Enter or click Add. Must start with https://</p>
+          </div>
 
-            {/* Per-URL scrape diagnostics */}
-            {webScrapingDiagnostics.length > 0 && (
-                <div className="border border-gray-100 dark:border-blue-950/40 rounded-lg overflow-hidden">
-                  <div className="px-3 py-2 bg-gray-50 dark:bg-[#051139] border-b border-gray-100 dark:border-blue-950/40 text-xs font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wider flex items-center justify-between">
-                    <span>Last Scrape Result</span>
-                    <span className="text-gray-400 dark:text-gray-500 normal-case tracking-normal">
+          {/* Per-URL scrape diagnostics — appears after Save & Scrape */}
+          {webScrapingDiagnostics.length > 0 && (
+            <div className="border border-gray-100 dark:border-blue-950/40 rounded-lg overflow-hidden">
+              <div className="px-3 py-2 bg-gray-50 dark:bg-[#051139] border-b border-gray-100 dark:border-blue-950/40 text-xs font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wider flex items-center justify-between">
+                <span>Last Scrape Result</span>
+                <span className="text-gray-400 dark:text-gray-500 normal-case tracking-normal">
                   {webScrapingDiagnostics.filter((d) => d.ok).length} / {webScrapingDiagnostics.length} pages scraped
                 </span>
-                  </div>
-                  <div className="divide-y divide-gray-100 dark:divide-blue-950/40">
-                    {webScrapingDiagnostics.map((d, i) => (
-                        <div
-                            key={i}
-                            className={`flex items-start justify-between px-3 py-2.5 gap-3 ${
-                                d.auto_discovered ? 'pl-8 bg-gray-50/30 dark:bg-[#061033]/20' : 'dark:bg-[#030a21]/20'
-                            }`}
-                        >
-                          <div className="flex items-start gap-2 min-w-0 flex-1">
-                            {d.ok ? (
-                                <CheckCircle className="h-3.5 w-3.5 text-green-500 mt-0.5 flex-shrink-0" />
-                            ) : (
-                                <AlertCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 flex-shrink-0" />
-                            )}
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <p className="text-xs text-gray-700 dark:text-gray-300 truncate" title={d.url}>{d.url}</p>
-                                {d.auto_discovered && (
-                                    <span
-                                        className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-blue-950 px-1.5 py-0.5 rounded font-medium"
-                                        title={
-                                          d.discovery_method === 'sitemap'
-                                              ? `Auto-discovered from sitemap.xml of ${d.discovered_from}`
-                                              : `Auto-discovered from links on ${d.discovered_from}`
-                                        }
-                                    >
+              </div>
+              <div className="divide-y divide-gray-100 dark:divide-blue-950/40">
+                {webScrapingDiagnostics.map((d, i) => (
+                  <div
+                    key={i}
+                    className={`flex items-start justify-between px-3 py-2.5 gap-3 ${
+                      d.auto_discovered ? 'pl-8 bg-gray-50/30 dark:bg-[#061033]/20' : 'dark:bg-[#030a21]/20'
+                    }`}
+                  >
+                    <div className="flex items-start gap-2 min-w-0 flex-1">
+                      {d.ok ? (
+                        <CheckCircle className="h-3.5 w-3.5 text-green-500 mt-0.5 flex-shrink-0" />
+                      ) : (
+                        <AlertCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 flex-shrink-0" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="text-xs text-gray-700 dark:text-gray-300 truncate" title={d.url}>{d.url}</p>
+                          {d.auto_discovered && (
+                            <span
+                              className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-blue-950 px-1.5 py-0.5 rounded font-medium"
+                              title={
+                                d.discovery_method === 'sitemap'
+                                  ? `Auto-discovered from sitemap.xml of ${d.discovered_from}`
+                                  : `Auto-discovered from links on ${d.discovered_from}`
+                              }
+                            >
                               auto · {d.discovery_method === 'sitemap' ? 'sitemap' : 'links'}
                             </span>
-                                )}
-                              </div>
-                              {d.ok ? (
-                                  <p className="text-[11px] text-green-600 dark:text-emerald-400 mt-0.5">
-                                    ✓ {d.chars.toLocaleString()} chars extracted
-                                  </p>
-                              ) : (
-                                  <p className="text-[11px] text-red-600 dark:text-rose-400 mt-0.5">
-                                    {d.error || 'Failed'}
-                                    {d.status ? ` (HTTP ${d.status})` : ''}
-                                  </p>
-                              )}
-                            </div>
-                          </div>
+                          )}
                         </div>
-                    ))}
+                        {d.ok ? (
+                          <p className="text-[11px] text-green-600 dark:text-emerald-400 mt-0.5">
+                            ✓ {d.chars.toLocaleString()} chars extracted
+                          </p>
+                        ) : (
+                          <p className="text-[11px] text-red-600 dark:text-rose-400 mt-0.5">
+                            {d.error || 'Failed'}
+                            {d.status ? ` (HTTP ${d.status})` : ''}
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-            )}
-
-            <div className="flex justify-between items-center pt-2 gap-2">
-              <button
-                  onClick={() => setShowWebTestChat((v) => !v)}
-                  className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-blue-700 border border-blue-200 bg-white rounded-md hover:bg-blue-50 transition-colors dark:border-blue-950/40 dark:bg-transparent dark:text-blue-400 dark:hover:bg-blue-950/30"
-                  title="Preview how the AI answers using your scraped website content"
-              >
-                <Sparkles className="h-4 w-4" />
-                {showWebTestChat ? 'Hide Test Chat' : 'Test Chat'}
-              </button>
-              <button
-                  onClick={handleSaveWebScraping}
-                  disabled={webScrapingSaving}
-                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors dark:bg-blue-600 dark:hover:bg-blue-700"
-              >
-                {webScrapingSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                {webScrapingSaving ? 'Scraping & saving…' : 'Save & Scrape'}
-              </button>
+                ))}
+              </div>
             </div>
+          )}
 
-            {/* Test Chat panel */}
-            {showWebTestChat && (
-                <div className="mt-4 border border-blue-200 dark:border-blue-950/40 rounded-xl overflow-hidden bg-slate-50/40 dark:bg-[#061033]/20">
-                  <div className="px-4 py-2.5 bg-blue-50 dark:bg-[#051139] border-b border-blue-200 dark:border-blue-950/40 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                      <span className="text-sm font-medium text-blue-900 dark:text-white">
+          <div className="flex justify-between items-center pt-2 gap-2">
+            <button
+              onClick={() => setShowWebTestChat((v) => !v)}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-blue-700 border border-blue-200 bg-white rounded-md hover:bg-blue-50 transition-colors dark:border-blue-950/40 dark:bg-transparent dark:text-blue-400 dark:hover:bg-blue-950/30"
+              title="Preview how the AI answers using your scraped website content"
+            >
+              <Sparkles className="h-4 w-4" />
+              {showWebTestChat ? 'Hide Test Chat' : 'Test Chat'}
+            </button>
+            <button
+              onClick={handleSaveWebScraping}
+              disabled={webScrapingSaving}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors dark:bg-blue-600 dark:hover:bg-blue-700"
+            >
+              {webScrapingSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              {webScrapingSaving ? 'Scraping & saving…' : 'Save & Scrape'}
+            </button>
+          </div>
+
+          {/* Test Chat panel — Claude-powered preview against cached scraped content */}
+          {showWebTestChat && (
+            <div className="mt-4 border border-blue-200 dark:border-blue-950/40 rounded-xl overflow-hidden bg-slate-50/40 dark:bg-[#061033]/20">
+              <div className="px-4 py-2.5 bg-blue-50 dark:bg-[#051139] border-b border-blue-200 dark:border-blue-950/40 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <span className="text-sm font-medium text-blue-900 dark:text-white">
                     Test against scraped content
                   </span>
-                    </div>
-                    {webChatMessages.length > 0 && (
-                        <button
-                            onClick={() => setWebChatMessages([])}
-                            className="text-xs text-blue-700 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 font-medium"
-                        >
-                          Clear
-                        </button>
-                    )}
-                  </div>
+                </div>
+                {webChatMessages.length > 0 && (
+                  <button
+                    onClick={() => setWebChatMessages([])}
+                    className="text-xs text-blue-700 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 font-medium"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
 
-                  <div className="max-h-[360px] overflow-y-auto p-4 space-y-3">
-                    {webChatMessages.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-8 text-slate-400 dark:text-gray-500">
-                          <Sparkles className="h-7 w-7 mb-2 opacity-50" />
-                          <p className="text-xs text-center max-w-xs">
-                            Ask a question to see how the AI answers it using only your scraped website content.
-                            Save & Scrape first if you haven&apos;t yet.
-                          </p>
-                        </div>
-                    ) : (
-                        webChatMessages.map((msg, i) => (
-                            <div
-                                key={i}
-                                className={`flex flex-col w-fit max-w-[85%] ${
-                                    msg.role === 'user' ? 'ml-auto items-end' : 'mr-auto items-start'
-                                }`}
-                            >
-                              <div
-                                  className={`px-3.5 py-2 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
-                                      msg.role === 'user'
-                                          ? 'bg-blue-600 text-white rounded-br-sm'
-                                          : 'bg-white dark:bg-[#030a21] border border-slate-200 dark:border-blue-950/60 text-slate-700 dark:text-gray-200 rounded-bl-sm shadow-sm'
-                                  }`}
-                              >
-                                {msg.content}
-                              </div>
-                              {msg.role === 'assistant' && msg.sources && msg.sources.length > 0 && (
-                                  <div className="mt-1 px-1 text-[10px] text-slate-400 dark:text-gray-500 flex flex-wrap gap-1">
-                                    <span className="font-semibold uppercase tracking-wider">Sources:</span>
-                                    {msg.sources.map((s, idx) => (
-                                        <span key={idx} className="bg-slate-100 dark:bg-blue-950/80 px-1.5 py-0.5 rounded text-slate-500 dark:text-gray-400 truncate max-w-[200px]" title={s}>
+              <div className="max-h-[360px] overflow-y-auto p-4 space-y-3">
+                {webChatMessages.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-slate-400 dark:text-gray-500">
+                    <Sparkles className="h-7 w-7 mb-2 opacity-50" />
+                    <p className="text-xs text-center max-w-xs">
+                      Ask a question to see how the AI answers it using only your scraped website content.
+                      Save & Scrape first if you haven&apos;t yet.
+                    </p>
+                  </div>
+                ) : (
+                  webChatMessages.map((msg, i) => (
+                    <div
+                      key={i}
+                      className={`flex flex-col w-fit max-w-[85%] ${
+                        msg.role === 'user' ? 'ml-auto items-end' : 'mr-auto items-start'
+                      }`}
+                    >
+                      <div
+                        className={`px-3.5 py-2 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
+                          msg.role === 'user'
+                            ? 'bg-blue-600 text-white rounded-br-sm'
+                            : 'bg-white dark:bg-[#030a21] border border-slate-200 dark:border-blue-950/60 text-slate-700 dark:text-gray-200 rounded-bl-sm shadow-sm'
+                        }`}
+                      >
+                        {msg.content}
+                      </div>
+                      {msg.role === 'assistant' && msg.sources && msg.sources.length > 0 && (
+                        <div className="mt-1 px-1 text-[10px] text-slate-400 dark:text-gray-500 flex flex-wrap gap-1">
+                          <span className="font-semibold uppercase tracking-wider">Sources:</span>
+                          {msg.sources.map((s, idx) => (
+                            <span key={idx} className="bg-slate-100 dark:bg-blue-950/80 px-1.5 py-0.5 rounded text-slate-500 dark:text-gray-400 truncate max-w-[200px]" title={s}>
                               {s}
                             </span>
-                                    ))}
-                                  </div>
-                              )}
-                            </div>
-                        ))
-                    )}
-                    {webChatBusy && (
-                        <div className="flex w-fit max-w-[85%] mr-auto">
-                          <div className="px-3.5 py-2 bg-white dark:bg-[#030a21] border border-slate-200 dark:border-blue-950/60 text-slate-500 rounded-2xl rounded-bl-sm shadow-sm text-sm flex items-center gap-2">
-                            <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" /> Thinking…
-                          </div>
+                          ))}
                         </div>
-                    )}
-                  </div>
-
-                  <div className="p-3 border-t border-blue-200 dark:border-blue-950/40 bg-white dark:bg-[#030a21]/80">
-                    <div className="flex gap-2">
-                      <input
-                          type="text"
-                          placeholder="Ask a customer-style question…"
-                          value={webChatInput}
-                          onChange={(e) => setWebChatInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                              e.preventDefault();
-                              handleWebTestChatSend();
-                            }
-                          }}
-                          disabled={webChatBusy}
-                          className="flex-1 px-3.5 py-2 text-sm bg-slate-50 dark:bg-[#061033]/60 border border-slate-200 dark:border-blue-950/50 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 dark:text-white disabled:opacity-60"
-                      />
-                      <button
-                          onClick={handleWebTestChatSend}
-                          disabled={!webChatInput.trim() || webChatBusy}
-                          className="flex items-center justify-center h-9 w-9 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                          title="Send"
-                      >
-                        {webChatBusy ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                            <Send className="h-4 w-4" />
-                        )}
-                      </button>
+                      )}
+                    </div>
+                  ))
+                )}
+                {webChatBusy && (
+                  <div className="flex w-fit max-w-[85%] mr-auto">
+                    <div className="px-3.5 py-2 bg-white dark:bg-[#030a21] border border-slate-200 dark:border-blue-950/60 text-slate-500 rounded-2xl rounded-bl-sm shadow-sm text-sm flex items-center gap-2">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" /> Thinking…
                     </div>
                   </div>
+                )}
+              </div>
+
+              <div className="p-3 border-t border-blue-200 dark:border-blue-950/40 bg-white dark:bg-[#030a21]/80">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Ask a customer-style question…"
+                    value={webChatInput}
+                    onChange={(e) => setWebChatInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleWebTestChatSend();
+                      }
+                    }}
+                    disabled={webChatBusy}
+                    className="flex-1 px-3.5 py-2 text-sm bg-slate-50 dark:bg-[#061033]/60 border border-slate-200 dark:border-blue-950/50 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 dark:text-white disabled:opacity-60"
+                  />
+                  <button
+                    onClick={handleWebTestChatSend}
+                    disabled={!webChatInput.trim() || webChatBusy}
+                    className="flex items-center justify-center h-9 w-9 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    title="Send"
+                  >
+                    {webChatBusy ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                  </button>
                 </div>
-            )}
-          </div>
+              </div>
+            </div>
+          )}
         </div>
+      </div>
 
       {/* ── Section 3: Chat Behaviour ────────────────────────────── */}
-        <div className="bg-white dark:bg-[#030a21]/60 rounded-lg border border-gray-200 dark:border-blue-950/40 shadow-sm">
-          <div className="p-6 border-b border-gray-100 dark:border-blue-950/40">
-            <div className="flex items-center gap-2 mb-1">
-              <Zap className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Chat Behaviour</h2>
-            </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Control how the AI agent behaves during conversations.
-            </p>
+      <div className="bg-white dark:bg-[#030a21]/60 rounded-lg border border-gray-200 dark:border-blue-950/40 shadow-sm">
+        <div className="p-6 border-b border-gray-100 dark:border-blue-950/40">
+          <div className="flex items-center gap-2 mb-1">
+            <Zap className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Chat Behaviour</h2>
           </div>
-          <div className="p-6 space-y-5">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Control how the AI agent behaves during conversations.
+          </p>
+        </div>
+        <div className="p-6 space-y-5">
           {/* Typing indicator — per channel */}
           <div>
             <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Typing Indicator</p>
@@ -1681,185 +1685,185 @@ export function ChatSettings() {
                   title={chatSettings.typing_indicator ? 'On — click to disable' : 'Off — click to enable'}
                 >
                   {chatSettings.typing_indicator ? (
-                      <ToggleRight className="h-6 w-6 text-blue-500 dark:text-blue-400" />
+                    <ToggleRight className="h-6 w-6 text-blue-500 dark:text-blue-400" />
                   ) : (
-                      <ToggleLeft className="h-6 w-6 text-gray-300 dark:text-gray-600" />
+                    <ToggleLeft className="h-6 w-6 text-gray-300 dark:text-gray-600" />
                   )}
                 </button>
               </div>
 
-                {/* WABA row */}
-                <div className="flex items-center justify-between px-4 py-3 bg-white dark:bg-transparent">
-                  <div className="flex items-center gap-2.5">
-                    <span className="h-2 w-2 rounded-full bg-green-500 flex-shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-800 dark:text-gray-200">WhatsApp Business API</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Sends a read receipt and shows a typing bubble while replying</p>
-                    </div>
+              {/* WABA row */}
+              <div className="flex items-center justify-between px-4 py-3 bg-white dark:bg-transparent">
+                <div className="flex items-center gap-2.5">
+                  <span className="h-2 w-2 rounded-full bg-green-500 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200">WhatsApp Business API</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Sends a read receipt and shows a typing bubble while replying</p>
                   </div>
-                  <button
-                      onClick={() =>
-                          setChatSettings((prev) => ({ ...prev, waba_typing_indicator: !prev.waba_typing_indicator }))
-                      }
-                      title={chatSettings.waba_typing_indicator ? 'On — click to disable' : 'Off — click to enable'}
-                  >
-                    {chatSettings.waba_typing_indicator ? (
-                        <ToggleRight className="h-6 w-6 text-blue-500 dark:text-blue-400" />
-                    ) : (
-                        <ToggleLeft className="h-6 w-6 text-gray-300 dark:text-gray-600" />
-                    )}
-                  </button>
                 </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end pt-2">
-              <button
-                  onClick={handleSaveBehaviour}
-                  disabled={savingBehaviour}
-                  className="flex items-center gap-1.5 px-5 py-2.5 text-sm font-semibold text-white bg-[#0B1957] dark:bg-blue-600 rounded-xl hover:opacity-90 disabled:opacity-50 transition-all shadow-md active:scale-95"
-              >
-                {savingBehaviour ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                Save Behaviour
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Section 5: Campaign Settings ──────────────────────────── */}
-        <div className="bg-white dark:bg-[#030a21]/60 rounded-lg border border-gray-200 dark:border-blue-950/40 shadow-sm">
-          <div className="p-6 border-b border-gray-100 dark:border-blue-950/40">
-            <div className="flex items-center gap-2 mb-1">
-              <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Campaign Settings</h2>
-            </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Configure automated campaign frequency and limits.
-            </p>
-          </div>
-          <div className="p-6 space-y-5">
-            {/* Enable toggle */}
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Enable Automated Campaigns</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Send automated follow-up messages to leads</p>
-              </div>
-              <button
+                <button
                   onClick={() =>
-                      setChatSettings((prev) => ({
-                        ...prev,
-                        campaign_frequency: {
-                          ...prev.campaign_frequency,
-                          enabled: !prev.campaign_frequency.enabled,
-                        },
-                      }))
+                    setChatSettings((prev) => ({ ...prev, waba_typing_indicator: !prev.waba_typing_indicator }))
                   }
-              >
-                {chatSettings.campaign_frequency.enabled ? (
+                  title={chatSettings.waba_typing_indicator ? 'On — click to disable' : 'Off — click to enable'}
+                >
+                  {chatSettings.waba_typing_indicator ? (
                     <ToggleRight className="h-6 w-6 text-blue-500 dark:text-blue-400" />
-                ) : (
+                  ) : (
                     <ToggleLeft className="h-6 w-6 text-gray-300 dark:text-gray-600" />
-                )}
-              </button>
+                  )}
+                </button>
+              </div>
             </div>
+          </div>
 
-            {/* Interval hours */}
-            <div>
-              <label className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">
-                Message Interval (hours)
-              </label>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Minimum time between automated messages to the same lead</p>
-              <input
-                  type="number"
-                  min={1}
-                  max={168}
-                  value={chatSettings.campaign_frequency.interval_hours}
-                  onChange={(e) =>
-                      setChatSettings((prev) => ({
-                        ...prev,
-                        campaign_frequency: {
-                          ...prev.campaign_frequency,
-                          interval_hours: parseInt(e.target.value) || 24,
-                        },
-                      }))
-                  }
-                  className="w-32 px-3 py-2 text-sm border border-gray-200 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
-              />
-            </div>
-
-            {/* Max daily messages */}
-            <div>
-              <label className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">
-                Max Daily Messages
-              </label>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Maximum number of automated messages sent per day across all leads</p>
-              <input
-                  type="number"
-                  min={1}
-                  max={1000}
-                  value={chatSettings.campaign_frequency.max_daily_messages}
-                  onChange={(e) =>
-                      setChatSettings((prev) => ({
-                        ...prev,
-                        campaign_frequency: {
-                          ...prev.campaign_frequency,
-                          max_daily_messages: parseInt(e.target.value) || 50,
-                        },
-                      }))
-                  }
-                  className="w-32 px-3 py-2 text-sm border border-gray-200 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
-              />
-            </div>
-
-            <div className="flex justify-end pt-2">
-              <button
-                  onClick={handleSaveCampaign}
-                  disabled={savingSettings}
-                  className="flex items-center gap-1.5 px-5 py-2.5 text-sm font-semibold text-white bg-[#0B1957] dark:bg-blue-600 rounded-xl hover:opacity-90 disabled:opacity-50 transition-all shadow-md active:scale-95"
-              >
-                {savingSettings ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                Save Campaign Settings
-              </button>
-            </div>
+          <div className="flex justify-end pt-2">
+            <button
+              onClick={handleSaveBehaviour}
+              disabled={savingBehaviour}
+              className="flex items-center gap-1.5 px-5 py-2.5 text-sm font-semibold text-white bg-[#0B1957] dark:bg-blue-600 rounded-xl hover:opacity-90 disabled:opacity-50 transition-all shadow-md active:scale-95"
+            >
+              {savingBehaviour ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Save Behaviour
+            </button>
           </div>
         </div>
+      </div>
 
-        {/* ── Section 6: Post-Conversation Follow-up Timing ────────── */}
-        <div className="bg-white dark:bg-[#030a21]/60 rounded-lg border border-gray-200 dark:border-blue-950/40 shadow-sm">
-          <div className="p-6 border-b border-gray-100 dark:border-blue-950/40">
-            <div className="flex items-center gap-2 mb-1">
-              <Bell className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Post-Conversation Follow-ups</h2>
-            </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Configure when automated follow-up messages are sent after a conversation ends.
-              Each stage fires once at the scheduled delay.
-            </p>
+      {/* ── Section 5: Campaign Settings ──────────────────────────── */}
+      <div className="bg-white dark:bg-[#030a21]/60 rounded-lg border border-gray-200 dark:border-blue-950/40 shadow-sm">
+        <div className="p-6 border-b border-gray-100 dark:border-blue-950/40">
+          <div className="flex items-center gap-2 mb-1">
+            <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Campaign Settings</h2>
           </div>
-          <div className="p-6 space-y-5">
-            {/* Master enable */}
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Enable Post-Conversation Follow-ups</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  Automatically send follow-up messages when a customer stops responding
-                </p>
-              </div>
-              <button
-                  onClick={() => setFollowupConfig((prev) => ({ ...prev, enabled: !prev.enabled }))}
-              >
-                {followupConfig.enabled ? (
-                    <ToggleRight className="h-6 w-6 text-blue-500 dark:text-blue-400" />
-                ) : (
-                    <ToggleLeft className="h-6 w-6 text-gray-300 dark:text-gray-600" />
-                )}
-              </button>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Configure automated campaign frequency and limits.
+          </p>
+        </div>
+        <div className="p-6 space-y-5">
+          {/* Enable toggle */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Enable Automated Campaigns</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Send automated follow-up messages to leads</p>
             </div>
+            <button
+              onClick={() =>
+                setChatSettings((prev) => ({
+                  ...prev,
+                  campaign_frequency: {
+                    ...prev.campaign_frequency,
+                    enabled: !prev.campaign_frequency.enabled,
+                  },
+                }))
+              }
+            >
+              {chatSettings.campaign_frequency.enabled ? (
+                <ToggleRight className="h-6 w-6 text-blue-500 dark:text-blue-400" />
+              ) : (
+                <ToggleLeft className="h-6 w-6 text-gray-300 dark:text-gray-600" />
+              )}
+            </button>
+          </div>
 
-            {/* Stage timing table */}
-            <div className="border border-gray-100 dark:border-blue-950/40 rounded-lg overflow-x-auto custom-scrollbar">
-              <table className="w-full min-w-[600px]">
-                <thead className="bg-gray-50 dark:bg-[#051139] border-b border-gray-100 dark:border-blue-950/40">
+          {/* Interval hours */}
+          <div>
+            <label className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">
+              Message Interval (hours)
+            </label>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Minimum time between automated messages to the same lead</p>
+            <input
+              type="number"
+              min={1}
+              max={168}
+              value={chatSettings.campaign_frequency.interval_hours}
+              onChange={(e) =>
+                setChatSettings((prev) => ({
+                  ...prev,
+                  campaign_frequency: {
+                    ...prev.campaign_frequency,
+                    interval_hours: parseInt(e.target.value) || 24,
+                  },
+                }))
+              }
+              className="w-32 px-3 py-2 text-sm border border-gray-200 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+            />
+          </div>
+
+          {/* Max daily messages */}
+          <div>
+            <label className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">
+              Max Daily Messages
+            </label>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Maximum number of automated messages sent per day across all leads</p>
+            <input
+              type="number"
+              min={1}
+              max={1000}
+              value={chatSettings.campaign_frequency.max_daily_messages}
+              onChange={(e) =>
+                setChatSettings((prev) => ({
+                  ...prev,
+                  campaign_frequency: {
+                    ...prev.campaign_frequency,
+                    max_daily_messages: parseInt(e.target.value) || 50,
+                  },
+                }))
+              }
+              className="w-32 px-3 py-2 text-sm border border-gray-200 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+            />
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <button
+              onClick={handleSaveCampaign}
+              disabled={savingSettings}
+              className="flex items-center gap-1.5 px-5 py-2.5 text-sm font-semibold text-white bg-[#0B1957] dark:bg-blue-600 rounded-xl hover:opacity-90 disabled:opacity-50 transition-all shadow-md active:scale-95"
+            >
+              {savingSettings ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Save Campaign Settings
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Section 6: Post-Conversation Follow-up Timing ────────── */}
+      <div className="bg-white dark:bg-[#030a21]/60 rounded-lg border border-gray-200 dark:border-blue-950/40 shadow-sm">
+        <div className="p-6 border-b border-gray-100 dark:border-blue-950/40">
+          <div className="flex items-center gap-2 mb-1">
+            <Bell className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Post-Conversation Follow-ups</h2>
+          </div>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Configure when automated follow-up messages are sent after a conversation ends.
+            Each stage fires once at the scheduled delay.
+          </p>
+        </div>
+        <div className="p-6 space-y-5">
+          {/* Master enable */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Enable Post-Conversation Follow-ups</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                Automatically send follow-up messages when a customer stops responding
+              </p>
+            </div>
+            <button
+              onClick={() => setFollowupConfig((prev) => ({ ...prev, enabled: !prev.enabled }))}
+            >
+              {followupConfig.enabled ? (
+                <ToggleRight className="h-6 w-6 text-blue-500 dark:text-blue-400" />
+              ) : (
+                <ToggleLeft className="h-6 w-6 text-gray-300 dark:text-gray-600" />
+              )}
+            </button>
+          </div>
+
+          {/* Stage timing table */}
+          <div className="border border-gray-100 dark:border-blue-950/40 rounded-lg overflow-x-auto custom-scrollbar">
+            <table className="w-full min-w-[600px]">
+              <thead className="bg-gray-50 dark:bg-[#051139] border-b border-gray-100 dark:border-blue-950/40">
                 <tr>
                   <th className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3 w-32">Stage</th>
                   <th className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Description</th>
@@ -1867,94 +1871,94 @@ export function ChatSettings() {
                   <th className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3 w-56">WhatsApp Template</th>
                   <th className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3 w-20">Enabled</th>
                 </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 dark:divide-blue-950/40">
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-blue-950/40">
                 {(
-                    [
-                      { key: 'FIRST',  label: '1st Follow-up', desc: 'Warm first check-in',           color: 'text-green-600 bg-green-50 dark:text-emerald-400 dark:bg-emerald-950/30' },
-                      { key: 'SECOND', label: '2nd Follow-up', desc: 'Value offer / nudge',            color: 'text-yellow-600 bg-yellow-50 dark:text-yellow-400 dark:bg-yellow-950/20' },
-                      { key: 'THIRD',  label: '3rd Follow-up', desc: 'Non-pushy check-in (1 week)',    color: 'text-orange-600 bg-orange-50 dark:text-orange-400 dark:bg-orange-950/20' },
-                      { key: 'FOURTH', label: 'Final message', desc: 'Warm goodbye (2 weeks)',         color: 'text-red-600 bg-red-50 dark:text-rose-400 dark:bg-rose-950/30' },
-                    ] as Array<{ key: keyof FollowupTimingConfig['stages']; label: string; desc: string; color: string }>
+                  [
+                    { key: 'FIRST',  label: '1st Follow-up', desc: 'Warm first check-in',           color: 'text-green-600 bg-green-50 dark:text-emerald-400 dark:bg-emerald-950/30' },
+                    { key: 'SECOND', label: '2nd Follow-up', desc: 'Value offer / nudge',            color: 'text-yellow-600 bg-yellow-50 dark:text-yellow-400 dark:bg-yellow-950/20' },
+                    { key: 'THIRD',  label: '3rd Follow-up', desc: 'Non-pushy check-in (1 week)',    color: 'text-orange-600 bg-orange-50 dark:text-orange-400 dark:bg-orange-950/20' },
+                    { key: 'FOURTH', label: 'Final message', desc: 'Warm goodbye (2 weeks)',         color: 'text-red-600 bg-red-50 dark:text-rose-400 dark:bg-rose-950/30' },
+                  ] as Array<{ key: keyof FollowupTimingConfig['stages']; label: string; desc: string; color: string }>
                 ).map(({ key, label, desc, color }) => {
                   const stage = followupConfig.stages[key];
                   // Past 24h, free text is blocked by Meta — flag stages that need a template
                   const needsTemplate = stage.delay_hours > 24;
                   const templateMissing = needsTemplate && !(stage.template_name || '').trim();
                   return (
-                      <tr key={key} className={`dark:bg-transparent ${!followupConfig.enabled ? 'opacity-50' : ''}`}>
-                        <td className="px-4 py-3">
+                    <tr key={key} className={`dark:bg-transparent ${!followupConfig.enabled ? 'opacity-50' : ''}`}>
+                      <td className="px-4 py-3">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${color}`}>
                           {label}
                         </span>
-                        </td>
-                        <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">{desc}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-1.5">
-                            <input
-                                type="number"
-                                min={1}
-                                max={720}
-                                value={stage.delay_hours}
-                                disabled={!followupConfig.enabled || !stage.enabled}
-                                onChange={(e) => updateStage(key, 'delay_hours', parseInt(e.target.value) || 24)}
-                                className="w-20 px-2 py-1.5 text-sm border border-gray-200 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 disabled:opacity-40 disabled:bg-gray-50"
-                            />
-                            <span className="text-xs text-gray-400 dark:text-gray-500">h</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <select
-                              value={stage.template_name || ''}
-                              disabled={!followupConfig.enabled || !stage.enabled || loadingTemplates}
-                              onChange={(e) => updateStage(key, 'template_name', e.target.value)}
-                              className={`w-full pl-3 pr-10 py-2 text-sm border rounded-xl bg-white dark:bg-[#030a21] dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 disabled:opacity-40 disabled:bg-gray-50 transition-all appearance-none ${
-                                  templateMissing ? 'border-red-300 text-red-900 dark:text-rose-400' : 'border-gray-200 dark:border-blue-950/60'
-                              }`}
-                              style={{
-                                backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
-                                backgroundPosition: 'right 0.5rem center',
-                                backgroundRepeat: 'no-repeat',
-                                backgroundSize: '1.5em 1.5em'
-                              }}
-                              title={
-                                needsTemplate
-                                    ? 'Required: Meta blocks free-text replies after 24 h'
-                                    : 'Optional: leave blank to use AI-generated reply within 24 h window'
-                              }
-                          >
-                            <option value="" className="dark:bg-[#030a21]">
-                              {loadingTemplates
-                                  ? 'Loading templates…'
-                                  : needsTemplate
-                                      ? '— Pick a template (required) —'
-                                      : '— AI-generated (within 24 h) —'}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">{desc}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            min={1}
+                            max={720}
+                            value={stage.delay_hours}
+                            disabled={!followupConfig.enabled || !stage.enabled}
+                            onChange={(e) => updateStage(key, 'delay_hours', parseInt(e.target.value) || 24)}
+                            className="w-20 px-2 py-1.5 text-sm border border-gray-200 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 disabled:opacity-40 disabled:bg-gray-50"
+                          />
+                          <span className="text-xs text-gray-400 dark:text-gray-500">h</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <select
+                          value={stage.template_name || ''}
+                          disabled={!followupConfig.enabled || !stage.enabled || loadingTemplates}
+                          onChange={(e) => updateStage(key, 'template_name', e.target.value)}
+                          className={`w-full pl-3 pr-10 py-2 text-sm border rounded-xl bg-white dark:bg-[#030a21] dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 disabled:opacity-40 disabled:bg-gray-50 transition-all appearance-none ${
+                            templateMissing ? 'border-red-300 text-red-900 dark:text-rose-400' : 'border-gray-200 dark:border-blue-950/60'
+                          }`}
+                          style={{
+                            backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+                            backgroundPosition: 'right 0.5rem center',
+                            backgroundRepeat: 'no-repeat',
+                            backgroundSize: '1.5em 1.5em'
+                          }}
+                          title={
+                            needsTemplate
+                              ? 'Required: Meta blocks free-text replies after 24 h'
+                              : 'Optional: leave blank to use AI-generated reply within 24 h window'
+                          }
+                        >
+                          <option value="" className="dark:bg-[#030a21]">
+                            {loadingTemplates
+                              ? 'Loading templates…'
+                              : needsTemplate
+                                ? '— Pick a template (required) —'
+                                : '— AI-generated (within 24 h) —'}
+                          </option>
+                          {approvedTemplates.map((t) => (
+                            <option key={`${t.name}-${t.language}`} value={t.name} className="dark:bg-[#030a21]">
+                              {t.name} {t.parameter_count > 0 ? `({{${t.parameter_count}}})` : ''}
                             </option>
-                            {approvedTemplates.map((t) => (
-                                <option key={`${t.name}-${t.language}`} value={t.name} className="dark:bg-[#030a21]">
-                                  {t.name} {t.parameter_count > 0 ? `({{${t.parameter_count}}})` : ''}
-                                </option>
-                            ))}
-                          </select>
-                          {templateMissing && (
-                              <p className="text-[10px] text-red-600 dark:text-rose-400 mt-1">
-                                Required — delays past 24 h need an approved template
-                              </p>
+                          ))}
+                        </select>
+                        {templateMissing && (
+                          <p className="text-[10px] text-red-600 dark:text-rose-400 mt-1">
+                            Required — delays past 24 h need an approved template
+                          </p>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <button
+                          disabled={!followupConfig.enabled}
+                          onClick={() => updateStage(key, 'enabled', !stage.enabled)}
+                        >
+                          {stage.enabled ? (
+                            <ToggleRight className="h-5 w-5 text-blue-500 dark:text-blue-400 disabled:opacity-40" />
+                          ) : (
+                            <ToggleLeft className="h-5 w-5 text-gray-300 dark:text-gray-600" />
                           )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <button
-                              disabled={!followupConfig.enabled}
-                              onClick={() => updateStage(key, 'enabled', !stage.enabled)}
-                          >
-                            {stage.enabled ? (
-                                <ToggleRight className="h-5 w-5 text-blue-500 dark:text-blue-400 disabled:opacity-40" />
-                            ) : (
-                                <ToggleLeft className="h-5 w-5 text-gray-300 dark:text-gray-600" />
-                            )}
-                          </button>
-                        </td>
-                      </tr>
+                        </button>
+                      </td>
+                    </tr>
                   );
                 })}
               </tbody>
@@ -1966,7 +1970,7 @@ export function ChatSettings() {
             )}
           </div>
 
-          {/* Booking reminders */}
+          {/* Booking reminders — list of N pre-booking nudges */}
           <div className="border border-gray-100 dark:border-blue-950/40 rounded-lg p-4 bg-gray-50/40 dark:bg-[#061033]/20 space-y-3">
             <div>
               <label className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">
@@ -2094,26 +2098,26 @@ export function ChatSettings() {
             </p>
           </div>
 
-            {/* Reliability indicator */}
-            <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-950/20 rounded-md border border-blue-100 dark:border-blue-900/40">
-              <Zap className="h-4 w-4 text-blue-500 dark:text-blue-400 flex-shrink-0" />
-              <p className="text-xs text-blue-700 dark:text-blue-400">
-                Follow-ups are delivered reliably even if the server restarts.
-              </p>
-            </div>
+          {/* Reliability indicator */}
+          <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-950/20 rounded-md border border-blue-100 dark:border-blue-900/40">
+            <Zap className="h-4 w-4 text-blue-500 dark:text-blue-400 flex-shrink-0" />
+            <p className="text-xs text-blue-700 dark:text-blue-400">
+              Follow-ups are delivered reliably even if the server restarts.
+            </p>
+          </div>
 
-            <div className="flex justify-end pt-2">
-              <button
-                  onClick={handleSaveFollowup}
-                  disabled={savingFollowup}
-                  className="flex items-center gap-1.5 px-5 py-2.5 text-sm font-semibold text-white bg-[#0B1957] dark:bg-blue-600 rounded-xl hover:opacity-90 disabled:opacity-50 transition-all shadow-md active:scale-95"
-              >
-                {savingFollowup ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                Save Follow-up Settings
-              </button>
-            </div>
+          <div className="flex justify-end pt-2">
+            <button
+              onClick={handleSaveFollowup}
+              disabled={savingFollowup}
+              className="flex items-center gap-1.5 px-5 py-2.5 text-sm font-semibold text-white bg-[#0B1957] dark:bg-blue-600 rounded-xl hover:opacity-90 disabled:opacity-50 transition-all shadow-md active:scale-95"
+            >
+              {savingFollowup ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Save Follow-up Settings
+            </button>
           </div>
         </div>
+      </div>
 
       {/* ── Section 7: LinkedIn Automation ──────────────────────── */}
       <div className="bg-white dark:bg-[#030a21]/60 rounded-lg border border-gray-200 dark:border-blue-950/40 shadow-sm">
@@ -2352,18 +2356,16 @@ export function ChatSettings() {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       {/* AI Playground side panel — opens over current page */}
-        {playgroundOpen && typeof window !== 'undefined' && createPortal(
-            <>
-              {/* Backdrop layer to capture clicks outside the drawer */}
-              <div
-                  className="fixed inset-0 z-[140] bg-black/40 backdrop-blur-sm transition-opacity animate-in fade-in"
-                  onClick={() => setPlaygroundOpen(false)}
-              />
-              {/* Mount the playground cleanly. Its inner motion.div will automatically place it right here */}
-              <AIPlayground onClose={() => setPlaygroundOpen(false)} />
-            </>,
+      {playgroundOpen && typeof window !== 'undefined' && createPortal(
+        <>
+          <div
+            className="fixed inset-0 z-[140] bg-black/40 backdrop-blur-sm transition-opacity animate-in fade-in"
+            onClick={() => setPlaygroundOpen(false)}
+          />
+            <AIPlayground onClose={() => setPlaygroundOpen(false)} />
+          </>,
             document.body
-        )}
+      )}
     </div>
   );
 }
