@@ -22,6 +22,7 @@ import {
   Linkedin,
   Loader2,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 /**
  * Microsoft Outlook brand glyph (inline SVG so no extra dependency is added).
@@ -213,7 +214,7 @@ export default function EmployeeCard({
                   </Badge>
                 )}
                 {!employee.title && employee.company && (
-                  <span className="line-clamp-1 break-words">{employee.company}</span>
+                  <span className="line-clamp-1 break-words text-slate-500 dark:text-[#7a8ba3]">{employee.company}</span>
                 )}
               </div>
             )}
@@ -230,8 +231,8 @@ export default function EmployeeCard({
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="bg-[#0b1957] rounded-full p-1.5 flex items-center justify-center flex-shrink-0 cursor-default">
-                      <Phone className="w-4 h-4 text-white" />
+                    <div className="bg-[#0b1957] dark:bg-[#2b7cff]/10 rounded-full p-1.5 flex items-center justify-center flex-shrink-0 cursor-default">
+                      <Phone className="w-4 h-4 text-white dark:text-[#2b7cff]" />
                     </div>
                   </TooltipTrigger>
                   <TooltipContent side="top">Phone</TooltipContent>
@@ -262,14 +263,14 @@ export default function EmployeeCard({
                           }
                         }}
                         disabled={phoneLoading || phoneRevealed}
-                        className="bg-gray-50 dark:bg-[#253456] border border-gray-200 dark:border-[#262831] hover:bg-gray-50 hover:border-[#0b1957] p-1.5 h-7 w-7 flex-shrink-0"
+                        className="bg-gray-50 dark:bg-[#1a2a43] border border-gray-200 dark:border-[#262831] hover:bg-gray-100 dark:hover:bg-[#2b7cff]/20 p-1.5 h-7 w-7 flex-shrink-0 text-[#0b1957] dark:text-white"
                       >
                         {phoneLoading ? (
-                          <Loader2 className="h-5 w-5 text-[#0b1957] animate-spin" />
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                         ) : phoneRevealed ? (
-                          <CheckCircle className="h-5 w-5 text-[#0b1957]" />
+                          <CheckCircle className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />
                         ) : (
-                          <Lock className="h-5 w-5 text-[#0b1957]" />
+                          <Lock className="h-4 w-4" />
                         )}
                       </Button>
                     </TooltipTrigger>
@@ -289,8 +290,8 @@ export default function EmployeeCard({
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="bg-[#0b1957] rounded-full p-1.5 flex items-center justify-center flex-shrink-0 cursor-default">
-                      <Mail className="w-4 h-4 text-white" />
+                    <div className="bg-[#0b1957] dark:bg-[#2b7cff]/10 rounded-full p-1.5 flex items-center justify-center flex-shrink-0 cursor-default">
+                      <Mail className="w-4 h-4 text-white dark:text-[#2b7cff]" />
                     </div>
                   </TooltipTrigger>
                   <TooltipContent side="top">Personal email</TooltipContent>
@@ -324,11 +325,11 @@ export default function EmployeeCard({
                         className="bg-gray-50 dark:bg-[#253456] border border-gray-200 dark:border-[#262831] hover:bg-gray-50 hover:border-[#0b1957] p-1.5 h-7 w-7 flex-shrink-0"
                       >
                         {emailLoading ? (
-                          <Loader2 className="h-5 w-5 text-[#0b1957] animate-spin" />
+                          <Loader2 className="h-5 w-5 text-[#0b1957] animate-spin text-muted-foreground" />
                         ) : emailRevealed ? (
-                          <CheckCircle className="h-5 w-5 text-[#0b1957]" />
+                          <CheckCircle className="h-5 w-5 text-emerald-500 dark:text-emerald-400" />
                         ) : (
-                          <Lock className="h-5 w-5 text-[#0b1957]" />
+                          <Lock className="h-5 w-5" />
                         )}
                       </Button>
                     </TooltipTrigger>
@@ -367,8 +368,8 @@ export default function EmployeeCard({
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <div className="bg-gray-50 border border-gray-200 p-1.5 h-7 w-7 flex items-center justify-center rounded-md flex-shrink-0">
-                        <CheckCircle className="h-5 w-5 text-[#0b1957]" />
+                      <div className="bg-gray-50 dark:bg-[#1a2a43] border border-gray-200 dark:border-[#262831] p-1.5 h-7 w-7 flex items-center justify-center rounded-md flex-shrink-0">
+                        <CheckCircle className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />
                       </div>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -382,15 +383,15 @@ export default function EmployeeCard({
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <div className="bg-[#0b1957] rounded-full p-1.5 flex items-center justify-center flex-shrink-0 cursor-default">
-                        <OutlookIcon className="w-4 h-4 text-white" />
+                      <div className="bg-[#0b1957] dark:bg-[#2b7cff]/10 rounded-full p-1.5 flex items-center justify-center flex-shrink-0 cursor-default">
+                        <OutlookIcon className="w-4 h-4 text-white dark:text-[#2b7cff]" />
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="top">Official email</TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
                 <span
-                  className="text-xs flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-gray-600 tracking-wide blur-sm select-none"
+                  className="text-xs flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-slate-400 dark:text-slate-500 tracking-wide blur-[3px] select-none"
                 >
                   official@company.com
                 </span>
@@ -405,18 +406,18 @@ export default function EmployeeCard({
                           handleRevealOfficialEmail?.(employee);
                         }}
                         disabled={officialEmailLoading}
-                        className="bg-gray-50 border border-gray-200 hover:bg-gray-50 hover:border-[#0b1957] p-1.5 h-7 w-7 flex-shrink-0"
+                        className="bg-gray-50 dark:bg-[#1a2a43] border border-gray-200 dark:border-[#262831] hover:bg-gray-100 dark:hover:bg-[#2b7cff]/20 p-1.5 h-7 w-7 flex-shrink-0 text-[#0b1957] dark:text-white"
                       >
                         {officialEmailLoading ? (
-                          <Loader2 className="h-5 w-5 text-[#0b1957] animate-spin" />
+                          <Loader2 className="h-5 w-5 text-[#0b1957] animate-spin text-muted-foreground" />
                         ) : (
-                          <Lock className="h-5 w-5 text-[#0b1957]" />
+                          <Lock className="h-5 w-5" />
                         )}
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="top" className="max-w-[260px]">
-                      <p className="font-semibold mb-0.5">Click to reveal official email</p>
-                      <p className="text-xs text-slate-200">
+                      <p className="font-semibold mb-0.5 text-slate-900 dark:text-white">Click to reveal official email</p>
+                      <p className="text-xs text-slate-500 dark:text-[#7a8ba3]">
                         Searches Fullenrich for the lead&apos;s corporate address
                         {personalDomain ? ` (the ${personalDomain} address looks personal)` : ''}.
                         Costs 2 credits on success.
@@ -453,7 +454,7 @@ export default function EmployeeCard({
                 </a>
               ) : (
                 <span
-                  className="text-xs flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-gray-600 dark:text-gray-400 tracking-wide blur-sm select-none"
+                  className="text-xs flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-slate-400 dark:text-slate-500 tracking-wide blur-[3px] select-none"
                 >
                   linkedin.com/in/...
                 </span>
@@ -472,14 +473,14 @@ export default function EmployeeCard({
                           }
                         }}
                         disabled={linkedinLoading || linkedinRevealed}
-                        className="bg-gray-50 dark:bg-[#253456] border border-gray-200 dark:border-[#262831] hover:bg-gray-50 hover:border-[#0077b5] p-1.5 h-7 w-7 flex-shrink-0"
+                        className="bg-gray-50 dark:bg-[#1a2a43] border border-gray-200 dark:border-[#262831] hover:bg-gray-100 dark:hover:bg-[#0077b5]/20 p-1.5 h-7 w-7 flex-shrink-0 text-[#0077b5] dark:text-white"
                       >
                         {linkedinLoading ? (
-                          <Loader2 className="h-5 w-5 text-[#0077b5] animate-spin" />
+                          <Loader2 className="h-5 w-5 text-[#0077b5] animate-spin text-muted-foreground" />
                         ) : linkedinRevealed ? (
-                          <CheckCircle className="h-5 w-5 text-[#0077b5]" />
+                          <CheckCircle className="h-5 w-5 text-emerald-500 dark:text-emerald-400" />
                         ) : (
-                          <Lock className="h-5 w-5 text-[#0077b5]" />
+                          <Lock className="h-5 w-5" />
                         )}
                       </Button>
                     </TooltipTrigger>
@@ -541,7 +542,7 @@ export default function EmployeeCard({
                   e.stopPropagation();
                   onViewSummary(employee);
                 }}
-                className="w-full border-[#0b1957] text-[#0b1957] font-semibold text-sm py-2 hover:border-[#0b1957] hover:bg-[#0b1957]/5"
+                className="w-full border-[#0b1957] dark:border-[#2b7cff] text-[#0b1957] dark:text-[#2b7cff] font-semibold text-sm py-2 hover:bg-[#0b1957]/5 dark:hover:bg-[#2b7cff]/10"
               >
                 <FileText className="w-4 h-4 mr-2" />
                 Generate Summary
