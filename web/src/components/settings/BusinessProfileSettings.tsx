@@ -162,225 +162,225 @@ export const BusinessProfileSettings: React.FC = () => {
 
   if (loading) {
     return (
-        <div className="min-h-[40vh] flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0B1957] dark:border-blue-400" />
-        </div>
+      <div className="min-h-[40vh] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0B1957] dark:border-blue-400" />
+      </div>
     );
   }
 
   return (
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-gray-200 dark:border-slate-800 p-6">
-          <div className="flex items-start gap-4">
-            <div className="w-10 h-10 rounded-xl grid place-items-center bg-[#e8ebf7] dark:bg-slate-800">
-              <Target className="w-5 h-5 text-[#0B1957] dark:text-blue-400" />
-            </div>
-            <div className="flex-1">
-              <h2 className="text-gray-900 dark:text-slate-100 text-xl font-semibold">Business Profile</h2>
-              <p className="text-gray-600 dark:text-slate-400 text-sm mt-1">
-                The 14 fields that power ICP Discovery, lead scoring, and message personalisation.
-                The wizard fills these in; edit anything here whenever your positioning changes.
-              </p>
-            </div>
-            <div className="text-right">
-              <div className="text-xs text-gray-500 dark:text-slate-400 font-medium">Profile completeness</div>
-              <div
-                  className={`text-lg font-bold ${
-                      completeness.pct >= 70 ? 'text-emerald-600 dark:text-emerald-400' : 'text-[#0B1957] dark:text-blue-400'
-                  }`}
-              >
-                {completeness.pct}% ({completeness.filled}/{completeness.total})
-              </div>
-            </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-gray-200 dark:border-slate-800 p-6">
+        <div className="flex items-start gap-4">
+          <div className="w-10 h-10 rounded-xl grid place-items-center bg-[#e8ebf7] dark:bg-slate-800">
+            <Target className="w-5 h-5 text-[#0B1957] dark:text-blue-400" />
           </div>
-          <div className="mt-4 h-1.5 rounded-full bg-gray-100 dark:bg-slate-800 overflow-hidden">
+          <div className="flex-1">
+            <h2 className="text-gray-900 dark:text-slate-100 text-xl font-semibold">Business Profile</h2>
+            <p className="text-gray-600 dark:text-slate-400 text-sm mt-1">
+              The 14 fields that power ICP Discovery, lead scoring, and message personalisation.
+              The wizard fills these in; edit anything here whenever your positioning changes.
+            </p>
+          </div>
+          <div className="text-right">
+            <div className="text-xs text-gray-500 dark:text-slate-400 font-medium">Profile completeness</div>
             <div
-                className="h-full rounded-full transition-all duration-500"
-                style={{
-                  width: `${completeness.pct}%`,
-                  background:
-                      completeness.pct >= 70
-                          ? 'linear-gradient(90deg,#10b981,#059669)'
-                          : 'linear-gradient(90deg,#0b1957,#2563eb)',
-                }}
-            />
+              className={`text-lg font-bold ${
+                completeness.pct >= 70 ? 'text-emerald-600 dark:text-emerald-400' : 'text-[#0B1957] dark:text-blue-400'
+              }`}
+            >
+              {completeness.pct}% ({completeness.filled}/{completeness.total})
+            </div>
           </div>
         </div>
+        <div className="mt-4 h-1.5 rounded-full bg-gray-100 dark:bg-slate-800 overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all duration-500"
+            style={{
+              width: `${completeness.pct}%`,
+              background:
+                completeness.pct >= 70
+                  ? 'linear-gradient(90deg,#10b981,#059669)'
+                  : 'linear-gradient(90deg,#0b1957,#2563eb)',
+            }}
+          />
+        </div>
+      </div>
 
-        {/* Company basics — merged in from the former Company tab. Operational
+      {/* Company basics — merged in from the former Company tab. Operational
           fields (logo, location, hours) that aren't part of the 14-field ICP. */}
-        <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-gray-200 dark:border-slate-800 p-6">
-          <h3 className="text-gray-900 dark:text-slate-100 text-base font-semibold flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-[#0B1957] dark:text-blue-400" />
-            Company basics
-          </h3>
-          <p className="text-gray-500 dark:text-slate-400 text-xs mt-0.5 mb-4">Logo, location, and operating hours.</p>
+      <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-gray-200 dark:border-slate-800 p-6">
+        <h3 className="text-gray-900 dark:text-slate-100 text-base font-semibold flex items-center gap-2">
+          <Building2 className="w-4 h-4 text-[#0B1957] dark:text-blue-400" />
+          Company basics
+        </h3>
+        <p className="text-gray-500 dark:text-slate-400 text-xs mt-0.5 mb-4">Logo, location, and operating hours.</p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Logo */}
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 grid place-items-center flex-shrink-0">
-                {settings.companyLogo ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={settings.companyLogo} alt="Company logo" className="w-full h-full object-cover" />
-                ) : (
-                    <Building2 className="w-6 h-6 text-gray-300 dark:text-slate-600" />
-                )}
-              </div>
-              <div>
-                <span className="text-[12px] font-semibold text-[#172560] dark:text-slate-200 block mb-1.5">Company logo</span>
-                <label className="inline-flex items-center gap-1.5 px-3 h-9 rounded-lg border border-slate-200 dark:border-slate-700 text-[12px] font-medium text-[#0B1957] dark:text-blue-400 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition">
-                  <Upload className="w-3.5 h-3.5" />
-                  Upload
-                  <input type="file" accept="image/*" className="hidden" onChange={onLogoPick} />
-                </label>
-              </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Logo */}
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 grid place-items-center flex-shrink-0">
+              {settings.companyLogo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={settings.companyLogo} alt="Company logo" className="w-full h-full object-cover" />
+              ) : (
+                <Building2 className="w-6 h-6 text-gray-300 dark:text-slate-600" />
+              )}
             </div>
+            <div>
+              <span className="text-[12px] font-semibold text-[#172560] dark:text-slate-200 block mb-1.5">Company logo</span>
+              <label className="inline-flex items-center gap-1.5 px-3 h-9 rounded-lg border border-slate-200 dark:border-slate-700 text-[12px] font-medium text-[#0B1957] dark:text-blue-400 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition">
+                <Upload className="w-3.5 h-3.5" />
+                Upload
+                <input type="file" accept="image/*" className="hidden" onChange={onLogoPick} />
+              </label>
+            </div>
+          </div>
 
-            {/* Location */}
-            <label className="flex flex-col">
+          {/* Location */}
+          <label className="flex flex-col">
             <span className="text-[12px] font-semibold text-[#172560] dark:text-slate-200 inline-flex items-center gap-1.5">
               <MapPin className="w-3.5 h-3.5 text-[#0B1957] dark:text-blue-400" /> Company location
             </span>
-              <span className="block text-[11.5px] text-slate-500 dark:text-slate-400 mt-0.5">Where your business is based.</span>
-              <div className="mt-auto pt-1.5 flex gap-2">
-                <input
-                    type="text"
-                    value={location}
-                    placeholder="Dubai, UAE"
-                    onChange={(e) => { setLocation(e.target.value); setLocationSavedAt(null); }}
-                    className="flex-1 h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[13px] text-[#172560] dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#0B1957]/30 dark:focus:ring-blue-500/30"
-                />
-                <button
-                    onClick={saveLocation}
-                    className="h-10 px-3 rounded-lg text-[12px] font-semibold text-white bg-[#0B1957] dark:bg-blue-600 hover:opacity-95 transition"
-                >
-                  {locationSavedAt ? 'Saved' : 'Save'}
-                </button>
-              </div>
-            </label>
-
-            {/* Business hours — DB-backed via the settings API; edited in the modal */}
-            <div className="sm:col-span-2 flex items-center justify-between gap-4 rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-3">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-9 h-9 rounded-lg grid place-items-center flex-shrink-0 bg-[#e8ebf7] dark:bg-slate-800">
-                  <Clock className="w-4 h-4 text-[#0B1957] dark:text-blue-400" />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-[13px] font-semibold text-[#172560] dark:text-slate-200">Business hours</div>
-                  <div className="text-[12px] text-slate-500 dark:text-slate-400 truncate">{bhSummary(savedBH) || 'Not set'}</div>
-                </div>
-              </div>
+            <span className="block text-[11.5px] text-slate-500 dark:text-slate-400 mt-0.5">Where your business is based.</span>
+            <div className="mt-auto pt-1.5 flex gap-2">
+              <input
+                type="text"
+                value={location}
+                placeholder="Dubai, UAE"
+                onChange={(e) => { setLocation(e.target.value); setLocationSavedAt(null); }}
+                className="flex-1 h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[13px] text-[#172560] dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#0B1957]/30 dark:focus:ring-blue-500/30"
+              />
               <button
-                  onClick={() => setHoursOpen(true)}
-                  className="h-9 px-3 rounded-lg text-[12px] font-semibold text-[#0B1957] dark:text-blue-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 whitespace-nowrap transition"
+                onClick={saveLocation}
+                className="h-10 px-3 rounded-lg text-[12px] font-semibold text-white bg-[#0B1957] dark:bg-blue-600 hover:opacity-95 transition"
               >
-                {savedBH ? 'Edit' : 'Set hours'}
+                {locationSavedAt ? 'Saved' : 'Save'}
               </button>
             </div>
+          </label>
+
+          {/* Business hours — DB-backed via the settings API; edited in the modal */}
+          <div className="sm:col-span-2 flex items-center justify-between gap-4 rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-lg grid place-items-center flex-shrink-0 bg-[#e8ebf7] dark:bg-slate-800">
+                <Clock className="w-4 h-4 text-[#0B1957] dark:text-blue-400" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[13px] font-semibold text-[#172560] dark:text-slate-200">Business hours</div>
+                <div className="text-[12px] text-slate-500 dark:text-slate-400 truncate">{bhSummary(savedBH) || 'Not set'}</div>
+              </div>
+            </div>
+            <button
+              onClick={() => setHoursOpen(true)}
+              className="h-9 px-3 rounded-lg text-[12px] font-semibold text-[#0B1957] dark:text-blue-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 whitespace-nowrap transition"
+            >
+              {savedBH ? 'Edit' : 'Set hours'}
+            </button>
           </div>
         </div>
+      </div>
 
-        {/* Sections */}
-        {SECTIONS.map((section) => (
-            <div key={section.title} className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-gray-200 dark:border-slate-800 p-6">
-              <h3 className="text-gray-900 dark:text-slate-100 text-base font-semibold">{section.title}</h3>
-              <p className="text-gray-500 dark:text-slate-400 text-xs mt-0.5 mb-4">{section.subtitle}</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {section.keys.map((k) => {
-                  const copy: FieldSpec = { key: k, ...FIELD_COPY[k as string] } as FieldSpec;
-                  const value = typeof form[k] === 'string' ? (form[k] as string) : '';
-                  const isOptional = BUSINESS_PROFILE_OPTIONAL_FIELDS.has(k);
-                  return (
-                      <label key={k as string} className={`flex flex-col h-full ${copy.multiline ? 'sm:col-span-2' : ''}`}>
+      {/* Sections */}
+      {SECTIONS.map((section) => (
+        <div key={section.title} className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-gray-200 dark:border-slate-800 p-6">
+          <h3 className="text-gray-900 dark:text-slate-100 text-base font-semibold">{section.title}</h3>
+          <p className="text-gray-500 dark:text-slate-400 text-xs mt-0.5 mb-4">{section.subtitle}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {section.keys.map((k) => {
+              const copy: FieldSpec = { key: k, ...FIELD_COPY[k as string] } as FieldSpec;
+              const value = typeof form[k] === 'string' ? (form[k] as string) : '';
+              const isOptional = BUSINESS_PROFILE_OPTIONAL_FIELDS.has(k);
+              return (
+                <label key={k as string} className={`flex flex-col h-full ${copy.multiline ? 'sm:col-span-2' : ''}`}>
                   <span className="text-[12px] font-semibold text-[#172560] dark:text-slate-200 inline-flex items-center gap-1.5">
                     {copy.label}
                     {isOptional && (
-                        <span className="text-[10px] uppercase tracking-wide font-medium text-gray-400 dark:text-slate-500">
+                      <span className="text-[10px] uppercase tracking-wide font-medium text-gray-400 dark:text-slate-500">
                         optional
                       </span>
                     )}
                   </span>
-                        {copy.hint && (
-                            <span className="block text-[11.5px] text-slate-500 dark:text-slate-400 mt-0.5">{copy.hint}</span>
-                        )}
-                        {/* mt-auto pins the control to the bottom of the (stretched) grid
+                  {copy.hint && (
+                    <span className="block text-[11.5px] text-slate-500 dark:text-slate-400 mt-0.5">{copy.hint}</span>
+                  )}
+                  {/* mt-auto pins the control to the bottom of the (stretched) grid
                       cell so paired inputs line up even when one field has a hint
                       line and the other doesn't. */}
-                        <div className="mt-auto pt-1.5">
-                          {copy.multiline ? (
-                              <textarea
-                                  rows={3}
-                                  value={value}
-                                  placeholder={copy.placeholder}
-                                  onChange={(e) => setField(k, e.target.value)}
-                                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[13px] text-[#172560] dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#0B1957]/30 dark:focus:ring-blue-500/30定位 resize-none"
-                              />
-                          ) : (
-                              <input
-                                  type="text"
-                                  value={value}
-                                  placeholder={copy.placeholder}
-                                  onChange={(e) => setField(k, e.target.value)}
-                                  className="w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[13px] text-[#172560] dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#0B1957]/30 dark:focus:ring-blue-500/30"
-                              />
-                          )}
-                        </div>
-                      </label>
-                  );
-                })}
-              </div>
-            </div>
-        ))}
+                  <div className="mt-auto pt-1.5">
+                    {copy.multiline ? (
+                      <textarea
+                        rows={3}
+                        value={value}
+                        placeholder={copy.placeholder}
+                        onChange={(e) => setField(k, e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[13px] text-[#172560] dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#0B1957]/30 dark:focus:ring-blue-500/30定位 resize-none"
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        value={value}
+                        placeholder={copy.placeholder}
+                        onChange={(e) => setField(k, e.target.value)}
+                        className="w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[13px] text-[#172560] dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#0B1957]/30 dark:focus:ring-blue-500/30"
+                      />
+                    )}
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      ))}
 
-        {/* Footer: status + save */}
-        <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-gray-200 dark:border-slate-800 p-4 flex items-center justify-between">
-          <div className="text-sm">
-            {error ? (
-                <span className="text-red-600 dark:text-red-400 inline-flex items-center gap-1.5">
+      {/* Footer: status + save */}
+      <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-gray-200 dark:border-slate-800 p-4 flex items-center justify-between">
+        <div className="text-sm">
+          {error ? (
+            <span className="text-red-600 dark:text-red-400 inline-flex items-center gap-1.5">
               <AlertTriangle className="w-4 h-4" />
               Couldn&apos;t save: {error.message}
             </span>
-            ) : savedAt ? (
-                <span className="text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1.5">
+          ) : savedAt ? (
+            <span className="text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4" />
               Saved.
             </span>
-            ) : (
-                <span className="text-gray-500 dark:text-slate-400">Changes are saved when you click Save.</span>
-            )}
-          </div>
-          <button
-              onClick={handleSave}
-              disabled={saving}
-              className="h-10 px-4 rounded-lg text-[13px] font-semibold text-white inline-flex items-center gap-1.5 shadow-sm hover:opacity-95 transition disabled:opacity-50 disabled:cursor-not-allowed bg-[#0B1957] dark:bg-blue-600"
-          >
-            <Save className="w-4 h-4" />
-            {saving ? 'Saving…' : 'Save'}
-          </button>
+          ) : (
+            <span className="text-gray-500 dark:text-slate-400">Changes are saved when you click Save.</span>
+          )}
         </div>
-
-        {/* Business-hours editor (reused from the former Company tab) */}
-        {hoursOpen && (
-            <BusinessHoursModal
-                initialData={
-                  savedBH
-                      ? {
-                        startTime: savedBH.startTime,
-                        endTime: savedBH.endTime,
-                        timezone: savedBH.timezone,
-                        activeDays: savedBH.activeDays,
-                      }
-                      : undefined
-                }
-                onSave={(payload: BusinessHoursPayload) =>
-                    updateBH.mutate(payload, { onSuccess: () => setHoursOpen(false) })
-                }
-                onClose={() => setHoursOpen(false)}
-            />
-        )}
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="h-10 px-4 rounded-lg text-[13px] font-semibold text-white inline-flex items-center gap-1.5 shadow-sm hover:opacity-95 transition disabled:opacity-50 disabled:cursor-not-allowed bg-[#0B1957] dark:bg-blue-600"
+        >
+          <Save className="w-4 h-4" />
+          {saving ? 'Saving…' : 'Save'}
+        </button>
       </div>
+
+      {/* Business-hours editor (reused from the former Company tab) */}
+      {hoursOpen && (
+        <BusinessHoursModal
+          initialData={
+            savedBH
+              ? {
+                  startTime: savedBH.startTime,
+                  endTime: savedBH.endTime,
+                  timezone: savedBH.timezone,
+                  activeDays: savedBH.activeDays,
+                }
+              : undefined
+          }
+          onSave={(payload: BusinessHoursPayload) =>
+            updateBH.mutate(payload, { onSuccess: () => setHoursOpen(false) })
+          }
+          onClose={() => setHoursOpen(false)}
+        />
+      )}
+    </div>
   );
 };
 
