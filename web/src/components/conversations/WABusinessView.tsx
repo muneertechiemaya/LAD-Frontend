@@ -426,32 +426,32 @@ function ContactModal({ onClose, onSend }: { onClose: () => void; onSend: (p: Ri
     onSend({ type: 'contact', contactName: sanitizeInput(name.trim()), contactPhone: sanitizeInput(phone.trim()) });
   };
   return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-        <div className="bg-white dark:bg-[#0b142e] rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden border dark:border-[#262831]">
-          <div className="px-5 py-4 border-b dark:border-[#262831] flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-teal-500 flex items-center justify-center"><Phone className="w-4 h-4 text-white" /></div>
-              <h3 className="font-semibold text-gray-900 dark:text-white">Share Contact</h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="bg-white dark:bg-[#0b142e] rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden border dark:border-[#262831]">
+        <div className="px-5 py-4 border-b dark:border-[#262831] flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-teal-500 flex items-center justify-center"><Phone className="w-4 h-4 text-white" /></div>
+            <h3 className="font-semibold text-gray-900 dark:text-white">Share Contact</h3>
+          </div>
+          <button type="button" aria-label="Close" onClick={onClose}><X className="w-5 h-5 text-gray-400 dark:text-[#7a8ba3] hover:text-gray-600 dark:hover:text-white" /></button>
+        </div>
+        <div className="p-5 space-y-3">
+          {[{ label: 'Full Name *', value: name, set: setName, ph: 'John Doe' }, { label: 'Phone *', value: phone, set: setPhone, ph: '+971501234567' }].map(f => (
+            <div key={f.label}>
+              <label className="text-xs font-medium text-gray-500 dark:text-[#7a8ba3]">{f.label}</label>
+              <input value={f.value} onChange={e => f.set(e.target.value)} placeholder={f.ph}
+               className="mt-1 w-full px-3 py-2.5 border border-gray-200 dark:border-[#262831] bg-white dark:bg-[#1a2a43] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 rounded-xl text-sm focus:outline-none focus:border-teal-500 dark:focus:border-teal-500" />
             </div>
-            <button type="button" aria-label="Close" onClick={onClose}><X className="w-5 h-5 text-gray-400 dark:text-[#7a8ba3] hover:text-gray-600 dark:hover:text-white" /></button>
-          </div>
-          <div className="p-5 space-y-3">
-            {[{ label: 'Full Name *', value: name, set: setName, ph: 'John Doe' }, { label: 'Phone *', value: phone, set: setPhone, ph: '+971501234567' }].map(f => (
-                <div key={f.label}>
-                  <label className="text-xs font-medium text-gray-500 dark:text-[#7a8ba3]">{f.label}</label>
-                  <input value={f.value} onChange={e => f.set(e.target.value)} placeholder={f.ph}
-                         className="mt-1 w-full px-3 py-2.5 border border-gray-200 dark:border-[#262831] bg-white dark:bg-[#1a2a43] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 rounded-xl text-sm focus:outline-none focus:border-teal-500 dark:focus:border-teal-500" />
-                </div>
-            ))}
-          </div>
-          <div className="px-5 py-4 border-t dark:border-[#262831] flex justify-end">
-            <button type="button" onClick={handleSend} disabled={!name.trim() || !phone.trim()}
-                    className="px-4 py-2 text-sm font-semibold bg-teal-500 text-white rounded-xl hover:bg-teal-600 disabled:opacity-40 transition-colors">
-              Share Contact
-            </button>
-          </div>
+          ))}
+        </div>
+        <div className="px-5 py-4 border-t dark:border-[#262831] flex justify-end">
+          <button type="button" onClick={handleSend} disabled={!name.trim() || !phone.trim()}
+            className="px-4 py-2 text-sm font-semibold bg-teal-500 text-white rounded-xl hover:bg-teal-600 disabled:opacity-40 transition-colors">
+            Share Contact
+          </button>
         </div>
       </div>
+    </div>
   );
 }
 
@@ -465,42 +465,42 @@ function EventModal({ onClose, onSend }: { onClose: () => void; onSend: (p: Rich
     onSend({ type: 'text', content: sanitizeMessageContent(text) });
   };
   return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-        <div className="bg-white dark:bg-[#0b142e] rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden border dark:border-[#262831]">
-          <div className="px-5 py-4 border-b dark:border-[#262831] flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center"><Calendar className="w-4 h-4 text-white" /></div>
-              <h3 className="font-semibold text-gray-900 dark:text-white">Share Event</h3>
-            </div>
-            <button type="button" onClick={onClose}><X className="w-5 h-5 text-gray-400 dark:text-[#7a8ba3] hover:text-gray-600 dark:hover:text-white" /></button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="bg-white dark:bg-[#0b142e] rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden border dark:border-[#262831]">
+        <div className="px-5 py-4 border-b dark:border-[#262831] flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center"><Calendar className="w-4 h-4 text-white" /></div>
+            <h3 className="font-semibold text-gray-900 dark:text-white">Share Event</h3>
           </div>
-          <div className="p-5 space-y-3">
+          <button type="button" onClick={onClose}><X className="w-5 h-5 text-gray-400 dark:text-[#7a8ba3] hover:text-gray-600 dark:hover:text-white" /></button>
+        </div>
+        <div className="p-5 space-y-3">
+          <div>
+            <label className="text-xs font-medium text-gray-500 dark:text-[#7a8ba3]">Event Title *</label>
+            <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Team Meeting"
+              className="mt-1 w-full px-3 py-2.5 border border-gray-200 dark:border-[#262831] bg-white dark:bg-[#1a2a43] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 rounded-xl text-sm focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-500" />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-xs font-medium text-gray-500 dark:text-[#7a8ba3]">Event Title *</label>
-              <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Team Meeting"
-                     className="mt-1 w-full px-3 py-2.5 border border-gray-200 dark:border-[#262831] bg-white dark:bg-[#1a2a43] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 rounded-xl text-sm focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-500" />
+              <label htmlFor="event-date" className="text-xs font-medium text-gray-500 dark:text-[#7a8ba3]">Date *</label>
+              <input id="event-date" type="date" value={date} onChange={e => setDate(e.target.value)}
+                className="mt-1 w-full px-3 py-2.5 border border-gray-200 dark:border-[#262831] bg-white dark:bg-[#1a2a43] text-gray-900 dark:text-white rounded-xl text-sm focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-500 color-scheme-light dark:color-scheme-dark" />
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label htmlFor="event-date" className="text-xs font-medium text-gray-500 dark:text-[#7a8ba3]">Date *</label>
-                <input id="event-date" type="date" value={date} onChange={e => setDate(e.target.value)}
-                       className="mt-1 w-full px-3 py-2.5 border border-gray-200 dark:border-[#262831] bg-white dark:bg-[#1a2a43] text-gray-900 dark:text-white rounded-xl text-sm focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-500 color-scheme-light dark:color-scheme-dark" />
-              </div>
-              <div>
-                <label htmlFor="event-time" className="text-xs font-medium text-gray-500 dark:text-[#7a8ba3]">Time</label>
-                <input id="event-time" type="time" value={time} onChange={e => setTime(e.target.value)}
-                       className="mt-1 w-full px-3 py-2.5 border border-gray-200 dark:border-[#262831] bg-white dark:bg-[#1a2a43] text-gray-900 dark:text-white rounded-xl text-sm focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-500 color-scheme-light dark:color-scheme-dark" />
-              </div>
+            <div>
+              <label htmlFor="event-time" className="text-xs font-medium text-gray-500 dark:text-[#7a8ba3]">Time</label>
+              <input id="event-time" type="time" value={time} onChange={e => setTime(e.target.value)}
+                className="mt-1 w-full px-3 py-2.5 border border-gray-200 dark:border-[#262831] bg-white dark:bg-[#1a2a43] text-gray-900 dark:text-white rounded-xl text-sm focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-500 color-scheme-light dark:color-scheme-dark" />
             </div>
-          </div>
-          <div className="px-5 py-4 border-t dark:border-[#262831] flex justify-end">
-            <button type="button" onClick={handleSend} disabled={!title.trim() || !date}
-                    className="px-4 py-2 text-sm font-semibold bg-indigo-500 text-white rounded-xl hover:bg-indigo-600 disabled:opacity-40 transition-colors">
-              Share Event
-            </button>
           </div>
         </div>
+        <div className="px-5 py-4 border-t dark:border-[#262831] flex justify-end">
+          <button type="button" onClick={handleSend} disabled={!title.trim() || !date}
+            className="px-4 py-2 text-sm font-semibold bg-indigo-500 text-white rounded-xl hover:bg-indigo-600 disabled:opacity-40 transition-colors">
+            Share Event
+          </button>
+        </div>
       </div>
+    </div>
   );
 }
 
@@ -522,43 +522,41 @@ function LocationModal({ onClose, onSend }: { onClose: () => void; onSend: (p: R
     else if (manual.trim()) onSend({ type: 'location', locationName: sanitizeInput(manual.trim()), locationAddress: sanitizeInput(manual.trim()), latitude: 0, longitude: 0 });
   };
   return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-        <div className="bg-white dark:bg-[#0b142e] rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden border dark:border-[#262831]">
-          <div className="px-5 py-4 border-b dark:border-[#262831] flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center"><MapPin className="w-4 h-4 text-white" /></div>
-              <h3 className="font-semibold text-gray-900 dark:text-white">Share Location</h3>
-            </div>
-            <button type="button" onClick={onClose}><X className="w-5 h-5 text-gray-400 dark:text-[#7a8ba3] hover:text-gray-600 dark:hover:text-white" /></button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="bg-white dark:bg-[#0b142e] rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden border dark:border-[#262831]">
+        <div className="px-5 py-4 border-b dark:border-[#262831] flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center"><MapPin className="w-4 h-4 text-white" /></div>
+            <h3 className="font-semibold text-gray-900 dark:text-white">Share Location</h3>
           </div>
-          <div className="p-5 space-y-4">
-            <button type="button" onClick={getLocation} disabled={gpsStatus === 'loading'}
-                    className="w-full flex items-center gap-3 p-3 border border-gray-200 dark:border-[#262831] bg-white dark:bg-[#1a2a43] rounded-xl hover:bg-green-50/50 dark:hover:bg-[#162e45] transition-colors group">
-              <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-950/50 flex items-center justify-center shrink-0">
-                {gpsStatus === 'loading' ? <Loader2 className="w-5 h-5 text-green-600 dark:text-green-400 animate-spin" /> : <MapPin className="w-5 h-5 text-green-600 dark:text-green-400" />}
-              </div>
-              <div className="text-left">
-                <p className="text-sm font-semibold text-gray-800 dark:text-slate-200 group-hover:text-green-700 dark:group-hover:text-green-400">
-                  {gpsStatus === 'loading' ? 'Getting location…' : gpsStatus === 'done' ? '✓ Location found' : 'Send Current Location'}
-                </p>
-                {coords && <p className="text-xs text-gray-500 dark:text-[#7a8ba3]">{coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}</p>}
-                {gpsStatus === 'error' && <p className="text-xs text-red-500 dark:text-red-400">Location access denied</p>}
-              </div>
-            </button>
-            <div>
-              <label className="text-xs font-medium text-gray-500 dark:text-[#7a8ba3]">Or enter address</label>
-              <input value={manual} onChange={e => setManual(e.target.value)} placeholder="e.g. Dubai Mall, UAE"
-                     className="mt-1 w-full px-3 py-2.5 border border-gray-200 dark:border-[#262831] bg-white dark:bg-[#1a2a43] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 rounded-xl text-sm focus:outline-none focus:border-green-500 dark:focus:border-green-500" />
+          <button type="button" onClick={onClose}><X className="w-5 h-5 text-gray-400 dark:text-[#7a8ba3] hover:text-gray-600 dark:hover:text-white" /></button>
+        </div>
+        <div className="p-5 space-y-4">
+          <button type="button" onClick={getLocation} disabled={gpsStatus === 'loading'}
+            className="w-full flex items-center gap-3 p-3 border border-gray-200 dark:border-[#262831] bg-white dark:bg-[#1a2a43] rounded-xl hover:bg-green-50/50 dark:hover:bg-[#162e45] transition-colors group">
+            <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-950/50 flex items-center justify-center shrink-0">
+              {gpsStatus === 'loading' ? <Loader2 className="w-5 h-5 text-green-600 dark:text-green-400 animate-spin" /> : <MapPin className="w-5 h-5 text-green-600 dark:text-green-400" />}
             </div>
-          </div>
-          <div className="px-5 py-4 border-t dark:border-[#262831] flex justify-end">
-            <button type="button" onClick={handleSend} disabled={!coords && !manual.trim()}
-                    className="px-4 py-2 text-sm font-semibold bg-green-500 text-white rounded-xl hover:bg-green-600 disabled:opacity-40 transition-colors">
-              Share Location
-            </button>
+            <div className="text-left">
+              <p className="text-sm font-semibold text-gray-800 dark:text-slate-200 group-hover:text-green-700 dark:group-hover:text-green-400">{gpsStatus === 'loading' ? 'Getting location…' : gpsStatus === 'done' ? '✓ Location found' : 'Send Current Location'}</p>
+              {coords && <p className="text-xs text-gray-500 dark:text-[#7a8ba3]">{coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}</p>}
+              {gpsStatus === 'error' && <p className="text-xs text-red-500 dark:text-red-400">Location access denied</p>}
+            </div>
+          </button>
+          <div>
+            <label className="text-xs font-medium text-gray-500 dark:text-[#7a8ba3]">Or enter address</label>
+            <input value={manual} onChange={e => setManual(e.target.value)} placeholder="e.g. Dubai Mall, UAE"
+              className="mt-1 w-full px-3 py-2.5 border border-gray-200 dark:border-[#262831] bg-white dark:bg-[#1a2a43] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 rounded-xl text-sm focus:outline-none focus:border-green-500 dark:focus:border-green-500" />
           </div>
         </div>
+        <div className="px-5 py-4 border-t dark:border-[#262831] flex justify-end">
+          <button type="button" onClick={handleSend} disabled={!coords && !manual.trim()}
+            className="px-4 py-2 text-sm font-semibold bg-green-500 text-white rounded-xl hover:bg-green-600 disabled:opacity-40 transition-colors">
+            Share Location
+          </button>
+        </div>
       </div>
+    </div>
   );
 }
 
@@ -1126,7 +1124,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
 
   const [olderMessages, setOlderMessages] = useState<Message[]>([]);
   const [loadingOlder, setLoadingOlder] = useState(false);
-  const [olderOffset, setOlderOffset] = useState<number>(CONFIG.INITIAL_MESSAGE_LIMIT);
+  const [olderOffset, setOlderOffset] = useState(CONFIG.INITIAL_MESSAGE_LIMIT);
 
   const prevConvId = useRef<string | null>(null);
 
@@ -1253,7 +1251,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
     status: normalizeStatus(
       (m as Message & { message_status?: string }).status ||
       (m as Message & { message_status?: string }).message_status
-    ) as Message['status'],
+    ),
   }));
 
   const baseMessages = dedupeById([...olderMessages, ...normalizedPolledMessages]);
@@ -1357,8 +1355,8 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
         } as Message;
       });
 
-      setOlderMessages((prev) => dedupeById([...mapped, ...prev]).slice(-CONFIG.MAX_OLDER_MESSAGES));
-      const nextOffsetIncrement = raw.length > 0 ? raw.length : CONFIG.LOAD_MORE_LIMIT;
+      setOlderMessages((prev) => dedupeById([...mapped, ...prev]).slice(-MAX_OLDER_MESSAGES));
+      const nextOffsetIncrement = raw.length > 0 ? raw.length : LOAD_MORE_LIMIT;
       setOlderOffset((prev) => prev + nextOffsetIncrement);
     } catch (err: unknown) {
       setSendError(getErrorMessage(err, 'Failed to load older messages'));
@@ -3317,7 +3315,7 @@ function WABASidebar({
               lastMsg = activeLastMsg;
             }
             const time = lastMsg
-              ? formatDistanceToNow(new Date(lastMsg.timestamp || (lastMsg as Message & { created_at?: string }).created_at || new Date()), { addSuffix: false })
+              ? formatDistanceToNow(new Date(lastMsg.timestamp || lastMsg.created_at || new Date()), { addSuffix: false })
               : '';
 
             return (
@@ -3378,12 +3376,10 @@ function WABASidebar({
                         {lastMsg?.content || 'Started conversation'}
                       </span>
                     </div>
-
                     {conv.unreadCount ? (
-                        <div
-                            className="w-[20px] h-[20px] shrink-0 rounded-full bg-[#25D366] dark:bg-[#00a884] text-[11px] font-bold text-white dark:text-[#111b21] flex items-center justify-center">
-                          {conv.unreadCount}
-                        </div>
+                      <div className="w-[20px] h-[20px] shrink-0 rounded-full bg-[#25D366] dark:bg-[#00a884] text-[11px] font-bold text-white dark:text-[#111b21] flex items-center justify-center">
+                        {conv.unreadCount}
+                      </div>
                     ) : null}
                   </div>
                 </div>
