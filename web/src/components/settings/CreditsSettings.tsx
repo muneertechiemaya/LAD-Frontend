@@ -101,7 +101,7 @@ export const CreditsSettings: React.FC = () => {
                 <Loader2 className="h-8 w-8 animate-spin text-white" />
               </div>
             ) : (
-              <p className="text-4xl font-bold text-white">{balance.toLocaleString()}</p>
+              <p className="text-4xl font-bold dark:text-white">{balance.toLocaleString()}</p>
             )}
           </div>
           <div className="text-right">
