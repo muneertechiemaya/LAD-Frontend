@@ -151,22 +151,20 @@ export const CreditsSettings: React.FC = () => {
                   value={customAmount}
                   onChange={(e) => handleCustomAmountChange(e.target.value)}
                   className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 dark:focus:ring-blue-500 dark:bg-[#061033]/70 dark:text-white dark:placeholder-gray-600 ${
-                    customAmount 
-                      ? 'border-blue-600 dark:border-blue-500' 
-                      : 'border-gray-300 dark:border-blue-950/60'
+                    customAmount ? 'border-blue-600 dark:border-blue-500' : 'border-gray-300 dark:border-blue-950/60'
                   }`}
                   min="1"
                 />
               </div>
               {(selectedAmount || customAmount) && (
-                  <div className="p-3 bg-blue-50 border border-blue-200 dark:bg-blue-950/20 dark:border-blue-900/40 rounded-lg">
-                    <p className="text-sm text-blue-800 dark:text-blue-400">
+                <div className="p-3 bg-blue-50 border border-blue-200 dark:bg-blue-950/20 dark:border-blue-900/40 rounded-lg">
+                  <p className="text-sm text-blue-800 dark:text-blue-400">
                     <span className="font-semibold">You&apos;ll receive: </span>
                     {(() => {
                       const amount = parseFloat(customAmount) || selectedAmount || 0;
                       if (!amount || amount <= 0) return 'Select an amount';
                       const preset = presetAmounts.find(p => p.value === amount);
-                      const credits = preset ? preset.credits : Math.round(amount * 10.1);
+                      const credits = preset ? preset.credits : Math.round(amount * 10.1); // Approximate for custom amounts
                       return `${credits.toLocaleString()} credits for $${amount}`;
                     })()}
                   </p>
