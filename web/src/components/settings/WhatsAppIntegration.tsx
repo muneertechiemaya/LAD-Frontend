@@ -121,9 +121,9 @@ async function fetchTeamMembers(tenantId: string | null): Promise<TeamMember[]> 
 }
 
 async function bulkAssign(
-    tenantId: string | null,
-    userId: string | null,
-    filter: 'all' | 'unassigned',
+  tenantId: string | null,
+  userId: string | null,
+  filter: 'all' | 'unassigned',
 ): Promise<{ success: boolean; assigned: number; total: number } | null> {
   try {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -152,8 +152,8 @@ interface ContactsResponse {
 }
 
 async function fetchSyncedContacts(
-    tenantId: string | null,
-    opts: { page?: number; limit?: number; search?: string } = {},
+  tenantId: string | null,
+  opts: { page?: number; limit?: number; search?: string } = {},
 ): Promise<ContactsResponse> {
   const empty = { data: [], total: 0, page: 1, limit: 100 };
   try {
@@ -226,7 +226,7 @@ async function logoutAccount(accountId: string, tenantId: string | null): Promis
 async function listAccounts(tenantId: string | null): Promise<PersonalAccount[]> {
   try {
     const token = typeof document !== 'undefined'
-        ? (() => {
+      ? (() => {
           const cookies = document.cookie ? document.cookie.split(';') : [];
           for (const cookie of cookies) {
             const [rawName, ...rawValueParts] = cookie.trim().split('=');
@@ -237,7 +237,7 @@ async function listAccounts(tenantId: string | null): Promise<PersonalAccount[]>
           }
           return null;
         })()
-        : null;
+      : null;
 
     const headers: Record<string, string> = {};
     if (tenantId) headers['X-Tenant-ID'] = tenantId;
@@ -479,7 +479,7 @@ export const WhatsAppIntegration: React.FC = () => {
   // ── Helpers ─────────────────────────────────────────────────
 
   const formatTime = (s: number) =>
-      `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
+    `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
 
   const statusLabel = () => {
     switch (status) {
@@ -504,461 +504,462 @@ export const WhatsAppIntegration: React.FC = () => {
   // ── UI ──────────────────────────────────────────────────────
 
   return (
-      <Card>
-        <CardHeader>
+    <Card>
+      <CardHeader>
+        <div className="flex gap-3 items-center">
+          <div className="p-2 bg-green-100 dark:bg-green-950/50 rounded-lg">
+            <MessageSquare className="h-6 w-6 text-green-600 dark:text-green-400" />
+          </div>
+          <div>
+            <CardTitle>WhatsApp Integration</CardTitle>
+            <CardDescription>Connect your personal WhatsApp via QR code</CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        {/* Connection Status */}
+        <div className="flex justify-between items-center p-4 bg-gray-50 dark:bg-zinc-900 rounded-lg">
           <div className="flex gap-3 items-center">
-            <div className="p-2 bg-green-100 dark:bg-green-950/50 rounded-lg">
-              <MessageSquare className="h-6 w-6 text-green-600 dark:text-green-400" />
-            </div>
+            <Smartphone className="h-5 w-5 text-gray-500 dark:text-gray-400" />
             <div>
-              <CardTitle>WhatsApp Integration</CardTitle>
-              <CardDescription>Connect your personal WhatsApp via QR code</CardDescription>
+              <p className="text-sm font-medium text-gray-800 dark:text-zinc-200">Connection Status</p>
+              <p className="text-xs text-gray-500 dark:text-zinc-400">{statusLabel()}</p>
             </div>
           </div>
-        </CardHeader>
+          <StatusIcon />
+        </div>
 
-        <CardContent className="space-y-4">
-          {/* Connection Status */}
-          <div className="flex justify-between items-center p-4 bg-gray-50 dark:bg-zinc-900 rounded-lg">
-            <div className="flex gap-3 items-center">
-              <Smartphone className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-              <div>
-                <p className="text-sm font-medium text-gray-800 dark:text-zinc-200">Connection Status</p>
-                <p className="text-xs text-gray-500 dark:text-zinc-400">{statusLabel()}</p>
-              </div>
+        {/* Connected Account Info */}
+        {status === 'connected' && account && (
+          <div className="p-4 bg-green-50 border border-green-200 dark:bg-green-950/20 dark:border-green-900/50 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <Wifi className="h-4 w-4 text-green-600 dark:text-green-400" />
+              <span className="text-sm font-medium text-green-800 dark:text-green-300">Account Connected</span>
             </div>
-            <StatusIcon />
+            {account.phone_number && (
+              <p className="text-xs text-green-700 dark:text-green-400">Phone: {account.phone_number}</p>
+            )}
+            {account.connected_at && (
+              <p className="text-xs text-green-600 dark:text-green-500 mt-1">
+                Since: {new Date(account.connected_at).toLocaleString()}
+              </p>
+            )}
           </div>
+        )}
 
-          {/* Connected Account Info */}
-          {status === 'connected' && account && (
-              <div className="p-4 bg-green-50 border border-green-200 dark:bg-green-950/20 dark:border-green-900/50 rounded-lg">
-                <div className="flex items-center gap-2 mb-2">
-                  <Wifi className="h-4 w-4 text-green-600 dark:text-green-400" />
-                  <span className="text-sm font-medium text-green-800 dark:text-green-300">Account Connected</span>
-                </div>
-                {account.phone_number && (
-                    <p className="text-xs text-green-700 dark:text-green-400">Phone: {account.phone_number}</p>
-                )}
-                {account.connected_at && (
-                    <p className="text-xs text-green-600 dark:text-green-500 mt-1">
-                      Since: {new Date(account.connected_at).toLocaleString()}
-                    </p>
-                )}
-              </div>
-          )}
+        {/* Error Message */}
+        {error && (
+          <div className="flex items-center gap-2 text-xs p-3 bg-red-50 border border-red-200 dark:bg-red-950/20 dark:border-red-900/50 rounded-lg text-red-700 dark:text-red-400">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            {error}
+          </div>
+        )}
 
-          {/* Error Message */}
-          {error && (
-              <div className="flex items-center gap-2 text-xs p-3 bg-red-50 border border-red-200 dark:bg-red-950/20 dark:border-red-900/50 rounded-lg text-red-700 dark:text-red-400">
-                <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                {error}
-              </div>
-          )}
-
-          {/* QR Code Display */}
-          {qrImage && status === 'qr_scanning' && (
-              <div className="border-2 border-dashed border-gray-300 dark:border-zinc-800 p-5 rounded-lg text-center">
-                <div className="flex justify-between items-center mb-3">
-                  <span className="text-sm font-medium text-gray-700 dark:text-zinc-300">Scan with WhatsApp</span>
-                  <span className={`text-sm font-mono ${timer < 60 ? 'text-red-500 font-bold dark:text-red-400' : 'text-gray-500 dark:text-zinc-400'}`}>
+        {/* QR Code Display */}
+        {qrImage && status === 'qr_scanning' && (
+          <div className="border-2 border-dashed border-gray-300 dark:border-zinc-800 p-5 rounded-lg text-center">
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-sm font-medium text-gray-700 dark:text-zinc-300">Scan with WhatsApp</span>
+              <span className={`text-sm font-mono ${timer < 60 ? 'text-red-500 font-bold dark:text-red-400' : 'text-gray-500 dark:text-zinc-400'}`}>
                 {formatTime(timer)}
               </span>
-                </div>
-                {/* Added dark mode invert logic for QR visibility if it blends too much into an absolute black theme */}
-                <img
-                    src={qrImage}
-                    alt="WhatsApp QR Code"
-                    className="mx-auto w-64 h-64 rounded-lg dark:bg-white dark:p-2"
-                />
-                <p className="text-xs text-gray-400 dark:text-zinc-500 mt-3">
-                  Open WhatsApp &gt; Settings &gt; Linked Devices &gt; Link a Device
+            </div>
+            <img
+              src={qrImage}
+              alt="WhatsApp QR Code"
+              className="mx-auto w-64 h-64 rounded-lg dark:bg-white dark:p-2"
+            />
+            <p className="text-xs text-gray-400 dark:text-zinc-500 mt-3">
+              Open WhatsApp &gt; Settings &gt; Linked Devices &gt; Link a Device
+            </p>
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        {status !== 'connected' ? (
+          <Button
+            onClick={startLogin}
+            disabled={loading || status === 'qr_scanning'}
+            className="w-full"
+          >
+            {loading ? (
+              <Loader2 className="animate-spin mr-2 h-4 w-4" />
+            ) : (
+              <QrCode className="mr-2 h-4 w-4" />
+            )}
+            {status === 'qr_scanning' ? 'Waiting for scan...' : 'Generate QR'}
+          </Button>
+        ) : (
+          <Button
+            variant="destructive"
+            onClick={handleLogout}
+            disabled={loading}
+            className="w-full"
+          >
+            {loading ? (
+              <Loader2 className="animate-spin mr-2 h-4 w-4" />
+            ) : (
+              <LogOut className="mr-2 h-4 w-4" />
+            )}
+            Disconnect
+          </Button>
+        )}
+
+        {/* Auto-Assign Settings */}
+        <div className="border-t border-gray-100 dark:border-zinc-800 pt-4 mt-2">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex gap-3 items-start">
+              <Users className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+              <div>
+                <p className="text-sm font-medium text-gray-800 dark:text-zinc-200">Auto-assign contacts</p>
+                <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">
+                  Saved contacts are assigned to Human Agent. Unsaved numbers go to AI Agent.
                 </p>
               </div>
+            </div>
+            <Switch
+              checked={autoAssign.enabled}
+              onCheckedChange={handleAutoAssignToggle}
+              disabled={autoAssignSaving}
+            />
+          </div>
+          {autoAssign.enabled && (
+            <div className="mt-3 ml-8 space-y-1.5">
+              <div className="flex items-center gap-2 text-xs">
+                <span className="w-2 h-2 rounded-full bg-blue-500 dark:bg-blue-400" />
+                <span className="text-gray-600 dark:text-zinc-400">Saved contacts → <span className="font-medium text-gray-800 dark:text-zinc-200">Human Agent</span></span>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <span className="w-2 h-2 rounded-full bg-green-500 dark:bg-green-400" />
+                <span className="text-gray-600 dark:text-zinc-400">Unsaved numbers → <span className="font-medium text-gray-800 dark:text-zinc-200">AI Agent</span></span>
+              </div>
+            </div>
           )}
+        </div>
 
-          {/* Action Buttons */}
-          {status !== 'connected' ? (
-              <Button
-                  onClick={startLogin}
-                  disabled={loading || status === 'qr_scanning'}
-                  className="w-full"
-              >
-                {loading ? (
-                    <Loader2 className="animate-spin mr-2 h-4 w-4" />
-                ) : (
-                    <QrCode className="mr-2 h-4 w-4" />
-                )}
-                {status === 'qr_scanning' ? 'Waiting for scan...' : 'Generate QR'}
-              </Button>
-          ) : (
-              <Button
-                  variant="destructive"
-                  onClick={handleLogout}
-                  disabled={loading}
-                  className="w-full"
-              >
-                {loading ? (
-                    <Loader2 className="animate-spin mr-2 h-4 w-4" />
-                ) : (
-                    <LogOut className="mr-2 h-4 w-4" />
-                )}
-                Disconnect
-              </Button>
-          )}
+        {/* Assign All Chats to Team Member */}
+        <div className="border-t border-gray-100 dark:border-zinc-800 pt-4 mt-2">
+          <div className="flex gap-3 items-start mb-3">
+            <UserCheck className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+            <div>
+              <p className="text-sm font-medium text-gray-800 dark:text-zinc-200">Assign chats to team member</p>
+              <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">
+                Bulk-assign conversations so a team member receives forwarded messages.
+              </p>
+            </div>
+          </div>
 
-          {/* Auto-Assign Settings */}
+          {/* Team member selector */}
+          <div className="ml-8 space-y-3">
+            <div className="flex gap-2 items-center">
+              <select
+                className="flex-1 h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200"
+                value={bulkAssignUserId}
+                onChange={(e) => setBulkAssignUserId(e.target.value)}
+                onFocus={() => { if (teamMembers.length === 0) loadTeamMembers(); }}
+                disabled={teamMembersLoading}
+              >
+                <option value="ai_agent">🤖 AI Agent (release assignment)</option>
+                {teamMembersLoading && <option value="" disabled>Loading team members…</option>}
+                {!teamMembersLoading && teamMembers.length === 0 && (
+                  <option value="" disabled>No team members found</option>
+                )}
+                {teamMembers.map((m) => (
+                  <option key={m.user_id} value={m.user_id}>
+                    {m.name}{m.active_count > 0 ? ` (${m.active_count} active)` : ''}
+                  </option>
+                ))}
+              </select>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 px-2"
+                onClick={loadTeamMembers}
+                disabled={teamMembersLoading}
+                title="Refresh team members"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${teamMembersLoading ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
+
+            {/* Filter: all vs unassigned */}
+            <div className="flex gap-4 text-xs text-gray-600 dark:text-zinc-400">
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="radio"
+                  name="bulkAssignFilter"
+                  value="unassigned"
+                  checked={bulkAssignFilter === 'unassigned'}
+                  onChange={() => setBulkAssignFilter('unassigned')}
+                  className="cursor-pointer acc-radio dark:accent-zinc-200"
+                />
+                {bulkAssignUserId === 'ai_agent' ? 'Assigned chats only' : 'Unassigned chats only'}
+              </label>
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="radio"
+                  name="bulkAssignFilter"
+                  value="all"
+                  checked={bulkAssignFilter === 'all'}
+                  onChange={() => setBulkAssignFilter('all')}
+                  className="cursor-pointer acc-radio dark:accent-zinc-200"
+                />
+                All active chats
+              </label>
+            </div>
+
+            {/* Result feedback */}
+            {bulkAssignResult && (
+              <div className="flex items-center gap-2 text-xs p-2.5 bg-green-50 border border-green-200 dark:bg-green-950/20 dark:border-green-900/50 rounded-lg text-green-700 dark:text-green-400">
+                <CheckCircle className="h-4 w-4 flex-shrink-0" />
+                {bulkAssignUserId === 'ai_agent'
+                  ? `Released ${bulkAssignResult.assigned} of ${bulkAssignResult.total} conversations back to AI Agent.`
+                  : `Assigned ${bulkAssignResult.assigned} of ${bulkAssignResult.total} conversations.`}
+              </div>
+            )}
+
+            <Button
+              size="sm"
+              className={`w-full ${bulkAssignUserId === 'ai_agent' ? 'bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600 dark:text-white' : ''}`}
+              disabled={!bulkAssignUserId || teamMembersLoading}
+              onClick={() => {
+                setBulkAssignResult(null);
+                if (teamMembers.length === 0) {
+                  loadTeamMembers();
+                }
+                setShowBulkAssignDialog(true);
+              }}
+            >
+              {bulkAssignUserId === 'ai_agent' ? (
+                <>
+                  <Bot className="mr-2 h-4 w-4" />
+                  Release to AI Agent
+                </>
+              ) : (
+                <>
+                  <UserCheck className="mr-2 h-4 w-4" />
+                  Assign Chats
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+
+        {/* Synced Contacts List */}
+        {status === 'connected' && (
           <div className="border-t border-gray-100 dark:border-zinc-800 pt-4 mt-2">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex gap-3 items-start">
+            <button
+              type="button"
+              className="flex items-center justify-between w-full text-left focus:outline-none"
+              onClick={() => {
+                if (!contactsExpanded && contacts.length === 0) {
+                  loadContacts();
+                }
+                setContactsExpanded(!contactsExpanded);
+              }}
+            >
+              <div className="flex gap-3 items-center">
                 <Users className="h-5 w-5 text-gray-500 dark:text-gray-400" />
                 <div>
-                  <p className="text-sm font-medium text-gray-800 dark:text-zinc-200">Auto-assign contacts</p>
-                  <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">
-                    Saved contacts are assigned to Human Agent. Unsaved numbers go to AI Agent.
+                  <p className="text-sm font-medium text-gray-800 dark:text-zinc-200">
+                    Synced Contacts
+                    {contacts.length > 0 && (
+                      <span className="ml-2 text-xs font-normal text-gray-500 dark:text-zinc-400">
+                        ({contactsTotal} total)
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-zinc-500 mt-0.5">
+                    Contacts from your connected WhatsApp account
                   </p>
                 </div>
               </div>
-              <Switch
-                  checked={autoAssign.enabled}
-                  onCheckedChange={handleAutoAssignToggle}
-                  disabled={autoAssignSaving}
-              />
-            </div>
-            {autoAssign.enabled && (
-                <div className="mt-3 ml-8 space-y-1.5">
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="w-2 h-2 rounded-full bg-blue-500 dark:bg-blue-400" />
-                    <span className="text-gray-600 dark:text-zinc-400">Saved contacts → <span className="font-medium text-gray-800 dark:text-zinc-200">Human Agent</span></span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="w-2 h-2 rounded-full bg-green-500 dark:bg-green-400" />
-                    <span className="text-gray-600 dark:text-zinc-400">Unsaved numbers → <span className="font-medium text-gray-800 dark:text-zinc-200">AI Agent</span></span>
-                  </div>
-                </div>
-            )}
-          </div>
-
-          {/* Assign All Chats to Team Member */}
-          <div className="border-t border-gray-100 dark:border-zinc-800 pt-4 mt-2">
-            <div className="flex gap-3 items-start mb-3">
-              <UserCheck className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-              <div>
-                <p className="text-sm font-medium text-gray-800 dark:text-zinc-200">Assign chats to team member</p>
-                <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">
-                  Bulk-assign conversations so a team member receives forwarded messages.
-                </p>
-              </div>
-            </div>
-
-            {/* Team member selector */}
-            <div className="ml-8 space-y-3">
-              <div className="flex gap-2 items-center">
-                <select
-                    className="flex-1 h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200"
-                    value={bulkAssignUserId}
-                    onChange={(e) => setBulkAssignUserId(e.target.value)}
-                    onFocus={() => { if (teamMembers.length === 0) loadTeamMembers(); }}
-                    disabled={teamMembersLoading}
-                >
-                  <option value="ai_agent">🤖 AI Agent (release assignment)</option>
-                  {teamMembersLoading && <option value="" disabled>Loading team members…</option>}
-                  {!teamMembersLoading && teamMembers.length === 0 && (
-                      <option value="" disabled>No team members found</option>
-                  )}
-                  {teamMembers.map((m) => (
-                      <option key={m.user_id} value={m.user_id}>
-                        {m.name}{m.active_count > 0 ? ` (${m.active_count} active)` : ''}
-                      </option>
-                  ))}
-                </select>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-9 px-2"
-                    onClick={loadTeamMembers}
-                    disabled={teamMembersLoading}
-                    title="Refresh team members"
-                >
-                  <RefreshCw className={`h-3.5 w-3.5 ${teamMembersLoading ? 'animate-spin' : ''}`} />
-                </Button>
-              </div>
-
-              {/* Filter: all vs unassigned */}
-              <div className="flex gap-4 text-xs text-gray-600 dark:text-zinc-400">
-                <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input
-                      type="radio"
-                      name="bulkAssignFilter"
-                      value="unassigned"
-                      checked={bulkAssignFilter === 'unassigned'}
-                      onChange={() => setBulkAssignFilter('unassigned')}
-                      className="cursor-pointer acc-radio dark:accent-zinc-200"
-                  />
-                  {bulkAssignUserId === 'ai_agent' ? 'Assigned chats only' : 'Unassigned chats only'}
-                </label>
-                <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input
-                      type="radio"
-                      name="bulkAssignFilter"
-                      value="all"
-                      checked={bulkAssignFilter === 'all'}
-                      onChange={() => setBulkAssignFilter('all')}
-                      className="cursor-pointer acc-radio dark:accent-zinc-200"
-                  />
-                  All active chats
-                </label>
-              </div>
-
-              {/* Result feedback */}
-              {bulkAssignResult && (
-                  <div className="flex items-center gap-2 text-xs p-2.5 bg-green-50 border border-green-200 dark:bg-green-950/20 dark:border-green-900/50 rounded-lg text-green-700 dark:text-green-400">
-                    <CheckCircle className="h-4 w-4 flex-shrink-0" />
-                    {bulkAssignUserId === 'ai_agent'
-                        ? `Released ${bulkAssignResult.assigned} of ${bulkAssignResult.total} conversations back to AI Agent.`
-                        : `Assigned ${bulkAssignResult.assigned} of ${bulkAssignResult.total} conversations.`}
-                  </div>
+              {contactsExpanded ? (
+                <ChevronUp className="h-4 w-4 text-gray-400 dark:text-zinc-500" />
+              ) : (
+                <ChevronDown className="h-4 w-4 text-gray-400 dark:text-zinc-500" />
               )}
+            </button>
 
-              <Button
-                  size="sm"
-                  className={`w-full ${bulkAssignUserId === 'ai_agent' ? 'bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600 dark:text-white' : ''}`}
-                  disabled={!bulkAssignUserId || teamMembersLoading}
-                  onClick={() => {
-                    setBulkAssignResult(null);
-                    if (teamMembers.length === 0) {
-                      loadTeamMembers();
-                    }
-                    setShowBulkAssignDialog(true);
-                  }}
-              >
-                {bulkAssignUserId === 'ai_agent' ? (
-                    <>
-                      <Bot className="mr-2 h-4 w-4" />
-                      Release to AI Agent
-                    </>
-                ) : (
-                    <>
-                      <UserCheck className="mr-2 h-4 w-4" />
-                      Assign Chats
-                    </>
-                )}
-              </Button>
-            </div>
-          </div>
-
-          {/* Synced Contacts List */}
-          {status === 'connected' && (
-              <div className="border-t border-gray-100 dark:border-zinc-800 pt-4 mt-2">
-                <button
-                    type="button"
-                    className="flex items-center justify-between w-full text-left focus:outline-none"
-                    onClick={() => {
-                      if (!contactsExpanded && contacts.length === 0) {
-                        loadContacts();
-                      }
-                      setContactsExpanded(!contactsExpanded);
+            {contactsExpanded && (
+              <div className="mt-3 space-y-3">
+                {/* Search */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-zinc-500" />
+                  <Input
+                    placeholder="Search name or number..."
+                    value={contactsSearch}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setContactsSearch(val);
+                      if (contactsSearchTimerRef.current) clearTimeout(contactsSearchTimerRef.current);
+                      contactsSearchTimerRef.current = setTimeout(() => {
+                        loadContacts(1, val);
+                      }, 400);
                     }}
-                >
-                  <div className="flex gap-3 items-center">
-                    <Users className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-800 dark:text-zinc-200">
-                        Synced Contacts
-                        {contacts.length > 0 && (
-                            <span className="ml-2 text-xs font-normal text-gray-500 dark:text-zinc-400">
-                        ({contactsTotal} total)
-                      </span>
-                        )}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-zinc-500 mt-0.5">
-                        Contacts from your connected WhatsApp account
-                      </p>
-                    </div>
+                    className="pl-9 h-9 text-sm"
+                  />
+                </div>
+
+                {/* Contacts list */}
+                {contactsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-5 w-5 animate-spin text-gray-400 dark:text-zinc-500" />
+                    <span className="ml-2 text-sm text-gray-500 dark:text-zinc-400">Loading contacts...</span>
                   </div>
-                  {contactsExpanded ? (
-                      <ChevronUp className="h-4 w-4 text-gray-400 dark:text-zinc-500" />
-                  ) : (
-                      <ChevronDown className="h-4 w-4 text-gray-400 dark:text-zinc-500" />
-                  )}
-                </button>
-
-                {contactsExpanded && (
-                    <div className="mt-3 space-y-3">
-                      {/* Search */}
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-zinc-500" />
-                        <Input
-                            placeholder="Search name or number..."
-                            value={contactsSearch}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setContactsSearch(val);
-                              if (contactsSearchTimerRef.current) clearTimeout(contactsSearchTimerRef.current);
-                              contactsSearchTimerRef.current = setTimeout(() => {
-                                loadContacts(1, val);
-                              }, 400);
-                            }}
-                            className="pl-9 h-9 text-sm"
-                        />
-                      </div>
-
-                      {/* Contacts list */}
-                      {contactsLoading ? (
-                          <div className="flex items-center justify-center py-8">
-                            <Loader2 className="h-5 w-5 animate-spin text-gray-400 dark:text-zinc-500" />
-                            <span className="ml-2 text-sm text-gray-500 dark:text-zinc-400">Loading contacts...</span>
-                          </div>
-                      ) : contacts.length === 0 ? (
-                          <div className="text-center py-8 text-sm text-gray-400 dark:text-zinc-500">
-                            No contacts synced yet. Contacts will appear after WhatsApp syncs your address book.
-                          </div>
-                      ) : (
-                          <>
-                            <ScrollArea className="h-[360px]">
-                              <div className="space-y-0.5">
-                                {contacts.map((contact) => (
-                                    <div
-                                        key={contact.phone}
-                                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-900 transition-colors"
-                                    >
-                                      <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gray-200 dark:bg-zinc-800 flex items-center justify-center">
-                                        {contact.is_saved ? (
-                                            <span className="text-sm font-medium text-gray-600 dark:text-zinc-300">
+                ) : contacts.length === 0 ? (
+                  <div className="text-center py-8 text-sm text-gray-400 dark:text-zinc-500">
+                    No contacts synced yet. Contacts will appear after WhatsApp syncs your address book.
+                  </div>
+                ) : (
+                  <>
+                    <ScrollArea className="h-[360px]">
+                      <div className="space-y-0.5">
+                        {contacts.map((contact) => (
+                            <div
+                              key={contact.phone}
+                              className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-900 transition-colors"
+                            >
+                              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gray-200 dark:bg-zinc-800 flex items-center justify-center">
+                                {contact.is_saved ? (
+                                  <span className="text-sm font-medium text-gray-600 dark:text-zinc-300">
                                     {(contact.name || '?').charAt(0).toUpperCase()}
                                   </span>
-                                        ) : (
-                                            <User className="h-5 w-5 text-gray-400 dark:text-zinc-500" />
-                                        )}
-                                      </div>
-                                      <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium text-gray-800 dark:text-zinc-200 truncate">
-                                          {contact.name || contact.phone}
-                                        </p>
-                                        {contact.name && (
-                                            <p className="text-xs text-gray-500 dark:text-zinc-400 truncate">+{contact.phone}</p>
-                                        )}
-                                      </div>
-                                      <Badge
-                                          variant={contact.is_saved ? 'default' : 'secondary'}
-                                          className="text-[10px] px-1.5 py-0"
-                                      >
-                                        {contact.is_saved ? 'Saved' : 'Unsaved'}
-                                      </Badge>
-                                    </div>
-                                ))}
+                                ) : (
+                                  <User className="h-5 w-5 text-gray-400 dark:text-zinc-500" />
+                                )}
                               </div>
-                            </ScrollArea>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-800 dark:text-zinc-200 truncate">
+                                  {contact.name || contact.phone}
+                                </p>
+                                {contact.name && (
+                                  <p className="text-xs text-gray-500 dark:text-zinc-400 truncate">+{contact.phone}</p>
+                                )}
+                              </div>
+                              <Badge
+                                variant={contact.is_saved ? 'default' : 'secondary'}
+                                className="text-[10px] px-1.5 py-0"
+                              >
+                                {contact.is_saved ? 'Saved' : 'Unsaved'}
+                              </Badge>
+                            </div>
+                          ))}
+                      </div>
+                    </ScrollArea>
 
-                            {/* Pagination */}
-                            {contactsTotal > 100 && (
-                                <div className="flex items-center justify-between pt-2 text-xs text-gray-500 dark:text-zinc-400">
+                    {/* Pagination */}
+                    {contactsTotal > 100 && (
+                      <div className="flex items-center justify-between pt-2 text-xs text-gray-500 dark:text-zinc-400">
                         <span>
                           Showing {(contactsPage - 1) * 100 + 1}–{Math.min(contactsPage * 100, contactsTotal)} of {contactsTotal}
                         </span>
-                                  <div className="flex gap-2">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-7 px-2 text-xs"
-                                        disabled={contactsPage <= 1 || contactsLoading}
-                                        onClick={() => loadContacts(contactsPage - 1, contactsSearch)}
-                                    >
-                                      Previous
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-7 px-2 text-xs"
-                                        disabled={contactsPage * 100 >= contactsTotal || contactsLoading}
-                                        onClick={() => loadContacts(contactsPage + 1, contactsSearch)}
-                                    >
-                                      Next
-                                    </Button>
-                                  </div>
-                                </div>
-                            )}
-                          </>
-                      )}
-
-                      {/* Refresh button */}
-                      <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full"
-                          disabled={contactsLoading}
-                          onClick={() => loadContacts(1, contactsSearch)}
-                      >
-                        <RefreshCw className={`h-3.5 w-3.5 mr-2 ${contactsLoading ? 'animate-spin' : ''}`} />
-                        Refresh Contacts
-                      </Button>
-                    </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            disabled={contactsPage <= 1 || contactsLoading}
+                            onClick={() => loadContacts(contactsPage - 1, contactsSearch)}
+                          >
+                            Previous
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            disabled={contactsPage * 100 >= contactsTotal || contactsLoading}
+                            onClick={() => loadContacts(contactsPage + 1, contactsSearch)}
+                          >
+                            Next
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
+
+                {/* Refresh button */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  disabled={contactsLoading}
+                  onClick={() => loadContacts(1, contactsSearch)}
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 mr-2 ${contactsLoading ? 'animate-spin' : ''}`} />
+                  Refresh Contacts
+                </Button>
               </div>
-          )}
-        </CardContent>
+            )}
+          </div>
+        )}
+      </CardContent>
 
-        {/* Confirmation Dialog */}
-        <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Enable auto-assign for saved contacts?</DialogTitle>
-              <DialogDescription>
-                When enabled, new conversations from your saved WhatsApp contacts will be automatically assigned to a Human Agent. Messages from unsaved numbers will continue to be handled by the AI Agent.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="rounded-lg bg-amber-50 border border-amber-200 dark:bg-amber-950/20 dark:border-amber-900/50 p-3 text-xs text-amber-800 dark:text-amber-400">
-              This means the AI will not respond to messages from your saved contacts. A human agent must handle those conversations manually.
-            </div>
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button onClick={confirmAutoAssign} disabled={autoAssignSaving}>
-                {autoAssignSaving && <Loader2 className="animate-spin mr-2 h-4 w-4" />}
-                Yes, enable auto-assign
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+      {/* Confirmation Dialog */}
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Enable auto-assign for saved contacts?</DialogTitle>
+            <DialogDescription>
+              When enabled, new conversations from your saved WhatsApp contacts will be automatically assigned to a Human Agent. Messages from unsaved numbers will continue to be handled by the AI Agent.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg bg-amber-50 border border-amber-200 dark:bg-amber-950/20 dark:border-amber-900/50 p-3 text-xs text-amber-800 dark:text-amber-400">
+            This means the AI will not respond to messages from your saved contacts. A human agent must handle those conversations manually.
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
 
-        {/* Bulk Assign Confirmation Dialog */}
-        <Dialog open={showBulkAssignDialog} onOpenChange={setShowBulkAssignDialog}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>
-                {bulkAssignUserId === 'ai_agent'
-                    ? `Release ${bulkAssignFilter === 'all' ? 'all active' : 'assigned'} chats to AI Agent?`
-                    : `Assign ${bulkAssignFilter === 'all' ? 'all active' : 'unassigned'} chats?`}
-              </DialogTitle>
-              <DialogDescription>
-                {bulkAssignUserId === 'ai_agent'
-                    ? bulkAssignFilter === 'all'
-                        ? 'All active conversations will have their team member assignment removed. The AI Agent will resume responding to these chats.'
-                        : 'All currently assigned conversations will be released. The AI Agent will resume responding to these chats.'
-                    : (() => {
-                      const member = teamMembers.find((m) => m.user_id === bulkAssignUserId);
-                      const name = member?.name || 'the selected team member';
-                      return bulkAssignFilter === 'all'
-                          ? `All active conversations will be assigned to ${name}. This will override any existing assignments.`
-                          : `All conversations not yet assigned to anyone will be assigned to ${name}.`;
-                    })()}
-              </DialogDescription>
-            </DialogHeader>
-            <div className={`rounded-lg p-3 text-xs ${bulkAssignUserId === 'ai_agent' ? 'bg-emerald-50 border border-emerald-200 text-emerald-800 dark:bg-emerald-950/20 dark:border-emerald-900/50 dark:text-emerald-400' : 'bg-blue-50 border border-blue-200 text-blue-800 dark:bg-blue-950/20 dark:border-blue-900/50 dark:text-blue-400'}`}>
+            <Button onClick={confirmAutoAssign} disabled={autoAssignSaving}>
+              {autoAssignSaving && <Loader2 className="animate-spin mr-2 h-4 w-4" />}
+              Yes, enable auto-assign
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Assign Confirmation Dialog */}
+      <Dialog open={showBulkAssignDialog} onOpenChange={setShowBulkAssignDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
               {bulkAssignUserId === 'ai_agent'
-                  ? 'The AI Agent will automatically start handling messages in the released conversations.'
-                  : 'Assigned team members will receive a copy of incoming messages on their own WhatsApp so they can reply directly.'}
-            </div>
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button
-                  onClick={handleBulkAssign}
-                  disabled={bulkAssigning}
-                  className={bulkAssignUserId === 'ai_agent' ? 'bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600 dark:text-white' : ''}
-              >
-                {bulkAssigning && <Loader2 className="animate-spin mr-2 h-4 w-4" />}
-                {bulkAssignUserId === 'ai_agent' ? 'Yes, release to AI Agent' : 'Yes, assign chats'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </Card>
+                ? `Release ${bulkAssignFilter === 'all' ? 'all active' : 'assigned'} chats to AI Agent?`
+                : `Assign ${bulkAssignFilter === 'all' ? 'all active' : 'unassigned'} chats?`}
+            </DialogTitle>
+            <DialogDescription>
+              {bulkAssignUserId === 'ai_agent'
+                ? bulkAssignFilter === 'all'
+                  ? 'All active conversations will have their team member assignment removed. The AI Agent will resume responding to these chats.'
+                  : 'All currently assigned conversations will be released. The AI Agent will resume responding to these chats.'
+                : (() => {
+                    const member = teamMembers.find((m) => m.user_id === bulkAssignUserId);
+                    const name = member?.name || 'the selected team member';
+                    return bulkAssignFilter === 'all'
+                      ? `All active conversations will be assigned to ${name}. This will override any existing assignments.`
+                      : `All conversations not yet assigned to anyone will be assigned to ${name}.`;
+                  })()}
+            </DialogDescription>
+          </DialogHeader>
+          <div className={`rounded-lg p-3 text-xs ${bulkAssignUserId === 'ai_agent' ? 'bg-emerald-50 border border-emerald-200 text-emerald-800 dark:bg-emerald-950/20 dark:border-emerald-900/50 dark:text-emerald-400' : 'bg-blue-50 border border-blue-200 text-blue-800 dark:bg-blue-950/20 dark:border-blue-900/50 dark:text-blue-400'}`}>
+            {bulkAssignUserId === 'ai_agent'
+              ? 'The AI Agent will automatically start handling messages in the released conversations.'
+              : 'Assigned team members will receive a copy of incoming messages on their own WhatsApp so they can reply directly.'}
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+
+            <Button
+              onClick={handleBulkAssign}
+              disabled={bulkAssigning}
+              className={bulkAssignUserId === 'ai_agent' ? 'bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600 dark:text-white' : ''}
+            >
+              {bulkAssigning && <Loader2 className="animate-spin mr-2 h-4 w-4" />}
+              {bulkAssignUserId === 'ai_agent' ? 'Yes, release to AI Agent' : 'Yes, assign chats'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </Card>
   );
 };
