@@ -3370,7 +3370,7 @@ function WABASidebar({
                     {/* Added flex-1 and removed overflow-hidden from here */}
                     <div className="flex items-center gap-1 min-w-0 flex-1">
                       {(lastMsg?.isOutgoing || lastMsg?.role === 'assistant' || lastMsg?.role === 'human_agent') && !conv.unreadCount && (
-                        <MessageTicks status={lastMsg?.status || (lastMsg as (Message & { message_status?: string }) | undefined)?.message_status} />
+                        <MessageTicks status={lastMsg?.status || lastMsg?.message_status} />
                       )}
                       <span className="text-[14px] text-muted-foreground dark:text-[#a2a2a2] truncate max-w-[80%]">
                         {lastMsg?.content || 'Started conversation'}
