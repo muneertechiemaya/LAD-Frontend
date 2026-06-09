@@ -5,19 +5,19 @@ import { CheckCircle2 } from "lucide-react";
 export default function CloneYourselfSection() {
   const steps = [
     {
-      title: "Build Linkedin Outreach Campaigns in 3 simple steps",
+      title: "Train Mr LAD in 3 simple steps",
       description:
-        "Either yourself or with our proven templates.",
+        "On your own, or with our proven playbooks.",
     },
     {
-      title: "Create multi channel outreach campaigns",
+      title: "He works every channel at once",
       description:
-        "Or create stand-alone email sequences (incl. warm-up).",
+        "LinkedIn, WhatsApp, Instagram, email, and voice — coordinated as one team.",
     },
     {
-      title: "100% Linkedin Safe",
+      title: "On brand, every time",
       description:
-        "Our algorithm mimics human behavior with random daily volume, speed & breaks.",
+        "Mr LAD learns your offers and brand voice, so every conversation sounds like you.",
     },
   ];
 
@@ -27,8 +27,8 @@ export default function CloneYourselfSection() {
         {/* Centered Title */}
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4 leading-tight">
-            Clone yourself and let your clone do your complete{" "}
-            <span className="text-primary">LinkedIn outreach</span>
+            Clone your best rep and let Mr LAD run your{" "}
+            <span className="text-primary">entire outreach</span>
           </h2>
         </div>
 

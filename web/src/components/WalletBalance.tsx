@@ -224,7 +224,7 @@ export const WalletBalance: React.FC = () => {
                 )}
               </button>
               <p className="text-[11px] text-muted-foreground text-center">
-                Secure payment powered by Stripe. Credits never expire.
+                Secure payment powered by Stripe. Credits valid for 1 month.
               </p>
             </div>
           </div>
