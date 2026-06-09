@@ -113,36 +113,36 @@ const SettingsPage: React.FC = () => {
     { id: 'credits' as ActiveTab, label: 'Credits', icon: Coins },
   ];
   return (
-      <div className="space-y-6 p-4 sm:p-6 bg-transparent">
-        {/* Combined Header with Logo, Company Name, Renewal Date, and Tabs */}
-        <div className="bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 dark:from-slate-900 dark:via-purple-950/30 dark:to-slate-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden">
-          {/* Top Section: Logo, Company Name, and Renewal */}
-          <div className="p-6 pb-4">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center space-x-4">
-                <div className="w-16 h-16 rounded-full overflow-hidden bg-white dark:bg-gray-800 shadow-md flex items-center justify-center border-2 border-white dark:border-gray-700">
-                  {logoError || !companyLogo ? (
-                      <Building2 className="w-8 h-8 text-gray-400 dark:text-gray-500" />
-                  ) : (
-                      <img
-                          src={companyLogo}
-                          alt="Company Logo"
-                          className="w-full h-full object-cover"
-                          onError={() => setLogoError(true)}
-                      />
-                  )}
-                </div>
-                <div>
-                  <h1 className="text-gray-900 dark:text-gray-100 font-semibold text-xl">{displayCompanyName}</h1>
-                  <p className="text-gray-600 dark:text-gray-400 text-sm">
-                    Renews on {renewalDate || 'Loading...'}
-                  </p>
-                </div>
+    <div className="space-y-6 p-4 sm:p-6 bg-transparent">
+      {/* Combined Header with Logo, Company Name, Renewal Date, and Tabs */}
+      <div className="bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 dark:from-slate-900 dark:via-purple-950/30 dark:to-slate-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden">
+        {/* Top Section: Logo, Company Name, and Renewal */}
+        <div className="p-6 pb-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center space-x-4">
+              <div className="w-16 h-16 rounded-full overflow-hidden bg-white dark:bg-gray-800 shadow-md flex items-center justify-center border-2 border-white dark:border-gray-700">
+                {logoError || !companyLogo ? (
+                  <Building2 className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+                ) : (
+                  <img
+                    src={companyLogo}
+                    alt="Company Logo"
+                    className="w-full h-full object-cover"
+                    onError={() => setLogoError(true)}
+                  />
+                )}
+              </div>
+              <div>
+                <h1 className="text-gray-900 dark:text-gray-100 font-semibold text-xl">{displayCompanyName}</h1>
+                <p className="text-gray-600 dark:text-gray-400 text-sm">
+                  Renews on {renewalDate || 'Loading...'}
+                </p>
               </div>
             </div>
           </div>
+        </div>
         {/* Bottom Section: Tabs Navigation */}
-          <div className="border-t border-gray-200/50 dark:border-gray-800/60 bg-white/30 dark:bg-black/20 backdrop-blur-sm">
+        <div className="border-t border-gray-200/50 dark:border-gray-800/60 bg-white/30 dark:bg-black/20 backdrop-blur-sm">
           <div className="flex space-x-1 overflow-x-auto p-1">
             {tabs.map((tab) => (
               <button
@@ -163,8 +163,8 @@ const SettingsPage: React.FC = () => {
               </button>
             ))}
             <button
-                onClick={() => router.push('/settings/icp-search-strategy')}
-                className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-all text-gray-700 hover:text-gray-900 hover:bg-white/50"
+              onClick={() => router.push('/settings/icp-search-strategy')}
+              className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-all text-gray-700 hover:text-gray-900 hover:bg-white/50"
             >
               <Crosshair className="w-4 h-4" />
               ICP Strategy
@@ -181,59 +181,59 @@ const SettingsPage: React.FC = () => {
         {/* Placeholder for other tabs */}
         {activeTab === 'team' && <TeamManagement />}
         {false && activeTab === 'accounts' && (
-            <div className="space-y-6">
-              {/* Enrichment Preferences */}
-              <div>
-                <h2 className="text-gray-900 dark:text-gray-100 text-xl font-semibold mb-4">Enrichment Preferences</h2>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-white dark:bg-gray-900 rounded-lg p-6 border-2 border-blue-500 shadow-sm">
-                    <div className="flex items-start space-x-3">
-                      <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
-                        <svg className="w-6 h-6 text-gray-700 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <h3 className="text-gray-900 dark:text-gray-100 font-medium">Work emails + Premium database</h3>
-                        <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">50 Credits per row</p>
-                      </div>
+          <div className="space-y-6">
+            {/* Enrichment Preferences */}
+            <div>
+              <h2 className="text-gray-900 dark:text-gray-100 text-xl font-semibold mb-4">Enrichment Preferences</h2>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white dark:bg-gray-900 rounded-lg p-6 border-2 border-blue-500 shadow-sm">
+                  <div className="flex items-start space-x-3">
+                    <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
+                      <svg className="w-6 h-6 text-gray-700 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
                     </div>
-                  </div>
-                  <div className="bg-white dark:bg-gray-900 rounded-lg p-6 border border-gray-200 dark:border-gray-800 shadow-sm">
-                    <div className="flex items-start space-x-3">
-                      <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
-                        <svg className="w-6 h-6 text-gray-700 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <h3 className="text-gray-900 dark:text-gray-100 font-medium">Personal emails + Premium database</h3>
-                        <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">100 Credits per row</p>
-                      </div>
+                    <div>
+                      <h3 className="text-gray-900 dark:text-gray-100 font-medium">Work emails + Premium database</h3>
+                      <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">50 Credits per row</p>
                     </div>
                   </div>
                 </div>
-                <button className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2">
+                <div className="bg-white dark:bg-gray-900 rounded-lg p-6 border border-gray-200 dark:border-gray-800 shadow-sm">
+                  <div className="flex items-start space-x-3">
+                    <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
+                      <svg className="w-6 h-6 text-gray-700 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-gray-900 dark:text-gray-100 font-medium">Personal emails + Premium database</h3>
+                      <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">100 Credits per row</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <button className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                </svg>
+                <span>Save Changes</span>
+              </button>
+            </div>
+            {/* Email Accounts */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-gray-900 dark:text-gray-100 text-xl font-semibold">Email Accounts</h2>
+                <button className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center space-x-2">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                   </svg>
-                  <span>Save Changes</span>
+                  <span>Add Account</span>
                 </button>
               </div>
-              {/* Email Accounts */}
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-gray-900 dark:text-gray-100 text-xl font-semibold">Email Accounts</h2>
-                  <button className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center space-x-2">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                    </svg>
-                    <span>Add Account</span>
-                  </button>
-                </div>
-                <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden">
-                  <table className="w-full">
-                    <thead className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
+              <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden">
+                <table className="w-full">
+                  <thead className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
                     <tr>
                       <th className="text-left text-gray-600 dark:text-gray-400 text-sm font-medium px-6 py-4">
                         <div className="flex items-center space-x-2">
@@ -293,31 +293,31 @@ const SettingsPage: React.FC = () => {
                       </th>
                       <th className="text-left text-gray-600 dark:text-gray-400 text-sm font-medium px-6 py-4">Actions</th>
                     </tr>
-                    </thead>
-                    <tbody>
+                  </thead>
+                  <tbody>
                     <tr>
                       <td colSpan={8} className="text-center text-gray-500 dark:text-gray-400 py-12">
                         No results.
                       </td>
                     </tr>
-                    </tbody>
-                  </table>
-                </div>
+                  </tbody>
+                </table>
               </div>
+            </div>
             {/* LinkedIn Accounts */}
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-gray-900 dark:text-gray-100 text-xl font-semibold">LinkedIn Accounts</h2>
-                  <button className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center space-x-2">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                    </svg>
-                    <span>Add Account</span>
-                  </button>
-                </div>
-                <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden">
-                  <table className="w-full">
-                    <thead className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-gray-900 dark:text-gray-100 text-xl font-semibold">LinkedIn Accounts</h2>
+                <button className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center space-x-2">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                  </svg>
+                  <span>Add Account</span>
+                </button>
+              </div>
+              <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden">
+                <table className="w-full">
+                  <thead className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
                     <tr>
                       <th className="text-left text-gray-600 dark:text-gray-400 text-sm font-medium px-6 py-4">
                         <div className="flex items-center space-x-2">
@@ -353,39 +353,39 @@ const SettingsPage: React.FC = () => {
                       </th>
                       <th className="text-left text-gray-600 dark:text-gray-400 text-sm font-medium px-6 py-4">Actions</th>
                     </tr>
-                    </thead>
-                    <tbody>
+                  </thead>
+                  <tbody>
                     <tr>
                       <td colSpan={5} className="text-center text-gray-500 dark:text-gray-400 py-12">
                         No results.
                       </td>
                     </tr>
-                    </tbody>
-                  </table>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            {/* Power Dialer Numbers */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-gray-900 dark:text-gray-100 text-xl font-semibold">Power Dialer Numbers</h2>
+                <div className="flex space-x-3">
+                  <button className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center space-x-2">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span>Add Existing Phone</span>
+                  </button>
+                  <button className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center space-x-2">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
+                    <span>Add Phone</span>
+                  </button>
                 </div>
               </div>
-              {/* Power Dialer Numbers */}
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-gray-900 dark:text-gray-100 text-xl font-semibold">Power Dialer Numbers</h2>
-                  <div className="flex space-x-3">
-                    <button className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center space-x-2">
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                      </svg>
-                      <span>Add Existing Phone</span>
-                    </button>
-                    <button className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center space-x-2">
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                      </svg>
-                      <span>Add Phone</span>
-                    </button>
-                  </div>
-                </div>
-                <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden">
-                  <table className="w-full">
-                    <thead className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
+              <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden">
+                <table className="w-full">
+                  <thead className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
                     <tr>
                       <th className="text-left text-gray-600 dark:text-gray-400 text-sm font-medium px-6 py-4">
                         <div className="flex items-center space-x-2">
@@ -422,29 +422,29 @@ const SettingsPage: React.FC = () => {
                       <th className="text-left text-gray-600 dark:text-gray-400 text-sm font-medium px-6 py-4">Capability</th>
                       <th className="text-left text-gray-600 dark:text-gray-400 text-sm font-medium px-6 py-4">Action</th>
                     </tr>
-                    </thead>
-                    <tbody>
+                  </thead>
+                  <tbody>
                     <tr>
                       <td colSpan={6} className="text-center text-gray-500 dark:text-gray-400 py-12">
                         No phone numbers configured.
                       </td>
                     </tr>
-                    </tbody>
-                  </table>
-                </div>
+                  </tbody>
+                </table>
               </div>
             </div>
+          </div>
         )}
         {false && activeTab === 'website' && (
-            <div className="bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 dark:from-slate-900 dark:via-purple-950/30 dark:to-slate-900 rounded-lg p-8 border border-gray-200 dark:border-gray-800 shadow-sm">
-              <h2 className="text-gray-900 dark:text-gray-100 text-xl font-semibold mb-2">Website Settings</h2>
-              <p className="text-gray-600 dark:text-gray-400">Configure website tracking and integration options.</p>
-            </div>
+          <div className="bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 dark:from-slate-900 dark:via-purple-950/30 dark:to-slate-900 rounded-lg p-8 border border-gray-200 dark:border-gray-800 shadow-sm">
+            <h2 className="text-gray-900 dark:text-gray-100 text-xl font-semibold mb-2">Website Settings</h2>
+            <p className="text-gray-600 dark:text-gray-400">Configure website tracking and integration options.</p>
+          </div>
         )}
         {activeTab === 'billing' && <BillingSettings />}
         {activeTab === 'credits' && <CreditsSettings />}
       </div>
-      </div>
+    </div>
   );
 };
 export default SettingsPage;
