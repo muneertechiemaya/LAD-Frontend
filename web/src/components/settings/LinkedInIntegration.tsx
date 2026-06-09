@@ -705,50 +705,50 @@ export const LinkedInIntegration: React.FC = () => {
 
   if (loading) {
     return (
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-blue-600 dark:text-blue-400" />
-        </div>
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="h-6 w-6 animate-spin text-blue-600 dark:text-blue-400" />
+      </div>
     );
   }
   return (
-      <>
-        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
-            <div className="flex items-start">
-              <div className="bg-blue-100 dark:bg-blue-950/50 p-3 rounded-lg mr-3 sm:mr-4 flex-shrink-0">
-                {/* Official LinkedIn Icon */}
-                <svg className="h-6 w-6" viewBox="0 0 24 24" fill="#0077B5">
-                  <path d={LINKEDIN_LOGO_PATH}/>
-                </svg>
-              </div>
-              <div className="min-w-0">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">LinkedIn</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400 break-words">
-                  Connect your LinkedIn account for automated lead enrichment and outreach
-                </p>
-              </div>
+    <>
+      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+          <div className="flex items-start">
+            <div className="bg-blue-100 dark:bg-blue-950/50 p-3 rounded-lg mr-3 sm:mr-4 flex-shrink-0">
+              {/* Official LinkedIn Icon */}
+              <svg className="h-6 w-6" viewBox="0 0 24 24" fill="#0077B5">
+                <path d={LINKEDIN_LOGO_PATH}/>
+              </svg>
             </div>
-            <div className="flex items-center justify-end sm:justify-start flex-shrink-0">
-              {(() => {
-                const hasConnected = linkedInConnections.some(conn => conn.connected);
-                const primaryStatus = linkedInConnections.length > 0
-                    ? linkedInConnections[0].status || (linkedInConnections[0].connected ? 'connected' : 'disconnected')
-                    : 'disconnected';
-                const statusDisplay = getStatusDisplay(primaryStatus, hasConnected);
-                const StatusIcon = statusDisplay.icon;
-                return (
-                    <div className={`flex items-center px-3 py-1.5 rounded-full border-2 text-xs sm:text-sm ${
-                        statusDisplay.color.includes('text-green-600') ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900/30' :
-                            statusDisplay.color.includes('text-gray-400') ? 'bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-gray-700' :
-                                statusDisplay.color.includes('text-yellow-600') ? 'bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-900/30' :
-                                    statusDisplay.color.includes('text-orange-600') ? 'bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-900/30' :
-                                        'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/30'
-                    }`}>
-                      {statusDisplay.showPulse && (
-                          <div className={`h-2 w-2 sm:h-2.5 sm:w-2.5 ${statusDisplay.bgColor} rounded-full mr-1.5 sm:mr-2 animate-pulse flex-shrink-0`}></div>
-                      )}
-                      <StatusIcon className={`h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 ${statusDisplay.color} flex-shrink-0`} />
-                      <span className={`font-semibold ${statusDisplay.color} whitespace-nowrap`}>
+            <div className="min-w-0">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">LinkedIn</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 break-words">
+                Connect your LinkedIn account for automated lead enrichment and outreach
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center justify-end sm:justify-start flex-shrink-0">
+            {(() => {
+              const hasConnected = linkedInConnections.some(conn => conn.connected);
+              const primaryStatus = linkedInConnections.length > 0
+                ? linkedInConnections[0].status || (linkedInConnections[0].connected ? 'connected' : 'disconnected')
+                : 'disconnected';
+              const statusDisplay = getStatusDisplay(primaryStatus, hasConnected);
+              const StatusIcon = statusDisplay.icon;
+              return (
+                <div className={`flex items-center px-3 py-1.5 rounded-full border-2 text-xs sm:text-sm ${
+                  statusDisplay.color.includes('text-green-600') ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900/30' :
+                  statusDisplay.color.includes('text-gray-400') ? 'bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-gray-700' :
+                  statusDisplay.color.includes('text-yellow-600') ? 'bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-900/30' :
+                  statusDisplay.color.includes('text-orange-600') ? 'bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-900/30' :
+                  'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/30'
+                }`}>
+                  {statusDisplay.showPulse && (
+                    <div className={`h-2 w-2 sm:h-2.5 sm:w-2.5 ${statusDisplay.bgColor} rounded-full mr-1.5 sm:mr-2 animate-pulse flex-shrink-0`}></div>
+                  )}
+                  <StatusIcon className={`h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 ${statusDisplay.color} flex-shrink-0`} />
+                  <span className={`font-semibold ${statusDisplay.color} whitespace-nowrap`}>
                     {linkedInConnections.length > 0 ? `${linkedInConnections.length} Account${linkedInConnections.length > 1 ? 's' : ''}` : statusDisplay.text}
                   </span>
                 </div>
@@ -758,113 +758,113 @@ export const LinkedInIntegration: React.FC = () => {
         </div>
         {/* AI Replies toggle feedback — only surfaces on failure (mirrors Instagram). */}
         {aiToast && (
-            <div
-                className={`mb-4 flex items-center gap-2 rounded-lg border p-3 text-sm ${
-                    aiToast.kind === 'ok'
-                        ? 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200'
-                        : 'border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200'
-                }`}
-            >
-              {aiToast.kind === 'ok' ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
-              {aiToast.message}
-            </div>
+          <div
+            className={`mb-4 flex items-center gap-2 rounded-lg border p-3 text-sm ${
+              aiToast.kind === 'ok'
+                ? 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200'
+                : 'border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200'
+            }`}
+          >
+            {aiToast.kind === 'ok' ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+            {aiToast.message}
+          </div>
         )}
-          {/* Display all connected LinkedIn accounts */}
-          {linkedInConnections.length > 0 && (
-              <div className="mb-6 space-y-3">
-                <h4 className="font-medium text-gray-900 dark:text-gray-100 text-sm mb-2">
-                  Connected Accounts ({linkedInConnections.length})
-                </h4>
-                {linkedInConnections.length > 1 && (
-                    <p className="text-xs text-gray-500 -mt-1 mb-1">
-                      AI Replies is account-wide — toggling it on any card applies to all your connected LinkedIn accounts.
-                    </p>
-                )}
-                {linkedInConnections.map((account, index) => {
-                  const accountStatusDisplay = getStatusDisplay(account.status, account.connected);
-                  const AccountStatusIcon = accountStatusDisplay.icon;
-                  const accountNumber = index + 1;
-                  return (
-                      <div key={account.id || account.email || `account-${index}`} className="p-4 rounded-lg border bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900/30">
-                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
-                              <p className="font-medium text-gray-900 dark:text-gray-100 truncate">{account.accountName || account.profileName || account.email || 'LinkedIn Account'}</p>
-                              <div className={`flex items-center px-2 py-1 rounded-md text-xs font-medium w-fit flex-shrink-0 ${
-                                  accountStatusDisplay.color.includes('text-green-600') ? 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400' :
-                                      accountStatusDisplay.color.includes('text-gray-400') ? 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-gray-400' :
-                                          accountStatusDisplay.color.includes('text-yellow-600') ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400' :
-                                              accountStatusDisplay.color.includes('text-orange-600') ? 'bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400' :
-                                                  'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400'
-                              }`}>
-                                {accountStatusDisplay.showPulse && (
-                                    <div className={`h-1.5 w-1.5 ${accountStatusDisplay.bgColor} rounded-full mr-1.5 animate-pulse flex-shrink-0`}></div>
-                                )}
-                                <AccountStatusIcon className={`h-3 w-3 mr-1 ${accountStatusDisplay.color} flex-shrink-0`} />
-                                <span className="whitespace-nowrap">{accountStatusDisplay.text}</span>
-                              </div>
-                            </div>
-                            {account.email && (
-                                <p className="text-sm text-gray-600 dark:text-gray-400 break-words">{account.email}</p>
-                            )}
-                            {account.profileUrl && (
-                                <a
-                                    href={account.profileUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center mt-1 break-all"
-                                >
-                                  View Profile
-                                  <ExternalLink className="h-3 w-3 ml-1 flex-shrink-0" />
-                                </a>
-                            )}
-                            {account.connectedAt && (
-                                <p className="text-xs text-gray-500 dark:text-gray-400       mt-2">
-                                  Connected on {new Date(account.connectedAt).toLocaleDateString()}
-                                </p>
-                            )}
-                            {account.status && account.status !== 'connected' && account.status !== 'active' && (
-                                <div className={`mt-3 p-2 rounded-md text-xs ${
-                                    account.status === 'disconnected' || account.status === 'inactive' ? 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300' :
-                                        account.status === 'stopped' ? 'bg-yellow-100 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-400' :
-                                            account.status === 'checkpoint' || account.status === 'credentials_expired' ? 'bg-orange-100 dark:bg-orange-950/30 text-orange-700 dark:text-orange-400' :
-                                                'bg-red-100 dark:bg-red-950/30 text-red-700 dark:text-red-400'
-                                }`}>
-                                  {(account.status === 'disconnected' || account.status === 'inactive') && '⚠️ Account is disconnected. Please reconnect to continue using LinkedIn features.'}
-                                  {account.status === 'stopped' && '⏸️ Account is stopped. Click reconnect to resume.'}
-                                  {(account.status === 'checkpoint' || account.status === 'credentials_expired') && '🔒 LinkedIn requires verification. Please reconnect with your credentials.'}
-                                  {account.status === 'unknown' && '❓ Unable to determine account status. Please check your connection.'}
-                                  {account.status === 'error' && '❌ Error checking account status. Please try reconnecting.'}
-                                </div>
-                            )}
-                          </div>
-                          <div className="flex sm:ml-4 sm:flex-col gap-2">
-                            <button
-                                onClick={() => disconnectLinkedIn(account.id, account.email)}
-                                disabled={disconnecting[account.id || 'default']}
-                                className="px-4 py-2 text-sm sm:text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-red-300 dark:disabled:bg-red-950 disabled:cursor-not-allowed transition-colors whitespace-nowrap w-full sm:w-auto"
-                            >
-                              {disconnecting[account.id || 'default'] ? 'Disconnecting...' : 'Disconnect'}
-                            </button>
-                          </div>
-                        </div>
-                        {/* AI Replies — tenant-level LinkedIn AI agent. Every connected
-                      account binds to the same flag; toggling persists via the
-                      automation-settings API and survives a refresh. */}
-                        <div className="mt-3 flex flex-wrap items-center gap-2">
-                          <AiToggleChip
-                              label="AI Replies"
-                              enabled={automationSettings?.ai_agent_enabled ?? true}
-                              disabled={!automationSettings || aiRepliesSaving}
-                              onToggle={toggleAiReplies}
-                          />
+        {/* Display all connected LinkedIn accounts */}
+        {linkedInConnections.length > 0 && (
+          <div className="mb-6 space-y-3">
+            <h4 className="font-medium text-gray-900 dark:text-gray-100 text-sm mb-2">
+              Connected Accounts ({linkedInConnections.length})
+            </h4>
+            {linkedInConnections.length > 1 && (
+              <p className="text-xs text-gray-500 -mt-1 mb-1">
+                AI Replies is account-wide — toggling it on any card applies to all your connected LinkedIn accounts.
+              </p>
+            )}
+            {linkedInConnections.map((account, index) => {
+              const accountStatusDisplay = getStatusDisplay(account.status, account.connected);
+              const AccountStatusIcon = accountStatusDisplay.icon;
+              const accountNumber = index + 1;
+              return (
+                <div key={account.id || account.email || `account-${index}`} className="p-4 rounded-lg border bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900/30">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                        <p className="font-medium text-gray-900 dark:text-gray-100 truncate">{account.accountName || account.profileName || account.email || 'LinkedIn Account'}</p>
+                        <div className={`flex items-center px-2 py-1 rounded-md text-xs font-medium w-fit flex-shrink-0 ${
+                          accountStatusDisplay.color.includes('text-green-600') ? 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400' :
+                          accountStatusDisplay.color.includes('text-gray-400') ? 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-gray-400' :
+                          accountStatusDisplay.color.includes('text-yellow-600') ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400' :
+                          accountStatusDisplay.color.includes('text-orange-600') ? 'bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400' :
+                          'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400'
+                        }`}>
+                          {accountStatusDisplay.showPulse && (
+                            <div className={`h-1.5 w-1.5 ${accountStatusDisplay.bgColor} rounded-full mr-1.5 animate-pulse flex-shrink-0`}></div>
+                          )}
+                          <AccountStatusIcon className={`h-3 w-3 mr-1 ${accountStatusDisplay.color} flex-shrink-0`} />
+                          <span className="whitespace-nowrap">{accountStatusDisplay.text}</span>
                         </div>
                       </div>
-                  );
-                })}
-              </div>
-          )}
-          <div className="space-y-4">
+                      {account.email && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 break-words">{account.email}</p>
+                      )}
+                      {account.profileUrl && (
+                        <a
+                          href={account.profileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center mt-1 break-all"
+                        >
+                          View Profile
+                          <ExternalLink className="h-3 w-3 ml-1 flex-shrink-0" />
+                        </a>
+                      )}
+                      {account.connectedAt && (
+                        <p className="text-xs text-gray-500 dark:text-gray-400       mt-2">
+                          Connected on {new Date(account.connectedAt).toLocaleDateString()}
+                        </p>
+                      )}
+                      {account.status && account.status !== 'connected' && account.status !== 'active' && (
+                        <div className={`mt-3 p-2 rounded-md text-xs ${
+                          account.status === 'disconnected' || account.status === 'inactive' ? 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300' :
+                          account.status === 'stopped' ? 'bg-yellow-100 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-400' :
+                          account.status === 'checkpoint' || account.status === 'credentials_expired' ? 'bg-orange-100 dark:bg-orange-950/30 text-orange-700 dark:text-orange-400' :
+                          'bg-red-100 dark:bg-red-950/30 text-red-700 dark:text-red-400'
+                        }`}>
+                          {(account.status === 'disconnected' || account.status === 'inactive') && '⚠️ Account is disconnected. Please reconnect to continue using LinkedIn features.'}
+                          {account.status === 'stopped' && '⏸️ Account is stopped. Click reconnect to resume.'}
+                          {(account.status === 'checkpoint' || account.status === 'credentials_expired') && '🔒 LinkedIn requires verification. Please reconnect with your credentials.'}
+                          {account.status === 'unknown' && '❓ Unable to determine account status. Please check your connection.'}
+                          {account.status === 'error' && '❌ Error checking account status. Please try reconnecting.'}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex sm:ml-4 sm:flex-col gap-2">
+                      <button
+                        onClick={() => disconnectLinkedIn(account.id, account.email)}
+                        disabled={disconnecting[account.id || 'default']}
+                        className="px-4 py-2 text-sm sm:text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-red-300 dark:disabled:bg-red-950 disabled:cursor-not-allowed transition-colors whitespace-nowrap w-full sm:w-auto"
+                      >
+                        {disconnecting[account.id || 'default'] ? 'Disconnecting...' : 'Disconnect'}
+                      </button>
+                    </div>
+                  </div>
+                  {/* AI Replies — tenant-level LinkedIn AI agent. Every connected
+                      account binds to the same flag; toggling persists via the
+                      automation-settings API and survives a refresh. */}
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <AiToggleChip
+                      label="AI Replies"
+                      enabled={automationSettings?.ai_agent_enabled ?? true}
+                      disabled={!automationSettings || aiRepliesSaving}
+                      onToggle={toggleAiReplies}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <div className="space-y-4">
           {/* <div className="border-t border-gray-200 pt-4">
             <h4 className="font-medium text-gray-900 mb-3">Features</h4>
             <ul className="space-y-2 text-sm text-gray-600">
@@ -890,378 +890,378 @@ export const LinkedInIntegration: React.FC = () => {
               </li>
             </ul>
           </div> */}
-            <div className="border-t border-gray-200 dark:border-gray-800 pt-4 space-y-3">
-              {/* Always show "Add Account" button to allow multiple connections */}
-              <button
-                  onClick={() => setShowConnectionModal(true)}
-                  className="w-full bg-blue-700 dark:bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-800 dark:hover:bg-blue-700 transition-colors flex items-center justify-center text-sm sm:text-base font-medium"
-              >
-                {/* Official LinkedIn Icon */}
-                <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
-                  <path d={LINKEDIN_LOGO_PATH}/>
-                </svg>
-                {linkedInConnections.length > 0 ? 'Add Another LinkedIn Account' : 'Connect LinkedIn Account'}
-              </button>
-            </div>
-            <div className="bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-900/30 rounded-lg p-3 sm:p-4">
-              <div className="flex items-start gap-2 sm:gap-3">
-                <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
-                <div className="text-sm text-yellow-800 dark:text-yellow-400 min-w-0">
-                  <p className="font-medium mb-1 text-yellow-900 dark:text-yellow-300">Important Note</p>
-                  <p className="leading-relaxed">
-                    LinkedIn has strict rate limits and usage policies. Automated actions should be used
-                    responsibly to avoid account restrictions. We recommend limiting connection requests
-                    to 50-100 per day.
-                  </p>
-                </div>
+          <div className="border-t border-gray-200 dark:border-gray-800 pt-4 space-y-3">
+            {/* Always show "Add Account" button to allow multiple connections */}
+            <button
+              onClick={() => setShowConnectionModal(true)}
+              className="w-full bg-blue-700 dark:bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-800 dark:hover:bg-blue-700 transition-colors flex items-center justify-center text-sm sm:text-base font-medium"
+            >
+              {/* Official LinkedIn Icon */}
+              <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                <path d={LINKEDIN_LOGO_PATH}/>
+              </svg>
+              {linkedInConnections.length > 0 ? 'Add Another LinkedIn Account' : 'Connect LinkedIn Account'}
+            </button>
+          </div>
+          <div className="bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-900/30 rounded-lg p-3 sm:p-4">
+            <div className="flex items-start gap-2 sm:gap-3">
+              <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-yellow-800 dark:text-yellow-400 min-w-0">
+                <p className="font-medium mb-1 text-yellow-900 dark:text-yellow-300">Important Note</p>
+                <p className="leading-relaxed">
+                  LinkedIn has strict rate limits and usage policies. Automated actions should be used
+                  responsibly to avoid account restrictions. We recommend limiting connection requests
+                  to 50-100 per day.
+                </p>
               </div>
             </div>
           </div>
         </div>
-        {/* Connection Modal */}
-        <Dialog open={showConnectionModal} onOpenChange={setShowConnectionModal}>
-          <DialogContent className="sm:max-w-5xl sm:w-[90vw] p-0 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
-            <DialogHeader className="border-b border-gray-100 dark:border-gray-800 p-6">
-              <div className="flex items-center space-x-3">
-                <div className="bg-blue-100 dark:bg-blue-950/50 p-2 rounded">
-                  {/* Official LinkedIn Icon */}
-                  <svg className="h-6 w-6" viewBox="0 0 24 24" fill="#0077B5">
-                    <path d={LINKEDIN_LOGO_PATH}/>
-                  </svg>
-                </div>
-                <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100">Sign in to LinkedIn</DialogTitle>
-              </div>
-            </DialogHeader>
-
-            <div className="flex-1 overflow-y-auto px-8 py-6 space-y-6 max-h-[70vh]">
-              {/* Choose Method */}
-              <div className="mb-6">
-                <h3 className="text-center text-2xl font-semibold text-gray-700 dark:text-gray-300 mb-4">Choose a method</h3>
-                <div className="flex gap-3 justify-center">
-                  <button
-                      onClick={() => setAuthMethod('credentials')}
-                      className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-                          authMethod === 'credentials'
-                              ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-2 border-gray-300 dark:border-gray-600'
-                              : 'bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800'
-                      }`}
-                  >
-                    Credentials
-                  </button>
-                  <button
-                      onClick={() => setAuthMethod('cookies')}
-                      className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-                          authMethod === 'cookies'
-                              ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-2 border-gray-300 dark:border-gray-600'
-                              : 'bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800'
-                      }`}
-                  >
-                    Cookies
-                  </button>
-                </div>
-              </div>
-
-              {/* Credentials Form */}
-              {authMethod === 'credentials' && (
-                  <div className="space-y-4">
-                    <div>
-                      <input
-                          type="email"
-                          placeholder="Email"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          className={`w-full px-4 py-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${autofillClasses}`}
-                      />
-                    </div>
-                    <div className="relative">
-                      <input
-                          type={showPin ? "text" : ("pass" + "word" as any)}
-                          placeholder="LinkedIn Details"
-                          value={pinCode}
-                          onChange={(e) => setPinCode(e.target.value)}
-                          className={`w-full px-4 py-3 pr-10 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${autofillClasses}`}
-                      />
-                      <button
-                          type="button"
-                          onClick={() => setShowPin(!showPin)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 focus:outline-none"
-                          aria-label={showPin ? "Hide pin" : "Show pin"}
-                      >
-                        {showPin ? (
-                            <EyeOff className="h-5 w-5" />
-                        ) : (
-                            <Eye className="h-5 w-5" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-              )}
-
-              {/* Cookies Form */}
-              {authMethod === 'cookies' && (
-                  <div className="space-y-4">
-                    <div>
-                      <p className="text-gray-700 dark:text-gray-300 mb-1">
-                        Copy your LinkedIn cookies.{' '}
-                        <button
-                            onClick={() => setShowCookieHelp(!showCookieHelp)}
-                            className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline"
-                        >
-                          How to find them?
-                        </button>
-                      </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                        Your cookies need to be collected in the same browser as this page.
-                      </p>
-                    </div>
-                    {showCookieHelp && (
-                        <div className="bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-800 rounded-lg p-4 mb-4">
-                          <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">How to find my cookies?</h4>
-                          <div className="text-sm text-gray-700 dark:text-gray-300 space-y-2">
-                            <p className="font-medium">Follow the steps to find your linkedin cookies (not available on mobile)</p>
-                            <ol className="list-decimal list-inside space-y-1 ml-2">
-                              <li>Open linkedin in a new tab (or click here: <a href="https://www.linkedin.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">linkedin</a>).</li>
-                              <li>Log in to your account.</li>
-                              <li>Open your browser&apos;s developer console (F12 for Chrome and Firefox, option + command + I for Safari) then go to the &quot;application&quot; or &quot;storage&quot; tab.</li>
-                              <li>Open the cookies folder and click on the one called &quot;https://www.linkedin.com&quot;.</li>
-                              <li>Copy the values for &quot;li_at&quot; into the field below, then click on the connect button</li>
-                            </ol>
-                          </div>
-                        </div>
-                    )}
-                    <div>
-                      <input
-                          type="text"
-                          placeholder="Enter your li_at value"
-                          value={liAtCookie}
-                          onChange={(e) => setLiAtCookie(e.target.value)}
-                          className={`w-full px-4 py-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${autofillClasses}`}
-                      />
-                    </div>
-                    <div>
-                      <p className="text-gray-700 dark:text-gray-300 mb-2">
-                        If your account has Recruiter or Sales Navigator subscription, copy the li_a too.
-                      </p>
-                      <input
-                          type="text"
-                          placeholder="Enter your li_a value (optional)"
-                          value={liACookie}
-                          onChange={(e) => setLiACookie(e.target.value)}
-                          className={`w-full px-4 py-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${autofillClasses}`}
-                      />
-                    </div>
-                  </div>
-              )}
-
-              {/* Optional Settings */}
-              <div className="mt-6">
-                <button
-                    onClick={() => setShowOptionalSettings(!showOptionalSettings)}
-                    className="flex items-center text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 font-medium"
-                >
-                  {showOptionalSettings ? (
-                      <ChevronUp className="h-5 w-5 mr-1" />
-                  ) : (
-                      <ChevronDown className="h-5 w-5 mr-1" />
-                  )}
-                  Optional settings
-                </button>
-                {showOptionalSettings && (
-                    <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800/40 rounded-lg border border-gray-200 dark:border-gray-800">
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Additional configuration options will be available here for advanced users.
-                      </p>
-                    </div>
-                )}
-              </div>
-
-              {/* Error Message */}
-              {connectionError && (
-                  <div className="mt-4 p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 rounded-lg">
-                    <div className="flex items-start">
-                      <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 mr-2 mt-0.5 flex-shrink-0" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-red-800 dark:text-red-300">Connection Failed</p>
-                        <p className="text-sm text-red-700 dark:text-red-400 mt-1">{connectionError}</p>
-                      </div>
-                    </div>
-                  </div>
-              )}
-
-              {/* Success Message */}
-              {connectionSuccess && (
-                  <div className="mt-4 p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900/30 rounded-lg">
-                    <div className="flex items-start">
-                      <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 mr-2 mt-0.5 flex-shrink-0" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-green-800 dark:text-green-300">Connection Successful!</p>
-                        <p className="text-sm text-green-700 dark:text-green-400 mt-1">Your LinkedIn account has been connected successfully.</p>
-                      </div>
-                    </div>
-                  </div>
-              )}
-            </div>
-
-            <DialogActions className="px-8 pb-8 pt-4 border-t border-gray-100 dark:border-gray-800">
-              <Button
-                  onClick={handleConnect}
-                  disabled={connecting || (authMethod === 'credentials' ? !email || !pinCode : !liAtCookie)}
-                  className={`px-8 h-11 rounded-full font-semibold transition-colors ${
-                      connectionSuccess
-                          ? 'bg-green-600 hover:bg-green-700 text-white'
-                          : connectionError
-                              ? 'bg-red-600 hover:bg-red-700 text-white'
-                              : 'bg-[#0B1957] hover:bg-[#0B1957]/90 text-white dark:bg-blue-600 dark:hover:bg-blue-700'
-                  }`}
-              >
-                {connecting ? (
-                    <span className="flex items-center justify-center">
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Connecting...
-                </span>
-                ) : connectionSuccess ? (
-                    <span className="flex items-center justify-center">
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Connected!
-                </span>
-                ) : connectionError ? (
-                    'Retry'
-                ) : (
-                    'Login'
-                )}
-              </Button>
-            </DialogActions>
-          </DialogContent>
-        </Dialog>
-        {/* Checkpoint Verification Modal (OTP or Yes/No) — LinkedIn-style UI */}
-        <Dialog open={showOtpModal} onOpenChange={setShowOtpModal}>
-          <DialogContent className="max-w-sm p-0 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
-            <DialogHeader className="text-center justify-center pt-8 px-6">
-              <div className="flex justify-center mb-4">
-                <svg width="34" height="34" viewBox="0 0 24 24" fill="#0A66C2">
+      </div>
+      {/* Connection Modal */}
+      <Dialog open={showConnectionModal} onOpenChange={setShowConnectionModal}>
+        <DialogContent className="sm:max-w-5xl sm:w-[90vw] p-0 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
+          <DialogHeader className="border-b border-gray-100 dark:border-gray-800 p-6">
+            <div className="flex items-center space-x-3">
+              <div className="bg-blue-100 dark:bg-blue-950/50 p-2 rounded">
+                {/* Official LinkedIn Icon */}
+                <svg className="h-6 w-6" viewBox="0 0 24 24" fill="#0077B5">
                   <path d={LINKEDIN_LOGO_PATH}/>
                 </svg>
               </div>
-              <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100 tracking-tight">
-                {currentCheckpointAccount?.checkpoint?.is_yes_no ? 'Verify your identity' : 'Enter verification code'}
-              </DialogTitle>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                {currentCheckpointAccount?.checkpoint?.is_yes_no
-                    ? 'Approve the sign-in request on your mobile device'
-                    : 'We sent a code to complete your sign-in'}
-              </p>
-            </DialogHeader>
+              <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100">Sign in to LinkedIn</DialogTitle>
+            </div>
+          </DialogHeader>
 
-            <div className="px-8 py-6">
-              {currentCheckpointAccount?.checkpoint?.is_yes_no ? (
-                  <div className="space-y-5">
-                    {/* Phone icon + prompt */}
-                    <div className="flex flex-col items-center text-center gap-3">
-                      <div className="w-14 h-14 rounded-full bg-[#EEF3FB] dark:bg-blue-950/40 flex items-center justify-center">
-                        <svg className="w-7 h-7 text-[#0A66C2] dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d={PHONE_AUTH_PATH} />
-                        </svg>
-                      </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                        We sent a notification to the <span className="font-semibold text-gray-800 dark:text-gray-200">LinkedIn app</span> on your phone.
-                        Tap <span className="font-bold text-[#057642] dark:text-green-400">Yes</span> to approve this sign-in.
-                      </p>
+          <div className="flex-1 overflow-y-auto px-8 py-6 space-y-6 max-h-[70vh]">
+            {/* Choose Method */}
+            <div className="mb-6">
+              <h3 className="text-center text-2xl font-semibold text-gray-700 dark:text-gray-300 mb-4">Choose a method</h3>
+              <div className="flex gap-3 justify-center">
+                <button
+                  onClick={() => setAuthMethod('credentials')}
+                  className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+                    authMethod === 'credentials'
+                      ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-2 border-gray-300 dark:border-gray-600'
+                      : 'bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800'
+                  }`}
+                >
+                  Credentials
+                </button>
+                <button
+                  onClick={() => setAuthMethod('cookies')}
+                  className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+                    authMethod === 'cookies'
+                      ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-2 border-gray-300 dark:border-gray-600'
+                      : 'bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800'
+                  }`}
+                >
+                  Cookies
+                </button>
+              </div>
+            </div>
+
+            {/* Credentials Form */}
+            {authMethod === 'credentials' && (
+              <div className="space-y-4">
+                <div>
+                  <input
+                    type="email"
+                    placeholder="Email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className={`w-full px-4 py-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${autofillClasses}`}
+                  />
+                </div>
+                <div className="relative">
+                  <input
+                    type={showPin ? "text" : ("pass" + "word" as any)}
+                    placeholder="LinkedIn Details"
+                    value={pinCode}
+                    onChange={(e) => setPinCode(e.target.value)}
+                    className={`w-full px-4 py-3 pr-10 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${autofillClasses}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPin(!showPin)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 focus:outline-none"
+                    aria-label={showPin ? "Hide pin" : "Show pin"}
+                  >
+                    {showPin ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Cookies Form */}
+            {authMethod === 'cookies' && (
+              <div className="space-y-4">
+                <div>
+                  <p className="text-gray-700 dark:text-gray-300 mb-1">
+                    Copy your LinkedIn cookies.{' '}
+                    <button
+                      onClick={() => setShowCookieHelp(!showCookieHelp)}
+                      className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline"
+                    >
+                      How to find them?
+                    </button>
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                    Your cookies need to be collected in the same browser as this page.
+                  </p>
+                </div>
+                {showCookieHelp && (
+                  <div className="bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-800 rounded-lg p-4 mb-4">
+                    <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">How to find my cookies?</h4>
+                    <div className="text-sm text-gray-700 dark:text-gray-300 space-y-2">
+                      <p className="font-medium">Follow the steps to find your linkedin cookies (not available on mobile)</p>
+                      <ol className="list-decimal list-inside space-y-1 ml-2">
+                        <li>Open linkedin in a new tab (or click here: <a href="https://www.linkedin.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">linkedin</a>).</li>
+                        <li>Log in to your account.</li>
+                        <li>Open your browser&apos;s developer console (F12 for Chrome and Firefox, option + command + I for Safari) then go to the &quot;application&quot; or &quot;storage&quot; tab.</li>
+                        <li>Open the cookies folder and click on the one called &quot;https://www.linkedin.com&quot;.</li>
+                        <li>Copy the values for &quot;li_at&quot; into the field below, then click on the connect button</li>
+                      </ol>
                     </div>
-
-                    {/* Steps */}
-                    <ol className="space-y-3">
-                      {[
-                        'Open the LinkedIn app on your phone',
-                        'Find the sign-in approval notification',
-                        <>Tap <strong className="text-[#057642] dark:text-green-400">Yes</strong> to approve this login</>,
-                      ].map((step, i) => (
-                          <li key={i} className="flex items-start gap-3">
-                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-[#0A66C2] text-white text-xs font-semibold flex items-center justify-center mt-0.5">
-                        {i + 1}
-                      </span>
-                            <span className="text-sm text-gray-700 dark:text-gray-300">{step}</span>
-                          </li>
-                      ))}
-                    </ol>
-
-                    {/* Waiting status */}
-                    {yesNoPolling && !autoResolving && (
-                        <div className="flex items-center gap-2 px-4 py-3 bg-[#EEF3FB] dark:bg-blue-950/30 rounded-lg">
-                          <Loader2 className="h-4 w-4 animate-spin text-[#0A66C2] dark:text-blue-400 flex-shrink-0" />
-                          <p className="text-sm text-[#0A66C2] dark:text-blue-400 font-medium">Waiting for your approval...</p>
-                        </div>
-                    )}
-
-                    {/* Approved status */}
-                    {autoResolving && (
-                        <div className="flex items-center gap-2 px-4 py-3 bg-[#EAF5EA] dark:bg-green-950/20 rounded-lg">
-                          <CheckCircle2 className="h-4 w-4 text-[#057642] dark:text-green-400 flex-shrink-0" />
-                          <p className="text-sm text-[#057642] dark:text-green-400 font-semibold">Approval detected! Connecting your account...</p>
-                        </div>
-                    )}
-
-                    {/* Hint */}
-                    <p className="text-xs text-gray-400 dark:text-gray-500 text-center leading-relaxed">
-                      Don&apos;t see the notification? Open the LinkedIn app manually and look for a security alert or login approval request.
-                    </p>
                   </div>
-              ) : (
-                  /* ── OTP Checkpoint ── */
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                      {currentCheckpointAccount?.checkpoint?.message || 'Enter the verification code sent to your email or phone.'}
-                    </p>
-                    <input
-                        type="text"
-                        placeholder="_ _ _ _ _ _"
-                        value={otp}
-                        onChange={(e) => {
-                          const value = e.target.value.replace(/\D/g, '').slice(0, 6);
-                          setOtp(value);
-                          setOtpError(null);
-                        }}
-                        className={`w-full px-4 py-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0A66C2] focus:border-transparent text-center text-2xl tracking-[0.5em] font-mono ${autofillClasses}`}
-                        maxLength={6}
-                        autoFocus
-                    />
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 text-center">
-                      Enter the 6-digit code sent to your email or phone
-                    </p>
-                  </div>
-              )}
+                )}
+                <div>
+                  <input
+                    type="text"
+                    placeholder="Enter your li_at value"
+                    value={liAtCookie}
+                    onChange={(e) => setLiAtCookie(e.target.value)}
+                    className={`w-full px-4 py-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${autofillClasses}`}
+                  />
+                </div>
+                <div>
+                  <p className="text-gray-700 dark:text-gray-300 mb-2">
+                    If your account has Recruiter or Sales Navigator subscription, copy the li_a too.
+                  </p>
+                  <input
+                    type="text"
+                    placeholder="Enter your li_a value (optional)"
+                    value={liACookie}
+                    onChange={(e) => setLiACookie(e.target.value)}
+                    className={`w-full px-4 py-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${autofillClasses}`}
+                  />
+                </div>
+              </div>
+            )}
 
-              {/* Error */}
-              {otpError && (
-                  <div className="mt-4 flex items-start gap-2 px-4 py-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 rounded-lg">
-                    <AlertCircle className="h-4 w-4 text-red-500 dark:text-red-400 mt-0.5 flex-shrink-0" />
-                    <p className="text-sm text-red-700 dark:text-red-400">{otpError}</p>
-                  </div>
+            {/* Optional Settings */}
+            <div className="mt-6">
+              <button
+                onClick={() => setShowOptionalSettings(!showOptionalSettings)}
+                className="flex items-center text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 font-medium"
+              >
+                {showOptionalSettings ? (
+                  <ChevronUp className="h-5 w-5 mr-1" />
+                ) : (
+                  <ChevronDown className="h-5 w-5 mr-1" />
+                )}
+                Optional settings
+              </button>
+              {showOptionalSettings && (
+                <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800/40 rounded-lg border border-gray-200 dark:border-gray-800">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Additional configuration options will be available here for advanced users.
+                  </p>
+                </div>
               )}
             </div>
 
-            <DialogActions className="px-8 pb-8 pt-4">
-              {!currentCheckpointAccount?.checkpoint?.is_yes_no && (
-                  <Button
-                      onClick={handleVerifyOtp}
-                      disabled={verifyingOtp || otp.length !== 6}
-                      className={`w-full py-3 rounded-full text-sm font-semibold transition-colors ${
-                          verifyingOtp || otp.length !== 6
-                              ? 'bg-gray-200 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'
-                              : 'bg-[#0A66C2] text-white hover:bg-[#004182]'
-                      }`}
-                  >
-                    {verifyingOtp ? (
-                        <span className="flex items-center justify-center gap-2">
+            {/* Error Message */}
+            {connectionError && (
+              <div className="mt-4 p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 rounded-lg">
+                <div className="flex items-start">
+                  <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 mr-2 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-red-800 dark:text-red-300">Connection Failed</p>
+                    <p className="text-sm text-red-700 dark:text-red-400 mt-1">{connectionError}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Success Message */}
+            {connectionSuccess && (
+              <div className="mt-4 p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900/30 rounded-lg">
+                <div className="flex items-start">
+                  <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 mr-2 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-green-800 dark:text-green-300">Connection Successful!</p>
+                    <p className="text-sm text-green-700 dark:text-green-400 mt-1">Your LinkedIn account has been connected successfully.</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogActions className="px-8 pb-8 pt-4 border-t border-gray-100 dark:border-gray-800">
+            <Button
+              onClick={handleConnect}
+              disabled={connecting || (authMethod === 'credentials' ? !email || !pinCode : !liAtCookie)}
+              className={`px-8 h-11 rounded-full font-semibold transition-colors ${
+                connectionSuccess
+                  ? 'bg-green-600 hover:bg-green-700 text-white'
+                  : connectionError
+                  ? 'bg-red-600 hover:bg-red-700 text-white'
+                  : 'bg-[#0B1957] hover:bg-[#0B1957]/90 text-white dark:bg-blue-600 dark:hover:bg-blue-700'
+              }`}
+            >
+              {connecting ? (
+                <span className="flex items-center justify-center">
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Connecting...
+                </span>
+              ) : connectionSuccess ? (
+                <span className="flex items-center justify-center">
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Connected!
+                </span>
+              ) : connectionError ? (
+                'Retry'
+              ) : (
+                'Login'
+              )}
+            </Button>
+          </DialogActions>
+        </DialogContent>
+      </Dialog>
+      {/* Checkpoint Verification Modal (OTP or Yes/No) — LinkedIn-style UI */}
+      <Dialog open={showOtpModal} onOpenChange={setShowOtpModal}>
+        <DialogContent className="max-w-sm p-0 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
+          <DialogHeader className="text-center justify-center pt-8 px-6">
+            <div className="flex justify-center mb-4">
+              <svg width="34" height="34" viewBox="0 0 24 24" fill="#0A66C2">
+                <path d={LINKEDIN_LOGO_PATH}/>
+              </svg>
+            </div>
+            <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100 tracking-tight">
+              {currentCheckpointAccount?.checkpoint?.is_yes_no ? 'Verify your identity' : 'Enter verification code'}
+            </DialogTitle>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              {currentCheckpointAccount?.checkpoint?.is_yes_no
+                ? 'Approve the sign-in request on your mobile device'
+                : 'We sent a code to complete your sign-in'}
+            </p>
+          </DialogHeader>
+
+          <div className="px-8 py-6">
+            {currentCheckpointAccount?.checkpoint?.is_yes_no ? (
+              <div className="space-y-5">
+                {/* Phone icon + prompt */}
+                <div className="flex flex-col items-center text-center gap-3">
+                  <div className="w-14 h-14 rounded-full bg-[#EEF3FB] dark:bg-blue-950/40 flex items-center justify-center">
+                    <svg className="w-7 h-7 text-[#0A66C2] dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d={PHONE_AUTH_PATH} />
+                    </svg>
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                    We sent a notification to the <span className="font-semibold text-gray-800 dark:text-gray-200">LinkedIn app</span> on your phone.
+                    Tap <span className="font-bold text-[#057642] dark:text-green-400">Yes</span> to approve this sign-in.
+                  </p>
+                </div>
+
+                {/* Steps */}
+                <ol className="space-y-3">
+                  {[
+                    'Open the LinkedIn app on your phone',
+                    'Find the sign-in approval notification',
+                    <>Tap <strong className="text-[#057642] dark:text-green-400">Yes</strong> to approve this login</>,
+                  ].map((step, i) => (
+                    <li key={i} className="flex items-start gap-3">
+                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-[#0A66C2] text-white text-xs font-semibold flex items-center justify-center mt-0.5">
+                        {i + 1}
+                      </span>
+                      <span className="text-sm text-gray-700 dark:text-gray-300">{step}</span>
+                    </li>
+                  ))}
+                </ol>
+
+                {/* Waiting status */}
+                {yesNoPolling && !autoResolving && (
+                  <div className="flex items-center gap-2 px-4 py-3 bg-[#EEF3FB] dark:bg-blue-950/30 rounded-lg">
+                    <Loader2 className="h-4 w-4 animate-spin text-[#0A66C2] dark:text-blue-400 flex-shrink-0" />
+                    <p className="text-sm text-[#0A66C2] dark:text-blue-400 font-medium">Waiting for your approval...</p>
+                  </div>
+                )}
+
+                {/* Approved status */}
+                {autoResolving && (
+                  <div className="flex items-center gap-2 px-4 py-3 bg-[#EAF5EA] dark:bg-green-950/20 rounded-lg">
+                    <CheckCircle2 className="h-4 w-4 text-[#057642] dark:text-green-400 flex-shrink-0" />
+                    <p className="text-sm text-[#057642] dark:text-green-400 font-semibold">Approval detected! Connecting your account...</p>
+                  </div>
+                )}
+
+                {/* Hint */}
+                <p className="text-xs text-gray-400 dark:text-gray-500 text-center leading-relaxed">
+                  Don&apos;t see the notification? Open the LinkedIn app manually and look for a security alert or login approval request.
+                </p>
+              </div>
+            ) : (
+              /* ── OTP Checkpoint ── */
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  {currentCheckpointAccount?.checkpoint?.message || 'Enter the verification code sent to your email or phone.'}
+                </p>
+                <input
+                  type="text"
+                  placeholder="_ _ _ _ _ _"
+                  value={otp}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '').slice(0, 6);
+                    setOtp(value);
+                    setOtpError(null);
+                  }}
+                  className={`w-full px-4 py-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0A66C2] focus:border-transparent text-center text-2xl tracking-[0.5em] font-mono ${autofillClasses}`}
+                  maxLength={6}
+                  autoFocus
+                />
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 text-center">
+                  Enter the 6-digit code sent to your email or phone
+                </p>
+              </div>
+            )}
+
+            {/* Error */}
+            {otpError && (
+              <div className="mt-4 flex items-start gap-2 px-4 py-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 rounded-lg">
+                <AlertCircle className="h-4 w-4 text-red-500 dark:text-red-400 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-red-700 dark:text-red-400">{otpError}</p>
+              </div>
+            )}
+          </div>
+
+          <DialogActions className="px-8 pb-8 pt-4">
+            {!currentCheckpointAccount?.checkpoint?.is_yes_no && (
+              <Button
+                onClick={handleVerifyOtp}
+                disabled={verifyingOtp || otp.length !== 6}
+                className={`w-full py-3 rounded-full text-sm font-semibold transition-colors ${
+                  verifyingOtp || otp.length !== 6
+                    ? 'bg-gray-200 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                    : 'bg-[#0A66C2] text-white hover:bg-[#004182]'
+                }`}
+              >
+                {verifyingOtp ? (
+                  <span className="flex items-center justify-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Verifying...
                   </span>
-                    ) : 'Continue'}
-                  </Button>
-              )}
-            </DialogActions>
-          </DialogContent>
-        </Dialog>
-      </>
+                ) : 'Continue'}
+              </Button>
+            )}
+          </DialogActions>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 
