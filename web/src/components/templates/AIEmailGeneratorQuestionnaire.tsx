@@ -20,9 +20,9 @@ interface AIEmailGeneratorQuestionnaireProps {
 }
 
 export default function AIEmailGeneratorQuestionnaire({
-                                                        onComplete,
-                                                        onCancel,
-                                                      }: AIEmailGeneratorQuestionnaireProps) {
+  onComplete,
+  onCancel,
+}: AIEmailGeneratorQuestionnaireProps) {
   const [step, setStep] = useState(1);
   const [answers, setAnswers] = useState<QuestionnaireAnswers>({
     campaign_purpose: '',
@@ -140,89 +140,89 @@ export default function AIEmailGeneratorQuestionnaire({
   };
 
   return (
-      <div className="w-full max-w-2xl mx-auto bg-transparent">
-        {/* Progress Bar */}
-        <div className="mb-8">
-          <div className="flex justify-between mb-2">
-            <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Step {step} of 5</span>
-            <span className="text-sm font-medium text-gray-600 dark:text-gray-400">{Math.round((step / 5) * 100)}%</span>
-          </div>
-          <div className="w-full h-2 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
-            <div
-                className="h-full bg-blue-600 dark:bg-blue-500 transition-all duration-300"
-                style={{ width: `${(step / 5) * 100}%` }}
-            />
-          </div>
+    <div className="w-full max-w-2xl mx-auto">
+      {/* Progress Bar */}
+      <div className="mb-8">
+        <div className="flex justify-between mb-2">
+          <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Step {step} of 5</span>
+          <span className="text-sm font-medium text-gray-600 dark:text-gray-400">{Math.round((step / 5) * 100)}%</span>
         </div>
-
-        {/* Question Card */}
-        <div className="bg-white dark:bg-[#000c3b] rounded-lg border border-gray-200 dark:border-gray-800 p-8 mb-8 shadow-sm">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{currentQuestion?.title}</h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">{currentQuestion?.description}</p>
-
-          {/* Single field question */}
-          {'field' in currentQuestion! && currentQuestion?.type === 'textarea' && (
-              <textarea
-                  value={answers[currentQuestion.field as keyof QuestionnaireAnswers] as string}
-                  onChange={(e) => handleInputChange(currentQuestion.field, e.target.value)}
-                  placeholder={currentQuestion.placeholder}
-                  rows={4}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-[#000724] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
-              />
-          )}
-
-          {'field' in currentQuestion! && currentQuestion?.type === 'select' && (
-              <select
-                  value={answers[currentQuestion.field as keyof QuestionnaireAnswers] as string}
-                  onChange={(e) => handleInputChange(currentQuestion.field, e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-[#000724] text-gray-900 dark:text-white"
-              >
-                {currentQuestion.options?.map((opt) => (
-                    <option key={opt.value} value={opt.value} className="dark:bg-[#000724]">
-                      {opt.label}
-                    </option>
-                ))}
-              </select>
-          )}
-
-          {/* Multi-field questions */}
-          {'fields' in currentQuestion! && (
-              <div className="space-y-4">
-                {currentQuestion.fields?.map((fieldConfig) => (
-                    <div key={fieldConfig.field}>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        {fieldConfig.label}
-                      </label>
-                      <input
-                          type="text"
-                          value={answers[fieldConfig.field as keyof QuestionnaireAnswers] as string}
-                          onChange={(e) => handleInputChange(fieldConfig.field, e.target.value)}
-                          placeholder={fieldConfig.placeholder}
-                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-[#000724] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
-                      />
-                    </div>
-                ))}
-              </div>
-          )}
-        </div>
-
-        {/* Actions */}
-        <div className="flex gap-4">
-          <button
-              onClick={handleBack}
-              disabled={step === 1}
-              className="px-6 py-2.5 border border-gray-300 dark:border-gray-800 text-gray-700 dark:text-gray-300 bg-white dark:bg-[#000c3b] rounded-lg hover:bg-gray-50 dark:hover:bg-[#0b1957]/30 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-all cursor-pointer"
-          >
-            ← Back
-          </button>
-          <button
-              onClick={handleNext}
-              disabled={!isStepValid()}
-              className="flex-1 px-6 py-2.5 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-all cursor-pointer"
-          >
-            {step === 5 ? 'Generate Email Template' : 'Next Step →'}
-          </button>
+        <div className="w-full h-2 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-blue-600 dark:bg-blue-500 transition-all duration-300"
+            style={{ width: `${(step / 5) * 100}%` }}
+          />
         </div>
       </div>
+
+      {/* Question Card */}
+      <div className="bg-white dark:bg-[#000c3b] rounded-lg border border-gray-200 dark:border-gray-800 p-8 mb-8 shadow-sm">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{currentQuestion?.title}</h2>
+        <p className="text-gray-600 dark:text-gray-400 mb-6">{currentQuestion?.description}</p>
+
+        {/* Single field question */}
+        {'field' in currentQuestion! && currentQuestion?.type === 'textarea' && (
+          <textarea
+            value={answers[currentQuestion.field as keyof QuestionnaireAnswers] as string}
+            onChange={(e) => handleInputChange(currentQuestion.field, e.target.value)}
+            placeholder={currentQuestion.placeholder}
+            rows={4}
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-[#000724] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
+          />
+        )}
+
+        {'field' in currentQuestion! && currentQuestion?.type === 'select' && (
+          <select
+            value={answers[currentQuestion.field as keyof QuestionnaireAnswers] as string}
+            onChange={(e) => handleInputChange(currentQuestion.field, e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-[#000724] text-gray-900 dark:text-white"
+          >
+            {currentQuestion.options?.map((opt) => (
+              <option key={opt.value} value={opt.value} className="dark:bg-[#000724]">
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {/* Multi-field questions */}
+        {'fields' in currentQuestion! && (
+          <div className="space-y-4">
+            {currentQuestion.fields?.map((fieldConfig) => (
+              <div key={fieldConfig.field}>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {fieldConfig.label}
+                </label>
+                <input
+                  type="text"
+                  value={answers[fieldConfig.field as keyof QuestionnaireAnswers] as string}
+                  onChange={(e) => handleInputChange(fieldConfig.field, e.target.value)}
+                  placeholder={fieldConfig.placeholder}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-[#000724] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Actions */}
+      <div className="flex gap-4">
+        <button
+          onClick={handleBack}
+          disabled={step === 1}
+          className="px-6 py-2.5 border border-gray-300 dark:border-gray-800 text-gray-700 dark:text-gray-300 bg-white dark:bg-[#000c3b] rounded-lg hover:bg-gray-50 dark:hover:bg-[#0b1957]/30 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-all cursor-pointer"
+        >
+          ← Back
+        </button>
+        <button
+          onClick={handleNext}
+          disabled={!isStepValid()}
+          className="flex-1 px-6 py-2.5 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-all cursor-pointer"
+        >
+          {step === 5 ? 'Generate Email Template' : 'Next Step →'}
+        </button>
+      </div>
+    </div>
   );
 }
