@@ -198,8 +198,8 @@ export default function CampaignStatsCards({ stats, loading = false }: CampaignS
                     ) : (
                       <div />
                     )}
-                    <Avatar className="bg-blue-100 dark:bg-[#253456] w-12 h-12 rounded-full">
-                      <AvatarFallback className="bg-blue-100 dark:bg-[#253456]">
+                    <Avatar className="bg-blue-50 dark:!bg-white w-12 h-12 rounded-full">
+                      <AvatarFallback className="bg-blue-50 dark:!bg-white">
                         <Linkedin className="w-6 h-6 text-[#0077B5]" />
                       </AvatarFallback>
                     </Avatar>

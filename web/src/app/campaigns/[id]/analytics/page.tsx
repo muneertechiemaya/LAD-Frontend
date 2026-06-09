@@ -519,9 +519,9 @@ export default function CampaignAnalyticsPage() {
             <div className="flex-1 flex flex-col p-4">
               <div className="flex flex-col h-full">
                 <div className="flex justify-end mb-2">
-                  <Avatar className="bg-indigo-100 dark:bg-indigo-500/20 w-12 h-12 rounded-full">
-                    <AvatarFallback className="bg-indigo-100 dark:bg-transparent">
-                      <Linkedin className="w-6 h-6 text-indigo-600 dark:text-sky-400" />
+                  <Avatar className="bg-blue-50 dark:!bg-white w-12 h-12 rounded-full">
+                    <AvatarFallback className="bg-blue-50 dark:!bg-white">
+                      <Linkedin className="w-6 h-6 text-[#0077B5]" />
                     </AvatarFallback>
                   </Avatar>
                 </div>
@@ -639,7 +639,7 @@ export default function CampaignAnalyticsPage() {
 
               {/* Channel dropdown */}
               <Select value={bulkChannel} onValueChange={setBulkChannel}>
-                <SelectTrigger className="w-40 h-9 text-sm rounded-xl border-slate-200 dark:border-slate-700 bg-transparent text-slate-800 dark:text-slate-200">
+                <SelectTrigger className="w-40 h-9 text-sm rounded-xl border-slate-200">
                   <SelectValue placeholder="Select channel" />
                 </SelectTrigger>
                 <SelectContent>
