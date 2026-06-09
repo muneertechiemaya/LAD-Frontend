@@ -205,8 +205,8 @@ export const TeamManagement: React.FC = () => {
     if (!user) return;
     const currentCapabilities = user.capabilities || [];
     const newCapabilities = currentCapabilities.includes(capabilityKey)
-        ? currentCapabilities.filter(c => c !== capabilityKey)
-        : [...currentCapabilities, capabilityKey];
+      ? currentCapabilities.filter(c => c !== capabilityKey)
+      : [...currentCapabilities, capabilityKey];
     try {
       const token = safeStorage.getItem('token');
       const response = await fetch(`${getApiBaseUrl()}/api/users/${userId}/capabilities`, {
@@ -219,7 +219,7 @@ export const TeamManagement: React.FC = () => {
       });
       if (response.ok) {
         setUsers(users.map(u =>
-            u.id === userId ? { ...u, capabilities: newCapabilities } : u
+          u.id === userId ? { ...u, capabilities: newCapabilities } : u
         ));
       }
     } catch (error) {
@@ -237,7 +237,7 @@ export const TeamManagement: React.FC = () => {
       });
       if (response.ok) {
         setUsers(users.map(u =>
-            u.id === userId ? { ...u, maskPhoneNumber: !current } : u
+          u.id === userId ? { ...u, maskPhoneNumber: !current } : u
         ));
       }
     } catch (err) {
@@ -274,348 +274,350 @@ export const TeamManagement: React.FC = () => {
   };
 
   return (
-      <div className="space-y-8">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-zinc-50 tracking-tight">Team Management</h2>
-            <p className="text-gray-500 dark:text-zinc-400 mt-1 font-medium">Manage team members and their granular page permissions</p>
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-zinc-50 tracking-tight">Team Management</h2>
+          <p className="text-gray-500 dark:text-zinc-400 mt-1 font-medium">Manage team members and their granular page permissions</p>
+        </div>
+        <Button
+          onClick={() => setShowAddModal(true)}
+          className="h-12 px-6 bg-[#0B1957] hover:bg-[#0B1957]/90 dark:bg-[#1d4ed8] dark:text-white dark:hover:bg-blue-700 rounded-2xl shadow-lg transition-all font-bold flex items-center gap-2"
+        >
+          <UserPlus className="w-5 h-5" />
+          Add Team Member
+        </Button>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-100 dark:bg-red-950/20 dark:border-red-900/30 rounded-2xl p-6 flex items-center gap-4">
+          <div className="p-2 rounded-xl bg-red-100 dark:bg-red-950/50">
+            <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+          </div>
+          <div className="flex-1">
+            <p className="text-red-700 dark:text-red-400 font-bold">Error loading team</p>
+            <p className="text-red-600/80 dark:text-red-400/60 text-sm mt-0.5">{error}</p>
           </div>
           <Button
-              onClick={() => setShowAddModal(true)}
-              className="h-12 px-6 bg-[#0B1957] hover:bg-[#0B1957]/90 dark:bg-[#1d4ed8] dark:text-white dark:hover:bg-blue-700 rounded-2xl shadow-lg transition-all font-bold flex items-center gap-2"
+            variant="outline"
+            size="sm"
+            onClick={fetchUsers}
+            className="rounded-xl border-red-200 dark:border-zinc-800 text-red-700 dark:text-red-400 hover:bg-red-100/50 dark:hover:bg-red-950/50"
           >
-            <UserPlus className="w-5 h-5" />
-            Add Team Member
+            Try Again
           </Button>
         </div>
+      )}
 
-        {error && (
-            <div className="bg-red-50 border border-red-100 dark:bg-red-950/20 dark:border-red-900/30 rounded-2xl p-6 flex items-center gap-4">
-              <div className="p-2 rounded-xl bg-red-100 dark:bg-red-950/50">
-                <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
-              </div>
-              <div className="flex-1">
-                <p className="text-red-700 dark:text-red-400 font-bold">Error loading team</p>
-                <p className="text-red-600/80 dark:text-red-400/60 text-sm mt-0.5">{error}</p>
-              </div>
-              <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={fetchUsers}
-                  className="rounded-xl border-red-200 dark:border-zinc-800 text-red-700 dark:text-red-400 hover:bg-red-100/50 dark:hover:bg-red-950/50"
-              >
-                Try Again
-              </Button>
-            </div>
-        )}
-
-        {loading && users.length === 0 ? (
-            <TeamManagementSkeleton />
-        ) : (
-            <div className="bg-white dark:!bg-[#112240] rounded-[2rem] shadow-xl shadow-gray-100/50 dark:shadow-none border border-gray-100 dark:!border-[#3b82f6] dark:border-2 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50/50 dark:bg-transparent border-b border-gray-100 dark:border-zinc-800/80">
+      {loading && users.length === 0 ? (
+        <TeamManagementSkeleton />
+      ) : (
+        <div className="bg-white dark:!bg-[#112240] rounded-[2rem] shadow-xl shadow-gray-100/50 dark:shadow-none border border-gray-100 dark:!border-[#3b82f6] dark:border-2 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50/50 dark:bg-transparent border-b border-gray-100 dark:border-zinc-800/80">
+                <tr>
+                  <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest">Team Member</th>
+                  <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest">Role & Status</th>
+                  <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest">Permissions</th>
+                  <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest">Privacy</th>
+                  <th className="px-8 py-5 text-right text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-zinc-800/60">
+                {users.length === 0 ? (
                   <tr>
-                    <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest">Team Member</th>
-                    <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest">Role & Status</th>
-                    <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest">Permissions</th>
-                    <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest">Privacy</th>
-                    <th className="px-8 py-5 text-right text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest">Actions</th>
+                    <td colSpan={5} className="px-8 py-16 text-center">
+                      <div className="flex flex-col items-center">
+                        <div className="p-4 rounded-full bg-gray-50 dark:bg-zinc-900 mb-4">
+                          <UserPlus className="h-8 w-8 text-gray-300 dark:text-zinc-600" />
+                        </div>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-zinc-100">No team members</h3>
+                        <p className="text-gray-500 dark:text-zinc-400 text-sm mt-1 max-w-xs">Start by adding your first team member to collaborate on conversations.</p>
+                      </div>
+                    </td>
                   </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-zinc-800/60">
-                  {users.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="px-8 py-16 text-center">
-                          <div className="flex flex-col items-center">
-                            <div className="p-4 rounded-full bg-gray-50 dark:bg-zinc-900 mb-4">
-                              <UserPlus className="h-8 w-8 text-gray-300 dark:text-zinc-600" />
-                            </div>
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-zinc-100">No team members</h3>
-                            <p className="text-gray-500 dark:text-zinc-400 text-sm mt-1 max-w-xs">Start by adding your first team member to collaborate on conversations.</p>
+                ) : (
+                  // Row layout merges develop's 5-column schema (matches
+                  // the header) with HEAD's dark-mode hover state.
+                  users.map((user) => (
+                    <tr key={user.id} className="hover:bg-gray-50/50 dark:hover:bg-zinc-900/20 transition-colors group">
+                      <td className="px-8 py-6">
+                        <div className="flex items-center gap-4">
+                          <div className="h-10 w-10 rounded-full bg-[#0B1957] dark:bg-zinc-800 flex items-center justify-center text-white dark:text-zinc-200 font-bold shadow-sm border dark:border-zinc-700">
+                            {(user.name || user.email || '?').charAt(0).toUpperCase()}
                           </div>
-                        </td>
-                      </tr>
-                  ) : (
-                      users.map((user) => (
-                          <tr key={user.id} className="hover:bg-gray-50/50 dark:hover:bg-zinc-900/20 transition-colors group">
-                            <td className="px-8 py-6">
-                              <div className="flex items-center gap-4">
-                                <div className="h-10 w-10 rounded-full bg-[#0B1957] dark:bg-zinc-800 flex items-center justify-center text-white dark:text-zinc-200 font-bold shadow-sm border dark:border-zinc-700">
-                                  {(user.name || user.email || '?').charAt(0).toUpperCase()}
-                                </div>
-                                <div className="flex flex-col">
-                                  <span className="font-bold text-gray-900 dark:text-zinc-100">{user.name || '—'}</span>
-                                  <span className="text-xs text-gray-500 dark:text-slate-400 flex items-center gap-1.5 mt-0.5">
+                          <div className="flex flex-col">
+                            <span className="font-bold text-gray-900 dark:text-zinc-100">{user.name || '—'}</span>
+                            <span className="text-xs text-gray-500 dark:text-slate-400 flex items-center gap-1.5 mt-0.5">
                               <Mail className="h-3 w-3 opacity-60 text-gray-400 dark:text-zinc-500" />
-                                    {user.email}
+                              {user.email}
                             </span>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-8 py-6">
-                              <div className="flex flex-col gap-3">
-                                {user.role === 'owner' ? (
-                                    <Badge className={cn("w-fit px-3 py-1 rounded-lg font-bold text-[10px] uppercase tracking-wider", getRoleBadgeColor(user.role))}>
-                                      Owner
-                                    </Badge>
-                                ) : (
-                                    <Select
-                                        value={user.role}
-                                        onValueChange={(val) => handleUpdateRole(user.id, val)}
-                                    >
-                                      <SelectTrigger className={cn("h-8 w-fit min-w-[160px] border-none shadow-none text-xs font-bold rounded-lg px-3 bg-transparent dark:bg-transparent", getRoleBadgeColor(user.role))}>
-                                        <SelectValue placeholder="Select role" />
-                                      </SelectTrigger>
-                                      <SelectContent className="dark:bg-[#112240] dark:border-zinc-800">
-                                        {ROLE_OPTIONS.map(opt => (
-                                            <SelectItem key={opt.value} value={opt.value} className="text-xs font-medium dark:text-zinc-300 dark:focus:bg-zinc-900">
-                                              {opt.label}
-                                            </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-8 py-6">
+                        <div className="flex flex-col gap-3">
+                          {user.role === 'owner' ? (
+                            <Badge className={cn("w-fit px-3 py-1 rounded-lg font-bold text-[10px] uppercase tracking-wider", getRoleBadgeColor(user.role))}>
+                              Owner
+                            </Badge>
+                          ) : (
+                            <Select
+                              value={user.role}
+                              onValueChange={(val) => handleUpdateRole(user.id, val)}
+                            >
+                              <SelectTrigger className={cn("h-8 w-fit min-w-[160px] border-none shadow-none text-xs font-bold rounded-lg px-3 bg-transparent dark:bg-transparent", getRoleBadgeColor(user.role))}>
+                                <SelectValue placeholder="Select role" />
+                              </SelectTrigger>
+                              <SelectContent className="dark:bg-[#112240] dark:border-zinc-800">
+                                {ROLE_OPTIONS.map(opt => (
+                                  <SelectItem key={opt.value} value={opt.value} className="text-xs font-medium dark:text-zinc-300 dark:focus:bg-zinc-900">
+                                    {opt.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                          <div className={cn(
+                            "flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider pl-1",
+                            user.status === 'inactive' ? "text-rose-600 dark:text-rose-400" : "text-green-600 dark:text-emerald-400"
+                          )}>
+                            <div className={cn(
+                              "h-1.5 w-1.5 rounded-full animate-pulse",
+                              user.status === 'inactive' ? "bg-rose-500" : "bg-green-500"
+                            )} />
+                            {user.status || 'Active'}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-8 py-6">
+                        <div className="flex flex-col gap-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                          {PAGE_CAPABILITIES.map(page => {
+                            const isChecked = user.capabilities?.includes(page.key);
+                            return (
+                              <label key={page.key} className="flex items-center gap-2 cursor-pointer group w-fit">
                                 <div className={cn(
-                                    "flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider pl-1",
-                                    user.status === 'inactive' ? "text-rose-600 dark:text-rose-400" : "text-green-600 dark:text-emerald-400"
+                                  "w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-colors",
+                                  isChecked ? "bg-[#0B1957] border-[#0B1957] dark:bg-zinc-100 dark:border-zinc-100" : "border-gray-300 dark:border-zinc-700 group-hover:border-[#0B1957] dark:group-hover:border-zinc-500"
                                 )}>
-                                  <div className={cn(
-                                      "h-1.5 w-1.5 rounded-full animate-pulse",
-                                      user.status === 'inactive' ? "bg-rose-500" : "bg-green-500"
-                                  )} />
-                                  {user.status || 'Active'}
+                                  {isChecked && <div className="w-1.5 h-1.5 bg-white dark:bg-[#112240] rounded-full" />}
                                 </div>
-                              </div>
-                            </td>
-                            <td className="px-8 py-6">
-                              <div className="flex flex-col gap-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
-                                {PAGE_CAPABILITIES.map(page => {
-                                  const isChecked = user.capabilities?.includes(page.key);
-                                  return (
-                                      <label key={page.key} className="flex items-center gap-2 cursor-pointer group w-fit">
-                                        <div className={cn(
-                                            "w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-colors",
-                                            isChecked ? "bg-[#0B1957] border-[#0B1957] dark:bg-zinc-100 dark:border-zinc-100" : "border-gray-300 dark:border-zinc-700 group-hover:border-[#0B1957] dark:group-hover:border-zinc-500"
-                                        )}>
-                                          {isChecked && <div className="w-1.5 h-1.5 bg-white dark:bg-[#112240] rounded-full" />}
-                                        </div>
-                                        <span className="text-xs text-gray-600 dark:text-zinc-400 group-hover:text-gray-900 dark:group-hover:text-zinc-200 transition-colors">
+                                <span className="text-xs text-gray-600 dark:text-zinc-400 group-hover:text-gray-900 dark:group-hover:text-zinc-200 transition-colors">
                                   {page.label}
                                 </span>
-                                        <input
-                                            type="checkbox"
-                                            className="hidden"
-                                            checked={isChecked || false}
-                                            onChange={() => toggleCapability(user.id, page.key)}
-                                        />
-                                      </label>
-                                  );
-                                })}
-                              </div>
-                            </td>
-                            <td className="px-8 py-6">
-                              <div className="flex flex-col gap-1.5">
-                                <button
-                                    onClick={() => toggleMaskPhone(user.id, !!user.maskPhoneNumber)}
-                                    className={cn(
-                                        "relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
-                                        user.maskPhoneNumber ? "bg-orange-500 dark:bg-orange-600" : "bg-gray-200 dark:bg-zinc-800"
-                                    )}
-                                >
+                                <input
+                                  type="checkbox"
+                                  className="hidden"
+                                  checked={isChecked || false}
+                                  onChange={() => toggleCapability(user.id, page.key)}
+                                />
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </td>
+                      <td className="px-8 py-6">
+                        <div className="flex flex-col gap-1.5">
+                          <button
+                            onClick={() => toggleMaskPhone(user.id, !!user.maskPhoneNumber)}
+                            className={cn(
+                              "relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
+                              user.maskPhoneNumber ? "bg-orange-500 dark:bg-orange-600" : "bg-gray-200 dark:bg-zinc-800"
+                            )}
+                          >
                             <span
-                                className={cn(
-                                    "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out dark:bg-zinc-100",
-                                    user.maskPhoneNumber ? "translate-x-5" : "translate-x-0"
-                                )}
+                              className={cn(
+                                "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out dark:bg-zinc-100",
+                                user.maskPhoneNumber ? "translate-x-5" : "translate-x-0"
+                              )}
                             />
-                                </button>
-                                <span className="text-[9px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest">
+                          </button>
+                          <span className="text-[9px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest">
                             {user.maskPhoneNumber ? 'Phone Masked' : 'Phone Visible'}
                           </span>
-                              </div>
-                            </td>
-                            <td className="px-8 py-6 text-right">
-                              <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Button variant="ghost" size="sm" className="h-9 w-9 p-0 rounded-xl hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400 hover:text-gray-900 dark:hover:text-zinc-100">
-                                  <Edit2 className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleDeleteUser(user.id)}
-                                    className="h-9 w-9 p-0 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/20 text-gray-400 hover:text-red-600 dark:hover:text-red-400"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                      ))
-                  )}
-                  </tbody>
-                </table>
+                        </div>
+                      </td>
+                      <td className="px-8 py-6 text-right">
+                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button variant="ghost" size="sm" className="h-9 w-9 p-0 rounded-xl hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400 hover:text-gray-900 dark:hover:text-zinc-100">
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteUser(user.id)}
+                            className="h-9 w-9 p-0 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/20 text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Add User Modal */}
+      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
+        <DialogContent className="sm:w-[90vw] sm:max-w-5xl flex flex-col p-0 overflow-hidden max-h-[90vh] bg-white dark:!bg-[#112240] border border-gray-100 dark:!border-[#3b82f6] dark:border-2">
+          <DialogHeader className="px-8 pt-6">
+            <DialogTitle className="dark:text-zinc-50">Add Team Member</DialogTitle>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto px-8 py-6 space-y-6">
+            <div className="grid grid-cols-2 gap-x-12 gap-y-6">
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-gray-700 dark:text-zinc-300">Name</label>
+                <Input
+                  placeholder="John Doe"
+                  className="h-11 rounded-xl bg-gray-50/50 dark:bg-[#09090b] dark:border-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-600 dark:autofill:shadow-[inset_0_0_0_1000px_#09090b] dark:autofill:[text-fill-color:white] dark:autofill:[-webkit-text-fill-color:white]"
+                  value={newUser.name}
+                  onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                />
               </div>
-            </div>
-        )}
 
-        {/* Add User Modal Panels */}
-        <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-          <DialogContent className="sm:w-[90vw] sm:max-w-5xl flex flex-col p-0 overflow-hidden max-h-[90vh] bg-white dark:!bg-[#112240] border border-gray-100 dark:!border-[#3b82f6] dark:border-2">
-            <DialogHeader className="px-8 pt-6">
-              <DialogTitle className="dark:text-zinc-50">Add Team Member</DialogTitle>
-            </DialogHeader>
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-gray-700 dark:text-zinc-300">Email</label>
+                <Input
+                  type="email"
+                  placeholder="admin@techiemaya.com"
+                  className="h-11 rounded-xl bg-gray-50/50 dark:bg-[#09090b] dark:border-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-600 dark:autofill:shadow-[inset_0_0_0_1000px_#09090b] dark:autofill:[text-fill-color:white] dark:autofill:[-webkit-text-fill-color:white]"
+                  value={newUser.email}
+                  onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                />
+              </div>
 
-            <div className="flex-1 overflow-y-auto px-8 py-6 space-y-6">
-              <div className="grid grid-cols-2 gap-x-12 gap-y-6">
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-gray-700 dark:text-zinc-300">Name</label>
+              <div className="space-y-1 relative">
+                <label className="text-sm font-medium text-gray-700 dark:text-zinc-300">Password</label>
+                <div className="relative">
                   <Input
-                      placeholder="John Doe"
-                      className="h-11 rounded-xl bg-gray-50/50 dark:bg-[#09090b] dark:border-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-600 dark:autofill:shadow-[inset_0_0_0_1000px_#09090b] dark:autofill:[text-fill-color:white] dark:autofill:[-webkit-text-fill-color:white]"
-                      value={newUser.name}
-                      onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="••••••••••••"
+                    className="h-11 rounded-xl bg-gray-50/50 dark:bg-[#09090b] dark:border-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-600 dark:autofill:shadow-[inset_0_0_0_1000px_#09090b] dark:autofill:[text-fill-color:white] dark:autofill:[-webkit-text-fill-color:white] pr-10"
+                    value={newUser.password}
+                    onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
                   />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-gray-700 dark:text-zinc-300">Email</label>
-                  <Input
-                      type="email"
-                      placeholder="admin@techiemaya.com"
-                      className="h-11 rounded-xl bg-gray-50/50 dark:bg-[#09090b] dark:border-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-600 dark:autofill:shadow-[inset_0_0_0_1000px_#09090b] dark:autofill:[text-fill-color:white] dark:autofill:[-webkit-text-fill-color:white]"
-                      value={newUser.email}
-                      onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                  />
-                </div>
-
-                <div className="space-y-1 relative">
-                  <label className="text-sm font-medium text-gray-700 dark:text-zinc-300">Password</label>
-                  <div className="relative">
-                    <Input
-                        type={showPassword ? 'text' : 'password'}
-                        placeholder="••••••••••••"
-                        className="h-11 rounded-xl bg-gray-50/50 dark:bg-[#09090b] dark:border-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-600 dark:autofill:shadow-[inset_0_0_0_1000px_#09090b] dark:autofill:[text-fill-color:white] dark:autofill:[-webkit-text-fill-color:white] pr-10"
-                        value={newUser.password}
-                        onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                    />
-                    <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-zinc-500 dark:hover:text-zinc-300"
-                    >
-                      {showPassword ? <EyeOff className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-gray-700 dark:text-zinc-300">Phone Number <span className="text-red-500">*</span></label>
-                  <Input
-                      type="tel"
-                      placeholder="+1 (555) 123-4567"
-                      className="h-11 rounded-xl bg-gray-50/50 dark:bg-[#09090b] dark:border-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-600 dark:autofill:shadow-[inset_0_0_0_1000px_#09090b] dark:autofill:[text-fill-color:white] dark:autofill:[-webkit-text-fill-color:white]"
-                      value={newUser.phoneNumber}
-                      onChange={(e) => setNewUser({ ...newUser, phoneNumber: e.target.value })}
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-gray-700 dark:text-zinc-300">Role</label>
-                  <Select
-                      value={newUser.role}
-                      onValueChange={(val) => setNewUser({ ...newUser, role: val })}
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-zinc-500 dark:hover:text-zinc-300"
                   >
-                    <SelectTrigger className="h-11 rounded-xl bg-gray-50/50 dark:bg-[#09090b] dark:border-zinc-800 dark:text-zinc-100">
-                      <SelectValue placeholder="Select role..." />
-                    </SelectTrigger>
-                    <SelectContent className="dark:bg-[#112240] dark:border-zinc-800">
-                      {ROLE_OPTIONS.map(opt => (
-                          <SelectItem key={opt.value} value={opt.value} className="dark:text-zinc-300 dark:focus:bg-zinc-900">{opt.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
+                  </button>
                 </div>
+              </div>
 
-                <div className="space-y-1 relative capabilities-dropdown">
-                  <label className="text-sm font-medium text-gray-700 dark:text-zinc-300">Page Access</label>
-                  <div className="relative">
-                    <button
-                        type="button"
-                        onClick={() => setShowCapabilitiesDropdown(!showCapabilitiesDropdown)}
-                        className="w-full h-11 px-4 rounded-xl border border-input bg-gray-50/50 dark:bg-[#09090b] dark:border-zinc-800 flex items-center justify-between text-sm transition-colors hover:bg-gray-100/50 dark:hover:bg-zinc-900 dark:text-zinc-100"
-                    >
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-gray-700 dark:text-zinc-300">Phone Number <span className="text-red-500">*</span></label>
+                <Input
+                  type="tel"
+                  placeholder="+1 (555) 123-4567"
+                  className="h-11 rounded-xl bg-gray-50/50 dark:bg-[#09090b] dark:border-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-600 dark:autofill:shadow-[inset_0_0_0_1000px_#09090b] dark:autofill:[text-fill-color:white] dark:autofill:[-webkit-text-fill-color:white]"
+                  value={newUser.phoneNumber}
+                  onChange={(e) => setNewUser({ ...newUser, phoneNumber: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-gray-700 dark:text-zinc-300">Role</label>
+                <Select
+                  value={newUser.role}
+                  onValueChange={(val) => setNewUser({ ...newUser, role: val })}
+                >
+                  <SelectTrigger className="h-11 rounded-xl bg-gray-50/50 dark:bg-[#09090b] dark:border-zinc-800 dark:text-zinc-100">
+                    <SelectValue placeholder="Select role..." />
+                  </SelectTrigger>
+                  <SelectContent className="dark:bg-[#112240] dark:border-zinc-800">
+                    {ROLE_OPTIONS.map(opt => (
+                      <SelectItem key={opt.value} value={opt.value} className="dark:text-zinc-300 dark:focus:bg-zinc-900">{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1 relative capabilities-dropdown">
+                <label className="text-sm font-medium text-gray-700 dark:text-zinc-300">Page Access</label>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowCapabilitiesDropdown(!showCapabilitiesDropdown)}
+                    className="w-full h-11 px-4 rounded-xl border border-input bg-gray-50/50 dark:bg-[#09090b] dark:border-zinc-800 flex items-center justify-between text-sm transition-colors hover:bg-gray-100/50 dark:hover:bg-zinc-900 dark:text-zinc-100"
+                  >
                     <span className={newUser.capabilities.length ? 'text-foreground dark:text-zinc-100' : 'text-muted-foreground dark:text-zinc-500'}>
                       {newUser.capabilities.length
-                          ? `${newUser.capabilities.length} pages selected`
-                          : 'Select pages...'}
+                        ? `${newUser.capabilities.length} pages selected`
+                        : 'Select pages...'}
                     </span>
-                      <ChevronDown className={cn("w-4 h-4 opacity-50 dark:text-zinc-400", showCapabilitiesDropdown && "rotate-180")} />
-                    </button>
+                    <ChevronDown className={cn("w-4 h-4 opacity-50 dark:text-zinc-400", showCapabilitiesDropdown && "rotate-180")} />
+                  </button>
 
-                    {showCapabilitiesDropdown && (
-                        <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-[#112240] border dark:border-zinc-800 rounded-xl shadow-xl z-[60] max-h-60 overflow-y-auto p-2 custom-scrollbar">
-                          {PAGE_CAPABILITIES.map(page => (
-                              <label key={page.key} className="flex items-center px-3 py-2 hover:bg-slate-100 dark:hover:bg-zinc-900 rounded-lg cursor-pointer transition-colors group">
-                                <input
-                                    type="checkbox"
-                                    className="w-4 h-4 rounded border-gray-300 dark:border-zinc-700 text-[#0B1957] dark:text-zinc-100 focus:ring-[#0B1957] dark:focus:ring-zinc-100 dark:bg-zinc-900"
-                                    checked={newUser.capabilities.includes(page.key)}
-                                    onChange={() => {
-                                      const current = [...newUser.capabilities];
-                                      if (current.includes(page.key)) {
-                                        setNewUser({ ...newUser, capabilities: current.filter(id => id !== page.key) });
-                                      } else {
-                                        setNewUser({ ...newUser, capabilities: [...current, page.key] });
-                                      }
-                                    }}
-                                />
-                                <span className="ml-3 text-sm text-gray-700 dark:text-zinc-300 font-medium group-hover:text-gray-900 dark:group-hover:text-zinc-100">{page.label}</span>
-                              </label>
-                          ))}
-                        </div>
-                    )}
-                  </div>
+                  {showCapabilitiesDropdown && (
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-[#112240] border dark:border-zinc-800 rounded-xl shadow-xl z-[60] max-h-60 overflow-y-auto p-2 custom-scrollbar">
+                      {PAGE_CAPABILITIES.map(page => (
+                        <label key={page.key} className="flex items-center px-3 py-2 hover:bg-slate-100 dark:hover:bg-zinc-900 rounded-lg cursor-pointer transition-colors group">
+                          <input
+                            type="checkbox"
+                            className="w-4 h-4 rounded border-gray-300 dark:border-zinc-700 text-[#0B1957] dark:text-zinc-100 focus:ring-[#0B1957] dark:focus:ring-zinc-100 dark:bg-zinc-900"
+                            checked={newUser.capabilities.includes(page.key)}
+                            onChange={() => {
+                              const current = [...newUser.capabilities];
+                              if (current.includes(page.key)) {
+                                setNewUser({ ...newUser, capabilities: current.filter(id => id !== page.key) });
+                              } else {
+                                setNewUser({ ...newUser, capabilities: [...current, page.key] });
+                              }
+                            }}
+                          />
+                          <span className="ml-3 text-sm text-gray-700 dark:text-zinc-300 font-medium group-hover:text-gray-900 dark:group-hover:text-zinc-100">{page.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
-
-              <div className="flex items-center justify-between p-6 bg-gray-50/50 dark:bg-[#09090b]/50 rounded-2xl border border-gray-100 dark:border-zinc-800">
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm font-bold text-gray-900 dark:text-zinc-100">Mask Phone Numbers</label>
-                  <span className="text-xs text-gray-500 dark:text-zinc-400">Hide lead phone numbers from this team member for privacy (e.g. ••••3456)</span>
-                </div>
-                <button
-                    type="button"
-                    onClick={() => setNewUser({ ...newUser, maskPhoneNumber: !newUser.maskPhoneNumber })}
-                    className={cn(
-                        "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
-                        newUser.maskPhoneNumber ? "bg-[#0B1957] dark:bg-zinc-100" : "bg-gray-200 dark:bg-zinc-800"
-                    )}
-                >
-                <span
-                    className={cn(
-                        "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-zinc-950 shadow ring-0 transition duration-200 ease-in-out",
-                        newUser.maskPhoneNumber ? "translate-x-5 dark:bg-zinc-100" : "translate-x-0"
-                    )}
-                />
-                </button>
               </div>
             </div>
 
-            <DialogActions className="px-8 pb-8 pt-4 dark:border-zinc-800">
-              <Button
-                  onClick={handleAddUser}
-                  disabled={loading || !newUser.name || !newUser.email || !newUser.password}
-                  className="bg-[#0B1957] hover:bg-[#0B1957]/90 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200 rounded-xl h-11 px-8 font-bold shadow-sm transition-all"
+            <div className="flex items-center justify-between p-6 bg-gray-50/50 dark:bg-[#09090b]/50 rounded-2xl border border-gray-100 dark:border-zinc-800">
+              <div className="flex flex-col gap-1">
+                <label className="text-sm font-bold text-gray-900 dark:text-zinc-100">Mask Phone Numbers</label>
+                <span className="text-xs text-gray-500 dark:text-zinc-400">Hide lead phone numbers from this team member for privacy (e.g. ••••3456)</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setNewUser({ ...newUser, maskPhoneNumber: !newUser.maskPhoneNumber })}
+                className={cn(
+                  "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
+                  newUser.maskPhoneNumber ? "bg-[#0B1957] dark:bg-zinc-100" : "bg-gray-200 dark:bg-zinc-800"
+                )}
               >
-                {loading ? 'Adding...' : 'Add Member'}
-              </Button>
-            </DialogActions>
-          </DialogContent>
-        </Dialog>
-      </div>
+                <span
+                  className={cn(
+                    "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-zinc-950 shadow ring-0 transition duration-200 ease-in-out",
+                    newUser.maskPhoneNumber ? "translate-x-5 dark:bg-zinc-100" : "translate-x-0"
+                  )}
+                />
+              </button>
+            </div>
+          </div>
+
+          <DialogActions className="px-8 pb-8 pt-4 dark:border-zinc-800">
+            <Button
+              onClick={handleAddUser}
+              disabled={loading || !newUser.name || !newUser.email || !newUser.password}
+              className="bg-[#0B1957] hover:bg-[#0B1957]/90 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200 rounded-xl h-11 px-8 font-bold shadow-sm transition-all"
+            >
+              {loading ? 'Adding...' : 'Add Member'}
+            </Button>
+          </DialogActions>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 };
 
