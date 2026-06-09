@@ -104,8 +104,22 @@ function SelectItem({
     <SelectPrimitive.Item
       data-slot="select-item"
       className={cn(
-        "focus:bg-accent focus:text-accent-foreground [&_svg:not([class*='text-'])]:text-muted-foreground relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
-        className
+          // Base structure
+          "relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-none select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2 transition-colors duration-150 group",
+
+          // --- LIGHT MODE HOVER MATCH MATRIX ---
+          // Unhovered + Checked: Clean white background, text is deep navy
+          "data-[state=checked]:bg-white data-[state=checked]:text-[#000724]",
+          // Hovered/Focused: Background swaps to deep navy, text flips to white
+          "focus:bg-[#0A1957] focus:text-white data-[state=checked]:focus:bg-[#0A1957] data-[state=checked]:focus:text-white",
+
+          // --- DARK MODE COMPATIBILITY MATRIX ---
+          // Unhovered + Checked: Soft blue-slate background tint, white text
+          "dark:data-[state=checked]:bg-[#1A2A43] dark:data-[state=checked]:text-white",
+          // Hovered/Focused: Background forces into your premium vivid blue accent color box, text stays white
+          "dark:focus:bg-[#2B7CFF] dark:focus:text-white dark:data-[state=checked]:focus:bg-[#2B7CFF] dark:data-[state=checked]:focus:text-white",
+
+          className
       )}
       {...props}
     >
@@ -175,4 +189,4 @@ export {
   SelectSeparator,
   SelectTrigger,
   SelectValue,
-}
+}
