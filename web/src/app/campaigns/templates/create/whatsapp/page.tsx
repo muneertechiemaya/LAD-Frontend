@@ -59,24 +59,24 @@ function extractVars(text: string): string[] {
 /** Render WhatsApp markdown (*bold*, _italic_, ~strike~) to HTML safely */
 function renderWAMarkdown(text: string): string {
   return text
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/\*([^*\n]+)\*/g, '<strong>$1</strong>')
-      .replace(/_([^_\n]+)_/g,   '<em>$1</em>')
-      .replace(/~([^~\n]+)~/g,   '<s>$1</s>')
-      .replace(/`([^`\n]+)`/g,   '<code class="font-mono text-xs bg-slate-100 dark:bg-slate-800 px-0.5 rounded">$1</code>');
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\*([^*\n]+)\*/g, '<strong>$1</strong>')
+    .replace(/_([^_\n]+)_/g,   '<em>$1</em>')
+    .replace(/~([^~\n]+)~/g,   '<s>$1</s>')
+    .replace(/`([^`\n]+)`/g,   '<code class="font-mono text-xs bg-slate-100 dark:bg-slate-800 px-0.5 rounded">$1</code>');
 }
 
 function WAText({ text }: { text: string }) {
   if (!text) return <span className="text-slate-400 dark:text-slate-500 italic text-xs">Body text appears here...</span>;
   return (
-      <>
-        {text.split('\n').map((line, i) => (
-            <React.Fragment key={i}>
-              {i > 0 && <br />}
-              <span dangerouslySetInnerHTML={{ __html: renderWAMarkdown(line) }} />
-            </React.Fragment>
-        ))}
-      </>
+    <>
+      {text.split('\n').map((line, i) => (
+        <React.Fragment key={i}>
+          {i > 0 && <br />}
+          <span dangerouslySetInnerHTML={{ __html: renderWAMarkdown(line) }} />
+        </React.Fragment>
+      ))}
+    </>
   );
 }
 
@@ -84,81 +84,81 @@ function WAText({ text }: { text: string }) {
 
 function ToolbarBtn({ icon, onClick, title }: { icon: React.ReactNode; onClick: () => void; title: string }) {
   return (
-      <button
-          type="button"
-          onClick={onClick}
-          title={title}
-          className="p-1.5 rounded text-[#64748B] dark:text-gray-400 hover:bg-white dark:hover:bg-gray-800 hover:text-[#1E293B] dark:hover:text-white hover:shadow-sm transition-all"
-      >
-        {icon}
-      </button>
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      className="p-1.5 rounded text-[#64748B] dark:text-gray-400 hover:bg-white dark:hover:bg-gray-800 hover:text-[#1E293B] dark:hover:text-white hover:shadow-sm transition-all"
+    >
+      {icon}
+    </button>
   );
 }
 
 function ButtonRow({
-                     btn, onChange, onRemove,
-                   }: {
+  btn, onChange, onRemove,
+}: {
   btn: TemplateButton;
   onChange: (p: Partial<TemplateButton>) => void;
   onRemove: () => void;
 }) {
   const typeLabel =
-      btn.type === 'QUICK_REPLY' ? 'Quick reply' :
-          btn.type === 'URL'          ? 'Visit website' : 'Call phone';
+    btn.type === 'QUICK_REPLY' ? 'Quick reply' :
+    btn.type === 'URL'         ? 'Visit website' : 'Call phone';
 
   return (
-      <div className="p-3 border border-[#E2E8F0] dark:border-gray-800 rounded-lg space-y-2 bg-[#FAFBFC] dark:bg-[#000724]">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-[#64748B] dark:text-gray-400 w-24 shrink-0">{typeLabel}</span>
-          <span className="text-xs text-[#94A3B8] dark:text-gray-500 shrink-0">Button text</span>
-          <input
-              value={btn.text}
-              onChange={e => onChange({ text: e.target.value })}
-              placeholder="Button label"
-              maxLength={25}
-              className="flex-1 px-2 py-1.5 border border-[#E2E8F0] dark:border-gray-800 rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#0b1957]/30 bg-white dark:bg-[#000c3b] text-gray-900 dark:text-white"
-          />
-          <span className="text-[10px] text-[#94A3B8] dark:text-gray-500 shrink-0">{btn.text.length}/25</span>
-          <button type="button" onClick={onRemove} className="text-[#94A3B8] dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 p-1 transition-colors">
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        {btn.type === 'URL' && (
-            <div className="flex items-center gap-2 pl-24 flex-wrap">
-              <span className="text-xs text-[#94A3B8] dark:text-gray-500 shrink-0">URL type</span>
-              <select
-                  value={btn.urlType}
-                  onChange={e => onChange({ urlType: e.target.value as 'static' | 'dynamic' })}
-                  className="px-2 py-1 border border-[#E2E8F0] dark:border-gray-800 rounded text-xs bg-white dark:bg-[#000c3b] text-gray-900 dark:text-white focus:outline-none"
-              >
-                <option value="static" className="dark:bg-[#000c3b]">Static</option>
-                <option value="dynamic" className="dark:bg-[#000c3b]">Dynamic</option>
-              </select>
-              <span className="text-xs text-[#94A3B8] dark:text-gray-500 shrink-0">Website URL</span>
-              <input
-                  type="url"
-                  value={btn.url}
-                  onChange={e => onChange({ url: e.target.value })}
-                  placeholder="https://example.com"
-                  className="flex-1 min-w-0 px-2 py-1.5 border border-[#E2E8F0] dark:border-gray-800 rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#0b1957]/30 bg-white dark:bg-[#000c3b] text-gray-900 dark:text-white"
-              />
-              <span className="text-[10px] text-[#94A3B8] dark:text-gray-500 shrink-0">{btn.url.length}/2000</span>
-            </div>
-        )}
-
-        {btn.type === 'PHONE_NUMBER' && (
-            <div className="flex items-center gap-2 pl-24">
-              <span className="text-xs text-[#94A3B8] dark:text-gray-500 shrink-0">Phone number</span>
-              <input
-                  value={btn.phone}
-                  onChange={e => onChange({ phone: e.target.value })}
-                  placeholder="+971501234567"
-                  className="flex-1 px-2 py-1.5 border border-[#E2E8F0] dark:border-gray-800 rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#0b1957]/30 bg-white dark:bg-[#000c3b] text-gray-900 dark:text-white"
-              />
-            </div>
-        )}
+    <div className="p-3 border border-[#E2E8F0] dark:border-gray-800 rounded-lg space-y-2 bg-[#FAFBFC] dark:bg-[#000724]">
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-medium text-[#64748B] dark:text-gray-400 w-24 shrink-0">{typeLabel}</span>
+        <span className="text-xs text-[#94A3B8] dark:text-gray-500 shrink-0">Button text</span>
+        <input
+          value={btn.text}
+          onChange={e => onChange({ text: e.target.value })}
+          placeholder="Button label"
+          maxLength={25}
+          className="flex-1 px-2 py-1.5 border border-[#E2E8F0] dark:border-gray-800 rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#0b1957]/30 bg-white dark:bg-[#000c3b] text-gray-900 dark:text-white"
+        />
+        <span className="text-[10px] text-[#94A3B8] dark:text-gray-500 shrink-0">{btn.text.length}/25</span>
+        <button type="button" onClick={onRemove} className="text-[#94A3B8] dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 p-1 transition-colors">
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
       </div>
+
+      {btn.type === 'URL' && (
+        <div className="flex items-center gap-2 pl-24 flex-wrap">
+          <span className="text-xs text-[#94A3B8] dark:text-gray-500 shrink-0">URL type</span>
+          <select
+            value={btn.urlType}
+            onChange={e => onChange({ urlType: e.target.value as 'static' | 'dynamic' })}
+            className="px-2 py-1 border border-[#E2E8F0] dark:border-gray-800 rounded text-xs bg-white dark:bg-[#000c3b] text-gray-900 dark:text-white focus:outline-none"
+          >
+            <option value="static" className="dark:bg-[#000c3b]">Static</option>
+            <option value="dynamic" className="dark:bg-[#000c3b]">Dynamic</option>
+          </select>
+          <span className="text-xs text-[#94A3B8] dark:text-gray-500 shrink-0">Website URL</span>
+          <input
+            type="url"
+            value={btn.url}
+            onChange={e => onChange({ url: e.target.value })}
+            placeholder="https://example.com"
+            className="flex-1 min-w-0 px-2 py-1.5 border border-[#E2E8F0] dark:border-gray-800 rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#0b1957]/30 bg-white dark:bg-[#000c3b] text-gray-900 dark:text-white"
+          />
+          <span className="text-[10px] text-[#94A3B8] dark:text-gray-500 shrink-0">{btn.url.length}/2000</span>
+        </div>
+      )}
+
+      {btn.type === 'PHONE_NUMBER' && (
+        <div className="flex items-center gap-2 pl-24">
+          <span className="text-xs text-[#94A3B8] dark:text-gray-500 shrink-0">Phone number</span>
+          <input
+            value={btn.phone}
+            onChange={e => onChange({ phone: e.target.value })}
+            placeholder="+971501234567"
+            className="flex-1 px-2 py-1.5 border border-[#E2E8F0] dark:border-gray-800 rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#0b1957]/30 bg-white dark:bg-[#000c3b] text-gray-900 dark:text-white"
+          />
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -171,18 +171,18 @@ export default function WhatsAppTemplateCreatePage() {
   const [mobileTab, setMobileTab] = useState<MobileTab>('details');
 
   // ── State ──────────────────────────────────────────────────────────────────
-  const [name,      setName]     = useState('');
+  const [name,     setName]     = useState('');
   const [language, setLanguage] = useState('en_US');
   const [category, setCategory] = useState<Category>('MARKETING');
 
   // Header / media
-  const [mediaType,        setMediaType]        = useState<MediaType>('NONE');
-  const [headerText,       setHeaderText]       = useState('');
-  const [headerVarExample, setHeaderVarExample] = useState('');
-  const [mediaHandle,      setMediaHandle]      = useState('');
-  const [mediaFileName,    setMediaFileName]    = useState('');
-  const [uploadStatus,     setUploadStatus]     = useState<'idle' | 'uploading' | 'done' | 'error'>('idle');
-  const [uploadError,      setUploadError]      = useState('');
+  const [mediaType,       setMediaType]       = useState<MediaType>('NONE');
+  const [headerText,      setHeaderText]       = useState('');
+  const [headerVarExample,setHeaderVarExample] = useState('');
+  const [mediaHandle,     setMediaHandle]     = useState('');
+  const [mediaFileName,   setMediaFileName]   = useState('');
+  const [uploadStatus,    setUploadStatus]    = useState<'idle' | 'uploading' | 'done' | 'error'>('idle');
+  const [uploadError,     setUploadError]     = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Body
@@ -194,7 +194,7 @@ export default function WhatsAppTemplateCreatePage() {
   const [footerText, setFooterText] = useState('');
 
   // Buttons
-  const [buttons,         setButtons]         = useState<TemplateButton[]>([]);
+  const [buttons,        setButtons]        = useState<TemplateButton[]>([]);
   const [showBtnMenu,    setShowBtnMenu]    = useState(false);
 
   // Submit
@@ -203,11 +203,11 @@ export default function WhatsAppTemplateCreatePage() {
 
   // ── Derived ────────────────────────────────────────────────────────────────
   const safeName = name
-      .toLowerCase()
-      .replace(/[^a-z0-9_]/g, '_')
-      .replace(/_+/g, '_')
-      .replace(/^_|_$/g, '')
-      .slice(0, 512);
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '')
+    .slice(0, 512);
 
   const bodyVars      = useMemo(() => extractVars(bodyText),  [bodyText]);
   const headerVars    = useMemo(() => extractVars(headerText), [headerText]);
@@ -269,12 +269,12 @@ export default function WhatsAppTemplateCreatePage() {
         reader.readAsDataURL(file);
       });
       const res = await fetchWithTenant(
-          '/api/whatsapp-conversations/conversations/templates/upload-media?channel=waba',
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ file_base64: base64, filename: file.name, content_type: file.type }),
-          }
+        '/api/whatsapp-conversations/conversations/templates/upload-media?channel=waba',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ file_base64: base64, filename: file.name, content_type: file.type }),
+        }
       );
       const data = await res.json();
       if (data.success && data.media_id) {
@@ -329,7 +329,7 @@ export default function WhatsAppTemplateCreatePage() {
     }
     return comps;
   }, [isMediaHeader, mediaType, mediaHandle, headerText, headerVars, headerVarExample,
-    bodyText, bodyVars, bodyExamples, footerText, buttons]);
+      bodyText, bodyVars, bodyExamples, footerText, buttons]);
 
   // ── Validation ──────────────────────────────────────────────────────────────
   const canSubmit = useMemo(() => {
@@ -343,7 +343,7 @@ export default function WhatsAppTemplateCreatePage() {
     if (varDensityWarning) return false;
     return true;
   }, [safeName, bodyText, bodyVars, bodyExamples, isMediaHeader, mediaHandle, uploadStatus,
-    headerText, headerVars, headerVarExample, buttons, varDensityWarning]);
+      headerText, headerVars, headerVarExample, buttons, varDensityWarning]);
 
   // ── Submit ──────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
@@ -352,12 +352,12 @@ export default function WhatsAppTemplateCreatePage() {
     setResult(null);
     try {
       const res = await fetchWithTenant(
-          '/api/whatsapp-conversations/conversations/templates?channel=waba',
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: safeName, language, category, components: buildComponents() }),
-          }
+        '/api/whatsapp-conversations/conversations/templates?channel=waba',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: safeName, language, category, components: buildComponents() }),
+        }
       );
       const data = await res.json();
       if (data.success) {
@@ -388,20 +388,19 @@ export default function WhatsAppTemplateCreatePage() {
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
-      <div className="min-h-screen bg-[#F8F9FE] dark:bg-[#000724] transition-colors duration-200" onClick={() => setShowBtnMenu(false)}>
+    <div className="min-h-screen bg-[#F8F9FE] dark:bg-[#000724] transition-colors duration-200" onClick={() => setShowBtnMenu(false)}>
 
-        {/* ── Sticky header bar — back only ── */}
-        <div className="bg-white border-b border-[#E2E8F0] dark:bg-[#000c3b] dark:border-gray-800 px-4 md:px-6 py-3 flex items-center gap-3 sticky top-0 z-20 shadow-sm">
-          <button
-              onClick={() => router.push('/campaigns/templates')}
-              className="flex items-center gap-1.5 text-sm text-[#64748B] hover:text-[#1E293B] dark:text-gray-400 dark:hover:text-white font-medium transition-colors cursor-pointer"
-          >
-            <ArrowLeft className="w-4 h-4" /> Back
-          </button>
-          <div className="h-5 w-px bg-[#E2E8F0] dark:bg-gray-800" />
-          <span className="text-sm font-semibold text-[#1E293B] dark:text-white">Create WhatsApp template</span>
-        </div>
-
+      {/* ── Sticky header bar — back only ── */}
+      <div className="bg-white border-b border-[#E2E8F0] dark:bg-[#000c3b] dark:border-gray-800 px-4 md:px-6 py-3 flex items-center gap-3 sticky top-0 z-20 shadow-sm">
+        <button
+          onClick={() => router.push('/campaigns/templates')}
+          className="flex items-center gap-1.5 text-sm text-[#64748B] hover:text-[#1E293B] dark:text-gray-400 dark:hover:text-white font-medium transition-colors cursor-pointer"
+        >
+          <ArrowLeft className="w-4 h-4" /> Back
+        </button>
+        <div className="h-5 w-px bg-[#E2E8F0] dark:bg-gray-800" />
+        <span className="text-sm font-semibold text-[#1E293B] dark:text-white">Create WhatsApp template</span>
+      </div>
         {/* ── Mobile Tabs ── */}
         <div className="md:hidden bg-white dark:bg-[#000c3b] border-b border-[#E2E8F0] dark:border-gray-800 sticky top-[60px] z-10">
           <div className="flex">
@@ -429,399 +428,399 @@ export default function WhatsAppTemplateCreatePage() {
           </div>
         </div>
 
-        {/* ── Two-column layout ── */}
-        <div className="flex">
+      {/* ── Two-column layout ── */}
+      <div className="flex">
 
-          {/* ─── Left: Form ─── */}
-          <div className={`flex-1 p-4 md:p-6 space-y-4 min-w-0 max-w-4xl ${mobileTab === 'preview' ? 'hidden' : ''}`}>
+        {/* ─── Left: Form ─── */}
+        <div className={`flex-1 p-4 md:p-6 space-y-4 min-w-0 max-w-4xl ${mobileTab === 'preview' ? 'hidden' : ''}`}>
 
-            {/* ── Template name & language section ── */}
-            <div className={`bg-white dark:bg-[#000c3b] border border-[#E2E8F0] dark:border-gray-800 rounded-xl shadow-sm overflow-hidden ${mobileTab !== 'details' ? 'hidden md:block' : ''}`}>
-              <div className="px-6 py-4 border-b border-[#E2E8F0] dark:border-gray-800 bg-[#F8F9FE] dark:bg-[#000c3b]">
-                <h2 className="text-base font-semibold text-[#1E293B] dark:text-white">Template name and language</h2>
-              </div>
-              <div className="p-6 space-y-4">
-                {/* Name + Language row */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-[#1E293B] dark:text-white mb-1.5">Name your template</label>
-                    <div className="relative">
-                      <input
-                          value={name}
-                          onChange={e => setName(e.target.value)}
-                          placeholder="e.g. welcome_message"
-                          maxLength={512}
-                          className="w-full px-3 py-2.5 pr-16 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm text-[#1E293B] dark:text-white placeholder:text-[#94A3B8] dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0b1957]/20 focus:border-[#0b1957] dark:focus:ring-blue-500/20 dark:focus:border-blue-500 bg-white dark:bg-[#000724]"
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#94A3B8] dark:text-gray-500 pointer-events-none">{name.length}/512</span>
-                    </div>
-                    {name && safeName !== name.toLowerCase().replace(/\s+/g, '_') && (
-                        <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">Will be saved as: <span className="font-mono font-semibold">{safeName}</span></p>
-                    )}
-                    {safeName && (
-                        <p className="text-[11px] text-[#94A3B8] dark:text-gray-500 mt-1 font-mono">{safeName || 'template_name'}</p>
-                    )}
+          {/* ── Template name & language section ── */}
+          <div className={`bg-white dark:bg-[#000c3b] border border-[#E2E8F0] dark:border-gray-800 rounded-xl shadow-sm overflow-hidden ${mobileTab !== 'details' ? 'hidden md:block' : ''}`}>
+            <div className="px-6 py-4 border-b border-[#E2E8F0] dark:border-gray-800 bg-[#F8F9FE] dark:bg-[#000c3b]">
+              <h2 className="text-base font-semibold text-[#1E293B] dark:text-white">Template name and language</h2>
+            </div>
+            <div className="p-6 space-y-4">
+              {/* Name + Language row */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-[#1E293B] dark:text-white mb-1.5">Name your template</label>
+                  <div className="relative">
+                    <input
+                      value={name}
+                      onChange={e => setName(e.target.value)}
+                      placeholder="e.g. welcome_message"
+                      maxLength={512}
+                      className="w-full px-3 py-2.5 pr-16 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm text-[#1E293B] dark:text-white placeholder:text-[#94A3B8] dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0b1957]/20 focus:border-[#0b1957] dark:focus:ring-blue-500/20 dark:focus:border-blue-500 bg-white dark:bg-[#000724]"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#94A3B8] dark:text-gray-500 pointer-events-none">{name.length}/512</span>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-[#1E293B] dark:text-white mb-1.5">Select language</label>
-                    <select
-                        value={language}
-                        onChange={e => setLanguage(e.target.value)}
-                        className="w-full px-3 py-2.5 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm bg-white dark:bg-[#000724] text-[#1E293B] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0b1957]/20 focus:border-[#0b1957] dark:focus:ring-blue-500/20 dark:focus:border-blue-500"
-                    >
-                      {LANGUAGES.map(l => <option key={l.code} value={l.code} className="dark:bg-[#000724]">{l.label}</option>)}
-                    </select>
+                  {name && safeName !== name.toLowerCase().replace(/\s+/g, '_') && (
+                    <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">Will be saved as: <span className="font-mono font-semibold">{safeName}</span></p>
+                  )}
+                  {safeName && (
+                    <p className="text-[11px] text-[#94A3B8] dark:text-gray-500 mt-1 font-mono">{safeName || 'template_name'}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#1E293B] dark:text-white mb-1.5">Select language</label>
+                  <select
+                    value={language}
+                    onChange={e => setLanguage(e.target.value)}
+                    className="w-full px-3 py-2.5 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm bg-white dark:bg-[#000724] text-[#1E293B] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0b1957]/20 focus:border-[#0b1957] dark:focus:ring-blue-500/20 dark:focus:border-blue-500"
+                  >
+                    {LANGUAGES.map(l => <option key={l.code} value={l.code} className="dark:bg-[#000724]">{l.label}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* Category + Submit row */}
+              <div className="flex items-center justify-between pt-1">
+                <div>
+                  <p className="text-sm font-medium text-[#1E293B] dark:text-white mb-2">Category</p>
+                  <div className="flex gap-2">
+                    {CATEGORIES.map(c => (
+                      <button
+                        key={c.value}
+                        type="button"
+                        onClick={() => setCategory(c.value)}
+                        className={`text-sm font-semibold px-4 py-2 rounded-full border transition-all cursor-pointer ${
+                          category === c.value
+                            ? 'bg-[#0b1957] dark:bg-blue-600 text-white border-[#0b1957] dark:border-blue-600 shadow-[0_2px_8px_rgba(11,25,87,0.25)]'
+                            : 'bg-white dark:bg-[#000724] text-[#64748B] dark:text-gray-300 border-[#E2E8F0] dark:border-gray-800 hover:border-[#0b1957]/40 dark:hover:border-blue-500/40 hover:text-[#1E293B] dark:hover:text-white'
+                        }`}
+                      >
+                        {c.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
-                {/* Category + Submit row */}
-                <div className="flex items-center justify-between pt-1">
-                  <div>
-                    <p className="text-sm font-medium text-[#1E293B] dark:text-white mb-2">Category</p>
-                    <div className="flex gap-2">
-                      {CATEGORIES.map(c => (
-                          <button
-                              key={c.value}
-                              type="button"
-                              onClick={() => setCategory(c.value)}
-                              className={`text-sm font-semibold px-4 py-2 rounded-full border transition-all cursor-pointer ${
-                                  category === c.value
-                                      ? 'bg-[#0b1957] dark:bg-blue-600 text-white border-[#0b1957] dark:border-blue-600 shadow-[0_2px_8px_rgba(11,25,87,0.25)]'
-                                      : 'bg-white dark:bg-[#000724] text-[#64748B] dark:text-gray-300 border-[#E2E8F0] dark:border-gray-800 hover:border-[#0b1957]/40 dark:hover:border-blue-500/40 hover:text-[#1E293B] dark:hover:text-white'
-                              }`}
-                          >
-                            {c.label}
-                          </button>
-                      ))}
+                <div className="flex items-center gap-3 shrink-0">
+                  {result && (
+                    <div className={`flex items-center gap-2 text-sm max-w-[260px] ${result.success ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
+                      {result.success
+                        ? <CheckCircle2 className="w-4 h-4 shrink-0" />
+                        : <AlertCircle  className="w-4 h-4 shrink-0" />}
+                      <span className="text-xs line-clamp-2">{result.message}</span>
                     </div>
-                  </div>
-
-                  <div className="flex items-center gap-3 shrink-0">
-                    {result && (
-                        <div className={`flex items-center gap-2 text-sm max-w-[260px] ${result.success ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
-                          {result.success
-                              ? <CheckCircle2 className="w-4 h-4 shrink-0" />
-                              : <AlertCircle  className="w-4 h-4 shrink-0" />}
-                          <span className="text-xs line-clamp-2">{result.message}</span>
-                        </div>
-                    )}
-                    <button
-                        onClick={handleSubmit}
-                        disabled={!canSubmit || submitting}
-                        className="hidden md:inline-flex items-center gap-2 px-5 py-2.5 bg-[#0b1957] dark:bg-gray-100 text-white dark:text-gray-900 rounded-xl font-semibold text-sm hover:bg-[#0a1540] dark:hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_4px_20px_rgba(11,25,87,0.3)] dark:shadow-none transition-all cursor-pointer"
-                    >
-                      {submitting
-                          ? <><Loader2 className="w-4 h-4 animate-spin" /> Submitting…</>
-                          : 'Submit to Meta'}
-                    </button>
-                  </div>
+                  )}
+                  <button
+                    onClick={handleSubmit}
+                    disabled={!canSubmit || submitting}
+                    className="hidden md:inline-flex items-center gap-2 px-5 py-2.5 bg-[#0b1957] dark:bg-gray-100 text-white dark:text-gray-900 rounded-xl font-semibold text-sm hover:bg-[#0a1540] dark:hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_4px_20px_rgba(11,25,87,0.3)] dark:shadow-none transition-all cursor-pointer"
+                  >
+                    {submitting
+                      ? <><Loader2 className="w-4 h-4 animate-spin" /> Submitting…</>
+                      : 'Submit to Meta'}
+                  </button>
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* ── Content section ── */}
-            <div className={`bg-white dark:bg-[#000c3b] border border-[#E2E8F0] dark:border-gray-800 rounded-xl shadow-sm overflow-hidden ${mobileTab !== 'content' ? 'hidden md:block' : ''}`}>
-              <div className="px-6 py-4 border-b border-[#E2E8F0] dark:border-gray-800 bg-[#F8F9FE] dark:bg-[#000c3b]">
-                <h2 className="text-base font-semibold text-[#1E293B] dark:text-white">Content</h2>
-                <p className="text-xs text-[#64748B] dark:text-gray-400 mt-0.5">
-                  Add a header, body and footer for your template. Cloud API hosted by Meta will review variables and content.
-                </p>
-              </div>
+          {/* ── Content section ── */}
+          <div className={`bg-white dark:bg-[#000c3b] border border-[#E2E8F0] dark:border-gray-800 rounded-xl shadow-sm overflow-hidden ${mobileTab !== 'content' ? 'hidden md:block' : ''}`}>
+            <div className="px-6 py-4 border-b border-[#E2E8F0] dark:border-gray-800 bg-[#F8F9FE] dark:bg-[#000c3b]">
+              <h2 className="text-base font-semibold text-[#1E293B] dark:text-white">Content</h2>
+              <p className="text-xs text-[#64748B] dark:text-gray-400 mt-0.5">
+                Add a header, body and footer for your template. Cloud API hosted by Meta will review variables and content.
+              </p>
+            </div>
 
-              <div className="p-6 space-y-6">
+            <div className="p-6 space-y-6">
 
-                {/* Variable type + Media sample row */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-[#1E293B] dark:text-white mb-1.5">
-                      Type of variable
-                      <span className="ml-1.5 text-[#94A3B8] dark:text-gray-500 text-xs">ⓘ</span>
-                    </label>
-                    <select className="w-full px-3 py-2 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm bg-white dark:bg-[#000724] text-[#1E293B] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0b1957]/20 focus:border-[#0b1957] dark:focus:ring-blue-500/20 dark:focus:border-blue-500">
-                      <option className="dark:bg-[#000724]">Number</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-[#1E293B] dark:text-white mb-1.5">
-                      Media sample
-                      <span className="ml-1 text-[#94A3B8] dark:text-gray-500 font-normal text-xs">· Optional</span>
-                    </label>
-                    <select
-                        value={mediaType}
-                        onChange={e => {
-                          setMediaType(e.target.value as MediaType);
-                          setMediaHandle('');
-                          setMediaFileName('');
-                          setUploadStatus('idle');
-                          setUploadError('');
-                        }}
-                        className="w-full px-3 py-2 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm bg-white dark:bg-[#000724] text-[#1E293B] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0b1957]/20 focus:border-[#0b1957] dark:focus:ring-blue-500/20 dark:focus:border-blue-500"
-                    >
-                      <option value="NONE" className="dark:bg-[#000724]">None</option>
-                      <option value="IMAGE" className="dark:bg-[#000724]">Image</option>
-                      <option value="VIDEO" className="dark:bg-[#000724]">Video</option>
-                      <option value="DOCUMENT" className="dark:bg-[#000724]">Document</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* File upload area */}
-                {isMediaHeader && (
-                    <div>
-                      <input
-                          ref={fileInputRef}
-                          type="file"
-                          className="hidden"
-                          accept={
-                            mediaType === 'IMAGE'    ? 'image/jpeg,image/png,image/webp' :
-                                mediaType === 'VIDEO'    ? 'video/mp4,video/3gp' :
-                                    'application/pdf,.doc,.docx'
-                          }
-                          onChange={handleFileChange}
-                      />
-                      {uploadStatus === 'done' ? (
-                          <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 rounded-xl">
-                            <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400 shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold text-green-800 dark:text-green-200 truncate">{mediaFileName}</p>
-                              <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">Uploaded to Meta successfully</p>
-                            </div>
-                            <button
-                                onClick={() => fileInputRef.current?.click()}
-                                className="text-xs text-green-700 dark:text-green-400 underline underline-offset-2 hover:text-green-800 dark:hover:text-green-300 shrink-0 cursor-pointer"
-                            >
-                              Replace file
-                            </button>
-                          </div>
-                      ) : (
-                          <button
-                              type="button"
-                              onClick={() => fileInputRef.current?.click()}
-                              disabled={uploadStatus === 'uploading'}
-                              className="w-full border-2 border-dashed border-[#E2E8F0] dark:border-gray-800 hover:border-[#0b1957]/40 dark:hover:border-blue-500/40 rounded-xl p-8 flex flex-col items-center gap-3 transition-colors group disabled:cursor-not-allowed bg-[#FAFBFC] dark:bg-[#000724] hover:bg-[#F0F4FF] dark:hover:bg-[#0b1957]/10"
-                          >
-                            {uploadStatus === 'uploading' ? (
-                                <>
-                                  <Loader2 className="w-8 h-8 text-[#0b1957] dark:text-blue-400 animate-spin" />
-                                  <p className="text-sm font-medium text-[#64748B] dark:text-gray-400">Uploading to Meta…</p>
-                                </>
-                            ) : (
-                                <>
-                                  <div className="w-12 h-12 rounded-full bg-[#0b1957]/5 dark:bg-blue-500/10 group-hover:bg-[#0b1957]/10 dark:group-hover:bg-blue-500/20 flex items-center justify-center transition-colors">
-                                    <Upload className="w-6 h-6 text-[#0b1957]/60 dark:text-blue-400/60 group-hover:text-[#0b1957] dark:group-hover:text-blue-400" />
-                                  </div>
-                                  <div className="text-center">
-                                    <p className="text-sm font-semibold text-[#1E293B] dark:text-white group-hover:text-[#0b1957] dark:group-hover:text-blue-400">
-                                      Choose {mediaType.charAt(0) + mediaType.slice(1).toLowerCase()} file
-                                    </p>
-                                    <p className="text-xs text-[#94A3B8] dark:text-gray-500 mt-1">
-                                      {mediaType === 'IMAGE'    && 'JPG, PNG or WebP · Max 5MB'}
-                                      {mediaType === 'VIDEO'    && 'MP4 or 3GP · Max 16MB'}
-                                      {mediaType === 'DOCUMENT' && 'PDF, DOC or DOCX · Max 100MB'}
-                                    </p>
-                                  </div>
-                                </>
-                            )}
-                          </button>
-                      )}
-                      {uploadStatus === 'error' && (
-                          <div className="flex items-center gap-2 mt-2 text-xs text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-lg px-3 py-2">
-                            <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {uploadError}
-                          </div>
-                      )}
-                    </div>
-                )}
-
-                {/* Header text */}
+              {/* Variable type + Media sample row */}
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-[#1E293B] dark:text-white mb-1.5">
-                    Header
+                    Type of variable
+                    <span className="ml-1.5 text-[#94A3B8] dark:text-gray-500 text-xs">ⓘ</span>
+                  </label>
+                  <select className="w-full px-3 py-2 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm bg-white dark:bg-[#000724] text-[#1E293B] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0b1957]/20 focus:border-[#0b1957] dark:focus:ring-blue-500/20 dark:focus:border-blue-500">
+                    <option className="dark:bg-[#000724]">Number</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#1E293B] dark:text-white mb-1.5">
+                    Media sample
                     <span className="ml-1 text-[#94A3B8] dark:text-gray-500 font-normal text-xs">· Optional</span>
                   </label>
-                  <div className="relative">
-                    <input
-                        type="text"
-                        value={headerText}
-                        onChange={e => setHeaderText(e.target.value)}
-                        placeholder={
-                          isMediaHeader
-                              ? 'Text header not available when media is selected'
-                              : 'Add a short line of text to the header of your message'
-                        }
-                        disabled={isMediaHeader}
-                        maxLength={60}
-                        className="w-full px-3 py-2.5 pr-16 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm text-[#1E293B] dark:text-white placeholder:text-[#94A3B8] dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0b1957]/20 focus:border-[#0b1957] dark:focus:ring-blue-500/20 dark:focus:border-blue-500 disabled:bg-[#F8F9FE] dark:disabled:bg-[#000724] disabled:text-[#94A3B8] dark:disabled:text-gray-600 disabled:cursor-not-allowed bg-white dark:bg-[#000724]"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#94A3B8] dark:text-gray-500 pointer-events-none">
+                  <select
+                    value={mediaType}
+                    onChange={e => {
+                      setMediaType(e.target.value as MediaType);
+                      setMediaHandle('');
+                      setMediaFileName('');
+                      setUploadStatus('idle');
+                      setUploadError('');
+                    }}
+                    className="w-full px-3 py-2 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm bg-white dark:bg-[#000724] text-[#1E293B] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0b1957]/20 focus:border-[#0b1957] dark:focus:ring-blue-500/20 dark:focus:border-blue-500"
+                  >
+                    <option value="NONE" className="dark:bg-[#000724]">None</option>
+                    <option value="IMAGE" className="dark:bg-[#000724]">Image</option>
+                    <option value="VIDEO" className="dark:bg-[#000724]">Video</option>
+                    <option value="DOCUMENT" className="dark:bg-[#000724]">Document</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* File upload area */}
+              {isMediaHeader && (
+                <div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    accept={
+                      mediaType === 'IMAGE'    ? 'image/jpeg,image/png,image/webp' :
+                      mediaType === 'VIDEO'    ? 'video/mp4,video/3gp' :
+                      'application/pdf,.doc,.docx'
+                    }
+                    onChange={handleFileChange}
+                  />
+                  {uploadStatus === 'done' ? (
+                    <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 rounded-xl">
+                      <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-green-800 dark:text-green-200 truncate">{mediaFileName}</p>
+                        <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">Uploaded to Meta successfully</p>
+                      </div>
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="text-xs text-green-700 dark:text-green-400 underline underline-offset-2 hover:text-green-800 dark:hover:text-green-300 shrink-0 cursor-pointer"
+                      >
+                        Replace file
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadStatus === 'uploading'}
+                      className="w-full border-2 border-dashed border-[#E2E8F0] dark:border-gray-800 hover:border-[#0b1957]/40 dark:hover:border-blue-500/40 rounded-xl p-8 flex flex-col items-center gap-3 transition-colors group disabled:cursor-not-allowed bg-[#FAFBFC] dark:bg-[#000724] hover:bg-[#F0F4FF] dark:hover:bg-[#0b1957]/10"
+                    >
+                      {uploadStatus === 'uploading' ? (
+                        <>
+                          <Loader2 className="w-8 h-8 text-[#0b1957] dark:text-blue-400 animate-spin" />
+                          <p className="text-sm font-medium text-[#64748B] dark:text-gray-400">Uploading to Meta…</p>
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-12 h-12 rounded-full bg-[#0b1957]/5 dark:bg-blue-500/10 group-hover:bg-[#0b1957]/10 dark:group-hover:bg-blue-500/20 flex items-center justify-center transition-colors">
+                            <Upload className="w-6 h-6 text-[#0b1957]/60 dark:text-blue-400/60 group-hover:text-[#0b1957] dark:group-hover:text-blue-400" />
+                          </div>
+                          <div className="text-center">
+                            <p className="text-sm font-semibold text-[#1E293B] dark:text-white group-hover:text-[#0b1957] dark:group-hover:text-blue-400">
+                              Choose {mediaType.charAt(0) + mediaType.slice(1).toLowerCase()} file
+                            </p>
+                            <p className="text-xs text-[#94A3B8] dark:text-gray-500 mt-1">
+                              {mediaType === 'IMAGE'    && 'JPG, PNG or WebP · Max 5MB'}
+                              {mediaType === 'VIDEO'    && 'MP4 or 3GP · Max 16MB'}
+                              {mediaType === 'DOCUMENT' && 'PDF, DOC or DOCX · Max 100MB'}
+                            </p>
+                          </div>
+                        </>
+                      )}
+                    </button>
+                  )}
+                  {uploadStatus === 'error' && (
+                    <div className="flex items-center gap-2 mt-2 text-xs text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-lg px-3 py-2">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {uploadError}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Header text */}
+              <div>
+                <label className="block text-sm font-medium text-[#1E293B] dark:text-white mb-1.5">
+                  Header
+                  <span className="ml-1 text-[#94A3B8] dark:text-gray-500 font-normal text-xs">· Optional</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={headerText}
+                    onChange={e => setHeaderText(e.target.value)}
+                    placeholder={
+                      isMediaHeader
+                        ? 'Text header not available when media is selected'
+                        : 'Add a short line of text to the header of your message'
+                    }
+                    disabled={isMediaHeader}
+                    maxLength={60}
+                    className="w-full px-3 py-2.5 pr-16 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm text-[#1E293B] dark:text-white placeholder:text-[#94A3B8] dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0b1957]/20 focus:border-[#0b1957] dark:focus:ring-blue-500/20 dark:focus:border-blue-500 disabled:bg-[#F8F9FE] dark:disabled:bg-[#000724] disabled:text-[#94A3B8] dark:disabled:text-gray-600 disabled:cursor-not-allowed bg-white dark:bg-[#000724]"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#94A3B8] dark:text-gray-500 pointer-events-none">
                     {headerText.length}/60
                   </span>
+                </div>
+                {headerVars.length > 0 && !isMediaHeader && (
+                  <div className="mt-2">
+                    <label className="text-xs text-[#64748B] dark:text-gray-400 mb-1 block">
+                      Example for <code className="font-mono bg-slate-100 dark:bg-slate-800 px-1 rounded text-gray-800 dark:text-gray-200">{'{{1}}'}</code>
+                      <span className="text-red-500 ml-1">*</span>
+                    </label>
+                    <input
+                      value={headerVarExample}
+                      onChange={e => setHeaderVarExample(e.target.value)}
+                      placeholder="e.g. John"
+                      className="w-full px-3 py-2 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm bg-white dark:bg-[#000724] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0b1957]/20 focus:border-[#0b1957] dark:focus:ring-blue-500/20 dark:focus:border-blue-500"
+                    />
                   </div>
-                  {headerVars.length > 0 && !isMediaHeader && (
-                      <div className="mt-2">
-                        <label className="text-xs text-[#64748B] dark:text-gray-400 mb-1 block">
-                          Example for <code className="font-mono bg-slate-100 dark:bg-slate-800 px-1 rounded text-gray-800 dark:text-gray-200">{'{{1}}'}</code>
-                          <span className="text-red-500 ml-1">*</span>
-                        </label>
+                )}
+              </div>
+
+              {/* Body */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-sm font-medium text-[#1E293B] dark:text-white">
+                    Body <span className="text-red-500">*</span>
+                  </label>
+                  <span className="text-xs text-[#94A3B8] dark:text-gray-500">{bodyText.length}/1028</span>
+                </div>
+
+                {/* Formatting toolbar */}
+                <div className="flex items-center gap-0.5 px-2 py-1.5 border border-b-0 border-[#E2E8F0] dark:border-gray-800 rounded-t-lg bg-[#F8F9FE] dark:bg-[#000c3b]">
+                  <ToolbarBtn icon={<Bold        className="w-3.5 h-3.5" />} onClick={() => wrapSelection('*', '*')} title="Bold (*text*)" />
+                  <ToolbarBtn icon={<Italic      className="w-3.5 h-3.5" />} onClick={() => wrapSelection('_', '_')} title="Italic (_text_)" />
+                  <ToolbarBtn icon={<Strikethrough className="w-3.5 h-3.5" />} onClick={() => wrapSelection('~', '~')} title="Strikethrough (~text~)" />
+                  <ToolbarBtn icon={<Code        className="w-3.5 h-3.5" />} onClick={() => wrapSelection('`', '`')} title="Monospace (`text`)" />
+                  <div className="w-px h-4 bg-[#E2E8F0] dark:bg-gray-800 mx-1.5" />
+                  <button
+                    type="button"
+                    onClick={insertBodyVar}
+                    className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-[#0b1957] dark:text-blue-400 hover:bg-[#0b1957]/8 dark:hover:bg-blue-500/10 rounded-md transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-3 h-3" /> Add variable
+                  </button>
+                </div>
+                <textarea
+                  ref={bodyTextareaRef}
+                  rows={6}
+                  maxLength={1028}
+                  value={bodyText}
+                  onChange={e => setBodyText(e.target.value)}
+                  placeholder="Hi {{1}}, your appointment on {{2}} is confirmed."
+                  className="w-full px-3 py-2.5 border border-[#E2E8F0] dark:border-gray-800 rounded-b-lg text-sm text-[#1E293B] dark:text-white placeholder:text-[#94A3B8] dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0b1957]/20 focus:border-[#0b1957] dark:focus:ring-blue-500/20 dark:focus:border-blue-500 resize-none bg-white dark:bg-[#000724] font-sans"
+                />
+                {varDensityWarning && (
+                  <div className="flex items-center gap-2 mt-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-lg px-3 py-2">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {varDensityWarning}
+                  </div>
+                )}
+              </div>
+
+              {/* Variable samples */}
+              {bodyVars.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-[#1E293B] dark:text-white mb-1">Variable samples</h3>
+                  <p className="text-xs text-[#64748B] dark:text-gray-400 mb-3">
+                    Include samples of all variables in your message to help Meta review your template.
+                    Remember not to include any customer information.
+                  </p>
+                  <div className="border border-[#E2E8F0] dark:border-gray-800 rounded-xl overflow-hidden">
+                    <div className="grid grid-cols-2 grid-cols-[1fr_1fr] px-4 py-2.5 bg-[#F8F9FE] dark:bg-[#000c3b] border-b border-[#E2E8F0] dark:border-gray-800">
+                      <span className="text-xs font-semibold text-[#64748B] dark:text-gray-400">Body</span>
+                      <span className="text-xs font-semibold text-[#64748B] dark:text-gray-400">Sample value <span className="text-red-500">*</span></span>
+                    </div>
+                    {bodyVars.map(v => (
+                      <div key={v} className="grid grid-cols-2 px-4 py-3 border-b border-[#E2E8F0] dark:border-gray-800 last:border-0 items-center gap-4 bg-white dark:bg-[#000c3b]/10">
+                        <span className="text-sm font-mono text-[#64748B] dark:text-gray-400">{`{{${v}}}`}</span>
                         <input
-                            value={headerVarExample}
-                            onChange={e => setHeaderVarExample(e.target.value)}
-                            placeholder="e.g. John"
-                            className="w-full px-3 py-2 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm bg-white dark:bg-[#000724] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0b1957]/20 focus:border-[#0b1957] dark:focus:ring-blue-500/20 dark:focus:border-blue-500"
+                          value={bodyExamples[v] || ''}
+                          onChange={e => setBodyExamples(prev => ({ ...prev, [v]: e.target.value }))}
+                          placeholder={`Sample for {{${v}}}`}
+                          className="px-3 py-1.5 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-[#0b1957]/30 focus:border-[#0b1957] bg-white dark:bg-[#000724] text-gray-900 dark:text-white"
                         />
                       </div>
-                  )}
+                    ))}
+                  </div>
                 </div>
+              )}
 
-                {/* Body */}
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-sm font-medium text-[#1E293B] dark:text-white">
-                      Body <span className="text-red-500">*</span>
-                    </label>
-                    <span className="text-xs text-[#94A3B8] dark:text-gray-500">{bodyText.length}/1028</span>
-                  </div>
-
-                  {/* Formatting toolbar */}
-                  <div className="flex items-center gap-0.5 px-2 py-1.5 border border-b-0 border-[#E2E8F0] dark:border-gray-800 rounded-t-lg bg-[#F8F9FE] dark:bg-[#000c3b]">
-                    <ToolbarBtn icon={<Bold        className="w-3.5 h-3.5" />} onClick={() => wrapSelection('*', '*')} title="Bold (*text*)" />
-                    <ToolbarBtn icon={<Italic      className="w-3.5 h-3.5" />} onClick={() => wrapSelection('_', '_')} title="Italic (_text_)" />
-                    <ToolbarBtn icon={<Strikethrough className="w-3.5 h-3.5" />} onClick={() => wrapSelection('~', '~')} title="Strikethrough (~text~)" />
-                    <ToolbarBtn icon={<Code        className="w-3.5 h-3.5" />} onClick={() => wrapSelection('`', '`')} title="Monospace (`text`)" />
-                    <div className="w-px h-4 bg-[#E2E8F0] dark:bg-gray-800 mx-1.5" />
-                    <button
-                        type="button"
-                        onClick={insertBodyVar}
-                        className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-[#0b1957] dark:text-blue-400 hover:bg-[#0b1957]/8 dark:hover:bg-blue-500/10 rounded-md transition-colors cursor-pointer"
-                    >
-                      <Plus className="w-3 h-3" /> Add variable
-                    </button>
-                  </div>
-                  <textarea
-                      ref={bodyTextareaRef}
-                      rows={6}
-                      maxLength={1028}
-                      value={bodyText}
-                      onChange={e => setBodyText(e.target.value)}
-                      placeholder="Hi {{1}}, your appointment on {{2}} is confirmed."
-                      className="w-full px-3 py-2.5 border border-[#E2E8F0] dark:border-gray-800 rounded-b-lg text-sm text-[#1E293B] dark:text-white placeholder:text-[#94A3B8] dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0b1957]/20 focus:border-[#0b1957] dark:focus:ring-blue-500/20 dark:focus:border-blue-500 resize-none bg-white dark:bg-[#000724] font-sans"
+              {/* Footer */}
+              <div>
+                <label className="block text-sm font-medium text-[#1E293B] dark:text-white mb-1.5">
+                  Footer
+                  <span className="ml-1 text-[#94A3B8] dark:text-gray-500 font-normal text-xs">· Optional</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={footerText}
+                    onChange={e => setFooterText(e.target.value)}
+                    placeholder="Add a short line of text to the bottom of your message"
+                    maxLength={60}
+                    className="w-full px-3 py-2.5 pr-16 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm text-[#1E293B] dark:text-white placeholder:text-[#94A3B8] dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0b1957]/20 focus:border-[#0b1957] dark:focus:ring-blue-500/20 dark:focus:border-blue-500 bg-white dark:bg-[#000724]"
                   />
-                  {varDensityWarning && (
-                      <div className="flex items-center gap-2 mt-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-lg px-3 py-2">
-                        <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {varDensityWarning}
-                      </div>
-                  )}
-                </div>
-
-                {/* Variable samples */}
-                {bodyVars.length > 0 && (
-                    <div>
-                      <h3 className="text-sm font-semibold text-[#1E293B] dark:text-white mb-1">Variable samples</h3>
-                      <p className="text-xs text-[#64748B] dark:text-gray-400 mb-3">
-                        Include samples of all variables in your message to help Meta review your template.
-                        Remember not to include any customer information.
-                      </p>
-                      <div className="border border-[#E2E8F0] dark:border-gray-800 rounded-xl overflow-hidden">
-                        <div className="grid grid-cols-2 grid-cols-[1fr_1fr] px-4 py-2.5 bg-[#F8F9FE] dark:bg-[#000c3b] border-b border-[#E2E8F0] dark:border-gray-800">
-                          <span className="text-xs font-semibold text-[#64748B] dark:text-gray-400">Body</span>
-                          <span className="text-xs font-semibold text-[#64748B] dark:text-gray-400">Sample value <span className="text-red-500">*</span></span>
-                        </div>
-                        {bodyVars.map(v => (
-                            <div key={v} className="grid grid-cols-2 px-4 py-3 border-b border-[#E2E8F0] dark:border-gray-800 last:border-0 items-center gap-4 bg-white dark:bg-[#000c3b]/10">
-                              <span className="text-sm font-mono text-[#64748B] dark:text-gray-400">{`{{${v}}}`}</span>
-                              <input
-                                  value={bodyExamples[v] || ''}
-                                  onChange={e => setBodyExamples(prev => ({ ...prev, [v]: e.target.value }))}
-                                  placeholder={`Sample for {{${v}}}`}
-                                  className="px-3 py-1.5 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-[#0b1957]/30 focus:border-[#0b1957] bg-white dark:bg-[#000724] text-gray-900 dark:text-white"
-                              />
-                            </div>
-                        ))}
-                      </div>
-                    </div>
-                )}
-
-                {/* Footer */}
-                <div>
-                  <label className="block text-sm font-medium text-[#1E293B] dark:text-white mb-1.5">
-                    Footer
-                    <span className="ml-1 text-[#94A3B8] dark:text-gray-500 font-normal text-xs">· Optional</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                        type="text"
-                        value={footerText}
-                        onChange={e => setFooterText(e.target.value)}
-                        placeholder="Add a short line of text to the bottom of your message"
-                        maxLength={60}
-                        className="w-full px-3 py-2.5 pr-16 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm text-[#1E293B] dark:text-white placeholder:text-[#94A3B8] dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0b1957]/20 focus:border-[#0b1957] dark:focus:ring-blue-500/20 dark:focus:border-blue-500 bg-white dark:bg-[#000724]"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#94A3B8] dark:text-gray-500 pointer-events-none">
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#94A3B8] dark:text-gray-500 pointer-events-none">
                     {footerText.length}/60
                   </span>
-                  </div>
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* ── Buttons section ── */}
-            {(mobileTab === 'content' || typeof window === 'undefined' || window.innerWidth >= 768) && (
-                <div className="bg-white dark:bg-[#000c3b] border border-[#E2E8F0] dark:border-gray-800 rounded-xl shadow-sm">
-                  <div className="px-6 py-4 border-b border-[#E2E8F0] dark:border-gray-800 bg-[#F8F9FE] dark:bg-[#000c3b]">
-                    <h2 className="text-base font-semibold text-[#1E293B] dark:text-white">
-                      Buttons
-                      <span className="ml-1 text-[#94A3B8] dark:text-gray-500 font-normal text-sm">· Optional</span>
-                    </h2>
-                    <p className="text-xs text-[#64748B] dark:text-gray-400 mt-0.5">
-                      Create buttons that let customers respond to your message or take action. You can add up to 3 buttons.
-                    </p>
-                  </div>
+          {/* ── Buttons section ── */}
+      {(mobileTab === 'content' || typeof window === 'undefined' || window.innerWidth >= 768) && (
+          <div className="bg-white dark:bg-[#000c3b] border border-[#E2E8F0] dark:border-gray-800 rounded-xl shadow-sm">
+            <div className="px-6 py-4 border-b border-[#E2E8F0] dark:border-gray-800 bg-[#F8F9FE] dark:bg-[#000c3b]">
+              <h2 className="text-base font-semibold text-[#1E293B] dark:text-white">
+                Buttons
+                <span className="ml-1 text-[#94A3B8] dark:text-gray-500 font-normal text-sm">· Optional</span>
+              </h2>
+              <p className="text-xs text-[#64748B] dark:text-gray-400 mt-0.5">
+                Create buttons that let customers respond to your message or take action. You can add up to 3 buttons.
+              </p>
+            </div>
 
-                  <div className="p-6 space-y-3 bg-white dark:bg-[#000c3b]/10">
-                    {buttons.map(btn => (
-                        <ButtonRow
-                            key={btn.id}
-                            btn={btn}
-                            onChange={patch => setButtons(prev => prev.map(b => b.id === btn.id ? { ...b, ...patch } : b))}
-                            onRemove={() => setButtons(prev => prev.filter(b => b.id !== btn.id))}
-                        />
-                    ))}
+            <div className="p-6 space-y-3 bg-white dark:bg-[#000c3b]/10">
+              {buttons.map(btn => (
+                <ButtonRow
+                  key={btn.id}
+                  btn={btn}
+                  onChange={patch => setButtons(prev => prev.map(b => b.id === btn.id ? { ...b, ...patch } : b))}
+                  onRemove={() => setButtons(prev => prev.filter(b => b.id !== btn.id))}
+                />
+              ))}
 
-                    {buttons.length < 3 && (
-                        <div className="relative" onClick={e => e.stopPropagation()}>
-                          <button
-                              type="button"
-                              onClick={() => setShowBtnMenu(v => !v)}
-                              className="flex items-center gap-2 px-4 py-2 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm font-medium text-[#1E293B] dark:text-gray-300 hover:border-[#0b1957]/40 dark:hover:border-blue-500/40 hover:bg-[#F8F9FE] dark:hover:bg-[#000c3b] transition-colors cursor-pointer bg-white dark:bg-[#000724]"
-                          >
-                            <Plus className="w-4 h-4" /> Add button <ChevronDown className="w-4 h-4 ml-0.5" />
-                          </button>
-                          {showBtnMenu && (
-                              <div className="absolute top-full left-0 mt-1 bg-white dark:bg-[#000c3b] border border-[#E2E8F0] dark:border-gray-800 rounded-xl shadow-lg z-10 overflow-hidden min-w-52">
-                                {[
-                                  { type: 'QUICK_REPLY'   as ButtonType, label: 'Quick reply',        desc: 'Pre-set response button'  },
-                                  { type: 'URL'           as ButtonType, label: 'Visit website',       desc: 'Link to a URL'            },
-                                  { type: 'PHONE_NUMBER'  as ButtonType, label: 'Call phone number',   desc: 'Dial a phone number'      },
-                                ].map(opt => (
-                                    <button
-                                        key={opt.type}
-                                        type="button"
-                                        onClick={() => {
-                                          setButtons(prev => [...prev, { id: uid(), type: opt.type, text: '', url: '', phone: '', urlType: 'static' }]);
-                                          setShowBtnMenu(false);
-                                        }}
-                                        className="w-full px-4 py-3 text-left hover:bg-[#F8F9FE] dark:hover:bg-[#000724] transition-colors border-b border-[#E2E8F0] dark:border-gray-800 last:border-0 cursor-pointer bg-white dark:bg-[#000c3b]"
-                                    >
-                                      <p className="text-sm font-semibold text-[#1E293B] dark:text-white">{opt.label}</p>
-                                      <p className="text-xs text-[#64748B] dark:text-gray-400 mt-0.5">{opt.desc}</p>
-                                    </button>
-                                ))}
-                              </div>
-                          )}
-                        </div>
-                    )}
-                  </div>
+              {buttons.length < 3 && (
+                <div className="relative" onClick={e => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    onClick={() => setShowBtnMenu(v => !v)}
+                    className="flex items-center gap-2 px-4 py-2 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm font-medium text-[#1E293B] dark:text-gray-300 hover:border-[#0b1957]/40 dark:hover:border-blue-500/40 hover:bg-[#F8F9FE] dark:hover:bg-[#000c3b] transition-colors cursor-pointer bg-white dark:bg-[#000724]"
+                  >
+                    <Plus className="w-4 h-4" /> Add button <ChevronDown className="w-4 h-4 ml-0.5" />
+                  </button>
+                  {showBtnMenu && (
+                    <div className="absolute top-full left-0 mt-1 bg-white dark:bg-[#000c3b] border border-[#E2E8F0] dark:border-gray-800 rounded-xl shadow-lg z-10 overflow-hidden min-w-52">
+                      {[
+                        { type: 'QUICK_REPLY'   as ButtonType, label: 'Quick reply',        desc: 'Pre-set response button'  },
+                        { type: 'URL'           as ButtonType, label: 'Visit website',       desc: 'Link to a URL'            },
+                        { type: 'PHONE_NUMBER'  as ButtonType, label: 'Call phone number',   desc: 'Dial a phone number'      },
+                      ].map(opt => (
+                        <button
+                          key={opt.type}
+                          type="button"
+                          onClick={() => {
+                            setButtons(prev => [...prev, { id: uid(), type: opt.type, text: '', url: '', phone: '', urlType: 'static' }]);
+                            setShowBtnMenu(false);
+                          }}
+                          className="w-full px-4 py-3 text-left hover:bg-[#F8F9FE] dark:hover:bg-[#000724] transition-colors border-b border-[#E2E8F0] dark:border-gray-800 last:border-0 cursor-pointer bg-white dark:bg-[#000c3b]"
+                        >
+                          <p className="text-sm font-semibold text-[#1E293B] dark:text-white">{opt.label}</p>
+                          <p className="text-xs text-[#64748B] dark:text-gray-400 mt-0.5">{opt.desc}</p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-            )}
+              )}
+            </div>
+          </div>
+      )}
 
             {/* ── Mobile Footer with Template Status Indicator ── */}
             <div className="p-4 pb-20 space-y-2">
@@ -948,57 +947,57 @@ export default function WhatsAppTemplateCreatePage() {
             </div>
           </div>
 
-          {/* ─── Right: Desktop Preview (sticky) ─── */}
-          <div className="hidden md:block w-[340px] shrink-0 sticky top-[61px] h-[calc(100vh-61px)] overflow-y-auto border-l border-[#E2E8F0] dark:border-gray-800 bg-white dark:bg-[#000724]">
-            <div className="p-5">
-              {/* Preview header */}
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-[#1E293B] dark:text-white">Template preview</h3>
-                <div className="flex items-center gap-1 text-xs text-[#64748B] dark:text-gray-400">
-                  <Play className="w-3 h-3" />
-                  <span>Live</span>
-                </div>
+        {/* ─── Right: Desktop Preview (sticky) ─── */}
+        <div className="hidden md:block w-[340px] shrink-0 sticky top-[61px] h-[calc(100vh-61px)] overflow-y-auto border-l border-[#E2E8F0] dark:border-gray-800 bg-white dark:bg-[#000724]">
+          <div className="p-5">
+            {/* Preview header */}
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-[#1E293B] dark:text-white">Template preview</h3>
+              <div className="flex items-center gap-1 text-xs text-[#64748B] dark:text-gray-400">
+                <Play className="w-3 h-3" />
+                <span>Live</span>
               </div>
+            </div>
 
-              {/* WhatsApp phone mock */}
-              <div className="mx-auto max-w-[270px]">
-                {/* WA chat background */}
-                <div className="bg-[#e5ddd5] dark:bg-slate-900 rounded-2xl p-3 min-h-[300px]">
-                  {/* Chat header bar */}
-                  <div className="flex items-center gap-2 mb-3 pb-2 border-b border-black/10 dark:border-white/10">
-                    <div className="w-7 h-7 rounded-full bg-[#25D366] flex items-center justify-center shrink-0">
-                      <MessageSquare className="w-3.5 h-3.5 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-[#1E293B] dark:text-white leading-none">Your Business</p>
-                      <p className="text-[10px] text-[#64748B] dark:text-gray-400 mt-0.5">Online</p>
-                    </div>
+            {/* WhatsApp phone mock */}
+            <div className="mx-auto max-w-[270px]">
+              {/* WA chat background */}
+              <div className="bg-[#e5ddd5] dark:bg-slate-900 rounded-2xl p-3 min-h-[300px]">
+                {/* Chat header bar */}
+                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-black/10 dark:border-white/10">
+                  <div className="w-7 h-7 rounded-full bg-[#25D366] flex items-center justify-center shrink-0">
+                    <MessageSquare className="w-3.5 h-3.5 text-white" />
                   </div>
+                  <div>
+                    <p className="text-xs font-semibold text-[#1E293B] dark:text-white leading-none">Your Business</p>
+                    <p className="text-[10px] text-[#64748B] dark:text-gray-400 mt-0.5">Online</p>
+                  </div>
+                </div>
 
-                  {/* Message bubble */}
-                  <div className="bg-white dark:bg-[#000c3b] rounded-xl shadow-sm overflow-hidden max-w-[230px] mx-auto border border-transparent dark:border-gray-800">
-                    {/* Media / text header */}
-                    {isMediaHeader && (
-                        <div className="h-28 bg-slate-100 dark:bg-[#000724] flex items-center justify-center border-b border-slate-200 dark:border-gray-800">
-                          {uploadStatus === 'done' ? (
-                              <div className="text-center px-2">
-                                <FileIcon className="w-8 h-8 mx-auto text-slate-500 dark:text-gray-400 mb-1" />
-                                <p className="text-[10px] text-slate-500 dark:text-gray-400 truncate max-w-[160px]">{mediaFileName}</p>
-                              </div>
-                          ) : (
-                              <div className="text-center">
+                {/* Message bubble */}
+                <div className="bg-white dark:bg-[#000c3b] rounded-xl shadow-sm overflow-hidden max-w-[230px] mx-auto border border-transparent dark:border-gray-800">
+                  {/* Media / text header */}
+                  {isMediaHeader && (
+                    <div className="h-28 bg-slate-100 dark:bg-[#000724] flex items-center justify-center border-b border-slate-200 dark:border-gray-800">
+                      {uploadStatus === 'done' ? (
+                        <div className="text-center px-2">
+                          <FileIcon className="w-8 h-8 mx-auto text-slate-500 dark:text-gray-400 mb-1" />
+                          <p className="text-[10px] text-slate-500 dark:text-gray-400 truncate max-w-[160px]">{mediaFileName}</p>
+                        </div>
+                      ) : (
+                        <div className="text-center">
                           <span className="text-2xl block mb-1">
                             {mediaType === 'IMAGE' ? '🖼️' : mediaType === 'VIDEO' ? '🎥' : '📄'}
                           </span>
-                                <p className="text-[10px] text-slate-400 dark:text-gray-500">No {mediaType.toLowerCase()} uploaded</p>
-                              </div>
-                          )}
+                          <p className="text-[10px] text-slate-400 dark:text-gray-500">No {mediaType.toLowerCase()} uploaded</p>
                         </div>
-                    )}
+                      )}
+                    </div>
+                  )}
 
-                    {!isMediaHeader && previewHeaderText && (
-                        <div className="px-3 py-2 bg-slate-50 dark:bg-[#000724] border-b border-slate-100 dark:border-gray-800">
-                          <p className="text-sm font-bold text-[#1E293B] dark:text-white">
+                  {!isMediaHeader && previewHeaderText && (
+                    <div className="px-3 py-2 bg-slate-50 dark:bg-[#000724] border-b border-slate-100 dark:border-gray-800">
+                      <p className="text-sm font-bold text-[#1E293B] dark:text-white">
                             {previewHeaderText.split('{{1}}').map((part, index) => (
                                 <React.Fragment key={index}>
                                   {index > 0 && <span className="text-blue-600 dark:text-blue-400">{headerVarExample || '{{1}}'}</span>}
@@ -1006,82 +1005,82 @@ export default function WhatsAppTemplateCreatePage() {
                                 </React.Fragment>
                             ))}
                           </p>
-                        </div>
-                    )}
-
-                    {/* Body */}
-                    <div className="px-3 py-2.5">
-                      <p className="text-sm text-[#1E293B] dark:text-gray-200 leading-relaxed">
-                        <WAText text={previewBody} />
-                      </p>
                     </div>
+                  )}
 
-                    {/* Footer */}
-                    {footerText && (
-                        <div className="px-3 pb-2">
-                          <p className="text-xs text-slate-400 dark:text-gray-500">{footerText}</p>
-                        </div>
-                    )}
-
-                    {/* Timestamp */}
-                    <div className="px-3 pb-2 flex justify-end">
-                      <span className="text-[10px] text-slate-400 dark:text-gray-500">09:33 ✓✓</span>
-                    </div>
-
-                    {/* Buttons */}
-                    {buttons.filter(b => b.text.trim()).length > 0 && (
-                        <div className="border-t border-slate-100 dark:border-gray-800">
-                          {buttons.filter(b => b.text.trim()).map(b => (
-                              <div
-                                  key={b.id}
-                                  className="flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs text-[#0b85eb] dark:text-blue-400 font-semibold border-b border-slate-100 dark:border-gray-800 last:border-0"
-                              >
-                                {b.type === 'URL'          && <Globe  className="w-3 h-3" />}
-                                {b.type === 'PHONE_NUMBER' && <Phone  className="w-3 h-3" />}
-                                {b.text}
-                              </div>
-                          ))}
-                        </div>
-                    )}
+                  {/* Body */}
+                  <div className="px-3 py-2.5">
+                    <p className="text-sm text-[#1E293B] dark:text-gray-200 leading-relaxed">
+                      <WAText text={previewBody} />
+                    </p>
                   </div>
+
+                  {/* Footer */}
+                  {footerText && (
+                    <div className="px-3 pb-2">
+                      <p className="text-xs text-slate-400 dark:text-gray-500">{footerText}</p>
+                    </div>
+                  )}
+
+                  {/* Timestamp */}
+                  <div className="px-3 pb-2 flex justify-end">
+                    <span className="text-[10px] text-slate-400 dark:text-gray-500">09:33 ✓✓</span>
+                  </div>
+
+                  {/* Buttons */}
+                  {buttons.filter(b => b.text.trim()).length > 0 && (
+                    <div className="border-t border-slate-100 dark:border-gray-800">
+                      {buttons.filter(b => b.text.trim()).map(b => (
+                        <div
+                          key={b.id}
+                          className="flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs text-[#0b85eb] dark:text-blue-400 font-semibold border-b border-slate-100 dark:border-gray-800 last:border-0"
+                        >
+                          {b.type === 'URL'          && <Globe  className="w-3 h-3" />}
+                          {b.type === 'PHONE_NUMBER' && <Phone  className="w-3 h-3" />}
+                          {b.text}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
+            </div>
 
-              {/* Submission summary card */}
-              {(safeName || bodyText) && (
-                  <div className="mt-5 p-4 bg-[#F8F9FE] dark:bg-[#000c3b] rounded-xl border border-[#E2E8F0] dark:border-gray-800 space-y-2">
-                    <p className="text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase tracking-wide mb-2">Summary</p>
-                    {safeName && (
-                        <div className="flex items-start justify-between gap-2">
-                          <span className="text-xs text-[#94A3B8] dark:text-gray-500">Name</span>
-                          <span className="text-xs font-mono font-semibold text-[#1E293B] dark:text-white truncate max-w-[160px] text-right">{safeName}</span>
-                        </div>
-                    )}
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-[#94A3B8] dark:text-gray-500">Language</span>
-                      <span className="text-xs text-[#1E293B] dark:text-white">{LANGUAGES.find(l => l.code === language)?.label}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-[#94A3B8] dark:text-gray-500">Category</span>
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${categoryInfo.color}`}>
+            {/* Submission summary card */}
+            {(safeName || bodyText) && (
+              <div className="mt-5 p-4 bg-[#F8F9FE] dark:bg-[#000c3b] rounded-xl border border-[#E2E8F0] dark:border-gray-800 space-y-2">
+                <p className="text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase tracking-wide mb-2">Summary</p>
+                {safeName && (
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-xs text-[#94A3B8] dark:text-gray-500">Name</span>
+                    <span className="text-xs font-mono font-semibold text-[#1E293B] dark:text-white truncate max-w-[160px] text-right">{safeName}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-[#94A3B8] dark:text-gray-500">Language</span>
+                  <span className="text-xs text-[#1E293B] dark:text-white">{LANGUAGES.find(l => l.code === language)?.label}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-[#94A3B8] dark:text-gray-500">Category</span>
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${categoryInfo.color}`}>
                     {category}
                   </span>
-                    </div>
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="text-xs text-[#94A3B8] dark:text-gray-500">Components</span>
-                      <span className="text-xs text-[#1E293B] dark:text-white text-right">
+                </div>
+                <div className="flex items-start justify-between gap-2">
+                  <span className="text-xs text-[#94A3B8] dark:text-gray-500">Components</span>
+                  <span className="text-xs text-[#1E293B] dark:text-white text-right">
                     {buildComponents().map((c: any) => c.type).join(', ') || '—'}
                   </span>
-                    </div>
-                  </div>
-              )}
-            </div>
+                </div>
+              </div>
+            )}
           </div>
+      </div>
 
         </div>
 
         {/* ── Mobile Fixed Submit Bar ── */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-[#000c3b] border-t border-[#E2E8F0] dark:border-gray-800 p-4 z-30">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-[#000c3b] border-t border-[#E2E8F0] dark:border-gray-800 p-4 z-30">
           <button
               onClick={handleSubmit}
               disabled={!canSubmit || submitting}
@@ -1093,6 +1092,6 @@ export default function WhatsAppTemplateCreatePage() {
           </button>
         </div>
 
-      </div>
+    </div>
   );
 }
