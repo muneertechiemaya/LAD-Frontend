@@ -496,7 +496,6 @@ export default function CampaignLeadsPage() {
               className="min-w-auto"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Analytics
             </Button>
             <div>
               <h4 className="text-2xl font-bold text-slate-800 dark:text-white mb-1">
