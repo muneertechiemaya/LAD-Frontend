@@ -827,6 +827,7 @@ export function CallLogsTable({
                   }
                 }}
                 className={cn(
+                  cellIndex === 0 && indent ? "pl-8" : "",
                   (column.meta as any)?.sticky ? `sticky ${(column.meta as any)?.sticky} bg-white dark:bg-[#000724] ${(column.meta as any)?.zIndex || 'z-10'} border-r border-[#E2E8F0] dark:border-[#262831]` : ""
                 )}
               >
@@ -855,6 +856,7 @@ export function CallLogsTable({
               }
             }}
             className={cn(
+              cellIndex === 0 && indent ? "pl-8" : "",
               (cell.column.columnDef.meta as any)?.sticky ? `sticky ${(cell.column.columnDef.meta as any)?.sticky} bg-white dark:bg-[#000724] ${(cell.column.columnDef.meta as any)?.zIndex || 'z-10'} border-r border-[#E2E8F0] dark:border-[#262831]` : ""
             )}
           >
@@ -866,7 +868,7 @@ export function CallLogsTable({
   };
 
   return (
-      <div id="call-logs-table" className="bg-white dark:bg-[#000724] rounded-lg border border-[#E2E8F0] dark:border-[#262831] shadow-sm overflow-hidden">
+    <div id="call-logs-table" className="bg-white dark:bg-[#000724] rounded-lg border border-[#E2E8F0] dark:border-[#262831] shadow-sm overflow-hidden">
       {/* Search Bar & Filters Area */}
       <div className="p-4 border-b border-[#E2E8F0] dark:border-[#262831] bg-[#F8FAFC] dark:bg-[#000c3b]">
         <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
@@ -1333,13 +1335,15 @@ export function CallLogsTable({
 
       {/* Booking Dialog */}
       <Dialog open={bookingDialogOpen} onOpenChange={setBookingDialogOpen}>
-        <DialogContent className="flex flex-col p-0 max-h-[90vh] overflow-hidden">
-          <DialogHeader>
+        <DialogContent className="flex flex-col p-0 max-h-[90vh] overflow-hidden bg-white dark:bg-[#000724] border border-slate-200 dark:border-[#262831]">
+
+          {/* Added padding and matching sub-borders to the dialog header line */}
+          <DialogHeader className="p-6 border-b border-slate-100 dark:border-[#262831] dark:bg-[#0e1a3a]/60">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-full bg-blue-50 text-blue-600 border border-blue-100 shadow-sm flex items-center justify-center w-10 h-10">
+              <div className="p-2 rounded-full bg-blue-50 dark:bg-blue-500 text-blue-600 dark:text-blue-950 border border-blue-100 dark:border-transparent shadow-sm flex items-center justify-center w-10 h-10">
                 <CalendarRange className="h-5 w-5" />
               </div>
-              <DialogTitle>
+              <DialogTitle className="dark:text-white text-[#0b1957]">
                 Schedule Appointment {selectedLead?.name ? `— ${selectedLead.name}` : ''}
               </DialogTitle>
             </div>
