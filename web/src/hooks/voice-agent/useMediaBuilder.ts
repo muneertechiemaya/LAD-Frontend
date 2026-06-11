@@ -19,6 +19,7 @@ export type MediaBuilderStep =
   | "builder-video-output"
   | "builder-script-confirm"
   | "builder-video-progress"
+  | "builder-keyframes-confirm"
   | "gallery";
 
 export interface MediaUiPayload {
@@ -254,7 +255,7 @@ export function useMediaBuilder() {
 
   // Polling effect for background video generation loop progress
   useEffect(() => {
-    if (step !== "builder-video-progress") return;
+    if (step !== "builder-video-progress" && !(step === "builder-keyframes-confirm" && uiPayload?.phase === "Storyboard Generation")) return;
 
     let active = true;
     const intervalId = setInterval(async () => {

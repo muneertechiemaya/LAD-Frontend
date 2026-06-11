@@ -11,6 +11,7 @@ import { AgentBuilderVideoOutput } from "./builder-steps/AgentBuilderVideoOutput
 import { AgentBuilderGallery } from "./builder-steps/AgentBuilderGallery";
 import { AgentBuilderScriptConfirm } from "./builder-steps/AgentBuilderScriptConfirm";
 import { AgentBuilderVideoProgress } from "./builder-steps/AgentBuilderVideoProgress";
+import { AgentBuilderKeyframesConfirm } from "./builder-steps/AgentBuilderKeyframesConfirm";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface MediaBuilderProps {
@@ -344,9 +345,29 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
       <AgentBuilderScriptConfirm
         title={mb.uiPayload?.question}
         description={mb.uiPayload?.description}
+        options={mb.uiPayload?.options as any || []}
         onClose={onClose}
         onNext={(val) => mb.advanceStep(val)}
         phase={mb.uiPayload?.phase}
+      />
+    );
+  }
+
+  /* ── 7c. KEYFRAMES CONFIRM VIEW ── */
+  if (mb.step === "builder-keyframes-confirm") {
+    return (
+      <AgentBuilderKeyframesConfirm
+        title={mb.uiPayload?.question}
+        description={mb.uiPayload?.description}
+        keyframes={mb.uiPayload?.images || []}
+        onClose={onClose}
+        onNext={(val) => mb.advanceStep(val)}
+        phase={mb.uiPayload?.phase}
+        references={mb.references}
+        onUpload={mb.uploadReference}
+        onRemove={mb.removeReference}
+        isUploading={mb.isUploading}
+        error={mb.error}
       />
     );
   }
