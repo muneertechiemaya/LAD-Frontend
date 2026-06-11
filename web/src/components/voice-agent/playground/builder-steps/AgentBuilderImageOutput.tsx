@@ -189,11 +189,25 @@ export function AgentBuilderImageOutput({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [previewImage, images]);
 
-  const handleDownload = (imgData: string, index: number) => {
-    const a = document.createElement("a");
-    a.href = imgData;
-    a.download = `generated-concept-${index + 1}.png`;
-    a.click();
+  const handleDownload = async (imgData: string, index: number) => {
+    try {
+      const response = await fetch(imgData);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = `generated-concept-${index + 1}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.warn("Direct blob download failed, falling back to navigation:", err);
+      const a = document.createElement("a");
+      a.href = imgData;
+      a.target = "_blank";
+      a.click();
+    }
   };
 
   return (
@@ -426,6 +440,17 @@ export function AgentBuilderImageOutput({
             />
             
             <div className="mt-4 flex gap-4" onClick={(e) => e.stopPropagation()}>
+              <button
+                type="button"
+                onClick={() => {
+                  setPreviewImage(null);
+                  onNext?.(`[ANIMATE_IMAGE] index=${currentPreviewIndex}`);
+                }}
+                className="px-4 py-2 bg-gradient-to-br from-[#0b1957] to-[#1e293b] hover:from-[#0b1957] hover:to-[#0b1957] text-white rounded-xl font-bold text-xs flex items-center gap-2 transition-all active:scale-95 shadow-lg cursor-pointer"
+              >
+                <Video className="size-4" />
+                Animate Concept
+              </button>
               <button
                 type="button"
                 onClick={() => {

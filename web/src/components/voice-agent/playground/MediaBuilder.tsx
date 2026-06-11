@@ -6,6 +6,11 @@ import { useMediaBuilder } from "@/hooks/voice-agent/useMediaBuilder";
 import { AgentBuilderTextInput } from "./builder-steps/AgentBuilderTextInput";
 import { AgentBuilderMCQ } from "./builder-steps/AgentBuilderMCQ";
 import { AgentBuilderImageOutput } from "./builder-steps/AgentBuilderImageOutput";
+import { AgentBuilderVideoConfirm } from "./builder-steps/AgentBuilderVideoConfirm";
+import { AgentBuilderVideoOutput } from "./builder-steps/AgentBuilderVideoOutput";
+import { AgentBuilderGallery } from "./builder-steps/AgentBuilderGallery";
+import { AgentBuilderScriptConfirm } from "./builder-steps/AgentBuilderScriptConfirm";
+import { AgentBuilderVideoProgress } from "./builder-steps/AgentBuilderVideoProgress";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface MediaBuilderProps {
@@ -95,8 +100,7 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
   }, []);
 
   const handleVideoClick = () => {
-    setComingSoonMessage(true);
-    setTimeout(() => setComingSoonMessage(false), 3000);
+    mb.selectVideoGeneration();
   };
 
   /* ── 1. LOADING SCREEN ── */
@@ -194,7 +198,15 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
           </div>
         )}
 
-        <p className="mt-auto text-[10px] text-slate-400 text-center font-medium">
+        <button
+          onClick={mb.fetchGallery}
+          disabled={mb.loadingGallery}
+          className="mt-auto text-xs font-bold text-[#0b1957] hover:underline cursor-pointer flex items-center gap-1 active:scale-95 transition-all mb-2"
+        >
+          {mb.loadingGallery ? "Loading Vault..." : "View Asset Vault / Gallery"}
+        </button>
+
+        <p className="text-[10px] text-slate-400 text-center font-medium">
           Media generations are saved to your asset vault.
         </p>
       </div>
@@ -289,6 +301,90 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
         onRemove={mb.removeReference}
         isUploading={mb.isUploading}
         error={mb.error}
+      />
+    );
+  }
+
+  /* ── 6. VIDEO CONFIRM VIEW ── */
+  if (mb.step === "builder-video-confirm") {
+    return (
+      <AgentBuilderVideoConfirm
+        title={mb.uiPayload?.question}
+        description={mb.uiPayload?.description}
+        image={mb.uiPayload?.images?.[0]}
+        onClose={onClose}
+        onNext={(val) => mb.advanceStep(val)}
+        phase={mb.uiPayload?.phase}
+        references={mb.references}
+        onUpload={mb.uploadReference}
+        onRemove={mb.removeReference}
+        isUploading={mb.isUploading}
+        error={mb.error}
+      />
+    );
+  }
+
+  /* ── 7. VIDEO OUTPUT VIEW ── */
+  if (mb.step === "builder-video-output") {
+    return (
+      <AgentBuilderVideoOutput
+        title={mb.uiPayload?.question}
+        description={mb.uiPayload?.description}
+        videoUrl={mb.uiPayload?.video}
+        onClose={onClose}
+        onNext={(val) => mb.advanceStep(val)}
+        phase={mb.uiPayload?.phase}
+      />
+    );
+  }
+
+  /* ── 7a. SCRIPT CONFIRM VIEW ── */
+  if (mb.step === "builder-script-confirm") {
+    return (
+      <AgentBuilderScriptConfirm
+        title={mb.uiPayload?.question}
+        description={mb.uiPayload?.description}
+        onClose={onClose}
+        onNext={(val) => mb.advanceStep(val)}
+        phase={mb.uiPayload?.phase}
+      />
+    );
+  }
+
+  /* ── 7b. VIDEO PRODUCTION PROGRESS VIEW ── */
+  if (mb.step === "builder-video-progress") {
+    return (
+      <AgentBuilderVideoProgress
+        title={mb.uiPayload?.question}
+        description={mb.uiPayload?.description}
+        blocks={mb.uiPayload?.blocks as any || []}
+        onClose={onClose}
+        phase={mb.uiPayload?.phase}
+        videoUrl={mb.uiPayload?.video}
+        status={mb.uiPayload?.status as any}
+        onNext={(val) => {
+          if (val === "[SHOW_GALLERY]") {
+            mb.fetchGallery();
+          } else {
+            mb.advanceStep(val);
+          }
+        }}
+      />
+    );
+  }
+
+  /* ── 8. GALLERY VIEW ── */
+  if (mb.step === "gallery") {
+    return (
+      <AgentBuilderGallery
+        images={mb.galleryImages}
+        videos={mb.galleryVideos}
+        onBack={() => mb.setStep("welcome")}
+        onClose={onClose}
+        onGenerateImages={mb.generateImagesFromGallery}
+        onAnimateImage={mb.animateImageFromGallery}
+        onExtendVideo={mb.extendVideoFromGallery}
+        onDeleteAssets={mb.deleteAssets}
       />
     );
   }
