@@ -433,16 +433,16 @@ export function CallConfiguration({
                     <SelectItem
                       key={agent.id}
                       value={String(agent.id)}
-                      className="h-auto py-3"
+                      className="h-auto py-3 group" // <-- Ensure 'group' is fully present here
                     >
                       <div className="flex items-center gap-3 w-full">
-                        <Mic className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                        <Mic className="w-4 h-4 text-blue-500 flex-shrink-0 transition-colors duration-100 group-data-[highlighted]:text-white dark:group-data-[highlighted]:text-[#000724]" />
                         <div className="flex-1 flex items-center justify-between min-w-0">
                           <div className="flex flex-col items-start min-w-0">
                             <span className="font-medium truncate">
                               {agent.name}
                             </span>
-                            <span className="text-xs text-muted-foreground truncate">
+                            <span className="text-xs truncate text-muted-foreground transition-colors duration-100 group-data-[highlighted]:text-white/80 dark:group-data-[highlighted]:text-[#000724]/80">
                               {agent.description} • {agent.accent} •{" "}
                               {agent.gender}
                             </span>

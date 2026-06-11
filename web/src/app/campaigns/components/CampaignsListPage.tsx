@@ -447,7 +447,7 @@ export default function CampaignsListPage() {
                                 <span className="text-[#64748B] dark:text-[#7a8ba3]">
                                   {dayName}
                                 </span>
-                                <span className="font-semibold text-[#0b1957]">
+                                <span className="font-semibold text-[#0b1957] dark:text-blue-400">
                                   {day.sent} sent
                                 </span>
                               </div>

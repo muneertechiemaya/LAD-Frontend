@@ -18,6 +18,7 @@ import { AgentBuilderMasterDraft } from "./builder-steps/AgentBuilderMasterDraft
 import { AgentBuilderDropdown } from "./builder-steps/AgentBuilderDropdown";
 import { AgentBuilderConfigs } from "./builder-steps/AgentBuilderConfigs";
 import { BuilderData } from "@/hooks/voice-agent/usePlayground";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface PlaygroundConfigViewProps {
   onClose?: () => void;
@@ -142,6 +143,8 @@ export default function PlaygroundConfigView({
   startCall,
   step,
 }: PlaygroundConfigViewProps) {
+  const { isDark } = useTheme();
+
   /* ── GUIDED JOURNEY TEXT CYCLING component ── */
   const ThinkingIndicator = () => {
     const [index, setIndex] = React.useState(0);
@@ -362,10 +365,10 @@ export default function PlaygroundConfigView({
 
         <div className="mb-8 mt-2 relative w-48 h-12">
           <Image
-            src="/voag-logo.png"
+            src={isDark ? "/MrLAD-logo-dark.svg" : "/MrLAD-logo.svg"}
             alt="LADS Logo"
             fill
-            className="object-contain dark:invert"
+            className="object-contain"
             sizes="192px"
             priority
           />
@@ -432,10 +435,10 @@ export default function PlaygroundConfigView({
 
       <div className="mb-6 mt-2 relative w-48 h-12">
         <Image
-          src="/voag-logo.png"
+          src={isDark ? "/MrLAD-logo-dark.svg" : "/MrLAD-logo.svg"}
           alt="LADS Logo"
           fill
-          className="object-contain dark:invert"
+          className="object-contain"
           sizes="192px"
           priority
         />
