@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, ArrowLeft, Play, Download, ExternalLink, Image as ImageIcon, Video, Trash2, Paperclip, Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, ArrowLeft, Play, Download, ExternalLink, Image as ImageIcon, Video, Trash2, Paperclip, Check, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ImageGroup {
@@ -11,6 +11,8 @@ interface ImageGroup {
 interface VideoAsset {
   url: string;
   created_at: number;
+  duration?: number;
+  prompt_history?: string[];
 }
 
 interface SelectedAsset {
@@ -41,6 +43,60 @@ export function AgentBuilderGallery({
   const [activeVideo, setActiveVideo] = useState<string | null>(null);
   const [selectedAssets, setSelectedAssets] = useState<SelectedAsset[]>([]);
   const [activeImage, setActiveImage] = useState<{ url: string; urls: string[] } | null>(null);
+  const [selectedVideoGroup, setSelectedVideoGroup] = useState<{ group_key: string; videos: VideoAsset[]; created_at: number } | null>(null);
+
+  // Group sequential loop videos by prompt_history[0] (or keep ungrouped if sidecar missing)
+  const videoGroups = React.useMemo(() => {
+    const groupsMap: { [key: string]: VideoAsset[] } = {};
+    const ungroupedList: VideoAsset[] = [];
+    
+    videos.forEach((vid) => {
+      const firstPrompt = vid.prompt_history?.[0];
+      if (firstPrompt && firstPrompt.trim()) {
+        if (!groupsMap[firstPrompt]) {
+          groupsMap[firstPrompt] = [];
+        }
+        groupsMap[firstPrompt].push(vid);
+      } else {
+        ungroupedList.push(vid);
+      }
+    });
+    
+    const resultGroups: { group_key: string; videos: VideoAsset[]; created_at: number }[] = [];
+    
+    // Convert groupsMap to array
+    Object.entries(groupsMap).forEach(([key, items]) => {
+      // Sort items: first gen (shortest duration) first
+      items.sort((a, b) => {
+        const durA = a.duration || 0;
+        const durB = b.duration || 0;
+        if (durA !== durB) return durA - durB;
+        return a.created_at - b.created_at;
+      });
+      
+      const maxCreatedAt = Math.max(...items.map((v) => v.created_at));
+      
+      resultGroups.push({
+        group_key: key,
+        videos: items,
+        created_at: maxCreatedAt
+      });
+    });
+    
+    // For ungrouped videos, each one forms its own group of size 1
+    ungroupedList.forEach((vid, index) => {
+      resultGroups.push({
+        group_key: `ungrouped_${vid.url}_${index}`,
+        videos: [vid],
+        created_at: vid.created_at
+      });
+    });
+    
+    // Sort final groups by created_at descending (most recent first)
+    resultGroups.sort((a, b) => b.created_at - a.created_at);
+    
+    return resultGroups;
+  }, [videos]);
 
   const formatTimestamp = (ts: number) => {
     if (!ts) return "Unknown Date";
@@ -258,48 +314,104 @@ export function AgentBuilderGallery({
                 </h3>
                 
                 {/* Horizontal scroll container for video previews */}
-                <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-thin scrollbar-thumb-slate-200">
-                  {videos.map((vid, idx) => {
-                    const isSel = isAssetSelected(vid.url);
-                    return (
-                      <div
-                        key={idx}
-                        onClick={() => toggleAssetSelection(vid.url, "video")}
-                        className={cn(
-                          "flex-shrink-0 w-[160px] aspect-video rounded-xl bg-slate-900 border overflow-hidden relative cursor-pointer group shadow-sm hover:shadow transition-all",
-                          isSel ? "border-[#0b1957] ring-2 ring-[#0b1957]/20" : "border-slate-200 hover:border-[#0b1957]/30"
-                        )}
-                      >
-                        <video
-                          src={vid.url}
-                          preload="metadata"
-                          className="w-full h-full object-cover pointer-events-none"
-                        />
-                        {/* Play overlay */}
+                <div className="flex gap-3 overflow-x-auto pb-3.5 scrollbar-thin scrollbar-thumb-slate-200 h-[120px] items-center">
+                  {videoGroups.map((group) => {
+                    const isGroup = group.videos.length > 1;
+                    if (!isGroup) {
+                      const vid = group.videos[0];
+                      const isSel = isAssetSelected(vid.url);
+                      return (
                         <div
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActiveVideo(vid.url);
-                          }}
-                          className="absolute inset-0 bg-black/45 flex items-center justify-center opacity-70 group-hover:opacity-100 transition-opacity"
+                          key={group.group_key}
+                          onClick={() => toggleAssetSelection(vid.url, "video")}
+                          className={cn(
+                            "flex-shrink-0 w-[160px] aspect-video rounded-xl bg-slate-900 border overflow-hidden relative cursor-pointer group shadow-sm hover:shadow transition-all",
+                            isSel ? "border-[#0b1957] ring-2 ring-[#0b1957]/20" : "border-slate-200 hover:border-[#0b1957]/30"
+                          )}
                         >
-                          <div className="size-8 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30 group-hover:scale-110 transition-transform">
-                            <Play className="size-4 text-white fill-current translate-x-0.5" />
+                          <video
+                            src={vid.url}
+                            preload="metadata"
+                            className="w-full h-full object-cover pointer-events-none"
+                          />
+                          {/* Play overlay */}
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveVideo(vid.url);
+                            }}
+                            className="absolute inset-0 bg-black/45 flex items-center justify-center opacity-70 group-hover:opacity-100 transition-opacity"
+                          >
+                            <div className="size-8 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30 group-hover:scale-110 transition-transform">
+                              <Play className="size-4 text-white fill-current translate-x-0.5" />
+                            </div>
+                          </div>
+                          {/* Selection check icon overlay */}
+                          <div className={cn(
+                            "absolute top-1.5 right-1.5 size-4 rounded-full border flex items-center justify-center transition-all z-25",
+                            isSel ? "bg-[#0b1957] border-[#0b1957] text-white" : "bg-white/70 border-slate-300 backdrop-blur-sm opacity-0 group-hover:opacity-100"
+                          )}>
+                            {isSel && <Check className="size-2.5 stroke-[3]" />}
+                          </div>
+                          {/* Timestamp badge */}
+                          <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/60 rounded text-[9px] text-white font-medium">
+                            {formatTimestamp(vid.created_at)}
                           </div>
                         </div>
-                        {/* Selection check icon overlay */}
-                        <div className={cn(
-                          "absolute top-1.5 right-1.5 size-4 rounded-full border flex items-center justify-center transition-all z-25",
-                          isSel ? "bg-[#0b1957] border-[#0b1957] text-white" : "bg-white/70 border-slate-300 backdrop-blur-sm opacity-0 group-hover:opacity-100"
-                        )}>
-                          {isSel && <Check className="size-2.5 stroke-[3]" />}
+                      );
+                    } else {
+                      // Stacked card deck look
+                      const firstGenVideo = group.videos[0];
+                      const hasSelectedInGroup = group.videos.some((v) => isAssetSelected(v.url));
+                      return (
+                        <div
+                          key={group.group_key}
+                          onClick={() => setSelectedVideoGroup(group)}
+                          className="flex-shrink-0 w-[180px] h-[101px] relative mr-4 select-none cursor-pointer"
+                        >
+                          {/* Layer 3 (bottom card) */}
+                          <div className="absolute inset-0 rounded-xl bg-slate-200 border border-slate-300/40 translate-x-2.5 translate-y-2.5 rotate-3 shadow-sm" />
+                          {/* Layer 2 (middle card) */}
+                          <div className="absolute inset-0 rounded-xl bg-slate-100 border border-slate-200/60 translate-x-1.5 translate-y-1.5 rotate-1.5 shadow-sm" />
+                          
+                          {/* Layer 1 (top card) */}
+                          <div
+                            className={cn(
+                              "absolute inset-0 rounded-xl bg-slate-900 border overflow-hidden group shadow-md hover:shadow-lg transition-all",
+                              hasSelectedInGroup ? "border-[#0b1957] ring-2 ring-[#0b1957]/20" : "border-slate-200 hover:border-[#0b1957]/40"
+                            )}
+                          >
+                            <video
+                              src={firstGenVideo.url}
+                              preload="metadata"
+                              className="w-full h-full object-cover pointer-events-none"
+                            />
+                            {/* Stack indicator overlay */}
+                            <div className="absolute inset-0 bg-black/30 flex flex-col items-center justify-center group-hover:bg-black/45 transition-colors">
+                              <div className="size-7 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30 group-hover:scale-105 transition-transform mb-1">
+                                <Video className="size-3.5 text-white" />
+                              </div>
+                              <span className="text-[10px] font-bold text-white tracking-wide uppercase px-2 py-0.5 bg-[#0b1957]/90 rounded-full border border-blue-400/20 shadow-sm">
+                                {group.videos.length} clips
+                              </span>
+                            </div>
+                            
+                            {/* Selected icon badge */}
+                            <div className={cn(
+                              "absolute top-1.5 right-1.5 size-4 rounded-full border flex items-center justify-center transition-all z-25",
+                              hasSelectedInGroup ? "bg-[#0b1957] border-[#0b1957] text-white" : "bg-white/70 border-slate-300 backdrop-blur-sm opacity-0 group-hover:opacity-100"
+                            )}>
+                              {hasSelectedInGroup && <Check className="size-2.5 stroke-[3]" />}
+                            </div>
+                            
+                            {/* Timestamp badge */}
+                            <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/60 rounded text-[9px] text-white font-medium">
+                              {formatTimestamp(group.created_at)}
+                            </div>
+                          </div>
                         </div>
-                        {/* Timestamp badge */}
-                        <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/60 rounded text-[9px] text-white font-medium">
-                          {formatTimestamp(vid.created_at)}
-                        </div>
-                      </div>
-                    );
+                      );
+                    }
                   })}
                 </div>
               </div>
@@ -639,6 +751,102 @@ export function AgentBuilderGallery({
           </div>
         )}
       )()}
+
+      {/* Video Group Stack detailed Modal Overlay */}
+      {selectedVideoGroup && (
+        <div className="absolute inset-0 bg-slate-950/80 z-50 flex items-center justify-center p-6 animate-in fade-in duration-200" onClick={() => setSelectedVideoGroup(null)}>
+          <div 
+            className="bg-white w-full max-w-[380px] rounded-3xl p-5 max-h-[85%] flex flex-col space-y-4 shadow-2xl relative animate-in zoom-in-95 duration-200 border border-slate-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setSelectedVideoGroup(null)}
+              className="absolute top-4 right-4 p-1.5 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors cursor-pointer active:scale-95"
+            >
+              <X className="size-4" />
+            </button>
+            
+            <div className="pr-8 space-y-1">
+              <h4 className="font-bold text-sm text-[#0b1957] flex items-center gap-1.5">
+                <Video className="size-4 text-[#0b1957]" />
+                Video Sequence Generations
+              </h4>
+              <p className="text-[10px] text-slate-400 font-medium leading-relaxed">
+                This stack contains {selectedVideoGroup.videos.length} extended segments of the same concept. Showing longest generations first.
+              </p>
+            </div>
+
+            {/* List of videos (longest first) */}
+            <div className="flex-1 overflow-y-auto space-y-3 pr-1 scrollbar-none">
+              {[...selectedVideoGroup.videos].reverse().map((vid, idx) => {
+                const isSel = isAssetSelected(vid.url);
+                return (
+                  <div
+                    key={idx}
+                    className={cn(
+                      "p-2.5 rounded-2xl border transition-all flex items-center justify-between gap-3 shadow-sm bg-slate-50/20",
+                      isSel ? "border-[#0b1957] bg-blue-50/10" : "border-slate-100 hover:border-slate-200"
+                    )}
+                  >
+                    <div 
+                      className="w-[100px] aspect-video rounded-xl bg-slate-900 border border-slate-200 overflow-hidden relative cursor-pointer group flex-shrink-0"
+                      onClick={() => setActiveVideo(vid.url)}
+                    >
+                      <video
+                        src={vid.url}
+                        preload="metadata"
+                        className="w-full h-full object-cover pointer-events-none"
+                      />
+                      {/* Play hover overlay */}
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-70 group-hover:opacity-100 transition-opacity">
+                        <Play className="size-4.5 text-white fill-current translate-x-0.5" />
+                      </div>
+                      {/* Duration badge */}
+                      <div className="absolute bottom-1 right-1 px-1 py-0.5 bg-black/60 rounded text-[8px] text-white font-bold">
+                        {vid.duration ? `${vid.duration}s` : "Video"}
+                      </div>
+                    </div>
+
+                    <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5 h-full">
+                      <div className="min-w-0">
+                        <div className="text-[10px] font-bold text-slate-700 truncate">
+                          {idx === 0 ? "Longest / Final Video" : `Extension Part ${selectedVideoGroup.videos.length - idx}`}
+                        </div>
+                        <div className="text-[9px] text-slate-400 font-medium mt-0.5">
+                          Duration: {vid.duration || 8}s • {formatTimestamp(vid.created_at)}
+                        </div>
+                      </div>
+                      
+                      {/* Action buttons inside the modal item */}
+                      <div className="flex items-center gap-1.5 mt-2">
+                        <button
+                          onClick={() => toggleAssetSelection(vid.url, "video")}
+                          className={cn(
+                            "h-6.5 px-2.5 flex items-center justify-center gap-1 text-[9px] font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap active:scale-95 border",
+                            isSel 
+                              ? "bg-[#0b1957] hover:bg-blue-900 text-white border-[#0b1957]" 
+                              : "bg-white hover:bg-slate-50 text-slate-600 border-slate-200"
+                          )}
+                        >
+                          <Check className={cn("size-2.5", isSel ? "text-white stroke-[3]" : "text-slate-400")} />
+                          {isSel ? "Selected" : "Select"}
+                        </button>
+                        <button
+                          onClick={() => handleDownload(vid.url, `video-segment-${vid.duration || 8}s.mp4`)}
+                          className="h-6.5 w-6.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg flex items-center justify-center transition-all cursor-pointer active:scale-95 border border-slate-200/40"
+                          title="Download Segment"
+                        >
+                          <Download className="size-3" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
