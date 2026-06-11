@@ -1199,7 +1199,7 @@ export function CallLogsTable({
                           <Phone className="w-8 h-8 text-primary" />
                         </div>
                         <div>
-                          <h3 className="text-lg font-semibold text-[#1E293B] mb-2">
+                          <h3 className="text-lg font-semibold text-[#1E293B] dark:text-white mb-2">
                             Trigger a call
                           </h3>
                           <p className="text-sm text-[#64748B] mb-4">
