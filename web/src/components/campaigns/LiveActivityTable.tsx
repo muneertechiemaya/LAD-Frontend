@@ -944,7 +944,7 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
                   className="hover:bg-gray-50 dark:hover:bg-[#253456] transition-colors"
                 >
                   <TableCell className="w-[110px]">
-                    <p className="text-sm text-[#64748B]">
+                    <p className="text-sm text-[#64748B] dark:text-slate-300">
                       {formatDateTimeUnified(lead.latestTimestamp)}
                     </p>
                   </TableCell>
@@ -1243,8 +1243,8 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
       {/* Pagination Controls */}
       {totalLeads > 0 && (
         <div className="flex items-center justify-between px-2 xs:px-4 py-3 gap-2 border-t border-[#E2E8F0] dark:border-[#262831] bg-[#F8FAFC] dark:bg-[#000724]">
-          <div className="flex items-center gap-2 text-xs xs:text-sm text-[#64748B]">
-            <span>Show</span>
+          <div className="flex items-center gap-2 text-xs xs:text-sm text-[#64748B] dark:text-slate-300">
+              <span>Show</span>
             <Select
               value={String(currentPageSize)}
                 onValueChange={(value) => {
@@ -1279,7 +1279,7 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="text-[10px] xs:text-xs sm:text-sm text-[#64748B] whitespace-nowrap">
+            <div className="text-[10px] xs:text-xs sm:text-sm text-[#64748B] dark:text-slate-300 whitespace-nowrap">
               Page {currentPage} of {totalPages}
             </div>
 
