@@ -88,6 +88,15 @@ export default function PricingPage() {
             </div>
           </div>
 
+          {/* ============================================================
+              Sections are grouped by pillar in this order:
+              Key features → Outreach → Engage → Analyse → Convert → Admin
+              → Support. Bench text deliberately omits competitor product
+              names; price ranges below are category benchmarks. The
+              standalone-tool calculators that sit below the comparison
+              tables (further down the page) name competitors explicitly.
+              ============================================================ */}
+
           {/* ===== KEY FEATURES ===== */}
           <Section id="key" pillar="n" title="Key features"
             bench={<>The whole funnel in one subscription — a comparable point-solution stack runs <b>$285–$700+/mo</b> across 4–6 separate tools.</>}
@@ -110,29 +119,9 @@ export default function PricingPage() {
               cells={[<Lim>Email</Lim>, <Lim>Email + WhatsApp</Lim>, <Lim>Priority chat</Lim>, <Lim>Phone + onboarding call</Lim>, <Lim>Success manager</Lim>]} />
           </Section>
 
-          {/* ===== BROADCASTING ===== */}
-          <Section id="broadcast" pillar="e" title="Engage — Broadcasting (Email & WhatsApp)"
-            bench={<>Standalone broadcast platforms: <b>AiSensy from ~AED 66/mo</b>, <b>Wati from ~$49/mo</b> — both add 20–60% markup on every message. Mr LAD adds <b>0%</b>.</>}
-            isOpen={open['broadcast']} onToggle={() => toggle('broadcast')}>
-            <FRow name={<><b>WhatsApp Business API (WABA)</b><span>Official Meta Cloud API connection with green-tick eligibility.</span></>}
-              cells={[<Yes />, <No />, <Yes />, <Yes />, <Yes />]} />
-            <FRow name={<><b>Meta message fees — 0% markup</b><span>Your card connects directly to Meta. We never touch your message billing.</span><Mkt>Other platforms mark up 20–60%</Mkt></>}
-              cells={[<Lim>Direct to Meta</Lim>, <No />, <Lim>Direct to Meta</Lim>, <Lim>Direct to Meta</Lim>, <Lim>Direct to Meta</Lim>]} />
-            <FRow name={<><b>WhatsApp broadcasts</b><span>Bulk template campaigns with scheduling, audience lists and delivery reports.</span></>}
-              cells={[<Lim>Unlimited*</Lim>, <No />, <Lim>Unlimited*</Lim>, <Lim>Unlimited*</Lim>, <Lim>Unlimited*</Lim>]} />
-            <FRow name={<><b>Email broadcasts</b><span>Bulk email campaigns with templates and scheduling.</span></>}
-              cells={[<Lim>5,000/mo</Lim>, <Lim>10,000/mo</Lim>, <Lim>25,000/mo</Lim>, <Lim>100,000/mo</Lim>, <Lim>Custom</Lim>]} />
-            <FRow name={<><b>Template &amp; campaign builder</b><span>Meta-approved WhatsApp templates and email designs without code.</span></>}
-              cells={[<Yes />, <Lim>Email only</Lim>, <Yes />, <Yes />, <Yes />]} />
-            <FRow name={<><b>Shared inbox (manual replies)</b><span>See and answer broadcast replies yourself from one inbox.</span></>}
-              cells={[<Yes />, <Yes />, <Yes />, <Yes />, <Yes />]} />
-            <FRow name={<><b>Delivery, open &amp; click reports</b></>}
-              cells={[<Yes />, <Yes />, <Yes />, <Yes />, <Yes />]} />
-          </Section>
-
           {/* ===== OUTREACH : LINKEDIN ===== */}
           <Section id="linkedin" pillar="o" title="Outreach — LinkedIn"
-            bench={<>Standalone tools: <b>Expandi $99–149/seat</b>, <b>Dripify $59–99</b>, <b>HeyReach $79–199</b> — none of them research prospects or hand conversations to other channels.</>}
+            bench={<>Standalone LinkedIn outreach tools run <b>$59–$199/seat/mo</b> — none of them research each prospect or hand conversations off to other channels.</>}
             isOpen={open['linkedin']} onToggle={() => toggle('linkedin')}>
             <FRow name={<><b>ICP-based prospect discovery</b><span>Find prospects matching your Ideal Customer Profile automatically.</span></>}
               cells={[<No />, <Lim>250/mo</Lim>, <Lim>800/mo</Lim>, <Lim>2,000/mo</Lim>, <Lim>Custom</Lim>]} />
@@ -150,7 +139,7 @@ export default function PricingPage() {
 
           {/* ===== OUTREACH : EMAIL ===== */}
           <Section id="email" pillar="o" title="Outreach — Email"
-            bench={<>Standalone senders: <b>Instantly $37–97</b>, <b>Smartlead $39–94</b>, <b>lemlist $59–159/seat</b>.</>}
+            bench={<>Standalone cold-email senders run <b>$37–$159/seat/mo</b>, billed per mailbox before warm-up and rotation add-ons.</>}
             isOpen={open['email']} onToggle={() => toggle('email')}>
             <FRow name={<><b>Connected mailboxes</b><span>Sending mailboxes with warm-up and rotation.</span></>}
               cells={[<Lim>1</Lim>, <Lim>1</Lim>, <Lim>3</Lim>, <Lim>10</Lim>, <Lim>Custom</Lim>]} />
@@ -160,9 +149,29 @@ export default function PricingPage() {
               cells={[<No />, <No />, <Road />, <Road />, <Road />]} />
           </Section>
 
+          {/* ===== ENGAGE : BROADCASTING ===== */}
+          <Section id="broadcast" pillar="e" title="Engage — Broadcasting (Email & WhatsApp)"
+            bench={<>Standalone broadcast platforms charge <b>$18–$60+/mo</b> and add a <b>20–60% markup</b> on every WhatsApp message you send. Mr LAD adds <b>0%</b>.</>}
+            isOpen={open['broadcast']} onToggle={() => toggle('broadcast')}>
+            <FRow name={<><b>WhatsApp Business API (WABA)</b><span>Official Meta Cloud API connection with green-tick eligibility.</span></>}
+              cells={[<Yes />, <No />, <Yes />, <Yes />, <Yes />]} />
+            <FRow name={<><b>Meta message fees — 0% markup</b><span>Your card connects directly to Meta. We never touch your message billing.</span><Mkt>Other platforms mark up 20–60%</Mkt></>}
+              cells={[<Lim>Direct to Meta</Lim>, <No />, <Lim>Direct to Meta</Lim>, <Lim>Direct to Meta</Lim>, <Lim>Direct to Meta</Lim>]} />
+            <FRow name={<><b>WhatsApp broadcasts</b><span>Bulk template campaigns with scheduling, audience lists and delivery reports.</span></>}
+              cells={[<Lim>Unlimited*</Lim>, <No />, <Lim>Unlimited*</Lim>, <Lim>Unlimited*</Lim>, <Lim>Unlimited*</Lim>]} />
+            <FRow name={<><b>Email broadcasts</b><span>Bulk email campaigns with templates and scheduling.</span></>}
+              cells={[<Lim>5,000/mo</Lim>, <Lim>10,000/mo</Lim>, <Lim>25,000/mo</Lim>, <Lim>100,000/mo</Lim>, <Lim>Custom</Lim>]} />
+            <FRow name={<><b>Template &amp; campaign builder</b><span>Meta-approved WhatsApp templates and email designs without code.</span></>}
+              cells={[<Yes />, <Lim>Email only</Lim>, <Yes />, <Yes />, <Yes />]} />
+            <FRow name={<><b>Shared inbox (manual replies)</b><span>See and answer broadcast replies yourself from one inbox.</span></>}
+              cells={[<Yes />, <Yes />, <Yes />, <Yes />, <Yes />]} />
+            <FRow name={<><b>Delivery, open &amp; click reports</b></>}
+              cells={[<Yes />, <Yes />, <Yes />, <Yes />, <Yes />]} />
+          </Section>
+
           {/* ===== ENGAGE : AI AGENTS ===== */}
           <Section id="engage-ai" pillar="e" title="Engage — AI conversation agents"
-            bench={<>AI chat agents are extra-cost add-ons or enterprise-only on most platforms: <b>Wati bills chatbots separately from ~$40/mo</b>; respond.io AI sits on <b>$79+ plans</b>.</>}
+            bench={<>AI chat agents are extra-cost add-ons (<b>~$40/mo</b>) or gated to enterprise tiers (<b>$79+/mo</b>) on most platforms. With Mr LAD they&apos;re included from Growth onward.</>}
             isOpen={open['engage-ai']} onToggle={() => toggle('engage-ai')}>
             <FRow name={<><b>AI WhatsApp conversation agent</b><span>Qualifies, nurtures and books — 24/7, in English and Arabic.</span></>}
               cells={[<No />, <No />, <Yes />, <Yes />, <Yes />]} />
@@ -176,23 +185,9 @@ export default function PricingPage() {
               cells={[<No />, <Lim>LinkedIn + email</Lim>, <Yes>✓ All channels</Yes>, <Yes />, <Yes />]} />
           </Section>
 
-          {/* ===== VOICE ===== */}
-          <Section id="voice" pillar="c" title="Convert — AI Voice agent"
-            bench={<>Standalone voice AI: typical all-in cost <b>$0.13–$0.31/min</b>; bundled platforms <b>$0.11–$0.14/min</b> plus $499/mo plans at volume.</>}
-            isOpen={open['voice']} onToggle={() => toggle('voice')}>
-            <FRow name={<><b>Included voice minutes</b><span>Outbound follow-up and inbound answering, GCC numbers supported.</span></>}
-              cells={[<No />, <No />, <Addon />, <Lim>1,500 min/mo</Lim>, <Lim>Custom</Lim>]} />
-            <FRow name={<><b>Additional minutes</b><span>All-inclusive: telephony, speech and AI.</span></>}
-              cells={[<No />, <No />, <Lim>$0.25/min</Lim>, <Lim>$0.12/min</Lim>, <Lim>Volume rates</Lim>]} />
-            <FRow name={<><b>No-show &amp; abandoned-flow recovery calls</b><span>Automatic call-back when a lead books then disappears.</span></>}
-              cells={[<No />, <No />, <No />, <Yes />, <Yes />]} />
-            <FRow name={<><b>Call recordings &amp; transcripts</b><span>Every call logged on the prospect timeline.</span></>}
-              cells={[<No />, <No />, <No />, <Yes />, <Yes />]} />
-          </Section>
-
-          {/* ===== ADS ===== */}
+          {/* ===== ENGAGE : ADS ===== */}
           <Section id="ads" pillar="e" title="Engage — Meta Ads (managed)"
-            bench={<>Standalone ad automation: <b>Madgicx $44–99+/mo</b> tiered by spend; agencies charge <b>10–20% of ad spend</b>. Mr LAD runs ads <i>and</i> answers every lead they generate.</>}
+            bench={<>Standalone ad-automation tools run <b>$44–$99+/mo</b> tiered by spend; agencies charge <b>10–20% of ad spend</b>. Mr LAD runs the ads <i>and</i> answers every lead they generate.</>}
             isOpen={open['ads']} onToggle={() => toggle('ads')}>
             <FRow name={<><b>AI ad creation &amp; publishing</b><span>Upload a photo or video — campaigns created and published across Facebook, Instagram and WhatsApp.</span></>}
               cells={[<No />, <No />, <Road />, <Road />, <Road />]} />
@@ -218,7 +213,21 @@ export default function PricingPage() {
               cells={[<No />, <No />, <No />, <No />, <Road />]} />
           </Section>
 
-          {/* ===== CONVERT & CRM ===== */}
+          {/* ===== CONVERT : VOICE ===== */}
+          <Section id="voice" pillar="c" title="Convert — AI Voice agent"
+            bench={<>Standalone voice AI: typical all-in cost <b>$0.13–$0.31/min</b>; bundled platforms <b>$0.11–$0.14/min</b> plus $499/mo plans at volume.</>}
+            isOpen={open['voice']} onToggle={() => toggle('voice')}>
+            <FRow name={<><b>Included voice minutes</b><span>Outbound follow-up and inbound answering, GCC numbers supported.</span></>}
+              cells={[<No />, <No />, <Addon />, <Lim>1,500 min/mo</Lim>, <Lim>Custom</Lim>]} />
+            <FRow name={<><b>Additional minutes</b><span>All-inclusive: telephony, speech and AI.</span></>}
+              cells={[<No />, <No />, <Lim>$0.25/min</Lim>, <Lim>$0.12/min</Lim>, <Lim>Volume rates</Lim>]} />
+            <FRow name={<><b>No-show &amp; abandoned-flow recovery calls</b><span>Automatic call-back when a lead books then disappears.</span></>}
+              cells={[<No />, <No />, <No />, <Yes />, <Yes />]} />
+            <FRow name={<><b>Call recordings &amp; transcripts</b><span>Every call logged on the prospect timeline.</span></>}
+              cells={[<No />, <No />, <No />, <Yes />, <Yes />]} />
+          </Section>
+
+          {/* ===== CONVERT : SCHEDULING + CRM ===== */}
           <Section id="crm" pillar="c" title="Convert — Scheduling, quotations & CRM"
             bench={<>CRM seats run <b>$15–99/user/mo</b> elsewhere; Mr LAD is the lead store for solo tenants and syncs with your CRM when you have one.</>}
             isOpen={open['crm']} onToggle={() => toggle('crm')}>
@@ -263,6 +272,18 @@ export default function PricingPage() {
             <FRow name={<><b>Quarterly strategy review</b><span>Sit with our team to tune campaigns and ICP.</span></>}
               cells={[<No />, <No />, <No />, <Yes />, <Yes />]} />
           </Section>
+
+          {/* ===== COST COMPARISON CALCULATOR ===== */}
+          <div className="calc-section">
+            <h2 className="calc-h">Cost comparison calculator</h2>
+            <p className="calc-sub">
+              See what each pillar would cost if you built it with the leading standalone tools. Toggle the ones you&apos;d realistically use; the running total updates and you can compare it to the Mr LAD plan that includes the equivalent capability.
+            </p>
+            {COST_COMPARISON.map(p => <PillarCalculator key={p.id} data={p} />)}
+            <p className="calc-foot">
+              Ranges reflect publicly listed pricing as of 2026 and may shift; usage-based items (e.g. voice minutes) are estimated at a 500-min/month sample volume. Mr LAD plan prices shown are the smallest plan that includes the comparable Mr LAD capability — heavier usage may need the next tier.
+            </p>
+          </div>
 
           <div className="note">
             <h4>How usage billing works</h4>
@@ -350,6 +371,49 @@ export default function PricingPage() {
           .note { margin-top: 26px; background: var(--teal-soft); border: 1px solid #C8E8E2; border-radius: 12px; padding: 18px 20px; font-size: 13px; color: var(--ink); }
           .note :global(h4) { font-family: 'Sora', sans-serif; font-size: 14px; margin-bottom: 6px; }
 
+          /* ── Cost-comparison calculator ──────────────────────────────── */
+          .calc-section { margin-top: 48px; }
+          .calc-h { font-family: 'Sora', sans-serif; font-size: 22px; font-weight: 700; letter-spacing: -.3px; }
+          .calc-sub { color: var(--ink-soft); margin-top: 6px; max-width: 760px; font-size: 13px; }
+          .calc-foot { color: var(--ink-soft); margin-top: 14px; font-size: 11.5px; max-width: 760px; }
+
+          /* Each card */
+          .pricing-root :global(.calc-card) { margin-top: 20px; background: var(--card); border: 1px solid var(--line); border-left: 5px solid var(--ink-soft); border-radius: 12px; padding: 18px 20px; }
+          .pricing-root :global(.calc-card.calc-o) { border-left-color: var(--outreach); }
+          .pricing-root :global(.calc-card.calc-e) { border-left-color: var(--engage); }
+          .pricing-root :global(.calc-card.calc-a) { border-left-color: var(--analyse); }
+          .pricing-root :global(.calc-card.calc-c) { border-left-color: var(--convert); }
+
+          .pricing-root :global(.calc-card-head) { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+          .pricing-root :global(.calc-title) { font-family: 'Sora', sans-serif; font-size: 18px; font-weight: 700; margin: 0; }
+          .pricing-root :global(.calc-blurb) { color: var(--ink-soft); font-size: 12.5px; margin-top: 4px; max-width: 600px; }
+          .pricing-root :global(.calc-lad-tag) { font-size: 12px; color: var(--ink); background: var(--teal-soft); border: 1px solid #C8E8E2; padding: 6px 12px; border-radius: 999px; white-space: nowrap; }
+          .pricing-root :global(.calc-lad-tag b) { font-family: 'Sora', sans-serif; color: var(--teal); }
+
+          /* Tool list */
+          .pricing-root :global(.calc-list) { list-style: none; margin: 14px 0 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+          @media (max-width: 720px) { .pricing-root :global(.calc-list) { grid-template-columns: 1fr; } }
+          .pricing-root :global(.calc-row) { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; transition: border-color .12s, background .12s; background: #FBFCFE; }
+          .pricing-root :global(.calc-row:hover) { border-color: #C5D1E0; }
+          .pricing-root :global(.calc-row.on) { border-color: var(--teal); background: var(--teal-soft); }
+          .pricing-root :global(.calc-row input[type=checkbox]) { position: absolute; opacity: 0; pointer-events: none; }
+          .pricing-root :global(.calc-check) { flex: none; width: 18px; height: 18px; border-radius: 4px; border: 1.5px solid #C5D1E0; background: #fff; display: inline-block; position: relative; }
+          .pricing-root :global(.calc-row.on .calc-check) { background: var(--teal); border-color: var(--teal); }
+          .pricing-root :global(.calc-row.on .calc-check::after) { content: ''; position: absolute; left: 5px; top: 1px; width: 5px; height: 10px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+          .pricing-root :global(.calc-row-text) { flex: 1; min-width: 0; }
+          .pricing-root :global(.calc-row-name) { display: block; font-weight: 600; font-size: 12.5px; color: var(--ink); }
+          .pricing-root :global(.calc-row-cat) { display: block; font-size: 11px; color: var(--ink-soft); margin-top: 2px; }
+          .pricing-root :global(.calc-row-price) { flex: none; font-family: 'Sora', sans-serif; font-size: 12.5px; font-weight: 600; color: var(--ink); white-space: nowrap; }
+          .pricing-root :global(.calc-row-price small) { font-size: 10.5px; font-weight: 500; color: var(--ink-soft); margin-left: 2px; }
+
+          /* Totals */
+          .pricing-root :global(.calc-totals) { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line); display: grid; gap: 6px; }
+          .pricing-root :global(.calc-total-line) { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--ink-soft); }
+          .pricing-root :global(.calc-total-line b) { font-family: 'Sora', sans-serif; font-size: 14px; color: var(--ink); }
+          .pricing-root :global(.calc-save) { padding: 8px 10px; border-radius: 6px; }
+          .pricing-root :global(.calc-save.on) { background: var(--teal-soft); color: var(--ink); }
+          .pricing-root :global(.calc-save.on b) { color: var(--teal); }
+
           @media (max-width: 920px) {
             .grid, .pricing-root :global(.frow) { grid-template-columns: minmax(130px, 1.3fr) repeat(5, 1fr); }
             .pricing-root :global(.head .bench) { display: none; }
@@ -424,4 +488,163 @@ function Road() {
 }
 function Mkt({ children }: { children: React.ReactNode }) {
   return <span className="mkt">{children}</span>;
+}
+
+// ─── Cost-comparison calculator ──────────────────────────────────────────
+// Interactive — each card lets the visitor pick the standalone tools they'd
+// otherwise use; the running stack total is compared to the smallest Mr LAD
+// plan that includes the equivalent capability. Pricing ranges are public
+// list prices, normalised to USD/month. Voice is sampled at 500 min/mo
+// since per-minute rates aren't directly comparable to flat plans.
+interface Competitor {
+  id: string;
+  /** Product name as the visitor recognises it. */
+  label: string;
+  /** Short qualifier shown under the label, e.g. "LinkedIn outreach". */
+  category: string;
+  /** Monthly USD range — min..max. For per-seat/per-user tools this is the seat price. */
+  min: number;
+  max: number;
+  /** Unit suffix to render after the price range. */
+  unit: string;
+  /** Pre-selected on first render? Lets us show a sensible non-zero default total. */
+  defaultOn?: boolean;
+}
+interface PillarComparison {
+  id: 'outreach' | 'engage' | 'analyse' | 'convert';
+  pillar: 'o' | 'e' | 'a' | 'c';
+  title: string;
+  blurb: string;
+  competitors: Competitor[];
+  mrLad: { plan: string; price: number };
+}
+
+const COST_COMPARISON: PillarComparison[] = [
+  {
+    id: 'outreach', pillar: 'o',
+    title: 'Outreach',
+    blurb: 'LinkedIn + Email outbound, prospect research, and reply handling.',
+    competitors: [
+      { id: 'li',  label: 'LinkedIn outreach tool',     category: 'e.g. Expandi, Dripify, HeyReach', min: 59,  max: 199, unit: '/seat/mo', defaultOn: true },
+      { id: 'em',  label: 'Cold-email sender',          category: 'e.g. Instantly, Smartlead, lemlist', min: 37,  max: 159, unit: '/seat/mo', defaultOn: true },
+      { id: 'db',  label: 'Prospect database / enrichment', category: 'e.g. Apollo, ZoomInfo, Lusha', min: 49,  max: 149, unit: '/user/mo' },
+      { id: 'res', label: 'Web research / scraping',    category: 'e.g. Clay, PhantomBuster',         min: 49,  max: 150, unit: '/mo' },
+    ],
+    mrLad: { plan: 'Starter', price: 99 },
+  },
+  {
+    id: 'engage', pillar: 'e',
+    title: 'Engage',
+    blurb: 'WhatsApp broadcasts, AI chat agents, Instagram DM automation, and Meta Ads management.',
+    competitors: [
+      { id: 'wa',   label: 'WhatsApp broadcast platform',         category: 'e.g. AiSensy, Wati, MessageBird',     min: 18, max: 75,  unit: '/mo', defaultOn: true },
+      { id: 'bot',  label: 'WhatsApp AI chatbot add-on',          category: 'e.g. Wati chatbot, respond.io AI',    min: 40, max: 79,  unit: '/mo', defaultOn: true },
+      { id: 'ig',   label: 'Instagram DM automation',             category: 'e.g. ManyChat, Chatfuel',             min: 25, max: 79,  unit: '/mo' },
+      { id: 'ads',  label: 'Meta Ads automation / management',    category: 'e.g. Madgicx, Revealbot',             min: 44, max: 99,  unit: '/mo' },
+    ],
+    mrLad: { plan: 'Growth', price: 199 },
+  },
+  {
+    id: 'analyse', pillar: 'a',
+    title: 'Analyse',
+    blurb: 'Multi-channel attribution, conversation analysis, and executive reporting.',
+    competitors: [
+      { id: 'attr', label: 'Multi-channel attribution',  category: 'e.g. Triple Whale, Northbeam, Rockerbox', min: 250, max: 500, unit: '/mo', defaultOn: true },
+      { id: 'ci',   label: 'Conversation intelligence',  category: 'e.g. Gong Lite, Chorus',                  min: 79,  max: 199, unit: '/user/mo' },
+      { id: 'bi',   label: 'Business-intelligence dashboards', category: 'e.g. Mode, Hex, Looker Studio Pro', min: 150, max: 500, unit: '/mo' },
+    ],
+    mrLad: { plan: 'Growth', price: 199 },
+  },
+  {
+    id: 'convert', pillar: 'c',
+    title: 'Convert',
+    blurb: 'AI voice follow-up, scheduling, CRM, and post-conversion automation.',
+    competitors: [
+      { id: 'voice', label: 'AI voice agent (≈500 min/mo)',  category: 'e.g. Vapi, Retell, Bland — $0.13–$0.31/min', min: 65,  max: 155, unit: '/mo', defaultOn: true },
+      { id: 'crm',   label: 'CRM seat',                       category: 'e.g. HubSpot, Salesforce, Pipedrive',         min: 25,  max: 99,  unit: '/user/mo', defaultOn: true },
+      { id: 'cal',   label: 'Scheduling tool',                category: 'e.g. Calendly, Chili Piper',                  min: 10,  max: 16,  unit: '/user/mo' },
+      { id: 'rev',   label: 'Review / referral automation',   category: 'e.g. Birdeye, NiceJob',                       min: 30,  max: 79,  unit: '/mo' },
+    ],
+    mrLad: { plan: 'Scale', price: 499 },
+  },
+];
+
+function formatUsd(n: number) {
+  return `$${Math.round(n).toLocaleString('en-US')}`;
+}
+
+function PillarCalculator({ data }: { data: PillarComparison }) {
+  // Each calculator owns its own selection state — no cross-pillar coupling.
+  const [selected, setSelected] = useState<Set<string>>(
+    () => new Set(data.competitors.filter(c => c.defaultOn).map(c => c.id))
+  );
+  const toggle = (id: string) => setSelected(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
+
+  const picked = data.competitors.filter(c => selected.has(c.id));
+  const stackMin = picked.reduce((a, c) => a + c.min, 0);
+  const stackMax = picked.reduce((a, c) => a + c.max, 0);
+  const ladPrice = data.mrLad.price;
+  const saveMin = Math.max(0, stackMin - ladPrice);
+  const saveMax = Math.max(0, stackMax - ladPrice);
+  const ladCheaper = stackMin >= ladPrice;
+
+  return (
+    <div className={`calc-card calc-${data.pillar}`}>
+      <div className="calc-card-head">
+        <div>
+          <h3 className="calc-title">{data.title}</h3>
+          <p className="calc-blurb">{data.blurb}</p>
+        </div>
+        <div className="calc-lad-tag">Mr LAD <b>{data.mrLad.plan}</b> · {formatUsd(ladPrice)}/mo</div>
+      </div>
+
+      <ul className="calc-list">
+        {data.competitors.map(c => {
+          const on = selected.has(c.id);
+          return (
+            <li key={c.id}>
+              <label className={`calc-row${on ? ' on' : ''}`}>
+                <input type="checkbox" checked={on} onChange={() => toggle(c.id)} />
+                <span className="calc-check" aria-hidden />
+                <span className="calc-row-text">
+                  <span className="calc-row-name">{c.label}</span>
+                  <span className="calc-row-cat">{c.category}</span>
+                </span>
+                <span className="calc-row-price">
+                  {formatUsd(c.min)}–{formatUsd(c.max)}<small>{c.unit}</small>
+                </span>
+              </label>
+            </li>
+          );
+        })}
+      </ul>
+
+      <div className="calc-totals">
+        <div className="calc-total-line">
+          <span>Your selected stack</span>
+          <b>{picked.length === 0 ? '—' : `${formatUsd(stackMin)}–${formatUsd(stackMax)}/mo`}</b>
+        </div>
+        <div className="calc-total-line">
+          <span>Mr LAD {data.mrLad.plan}</span>
+          <b>{formatUsd(ladPrice)}/mo</b>
+        </div>
+        <div className={`calc-total-line calc-save${ladCheaper && picked.length > 0 ? ' on' : ''}`}>
+          <span>{ladCheaper ? 'You save' : 'Mr LAD price'}</span>
+          <b>
+            {picked.length === 0
+              ? 'Pick some tools to compare →'
+              : ladCheaper
+                ? saveMin === saveMax
+                  ? `${formatUsd(saveMin)}/mo`
+                  : `${formatUsd(saveMin)}–${formatUsd(saveMax)}/mo`
+                : `Mr LAD is ${formatUsd(ladPrice - stackMax)}–${formatUsd(ladPrice - stackMin)} more — for the AI agents and unified data the stack can't replicate.`}
+          </b>
+        </div>
+      </div>
+    </div>
+  );
 }
