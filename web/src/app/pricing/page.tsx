@@ -1,8 +1,9 @@
 'use client';
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Header from '@/components/layout/Header';
-import Footer from '@/components/layout/Footer';
+// NOTE: Do NOT import Header/Footer here. PublicLayout wraps every public
+// route (including /pricing) and already renders both. Importing them on
+// the page would render duplicates (the prior page had this bug too).
 
 // ─── Section ids (collapsible groups) ────────────────────────────────────
 type SectionId =
@@ -27,11 +28,8 @@ export default function PricingPage() {
   const toggle = (id: SectionId) => setOpen(prev => ({ ...prev, [id]: !prev[id] }));
 
   return (
-    <div className="min-h-screen bg-white">
-      <Header />
-
-      <div className="pricing-root">
-        <div className="wrap">
+    <div className="pricing-root">
+      <div className="wrap">
 
           <header className="page">
             <h1>Compare all Mr LAD plans &amp; features</h1>
@@ -362,9 +360,6 @@ export default function PricingPage() {
             .pricing-root :global(.cell) { font-size: 10.5px; padding: 8px 3px; }
           }
         `}</style>
-      </div>
-
-      <Footer />
     </div>
   );
 }
