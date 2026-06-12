@@ -423,14 +423,25 @@ export default function PricingPage() {
           .pricing-root :global(.ucalc-bd-row small) { display: block; font-size: 11.5px; color: var(--ink-soft); margin-top: 2px; }
           .pricing-root :global(.ucalc-bd-row b) { font-family: 'Sora', sans-serif; font-size: 17px; font-weight: 700; color: var(--ink); white-space: nowrap; }
           .pricing-root :global(.ucalc-bd-rule) { border: none; border-top: 1px solid #C2CFEC; margin: 10px 0 14px; }
+          /* Standalone total — muted, smaller. Provides context for the
+             saving, but visually defers to the Mr LAD card below. */
           .pricing-root :global(.ucalc-total) { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-          .pricing-root :global(.ucalc-total-label) { font-family: 'Sora', sans-serif; font-size: 17px; font-weight: 700; color: var(--ink); }
+          .pricing-root :global(.ucalc-total-label) { font-family: 'Sora', sans-serif; font-size: 15px; font-weight: 600; color: var(--ink-soft); }
           .pricing-root :global(.ucalc-total small) { display: block; font-size: 11.5px; color: var(--ink-soft); margin-top: 2px; font-weight: 400; }
-          .pricing-root :global(.ucalc-total-val) { font-family: 'Sora', sans-serif; font-size: 38px; font-weight: 700; color: #2E62F0; line-height: 1; }
-          .pricing-root :global(.ucalc-rec) { margin-top: 18px; background: #fff; border: 1px solid #C9D4F0; border-radius: 10px; padding: 14px 16px; }
-          .pricing-root :global(.ucalc-rec small) { display: block; font-size: 12px; color: var(--ink-soft); }
-          .pricing-root :global(.ucalc-rec strong) { display: block; font-family: 'Sora', sans-serif; font-size: 18px; font-weight: 700; color: #2E62F0; margin-top: 4px; }
-          .pricing-root :global(.ucalc-save) { display: inline-block; margin-top: 8px; font-size: 12.5px; color: var(--ink); background: var(--teal-soft); border: 1px solid #C8E8E2; padding: 4px 10px; border-radius: 999px; }
+          .pricing-root :global(.ucalc-total-val) { font-family: 'Sora', sans-serif; font-size: 26px; font-weight: 700; color: var(--ink-soft); line-height: 1; }
+
+          /* Mr LAD card — solid brand-blue, centred, BIG white price. This is
+             the visual focal point of the whole calculator panel. */
+          .pricing-root :global(.ucalc-rec) { margin-top: 16px; background: #2E62F0; border: 1px solid #2E62F0; border-radius: 12px; padding: 22px 24px 18px; text-align: center; color: #fff; box-shadow: 0 6px 20px rgba(46, 98, 240, 0.25); }
+          .pricing-root :global(.ucalc-rec-head) { font-size: 13px; color: rgba(255, 255, 255, 0.85); margin-bottom: 2px; }
+          .pricing-root :global(.ucalc-rec-head strong) { font-family: 'Sora', sans-serif; font-size: 15px; font-weight: 700; color: #fff; margin-left: 2px; }
+          .pricing-root :global(.ucalc-rec-price) { font-family: 'Sora', sans-serif; font-size: 56px; font-weight: 700; color: #fff; line-height: 1; margin: 8px 0 10px; letter-spacing: -1px; }
+          .pricing-root :global(.ucalc-rec-price small) { font-size: 18px; font-weight: 500; opacity: 0.85; margin-left: 4px; letter-spacing: 0; }
+          .pricing-root :global(.ucalc-rec-sub) { font-size: 12.5px; color: rgba(255, 255, 255, 0.88); margin-bottom: 14px; }
+          .pricing-root :global(.ucalc-rec-empty) { font-size: 14px; color: rgba(255, 255, 255, 0.95); padding: 22px 0; margin-bottom: 0; }
+
+          /* "You save" pill — white background reads cleanly on the blue card. */
+          .pricing-root :global(.ucalc-save) { display: inline-block; font-size: 13px; color: var(--ink); background: #fff; padding: 6px 14px; border-radius: 999px; }
           .pricing-root :global(.ucalc-save b) { font-family: 'Sora', sans-serif; color: var(--teal); }
           .pricing-root :global(.ucalc-bd-empty) { padding: 14px 0; font-size: 13px; color: var(--ink-soft); font-style: italic; text-align: center; }
           .pricing-root :global(.ucalc-cta) { margin-top: 14px; width: 100%; background: #2E62F0; color: #fff; font-family: 'Sora', sans-serif; font-size: 15px; font-weight: 700; border: none; border-radius: 10px; padding: 13px 0; cursor: pointer; transition: background .15s; }
@@ -616,7 +627,6 @@ function StackCostCalculator({ onCta }: { onCta: () => void }) {
   if (waMessages > 0)                                           required.push('broadcast');
   const planKey = highestPlan(required);
   const plan    = planKey ? PLAN_INFO[planKey] : null;
-  const planLabel = plan ? `${plan.name} ($${plan.price})` : 'Pick activity to compare →';
   const ladPrice  = plan ? plan.price : 0;
   const savings   = Math.max(0, total - ladPrice);
   const ladCheaper = plan != null && total >= ladPrice;
@@ -717,21 +727,35 @@ function StackCostCalculator({ onCta }: { onCta: () => void }) {
 
         <hr className="ucalc-bd-rule" />
 
+        {/* Standalone total — kept above the Mr LAD card so the saving has
+            context, but visually muted; the Mr LAD price below is the focus. */}
         <div className="ucalc-total">
           <div>
-            <div className="ucalc-total-label">Standalone stack total</div>
-            <small>Monthly cost across the tools above</small>
+            <div className="ucalc-total-label">If you bought these separately</div>
+            <small>Monthly cost across the standalone tools above</small>
           </div>
           <b className="ucalc-total-val">{total === 0 ? '$0' : formatUsd(total)}</b>
         </div>
 
-        <div className="ucalc-rec">
-          <small>Mr LAD plan that covers this scope:</small>
-          <strong>{planLabel}</strong>
-          {ladCheaper && savings > 0 && (
-            <span className="ucalc-save">You save <b>{formatUsd(savings)}/mo</b></span>
-          )}
-        </div>
+        {/* Mr LAD card — solid blue, big white price (visual focus). */}
+        {plan ? (
+          <div className="ucalc-rec">
+            <div className="ucalc-rec-head">
+              With Mr LAD <strong>{plan.name}</strong>
+            </div>
+            <div className="ucalc-rec-price">
+              ${plan.price}<small>/mo</small>
+            </div>
+            <div className="ucalc-rec-sub">Everything above, billed as one subscription</div>
+            {ladCheaper && savings > 0 && (
+              <span className="ucalc-save">You save <b>{formatUsd(savings)}/mo</b></span>
+            )}
+          </div>
+        ) : (
+          <div className="ucalc-rec ucalc-rec-empty">
+            <span>Pick activity to compare →</span>
+          </div>
+        )}
 
         <button type="button" className="ucalc-cta" onClick={onCta}>Get Started</button>
       </aside>
