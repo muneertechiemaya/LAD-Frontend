@@ -107,7 +107,7 @@ function BackButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="absolute top-4 left-4 z-50 p-1.5 bg-slate-50 dark:bg-[#000724] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-400 dark:text-gray-500 transition-all hover:scale-110 active:scale-95 border border-slate-100 dark:border-gray-800 cursor-pointer"
+      className="absolute top-4 left-4 z-50 p-1.5 bg-slate-50 dark:bg-[#000724] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-400 dark:text-slate-300 transition-all hover:scale-110 active:scale-95 border border-slate-100 dark:border-gray-800 cursor-pointer"
       aria-label="Go back"
     >
       <ArrowLeft className="size-4" />
@@ -218,10 +218,10 @@ export default function PlaygroundConfigView({
         <div className="flex flex-col items-center text-center space-y-8 pt-6 pb-4 w-full">
           <div className="space-y-2">
             <h2 className="text-2xl font-bold text-[#0b1957] dark:text-white">AI Guided Journey</h2>
-            <p className="text-sm text-slate-500 dark:text-gray-400">Creating your agent in real-time</p>
+            <p className="text-sm text-slate-500 dark:text-slate-300">Creating your agent in real-time</p>
           </div>
           {!error && <ThinkingIndicator />}
-          <p className="text-[10px] text-slate-400 dark:text-gray-500 max-w-[200px] leading-relaxed">
+          <p className="text-[10px] text-slate-400 dark:text-slate-300 max-w-[200px] leading-relaxed">
             This minimal configuration ensures your agent follows best practices for interaction and goal achievement.
           </p>
         </div>
@@ -342,14 +342,14 @@ export default function PlaygroundConfigView({
             </div>
             <div className="text-left">
               <div className="text-base font-bold text-[#0b1957] dark:text-white">Direct Configuration</div>
-              <div className="text-[11px] text-slate-400 dark:text-gray-500">
+              <div className="text-[11px] text-slate-400 dark:text-slate-300">
                 Full manual control over all parameters.
               </div>
             </div>
           </button>
         </div>
 
-        <p className="mt-8 text-[10px] text-slate-400 dark:text-gray-500 text-center">
+        <p className="mt-8 text-[10px] text-slate-400 dark:text-slate-300 text-center">
             You can always modify agents manually after creation.
         </p>
       </div>
@@ -395,7 +395,7 @@ export default function PlaygroundConfigView({
               <div className="text-sm font-bold text-[#0b1957] dark:text-white">
                 Test Existing Agent
               </div>
-              <div className="text-[11px] text-slate-400 dark:text-gray-500">
+              <div className="text-[11px] text-slate-400 dark:text-slate-300">
                 Launch a live call session with our presets.
               </div>
             </div>
@@ -411,14 +411,14 @@ export default function PlaygroundConfigView({
               <div className="text-sm font-bold text-[#0b1957] dark:text-white">
                 Create New Agent
               </div>
-              <div className="text-[11px] text-slate-400 dark:text-gray-500">
+              <div className="text-[11px] text-slate-400 dark:text-slate-300">
                 Custom training and knowledge integration.
               </div>
             </div>
           </button>
         </div>
 
-        <p className="mt-8 text-[10px] text-slate-400 dark:text-gray-500 text-center italic">
+        <p className="mt-8 text-[10px] text-slate-400 dark:text-slate-300 text-center italic">
           No worker session active. Sessions start upon selection.
         </p>
       </div>
@@ -504,7 +504,7 @@ export default function PlaygroundConfigView({
                 </div>
               )}
               {agents.length > 0 && (
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 dark:text-gray-500">
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 dark:text-slate-300">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="16"
@@ -535,7 +535,7 @@ export default function PlaygroundConfigView({
                 setSkipAnalysis(!isChecked);
                 if (isChecked) setEnableCallLog(true);
               }}
-              className="rounded-md border-slate-300 dark:border-gray-700 data-[state=checked]:bg-[#0b1957] dark:data-[state=checked]:bg-blue-500 data-[state=checked]:border-[#0b1957] dark:data-[state=checked]:border-blue-500"
+              className="h-5 w-5 rounded-[6px] border-slate-300 dark:border-sky-500/80 data-[state=checked]:bg-[#0b1957] dark:data-[state=checked]:bg-sky-500 data-[state=checked]:border-[#0b1957] dark:data-[state=checked]:border-sky-500 transition-all focus-visible:ring-0 focus-visible:ring-offset-0"
             />
             <Label
               htmlFor="pg-skip-analysis"
@@ -553,7 +553,7 @@ export default function PlaygroundConfigView({
                 setEnableRecording(isChecked);
                 if (isChecked) setEnableCallLog(true);
               }}
-              className="rounded-md border-slate-300 dark:border-gray-700 data-[state=checked]:bg-[#0b1957] dark:data-[state=checked]:bg-blue-500 data-[state=checked]:border-[#0b1957] dark:data-[state=checked]:border-blue-500"
+              className="h-5 w-5 rounded-[6px] border-slate-300 dark:border-sky-500/80 data-[state=checked]:bg-[#0b1957] dark:data-[state=checked]:bg-sky-500 data-[state=checked]:border-[#0b1957] dark:data-[state=checked]:border-sky-500 transition-all focus-visible:ring-0 focus-visible:ring-offset-0"
             />
             <Label
               htmlFor="pg-enable-recording"
@@ -574,7 +574,7 @@ export default function PlaygroundConfigView({
                   setSkipAnalysis(true);
                 }
               }}
-              className="rounded-md border-slate-300 dark:border-gray-700 data-[state=checked]:bg-[#0b1957] dark:data-[state=checked]:bg-blue-500 data-[state=checked]:border-[#0b1957] dark:data-[state=checked]:border-blue-500"
+              className="h-5 w-5 rounded-[6px] border-slate-300 dark:border-sky-500/80 data-[state=checked]:bg-[#0b1957] dark:data-[state=checked]:bg-sky-500 data-[state=checked]:border-[#0b1957] dark:data-[state=checked]:border-sky-500 transition-all focus-visible:ring-0 focus-visible:ring-offset-0"
             />
             <Label
               htmlFor="pg-enable-call-log"
@@ -589,12 +589,12 @@ export default function PlaygroundConfigView({
         <Button
           onClick={startCall}
           disabled={!isHolding || reloading || connecting || !selectedAgent}
-          className="w-full h-12 bg-[#0b1957] dark:bg-gray-100 hover:bg-[#0b1957]/90 dark:hover:bg-white text-white dark:text-gray-900 rounded-xl font-bold text-base shadow-lg shadow-[#0b1957]/20 dark:shadow-none transition-all active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 cursor-pointer"
+          className="w-full h-12 bg-[#0b1957] dark:bg-primary hover:bg-[#0b1957]/90 dark:hover:bg-primary/90 text-white dark:text-primary-foreground rounded-xl font-bold text-base shadow-lg shadow-[#0b1957]/20 dark:shadow-none transition-all active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 cursor-pointer"
         >
           {connecting ? "Connecting…" : "Start Agent Call"}
         </Button>
 
-        <p className="text-[10px] text-slate-400 dark:text-gray-500 text-center leading-relaxed">
+        <p className="text-[10px] text-slate-400 dark:text-slate-300 text-center leading-relaxed">
           Playground calls are isolated. No production SIP trunks or credits are
           used.
         </p>

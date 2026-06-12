@@ -204,8 +204,7 @@ export default function WarmPathPanel({ wp, prospect, open, onToggle }: WarmPath
             )}
             <button
               onClick={onToggle}
-              className="h-7 px-2.5 rounded-full text-[11.5px] font-semibold inline-flex items-center gap-1 text-[#0B1957] dark:text-white"
-              style={{ color: T.primary, background: T.badgeBg }}
+              className="inline-flex items-center justify-center gap-1 whitespace-nowrap text-[11.5px] transition-all disabled:pointer-events-none disabled:opacity-50 active:scale-95 select-none h-7 px-2.5 rounded-full font-semibold shadow-sm bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-blue-600 dark:text-white dark:hover:bg-blue-700 outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
             >
               {open ? 'Collapse' : 'Open graph'}
               {open ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -430,9 +429,9 @@ interface GraphNodeProps {
 }
 
 function GraphNode({
-  x, y, name, sub, color, big = false, isProspect = false, badge,
-  draggable, clickable, collapsed, isHover,
-  onPointerDown, onPointerMove, onPointerUp, onPointerCancel, onPointerEnter, onPointerLeave, onClick,
+ x, y, name, sub, color, darkColor, big = false, isProspect = false, badge,
+ draggable, clickable, collapsed, isHover,
+ onPointerDown, onPointerMove, onPointerUp, onPointerCancel, onPointerEnter, onPointerLeave, onClick,
 }: GraphNodeProps) {
   const r = big ? 26 : 18;
   const cursor = draggable ? 'grab' : clickable ? 'pointer' : 'default';

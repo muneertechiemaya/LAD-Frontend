@@ -374,7 +374,7 @@ export default function CampaignsTable({ campaigns, loading, onMenuOpen }: Campa
                     onChange={(e) => {
                       table.setPageSize(Number(e.target.value));
                     }}
-                    className="border border-[#E2E8F0] dark:border-[#262831] rounded px-2 py-1 text-sm bg-transparent dark:bg-[#1a2a43] dark:text-white"
+                    className="border border-[#E2E8F0] dark:border-[#262831] rounded px-2 py-1 text-sm bg-transparent dark:bg-[#1a2a43] dark:text-slate-300"
                   >
                   {[10, 20, 50, 100].map((pageSize) => (
                     <option key={pageSize} value={pageSize}>

@@ -1041,10 +1041,10 @@ export const IntegrationsSettings: React.FC = () => {
                       </button>
                     ) : (
                       <button
-                        className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 ${
+                        className={`w-full py-2.5 px-4 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center justify-center gap-2 select-none active:scale-95 disabled:pointer-events-none disabled:opacity-50 outline-none cursor-pointer ${
                           status === 'connected'
-                            ? 'bg-gray-50 dark:bg-gray-800 text-gray-600 hover:bg-gray-100 border border-gray-200'
-                            : 'bg-primary text-primary-foreground hover:shadow-lg'
+                            ? 'bg-white dark:bg-[#1a2a43]/40 text-gray-700 dark:text-gray-200 hover:bg-slate-50 dark:hover:bg-[#1a2a43]/60 border border-blue-500/40 dark:border-blue-500/40'
+                            : 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm'
                         }`}
                       >
                         {status === 'connected' ? 'Manage Settings' : 'Connect Now'}

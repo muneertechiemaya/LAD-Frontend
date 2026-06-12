@@ -599,7 +599,7 @@ export function CallConfiguration({
             <textarea
               value={additionalInstructions}
               onChange={(e) => onAdditionalInstructionsChange(e.target.value)}
-              className="w-full h-24 p-3 pr-12 text-sm border border-gray-200 dark:border-[#262831] rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-[#1a2a43] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-[#7a8ba3]"
+              className="w-full h-24 p-3 pr-12 text-sm border border-gray-200 dark:border-[#262831] rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-[#1a2a43] text-gray-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-[#7a8ba3]"
               placeholder="Enter any additional instructions for the call..."
             />
 
