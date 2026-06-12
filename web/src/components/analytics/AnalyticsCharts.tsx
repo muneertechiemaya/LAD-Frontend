@@ -42,8 +42,8 @@ const FunnelRow = ({
   const width = total > 0 ? Math.max((count / total) * 100, count > 0 ? 4 : 0) : 0;
   return (
     <div className="flex items-center gap-3 mb-3 last:mb-0">
-      <span className="w-20 text-xs font-medium text-slate-600 text-right shrink-0">{label}</span>
-      <div className="flex-1 h-7 bg-slate-100 rounded-full overflow-hidden relative">
+      <span className="w-20 text-xs font-medium text-slate-600 text-right shrink-0 dark:text-slate-300">{label}</span>
+      <div className="flex-1 h-7 bg-slate-100 dark:bg-slate-800/40 rounded-full overflow-hidden relative">
         <div
           className="h-full rounded-full flex items-center justify-end pr-2 transition-all duration-700"
           style={{ width: `${width}%`, background: color }}
@@ -54,8 +54,9 @@ const FunnelRow = ({
         </div>
       </div>
       {pct !== undefined && (
-        <span className="w-12 text-xs font-semibold shrink-0" style={{ color }}>
-          {pct}
+        <span className="w-12 text-xs font-semibold shrink-0 dark:text-white" style={{ color: 'var(--text-color, ' + color + ')' } as React.CSSProperties}>
+          <span className="dark:hidden" style={{ color }}>{pct}</span>
+          <span className="hidden dark:inline text-white">{pct}</span>
         </span>
       )}
     </div>
@@ -98,7 +99,7 @@ export const AnalyticsCharts: React.FC<{ data: AnalyticsChartsData }> = ({ data 
         <Card className="rounded-2xl shadow-sm border border-slate-200 dark:border-[#262831] bg-white dark:bg-[#1a2a43]">
           <CardHeader className="pb-1">
             <CardTitle className="text-base font-bold text-slate-800 dark:text-white">Conversion Funnel</CardTitle>
-            <p className="text-xs text-slate-400 dark:text-[#7a8ba3]">Stage-by-stage drop-off</p>
+            <p className="text-xs text-slate-400 dark:text-slate-300">Stage-by-stage drop-off</p>
           </CardHeader>
           <CardContent className="pt-3">
             {funnel.map((stage, i) => {
@@ -125,7 +126,7 @@ export const AnalyticsCharts: React.FC<{ data: AnalyticsChartsData }> = ({ data 
         <Card className="rounded-2xl shadow-sm border border-slate-200 dark:border-[#262831] bg-white dark:bg-[#1a2a43]">
           <CardHeader className="pb-1">
             <CardTitle className="text-base font-bold text-slate-800 dark:text-white">Step Performance</CardTitle>
-            <p className="text-xs text-slate-400 dark:text-[#7a8ba3]">Success vs errors per step</p>
+            <p className="text-xs text-slate-400 dark:text-slate-300">Success vs errors per step</p>
           </CardHeader>
           <CardContent className="pt-2">
             {hasSteps ? (
@@ -164,7 +165,7 @@ export const AnalyticsCharts: React.FC<{ data: AnalyticsChartsData }> = ({ data 
         <Card className="rounded-2xl shadow-sm border border-slate-200 dark:border-[#262831] bg-white dark:bg-[#1a2a43]">
           <CardHeader className="pb-1">
             <CardTitle className="text-base font-bold text-slate-800 dark:text-white">Lead Status</CardTitle>
-            <p className="text-xs text-slate-400 dark:text-[#7a8ba3]">Current distribution across states</p>
+            <p className="text-xs text-slate-400 dark:text-slate-300">Current distribution across states</p>
           </CardHeader>
           <CardContent className="pt-0">
             <ResponsiveContainer width="100%" height={160}>
@@ -192,7 +193,7 @@ export const AnalyticsCharts: React.FC<{ data: AnalyticsChartsData }> = ({ data 
               {leadStatus.filter(s => s.value > 0).map((s, i) => (
                 <div key={i} className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full shrink-0" style={{ background: s.color }} />
-                  <span className="text-xs text-slate-500 dark:text-[#7a8ba3] truncate">{s.name}</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-300 truncate">{s.name}</span>
                   <span className="text-xs font-bold text-slate-700 dark:text-slate-200 ml-auto">{s.value}</span>
                 </div>
               ))}
@@ -206,7 +207,7 @@ export const AnalyticsCharts: React.FC<{ data: AnalyticsChartsData }> = ({ data 
         <Card className="rounded-2xl shadow-sm border border-slate-200 dark:border-[#262831] bg-white dark:bg-[#1a2a43]">
           <CardHeader className="pb-1">
             <CardTitle className="text-base font-bold text-slate-800 dark:text-white">Channel Comparison</CardTitle>
-            <p className="text-xs text-slate-400 dark:text-[#7a8ba3]">Sent · Connected · Replied across channels</p>
+            <p className="text-xs text-slate-400 dark:text-slate-300">Sent · Connected · Replied across channels</p>
           </CardHeader>
           <CardContent className="pt-2">
             <ResponsiveContainer width="100%" height={180}>
@@ -215,7 +216,7 @@ export const AnalyticsCharts: React.FC<{ data: AnalyticsChartsData }> = ({ data 
                 <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748b' }} className="dark:fill-[#7a8ba3]" tickLine={false} axisLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
                 <Tooltip content={<ChartTooltip />} />
-                <Legend wrapperStyle={{ fontSize: 11, color: '#64748b' }} className="dark:text-[#7a8ba3]" />
+                <Legend wrapperStyle={{ fontSize: 11, color: '#64748b' }} className="dark:text-slate-300" />
                 <Bar dataKey="sent"      name="Sent"      fill={C.navy}   radius={[4,4,0,0]} />
                 <Bar dataKey="connected" name="Connected" fill={C.indigo} radius={[4,4,0,0]} />
                 <Bar dataKey="replied"   name="Replied"   fill={C.green}  radius={[4,4,0,0]} />
