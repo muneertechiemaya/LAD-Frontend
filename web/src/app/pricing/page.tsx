@@ -273,14 +273,14 @@ export default function PricingPage() {
               cells={[<No />, <No />, <No />, <Yes />, <Yes />]} />
           </Section>
 
-          {/* ===== USAGE / CREDIT CALCULATOR ===== */}
+          {/* ===== STACK COST CALCULATOR — Mr LAD vs standalone tools ===== */}
           <div className="ucalc-section">
-            <div className="ucalc-eyebrow"><span>📟 USAGE CALCULATOR</span></div>
-            <h2 className="ucalc-h">Calculate your monthly credits</h2>
-            <p className="ucalc-sub">Adjust the sliders to estimate your credit usage</p>
-            <UsageCalculator onCta={handleGetStarted} />
+            <div className="ucalc-eyebrow"><span>🧮 COST CALCULATOR</span></div>
+            <h2 className="ucalc-h">What would this cost without Mr LAD?</h2>
+            <p className="ucalc-sub">Set your monthly volume across the funnel. We&apos;ll add up what each capability would cost on the leading standalone tools — then compare it to the Mr LAD plan that covers the same scope.</p>
+            <StackCostCalculator onCta={handleGetStarted} />
             <p className="ucalc-foot">
-              All Mr LAD AI usage is metered in credits at <b>$0.10 / credit</b>. Each AI plan includes a monthly credit allowance; beyond it, your pre-paid wallet covers overflow at the same per-action rates shown above. WhatsApp message fees are billed by Meta directly — Mr LAD adds zero markup. Voice estimates assume standard voices unless Premium is toggled.
+              Standalone-tool prices are publicly listed mid-range values as of 2026 (single seat where applicable). Flat-fee tools engage the moment that capability is active (slider &gt; 0). Voice is metered at <b>$0.20/min</b>. WhatsApp message fees are billed directly by Meta on every plan — Mr LAD adds zero markup, ever.
             </p>
           </div>
 
@@ -424,6 +424,9 @@ export default function PricingPage() {
           .pricing-root :global(.ucalc-rec) { margin-top: 18px; background: #fff; border: 1px solid #C9D4F0; border-radius: 10px; padding: 14px 16px; }
           .pricing-root :global(.ucalc-rec small) { display: block; font-size: 12px; color: var(--ink-soft); }
           .pricing-root :global(.ucalc-rec strong) { display: block; font-family: 'Sora', sans-serif; font-size: 18px; font-weight: 700; color: #2E62F0; margin-top: 4px; }
+          .pricing-root :global(.ucalc-save) { display: inline-block; margin-top: 8px; font-size: 12.5px; color: var(--ink); background: var(--teal-soft); border: 1px solid #C8E8E2; padding: 4px 10px; border-radius: 999px; }
+          .pricing-root :global(.ucalc-save b) { font-family: 'Sora', sans-serif; color: var(--teal); }
+          .pricing-root :global(.ucalc-bd-empty) { padding: 14px 0; font-size: 13px; color: var(--ink-soft); font-style: italic; text-align: center; }
           .pricing-root :global(.ucalc-cta) { margin-top: 14px; width: 100%; background: #2E62F0; color: #fff; font-family: 'Sora', sans-serif; font-size: 15px; font-weight: 700; border: none; border-radius: 10px; padding: 13px 0; cursor: pointer; transition: background .15s; }
           .pricing-root :global(.ucalc-cta:hover) { background: #244FCC; }
 
@@ -503,65 +506,86 @@ function Mkt({ children }: { children: React.ReactNode }) {
   return <span className="mkt">{children}</span>;
 }
 
-// ─── Usage (credit) calculator ───────────────────────────────────────────
-// Two-column estimator: slider inputs on the left grouped by capability
-// (Voice / Lead Enrichment / Conversations & Outreach), live credit
-// breakdown + total + recommended plan on the right. Per-action credit
-// costs are the same prices charged by the LAD billing service.
+// ─── Stack-cost calculator (Mr LAD vs standalone tools) ──────────────────
+// Same visual model as the screenshot — slider inputs on the left grouped
+// by capability, live cost breakdown + recommended plan on the right — but
+// the breakdown shows what each capability would cost on the leading
+// STANDALONE tools at the visitor's chosen volume. Mr LAD is anchored to
+// the smallest plan tier that natively covers all active capabilities.
 
-/** Per-action credit costs (matches LAD_backend featureCreditConfig). */
-const CREDITS = {
-  voiceStdPerMin: 3,
-  voicePremPerMin: 4,
-  leadEnrichment: 2,    // per lead with email enriched
-  templateMessage: 5,   // per WhatsApp template send
-  phoneReveal: 10,      // per phone-number reveal
-  waConversation: 1,    // per AI WhatsApp/Instagram conversation turn
-  linkedinAction: 1,    // per LinkedIn connection / message
-  webResearch: 3,       // per per-prospect web research
+/** Mid-range standalone-tool prices (single seat where applicable), USD/mo. */
+const TOOL_COSTS = {
+  voicePerMin:    0.20,  // AI voice (Vapi / Retell / Bland — mid of $0.13–$0.31)
+  voicePerMinPremium: 0.31,
+  prospectDb:     99,    // Sales database — flat per seat (Apollo Pro tier)
+  phoneRevealEach: 0.50, // Phone-number reveal credit
+  linkedinTool:   129,   // LinkedIn outreach tool — flat per seat (mid of $59–$199)
+  emailSender:    79,    // Cold-email sender — flat (mid of $37–$159)
+  waPlatform:     49,    // WhatsApp broadcast platform — flat (mid of $18–$75)
+  aiChatbot:      79,    // AI chatbot add-on — flat
 } as const;
 
-/** Mr LAD plan tiers used for the recommendation, cheapest → most capable. */
-const PLANS = [
-  { key: 'starter', name: 'Starter',     price: 99,  maxCredits: 1000 },
-  { key: 'growth',  name: 'Growth',      price: 199, maxCredits: 2500 },
-  { key: 'scale',   name: 'Scale',       price: 499, maxCredits: 6000 },
-  { key: 'ent',     name: 'Enterprise',  price: null, maxCredits: Infinity },
-] as const;
+/** Mr LAD plan tiers, ordered cheapest → most capable. Mirrors the comparison sections above. */
+type PlanKey = 'broadcast' | 'starter' | 'growth' | 'scale';
+const PLAN_ORDER: PlanKey[] = ['broadcast', 'starter', 'growth', 'scale'];
+const PLAN_INFO: Record<PlanKey, { name: string; price: number }> = {
+  broadcast: { name: 'Broadcast', price: 39 },
+  starter:   { name: 'Starter',   price: 99 },
+  growth:    { name: 'Growth',    price: 199 },
+  scale:     { name: 'Scale',     price: 499 },
+};
 
 function formatNum(n: number) { return Math.round(n).toLocaleString('en-US'); }
-function recommendPlan(total: number) {
-  return PLANS.find(p => total <= p.maxCredits) ?? PLANS[PLANS.length - 1];
+function formatUsd(n: number) { return `$${formatNum(n)}`; }
+/** Returns the highest-required plan from a list of plan requirements. */
+function highestPlan(required: PlanKey[]): PlanKey | null {
+  if (required.length === 0) return null;
+  return PLAN_ORDER[Math.max(...required.map(p => PLAN_ORDER.indexOf(p)))];
 }
 
-function UsageCalculator({ onCta }: { onCta: () => void }) {
+function StackCostCalculator({ onCta }: { onCta: () => void }) {
+  // Defaults chosen to land in a "Scale" recommendation that demonstrates a
+  // meaningful saving on first paint — visitors can dial down from there.
   // ── Voice ────────────────────────────────────────────────────────────
-  const [calls,    setCalls]    = useState(100);
-  const [callLen,  setCallLen]  = useState(5);
+  const [calls,    setCalls]    = useState(200);
+  const [callLen,  setCallLen]  = useState(8);
   const [premium,  setPremium]  = useState(false);
-  // ── Lead enrichment ──────────────────────────────────────────────────
-  const [leads,    setLeads]    = useState(50);
-  const [templates,setTemplates]= useState(25);
-  const [reveals,  setReveals]  = useState(25);
-  // ── Conversations & Outreach ─────────────────────────────────────────
-  const [waConvs,  setWaConvs]  = useState(50);
-  const [liActions,setLiActions]= useState(20);
-  const [research, setResearch] = useState(20);
+  // ── Lead discovery & outreach ────────────────────────────────────────
+  const [prospects, setProspects] = useState(200);
+  const [phoneReveals, setPhoneReveals] = useState(50);
+  const [linkedinActs, setLinkedinActs] = useState(50);
+  const [emails,   setEmails]   = useState(1000);
+  // ── Engagement & conversations ───────────────────────────────────────
+  const [waMessages, setWaMessages]    = useState(500);
+  const [conversations, setConversations] = useState(100);
 
-  const rate         = premium ? CREDITS.voicePremPerMin : CREDITS.voiceStdPerMin;
-  const voiceMins    = calls * callLen;
-  const voiceCredits = voiceMins * rate;
-  const leadCredits     = leads * CREDITS.leadEnrichment;
-  const msgCredits      = templates * CREDITS.templateMessage;
-  const revealCredits   = reveals * CREDITS.phoneReveal;
-  const waCredits       = waConvs * CREDITS.waConversation;
-  const liCredits       = liActions * CREDITS.linkedinAction;
-  const researchCredits = research * CREDITS.webResearch;
-  const outreachCredits = waCredits + liCredits + researchCredits;
-  const total = voiceCredits + leadCredits + msgCredits + revealCredits + outreachCredits;
+  // ── Per-line standalone costs ────────────────────────────────────────
+  const voicePerMin = premium ? TOOL_COSTS.voicePerMinPremium : TOOL_COSTS.voicePerMin;
+  const voiceMins   = calls * callLen;
+  const voiceCost   = voiceMins * voicePerMin;
+  const dbCost      = prospects > 0    ? TOOL_COSTS.prospectDb   : 0;
+  const revealCost  = phoneReveals * TOOL_COSTS.phoneRevealEach;
+  const liCost      = linkedinActs > 0 ? TOOL_COSTS.linkedinTool : 0;
+  const emailCost   = emails > 0       ? TOOL_COSTS.emailSender  : 0;
+  const waCost      = waMessages > 0   ? TOOL_COSTS.waPlatform   : 0;
+  const botCost     = conversations > 0 ? TOOL_COSTS.aiChatbot   : 0;
+  const total = voiceCost + dbCost + revealCost + liCost + emailCost + waCost + botCost;
 
-  const plan = recommendPlan(total);
-  const planLabel = plan.price != null ? `${plan.name} ($${plan.price})` : `${plan.name} (Custom)`;
+  // ── Required Mr LAD plan per capability ──────────────────────────────
+  // Outreach (LinkedIn / email / prospect discovery) needs Starter.
+  // Engagement (AI chatbot / Instagram / inbound conversations) needs Growth.
+  // Voice agent only lives on Scale. WhatsApp broadcasts alone fit Broadcast.
+  const required: PlanKey[] = [];
+  if (voiceMins > 0)                                            required.push('scale');
+  if (conversations > 0)                                        required.push('growth');
+  if (linkedinActs > 0 || emails > 0 || prospects > 0)          required.push('starter');
+  if (waMessages > 0)                                           required.push('broadcast');
+  const planKey = highestPlan(required);
+  const plan    = planKey ? PLAN_INFO[planKey] : null;
+  const planLabel = plan ? `${plan.name} ($${plan.price})` : 'Pick activity to compare →';
+  const ladPrice  = plan ? plan.price : 0;
+  const savings   = Math.max(0, total - ladPrice);
+  const ladCheaper = plan != null && total >= ladPrice;
 
   return (
     <div className="ucalc-grid">
@@ -573,57 +597,79 @@ function UsageCalculator({ onCta }: { onCta: () => void }) {
           <h4>Voice Calls</h4>
           <Slider label="Number of calls per month" min={0} max={500} step={10} value={calls} onChange={setCalls} />
           <Slider label="Average call length (minutes)" min={1} max={30} step={1} value={callLen} onChange={setCallLen} />
-          <CheckRow label={`Use Premium Voice (${CREDITS.voicePremPerMin} cr/min)`} checked={premium} onChange={setPremium} />
+          <CheckRow label={`Use Premium Voice ($${TOOL_COSTS.voicePerMinPremium.toFixed(2)}/min)`} checked={premium} onChange={setPremium} />
         </div>
 
         <div className="ucalc-group ucalc-amber">
-          <h4>Lead Enrichment</h4>
-          <Slider label="Leads with email" min={0} max={500} step={10} value={leads} onChange={setLeads}
-            hint={`${CREDITS.leadEnrichment} credits per lead`} />
-          <Slider label="Template messages" min={0} max={500} step={5} value={templates} onChange={setTemplates}
-            hint={`${CREDITS.templateMessage} credits per message`} />
-          <Slider label="Phone number reveals" min={0} max={200} step={5} value={reveals} onChange={setReveals}
-            hint={`${CREDITS.phoneReveal} credits per phone reveal`} />
+          <h4>Lead Discovery &amp; Outreach</h4>
+          <Slider label="Prospects discovered per month" min={0} max={500} step={10} value={prospects} onChange={setProspects}
+            hint={`Sales database (Apollo / ZoomInfo) — $${TOOL_COSTS.prospectDb} flat once active`} />
+          <Slider label="Phone number reveals" min={0} max={200} step={5} value={phoneReveals} onChange={setPhoneReveals}
+            hint={`$${TOOL_COSTS.phoneRevealEach.toFixed(2)} per reveal`} />
+          <Slider label="LinkedIn connection actions" min={0} max={300} step={10} value={linkedinActs} onChange={setLinkedinActs}
+            hint={`LinkedIn tool (Expandi / Dripify) — $${TOOL_COSTS.linkedinTool} flat once active`} />
+          <Slider label="Cold emails sent" min={0} max={10000} step={100} value={emails} onChange={setEmails}
+            hint={`Email sender (Instantly / Smartlead) — $${TOOL_COSTS.emailSender} flat once active`} />
         </div>
 
         <div className="ucalc-group ucalc-green">
-          <h4>Conversations &amp; Outreach</h4>
-          <Slider label="AI WhatsApp / IG conversations" min={0} max={500} step={10} value={waConvs} onChange={setWaConvs}
-            hint={`${CREDITS.waConversation} credit per conversation turn`} />
-          <Slider label="LinkedIn connection actions" min={0} max={300} step={10} value={liActions} onChange={setLiActions}
-            hint={`${CREDITS.linkedinAction} credit per action`} />
-          <Slider label="Per-prospect web research" min={0} max={200} step={5} value={research} onChange={setResearch}
-            hint={`${CREDITS.webResearch} credits per prospect`} />
+          <h4>Engagement &amp; Conversations</h4>
+          <Slider label="WhatsApp template messages sent" min={0} max={5000} step={50} value={waMessages} onChange={setWaMessages}
+            hint={`Broadcast platform (Wati / AiSensy) — $${TOOL_COSTS.waPlatform} flat once active`} />
+          <Slider label="AI conversations handled (WhatsApp / IG)" min={0} max={1000} step={10} value={conversations} onChange={setConversations}
+            hint={`AI chatbot add-on (respond.io / Wati chatbot) — $${TOOL_COSTS.aiChatbot} flat once active`} />
         </div>
 
       </div>
 
-      {/* ── Live breakdown (right column) ────────────────────────────── */}
+      {/* ── Live cost breakdown (right column) ───────────────────────── */}
       <aside className="ucalc-breakdown">
         <div className="ucalc-bd-head">
-          <h4>Credit Breakdown</h4>
-          <span className="ucalc-bd-ico" aria-hidden>📟</span>
+          <h4>Standalone-tool stack</h4>
+          <span className="ucalc-bd-ico" aria-hidden>🧮</span>
         </div>
 
-        <BLine label="Voice Calls"           sub={`${formatNum(voiceMins)} mins × ${rate} cr/min`} value={voiceCredits} />
-        <BLine label="Lead Enrichment"       sub={`${formatNum(leads)} leads × ${CREDITS.leadEnrichment} cr`}        value={leadCredits} />
-        <BLine label="Template Messages"     sub={`${formatNum(templates)} messages × ${CREDITS.templateMessage} cr`} value={msgCredits} />
-        <BLine label="Phone Reveals"         sub={`${formatNum(reveals)} reveals × ${CREDITS.phoneReveal} cr`}        value={revealCredits} />
-        <BLine label="Conversations & Outreach" sub={`WhatsApp (${waCredits} cr), LinkedIn (${liCredits} cr), Research (${researchCredits} cr)`} value={outreachCredits} />
+        {voiceCost > 0 && (
+          <BLine label="AI voice agent" sub={`${formatNum(voiceMins)} mins × $${voicePerMin.toFixed(2)}/min`} value={formatUsd(voiceCost)} />
+        )}
+        {dbCost > 0 && (
+          <BLine label="Sales database" sub={`Flat seat fee — ${formatNum(prospects)} prospects / mo`} value={formatUsd(dbCost)} />
+        )}
+        {revealCost > 0 && (
+          <BLine label="Phone-reveal credits" sub={`${formatNum(phoneReveals)} reveals × $${TOOL_COSTS.phoneRevealEach.toFixed(2)}`} value={formatUsd(revealCost)} />
+        )}
+        {liCost > 0 && (
+          <BLine label="LinkedIn outreach tool" sub={`Flat seat fee — ${formatNum(linkedinActs)} actions / mo`} value={formatUsd(liCost)} />
+        )}
+        {emailCost > 0 && (
+          <BLine label="Cold-email sender" sub={`Flat fee — ${formatNum(emails)} emails / mo`} value={formatUsd(emailCost)} />
+        )}
+        {waCost > 0 && (
+          <BLine label="WhatsApp broadcast platform" sub={`Flat fee — ${formatNum(waMessages)} templates / mo`} value={formatUsd(waCost)} />
+        )}
+        {botCost > 0 && (
+          <BLine label="AI chatbot add-on" sub={`Flat fee — ${formatNum(conversations)} conversations / mo`} value={formatUsd(botCost)} />
+        )}
+        {total === 0 && (
+          <div className="ucalc-bd-empty">Adjust a slider to see the standalone-tool cost build up here.</div>
+        )}
 
         <hr className="ucalc-bd-rule" />
 
         <div className="ucalc-total">
           <div>
-            <div className="ucalc-total-label">Total Credits Needed</div>
-            <small>Monthly credit usage estimate</small>
+            <div className="ucalc-total-label">Standalone stack total</div>
+            <small>Monthly cost across the tools above</small>
           </div>
-          <b className="ucalc-total-val">{formatNum(total)}</b>
+          <b className="ucalc-total-val">{total === 0 ? '$0' : formatUsd(total)}</b>
         </div>
 
         <div className="ucalc-rec">
-          <small>Recommended Plan:</small>
+          <small>Mr LAD plan that covers this scope:</small>
           <strong>{planLabel}</strong>
+          {ladCheaper && savings > 0 && (
+            <span className="ucalc-save">You save <b>{formatUsd(savings)}/mo</b></span>
+          )}
         </div>
 
         <button type="button" className="ucalc-cta" onClick={onCta}>Get Started</button>
@@ -664,15 +710,15 @@ function CheckRow({ label, checked, onChange }: {
   );
 }
 
-/** One line of the credit breakdown panel. */
-function BLine({ label, sub, value }: { label: string; sub: string; value: number }) {
+/** One line of the standalone-tool cost panel. `value` is pre-formatted ($X). */
+function BLine({ label, sub, value }: { label: string; sub: string; value: string }) {
   return (
     <div className="ucalc-bd-row">
       <div>
         <div className="ucalc-bd-label">{label}</div>
         <small>{sub}</small>
       </div>
-      <b>{formatNum(value)} cr</b>
+      <b>{value}</b>
     </div>
   );
 }
