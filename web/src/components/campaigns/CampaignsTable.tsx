@@ -197,7 +197,7 @@ export default function CampaignsTable({ campaigns, loading, onMenuOpen }: Campa
       <div className="p-4 border-b border-[#E2E8F0] dark:border-[#262831] bg-[#F8FAFC] dark:bg-[#000724]">
         <div className="flex gap-2 sm:gap-3 flex-row justify-between items-center">
           <div className="relative flex-1 sm:min-w-[300px]">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#64748B] dark:text-[#7a8ba3] h-4 w-4" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#64748B] dark:text-slate-300 h-4 w-4" />
             <Input
               placeholder="Search campaigns..."
               value={searchQuery}
@@ -288,7 +288,7 @@ export default function CampaignsTable({ campaigns, loading, onMenuOpen }: Campa
           </div>
         ) : filteredCampaigns.length === 0 ? (
           <div className="p-4 text-center">
-            <p className="text-[#64748B] dark:text-[#7a8ba3] mb-2">
+            <p className="text-[#64748B] dark:text-slate-300 mb-2">
               No campaigns found
             </p>
             <Button
@@ -340,7 +340,7 @@ export default function CampaignsTable({ campaigns, loading, onMenuOpen }: Campa
               <TableBody>
                 {table.getRowModel().rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={columns.length} className="text-center py-8 text-[#64748B] dark:text-[#7a8ba3]">
+                    <TableCell colSpan={columns.length} className="text-center py-8 text-[#64748B] dark:text-slate-300">
                       No campaigns found
                     </TableCell>
                   </TableRow>
@@ -367,7 +367,7 @@ export default function CampaignsTable({ campaigns, loading, onMenuOpen }: Campa
             {/* Pagination Controls */}
             {filteredCampaigns.length > 0 && (
               <div className="flex items-center justify-between px-2 xs:px-4 py-3 gap-2 border-t border-[#E2E8F0] dark:border-[#262831] bg-[#F8FAFC] dark:bg-[#000724]">
-                <div className="flex items-center gap-2 text-xs xs:text-sm text-[#64748B] dark:text-[#7a8ba3]">
+                <div className="flex items-center gap-2 text-xs xs:text-sm text-[#64748B] dark:text-slate-300">
                   <span>Show</span>
                   <select
                     value={table.getState().pagination.pageSize}
@@ -388,7 +388,7 @@ export default function CampaignsTable({ campaigns, loading, onMenuOpen }: Campa
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  <div className="text-[10px] xs:text-xs sm:text-sm text-[#64748B] dark:text-[#7a8ba3] whitespace-nowrap">
+                  <div className="text-[10px] xs:text-xs sm:text-sm text-[#64748B] dark:text-slate-300 whitespace-nowrap">
                     Page {table.getState().pagination.pageIndex + 1} of{' '}
                     {table.getPageCount()}
                   </div>

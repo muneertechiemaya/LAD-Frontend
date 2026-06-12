@@ -144,7 +144,18 @@ export const AnalyticsCharts: React.FC<{ data: AnalyticsChartsData }> = ({ data 
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" className="dark:stroke-[#262831]" horizontal={false} />
                   <XAxis type="number" tick={{ fontSize: 9, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
-                  <YAxis type="category" dataKey="name" tick={{ fontSize: 9, fill: '#64748b' }} tickLine={false} axisLine={false} width={64} className="dark:fill-[#7a8ba3]" />
+                  <YAxis
+                      type="category"
+                      dataKey="name"
+                      tick={{
+                        fontSize: 9,
+                        fill: 'currentColor'
+                      }}
+                      tickLine={false}
+                      axisLine={false}
+                      width={64}
+                      className="text-slate-500 dark:text-slate-300"
+                  />
                   <Tooltip content={<ChartTooltip />} />
                   <Bar dataKey="Sent"      fill={C.navy}   radius={[0,3,3,0]} stackId="a" />
                   <Bar dataKey="Connected" fill={C.indigo} radius={[0,3,3,0]} stackId="b" />
