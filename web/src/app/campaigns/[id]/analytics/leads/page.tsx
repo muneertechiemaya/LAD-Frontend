@@ -501,7 +501,7 @@ export default function CampaignLeadsPage() {
               <h4 className="text-2xl font-bold text-slate-800 dark:text-white mb-1">
                 {campaign?.name || 'Campaign Leads'}
               </h4>
-              <p className="text-sm text-slate-500 dark:text-[#7a8ba3]">
+              <p className="text-sm text-slate-500 dark:text-slate-300">
                 {filteredLeads.length} {filterParams !== 'all' ? filterParams : ''} leads
               </p>
             </div>
@@ -521,7 +521,7 @@ export default function CampaignLeadsPage() {
               onClick={() => router.push(`/campaigns/${campaignId}/analytics/leads?filter=${tab.key}`)}
               className={`px-4 py-1.5 rounded-full text-sm font-semibold border transition-all ${filterParams === tab.key
                   ? 'bg-[#0b1957] text-white border-[#0b1957] shadow-sm'
-                  : 'bg-white dark:bg-[#1a2a43] text-slate-600 dark:text-[#7a8ba3] border-slate-200 dark:border-[#262831] hover:border-[#0b1957] hover:text-[#0b1957]'
+                  : 'bg-white dark:bg-[#1a2a43] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-[#262831] hover:border-[#0b1957] hover:text-[#0b1957]'
                 }`}
             >
               {tab.label}
@@ -600,7 +600,7 @@ export default function CampaignLeadsPage() {
                     <div className="flex gap-1.5 mt-2 px-1">
                       <button
                         onClick={() => openFollowupDialog(lead as ExtendedCampaignLead, 'linkedin')}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-[#0b1957] text-white text-xs font-semibold hover:bg-[#1a2d8f] active:scale-95 transition-all shadow-sm"
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-[#0b1957] dark:bg-primary text-white dark:text-primary-foreground text-xs font-semibold hover:bg-[#1a2d8f] dark:hover:bg-primary/90 active:scale-95 transition-all shadow-sm cursor-pointer"
                       >
                         <Linkedin className="w-3.5 h-3.5" />
                         Follow-up
@@ -608,14 +608,14 @@ export default function CampaignLeadsPage() {
                       <button
                         onClick={() => openFollowupDialog(lead as ExtendedCampaignLead, 'email')}
                         title="Email follow-up"
-                        className="flex items-center justify-center w-9 rounded-xl bg-slate-200 text-slate-600 hover:bg-slate-300 active:scale-95 transition-all shadow-sm"
+                        className="flex items-center justify-center w-9 rounded-xl bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 active:scale-95 transition-all shadow-sm cursor-pointer"
                       >
                         <Mail className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => openFollowupDialog(lead as ExtendedCampaignLead, 'whatsapp')}
                         title="WhatsApp follow-up"
-                        className="flex items-center justify-center w-9 rounded-xl bg-green-100 text-green-700 hover:bg-green-200 active:scale-95 transition-all shadow-sm"
+                        className="flex items-center justify-center w-9 rounded-xl bg-green-50 dark:bg-green-950/30 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-950/50 active:scale-95 transition-all shadow-sm cursor-pointer"
                       >
                         <MessageCircle className="w-3.5 h-3.5" />
                       </button>

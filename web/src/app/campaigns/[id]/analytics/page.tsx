@@ -430,7 +430,7 @@ export default function CampaignAnalyticsPage() {
               {analytics.campaign.status}
             </Badge>
             <LiveBadge isConnected={isConnected} showOffline className="font-semibold" />
-            <p className="text-sm text-[#64748B] dark:text-[#7a8ba3]">Created {new Date(analytics.campaign.created_at).toLocaleDateString()}</p>
+            <p className="text-sm text-[#64748B] dark:text-slate-300">Created {new Date(analytics.campaign.created_at).toLocaleDateString()}</p>
           </div>
         </div>
         <div className="flex gap-3 items-start">
@@ -470,7 +470,7 @@ export default function CampaignAnalyticsPage() {
                   </Avatar>
                 </div>
                 <div className="flex-1 flex flex-col justify-end">
-                  <p className="text-sm text-slate-500 dark:text-[#7a8ba3] mb-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                  <p className="text-sm text-slate-500 dark:text-slate-300 mb-1 overflow-hidden text-ellipsis whitespace-nowrap">
                     Total Leads
                   </p>
                   <h5 className="text-2xl font-bold text-slate-800 dark:text-white">
@@ -498,10 +498,10 @@ export default function CampaignAnalyticsPage() {
                   </Avatar>
                 </div>
                 <div className="flex-1 flex flex-col justify-end">
-                  <p className="text-sm text-slate-500 dark:text-[#7a8ba3] mb-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                  <p className="text-sm text-slate-500 dark:text-slate-300 mb-1 overflow-hidden text-ellipsis whitespace-nowrap">
                     {sentLabel}
                   </p>
-                  <h5 className="text-2xl font-bold text-slate-800 dark:text-white">
+                  <h5 className="text-2xl font-bold text-slate-800 dark:text-slate-300">
                     {primarySentCount}
                   </h5>
                 </div>
@@ -526,7 +526,7 @@ export default function CampaignAnalyticsPage() {
                   </Avatar>
                 </div>
                 <div className="flex-1 flex flex-col justify-end">
-                  <p className="text-sm text-slate-500 dark:text-[#7a8ba3] mb-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                  <p className="text-sm text-slate-500 dark:text-slate-300 mb-1 overflow-hidden text-ellipsis whitespace-nowrap">
                     Connected
                   </p>
                   <h5 className="text-2xl font-bold text-slate-800 dark:text-white">
@@ -554,7 +554,7 @@ export default function CampaignAnalyticsPage() {
                   </Avatar>
                 </div>
                 <div className="flex-1 flex flex-col justify-end">
-                  <p className="text-sm text-slate-500 dark:text-[#7a8ba3] mb-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                  <p className="text-sm text-slate-500 dark:text-slate-300 mb-1 overflow-hidden text-ellipsis whitespace-nowrap">
                     Lead Contact Back
                   </p>
                   <h5 className="text-2xl font-bold text-slate-800 dark:text-white">
@@ -563,7 +563,7 @@ export default function CampaignAnalyticsPage() {
                   {/* Follow-ups sent sub-stat */}
                   <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                     <Sparkles className="w-3.5 h-3.5 text-violet-500 flex-shrink-0" />
-                    <span className="text-xs text-slate-500 dark:text-[#7a8ba3]">Follow-ups sent:</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-300">Follow-ups sent:</span>
                     <span className="text-sm font-bold text-violet-600 dark:text-violet-400">{totalFollowupsSent}</span>
                   </div>
                 </div>
@@ -596,7 +596,7 @@ export default function CampaignAnalyticsPage() {
             </div>
             <div className="text-left">
               <p className="font-bold text-[#1E293B] dark:text-white text-base">Send Follow-up</p>
-              <p className="text-xs text-slate-500 dark:text-[#7a8ba3]">Select leads → choose channel → AI generates personalised messages and sends</p>
+              <p className="text-xs text-slate-500 dark:text-slate-300">Select leads → choose channel → AI generates personalised messages and sends</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -790,7 +790,7 @@ export default function CampaignAnalyticsPage() {
           </Avatar>
           <div className="flex-1">
             <h5 className="text-xl font-bold text-[#1E293B] dark:text-white">Visual Analytics</h5>
-            <p className="text-sm text-[#64748B] dark:text-[#7a8ba3]">Charts and graphs for deeper insights</p>
+            <p className="text-sm text-[#64748B] dark:text-slate-300">Charts and graphs for deeper insights</p>
           </div>
           <LiveBadge isConnected={isConnected} className="font-semibold animate-pulse text-xs" />
         </div>
@@ -823,7 +823,7 @@ export default function CampaignAnalyticsPage() {
                 </Avatar>
                 <div className="flex-1">
                   <h6 className="text-lg font-bold text-[#1E293B] dark:text-white">Channel Performance</h6>
-                  <p className="text-xs text-[#64748B] dark:text-[#7a8ba3]">Active channels</p>
+                  <p className="text-xs text-[#64748B] dark:text-slate-300">Active channels</p>
                 </div>
                 <LiveBadge isConnected={isConnected} className="font-semibold animate-pulse text-xs" />
               </div>
@@ -853,7 +853,7 @@ export default function CampaignAnalyticsPage() {
                           </Avatar>
                           <div>
                             <p className="text-sm font-semibold text-[#1E293B] dark:text-white">{config.name}</p>
-                            <p className="text-xs text-[#64748B] dark:text-[#7a8ba3]">{item.actions > 0 ? 'Active' : 'Ready'}</p>
+                            <p className="text-xs text-[#64748B] dark:text-slate-300">{item.actions > 0 ? 'Active' : 'Ready'}</p>
                           </div>
                         </div>
                       </div>
@@ -861,25 +861,25 @@ export default function CampaignAnalyticsPage() {
                       <div className="grid grid-cols-4 gap-2 mb-3">
                         <div className="text-center">
                           <p className="text-lg font-bold dark:text-blue-400" style={{ color: config.color }}>{item.actions}</p>
-                          <p className="text-xs text-[#64748B] dark:text-[#7a8ba3]">Actions</p>
+                          <p className="text-xs text-[#64748B] dark:text-slate-300">Actions</p>
                         </div>
                         <div className="text-center">
                           <p className="text-lg font-bold text-green-600 dark:text-emerald-400">{item.sent}</p>
-                          <p className="text-xs text-[#64748B] dark:text-[#7a8ba3]">Sent</p>
+                          <p className="text-xs text-[#64748B] dark:text-slate-300">Sent</p>
                         </div>
                         <div className="text-center">
                           <p className="text-lg font-bold text-blue-600 dark:text-sky-400">{item.connected}</p>
-                          <p className="text-xs text-[#64748B] dark:text-[#7a8ba3]">Connected</p>
+                          <p className="text-xs text-[#64748B] dark:text-slate-300">Connected</p>
                         </div>
                         <div className="text-center">
                           <p className="text-lg font-bold text-violet-600 dark:text-violet-400">{totalFollowupsSent}</p>
-                          <p className="text-xs text-[#64748B] dark:text-[#7a8ba3]">Follow-ups</p>
+                          <p className="text-xs text-[#64748B] dark:text-slate-300">Follow-ups</p>
                         </div>
                       </div>
 
                       <div>
                         <div className="flex justify-between mb-1">
-                          <p className="text-xs text-[#64748B] dark:text-[#7a8ba3]">Success Rate</p>
+                          <p className="text-xs text-[#64748B] dark:text-slate-300">Success Rate</p>
                           <p className="text-xs font-bold dark:text-blue-400" style={{ color: config.color }}>{safeRate.toFixed(1)}%</p>
                         </div>
                         <div className="relative h-1.5 rounded-full bg-slate-200 dark:bg-slate-800">
@@ -909,7 +909,7 @@ export default function CampaignAnalyticsPage() {
               </Avatar>
               <div className="flex-1">
                 <h6 className="text-lg font-bold text-[#1E293B] dark:text-white">Outreach Metrics</h6>
-                <p className="text-xs text-[#64748B] dark:text-[#7a8ba3]">Message tracking</p>
+                <p className="text-xs text-[#64748B] dark:text-slate-300">Message tracking</p>
               </div>
               <LiveBadge isConnected={isConnected} className="font-semibold animate-pulse text-xs" />
             </div>
@@ -927,7 +927,7 @@ export default function CampaignAnalyticsPage() {
                     <Avatar className="w-9 h-9 dark:!bg-blue-500/20" style={{ backgroundColor: `${metric.color}20` }}>
                       <AvatarFallback className="bg-transparent"><metric.icon className="w-4 h-4 dark:!text-blue-400" style={{ color: metric.color }} /></AvatarFallback>
                     </Avatar>
-                    <p className="text-[#64748B] dark:text-[#7a8ba3]">{metric.label}</p>
+                    <p className="text-[#64748B] dark:text-slate-300">{metric.label}</p>
                   </div>
                   <h6 className="text-lg font-bold text-[#1E293B] dark:text-white">{metric.value}</h6>
                 </div>
@@ -944,7 +944,7 @@ export default function CampaignAnalyticsPage() {
               </Avatar>
               <div className="flex-1">
                 <h6 className="text-lg font-bold text-[#1E293B] dark:text-white">Performance Rates</h6>
-                <p className="text-xs text-[#64748B] dark:text-[#7a8ba3]">Success percentages</p>
+                <p className="text-xs text-[#64748B] dark:text-slate-300">Success percentages</p>
               </div>
               <LiveBadge isConnected={isConnected} className="font-semibold animate-pulse text-xs" />
             </div>
@@ -958,7 +958,7 @@ export default function CampaignAnalyticsPage() {
               ].map((rate) => (
                 <div key={rate.label}>
                   <div className="flex justify-between mb-2">
-                    <p className="text-[#64748B] dark:text-[#7a8ba3]">{rate.label}</p>
+                    <p className="text-[#64748B] dark:text-slate-300">{rate.label}</p>
                     <p className="font-bold dark:text-blue-400" style={{ color: rate.color }}>{rate.value.toFixed(1)}%</p>
                   </div>
                   <div className="relative h-2.5 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-800/80">
