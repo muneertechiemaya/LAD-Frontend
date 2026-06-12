@@ -385,9 +385,12 @@ export default function PricingPage() {
           /* Input groups — pastel tinted boxes */
           .pricing-root :global(.ucalc-inputs) { display: flex; flex-direction: column; gap: 18px; }
           .pricing-root :global(.ucalc-group) { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 22px 24px; }
-          .pricing-root :global(.ucalc-group.ucalc-blue)  { background: #EEF3FE; border-color: #DCE6FD; }
-          .pricing-root :global(.ucalc-group.ucalc-amber) { background: #FDF4E3; border-color: #F6E6C6; }
-          .pricing-root :global(.ucalc-group.ucalc-green) { background: #E8F6EC; border-color: #CFE9D6; }
+          /* Pillar tints — match the page's pillar colors:
+             Outreach=blue, Engage=green, Analyse=amber, Convert=purple. */
+          .pricing-root :global(.ucalc-group.ucalc-blue)   { background: #EEF3FE; border-color: #DCE6FD; }
+          .pricing-root :global(.ucalc-group.ucalc-green)  { background: #E8F6EC; border-color: #CFE9D6; }
+          .pricing-root :global(.ucalc-group.ucalc-amber)  { background: #FDF4E3; border-color: #F6E6C6; }
+          .pricing-root :global(.ucalc-group.ucalc-purple) { background: #F1EBFA; border-color: #DCD0F0; }
           .pricing-root :global(.ucalc-group h4) { font-family: 'Sora', sans-serif; font-size: 17px; font-weight: 700; color: var(--ink); margin: 0 0 18px; }
 
           /* Sliders */
@@ -515,14 +518,22 @@ function Mkt({ children }: { children: React.ReactNode }) {
 
 /** Mid-range standalone-tool prices (single seat where applicable), USD/mo. */
 const TOOL_COSTS = {
-  voicePerMin:    0.20,  // AI voice (Vapi / Retell / Bland — mid of $0.13–$0.31)
+  // ── Outreach ────────────────────────────────────────────────────────
+  prospectDb:        99,   // Sales database — flat per seat (Apollo Pro tier)
+  phoneRevealEach:   0.50, // Phone-number reveal credit
+  linkedinTool:      129,  // LinkedIn outreach tool (Expandi / Dripify, mid of $59–$199)
+  emailSender:       79,   // Cold-email sender (Instantly / Smartlead, mid of $37–$159)
+  // ── Engage ──────────────────────────────────────────────────────────
+  waPlatform:        49,   // WhatsApp broadcast (Wati / AiSensy, mid of $18–$75)
+  aiChatbot:         79,   // AI chatbot add-on (respond.io / Wati chatbot)
+  igAutomation:      35,   // Instagram DM automation (ManyChat / Chatfuel)
+  // ── Analyse ─────────────────────────────────────────────────────────
+  attribution:       300,  // Multi-channel attribution (Triple Whale / Northbeam, mid of $250–$500)
+  convIntelPerSeat:  99,   // Conversation intelligence (Gong Lite, mid of $79–$199)
+  // ── Convert ─────────────────────────────────────────────────────────
+  voicePerMin:        0.20, // AI voice (Vapi / Retell / Bland, mid of $0.13–$0.31)
   voicePerMinPremium: 0.31,
-  prospectDb:     99,    // Sales database — flat per seat (Apollo Pro tier)
-  phoneRevealEach: 0.50, // Phone-number reveal credit
-  linkedinTool:   129,   // LinkedIn outreach tool — flat per seat (mid of $59–$199)
-  emailSender:    79,    // Cold-email sender — flat (mid of $37–$159)
-  waPlatform:     49,    // WhatsApp broadcast platform — flat (mid of $18–$75)
-  aiChatbot:      79,    // AI chatbot add-on — flat
+  crmPerSeat:         49,   // CRM seat (HubSpot / Salesforce, mid of $25–$99)
 } as const;
 
 /** Mr LAD plan tiers, ordered cheapest → most capable. Mirrors the comparison sections above. */
@@ -544,41 +555,64 @@ function highestPlan(required: PlanKey[]): PlanKey | null {
 }
 
 function StackCostCalculator({ onCta }: { onCta: () => void }) {
-  // Defaults chosen to land in a "Scale" recommendation that demonstrates a
-  // meaningful saving on first paint — visitors can dial down from there.
-  // ── Voice ────────────────────────────────────────────────────────────
+  // Sliders are now grouped by the four product pillars — Outreach,
+  // Engage, Analyse, Convert — matching the comparison sections above.
+  // Defaults land in a "Scale" recommendation so the saving is visible on
+  // first paint; visitors can dial individual pillars down or up.
+
+  // ── Outreach ─────────────────────────────────────────────────────────
+  const [prospects,    setProspects]    = useState(200);
+  const [phoneReveals, setPhoneReveals] = useState(50);
+  const [linkedinActs, setLinkedinActs] = useState(50);
+  const [emails,       setEmails]       = useState(1000);
+  // ── Engage ───────────────────────────────────────────────────────────
+  const [waMessages,    setWaMessages]    = useState(500);
+  const [conversations, setConversations] = useState(100);
+  const [igAutomations, setIgAutomations] = useState(50);
+  // ── Analyse ──────────────────────────────────────────────────────────
+  const [attrChannels,  setAttrChannels]  = useState(4);
+  const [convIntelSeats,setConvIntelSeats]= useState(2);
+  // ── Convert ──────────────────────────────────────────────────────────
   const [calls,    setCalls]    = useState(200);
   const [callLen,  setCallLen]  = useState(8);
   const [premium,  setPremium]  = useState(false);
-  // ── Lead discovery & outreach ────────────────────────────────────────
-  const [prospects, setProspects] = useState(200);
-  const [phoneReveals, setPhoneReveals] = useState(50);
-  const [linkedinActs, setLinkedinActs] = useState(50);
-  const [emails,   setEmails]   = useState(1000);
-  // ── Engagement & conversations ───────────────────────────────────────
-  const [waMessages, setWaMessages]    = useState(500);
-  const [conversations, setConversations] = useState(100);
+  const [crmSeats, setCrmSeats] = useState(3);
 
   // ── Per-line standalone costs ────────────────────────────────────────
+  // Outreach
+  const dbCost     = prospects > 0    ? TOOL_COSTS.prospectDb     : 0;
+  const revealCost = phoneReveals * TOOL_COSTS.phoneRevealEach;
+  const liCost     = linkedinActs > 0 ? TOOL_COSTS.linkedinTool   : 0;
+  const emailCost  = emails > 0       ? TOOL_COSTS.emailSender    : 0;
+  // Engage
+  const waCost  = waMessages > 0    ? TOOL_COSTS.waPlatform    : 0;
+  const botCost = conversations > 0 ? TOOL_COSTS.aiChatbot     : 0;
+  const igCost  = igAutomations > 0 ? TOOL_COSTS.igAutomation  : 0;
+  // Analyse
+  const attrCost     = attrChannels > 0 ? TOOL_COSTS.attribution : 0;
+  const convIntelCost = convIntelSeats * TOOL_COSTS.convIntelPerSeat;
+  // Convert
   const voicePerMin = premium ? TOOL_COSTS.voicePerMinPremium : TOOL_COSTS.voicePerMin;
   const voiceMins   = calls * callLen;
   const voiceCost   = voiceMins * voicePerMin;
-  const dbCost      = prospects > 0    ? TOOL_COSTS.prospectDb   : 0;
-  const revealCost  = phoneReveals * TOOL_COSTS.phoneRevealEach;
-  const liCost      = linkedinActs > 0 ? TOOL_COSTS.linkedinTool : 0;
-  const emailCost   = emails > 0       ? TOOL_COSTS.emailSender  : 0;
-  const waCost      = waMessages > 0   ? TOOL_COSTS.waPlatform   : 0;
-  const botCost     = conversations > 0 ? TOOL_COSTS.aiChatbot   : 0;
-  const total = voiceCost + dbCost + revealCost + liCost + emailCost + waCost + botCost;
+  const crmCost     = crmSeats * TOOL_COSTS.crmPerSeat;
 
-  // ── Required Mr LAD plan per capability ──────────────────────────────
-  // Outreach (LinkedIn / email / prospect discovery) needs Starter.
-  // Engagement (AI chatbot / Instagram / inbound conversations) needs Growth.
-  // Voice agent only lives on Scale. WhatsApp broadcasts alone fit Broadcast.
+  const total =
+    dbCost + revealCost + liCost + emailCost +
+    waCost + botCost + igCost +
+    attrCost + convIntelCost +
+    voiceCost + crmCost;
+
+  // ── Required Mr LAD plan per pillar/capability ───────────────────────
+  // Voice is Scale-only. Engage AI agents + Instagram + multi-channel
+  // analytics need Growth. Outreach + CRM seats need Starter. WhatsApp
+  // broadcasts alone fit Broadcast.
   const required: PlanKey[] = [];
   if (voiceMins > 0)                                            required.push('scale');
-  if (conversations > 0)                                        required.push('growth');
-  if (linkedinActs > 0 || emails > 0 || prospects > 0)          required.push('starter');
+  if (conversations > 0 || igAutomations > 0 ||
+      attrChannels > 0 || convIntelSeats > 0)                   required.push('growth');
+  if (linkedinActs > 0 || emails > 0 ||
+      prospects > 0 || crmSeats > 0)                            required.push('starter');
   if (waMessages > 0)                                           required.push('broadcast');
   const planKey = highestPlan(required);
   const plan    = planKey ? PLAN_INFO[planKey] : null;
@@ -590,18 +624,11 @@ function StackCostCalculator({ onCta }: { onCta: () => void }) {
   return (
     <div className="ucalc-grid">
 
-      {/* ── Inputs (left column) ─────────────────────────────────────── */}
+      {/* ── Inputs (left column) — grouped by product pillar ─────────── */}
       <div className="ucalc-inputs">
 
         <div className="ucalc-group ucalc-blue">
-          <h4>Voice Calls</h4>
-          <Slider label="Number of calls per month" min={0} max={500} step={10} value={calls} onChange={setCalls} />
-          <Slider label="Average call length (minutes)" min={1} max={30} step={1} value={callLen} onChange={setCallLen} />
-          <CheckRow label={`Use Premium Voice ($${TOOL_COSTS.voicePerMinPremium.toFixed(2)}/min)`} checked={premium} onChange={setPremium} />
-        </div>
-
-        <div className="ucalc-group ucalc-amber">
-          <h4>Lead Discovery &amp; Outreach</h4>
+          <h4>Outreach</h4>
           <Slider label="Prospects discovered per month" min={0} max={500} step={10} value={prospects} onChange={setProspects}
             hint={`Sales database (Apollo / ZoomInfo) — $${TOOL_COSTS.prospectDb} flat once active`} />
           <Slider label="Phone number reveals" min={0} max={200} step={5} value={phoneReveals} onChange={setPhoneReveals}
@@ -613,11 +640,30 @@ function StackCostCalculator({ onCta }: { onCta: () => void }) {
         </div>
 
         <div className="ucalc-group ucalc-green">
-          <h4>Engagement &amp; Conversations</h4>
+          <h4>Engage</h4>
           <Slider label="WhatsApp template messages sent" min={0} max={5000} step={50} value={waMessages} onChange={setWaMessages}
             hint={`Broadcast platform (Wati / AiSensy) — $${TOOL_COSTS.waPlatform} flat once active`} />
           <Slider label="AI conversations handled (WhatsApp / IG)" min={0} max={1000} step={10} value={conversations} onChange={setConversations}
             hint={`AI chatbot add-on (respond.io / Wati chatbot) — $${TOOL_COSTS.aiChatbot} flat once active`} />
+          <Slider label="Instagram DM automations" min={0} max={500} step={10} value={igAutomations} onChange={setIgAutomations}
+            hint={`IG automation (ManyChat / Chatfuel) — $${TOOL_COSTS.igAutomation} flat once active`} />
+        </div>
+
+        <div className="ucalc-group ucalc-amber">
+          <h4>Analyse</h4>
+          <Slider label="Marketing channels to attribute" min={0} max={10} step={1} value={attrChannels} onChange={setAttrChannels}
+            hint={`Attribution platform (Triple Whale / Northbeam) — $${TOOL_COSTS.attribution} flat once active`} />
+          <Slider label="Conversation-intelligence seats" min={0} max={20} step={1} value={convIntelSeats} onChange={setConvIntelSeats}
+            hint={`Gong Lite / Chorus — $${TOOL_COSTS.convIntelPerSeat} per seat / mo`} />
+        </div>
+
+        <div className="ucalc-group ucalc-purple">
+          <h4>Convert</h4>
+          <Slider label="Number of voice calls per month" min={0} max={500} step={10} value={calls} onChange={setCalls} />
+          <Slider label="Average call length (minutes)" min={1} max={30} step={1} value={callLen} onChange={setCallLen} />
+          <CheckRow label={`Use Premium Voice ($${TOOL_COSTS.voicePerMinPremium.toFixed(2)}/min)`} checked={premium} onChange={setPremium} />
+          <Slider label="Sales team CRM seats" min={0} max={20} step={1} value={crmSeats} onChange={setCrmSeats}
+            hint={`CRM (HubSpot / Salesforce / Pipedrive) — $${TOOL_COSTS.crmPerSeat} per seat / mo`} />
         </div>
 
       </div>
@@ -629,9 +675,7 @@ function StackCostCalculator({ onCta }: { onCta: () => void }) {
           <span className="ucalc-bd-ico" aria-hidden>🧮</span>
         </div>
 
-        {voiceCost > 0 && (
-          <BLine label="AI voice agent" sub={`${formatNum(voiceMins)} mins × $${voicePerMin.toFixed(2)}/min`} value={formatUsd(voiceCost)} />
-        )}
+        {/* Outreach */}
         {dbCost > 0 && (
           <BLine label="Sales database" sub={`Flat seat fee — ${formatNum(prospects)} prospects / mo`} value={formatUsd(dbCost)} />
         )}
@@ -644,11 +688,29 @@ function StackCostCalculator({ onCta }: { onCta: () => void }) {
         {emailCost > 0 && (
           <BLine label="Cold-email sender" sub={`Flat fee — ${formatNum(emails)} emails / mo`} value={formatUsd(emailCost)} />
         )}
+        {/* Engage */}
         {waCost > 0 && (
           <BLine label="WhatsApp broadcast platform" sub={`Flat fee — ${formatNum(waMessages)} templates / mo`} value={formatUsd(waCost)} />
         )}
         {botCost > 0 && (
           <BLine label="AI chatbot add-on" sub={`Flat fee — ${formatNum(conversations)} conversations / mo`} value={formatUsd(botCost)} />
+        )}
+        {igCost > 0 && (
+          <BLine label="Instagram DM automation" sub={`Flat fee — ${formatNum(igAutomations)} automations / mo`} value={formatUsd(igCost)} />
+        )}
+        {/* Analyse */}
+        {attrCost > 0 && (
+          <BLine label="Multi-channel attribution" sub={`Flat fee — ${formatNum(attrChannels)} channels tracked`} value={formatUsd(attrCost)} />
+        )}
+        {convIntelCost > 0 && (
+          <BLine label="Conversation intelligence" sub={`${formatNum(convIntelSeats)} seats × $${TOOL_COSTS.convIntelPerSeat}`} value={formatUsd(convIntelCost)} />
+        )}
+        {/* Convert */}
+        {voiceCost > 0 && (
+          <BLine label="AI voice agent" sub={`${formatNum(voiceMins)} mins × $${voicePerMin.toFixed(2)}/min`} value={formatUsd(voiceCost)} />
+        )}
+        {crmCost > 0 && (
+          <BLine label="CRM seats" sub={`${formatNum(crmSeats)} seats × $${TOOL_COSTS.crmPerSeat}`} value={formatUsd(crmCost)} />
         )}
         {total === 0 && (
           <div className="ucalc-bd-empty">Adjust a slider to see the standalone-tool cost build up here.</div>
