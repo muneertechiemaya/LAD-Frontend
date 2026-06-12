@@ -273,15 +273,15 @@ export default function PricingPage() {
               cells={[<No />, <No />, <No />, <Yes />, <Yes />]} />
           </Section>
 
-          {/* ===== COST COMPARISON CALCULATOR ===== */}
+          {/* ===== END-TO-END PIPELINE COST CALCULATOR ===== */}
           <div className="calc-section">
-            <h2 className="calc-h">Cost comparison calculator</h2>
+            <h2 className="calc-h">End-to-end sales pipeline · cost comparison</h2>
             <p className="calc-sub">
-              See what each pillar would cost if you built it with the leading standalone tools. Toggle the ones you&apos;d realistically use; the running total updates and you can compare it to the Mr LAD plan that includes the equivalent capability.
+              A real sales motion needs more than one tool. Toggle every standalone product you&apos;d stitch together to run the whole pipeline — discovery, outreach, engagement, analytics and conversion. The total updates live; the Mr LAD plan that includes the same capabilities recalculates from your selection.
             </p>
-            {COST_COMPARISON.map(p => <PillarCalculator key={p.id} data={p} />)}
+            <PipelineCalculator />
             <p className="calc-foot">
-              Ranges reflect publicly listed pricing as of 2026 and may shift; usage-based items (e.g. voice minutes) are estimated at a 500-min/month sample volume. Mr LAD plan prices shown are the smallest plan that includes the comparable Mr LAD capability — heavier usage may need the next tier.
+              Ranges reflect publicly listed pricing as of 2026 and may shift. Usage-based items (e.g. voice minutes) are estimated at a 500-min/month sample volume. The recommended Mr LAD plan is the smallest tier that includes <i>all</i> selected capabilities — pick more, and the recommendation may step up.
             </p>
           </div>
 
@@ -377,14 +377,13 @@ export default function PricingPage() {
           .calc-sub { color: var(--ink-soft); margin-top: 6px; max-width: 760px; font-size: 13px; }
           .calc-foot { color: var(--ink-soft); margin-top: 14px; font-size: 11.5px; max-width: 760px; }
 
-          /* Each card */
-          .pricing-root :global(.calc-card) { margin-top: 20px; background: var(--card); border: 1px solid var(--line); border-left: 5px solid var(--ink-soft); border-radius: 12px; padding: 18px 20px; }
-          .pricing-root :global(.calc-card.calc-o) { border-left-color: var(--outreach); }
-          .pricing-root :global(.calc-card.calc-e) { border-left-color: var(--engage); }
-          .pricing-root :global(.calc-card.calc-a) { border-left-color: var(--analyse); }
-          .pricing-root :global(.calc-card.calc-c) { border-left-color: var(--convert); }
-
+          /* Single card spanning the whole funnel (was: 4 pillar cards) */
+          .pricing-root :global(.calc-card) { margin-top: 20px; background: var(--card); border: 1px solid var(--line); border-left: 5px solid var(--teal); border-radius: 12px; padding: 18px 20px; }
           .pricing-root :global(.calc-card-head) { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+
+          /* Funnel-stage groupings inside the single card */
+          .pricing-root :global(.calc-group) { margin-top: 18px; }
+          .pricing-root :global(.calc-group-head) { font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
           .pricing-root :global(.calc-title) { font-family: 'Sora', sans-serif; font-size: 18px; font-weight: 700; margin: 0; }
           .pricing-root :global(.calc-blurb) { color: var(--ink-soft); font-size: 12.5px; margin-top: 4px; max-width: 600px; }
           .pricing-root :global(.calc-lad-tag) { font-size: 12px; color: var(--ink); background: var(--teal-soft); border: 1px solid #C8E8E2; padding: 6px 12px; border-radius: 999px; white-space: nowrap; }
@@ -490,93 +489,82 @@ function Mkt({ children }: { children: React.ReactNode }) {
   return <span className="mkt">{children}</span>;
 }
 
-// ─── Cost-comparison calculator ──────────────────────────────────────────
-// Interactive — each card lets the visitor pick the standalone tools they'd
-// otherwise use; the running stack total is compared to the smallest Mr LAD
-// plan that includes the equivalent capability. Pricing ranges are public
+// ─── End-to-end pipeline cost calculator ─────────────────────────────────
+// One unified shopping list of standalone tools spanning the entire sales
+// motion — discovery, outreach, engagement, analytics, conversion. The
+// recommended Mr LAD plan is computed dynamically: it's the smallest tier
+// whose capabilities cover *all* selected items. Pricing ranges are public
 // list prices, normalised to USD/month. Voice is sampled at 500 min/mo
 // since per-minute rates aren't directly comparable to flat plans.
-interface Competitor {
+
+/** Mr LAD plan tiers, ordered cheapest → most capable. */
+type PlanKey = 'broadcast' | 'starter' | 'growth' | 'scale';
+const PLAN_ORDER: PlanKey[] = ['broadcast', 'starter', 'growth', 'scale'];
+const PLAN_INFO: Record<PlanKey, { name: string; price: number }> = {
+  broadcast: { name: 'Broadcast', price: 39 },
+  starter:   { name: 'Starter',   price: 99 },
+  growth:    { name: 'Growth',    price: 199 },
+  scale:     { name: 'Scale',     price: 499 },
+};
+
+interface PipelineItem {
   id: string;
+  /** Stage of the funnel — used as a group header in the calculator. */
+  stage: 'Prospect discovery' | 'Outreach' | 'Engagement' | 'Analysis' | 'Conversion';
   /** Product name as the visitor recognises it. */
   label: string;
-  /** Short qualifier shown under the label, e.g. "LinkedIn outreach". */
+  /** Examples shown under the label, e.g. "e.g. Expandi, Dripify". */
   category: string;
   /** Monthly USD range — min..max. For per-seat/per-user tools this is the seat price. */
   min: number;
   max: number;
   /** Unit suffix to render after the price range. */
   unit: string;
-  /** Pre-selected on first render? Lets us show a sensible non-zero default total. */
+  /** Smallest Mr LAD plan that natively includes the same capability. */
+  requiresPlan: PlanKey;
+  /** Pre-selected on first render? Used so the page shows a meaningful default total. */
   defaultOn?: boolean;
 }
-interface PillarComparison {
-  id: 'outreach' | 'engage' | 'analyse' | 'convert';
-  pillar: 'o' | 'e' | 'a' | 'c';
-  title: string;
-  blurb: string;
-  competitors: Competitor[];
-  mrLad: { plan: string; price: number };
-}
 
-const COST_COMPARISON: PillarComparison[] = [
-  {
-    id: 'outreach', pillar: 'o',
-    title: 'Outreach',
-    blurb: 'LinkedIn + Email outbound, prospect research, and reply handling.',
-    competitors: [
-      { id: 'li',  label: 'LinkedIn outreach tool',     category: 'e.g. Expandi, Dripify, HeyReach', min: 59,  max: 199, unit: '/seat/mo', defaultOn: true },
-      { id: 'em',  label: 'Cold-email sender',          category: 'e.g. Instantly, Smartlead, lemlist', min: 37,  max: 159, unit: '/seat/mo', defaultOn: true },
-      { id: 'db',  label: 'Prospect database / enrichment', category: 'e.g. Apollo, ZoomInfo, Lusha', min: 49,  max: 149, unit: '/user/mo' },
-      { id: 'res', label: 'Web research / scraping',    category: 'e.g. Clay, PhantomBuster',         min: 49,  max: 150, unit: '/mo' },
-    ],
-    mrLad: { plan: 'Starter', price: 99 },
-  },
-  {
-    id: 'engage', pillar: 'e',
-    title: 'Engage',
-    blurb: 'WhatsApp broadcasts, AI chat agents, Instagram DM automation, and Meta Ads management.',
-    competitors: [
-      { id: 'wa',   label: 'WhatsApp broadcast platform',         category: 'e.g. AiSensy, Wati, MessageBird',     min: 18, max: 75,  unit: '/mo', defaultOn: true },
-      { id: 'bot',  label: 'WhatsApp AI chatbot add-on',          category: 'e.g. Wati chatbot, respond.io AI',    min: 40, max: 79,  unit: '/mo', defaultOn: true },
-      { id: 'ig',   label: 'Instagram DM automation',             category: 'e.g. ManyChat, Chatfuel',             min: 25, max: 79,  unit: '/mo' },
-      { id: 'ads',  label: 'Meta Ads automation / management',    category: 'e.g. Madgicx, Revealbot',             min: 44, max: 99,  unit: '/mo' },
-    ],
-    mrLad: { plan: 'Growth', price: 199 },
-  },
-  {
-    id: 'analyse', pillar: 'a',
-    title: 'Analyse',
-    blurb: 'Multi-channel attribution, conversation analysis, and executive reporting.',
-    competitors: [
-      { id: 'attr', label: 'Multi-channel attribution',  category: 'e.g. Triple Whale, Northbeam, Rockerbox', min: 250, max: 500, unit: '/mo', defaultOn: true },
-      { id: 'ci',   label: 'Conversation intelligence',  category: 'e.g. Gong Lite, Chorus',                  min: 79,  max: 199, unit: '/user/mo' },
-      { id: 'bi',   label: 'Business-intelligence dashboards', category: 'e.g. Mode, Hex, Looker Studio Pro', min: 150, max: 500, unit: '/mo' },
-    ],
-    mrLad: { plan: 'Growth', price: 199 },
-  },
-  {
-    id: 'convert', pillar: 'c',
-    title: 'Convert',
-    blurb: 'AI voice follow-up, scheduling, CRM, and post-conversion automation.',
-    competitors: [
-      { id: 'voice', label: 'AI voice agent (≈500 min/mo)',  category: 'e.g. Vapi, Retell, Bland — $0.13–$0.31/min', min: 65,  max: 155, unit: '/mo', defaultOn: true },
-      { id: 'crm',   label: 'CRM seat',                       category: 'e.g. HubSpot, Salesforce, Pipedrive',         min: 25,  max: 99,  unit: '/user/mo', defaultOn: true },
-      { id: 'cal',   label: 'Scheduling tool',                category: 'e.g. Calendly, Chili Piper',                  min: 10,  max: 16,  unit: '/user/mo' },
-      { id: 'rev',   label: 'Review / referral automation',   category: 'e.g. Birdeye, NiceJob',                       min: 30,  max: 79,  unit: '/mo' },
-    ],
-    mrLad: { plan: 'Scale', price: 499 },
-  },
+const PIPELINE: PipelineItem[] = [
+  // ── Prospect discovery ─────────────────────────────────────────────────
+  { id: 'db',  stage: 'Prospect discovery', label: 'Prospect database / enrichment', category: 'e.g. Apollo, ZoomInfo, Lusha',           min: 49,  max: 149, unit: '/user/mo', requiresPlan: 'starter', defaultOn: true },
+  { id: 'res', stage: 'Prospect discovery', label: 'Web research / scraping',         category: 'e.g. Clay, PhantomBuster',               min: 49,  max: 150, unit: '/mo',      requiresPlan: 'starter' },
+
+  // ── Outreach ───────────────────────────────────────────────────────────
+  { id: 'li',  stage: 'Outreach', label: 'LinkedIn outreach tool',                    category: 'e.g. Expandi, Dripify, HeyReach',        min: 59,  max: 199, unit: '/seat/mo', requiresPlan: 'starter', defaultOn: true },
+  { id: 'em',  stage: 'Outreach', label: 'Cold-email sender',                         category: 'e.g. Instantly, Smartlead, lemlist',     min: 37,  max: 159, unit: '/seat/mo', requiresPlan: 'starter', defaultOn: true },
+
+  // ── Engagement ─────────────────────────────────────────────────────────
+  { id: 'wa',   stage: 'Engagement', label: 'WhatsApp broadcast platform',            category: 'e.g. AiSensy, Wati, MessageBird',        min: 18,  max: 75,  unit: '/mo', requiresPlan: 'broadcast', defaultOn: true },
+  { id: 'bot',  stage: 'Engagement', label: 'WhatsApp / Instagram AI chatbot add-on', category: 'e.g. Wati chatbot, respond.io AI',       min: 40,  max: 79,  unit: '/mo', requiresPlan: 'growth' },
+  { id: 'ig',   stage: 'Engagement', label: 'Instagram DM automation',                category: 'e.g. ManyChat, Chatfuel',                min: 25,  max: 79,  unit: '/mo', requiresPlan: 'growth' },
+  { id: 'ads',  stage: 'Engagement', label: 'Meta Ads automation / management',       category: 'e.g. Madgicx, Revealbot',                min: 44,  max: 99,  unit: '/mo', requiresPlan: 'growth' },
+
+  // ── Analysis ───────────────────────────────────────────────────────────
+  { id: 'attr', stage: 'Analysis', label: 'Multi-channel attribution',                category: 'e.g. Triple Whale, Northbeam, Rockerbox', min: 250, max: 500, unit: '/mo',      requiresPlan: 'growth' },
+  { id: 'ci',   stage: 'Analysis', label: 'Conversation intelligence',                category: 'e.g. Gong Lite, Chorus',                  min: 79,  max: 199, unit: '/user/mo', requiresPlan: 'growth' },
+  { id: 'bi',   stage: 'Analysis', label: 'Business-intelligence dashboards',         category: 'e.g. Mode, Hex, Looker Studio Pro',       min: 150, max: 500, unit: '/mo',      requiresPlan: 'scale' },
+
+  // ── Conversion ─────────────────────────────────────────────────────────
+  { id: 'voice', stage: 'Conversion', label: 'AI voice agent (≈500 min/mo)', category: 'e.g. Vapi, Retell, Bland — $0.13–$0.31/min', min: 65,  max: 155, unit: '/mo',      requiresPlan: 'scale' },
+  { id: 'cal',   stage: 'Conversion', label: 'Scheduling tool',              category: 'e.g. Calendly, Chili Piper',                 min: 10,  max: 16,  unit: '/user/mo', requiresPlan: 'starter', defaultOn: true },
+  { id: 'crm',   stage: 'Conversion', label: 'CRM seat',                     category: 'e.g. HubSpot, Salesforce, Pipedrive',         min: 25,  max: 99,  unit: '/user/mo', requiresPlan: 'starter', defaultOn: true },
+  { id: 'rev',   stage: 'Conversion', label: 'Review / referral automation', category: 'e.g. Birdeye, NiceJob',                       min: 30,  max: 79,  unit: '/mo',      requiresPlan: 'scale' },
+];
+
+/** Stable display order for the funnel stages. */
+const STAGE_ORDER: PipelineItem['stage'][] = [
+  'Prospect discovery', 'Outreach', 'Engagement', 'Analysis', 'Conversion',
 ];
 
 function formatUsd(n: number) {
   return `$${Math.round(n).toLocaleString('en-US')}`;
 }
 
-function PillarCalculator({ data }: { data: PillarComparison }) {
-  // Each calculator owns its own selection state — no cross-pillar coupling.
+function PipelineCalculator() {
   const [selected, setSelected] = useState<Set<string>>(
-    () => new Set(data.competitors.filter(c => c.defaultOn).map(c => c.id))
+    () => new Set(PIPELINE.filter(i => i.defaultOn).map(i => i.id))
   );
   const toggle = (id: string) => setSelected(prev => {
     const next = new Set(prev);
@@ -584,56 +572,81 @@ function PillarCalculator({ data }: { data: PillarComparison }) {
     return next;
   });
 
-  const picked = data.competitors.filter(c => selected.has(c.id));
+  const picked = PIPELINE.filter(i => selected.has(i.id));
   const stackMin = picked.reduce((a, c) => a + c.min, 0);
   const stackMax = picked.reduce((a, c) => a + c.max, 0);
-  const ladPrice = data.mrLad.price;
+
+  // Recommended plan = the highest tier any selected item requires.
+  // If nothing is picked, we don't recommend anything (the "Pick some tools" copy fires).
+  const recommendedKey: PlanKey | null = picked.length === 0 ? null
+    : PLAN_ORDER[Math.max(...picked.map(i => PLAN_ORDER.indexOf(i.requiresPlan)))];
+  const recommended = recommendedKey ? PLAN_INFO[recommendedKey] : null;
+
+  const ladPrice = recommended?.price ?? 0;
+  const ladCheaper = recommended != null && stackMin >= ladPrice;
   const saveMin = Math.max(0, stackMin - ladPrice);
   const saveMax = Math.max(0, stackMax - ladPrice);
-  const ladCheaper = stackMin >= ladPrice;
+
+  // Build a flat row list grouped by stage (preserves PIPELINE order within stage)
+  const rowsByStage = STAGE_ORDER
+    .map(stage => ({ stage, items: PIPELINE.filter(i => i.stage === stage) }))
+    .filter(g => g.items.length > 0);
 
   return (
-    <div className={`calc-card calc-${data.pillar}`}>
+    <div className="calc-card">
       <div className="calc-card-head">
         <div>
-          <h3 className="calc-title">{data.title}</h3>
-          <p className="calc-blurb">{data.blurb}</p>
+          <h3 className="calc-title">Build the pipeline yourself</h3>
+          <p className="calc-blurb">Tick every standalone product you&apos;d realistically use across the full funnel. We&apos;ll total the stack and recommend the Mr LAD plan that covers the same capabilities.</p>
         </div>
-        <div className="calc-lad-tag">Mr LAD <b>{data.mrLad.plan}</b> · {formatUsd(ladPrice)}/mo</div>
+        <div className="calc-lad-tag">
+          {recommended
+            ? <>Mr LAD <b>{recommended.name}</b> · {formatUsd(ladPrice)}/mo</>
+            : <>Pick tools to see the matching plan →</>}
+        </div>
       </div>
 
-      <ul className="calc-list">
-        {data.competitors.map(c => {
-          const on = selected.has(c.id);
-          return (
-            <li key={c.id}>
-              <label className={`calc-row${on ? ' on' : ''}`}>
-                <input type="checkbox" checked={on} onChange={() => toggle(c.id)} />
-                <span className="calc-check" aria-hidden />
-                <span className="calc-row-text">
-                  <span className="calc-row-name">{c.label}</span>
-                  <span className="calc-row-cat">{c.category}</span>
-                </span>
-                <span className="calc-row-price">
-                  {formatUsd(c.min)}–{formatUsd(c.max)}<small>{c.unit}</small>
-                </span>
-              </label>
-            </li>
-          );
-        })}
-      </ul>
+      {rowsByStage.map(g => (
+        <div key={g.stage} className="calc-group">
+          <div className="calc-group-head">{g.stage}</div>
+          <ul className="calc-list">
+            {g.items.map(c => {
+              const on = selected.has(c.id);
+              return (
+                <li key={c.id}>
+                  <label className={`calc-row${on ? ' on' : ''}`}>
+                    <input type="checkbox" checked={on} onChange={() => toggle(c.id)} />
+                    <span className="calc-check" aria-hidden />
+                    <span className="calc-row-text">
+                      <span className="calc-row-name">{c.label}</span>
+                      <span className="calc-row-cat">{c.category}</span>
+                    </span>
+                    <span className="calc-row-price">
+                      {formatUsd(c.min)}–{formatUsd(c.max)}<small>{c.unit}</small>
+                    </span>
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
 
       <div className="calc-totals">
         <div className="calc-total-line">
-          <span>Your selected stack</span>
+          <span>Your selected stack ({picked.length} tool{picked.length === 1 ? '' : 's'})</span>
           <b>{picked.length === 0 ? '—' : `${formatUsd(stackMin)}–${formatUsd(stackMax)}/mo`}</b>
         </div>
         <div className="calc-total-line">
-          <span>Mr LAD {data.mrLad.plan}</span>
-          <b>{formatUsd(ladPrice)}/mo</b>
+          <span>Mr LAD {recommended?.name ?? '—'}</span>
+          <b>{recommended ? `${formatUsd(ladPrice)}/mo` : '—'}</b>
         </div>
         <div className={`calc-total-line calc-save${ladCheaper && picked.length > 0 ? ' on' : ''}`}>
-          <span>{ladCheaper ? 'You save' : 'Mr LAD price'}</span>
+          <span>
+            {picked.length === 0 ? 'Comparison'
+              : ladCheaper ? 'You save'
+              : 'Premium for Mr LAD'}
+          </span>
           <b>
             {picked.length === 0
               ? 'Pick some tools to compare →'
@@ -641,7 +654,7 @@ function PillarCalculator({ data }: { data: PillarComparison }) {
                 ? saveMin === saveMax
                   ? `${formatUsd(saveMin)}/mo`
                   : `${formatUsd(saveMin)}–${formatUsd(saveMax)}/mo`
-                : `Mr LAD is ${formatUsd(ladPrice - stackMax)}–${formatUsd(ladPrice - stackMin)} more — for the AI agents and unified data the stack can't replicate.`}
+                : `${formatUsd(ladPrice - stackMax)}–${formatUsd(ladPrice - stackMin)}/mo — for the AI agents and unified data the stack can't replicate.`}
           </b>
         </div>
       </div>
