@@ -275,7 +275,6 @@ export default function PricingPage() {
 
           {/* ===== STACK COST CALCULATOR — Mr LAD vs standalone tools ===== */}
           <div className="scc-section">
-            <p className="scc-kicker">MR LAD &nbsp;·&nbsp; COST COMPARISON</p>
             <h2 className="scc-h">What would this cost <span className="scc-dim">without Mr LAD?</span></h2>
             <p className="scc-sub">Set your monthly volume across the funnel. We price each capability on the leading standalone tools, then put it next to the Mr LAD plan that covers the same scope.</p>
             <StackCostCalculator onCta={handleGetStarted} />
@@ -371,13 +370,16 @@ export default function PricingPage() {
           .note { margin-top: 26px; background: var(--teal-soft); border: 1px solid #C8E8E2; border-radius: 12px; padding: 18px 20px; font-size: 13px; color: var(--ink); }
           .note :global(h4) { font-family: 'Sora', sans-serif; font-size: 14px; margin-bottom: 6px; }
 
-          /* ── Stack-cost calculator — pillar palette + presets / receipt / Mr LAD card ── */
-          .scc-section { margin-top: 64px; }
-          .scc-kicker { font-family: 'Sora', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 4px; color: var(--teal); margin: 0 0 14px; }
-          .scc-h { font-family: 'Sora', sans-serif; font-size: 40px; font-weight: 700; line-height: 1.05; letter-spacing: -1px; color: var(--ink); margin: 0 0 14px; max-width: 720px; }
-          .scc-h .scc-dim { color: var(--ink-soft); }
-          .scc-sub { font-size: 16px; line-height: 1.55; color: var(--ink-soft); max-width: 640px; margin: 0 0 32px; }
-          .scc-foot { color: var(--ink-soft); margin: 24px 0 0; font-size: 12px; line-height: 1.5; max-width: 820px; }
+          /* ── Stack-cost calculator — typography sized to match the
+             rest of the page: top-level h1 is 32px (header.page h1),
+             section heads (.head h2) are 17px. The calculator h2 sits
+             between at 22px so it reads as a major section break
+             without competing with the page hero. */
+          .scc-section { margin-top: 56px; }
+          .scc-h { font-family: 'Sora', sans-serif; font-size: 22px; font-weight: 700; line-height: 1.2; letter-spacing: -.3px; color: var(--ink); margin: 0 0 8px; max-width: 720px; }
+          .scc-h .scc-dim { color: var(--ink-soft); font-weight: 700; }
+          .scc-sub { font-size: 13px; line-height: 1.55; color: var(--ink-soft); max-width: 640px; margin: 0 0 24px; }
+          .scc-foot { color: var(--ink-soft); margin: 24px 0 0; font-size: 11.5px; line-height: 1.5; max-width: 820px; }
 
           /* Controls row — volume presets + currency toggle */
           .scc-controls { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 36px; }
@@ -393,22 +395,23 @@ export default function PricingPage() {
 
           /* Numbered stage headers */
           .pricing-root :global(.scc-stages) { display: block; }
-          .pricing-root :global(.scc-stage) { margin-bottom: 44px; }
+          .pricing-root :global(.scc-stage) { margin-bottom: 36px; }
           .pricing-root :global(.scc-stage:last-child) { margin-bottom: 0; }
-          .pricing-root :global(.scc-stage-head) { display: flex; align-items: baseline; gap: 14px; margin-bottom: 22px; }
-          .pricing-root :global(.scc-stage-num) { font-family: 'Sora', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 2px; }
+          .pricing-root :global(.scc-stage-head) { display: flex; align-items: baseline; gap: 12px; margin-bottom: 18px; }
+          .pricing-root :global(.scc-stage-num) { font-family: 'Sora', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1.5px; }
           .pricing-root :global(.scc-stage-outreach .scc-stage-num) { color: var(--outreach); }
           .pricing-root :global(.scc-stage-engage .scc-stage-num)   { color: var(--engage); }
           .pricing-root :global(.scc-stage-convert .scc-stage-num)  { color: var(--convert); }
           .pricing-root :global(.scc-stage-analyse .scc-stage-num)  { color: var(--analyse); }
-          .pricing-root :global(.scc-stage-name) { font-family: 'Sora', sans-serif; font-size: 22px; font-weight: 700; letter-spacing: -.3px; margin: 0; color: var(--ink); }
+          /* Stage names size-matched to other section heads (.head h2 = 17px). */
+          .pricing-root :global(.scc-stage-name) { font-family: 'Sora', sans-serif; font-size: 17px; font-weight: 600; letter-spacing: -.2px; margin: 0; color: var(--ink); }
           .pricing-root :global(.scc-stage-rule) { flex: 1; height: 1px; background: var(--line); align-self: center; }
 
           /* Item rows: label + value, slider, tool meta + per-tool price */
-          .pricing-root :global(.scc-item) { padding: 4px 0 20px; }
-          .pricing-root :global(.scc-item-top) { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin-bottom: 8px; }
-          .pricing-root :global(.scc-item-label) { font-size: 15px; font-weight: 500; color: var(--ink); }
-          .pricing-root :global(.scc-item-value) { font-family: 'Sora', sans-serif; font-size: 19px; font-weight: 700; color: var(--ink-soft); transition: color .15s; font-variant-numeric: tabular-nums; }
+          .pricing-root :global(.scc-item) { padding: 2px 0 16px; }
+          .pricing-root :global(.scc-item-top) { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin-bottom: 6px; }
+          .pricing-root :global(.scc-item-label) { font-size: 13.5px; font-weight: 500; color: var(--ink); }
+          .pricing-root :global(.scc-item-value) { font-family: 'Sora', sans-serif; font-size: 16px; font-weight: 700; color: var(--ink-soft); transition: color .15s; font-variant-numeric: tabular-nums; }
           .pricing-root :global(.scc-item.active .scc-item-value) { color: var(--teal); }
 
           /* Custom range slider — track + thumb in our teal accent */
@@ -443,18 +446,18 @@ export default function PricingPage() {
           .pricing-root :global(.scc-ramt) { font-family: 'Sora', sans-serif; font-weight: 700; color: var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; }
 
           .pricing-root :global(.scc-receipt-total) { display: flex; justify-content: space-between; align-items: baseline; border-top: 1px solid var(--line); margin-top: 12px; padding-top: 14px; }
-          .pricing-root :global(.scc-tlabel strong) { display: block; font-family: 'Sora', sans-serif; font-size: 15px; color: var(--ink); margin-bottom: 2px; }
-          .pricing-root :global(.scc-tlabel span) { font-size: 12px; color: var(--ink-soft); }
-          .pricing-root :global(.scc-stack-total) { font-family: 'Sora', sans-serif; font-size: 36px; font-weight: 700; letter-spacing: -.5px; color: var(--ink-soft); line-height: 1; font-variant-numeric: tabular-nums; }
+          .pricing-root :global(.scc-tlabel strong) { display: block; font-family: 'Sora', sans-serif; font-size: 14px; color: var(--ink); margin-bottom: 2px; }
+          .pricing-root :global(.scc-tlabel span) { font-size: 11.5px; color: var(--ink-soft); }
+          .pricing-root :global(.scc-stack-total) { font-family: 'Sora', sans-serif; font-size: 26px; font-weight: 700; letter-spacing: -.3px; color: var(--ink-soft); line-height: 1; font-variant-numeric: tabular-nums; }
 
           /* Mr LAD card — teal accent, big teal price, feature checklist, verdict pill */
-          .pricing-root :global(.scc-lad-card) { position: relative; background: var(--teal-soft); border: 2px solid var(--teal); border-radius: 16px; padding: 26px 28px 22px; }
-          .pricing-root :global(.scc-lad-badge) { position: absolute; top: -13px; left: 26px; background: var(--teal); color: #fff; font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 2.5px; padding: 6px 14px; border-radius: 999px; }
-          .pricing-root :global(.scc-lad-head) { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: 4px 0 2px; }
-          .pricing-root :global(.scc-lad-title) { font-family: 'Sora', sans-serif; font-size: 22px; font-weight: 700; margin: 0; color: var(--ink); }
+          .pricing-root :global(.scc-lad-card) { position: relative; background: var(--teal-soft); border: 2px solid var(--teal); border-radius: 16px; padding: 22px 24px 20px; }
+          .pricing-root :global(.scc-lad-badge) { position: absolute; top: -12px; left: 22px; background: var(--teal); color: #fff; font-family: 'Sora', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; padding: 5px 12px; border-radius: 999px; }
+          .pricing-root :global(.scc-lad-head) { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: 6px 0 2px; }
+          .pricing-root :global(.scc-lad-title) { font-family: 'Sora', sans-serif; font-size: 17px; font-weight: 700; margin: 0; color: var(--ink); }
           .pricing-root :global(.scc-lad-title span) { color: var(--teal); }
-          .pricing-root :global(.scc-lad-price) { font-family: 'Sora', sans-serif; font-size: 42px; font-weight: 700; letter-spacing: -1px; color: var(--teal); line-height: 1; font-variant-numeric: tabular-nums; }
-          .pricing-root :global(.scc-lad-price small) { font-size: 16px; font-weight: 500; color: var(--ink-soft); letter-spacing: 0; }
+          .pricing-root :global(.scc-lad-price) { font-family: 'Sora', sans-serif; font-size: 30px; font-weight: 700; letter-spacing: -.6px; color: var(--teal); line-height: 1; font-variant-numeric: tabular-nums; }
+          .pricing-root :global(.scc-lad-price small) { font-size: 13px; font-weight: 500; color: var(--ink-soft); letter-spacing: 0; }
           .pricing-root :global(.scc-lad-alt) { font-size: 12.5px; color: var(--ink-soft); margin: 0 0 14px; text-align: right; }
           .pricing-root :global(.scc-lad-covers) { font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 2.5px; color: var(--ink-soft); margin: 0 0 10px; }
           .pricing-root :global(.scc-plan-features) { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 14.5px; color: var(--ink); }
@@ -630,10 +633,14 @@ const PLANS: Plan[] = [
 /** Plan rank each stage requires once any item in it is active. */
 const STAGE_PLAN_RANK: Record<StageId, number> = { outreach: 0, engage: 1, convert: 2, analyse: 1 };
 
-/** Volume presets — match the reference HTML's Light / Typical / Heavy / Reset. */
+/** Volume presets — picked so each tier maps cleanly to one Mr LAD plan:
+ *   Light   = outreach only                       → Starter ($99)
+ *   Typical = outreach + engage + analyse         → Growth  ($199)
+ *   Heavy   = all four stages incl. voice/convert → Scale   ($499)
+ * (Stage→plan rank: outreach=0, engage=1, analyse=1, convert=2.) */
 const PRESETS: Record<'light' | 'typical' | 'heavy' | 'reset', Record<string, number>> = {
-  light:   { prospects: 250,  reveals: 50,  linkedin: 200,  emails: 1000,  whatsapp: 500,  aichats: 100,  igdms: 200,  voice: 100,  meetings: 10,  transcripts: 20,  channels: 2 },
-  typical: { prospects: 1000, reveals: 200, linkedin: 600,  emails: 5000,  whatsapp: 2000, aichats: 500,  igdms: 1000, voice: 400,  meetings: 40,  transcripts: 100, channels: 4 },
+  light:   { prospects: 250,  reveals: 50,  linkedin: 200,  emails: 1000 },
+  typical: { prospects: 1000, reveals: 200, linkedin: 600,  emails: 5000,  whatsapp: 2000, aichats: 500,  igdms: 1000, channels: 3 },
   heavy:   { prospects: 3000, reveals: 600, linkedin: 1500, emails: 15000, whatsapp: 6000, aichats: 1500, igdms: 3000, voice: 1200, meetings: 120, transcripts: 300, channels: 8 },
   reset:   {},
 };
