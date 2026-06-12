@@ -273,15 +273,14 @@ export default function PricingPage() {
               cells={[<No />, <No />, <No />, <Yes />, <Yes />]} />
           </Section>
 
-          {/* ===== END-TO-END PIPELINE COST CALCULATOR ===== */}
-          <div className="calc-section">
-            <h2 className="calc-h">End-to-end sales pipeline · cost comparison</h2>
-            <p className="calc-sub">
-              A real sales motion needs more than one tool. Toggle every standalone product you&apos;d stitch together to run the whole pipeline — discovery, outreach, engagement, analytics and conversion. The total updates live; the Mr LAD plan that includes the same capabilities recalculates from your selection.
-            </p>
-            <PipelineCalculator />
-            <p className="calc-foot">
-              Ranges reflect publicly listed pricing as of 2026 and may shift. Usage-based items (e.g. voice minutes) are estimated at a 500-min/month sample volume. The recommended Mr LAD plan is the smallest tier that includes <i>all</i> selected capabilities — pick more, and the recommendation may step up.
+          {/* ===== USAGE / CREDIT CALCULATOR ===== */}
+          <div className="ucalc-section">
+            <div className="ucalc-eyebrow"><span>📟 USAGE CALCULATOR</span></div>
+            <h2 className="ucalc-h">Calculate your monthly credits</h2>
+            <p className="ucalc-sub">Adjust the sliders to estimate your credit usage</p>
+            <UsageCalculator onCta={handleGetStarted} />
+            <p className="ucalc-foot">
+              All Mr LAD AI usage is metered in credits at <b>$0.10 / credit</b>. Each AI plan includes a monthly credit allowance; beyond it, your pre-paid wallet covers overflow at the same per-action rates shown above. WhatsApp message fees are billed by Meta directly — Mr LAD adds zero markup. Voice estimates assume standard voices unless Premium is toggled.
             </p>
           </div>
 
@@ -371,47 +370,62 @@ export default function PricingPage() {
           .note { margin-top: 26px; background: var(--teal-soft); border: 1px solid #C8E8E2; border-radius: 12px; padding: 18px 20px; font-size: 13px; color: var(--ink); }
           .note :global(h4) { font-family: 'Sora', sans-serif; font-size: 14px; margin-bottom: 6px; }
 
-          /* ── Cost-comparison calculator ──────────────────────────────── */
-          .calc-section { margin-top: 48px; }
-          .calc-h { font-family: 'Sora', sans-serif; font-size: 22px; font-weight: 700; letter-spacing: -.3px; }
-          .calc-sub { color: var(--ink-soft); margin-top: 6px; max-width: 760px; font-size: 13px; }
-          .calc-foot { color: var(--ink-soft); margin-top: 14px; font-size: 11.5px; max-width: 760px; }
+          /* ── Usage / credit calculator ───────────────────────────────── */
+          .ucalc-section { margin-top: 56px; text-align: center; }
+          .ucalc-eyebrow { display: flex; justify-content: center; margin-bottom: 14px; }
+          .ucalc-eyebrow :global(span) { background: #E8EEFD; color: #2E50CC; font-family: 'Sora', sans-serif; font-size: 11.5px; font-weight: 600; letter-spacing: 1.2px; padding: 7px 18px; border-radius: 999px; }
+          .ucalc-h { font-family: 'Sora', sans-serif; font-size: 32px; font-weight: 700; letter-spacing: -.4px; color: var(--ink); }
+          .ucalc-sub { color: var(--ink-soft); margin-top: 8px; font-size: 14px; }
+          .ucalc-foot { color: var(--ink-soft); margin: 24px auto 0; font-size: 11.5px; max-width: 820px; text-align: center; }
 
-          /* Single card spanning the whole funnel (was: 4 pillar cards) */
-          .pricing-root :global(.calc-card) { margin-top: 20px; background: var(--card); border: 1px solid var(--line); border-left: 5px solid var(--teal); border-radius: 12px; padding: 18px 20px; }
-          .pricing-root :global(.calc-card-head) { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+          /* Two-column grid */
+          .pricing-root :global(.ucalc-grid) { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 28px; text-align: left; }
+          @media (max-width: 900px) { .pricing-root :global(.ucalc-grid) { grid-template-columns: 1fr; } }
 
-          /* Funnel-stage groupings inside the single card */
-          .pricing-root :global(.calc-group) { margin-top: 18px; }
-          .pricing-root :global(.calc-group-head) { font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
-          .pricing-root :global(.calc-title) { font-family: 'Sora', sans-serif; font-size: 18px; font-weight: 700; margin: 0; }
-          .pricing-root :global(.calc-blurb) { color: var(--ink-soft); font-size: 12.5px; margin-top: 4px; max-width: 600px; }
-          .pricing-root :global(.calc-lad-tag) { font-size: 12px; color: var(--ink); background: var(--teal-soft); border: 1px solid #C8E8E2; padding: 6px 12px; border-radius: 999px; white-space: nowrap; }
-          .pricing-root :global(.calc-lad-tag b) { font-family: 'Sora', sans-serif; color: var(--teal); }
+          /* Input groups — pastel tinted boxes */
+          .pricing-root :global(.ucalc-inputs) { display: flex; flex-direction: column; gap: 18px; }
+          .pricing-root :global(.ucalc-group) { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 22px 24px; }
+          .pricing-root :global(.ucalc-group.ucalc-blue)  { background: #EEF3FE; border-color: #DCE6FD; }
+          .pricing-root :global(.ucalc-group.ucalc-amber) { background: #FDF4E3; border-color: #F6E6C6; }
+          .pricing-root :global(.ucalc-group.ucalc-green) { background: #E8F6EC; border-color: #CFE9D6; }
+          .pricing-root :global(.ucalc-group h4) { font-family: 'Sora', sans-serif; font-size: 17px; font-weight: 700; color: var(--ink); margin: 0 0 18px; }
 
-          /* Tool list */
-          .pricing-root :global(.calc-list) { list-style: none; margin: 14px 0 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-          @media (max-width: 720px) { .pricing-root :global(.calc-list) { grid-template-columns: 1fr; } }
-          .pricing-root :global(.calc-row) { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; transition: border-color .12s, background .12s; background: #FBFCFE; }
-          .pricing-root :global(.calc-row:hover) { border-color: #C5D1E0; }
-          .pricing-root :global(.calc-row.on) { border-color: var(--teal); background: var(--teal-soft); }
-          .pricing-root :global(.calc-row input[type=checkbox]) { position: absolute; opacity: 0; pointer-events: none; }
-          .pricing-root :global(.calc-check) { flex: none; width: 18px; height: 18px; border-radius: 4px; border: 1.5px solid #C5D1E0; background: #fff; display: inline-block; position: relative; }
-          .pricing-root :global(.calc-row.on .calc-check) { background: var(--teal); border-color: var(--teal); }
-          .pricing-root :global(.calc-row.on .calc-check::after) { content: ''; position: absolute; left: 5px; top: 1px; width: 5px; height: 10px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
-          .pricing-root :global(.calc-row-text) { flex: 1; min-width: 0; }
-          .pricing-root :global(.calc-row-name) { display: block; font-weight: 600; font-size: 12.5px; color: var(--ink); }
-          .pricing-root :global(.calc-row-cat) { display: block; font-size: 11px; color: var(--ink-soft); margin-top: 2px; }
-          .pricing-root :global(.calc-row-price) { flex: none; font-family: 'Sora', sans-serif; font-size: 12.5px; font-weight: 600; color: var(--ink); white-space: nowrap; }
-          .pricing-root :global(.calc-row-price small) { font-size: 10.5px; font-weight: 500; color: var(--ink-soft); margin-left: 2px; }
+          /* Sliders */
+          .pricing-root :global(.ucalc-slider) { margin-bottom: 16px; }
+          .pricing-root :global(.ucalc-slider:last-child) { margin-bottom: 0; }
+          .pricing-root :global(.ucalc-slider-head) { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; color: var(--ink-soft); margin-bottom: 6px; }
+          .pricing-root :global(.ucalc-slider-head b) { font-family: 'Sora', sans-serif; font-size: 17px; font-weight: 700; color: var(--ink); }
+          .pricing-root :global(.ucalc-slider input[type=range]) { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; background: #D8DDE6; border-radius: 999px; outline: none; cursor: pointer; }
+          .pricing-root :global(.ucalc-slider input[type=range]::-webkit-slider-thumb) { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; background: #2E62F0; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 1px 3px rgba(46,98,240,.35); cursor: pointer; }
+          .pricing-root :global(.ucalc-slider input[type=range]::-moz-range-thumb) { width: 20px; height: 20px; background: #2E62F0; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 1px 3px rgba(46,98,240,.35); cursor: pointer; }
+          .pricing-root :global(.ucalc-slider-hint) { display: block; font-size: 11.5px; color: var(--ink-soft); margin-top: 4px; }
 
-          /* Totals */
-          .pricing-root :global(.calc-totals) { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line); display: grid; gap: 6px; }
-          .pricing-root :global(.calc-total-line) { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--ink-soft); }
-          .pricing-root :global(.calc-total-line b) { font-family: 'Sora', sans-serif; font-size: 14px; color: var(--ink); }
-          .pricing-root :global(.calc-save) { padding: 8px 10px; border-radius: 6px; }
-          .pricing-root :global(.calc-save.on) { background: var(--teal-soft); color: var(--ink); }
-          .pricing-root :global(.calc-save.on b) { color: var(--teal); }
+          /* Premium-voice checkbox row */
+          .pricing-root :global(.ucalc-check) { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; color: var(--ink); position: relative; }
+          .pricing-root :global(.ucalc-check input) { position: absolute; opacity: 0; pointer-events: none; }
+          .pricing-root :global(.ucalc-check-box) { width: 16px; height: 16px; border-radius: 3px; border: 1.5px solid #B7C2D4; background: #fff; position: relative; flex: none; }
+          .pricing-root :global(.ucalc-check.on .ucalc-check-box) { background: #2E62F0; border-color: #2E62F0; }
+          .pricing-root :global(.ucalc-check.on .ucalc-check-box::after) { content: ''; position: absolute; left: 4px; top: 0; width: 5px; height: 10px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+
+          /* Breakdown panel — soft blue */
+          .pricing-root :global(.ucalc-breakdown) { background: linear-gradient(180deg, #E9EEFB 0%, #DCE3F7 100%); border: 1px solid #C9D4F0; border-radius: 12px; padding: 24px 26px; align-self: start; }
+          .pricing-root :global(.ucalc-bd-head) { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+          .pricing-root :global(.ucalc-bd-head h4) { font-family: 'Sora', sans-serif; font-size: 18px; font-weight: 700; color: var(--ink); margin: 0; }
+          .pricing-root :global(.ucalc-bd-ico) { font-size: 18px; color: #2E62F0; }
+          .pricing-root :global(.ucalc-bd-row) { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 10px 0; }
+          .pricing-root :global(.ucalc-bd-label) { font-size: 14px; font-weight: 600; color: var(--ink); }
+          .pricing-root :global(.ucalc-bd-row small) { display: block; font-size: 11.5px; color: var(--ink-soft); margin-top: 2px; }
+          .pricing-root :global(.ucalc-bd-row b) { font-family: 'Sora', sans-serif; font-size: 17px; font-weight: 700; color: var(--ink); white-space: nowrap; }
+          .pricing-root :global(.ucalc-bd-rule) { border: none; border-top: 1px solid #C2CFEC; margin: 10px 0 14px; }
+          .pricing-root :global(.ucalc-total) { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+          .pricing-root :global(.ucalc-total-label) { font-family: 'Sora', sans-serif; font-size: 17px; font-weight: 700; color: var(--ink); }
+          .pricing-root :global(.ucalc-total small) { display: block; font-size: 11.5px; color: var(--ink-soft); margin-top: 2px; font-weight: 400; }
+          .pricing-root :global(.ucalc-total-val) { font-family: 'Sora', sans-serif; font-size: 38px; font-weight: 700; color: #2E62F0; line-height: 1; }
+          .pricing-root :global(.ucalc-rec) { margin-top: 18px; background: #fff; border: 1px solid #C9D4F0; border-radius: 10px; padding: 14px 16px; }
+          .pricing-root :global(.ucalc-rec small) { display: block; font-size: 12px; color: var(--ink-soft); }
+          .pricing-root :global(.ucalc-rec strong) { display: block; font-family: 'Sora', sans-serif; font-size: 18px; font-weight: 700; color: #2E62F0; margin-top: 4px; }
+          .pricing-root :global(.ucalc-cta) { margin-top: 14px; width: 100%; background: #2E62F0; color: #fff; font-family: 'Sora', sans-serif; font-size: 15px; font-weight: 700; border: none; border-radius: 10px; padding: 13px 0; cursor: pointer; transition: background .15s; }
+          .pricing-root :global(.ucalc-cta:hover) { background: #244FCC; }
 
           @media (max-width: 920px) {
             .grid, .pricing-root :global(.frow) { grid-template-columns: minmax(130px, 1.3fr) repeat(5, 1fr); }
@@ -489,175 +503,176 @@ function Mkt({ children }: { children: React.ReactNode }) {
   return <span className="mkt">{children}</span>;
 }
 
-// ─── End-to-end pipeline cost calculator ─────────────────────────────────
-// One unified shopping list of standalone tools spanning the entire sales
-// motion — discovery, outreach, engagement, analytics, conversion. The
-// recommended Mr LAD plan is computed dynamically: it's the smallest tier
-// whose capabilities cover *all* selected items. Pricing ranges are public
-// list prices, normalised to USD/month. Voice is sampled at 500 min/mo
-// since per-minute rates aren't directly comparable to flat plans.
+// ─── Usage (credit) calculator ───────────────────────────────────────────
+// Two-column estimator: slider inputs on the left grouped by capability
+// (Voice / Lead Enrichment / Conversations & Outreach), live credit
+// breakdown + total + recommended plan on the right. Per-action credit
+// costs are the same prices charged by the LAD billing service.
 
-/** Mr LAD plan tiers, ordered cheapest → most capable. */
-type PlanKey = 'broadcast' | 'starter' | 'growth' | 'scale';
-const PLAN_ORDER: PlanKey[] = ['broadcast', 'starter', 'growth', 'scale'];
-const PLAN_INFO: Record<PlanKey, { name: string; price: number }> = {
-  broadcast: { name: 'Broadcast', price: 39 },
-  starter:   { name: 'Starter',   price: 99 },
-  growth:    { name: 'Growth',    price: 199 },
-  scale:     { name: 'Scale',     price: 499 },
-};
+/** Per-action credit costs (matches LAD_backend featureCreditConfig). */
+const CREDITS = {
+  voiceStdPerMin: 3,
+  voicePremPerMin: 4,
+  leadEnrichment: 2,    // per lead with email enriched
+  templateMessage: 5,   // per WhatsApp template send
+  phoneReveal: 10,      // per phone-number reveal
+  waConversation: 1,    // per AI WhatsApp/Instagram conversation turn
+  linkedinAction: 1,    // per LinkedIn connection / message
+  webResearch: 3,       // per per-prospect web research
+} as const;
 
-interface PipelineItem {
-  id: string;
-  /** Stage of the funnel — used as a group header in the calculator. */
-  stage: 'Prospect discovery' | 'Outreach' | 'Engagement' | 'Analysis' | 'Conversion';
-  /** Product name as the visitor recognises it. */
-  label: string;
-  /** Examples shown under the label, e.g. "e.g. Expandi, Dripify". */
-  category: string;
-  /** Monthly USD range — min..max. For per-seat/per-user tools this is the seat price. */
-  min: number;
-  max: number;
-  /** Unit suffix to render after the price range. */
-  unit: string;
-  /** Smallest Mr LAD plan that natively includes the same capability. */
-  requiresPlan: PlanKey;
-  /** Pre-selected on first render? Used so the page shows a meaningful default total. */
-  defaultOn?: boolean;
+/** Mr LAD plan tiers used for the recommendation, cheapest → most capable. */
+const PLANS = [
+  { key: 'starter', name: 'Starter',     price: 99,  maxCredits: 1000 },
+  { key: 'growth',  name: 'Growth',      price: 199, maxCredits: 2500 },
+  { key: 'scale',   name: 'Scale',       price: 499, maxCredits: 6000 },
+  { key: 'ent',     name: 'Enterprise',  price: null, maxCredits: Infinity },
+] as const;
+
+function formatNum(n: number) { return Math.round(n).toLocaleString('en-US'); }
+function recommendPlan(total: number) {
+  return PLANS.find(p => total <= p.maxCredits) ?? PLANS[PLANS.length - 1];
 }
 
-const PIPELINE: PipelineItem[] = [
-  // ── Prospect discovery ─────────────────────────────────────────────────
-  { id: 'db',  stage: 'Prospect discovery', label: 'Prospect database / enrichment', category: 'e.g. Apollo, ZoomInfo, Lusha',           min: 49,  max: 149, unit: '/user/mo', requiresPlan: 'starter', defaultOn: true },
-  { id: 'res', stage: 'Prospect discovery', label: 'Web research / scraping',         category: 'e.g. Clay, PhantomBuster',               min: 49,  max: 150, unit: '/mo',      requiresPlan: 'starter' },
+function UsageCalculator({ onCta }: { onCta: () => void }) {
+  // ── Voice ────────────────────────────────────────────────────────────
+  const [calls,    setCalls]    = useState(100);
+  const [callLen,  setCallLen]  = useState(5);
+  const [premium,  setPremium]  = useState(false);
+  // ── Lead enrichment ──────────────────────────────────────────────────
+  const [leads,    setLeads]    = useState(50);
+  const [templates,setTemplates]= useState(25);
+  const [reveals,  setReveals]  = useState(25);
+  // ── Conversations & Outreach ─────────────────────────────────────────
+  const [waConvs,  setWaConvs]  = useState(50);
+  const [liActions,setLiActions]= useState(20);
+  const [research, setResearch] = useState(20);
 
-  // ── Outreach ───────────────────────────────────────────────────────────
-  { id: 'li',  stage: 'Outreach', label: 'LinkedIn outreach tool',                    category: 'e.g. Expandi, Dripify, HeyReach',        min: 59,  max: 199, unit: '/seat/mo', requiresPlan: 'starter', defaultOn: true },
-  { id: 'em',  stage: 'Outreach', label: 'Cold-email sender',                         category: 'e.g. Instantly, Smartlead, lemlist',     min: 37,  max: 159, unit: '/seat/mo', requiresPlan: 'starter', defaultOn: true },
+  const rate         = premium ? CREDITS.voicePremPerMin : CREDITS.voiceStdPerMin;
+  const voiceMins    = calls * callLen;
+  const voiceCredits = voiceMins * rate;
+  const leadCredits     = leads * CREDITS.leadEnrichment;
+  const msgCredits      = templates * CREDITS.templateMessage;
+  const revealCredits   = reveals * CREDITS.phoneReveal;
+  const waCredits       = waConvs * CREDITS.waConversation;
+  const liCredits       = liActions * CREDITS.linkedinAction;
+  const researchCredits = research * CREDITS.webResearch;
+  const outreachCredits = waCredits + liCredits + researchCredits;
+  const total = voiceCredits + leadCredits + msgCredits + revealCredits + outreachCredits;
 
-  // ── Engagement ─────────────────────────────────────────────────────────
-  { id: 'wa',   stage: 'Engagement', label: 'WhatsApp broadcast platform',            category: 'e.g. AiSensy, Wati, MessageBird',        min: 18,  max: 75,  unit: '/mo', requiresPlan: 'broadcast', defaultOn: true },
-  { id: 'bot',  stage: 'Engagement', label: 'WhatsApp / Instagram AI chatbot add-on', category: 'e.g. Wati chatbot, respond.io AI',       min: 40,  max: 79,  unit: '/mo', requiresPlan: 'growth' },
-  { id: 'ig',   stage: 'Engagement', label: 'Instagram DM automation',                category: 'e.g. ManyChat, Chatfuel',                min: 25,  max: 79,  unit: '/mo', requiresPlan: 'growth' },
-  { id: 'ads',  stage: 'Engagement', label: 'Meta Ads automation / management',       category: 'e.g. Madgicx, Revealbot',                min: 44,  max: 99,  unit: '/mo', requiresPlan: 'growth' },
-
-  // ── Analysis ───────────────────────────────────────────────────────────
-  { id: 'attr', stage: 'Analysis', label: 'Multi-channel attribution',                category: 'e.g. Triple Whale, Northbeam, Rockerbox', min: 250, max: 500, unit: '/mo',      requiresPlan: 'growth' },
-  { id: 'ci',   stage: 'Analysis', label: 'Conversation intelligence',                category: 'e.g. Gong Lite, Chorus',                  min: 79,  max: 199, unit: '/user/mo', requiresPlan: 'growth' },
-  { id: 'bi',   stage: 'Analysis', label: 'Business-intelligence dashboards',         category: 'e.g. Mode, Hex, Looker Studio Pro',       min: 150, max: 500, unit: '/mo',      requiresPlan: 'scale' },
-
-  // ── Conversion ─────────────────────────────────────────────────────────
-  { id: 'voice', stage: 'Conversion', label: 'AI voice agent (≈500 min/mo)', category: 'e.g. Vapi, Retell, Bland — $0.13–$0.31/min', min: 65,  max: 155, unit: '/mo',      requiresPlan: 'scale' },
-  { id: 'cal',   stage: 'Conversion', label: 'Scheduling tool',              category: 'e.g. Calendly, Chili Piper',                 min: 10,  max: 16,  unit: '/user/mo', requiresPlan: 'starter', defaultOn: true },
-  { id: 'crm',   stage: 'Conversion', label: 'CRM seat',                     category: 'e.g. HubSpot, Salesforce, Pipedrive',         min: 25,  max: 99,  unit: '/user/mo', requiresPlan: 'starter', defaultOn: true },
-  { id: 'rev',   stage: 'Conversion', label: 'Review / referral automation', category: 'e.g. Birdeye, NiceJob',                       min: 30,  max: 79,  unit: '/mo',      requiresPlan: 'scale' },
-];
-
-/** Stable display order for the funnel stages. */
-const STAGE_ORDER: PipelineItem['stage'][] = [
-  'Prospect discovery', 'Outreach', 'Engagement', 'Analysis', 'Conversion',
-];
-
-function formatUsd(n: number) {
-  return `$${Math.round(n).toLocaleString('en-US')}`;
-}
-
-function PipelineCalculator() {
-  const [selected, setSelected] = useState<Set<string>>(
-    () => new Set(PIPELINE.filter(i => i.defaultOn).map(i => i.id))
-  );
-  const toggle = (id: string) => setSelected(prev => {
-    const next = new Set(prev);
-    next.has(id) ? next.delete(id) : next.add(id);
-    return next;
-  });
-
-  const picked = PIPELINE.filter(i => selected.has(i.id));
-  const stackMin = picked.reduce((a, c) => a + c.min, 0);
-  const stackMax = picked.reduce((a, c) => a + c.max, 0);
-
-  // Recommended plan = the highest tier any selected item requires.
-  // If nothing is picked, we don't recommend anything (the "Pick some tools" copy fires).
-  const recommendedKey: PlanKey | null = picked.length === 0 ? null
-    : PLAN_ORDER[Math.max(...picked.map(i => PLAN_ORDER.indexOf(i.requiresPlan)))];
-  const recommended = recommendedKey ? PLAN_INFO[recommendedKey] : null;
-
-  const ladPrice = recommended?.price ?? 0;
-  const ladCheaper = recommended != null && stackMin >= ladPrice;
-  const saveMin = Math.max(0, stackMin - ladPrice);
-  const saveMax = Math.max(0, stackMax - ladPrice);
-
-  // Build a flat row list grouped by stage (preserves PIPELINE order within stage)
-  const rowsByStage = STAGE_ORDER
-    .map(stage => ({ stage, items: PIPELINE.filter(i => i.stage === stage) }))
-    .filter(g => g.items.length > 0);
+  const plan = recommendPlan(total);
+  const planLabel = plan.price != null ? `${plan.name} ($${plan.price})` : `${plan.name} (Custom)`;
 
   return (
-    <div className="calc-card">
-      <div className="calc-card-head">
-        <div>
-          <h3 className="calc-title">Build the pipeline yourself</h3>
-          <p className="calc-blurb">Tick every standalone product you&apos;d realistically use across the full funnel. We&apos;ll total the stack and recommend the Mr LAD plan that covers the same capabilities.</p>
+    <div className="ucalc-grid">
+
+      {/* ── Inputs (left column) ─────────────────────────────────────── */}
+      <div className="ucalc-inputs">
+
+        <div className="ucalc-group ucalc-blue">
+          <h4>Voice Calls</h4>
+          <Slider label="Number of calls per month" min={0} max={500} step={10} value={calls} onChange={setCalls} />
+          <Slider label="Average call length (minutes)" min={1} max={30} step={1} value={callLen} onChange={setCallLen} />
+          <CheckRow label={`Use Premium Voice (${CREDITS.voicePremPerMin} cr/min)`} checked={premium} onChange={setPremium} />
         </div>
-        <div className="calc-lad-tag">
-          {recommended
-            ? <>Mr LAD <b>{recommended.name}</b> · {formatUsd(ladPrice)}/mo</>
-            : <>Pick tools to see the matching plan →</>}
+
+        <div className="ucalc-group ucalc-amber">
+          <h4>Lead Enrichment</h4>
+          <Slider label="Leads with email" min={0} max={500} step={10} value={leads} onChange={setLeads}
+            hint={`${CREDITS.leadEnrichment} credits per lead`} />
+          <Slider label="Template messages" min={0} max={500} step={5} value={templates} onChange={setTemplates}
+            hint={`${CREDITS.templateMessage} credits per message`} />
+          <Slider label="Phone number reveals" min={0} max={200} step={5} value={reveals} onChange={setReveals}
+            hint={`${CREDITS.phoneReveal} credits per phone reveal`} />
         </div>
+
+        <div className="ucalc-group ucalc-green">
+          <h4>Conversations &amp; Outreach</h4>
+          <Slider label="AI WhatsApp / IG conversations" min={0} max={500} step={10} value={waConvs} onChange={setWaConvs}
+            hint={`${CREDITS.waConversation} credit per conversation turn`} />
+          <Slider label="LinkedIn connection actions" min={0} max={300} step={10} value={liActions} onChange={setLiActions}
+            hint={`${CREDITS.linkedinAction} credit per action`} />
+          <Slider label="Per-prospect web research" min={0} max={200} step={5} value={research} onChange={setResearch}
+            hint={`${CREDITS.webResearch} credits per prospect`} />
+        </div>
+
       </div>
 
-      {rowsByStage.map(g => (
-        <div key={g.stage} className="calc-group">
-          <div className="calc-group-head">{g.stage}</div>
-          <ul className="calc-list">
-            {g.items.map(c => {
-              const on = selected.has(c.id);
-              return (
-                <li key={c.id}>
-                  <label className={`calc-row${on ? ' on' : ''}`}>
-                    <input type="checkbox" checked={on} onChange={() => toggle(c.id)} />
-                    <span className="calc-check" aria-hidden />
-                    <span className="calc-row-text">
-                      <span className="calc-row-name">{c.label}</span>
-                      <span className="calc-row-cat">{c.category}</span>
-                    </span>
-                    <span className="calc-row-price">
-                      {formatUsd(c.min)}–{formatUsd(c.max)}<small>{c.unit}</small>
-                    </span>
-                  </label>
-                </li>
-              );
-            })}
-          </ul>
+      {/* ── Live breakdown (right column) ────────────────────────────── */}
+      <aside className="ucalc-breakdown">
+        <div className="ucalc-bd-head">
+          <h4>Credit Breakdown</h4>
+          <span className="ucalc-bd-ico" aria-hidden>📟</span>
         </div>
-      ))}
 
-      <div className="calc-totals">
-        <div className="calc-total-line">
-          <span>Your selected stack ({picked.length} tool{picked.length === 1 ? '' : 's'})</span>
-          <b>{picked.length === 0 ? '—' : `${formatUsd(stackMin)}–${formatUsd(stackMax)}/mo`}</b>
+        <BLine label="Voice Calls"           sub={`${formatNum(voiceMins)} mins × ${rate} cr/min`} value={voiceCredits} />
+        <BLine label="Lead Enrichment"       sub={`${formatNum(leads)} leads × ${CREDITS.leadEnrichment} cr`}        value={leadCredits} />
+        <BLine label="Template Messages"     sub={`${formatNum(templates)} messages × ${CREDITS.templateMessage} cr`} value={msgCredits} />
+        <BLine label="Phone Reveals"         sub={`${formatNum(reveals)} reveals × ${CREDITS.phoneReveal} cr`}        value={revealCredits} />
+        <BLine label="Conversations & Outreach" sub={`WhatsApp (${waCredits} cr), LinkedIn (${liCredits} cr), Research (${researchCredits} cr)`} value={outreachCredits} />
+
+        <hr className="ucalc-bd-rule" />
+
+        <div className="ucalc-total">
+          <div>
+            <div className="ucalc-total-label">Total Credits Needed</div>
+            <small>Monthly credit usage estimate</small>
+          </div>
+          <b className="ucalc-total-val">{formatNum(total)}</b>
         </div>
-        <div className="calc-total-line">
-          <span>Mr LAD {recommended?.name ?? '—'}</span>
-          <b>{recommended ? `${formatUsd(ladPrice)}/mo` : '—'}</b>
+
+        <div className="ucalc-rec">
+          <small>Recommended Plan:</small>
+          <strong>{planLabel}</strong>
         </div>
-        <div className={`calc-total-line calc-save${ladCheaper && picked.length > 0 ? ' on' : ''}`}>
-          <span>
-            {picked.length === 0 ? 'Comparison'
-              : ladCheaper ? 'You save'
-              : 'Premium for Mr LAD'}
-          </span>
-          <b>
-            {picked.length === 0
-              ? 'Pick some tools to compare →'
-              : ladCheaper
-                ? saveMin === saveMax
-                  ? `${formatUsd(saveMin)}/mo`
-                  : `${formatUsd(saveMin)}–${formatUsd(saveMax)}/mo`
-                : `${formatUsd(ladPrice - stackMax)}–${formatUsd(ladPrice - stackMin)}/mo — for the AI agents and unified data the stack can't replicate.`}
-          </b>
-        </div>
+
+        <button type="button" className="ucalc-cta" onClick={onCta}>Get Started</button>
+      </aside>
+
+    </div>
+  );
+}
+
+/** Range-slider row used inside the input groups. */
+function Slider({ label, min, max, step = 1, value, onChange, hint }: {
+  label: string; min: number; max: number; step?: number;
+  value: number; onChange: (v: number) => void; hint?: string;
+}) {
+  return (
+    <div className="ucalc-slider">
+      <div className="ucalc-slider-head">
+        <span>{label}</span>
+        <b>{formatNum(value)}</b>
       </div>
+      <input type="range" min={min} max={max} step={step} value={value}
+        onChange={e => onChange(Number(e.target.value))} aria-label={label} />
+      {hint && <small className="ucalc-slider-hint">{hint}</small>}
+    </div>
+  );
+}
+
+/** Native checkbox styled as a pill toggle. */
+function CheckRow({ label, checked, onChange }: {
+  label: string; checked: boolean; onChange: (v: boolean) => void;
+}) {
+  return (
+    <label className={`ucalc-check${checked ? ' on' : ''}`}>
+      <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} />
+      <span className="ucalc-check-box" aria-hidden />
+      <span>{label}</span>
+    </label>
+  );
+}
+
+/** One line of the credit breakdown panel. */
+function BLine({ label, sub, value }: { label: string; sub: string; value: number }) {
+  return (
+    <div className="ucalc-bd-row">
+      <div>
+        <div className="ucalc-bd-label">{label}</div>
+        <small>{sub}</small>
+      </div>
+      <b>{formatNum(value)} cr</b>
     </div>
   );
 }
