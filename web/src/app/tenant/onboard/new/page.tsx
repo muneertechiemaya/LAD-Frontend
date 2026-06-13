@@ -112,7 +112,12 @@ const DEFAULT_CAPABILITIES = [
 // Keep these in sync with ESSENTIAL_OWNER_CAPABILITIES / ESSENTIAL_TENANT_FEATURES
 // in LAD_backend/features/admin/routes/provision.js (also surfaced via /meta).
 const FALLBACK_ESSENTIAL_FEATURES = [
-  'conversations', 'campaigns', 'followups', 'ai_assistant', 'whatsapp-conversations',
+  'conversations', 'campaigns', 'followups',
+  // 'ai_assistant' = AI-template generation; 'ai-chat' = sidebar AI Assistant
+  // nav. Distinct feature keys — both required, otherwise new tenants hit
+  // "Feature Not Available — unlock ai-chat".
+  'ai_assistant', 'ai-chat',
+  'whatsapp-conversations',
 ];
 const FALLBACK_ESSENTIAL_CAPABILITIES = [
   'view_campaigns', 'view_ai_assistant', 'chat_with_ai',
