@@ -387,9 +387,11 @@ export default function PricingPage() {
 
           /* Controls row — volume presets + currency toggle */
           .scc-controls { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 36px; }
-          .pricing-root :global(.scc-presets), .pricing-root :global(.scc-currency) { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-          .pricing-root :global(.scc-plabel) { font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 3px; color: var(--ink-soft); margin-right: 4px; }
-          .pricing-root :global(.scc-preset) { font-family: inherit; font-size: 14px; font-weight: 500; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 9px 20px; cursor: pointer; transition: border-color .15s, background .15s, color .15s; }
+          .pricing-root :global(.scc-presets), .pricing-root :global(.scc-currency) { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+          .pricing-root :global(.scc-plabel) { font-family: 'Space Grotesk', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 2.5px; color: var(--ink-soft); margin-right: 4px; }
+          /* Pill buttons sized smaller — secondary controls; the stage labels
+             below are the real visual landmarks of the calculator. */
+          .pricing-root :global(.scc-preset) { font-family: inherit; font-size: 12.5px; font-weight: 500; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; transition: border-color .15s, background .15s, color .15s; }
           .pricing-root :global(.scc-preset:hover) { border-color: var(--teal); }
           .pricing-root :global(.scc-preset.on) { background: var(--teal); border-color: var(--teal); color: #fff; }
 
@@ -399,16 +401,17 @@ export default function PricingPage() {
 
           /* Numbered stage headers */
           .pricing-root :global(.scc-stages) { display: block; }
-          .pricing-root :global(.scc-stage) { margin-bottom: 36px; }
+          .pricing-root :global(.scc-stage) { margin-bottom: 40px; }
           .pricing-root :global(.scc-stage:last-child) { margin-bottom: 0; }
-          .pricing-root :global(.scc-stage-head) { display: flex; align-items: baseline; gap: 12px; margin-bottom: 18px; }
-          .pricing-root :global(.scc-stage-num) { font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1.5px; }
+          .pricing-root :global(.scc-stage-head) { display: flex; align-items: baseline; gap: 14px; margin-bottom: 22px; }
+          /* Stage labels are the calculator's visual landmarks — sized up so
+             they read clearly above each block of sliders. */
+          .pricing-root :global(.scc-stage-num) { font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 700; letter-spacing: 1px; font-variant-numeric: tabular-nums; }
           .pricing-root :global(.scc-stage-outreach .scc-stage-num) { color: var(--outreach); }
           .pricing-root :global(.scc-stage-engage .scc-stage-num)   { color: var(--engage); }
           .pricing-root :global(.scc-stage-convert .scc-stage-num)  { color: var(--convert); }
           .pricing-root :global(.scc-stage-analyse .scc-stage-num)  { color: var(--analyse); }
-          /* Stage names size-matched to other section heads (.head h2 = 17px). */
-          .pricing-root :global(.scc-stage-name) { font-family: 'Space Grotesk', sans-serif; font-size: 17px; font-weight: 600; letter-spacing: -.2px; margin: 0; color: var(--ink); }
+          .pricing-root :global(.scc-stage-name) { font-family: 'Space Grotesk', sans-serif; font-size: 24px; font-weight: 700; letter-spacing: -.3px; margin: 0; color: var(--ink); }
           .pricing-root :global(.scc-stage-rule) { flex: 1; height: 1px; background: var(--line); align-self: center; }
 
           /* Item rows: label + value, slider, tool meta + per-tool price */
