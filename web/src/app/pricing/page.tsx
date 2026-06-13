@@ -290,11 +290,15 @@ export default function PricingPage() {
 
         {/* All styles scoped to .pricing-root via styled-jsx; no global leakage. */}
         <style jsx>{`
-          @import url('https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
+          @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
 
+          /* Color tokens mapped to the home/landing page palette:
+             #222B45 = home heading text, #8F9BB3 = muted body text,
+             #1A3F7F = primary brand accent (royal blue).
+             Pillar accents stay as their own brand colors. */
           .pricing-root {
-            --paper: #F7F9FB; --ink: #10243E; --ink-soft: #4A5B72; --line: #E2E8F0;
-            --teal: #0E8A7B; --teal-soft: #E4F4F1;
+            --paper: #F8FAFC; --ink: #222B45; --ink-soft: #8F9BB3; --line: #E5EAF2;
+            --teal: #1A3F7F; --teal-soft: #EEF3FB;
             --outreach: #1F6FEB; --engage: #1E9E5A; --analyse: #D98A04; --convert: #7C4DCC;
             --card: #FFFFFF;
             font-family: 'Inter', sans-serif;
@@ -308,10 +312,10 @@ export default function PricingPage() {
           .wrap { max-width: 1280px; margin: 0 auto; padding: 0 20px 80px; }
 
           header.page { padding: 48px 0 28px; text-align: center; }
-          header.page :global(h1) { font-family: 'Sora', sans-serif; font-size: 32px; font-weight: 700; letter-spacing: -.5px; }
+          header.page :global(h1) { font-family: 'Space Grotesk', sans-serif; font-size: 32px; font-weight: 700; letter-spacing: -.5px; }
           header.page :global(p) { color: var(--ink-soft); margin-top: 8px; max-width: 640px; margin-left: auto; margin-right: auto; }
           .pillars { display: flex; gap: 10px; justify-content: center; margin-top: 18px; flex-wrap: wrap; }
-          .pillar { font-family: 'Sora', sans-serif; font-size: 12px; font-weight: 600; padding: 5px 14px; border-radius: 999px; color: #fff; }
+          .pillar { font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 600; padding: 5px 14px; border-radius: 999px; color: #fff; }
           .pillar.o { background: var(--outreach); }
           .pillar.e { background: var(--engage); }
           .pillar.a { background: var(--analyse); }
@@ -324,8 +328,8 @@ export default function PricingPage() {
           .plan-card.noai { background: #FBFCFE; border-style: dashed; }
           .badge { position: absolute; top: -11px; left: 50%; transform: translateX(-50%); background: var(--teal); color: #fff; font-size: 10px; font-weight: 600; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
           .badge.gray { background: var(--ink-soft); }
-          .plan-card :global(h3) { font-family: 'Sora', sans-serif; font-size: 15px; font-weight: 700; }
-          .plan-card .price { font-family: 'Sora', sans-serif; font-size: 21px; font-weight: 700; margin-top: 4px; }
+          .plan-card :global(h3) { font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 700; }
+          .plan-card .price { font-family: 'Space Grotesk', sans-serif; font-size: 21px; font-weight: 700; margin-top: 4px; }
           .plan-card .price :global(small) { font-size: 11px; font-weight: 500; color: var(--ink-soft); }
           .plan-card .seg { font-size: 10.5px; color: var(--ink-soft); margin-top: 4px; }
           /* margin-top:auto pushes the CTA to the bottom of the flex card,
@@ -333,7 +337,7 @@ export default function PricingPage() {
              lines the description occupies above. */
           .plan-card .cta { display: block; width: 100%; margin-top: auto; background: var(--ink); color: #fff; border: none; cursor: pointer; text-decoration: none; font-size: 12px; font-weight: 600; padding: 7px 0; border-radius: 7px; font-family: inherit; }
           .plan-card.popular .cta { background: var(--teal); }
-          .corner { font-family: 'Sora', sans-serif; font-weight: 600; font-size: 13px; color: var(--ink-soft); display: flex; align-items: flex-end; padding: 0 6px 6px; }
+          .corner { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 13px; color: var(--ink-soft); display: flex; align-items: flex-end; padding: 0 6px 6px; }
 
           /* Section wrappers,styled by class on <section> rendered in <Section />.
              We use :global() because the markup is rendered by the Section/FRow
@@ -346,7 +350,7 @@ export default function PricingPage() {
           .pricing-root :global(.fgroup.a > .head) { border-left-color: var(--analyse); }
           .pricing-root :global(.fgroup.c > .head) { border-left-color: var(--convert); }
           .pricing-root :global(.fgroup.n > .head) { border-left-color: var(--ink-soft); }
-          .pricing-root :global(.head h2) { font-family: 'Sora', sans-serif; font-size: 17px; font-weight: 600; margin: 0; }
+          .pricing-root :global(.head h2) { font-family: 'Space Grotesk', sans-serif; font-size: 17px; font-weight: 600; margin: 0; }
           .pricing-root :global(.head .bench) { font-size: 11.5px; color: var(--ink-soft); max-width: 520px; text-align: right; }
           .pricing-root :global(.head .bench b) { color: var(--teal); }
           .pricing-root :global(.chev) { flex: none; width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--ink-soft); transition: transform .2s; }
@@ -367,8 +371,8 @@ export default function PricingPage() {
           .pricing-root :global(.addon) { font-size: 11px; color: var(--ink-soft); background: #F0F3F7; padding: 2px 8px; border-radius: 999px; }
           .pricing-root :global(.road) { font-size: 10px; font-weight: 600; letter-spacing: .4px; color: #fff; background: var(--analyse); padding: 2px 7px; border-radius: 4px; margin-left: 6px; vertical-align: middle; }
 
-          .note { margin-top: 26px; background: var(--teal-soft); border: 1px solid #C8E8E2; border-radius: 12px; padding: 18px 20px; font-size: 13px; color: var(--ink); }
-          .note :global(h4) { font-family: 'Sora', sans-serif; font-size: 14px; margin-bottom: 6px; }
+          .note { margin-top: 26px; background: var(--teal-soft); border: 1px solid #D7E1F1; border-radius: 12px; padding: 18px 20px; font-size: 13px; color: var(--ink); }
+          .note :global(h4) { font-family: 'Space Grotesk', sans-serif; font-size: 14px; margin-bottom: 6px; }
 
           /* ── Stack-cost calculator — typography sized to match the
              rest of the page: top-level h1 is 32px (header.page h1),
@@ -376,7 +380,7 @@ export default function PricingPage() {
              between at 22px so it reads as a major section break
              without competing with the page hero. */
           .scc-section { margin-top: 56px; }
-          .scc-h { font-family: 'Sora', sans-serif; font-size: 22px; font-weight: 700; line-height: 1.2; letter-spacing: -.3px; color: var(--ink); margin: 0 0 8px; max-width: 720px; }
+          .scc-h { font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 700; line-height: 1.2; letter-spacing: -.3px; color: var(--ink); margin: 0 0 8px; max-width: 720px; }
           .scc-h .scc-dim { color: var(--ink-soft); font-weight: 700; }
           .scc-sub { font-size: 13px; line-height: 1.55; color: var(--ink-soft); max-width: 640px; margin: 0 0 24px; }
           .scc-foot { color: var(--ink-soft); margin: 24px 0 0; font-size: 11.5px; line-height: 1.5; max-width: 820px; }
@@ -384,7 +388,7 @@ export default function PricingPage() {
           /* Controls row — volume presets + currency toggle */
           .scc-controls { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 36px; }
           .pricing-root :global(.scc-presets), .pricing-root :global(.scc-currency) { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-          .pricing-root :global(.scc-plabel) { font-family: 'Sora', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 3px; color: var(--ink-soft); margin-right: 4px; }
+          .pricing-root :global(.scc-plabel) { font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 3px; color: var(--ink-soft); margin-right: 4px; }
           .pricing-root :global(.scc-preset) { font-family: inherit; font-size: 14px; font-weight: 500; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 9px 20px; cursor: pointer; transition: border-color .15s, background .15s, color .15s; }
           .pricing-root :global(.scc-preset:hover) { border-color: var(--teal); }
           .pricing-root :global(.scc-preset.on) { background: var(--teal); border-color: var(--teal); color: #fff; }
@@ -398,26 +402,26 @@ export default function PricingPage() {
           .pricing-root :global(.scc-stage) { margin-bottom: 36px; }
           .pricing-root :global(.scc-stage:last-child) { margin-bottom: 0; }
           .pricing-root :global(.scc-stage-head) { display: flex; align-items: baseline; gap: 12px; margin-bottom: 18px; }
-          .pricing-root :global(.scc-stage-num) { font-family: 'Sora', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1.5px; }
+          .pricing-root :global(.scc-stage-num) { font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1.5px; }
           .pricing-root :global(.scc-stage-outreach .scc-stage-num) { color: var(--outreach); }
           .pricing-root :global(.scc-stage-engage .scc-stage-num)   { color: var(--engage); }
           .pricing-root :global(.scc-stage-convert .scc-stage-num)  { color: var(--convert); }
           .pricing-root :global(.scc-stage-analyse .scc-stage-num)  { color: var(--analyse); }
           /* Stage names size-matched to other section heads (.head h2 = 17px). */
-          .pricing-root :global(.scc-stage-name) { font-family: 'Sora', sans-serif; font-size: 17px; font-weight: 600; letter-spacing: -.2px; margin: 0; color: var(--ink); }
+          .pricing-root :global(.scc-stage-name) { font-family: 'Space Grotesk', sans-serif; font-size: 17px; font-weight: 600; letter-spacing: -.2px; margin: 0; color: var(--ink); }
           .pricing-root :global(.scc-stage-rule) { flex: 1; height: 1px; background: var(--line); align-self: center; }
 
           /* Item rows: label + value, slider, tool meta + per-tool price */
           .pricing-root :global(.scc-item) { padding: 2px 0 16px; }
           .pricing-root :global(.scc-item-top) { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin-bottom: 6px; }
           .pricing-root :global(.scc-item-label) { font-size: 13.5px; font-weight: 500; color: var(--ink); }
-          .pricing-root :global(.scc-item-value) { font-family: 'Sora', sans-serif; font-size: 16px; font-weight: 700; color: var(--ink-soft); transition: color .15s; font-variant-numeric: tabular-nums; }
+          .pricing-root :global(.scc-item-value) { font-family: 'Space Grotesk', sans-serif; font-size: 16px; font-weight: 700; color: var(--ink-soft); transition: color .15s; font-variant-numeric: tabular-nums; }
           .pricing-root :global(.scc-item.active .scc-item-value) { color: var(--teal); }
 
           /* Custom range slider — track + thumb in our teal accent */
           .pricing-root :global(.scc-slider) { -webkit-appearance: none; appearance: none; width: 100%; height: 20px; background: transparent; cursor: pointer; }
           .pricing-root :global(.scc-slider::-webkit-slider-runnable-track) { height: 4px; border-radius: 2px; background: linear-gradient(to right, var(--teal) var(--fill, 0%), #D8DDE6 var(--fill, 0%)); }
-          .pricing-root :global(.scc-slider::-webkit-slider-thumb) { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 3px solid var(--teal); margin-top: -7px; box-shadow: 0 1px 3px rgba(14, 138, 123, .35); transition: transform .1s; }
+          .pricing-root :global(.scc-slider::-webkit-slider-thumb) { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 3px solid var(--teal); margin-top: -7px; box-shadow: 0 1px 3px rgba(26, 63, 127, .35); transition: transform .1s; }
           .pricing-root :global(.scc-slider::-webkit-slider-thumb:hover) { transform: scale(1.15); }
           .pricing-root :global(.scc-slider::-moz-range-track) { height: 4px; border-radius: 2px; background: linear-gradient(to right, var(--teal) var(--fill, 0%), #D8DDE6 var(--fill, 0%)); }
           .pricing-root :global(.scc-slider::-moz-range-thumb) { width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 3px solid var(--teal); }
@@ -426,7 +430,7 @@ export default function PricingPage() {
           .pricing-root :global(.scc-item-tool) { display: flex; align-items: baseline; gap: 8px; margin-top: 8px; font-size: 13px; color: var(--ink-soft); }
           .pricing-root :global(.scc-tool-name) { font-weight: 700; color: var(--ink); }
           .pricing-root :global(.scc-tool-vendors::before) { content: '· '; }
-          .pricing-root :global(.scc-tool-price) { margin-left: auto; font-family: 'Sora', sans-serif; font-weight: 700; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+          .pricing-root :global(.scc-tool-price) { margin-left: auto; font-family: 'Space Grotesk', sans-serif; font-weight: 700; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
           .pricing-root :global(.scc-item.active .scc-tool-price) { color: var(--teal); }
 
           /* Right panel — sticky on wide screens */
@@ -436,30 +440,30 @@ export default function PricingPage() {
           /* Receipt card */
           .pricing-root :global(.scc-receipt) { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 24px 26px 20px; }
           .pricing-root :global(.scc-receipt-head) { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
-          .pricing-root :global(.scc-receipt-title) { font-family: 'Sora', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 3px; color: var(--ink-soft); margin: 0; }
+          .pricing-root :global(.scc-receipt-title) { font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 3px; color: var(--ink-soft); margin: 0; }
           .pricing-root :global(.scc-receipt-empty) { font-size: 14px; font-style: italic; color: var(--ink-soft); line-height: 1.5; margin: 4px 0 10px; }
 
           .pricing-root :global(.scc-rline) { display: flex; align-items: baseline; gap: 10px; padding: 7px 0; font-size: 14px; }
           .pricing-root :global(.scc-rname) { color: var(--ink); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
           .pricing-root :global(.scc-rname em) { display: block; font-style: normal; font-size: 11.5px; color: var(--ink-soft); }
           .pricing-root :global(.scc-rdots) { flex: 1; border-bottom: 1px dashed var(--line); transform: translateY(-3px); min-width: 14px; }
-          .pricing-root :global(.scc-ramt) { font-family: 'Sora', sans-serif; font-weight: 700; color: var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; }
+          .pricing-root :global(.scc-ramt) { font-family: 'Space Grotesk', sans-serif; font-weight: 700; color: var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; }
 
           .pricing-root :global(.scc-receipt-total) { display: flex; justify-content: space-between; align-items: baseline; border-top: 1px solid var(--line); margin-top: 12px; padding-top: 14px; }
-          .pricing-root :global(.scc-tlabel strong) { display: block; font-family: 'Sora', sans-serif; font-size: 14px; color: var(--ink); margin-bottom: 2px; }
+          .pricing-root :global(.scc-tlabel strong) { display: block; font-family: 'Space Grotesk', sans-serif; font-size: 14px; color: var(--ink); margin-bottom: 2px; }
           .pricing-root :global(.scc-tlabel span) { font-size: 11.5px; color: var(--ink-soft); }
-          .pricing-root :global(.scc-stack-total) { font-family: 'Sora', sans-serif; font-size: 26px; font-weight: 700; letter-spacing: -.3px; color: var(--ink-soft); line-height: 1; font-variant-numeric: tabular-nums; }
+          .pricing-root :global(.scc-stack-total) { font-family: 'Space Grotesk', sans-serif; font-size: 26px; font-weight: 700; letter-spacing: -.3px; color: var(--ink-soft); line-height: 1; font-variant-numeric: tabular-nums; }
 
           /* Mr LAD card — teal accent, big teal price, feature checklist, verdict pill */
           .pricing-root :global(.scc-lad-card) { position: relative; background: var(--teal-soft); border: 2px solid var(--teal); border-radius: 16px; padding: 22px 24px 20px; }
-          .pricing-root :global(.scc-lad-badge) { position: absolute; top: -12px; left: 22px; background: var(--teal); color: #fff; font-family: 'Sora', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; padding: 5px 12px; border-radius: 999px; }
+          .pricing-root :global(.scc-lad-badge) { position: absolute; top: -12px; left: 22px; background: var(--teal); color: #fff; font-family: 'Space Grotesk', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 2px; padding: 5px 12px; border-radius: 999px; }
           .pricing-root :global(.scc-lad-head) { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: 6px 0 2px; }
-          .pricing-root :global(.scc-lad-title) { font-family: 'Sora', sans-serif; font-size: 17px; font-weight: 700; margin: 0; color: var(--ink); }
+          .pricing-root :global(.scc-lad-title) { font-family: 'Space Grotesk', sans-serif; font-size: 17px; font-weight: 700; margin: 0; color: var(--ink); }
           .pricing-root :global(.scc-lad-title span) { color: var(--teal); }
-          .pricing-root :global(.scc-lad-price) { font-family: 'Sora', sans-serif; font-size: 30px; font-weight: 700; letter-spacing: -.6px; color: var(--teal); line-height: 1; font-variant-numeric: tabular-nums; }
+          .pricing-root :global(.scc-lad-price) { font-family: 'Space Grotesk', sans-serif; font-size: 30px; font-weight: 700; letter-spacing: -.6px; color: var(--teal); line-height: 1; font-variant-numeric: tabular-nums; }
           .pricing-root :global(.scc-lad-price small) { font-size: 13px; font-weight: 500; color: var(--ink-soft); letter-spacing: 0; }
           .pricing-root :global(.scc-lad-alt) { font-size: 12.5px; color: var(--ink-soft); margin: 0 0 14px; text-align: right; }
-          .pricing-root :global(.scc-lad-covers) { font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 2.5px; color: var(--ink-soft); margin: 0 0 10px; }
+          .pricing-root :global(.scc-lad-covers) { font-family: 'Space Grotesk', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 2.5px; color: var(--ink-soft); margin: 0 0 10px; }
           .pricing-root :global(.scc-plan-features) { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 14.5px; color: var(--ink); }
           .pricing-root :global(.scc-plan-features li) { display: flex; align-items: center; gap: 10px; }
           .pricing-root :global(.scc-plan-features svg) { flex: none; color: var(--teal); }
@@ -467,11 +471,11 @@ export default function PricingPage() {
           /* Verdict pill — idle (gray) when neutral, win (teal-tinted) when saving */
           .pricing-root :global(.scc-verdict) { margin-top: 16px; padding: 12px 16px; border-radius: 10px; font-size: 14.5px; line-height: 1.45; }
           .pricing-root :global(.scc-verdict.idle) { background: var(--card); border: 1px solid var(--line); color: var(--ink-soft); }
-          .pricing-root :global(.scc-verdict.win)  { background: rgba(14, 138, 123, .08); border: 1px solid rgba(14, 138, 123, .3); color: var(--ink); }
+          .pricing-root :global(.scc-verdict.win)  { background: rgba(26, 63, 127, .08); border: 1px solid rgba(26, 63, 127, .3); color: var(--ink); }
           .pricing-root :global(.scc-verdict strong) { color: var(--teal); font-weight: 700; }
 
-          .pricing-root :global(.scc-cta) { display: block; width: 100%; margin-top: 16px; font-family: 'Sora', sans-serif; font-size: 15px; font-weight: 700; text-align: center; padding: 13px 0; border-radius: 10px; border: none; background: var(--teal); color: #fff; cursor: pointer; transition: background .15s; }
-          .pricing-root :global(.scc-cta:hover) { background: #0A7669; }
+          .pricing-root :global(.scc-cta) { display: block; width: 100%; margin-top: 16px; font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 700; text-align: center; padding: 13px 0; border-radius: 10px; border: none; background: var(--teal); color: #fff; cursor: pointer; transition: background .15s; }
+          .pricing-root :global(.scc-cta:hover) { background: #142F5F; }
 
           @media (max-width: 920px) {
             .grid, .pricing-root :global(.frow) { grid-template-columns: minmax(130px, 1.3fr) repeat(5, 1fr); }
