@@ -386,14 +386,15 @@ export default function PricingPage() {
           .scc-foot { color: var(--ink-soft); margin: 24px 0 0; font-size: 11.5px; line-height: 1.5; max-width: 820px; }
 
           /* Controls row — volume presets on the left, currency toggle on
-             the right of the same line. flex-wrap is OFF here so the row
-             never breaks on desktop; only the small-screen media query
-             below stacks them. The inner pill groups can still wrap if
-             their own content overflows. */
-          .scc-controls { display: flex; justify-content: space-between; align-items: center; gap: 24px; margin-bottom: 36px; }
+             the right of the same line. .scc-controls is rendered inside
+             StackCostCalculator (a child component), so the rule needs
+             :global() to escape styled-jsx scoping — without it, the row
+             would render as a plain block-level div and its two children
+             would stack vertically. */
+          .pricing-root :global(.scc-controls) { display: flex; justify-content: space-between; align-items: center; gap: 24px; margin-bottom: 36px; }
           .pricing-root :global(.scc-presets), .pricing-root :global(.scc-currency) { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
           @media (max-width: 640px) {
-            .scc-controls { flex-direction: column; align-items: flex-start; gap: 14px; }
+            .pricing-root :global(.scc-controls) { flex-direction: column; align-items: flex-start; gap: 14px; }
           }
           .pricing-root :global(.scc-plabel) { font-family: 'Space Grotesk', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 2.5px; color: var(--ink-soft); margin-right: 4px; }
           /* Pill buttons sized smaller — secondary controls; the stage labels
