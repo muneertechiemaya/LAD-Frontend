@@ -192,7 +192,7 @@ export function AgentForm({
             </div>
             <div>
               <CardTitle className="text-lg">Basic Details</CardTitle>
-              <CardDescription>Configure your agent's identity</CardDescription>
+              <CardDescription>Configure your agent&apos;s identity</CardDescription>
             </div>
           </div>
         </CardHeader>

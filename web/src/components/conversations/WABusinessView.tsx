@@ -70,6 +70,9 @@ import {
 import { TemplatePicker } from './TemplatePicker';
 import { ImportLeadsDialog } from './ImportLeadsDialog';
 import { ChatGroupManager, AddToGroupDropdown, type ChatGroup } from './ChatGroupManager';
+import { MessageComposer } from './MessageComposer';
+import type { Channel } from '@/types/conversation';
+import type { RichMessagePayload as ComposerRichPayload } from '@lad/frontend-features/conversations';
 import { CreateBroadcastGroupModal } from './CreateBroadcastGroupModal';
 import { MessageSettings } from './MessageSettings';
 import { MrLadAvatar } from './MrLadAvatar';
@@ -461,7 +464,7 @@ function EventModal({ onClose, onSend }: { onClose: () => void; onSend: (p: Rich
   const [time, setTime] = useState('');
   const handleSend = () => {
     if (!title.trim() || !date) return;
-    let text = `📅 *Event: ${sanitizeInput(title.trim())}*\n🗓️ ${sanitizeInput(date)}${time ? ' at ' + sanitizeInput(time) : ''}`;
+    const text = `📅 *Event: ${sanitizeInput(title.trim())}*\n🗓️ ${sanitizeInput(date)}${time ? ' at ' + sanitizeInput(time) : ''}`;
     onSend({ type: 'text', content: sanitizeMessageContent(text) });
   };
   return (
@@ -1124,7 +1127,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
 
   const [olderMessages, setOlderMessages] = useState<Message[]>([]);
   const [loadingOlder, setLoadingOlder] = useState(false);
-  const [olderOffset, setOlderOffset] = useState(CONFIG.INITIAL_MESSAGE_LIMIT);
+  const [olderOffset, setOlderOffset] = useState<number>(CONFIG.INITIAL_MESSAGE_LIMIT);
 
   const prevConvId = useRef<string | null>(null);
 
@@ -1251,7 +1254,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
     status: normalizeStatus(
       (m as Message & { message_status?: string }).status ||
       (m as Message & { message_status?: string }).message_status
-    ),
+    ) as Message['status'],
   }));
 
   const baseMessages = dedupeById([...olderMessages, ...normalizedPolledMessages]);
@@ -1318,10 +1321,21 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
         const role =
           meta.sender_type === 'human_agent' && rawRole === 'assistant' ? 'human_agent' : rawRole;
         const isOutgoing = role === 'assistant' || role === 'AI' || role === 'human_agent';
+        // Agent-forward: NEW forwards carry the customer name in metadata (clean body);
+        // OLD ones baked "📩 *New message from X*\n\nBody" into content — parse as fallback.
+        let displayContent = (r.content as string) || '';
+        let forwardSender: string | undefined =
+          (meta.via === 'agent_forward' || meta.sender_type === 'forward')
+            ? (meta.sender_name || undefined)
+            : undefined;
+        if (!forwardSender) {
+          const fwd = displayContent.match(/^[^\n]*\*New message from ([^*\n]+)\*\s*\n+([\s\S]+)$/);
+          if (fwd) { forwardSender = fwd[1].trim(); displayContent = fwd[2].trim(); }
+        }
         return {
           id: r.id,
           conversationId: r.conversation_id,
-          content: r.content || '',
+          content: displayContent,
           timestamp: r.created_at ? new Date(r.created_at as string | Date) : new Date(),
           isOutgoing,
           status: (() => {
@@ -1333,10 +1347,16 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
           })(),
           sender: {
             id: isOutgoing ? meta.human_agent_id || 'agent' : r.lead_id || 'user',
-            name: isOutgoing ? (role === 'human_agent' ? meta.sender_name || 'Agent' : 'AI Agent') : 'Contact',
+            name: isOutgoing
+              ? (role === 'human_agent' ? meta.sender_name || 'Agent' : 'AI Agent')
+              : (meta.is_group ? (meta.sender_name || meta.sender_phone || 'Member') : 'Contact'),
           },
           role,
-          senderName: role === 'human_agent' ? meta.sender_name || undefined : undefined,
+          // Sender label above a bubble: human-agent name, group participant, or the
+          // customer an agent-forward is from. 1:1 chats stay undefined.
+          senderName: role === 'human_agent'
+            ? (meta.sender_name || undefined)
+            : (forwardSender || (meta.is_group && !isOutgoing ? (meta.sender_name || meta.sender_phone || undefined) : undefined)),
           humanAgentId: meta.human_agent_id || undefined,
           templateName: meta.template_name || r.template_name || undefined,
           latitude: meta.latitude !== undefined
@@ -1355,8 +1375,8 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
         } as Message;
       });
 
-      setOlderMessages((prev) => dedupeById([...mapped, ...prev]).slice(-MAX_OLDER_MESSAGES));
-      const nextOffsetIncrement = raw.length > 0 ? raw.length : LOAD_MORE_LIMIT;
+      setOlderMessages((prev) => dedupeById([...mapped, ...prev]).slice(-CONFIG.MAX_OLDER_MESSAGES));
+      const nextOffsetIncrement = raw.length > 0 ? raw.length : CONFIG.LOAD_MORE_LIMIT;
       setOlderOffset((prev) => prev + nextOffsetIncrement);
     } catch (err: unknown) {
       setSendError(getErrorMessage(err, 'Failed to load older messages'));
@@ -1369,7 +1389,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
   const updateOwnership = useCallback(async (newOwner: 'AI' | 'human_agent') => {
     const convId = conversationId || conversation?.id;
     if (!convId) return;
-    const res = await fetchWithTenant(`/api/whatsapp-conversations/conversations/${convId}/ownership`, {
+    const res = await fetchWithTenant(`/api/whatsapp-conversations/conversations/${convId}/ownership?channel=${backendChannel || 'waba'}`, {
       method: 'PATCH',
       body: JSON.stringify({ owner: newOwner }),
     });
@@ -2431,6 +2451,138 @@ function WABASidebar({
   const [selectedGroupsPanelIds, setSelectedGroupsPanelIds] = useState<Set<string>>(new Set());
   const [createGroupIds, setCreateGroupIds] = useState<string[]>([]);
 
+  // ── Group-chat broadcast: post one message into each selected WhatsApp group
+  //    chat (not its members), throttled server-side (batch 5–10, 2min+, 250/day).
+  const [groupBroadcastBatchSize, setGroupBroadcastBatchSize] = useState(5);
+  const [groupBroadcastSending, setGroupBroadcastSending] = useState(false);
+  const [groupBroadcastResult, setGroupBroadcastResult] = useState<string | null>(null);
+  const [isSyncingWaGroups, setIsSyncingWaGroups] = useState(false);
+  // Search + type filter for the Broadcast Groups panel (300+ synced WA groups).
+  // Type: 'whatsapp' = native WhatsApp chat groups (have wa_group_jid),
+  //       'broadcast' = manually-created broadcast lists, 'both' = all.
+  const [groupsPanelSearch, setGroupsPanelSearch] = useState('');
+  const [groupTypeFilter, setGroupTypeFilter] = useState<'both' | 'whatsapp' | 'broadcast'>('both');
+  const filteredPanelGroups = useMemo(() => {
+    const q = groupsPanelSearch.trim().toLowerCase();
+    return newChatGroups.filter((g) => {
+      const isWhatsappGroup = !!g.metadata?.wa_group_jid;
+      const matchesType =
+        groupTypeFilter === 'both' ||
+        (groupTypeFilter === 'whatsapp' ? isWhatsappGroup : !isWhatsappGroup);
+      const matchesSearch = !q || (g.name || '').toLowerCase().includes(q);
+      return matchesType && matchesSearch;
+    });
+  }, [newChatGroups, groupsPanelSearch, groupTypeFilter]);
+
+  // Import the owner's native WhatsApp groups (with JIDs) so they can receive a
+  // group-chat broadcast. Mirrors the Chat Group Manager's "Sync WA Groups".
+  const handleSyncWaGroups = useCallback(async () => {
+    if (isSyncingWaGroups) return;
+    setIsSyncingWaGroups(true);
+    setGroupBroadcastResult(null);
+    try {
+      const res = await fetchWithTenant('/api/whatsapp-conversations/wa-groups/sync', { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) {
+        setGroupBroadcastResult(data.error || 'Sync failed — is your Personal WhatsApp connected?');
+      } else {
+        setGroupBroadcastResult(data.message || `Synced ${data.synced ?? 0} WhatsApp group${data.synced === 1 ? '' : 's'}.`);
+        // Refresh the panel list so the newly-synced groups appear.
+        const gr = await fetchWithTenant(`/api/whatsapp-conversations/chat-groups?channel=${backendChannel || 'personal'}`);
+        const gd = await gr.json().catch(() => ({}));
+        if (Array.isArray(gd.data)) setNewChatGroups(gd.data);
+      }
+    } catch (err) {
+      setGroupBroadcastResult(err instanceof Error ? err.message : 'Sync failed');
+    } finally {
+      setIsSyncingWaGroups(false);
+    }
+  }, [isSyncingWaGroups, backendChannel]);
+
+  // Dispatch a composed rich payload (text / media / poll / contact / location…)
+  // to every currently-selected group, throttled server-side.
+  const handleGroupRichBroadcast = useCallback(async (payload: ComposerRichPayload) => {
+    if (groupBroadcastSending) return;
+    const selectedGroups = newChatGroups.filter((g) => selectedGroupsPanelIds.has(g.id));
+    if (selectedGroups.length === 0) {
+      setGroupBroadcastResult('Select at least one group first.');
+      return;
+    }
+    setGroupBroadcastSending(true);
+    setGroupBroadcastResult(null);
+    try {
+      const res = await fetchWithTenant(
+        `/api/whatsapp-conversations/chat-groups/broadcast-to-groups?channel=${backendChannel || 'personal'}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            group_ids: selectedGroups.map((g) => g.id),
+            payload,
+            batch_size: groupBroadcastBatchSize,
+          }),
+        },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setGroupBroadcastResult(data.error || `Failed (${res.status})`);
+        return;
+      }
+      let note = `Broadcasting (${payload.type}) to ${data.queued} group${data.queued === 1 ? '' : 's'}…`;
+      if (data.skipped_non_whatsapp) note += ` · ${data.skipped_non_whatsapp} skipped (not synced WA groups)`;
+      if (data.capped_by_daily_limit) note += ' · daily 250 cap hit, rest deferred';
+      setGroupBroadcastResult(note);
+      setSelectedGroupsPanelIds(new Set());
+    } catch (err) {
+      setGroupBroadcastResult(err instanceof Error ? err.message : 'Broadcast failed');
+    } finally {
+      setGroupBroadcastSending(false);
+    }
+  }, [groupBroadcastSending, newChatGroups, selectedGroupsPanelIds, groupBroadcastBatchSize, backendChannel]);
+
+  // Broadcast a saved template to the selected groups (the backend renders it
+  // into text/media, substituting {{n}} params, then fans it out throttled).
+  const handleGroupTemplateBroadcast = useCallback(async (
+    templateName: string,
+    languageCode: string,
+    parameters: string[],
+  ) => {
+    if (groupBroadcastSending) return;
+    const selectedGroups = newChatGroups.filter((g) => selectedGroupsPanelIds.has(g.id));
+    if (selectedGroups.length === 0) {
+      setGroupBroadcastResult('Select at least one group first.');
+      throw new Error('Select at least one group first.');
+    }
+    setGroupBroadcastSending(true);
+    setGroupBroadcastResult(null);
+    try {
+      const res = await fetchWithTenant(
+        `/api/whatsapp-conversations/chat-groups/broadcast-to-groups?channel=${backendChannel || 'personal'}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            group_ids: selectedGroups.map((g) => g.id),
+            payload: { type: 'template', templateName, languageCode, parameters: parameters || [] },
+            batch_size: groupBroadcastBatchSize,
+          }),
+        },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setGroupBroadcastResult(data.error || `Failed (${res.status})`);
+        throw new Error(data.error || `Failed (${res.status})`);
+      }
+      let note = `Broadcasting template "${templateName}" to ${data.queued} group${data.queued === 1 ? '' : 's'}…`;
+      if (data.skipped_non_whatsapp) note += ` · ${data.skipped_non_whatsapp} skipped (not synced WA groups)`;
+      if (data.capped_by_daily_limit) note += ' · daily 250 cap hit, rest deferred';
+      setGroupBroadcastResult(note);
+      setSelectedGroupsPanelIds(new Set());
+    } finally {
+      setGroupBroadcastSending(false);
+    }
+  }, [groupBroadcastSending, newChatGroups, selectedGroupsPanelIds, groupBroadcastBatchSize, backendChannel]);
+
   // ── Label library (fetched once if parent opts in) ─────────────────────
   const [allLabels, setAllLabels] = useState<Array<{ id: string; name: string; color: string }>>([]);
   useEffect(() => {
@@ -3315,7 +3467,7 @@ function WABASidebar({
               lastMsg = activeLastMsg;
             }
             const time = lastMsg
-              ? formatDistanceToNow(new Date(lastMsg.timestamp || lastMsg.created_at || new Date()), { addSuffix: false })
+              ? formatDistanceToNow(new Date(lastMsg.timestamp || (lastMsg as Message & { created_at?: string }).created_at || new Date()), { addSuffix: false })
               : '';
 
             return (
@@ -3369,7 +3521,7 @@ function WABASidebar({
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-1 min-w-0 overflow-hidden">
                       {(lastMsg?.isOutgoing || lastMsg?.role === 'assistant' || lastMsg?.role === 'human_agent') && !conv.unreadCount && (
-                        <MessageTicks status={lastMsg?.status || lastMsg?.message_status} />
+                        <MessageTicks status={lastMsg?.status || (lastMsg as (Message & { message_status?: string }) | undefined)?.message_status} />
                       )}
                       <span className="text-[14px] text-muted-foreground dark:text-[#a2a2a2] truncate max-w-[80%]">
                         {lastMsg?.content || 'Started conversation'}
@@ -3763,13 +3915,30 @@ function WABASidebar({
               <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             </button>
             <span className="text-sm font-semibold flex-1">Broadcast Groups</span>
+            {backendChannel === 'personal' && (
+              <button
+                type="button"
+                onClick={handleSyncWaGroups}
+                disabled={isSyncingWaGroups}
+                title="Import your WhatsApp groups from the connected number"
+                className="flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-700 disabled:opacity-50"
+              >
+                <RefreshCw className={cn('h-3.5 w-3.5', isSyncingWaGroups && 'animate-spin')} />
+                {isSyncingWaGroups ? 'Syncing…' : 'Sync WA Groups'}
+              </button>
+            )}
             {selectedGroupsPanelIds.size > 0 && (
               <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded-full">
                 {selectedGroupsPanelIds.size} selected
               </span>
             )}
           </div>
- 
+          {groupBroadcastResult && (
+            <p className="px-4 py-1.5 text-[11px] text-muted-foreground border-b border-border dark:border-[#222d34]">
+              {groupBroadcastResult}
+            </p>
+          )}
+
           {/* Group list */}
           <div className="flex-1 overflow-y-auto">
             {newChatGroupsLoading ? (
@@ -3793,7 +3962,29 @@ function WABASidebar({
               </div>
             ) : (
               <>
-                {/* Select-all row */}
+                {/* Search + type filter */}
+                <div className="px-4 py-2 border-b border-border dark:border-[#222d34] flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <input
+                      value={groupsPanelSearch}
+                      onChange={(e) => setGroupsPanelSearch(e.target.value)}
+                      placeholder="Search groups…"
+                      className="w-full pl-9 pr-3 py-1.5 text-xs rounded-md border border-border bg-background focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <select
+                    value={groupTypeFilter}
+                    onChange={(e) => setGroupTypeFilter(e.target.value as 'both' | 'whatsapp' | 'broadcast')}
+                    title="Filter by group type"
+                    className="text-xs rounded-md border border-border bg-background px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                  >
+                    <option value="both">All groups</option>
+                    <option value="whatsapp">Chat groups</option>
+                    <option value="broadcast">Broadcast groups</option>
+                  </select>
+                </div>
+                {/* Select-all row — operates on the currently-filtered groups */}
                 <div className="px-4 py-2 flex items-center justify-between border-b border-border dark:border-[#222d34]">
                   <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     Groups
@@ -3802,26 +3993,27 @@ function WABASidebar({
                     <button
                       type="button"
                       onClick={() => {
-                        const allIds = newChatGroups.map(g => g.id);
-                        const allSelected = allIds.every(id => selectedGroupsPanelIds.has(id));
-                        if (allSelected) {
-                          setSelectedGroupsPanelIds(new Set());
-                        } else {
-                          setSelectedGroupsPanelIds(new Set(allIds));
-                        }
+                        const filteredIds = filteredPanelGroups.map(g => g.id);
+                        const allFilteredSelected = filteredIds.length > 0 && filteredIds.every(id => selectedGroupsPanelIds.has(id));
+                        setSelectedGroupsPanelIds(prev => {
+                          const next = new Set(prev);
+                          if (allFilteredSelected) filteredIds.forEach(id => next.delete(id));
+                          else filteredIds.forEach(id => next.add(id));
+                          return next;
+                        });
                       }}
                       className="text-[10px] text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
                     >
-                      {newChatGroups.every(g => selectedGroupsPanelIds.has(g.id)) ? 'Deselect all' : 'Select all'}
+                      {filteredPanelGroups.length > 0 && filteredPanelGroups.every(g => selectedGroupsPanelIds.has(g.id)) ? 'Deselect all' : 'Select all'}
                     </button>
                     <span className="text-[10px] text-muted-foreground">
-                      {selectedGroupsPanelIds.size}/{newChatGroups.length}
+                      {selectedGroupsPanelIds.size} selected
                     </span>
                   </div>
                 </div>
  
                 {/* Group rows */}
-                {newChatGroups.map((group) => {
+                {filteredPanelGroups.map((group) => {
                   const isChecked = selectedGroupsPanelIds.has(group.id);
                   return (
                     <div
@@ -3939,28 +4131,48 @@ function WABASidebar({
             )}
           </div>
  
-          {/* Bottom action bar — send broadcast when groups selected */}
+          {/* Bottom action bar — compose a rich message + post into the selected group chats */}
           {selectedGroupsPanelIds.size > 0 && (
-            <div className="px-4 py-3 border-t border-border dark:border-[#222d34] bg-card dark:bg-[#161717] flex items-center gap-2">
-              <button
-                type="button"
-                className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white text-xs h-9 rounded-md font-medium transition-colors"
-                onClick={() => {
-                  const selectedGroups = newChatGroups.filter(g => selectedGroupsPanelIds.has(g.id));
-                  setIsGroupsPanelOpen(false);
-                  setSelectedGroupsPanelIds(new Set());
-                  handleGroupsTemplateSend(selectedGroups);
-                }}
-              >
-                Send Broadcast ({selectedGroupsPanelIds.size})
-              </button>
-              <button
-                type="button"
-                className="border border-border text-xs h-9 px-3 rounded-md hover:bg-muted transition-colors"
-                onClick={() => setSelectedGroupsPanelIds(new Set())}
-              >
-                Clear
-              </button>
+            <div className="border-t border-border dark:border-[#222d34] bg-card dark:bg-[#161717] flex flex-col">
+              <div className="px-4 pt-2 flex items-center gap-2">
+                <span className="text-[11px] font-medium text-emerald-600 flex-1">
+                  {selectedGroupsPanelIds.size} group{selectedGroupsPanelIds.size === 1 ? '' : 's'} selected
+                </span>
+                <label className="text-[11px] text-muted-foreground flex items-center gap-1 shrink-0">
+                  Batch
+                  <input
+                    type="number"
+                    min={5}
+                    max={10}
+                    value={groupBroadcastBatchSize}
+                    onChange={(e) => setGroupBroadcastBatchSize(Math.max(5, Math.min(10, parseInt(e.target.value) || 5)))}
+                    className="w-12 text-xs rounded border border-border bg-background px-1 py-0.5"
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="border border-border text-[11px] h-7 px-2 rounded-md hover:bg-muted transition-colors"
+                  onClick={() => setSelectedGroupsPanelIds(new Set())}
+                >
+                  Clear
+                </button>
+              </div>
+              <p className="px-4 pt-1 text-[10px] text-muted-foreground">
+                {groupBroadcastSending
+                  ? 'Sending…'
+                  : 'Compose below (text, photo, document, poll…) — posts into each selected group chat · throttled · max 250/day'}
+              </p>
+              {groupBroadcastResult && (
+                <p className="px-4 pt-1 text-[11px] text-emerald-600">{groupBroadcastResult}</p>
+              )}
+              {/* Full rich composer — its attachment menu / modals produce a payload sent to every selected group */}
+              <MessageComposer
+                channel={'whatsapp' as Channel}
+                backendChannel="personal"
+                disabled={groupBroadcastSending}
+                onSendMessage={handleGroupRichBroadcast}
+                onSendTemplate={handleGroupTemplateBroadcast}
+              />
             </div>
           )}
         </div>
@@ -4064,14 +4276,19 @@ const DEFAULT_CONTEXT_STATUSES: ContextStatusOption[] = [
 export function WABusinessView({
   isSidebarCollapsed,
   setIsSidebarCollapsed,
+  backendChannel = 'waba',
 }: {
   isSidebarCollapsed: boolean;
   setIsSidebarCollapsed: (val: boolean) => void;
+  /** Which WhatsApp backend this rich view drives. Defaults to 'waba' so the
+   *  WhatsApp Business tab is byte-for-byte unchanged; the Personal WA tab
+   *  passes 'personal' to reuse this UI against LAD-WAPA-Comms. */
+  backendChannel?: 'personal' | 'waba';
 }) {
-  // WABusinessView is the WhatsApp Business tab — it must always use the WABA
-  // channel (routes to LAD-WABA-Comms). Hardcoding 'personal' here sent every
-  // request to the empty personal service and showed "No chats found".
-  const channel = 'waba';
+  // Drive every request (conversation list, actions, and all children) through
+  // the selected channel. 'waba' → LAD-WABA-Comms, 'personal' → LAD-WAPA-Comms.
+  // Do NOT hardcode this — doing so sends one tab's requests to the wrong service.
+  const channel = backendChannel;
   const queryClient = useQueryClient();
   const [isMounted, setIsMounted] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
@@ -4220,7 +4437,9 @@ const handleFavorite = useCallback(
 
   // ── Sort / filter state ────────────────────────────────────────────────
   const [sortBy, setSortBy] = useState<'date' | 'message_count' | 'name'>('date');
-  const [hideEmpty, setHideEmpty] = useState(false);
+  // Personal WA has many empty campaign/greeting shells — default to hiding
+  // empties so the inbox shows real chats first. WABA keeps showing everything.
+  const [hideEmpty, setHideEmpty] = useState(channel === 'personal');
   const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
   const [contextStatusFilter, setContextStatusFilter] = useState('all');
   const [contextStatuses, setContextStatuses] = useState<ContextStatusOption[]>([]);

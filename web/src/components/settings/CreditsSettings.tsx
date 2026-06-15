@@ -159,7 +159,7 @@ export const CreditsSettings: React.FC = () => {
               {(selectedAmount || customAmount) && (
                 <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-sm text-blue-800">
-                    <span className="font-semibold">You'll receive: </span>
+                    <span className="font-semibold">You&apos;ll receive: </span>
                     {(() => {
                       const amount = parseFloat(customAmount) || selectedAmount || 0;
                       if (!amount || amount <= 0) return 'Select an amount';
@@ -206,7 +206,7 @@ export const CreditsSettings: React.FC = () => {
             <div>
               <h4 className="font-medium text-gray-900 mb-1">Purchase Credits</h4>
               <p className="text-sm text-gray-600">
-                Add credits to your wallet at any time. Credits never expire and can be used across all services.
+                Add credits to your wallet at any time. Credits are valid for 1 month and can be used across all services.
               </p>
             </div>
           </div>

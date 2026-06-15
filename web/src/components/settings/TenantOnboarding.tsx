@@ -480,7 +480,7 @@ export function TenantOnboarding() {
                 className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 font-mono"
               />
               <p className="text-xs text-gray-500 mt-1">
-                Used when Aria says "someone from my team will contact you". E.164 format
+                Used when Aria says &quot;someone from my team will contact you&quot;. E.164 format
                 (e.g. <code className="bg-gray-100 px-1 rounded">+971501234567</code>). If empty,
                 escalations fall back to the platform support number.
               </p>

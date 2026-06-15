@@ -69,11 +69,31 @@ function mapMessageFromApi(raw: any): Message {
 
   const isOutgoing = role === 'assistant' || role === 'AI' || role === 'human_agent';
 
-  // Human-agent display name: prefer metadata, fall back to 'Agent'
+  // Agent-forward messages surface the customer as a sender label (like a group).
+  // NEW forwards carry the name in metadata with a clean body; OLD ones baked
+  // "📩 *New message from X*\n\nBody" into the content — parse those as a fallback.
+  let displayContent: string = raw.content || '';
+  let forwardSender: string | undefined =
+    (metadata.via === 'agent_forward' || metadata.sender_type === 'forward')
+      ? (metadata.sender_name || undefined)
+      : undefined;
+  if (!forwardSender) {
+    const fwd = displayContent.match(/^[^\n]*\*New message from ([^*\n]+)\*\s*\n+([\s\S]+)$/);
+    if (fwd) { forwardSender = fwd[1].trim(); displayContent = fwd[2].trim(); }
+  }
+
+  // Display name shown above a bubble:
+  //  • human-agent (outgoing takeover) → the agent's name
+  //  • incoming GROUP message          → the participant who sent it
+  //  • agent-forward                   → the customer the message is from
+  //  • 1:1 chats                        → undefined (no per-message label)
   const senderName: string | undefined =
     role === 'human_agent'
       ? (metadata.sender_name || metadata.agent_name || raw.sender_name || undefined)
-      : undefined;
+      : (forwardSender
+          || (metadata.is_group && !isOutgoing
+              ? (metadata.sender_name || metadata.sender_phone || undefined)
+              : undefined));
 
   const rawType = String(raw.type || '').toLowerCase();
   const inferredMediaTypeFromRawType =
@@ -84,7 +104,7 @@ function mapMessageFromApi(raw: any): Message {
   return {
     id: raw.id,
     conversationId: raw.conversation_id,
-    content: raw.content || '',
+    content: displayContent,
     timestamp: new Date(raw.created_at),
     isOutgoing,
     // DB default is 'received' for all messages; outbound ones get backfilled to 'sent'.
@@ -101,7 +121,7 @@ function mapMessageFromApi(raw: any): Message {
       id: isOutgoing ? (metadata.human_agent_id || 'agent') : raw.lead_id || 'user',
       name: isOutgoing
         ? (role === 'human_agent' ? (senderName || 'Agent') : 'AI Agent')
-        : 'Contact',
+        : (metadata.is_group ? (senderName || 'Member') : 'Contact'),
     },
     role,
     intent: raw.intent,

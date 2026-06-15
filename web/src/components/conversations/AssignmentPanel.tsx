@@ -57,6 +57,50 @@ interface AssignmentHistory {
   history: AssignmentRecord[];
 }
 
+/**
+ * Raw assignment row as returned by the Python service
+ * (GET /threads/:id/assignment): flat user IDs, no display names.
+ */
+interface RawAssignment {
+  id: string;
+  assigned_to_user_id?: string | null;
+  assigned_by_user_id?: string | null;
+  assigned_at?: string | null;
+}
+
+/**
+ * The Python service returns flat user IDs with no names. Map them into the
+ * nested AssignmentRecord shape the UI expects, resolving names from the loaded
+ * team-member list when available (falls back to a neutral placeholder).
+ */
+function normalizeAssignmentHistory(
+  raw: { current?: RawAssignment | null; history?: RawAssignment[] } | null,
+  members: TeamMember[]
+): AssignmentHistory {
+  const byId = new Map(members.map((m) => [m.id, m]));
+  const resolve = (userId?: string | null): TeamMember | null =>
+    userId
+      ? byId.get(userId) ?? { id: userId, name: "Team member", email: "" }
+      : null;
+  const toRecord = (a?: RawAssignment | null): AssignmentRecord | null =>
+    a
+      ? {
+          id: a.id,
+          assignedTo: resolve(a.assigned_to_user_id),
+          assignedBy: resolve(a.assigned_by_user_id),
+          assignedAt: a.assigned_at ?? new Date().toISOString(),
+        }
+      : null;
+  return {
+    current: toRecord(raw?.current),
+    history: Array.isArray(raw?.history)
+      ? raw.history
+          .map(toRecord)
+          .filter((r): r is AssignmentRecord => r !== null)
+      : [],
+  };
+}
+
 interface AssignmentPanelProps {
   conversationId: string;
   channel?: "waba" | "personal";
@@ -208,6 +252,12 @@ export function AssignmentPanel({
 }: AssignmentPanelProps) {
   // ── State ────────────────────────────────────────────────────────────────
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  // Mirror of teamMembers readable inside callbacks without re-creating them —
+  // used to resolve assignee display names when normalising assignment data.
+  const teamMembersRef = useRef<TeamMember[]>([]);
+  useEffect(() => {
+    teamMembersRef.current = teamMembers;
+  }, [teamMembers]);
   const [assignment, setAssignment] = useState<AssignmentHistory | null>(null);
 
   const [loadingMembers, setLoadingMembers] = useState(false);
@@ -239,7 +289,7 @@ export function AssignmentPanel({
 
     try {
       const res = await fetchWithRetry(
-        `/api/whatsapp-conversations/conversations/${conversationId}/assignment?channel=${channel}`
+        `/api/threads/${conversationId}/assignment?channel=${channel}`
       );
 
       if (res.status === 404) {
@@ -255,8 +305,10 @@ export function AssignmentPanel({
         );
       }
 
-      const data: AssignmentHistory = await res.json();
-      setAssignment(data);
+      // Python returns flat { current, history } rows keyed by user ID rather
+      // than nested TeamMember objects — map them into the UI's shape.
+      const raw = await res.json();
+      setAssignment(normalizeAssignmentHistory(raw, teamMembersRef.current));
     } catch (err) {
       const msg =
         err instanceof Error ? err.message : "Failed to load assignment";
@@ -293,10 +345,31 @@ export function AssignmentPanel({
         );
       }
 
-      const workload: TeamMember[] = await res.json();
+      const raw = await res.json();
 
-      // Defensive: ensure we always have an array
-      setTeamMembers(Array.isArray(workload) ? workload : []);
+      // The /threads/team/workload endpoint returns rows shaped as
+      // { user_id, name, email, active_count, total_count, last_assigned_at }.
+      // Normalise to the TeamMember contract so `member.id` (used as the React
+      // key AND the assign payload) and `member.workload` are populated instead
+      // of silently undefined.
+      const members: TeamMember[] = Array.isArray(raw)
+        ? raw
+            .map((m: {
+              user_id?: string;
+              id?: string;
+              name?: string | null;
+              email?: string | null;
+              active_count?: number;
+            }) => ({
+              id: m.user_id ?? m.id ?? "",
+              name: m.name ?? m.email ?? "Unknown",
+              email: m.email ?? "",
+              workload: m.active_count,
+            }))
+            .filter((m) => m.id) // drop any row without a usable id
+        : [];
+
+      setTeamMembers(members);
     } catch (err) {
       const msg =
         err instanceof Error ? err.message : "Failed to load team members";
@@ -322,12 +395,17 @@ export function AssignmentPanel({
       setActionSuccess(null);
 
       try {
+        // Assign and unassign are distinct endpoints on the Python service:
+        //   assign   → POST /threads/:id/assign    body { user_id }
+        //   unassign → POST /threads/:id/unassign  body { reason? }
         const res = await fetchWithRetry(
-          `/api/whatsapp-conversations/conversations/${conversationId}/assignment?channel=${channel}`,
+          member
+            ? `/api/threads/${conversationId}/assign?channel=${channel}`
+            : `/api/threads/${conversationId}/unassign?channel=${channel}`,
           {
-            method: member ? "POST" : "DELETE",
+            method: "POST",
             headers: { "Content-Type": "application/json" },
-            ...(member && { body: JSON.stringify({ agent_id: member.id }) }),
+            body: JSON.stringify(member ? { user_id: member.id } : {}),
           }
         );
 
@@ -409,7 +487,12 @@ export function AssignmentPanel({
 
   // ── Derived values ───────────────────────────────────────────────────────
 
-  const currentAssignee = assignment?.current?.assignedTo ?? null;
+  // The assignment payload only carries the user ID; upgrade to the full
+  // team-member record (name/role) once the member list has loaded.
+  const rawCurrentAssignee = assignment?.current?.assignedTo ?? null;
+  const currentAssignee = rawCurrentAssignee
+    ? teamMembers.find((m) => m.id === rawCurrentAssignee.id) ?? rawCurrentAssignee
+    : null;
   const recentHistory = assignment?.history?.slice(0, 5) ?? [];
   const isLoading = loadingAssignment && !assignment;
 

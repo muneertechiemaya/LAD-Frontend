@@ -76,13 +76,6 @@ export default function CampaignLeadsPage() {
   const revealLinkedInMutation = useRevealLeadLinkedIn();
   const generateSummaryMutation = useGenerateLeadProfileSummary();
 
-  // Debug: Log first lead to check photo_url
-  useEffect(() => {
-    if (leads.length > 0) {
-      console.log("First lead data:", leads[0]);
-      console.log("Photo URL:", leads[0].photo_url);
-    }
-  }, [leads]);
   // Note: Pagination would ideally come from SDK
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
