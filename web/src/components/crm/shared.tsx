@@ -36,7 +36,7 @@ export interface ChannelMeta {
 export const CH: Record<string, ChannelMeta> = {
   linkedin:  { label: 'LinkedIn',  color: T.linkedin, Icon: BriefcaseBusiness },
   whatsapp:  { label: 'WhatsApp',  color: T.whatsapp, Icon: MessageCircle },
-  wapa:      { label: 'Personal WA', color: T.whatsapp, Icon: MessageCircle },
+  wapa:      { label: 'WAPA', color: T.whatsapp, Icon: MessageCircle },
   email:     { label: 'Email',     color: T.gmail,    Icon: Mail },
   voice:     { label: 'Voice',     color: T.voice,    Icon: Phone },
   instagram: { label: 'Instagram', color: '#ec4899',  Icon: Camera },

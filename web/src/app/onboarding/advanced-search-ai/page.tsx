@@ -731,7 +731,7 @@ export default function AdvancedSearchAIPage() {
             }
         },
         {
-            key: 'personal_wa', label: 'Personal WA', color: '#25D366', icon: 'personal_wa', fetchContacts: async (search: string) => {
+            key: 'personal_wa', label: 'WAPA', color: '#25D366', icon: 'personal_wa', fetchContacts: async (search: string) => {
                 const params = new URLSearchParams({ page: '1', limit: '100' }); if (search) params.set('search', search);
                 const res = await fetch(`/api/personal-whatsapp/contacts?${params}`, { credentials: 'include' });
                 const data = await res.json();
@@ -7674,7 +7674,7 @@ function CheckpointFormInline({
                                                                         </div>
                                                                         {/* Channel badge */}
                                                                         <div style={{ marginTop: '6px', padding: '2px 8px', borderRadius: '10px', background: waNewTmplChannelType === 'business_api' ? '#dbeafe' : '#dcfce7', border: `1px solid ${waNewTmplChannelType === 'business_api' ? '#93c5fd' : '#86efac'}`, fontSize: '9px', fontWeight: 700, color: waNewTmplChannelType === 'business_api' ? '#1d4ed8' : '#166534' }}>
-                                                                            {waNewTmplChannelType === 'business_api' ? '🏢 Business WABA' : '📱 Personal WhatsApp'}
+                                                                            {waNewTmplChannelType === 'business_api' ? '🏢 Business WABA' : '📱 WAPA'}
                                                                         </div>
                                                                     </div>
                                                                 )}
