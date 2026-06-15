@@ -2596,7 +2596,7 @@ function WABASidebar({
   useEffect(() => {
     if (!onLabelFilterChange) return;
     let cancelled = false;
-    fetchWithTenant('/api/whatsapp-conversations/labels')
+    fetchWithTenant(`/api/whatsapp-conversations/labels?channel=${backendChannel || 'waba'}`)
       .then((r) => r.json())
       .then((data) => {
         if (cancelled) return;
