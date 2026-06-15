@@ -9,6 +9,7 @@ const LEGAL_LINKS = [
   { href: '/privacy-policy', label: 'Privacy Policy' },
   { href: '/terms-of-service', label: 'Terms of Service' },
   { href: '/cookies-policy', label: 'Cookies Policy' },
+  { href: '/account-deletion-policy', label: 'Account Deletion Policy' },
 ];
 
 interface LegalPageLayoutProps {

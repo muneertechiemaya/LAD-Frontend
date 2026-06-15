@@ -91,8 +91,8 @@ const Footer = memo(function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-gray-300 hover:text-white transition-colors">
-                  Status
+                <Link href="/account-deletion-policy" className="text-gray-300 hover:text-white transition-colors">
+                  Account Deletion Policy
                 </Link>
               </li>
             </ul>
