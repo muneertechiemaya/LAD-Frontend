@@ -780,17 +780,24 @@ export function CallLogsTable({
 
   // Render individual call row with optional indent for batch calls
   const renderCallRow = (callLog: CallLog, indent = false) => {
+    const enhancedCallLog = { ...callLog, is_batch_item: indent };
     const callId = String((callLog as any)?.id ?? "");
     const tableRow = table
       .getRowModel()
       .rows.find((r) => String((r.original as any)?.id ?? "") === callId);
 
     // DEBUG: Log what's happening with batch calls
+    const rowClassName = cn(
+        "cursor-pointer hover:bg-gray-50 dark:hover:bg-[#1a2a43] border-b border-[#E2E8F0] dark:border-[#262831] transition-colors",
+        selectedCalls.has(callId) ? "bg-primary/5" : "bg-white dark:bg-[#000724]",
+        indent && "bg-slate-50/40 dark:bg-slate-900/30 border-l-4 border-l-blue-500/50"
+    );
+
     if (indent) {
       logger.debug("[renderCallRow] Batch call:", {
         callId,
         hasTableRow: !!tableRow,
-        callLogData: callLog,
+        callLogData: enhancedCallLog,
         batchId: (callLog as any)?.batch_id,
       });
     }
@@ -801,17 +808,16 @@ export function CallLogsTable({
         <TableRow
           key={callId}
           onClick={() => onRowClick(callId)}
-          className={`cursor-pointer hover:bg-gray-50 dark:hover:bg-[#1a2a43] border-b border-[#E2E8F0] dark:border-[#262831] ${selectedCalls.has(callId) ? "bg-primary/5" : ""
-            } ${indent ? "bg-[#F8FAFC] dark:bg-[#253456]" : ""}`}
+          className={rowClassName}
         >
           {columns.map((column, cellIndex) => {
             // Build proper cell context that matches tanstack table's expected format
             const rowContext = {
-              original: callLog,
+              original: enhancedCallLog,
               getValue: (key?: string) => {
                 // If key provided, use it; otherwise use column's accessorKey
                 const accessor = key || (column as any).accessorKey || column.id;
-                return (callLog as any)[accessor];
+                return (enhancedCallLog as any)[accessor];
               },
             };
             const cellContext = {
@@ -827,7 +833,7 @@ export function CallLogsTable({
                   }
                 }}
                 className={cn(
-                  cellIndex === 0 && indent ? "pl-8" : "",
+
                   (column.meta as any)?.sticky ? `sticky ${(column.meta as any)?.sticky} bg-white dark:bg-[#000724] ${(column.meta as any)?.zIndex || 'z-10'} border-r border-[#E2E8F0] dark:border-[#262831]` : ""
                 )}
               >
@@ -839,31 +845,30 @@ export function CallLogsTable({
       );
     }
 
+    tableRow.original.is_batch_item = indent;
+
     return (
-      <TableRow
-        key={callId}
-        onClick={() => onRowClick(callId)}
-        className={`cursor-pointer hover:bg-gray-50 dark:hover:bg-[#1a2a43] border-b border-[#E2E8F0] dark:border-[#262831] ${selectedCalls.has(callId) ? "bg-primary/5" : ""
-          }`}
-      >
-        {tableRow.getVisibleCells().map((cell, cellIndex) => (
-          <TableCell
-            key={cell.id}
-            onClick={(e) => {
-              // Prevent row click for checkbox and actions columns
-              if (cell.column.id === 'select' || cell.column.id === 'actions') {
-                e.stopPropagation();
-              }
-            }}
-            className={cn(
-              cellIndex === 0 && indent ? "pl-8" : "",
-              (cell.column.columnDef.meta as any)?.sticky ? `sticky ${(cell.column.columnDef.meta as any)?.sticky} bg-white dark:bg-[#000724] ${(cell.column.columnDef.meta as any)?.zIndex || 'z-10'} border-r border-[#E2E8F0] dark:border-[#262831]` : ""
-            )}
-          >
-            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-          </TableCell>
-        ))}
-      </TableRow>
+        <TableRow
+            key={callId}
+            onClick={() => onRowClick(callId)}
+            className={rowClassName}
+        >
+          {tableRow.getVisibleCells().map((cell, cellIndex) => (
+              <TableCell
+                  key={cell.id}
+                  onClick={(e) => {
+                    if (cell.column.id === 'select' || cell.column.id === 'actions') {
+                      e.stopPropagation();
+                    }
+                  }}
+                  className={cn(
+                      (cell.column.columnDef.meta as any)?.sticky ? `sticky ${(cell.column.columnDef.meta as any)?.sticky} bg-white dark:bg-[#000724] ${(cell.column.columnDef.meta as any)?.zIndex || 'z-10'} border-r border-[#E2E8F0] dark:border-[#262831]` : ""
+                  )}
+              >
+                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+              </TableCell>
+          ))}
+        </TableRow>
     );
   };
 
