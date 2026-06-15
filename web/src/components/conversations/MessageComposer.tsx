@@ -50,6 +50,9 @@ export interface MessageComposerProps {
    *  When omitted, falls back to inferring from `channel` (always 'waba' for 'whatsapp'). */
   backendChannel?: 'personal' | 'waba';
   onSendMessage:   (payload: RichMessagePayload) => void;
+  /** Broadcast-mode template send (no conversationId). When set, picking a
+   *  template calls this instead of the per-conversation send endpoint. */
+  onSendTemplate?: (templateName: string, languageCode: string, parameters: string[]) => void | Promise<void>;
   disabled?:       boolean;
   contactName?:    string;
   conversationId?: string;
@@ -436,12 +439,13 @@ function StickerPicker({ onSelect, onClose }: { onSelect: (s: string) => void; o
 }
 
 export const MessageComposer = memo(function MessageComposer({
-  channel, backendChannel: backendChannelProp, onSendMessage, disabled = false, contactName, conversationId, owner,
+  channel, backendChannel: backendChannelProp, onSendMessage, onSendTemplate, disabled = false, contactName, conversationId, owner,
 }: MessageComposerProps) {
   // Resolve which backend this conversation belongs to.
-  // Explicit backendChannel prop takes priority; falls back to inferring from channel.
-  const resolvedBackendChannel: 'personal' | 'waba' =
-    backendChannelProp ?? (channel === 'whatsapp' ? 'waba' : 'waba');
+  // Explicit backendChannel prop takes priority. Every real caller (ChatWindow
+  // via ConversationsPage) passes it as 'personal' | 'waba'; 'waba' is only a
+  // safety default for the unreachable no-prop case.
+  const resolvedBackendChannel: 'personal' | 'waba' = backendChannelProp ?? 'waba';
 
   // ── State ────────────────────────────────────────────────────────────────
   const [message,            setMessage]            = useState('');
@@ -597,7 +601,24 @@ export const MessageComposer = memo(function MessageComposer({
     headerType: string,
     headerUrl: string,
   ) => {
-    if (!conversationId) return;
+    // Broadcast mode (no conversation): hand the template name + params to the
+    // parent, which fans it out to the selected groups.
+    if (!conversationId) {
+      if (!onSendTemplate) return;
+      setTemplateSending(true);
+      setTemplateSendResult(null);
+      try {
+        await onSendTemplate(templateName, languageCode, parameters || []);
+        setTemplateSendResult({ success: true, message: `Template "${templateName}" queued` });
+        setTimeout(() => setIsTemplatePickerOpen(false), 400);
+        setTimeout(() => setTemplateSendResult(null), 3000);
+      } catch (err: any) {
+        setTemplateSendResult({ success: false, message: err?.message || 'Failed to send template' });
+      } finally {
+        setTemplateSending(false);
+      }
+      return;
+    }
     setTemplateSending(true);
     setTemplateSendResult(null);
     setTemplateSendProgress({ sent: 0, total: 1, running: true });
@@ -656,7 +677,7 @@ export const MessageComposer = memo(function MessageComposer({
     } finally {
       setTemplateSending(false);
     }
-  }, [conversationId, channel, resolvedBackendChannel]);
+  }, [conversationId, channel, resolvedBackendChannel, onSendTemplate]);
 
   const handleAttachItem = useCallback((id: string) => {
     setShowAttachMenu(false);
@@ -670,6 +691,7 @@ export const MessageComposer = memo(function MessageComposer({
       case 'poll':     setShowPoll(true);             break;
       case 'sticker':  setShowStickers(true);         break;
       case 'event':    setShowEvent(true);            break;
+      case 'template': setIsTemplatePickerOpen(true); break;
     }
   }, []);
 
@@ -743,7 +765,8 @@ export const MessageComposer = memo(function MessageComposer({
 
       <div className="flex items-end gap-2">
 
-        {/* ── Agent type toggle ── */}
+        {/* ── Agent type toggle (chat only — hidden for group broadcast) ── */}
+        {conversationId && (
         <div className="hidden lg:block">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -767,6 +790,7 @@ export const MessageComposer = memo(function MessageComposer({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+        )}
 
         {/* ── "+" Attachment menu ── */}
         <div ref={attachBtnRef} className="relative flex-shrink-0 hidden lg:block">
@@ -786,7 +810,16 @@ export const MessageComposer = memo(function MessageComposer({
             <div className="absolute bottom-full left-0 mb-2 w-64 bg-white border border-gray-200 rounded-2xl shadow-xl p-3 z-40">
               <p className="text-[10px] font-semibold text-[#94A3B8] uppercase tracking-wide mb-2 px-1">Attach</p>
               <div className="grid grid-cols-3 gap-1">
-                {ATTACH_ITEMS.map(item => (
+                {[
+                  // Broadcast mode drops Sticker (no broadcast payload) and adds Send Template,
+                  // keeping a clean 3×3 grid with the template in the 3rd row.
+                  ...(onSendTemplate && !conversationId
+                    ? ATTACH_ITEMS.filter(i => i.id !== 'sticker')
+                    : ATTACH_ITEMS),
+                  ...(onSendTemplate && !conversationId
+                    ? [{ id: 'template', label: 'Send Template', icon: <LayoutTemplate className="w-6 h-6 text-white" />, bg: 'bg-[#0b1957]' } as AttachItem]
+                    : []),
+                ].map(item => (
                   <button key={item.id} onClick={()=>handleAttachItem(item.id)}
                     className="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-gray-50 transition-colors group">
                     <div className={cn('w-12 h-12 rounded-full flex items-center justify-center shadow-sm transition-transform group-hover:scale-105', item.bg)}>
@@ -800,7 +833,8 @@ export const MessageComposer = memo(function MessageComposer({
           )}
         </div>
 
-        {/* ── Template Picker (replaces Quick Replies) ── */}
+        {/* ── Template shortcut button (chat only; broadcast opens the picker from the + menu) ── */}
+        {conversationId && (
         <div className="hidden lg:block">
           <Button
             variant="ghost"
@@ -813,6 +847,7 @@ export const MessageComposer = memo(function MessageComposer({
             <LayoutTemplate className="h-5 w-5" />
           </Button>
         </div>
+        )}
         <TemplatePicker
           open={isTemplatePickerOpen}
           onOpenChange={setIsTemplatePickerOpen}
@@ -820,7 +855,7 @@ export const MessageComposer = memo(function MessageComposer({
           onSend={handleTemplateSendFromComposer}
           sending={templateSending}
           sendProgress={templateSendProgress}
-          channel={channel === 'whatsapp' ? 'waba' : (channel as 'personal' | 'waba')}
+          channel={resolvedBackendChannel}
           isBulkSend={false}
         />
 
@@ -883,11 +918,13 @@ export const MessageComposer = memo(function MessageComposer({
         </div>
       )}
 
-      {/* ── Hint bar ── */}
-      <p className="text-[10px] text-muted-foreground mt-2 px-1 hidden lg:block">
-        Enter to send · Shift+Enter for new line
-        {agentType === 'human' && <span className="ml-2 text-orange-500 font-medium">· You have manual control</span>}
-      </p>
+      {/* ── Hint bar (chat only — hidden for group broadcast) ── */}
+      {conversationId && (
+        <p className="text-[10px] text-muted-foreground mt-2 px-1 hidden lg:block">
+          Enter to send · Shift+Enter for new line
+          {agentType === 'human' && <span className="ml-2 text-orange-500 font-medium">· You have manual control</span>}
+        </p>
+      )}
     </div>
   );
 });

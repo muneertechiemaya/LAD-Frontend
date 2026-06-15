@@ -7,6 +7,14 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useTheme } from '@/contexts/ThemeContext';
 
+// ── Group sender colours (WhatsApp-style, deterministic per sender) ───────────
+const WA_SENDER_COLORS = ['#d9416a', '#0a7cff', '#e07b00', '#00a884', '#7b61ff', '#c0399f', '#0e8a8a', '#a8662a'];
+function senderColor(name: string): string {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return WA_SENDER_COLORS[h % WA_SENDER_COLORS.length];
+}
+
 // ── Location card renderer ───────────────────────────────────────────────────
 function LocationCard({
   latitude,
@@ -286,6 +294,21 @@ function LeadAvatar({ contact }: { contact?: Contact }) {
   );
 }
 
+/** Forwarded-message avatar — colored initial of the customer the message is from,
+ *  using the same per-sender colour as the bubble's sender label (not the AI logo). */
+function ForwardAvatar({ name }: { name: string }) {
+  const initial = name ? name.charAt(0).toUpperCase() : '?';
+  return (
+    <div
+      className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold text-white"
+      style={{ backgroundColor: senderColor(name) }}
+      title={name}
+    >
+      {initial}
+    </div>
+  );
+}
+
 /** Human agent avatar — first letter, clickable to open profile */
 function AgentAvatar({
   name,
@@ -393,8 +416,10 @@ export const MessageBubble = memo(function MessageBubble({
 
   const [showAgentProfile, setShowAgentProfile] = useState(false);
 
-  // Determine the sender category
-  const isAI = isOutgoing && role !== 'human_agent';
+  // Determine the sender category. A forward is an outgoing message that carries a
+  // sender label (the customer it's from) and isn't a human-agent takeover.
+  const isForward = isOutgoing && !!message.senderName && role !== 'human_agent';
+  const isAI = isOutgoing && role !== 'human_agent' && !isForward;
   const isLead = !isOutgoing;
 
   const handleAgentAvatarClick = (agentId?: string) => {
@@ -415,10 +440,12 @@ export const MessageBubble = memo(function MessageBubble({
       {/* ── Incoming-side avatar (lead or nothing) ── */}
       {showAvatar && isLead && <LeadAvatar contact={contact} />}
 
-      {/* ── Outgoing-side avatar (AI or human agent) ── */}
+      {/* ── Outgoing-side avatar (forward, AI, or human agent) ── */}
       {showAvatar && isOutgoing && (
         <div className="relative">
-          {isAI ? (
+          {isForward ? (
+            <ForwardAvatar name={message.senderName as string} />
+          ) : isAI ? (
             <AiAvatar />
           ) : (
             <>
@@ -447,6 +474,16 @@ export const MessageBubble = memo(function MessageBubble({
           isHighlighted && 'ring-2 ring-amber-500 dark:ring-amber-400 bg-amber-100/40 dark:bg-amber-500/25 scale-[1.02]'
         )}
       >
+        {/* Sender label — group participant or the customer an agent-forward is from.
+            (human_agent uses senderName for its avatar instead, so it's excluded.) */}
+        {message.senderName && role !== 'human_agent' && (
+          <span
+            className="text-[12.5px] font-semibold leading-tight mb-0.5 truncate max-w-full"
+            style={{ color: senderColor(message.senderName) }}
+          >
+            {message.senderName}
+          </span>
+        )}
         {isOutgoing && onDeleteMessage && (
           <div className="absolute top-1 right-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
             <DropdownMenu>
