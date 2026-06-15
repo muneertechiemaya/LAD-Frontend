@@ -3,7 +3,7 @@
 // Each is a CrmTable instance with view-specific columns + filters.
 
 import * as React from 'react';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   Search, Download, Plus, MoreVertical, ChevronsUpDown, ChevronLeft, ChevronRight,
   ChevronDown, Inbox, Radio, Route, BadgeCheck, Trash2,
@@ -129,6 +129,86 @@ function RowActions({ onRemove }: { onRemove?: () => void }) {
   );
 }
 
+// ── CSV export helper ────────────────────────────────────────────────────
+// Used by the Export button in every CrmTable view. Renders the CURRENTLY
+// FILTERED rows (so the user gets what they're seeing, not the whole table)
+// to a UTF-8 CSV with a BOM so Excel opens it cleanly. Stable, well-known
+// CrmContact fields are exported regardless of which view is showing —
+// users typically want all the underlying data, not just the visible cells.
+
+// Stable column order for the exported CSV. Centralised so all four views
+// (All / Prospects / Leads / Clients) emit consistent files.
+const CSV_FIELDS: { key: keyof CrmContact; label: string }[] = [
+  { key: 'name',           label: 'Name' },
+  { key: 'type',           label: 'Type' },
+  { key: 'source',         label: 'Source' },
+  { key: 'title',          label: 'Title' },
+  { key: 'company',        label: 'Company' },
+  { key: 'industry',       label: 'Industry' },
+  { key: 'geo',            label: 'Location' },
+  { key: 'email',          label: 'Email' },
+  { key: 'phone',          label: 'Phone' },
+  { key: 'channels',       label: 'Channels' },
+  { key: 'owner',          label: 'Owner' },
+  { key: 'stage',          label: 'Stage' },
+  { key: 'fit',            label: 'Fit score' },
+  { key: 'intentSignals',  label: 'Intent signals' },
+  { key: 'warmPath',       label: 'Warm path' },
+  { key: 'value',          label: 'Value' },
+  { key: 'probability',    label: 'Probability' },
+  { key: 'nextStep',       label: 'Next step' },
+  { key: 'expectedClose',  label: 'Expected close' },
+  { key: 'plan',           label: 'Plan' },
+  { key: 'mrr',            label: 'MRR' },
+  { key: 'health',         label: 'Health' },
+  { key: 'renewalDate',    label: 'Renewal date' },
+  { key: 'nps',            label: 'NPS' },
+  { key: 'csm',            label: 'CSM' },
+  { key: 'lastActivityAt', label: 'Last activity' },
+  { key: 'createdAt',      label: 'Created' },
+];
+
+// RFC-4180 CSV cell escape: wrap in double quotes if the value contains a
+// comma, double-quote, or newline; double any embedded quotes.
+function csvCell(v: unknown): string {
+  if (v == null) return '';
+  let s: string;
+  if (Array.isArray(v)) s = v.join('|');
+  else if (typeof v === 'object') s = JSON.stringify(v);
+  else s = String(v);
+  if (/[",\r\n]/.test(s)) s = `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+function buildContactsCsv(rows: CrmContact[]): string {
+  const header = CSV_FIELDS.map((f) => csvCell(f.label)).join(',');
+  const body = rows
+    .map((row) => CSV_FIELDS.map((f) => csvCell(row[f.key])).join(','))
+    .join('\n');
+  return rows.length ? `${header}\n${body}\n` : `${header}\n`;
+}
+
+function downloadCsv(filename: string, csv: string): void {
+  // Guard for SSR-style invocation (shouldn't happen — this lives in a
+  // 'use client' file — but fail safely if it ever does).
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+  // Prepend BOM so Excel auto-detects UTF-8.
+  const blob = new Blob(['﻿', csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function slugify(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'contacts';
+}
+
 // ── Generic table shell ──────────────────────────────────────────────────
 interface Column<R> {
   label: string;
@@ -175,6 +255,15 @@ function CrmTable<R extends CrmContact>({
     return out;
   }, [q, activeFilters, rows]);
 
+  // Export the CURRENTLY FILTERED rows to CSV. The button is disabled when
+  // there is nothing to export, so this guard is defensive only.
+  const handleExport = useCallback(() => {
+    if (!filtered.length) return;
+    const csv = buildContactsCsv(filtered as CrmContact[]);
+    const ts = new Date().toISOString().slice(0, 10);
+    downloadCsv(`${slugify(title)}-${ts}.csv`, csv);
+  }, [filtered, title]);
+
   return (
     <section className="bg-white dark:bg-[#000724] rounded-[20px] border border-slate-200 dark:border-[#262831] overflow-hidden">
       <header className="px-5 py-4 border-b border-slate-100 dark:border-[#262831] flex items-center justify-between gap-3 flex-wrap">
@@ -217,7 +306,13 @@ function CrmTable<R extends CrmContact>({
               onChange={(v) => setActiveFilters((prev) => ({ ...prev, [String(f.key)]: v }))}
             />
           ))}
-          <button className="h-9 px-3 rounded-lg text-[12.5px] font-medium border border-slate-200 dark:border-[#262831] text-[#172560] dark:text-white hover:bg-slate-50 dark:hover:bg-[#1a2a43] inline-flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={filtered.length === 0}
+            title={filtered.length === 0 ? 'No rows to export' : `Export ${filtered.length} row${filtered.length === 1 ? '' : 's'} as CSV`}
+            className="h-9 px-3 rounded-lg text-[12.5px] font-medium border border-slate-200 dark:border-[#262831] text-[#172560] dark:text-white hover:bg-slate-50 dark:hover:bg-[#1a2a43] inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             <Download className="w-3.5 h-3.5" /> Export
           </button>
           <button

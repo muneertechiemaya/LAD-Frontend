@@ -81,7 +81,7 @@ function AgentCard({ agent, index }: { agent: Agent; index: number }) {
 
             {/* Action Button with Glow */}
             <button className="w-full bg-primary hover:shadow-lg hover:shadow-primary/50 text-white font-bold py-3 px-4 rounded-xl transition-all duration-300 transform uppercase text-sm tracking-wide border border-white/20">
-              Unlock Agent
+              See him in action
             </button>
           </div>
         </div>
@@ -94,55 +94,55 @@ export default function MeetOurAgentSection() {
   const agents: Agent[] = [
     {
       id: 1,
-      name: "Alex",
-      role: "Sales Agent",
+      name: "On LinkedIn",
+      role: "Prospecting",
       description:
-        "Expert sales closer who transforms leads into revenue. Handles negotiations, objection handling, and seals deals with AI-powered sales intelligence.",
-      videoSrc: "/agent-alex.mp4",
+        "He finds your ideal customers across professional networks and opens personalized conversations that get replies.",
+      videoSrc: "/agent-maya.mp4",
       icon: <Zap className="w-5 h-5" />,
     },
     {
       id: 2,
-      name: "Maya",
-      role: "Lead Generation Agent",
+      name: "On WhatsApp",
+      role: "Conversations",
       description:
-        "Master prospector who identifies high-value leads and initiates meaningful conversations. Builds targeted lists and warms up prospects for sales.",
-      videoSrc: "/agent-maya.mp4",
+        "He chats instantly on WhatsApp, answers questions, qualifies leads, and books meetings — day or night.",
+      videoSrc: "/agent-alex.mp4",
       icon: <MessageSquare className="w-5 h-5" />,
     },
     {
       id: 3,
-      name: "Travel",
-      role: "Campaign Manager Agent",
+      name: "On Voice",
+      role: "Calls",
       description:
-        "Orchestrates multi-channel campaigns with precision. Manages outreach timing, sequences, and channels across LinkedIn, email, WhatsApp and SMS for maximum conversions.",
-      videoSrc: "/agent-luna.mp4",
+        "He makes and takes calls, follows up by phone, and never misses a lead — in any timezone.",
+      videoSrc: "/agent-max.mp4",
       icon: <TrendingUp className="w-5 h-5" />,
     },
     {
       id: 4,
-      name: "Max",
-      role: "Growth Agent",
+      name: "On Instagram",
+      role: "Social",
       description:
-        "Specializes in rapid scaling and market penetration. Analyzes growth loops and optimizes conversion funnels to maximize your business reach.",
-      videoSrc: "/agent-max.mp4",
+        "He turns Instagram DMs and comments into booked conversations, so no inbound ever slips through.",
+      videoSrc: "/agent-luna.mp4",
       icon: <Zap className="w-5 h-5" />,
     },
     {
       id: 5,
-      name: "Ava",
-      role: "Marketing Agent",
+      name: "On Email",
+      role: "Nurture",
       description:
-        "Crafts compelling narratives and data-driven marketing strategies. Optimizes ad spend and enhances brand visibility across all digital touchpoints.",
+        "He keeps every inbox warm with timely, personalized follow-ups until each lead is ready to talk.",
       videoSrc: "/agent-ava.mp4",
       icon: <MessageSquare className="w-5 h-5" />,
     },
     {
       id: 6,
-      name: "Emma",
-      role: "Operations Agent",
+      name: "Insights",
+      role: "Analytics",
       description:
-        "Streamlines internal workflows and automates repetitive tasks. Ensures your business runs like a well-oiled machine with intelligent process management.",
+        "He reads every conversation across channels and shows you what is working — a 360 view of each lead.",
       videoSrc: "/agent-Emma.mp4",
       icon: <TrendingUp className="w-5 h-5" />,
     },
@@ -158,10 +158,10 @@ export default function MeetOurAgentSection() {
         {/* Section Header */}
         <div className="text-center mb-16">
           <h2 className="text-4xl lg:text-5xl font-bold text-foreground mb-4">
-            Meet Our <span className="text-primary">AI Agents</span>
+            One Employee. <span className="text-primary">Every Channel.</span>
           </h2>
           <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-            Meet the specialized AI agents that work 24/7 to grow your business through intelligent automation
+            Mr LAD is one AI Sales Employee — not a team of hires to manage. He prospects, chats, calls, and posts across every channel, doing the work of a whole team.
           </p>
         </div>
 
