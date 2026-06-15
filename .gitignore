@@ -46,7 +46,6 @@ yarn-error.log*
 # Local env files
 .env
 .env*.local
-.env.local.bak
 
 # Vercel
 .vercel
@@ -69,5 +68,3 @@ web/src/app/api/token/route.ts
 
 # Sentry Config File
 .env.sentry-build-plugin
-
-*.iml
