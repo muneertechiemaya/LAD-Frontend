@@ -111,7 +111,7 @@ export function LadCardHeader({
           {title}
         </h3>
         {subtitle && (
-          <p className="text-[12.5px] text-slate-500 dark:text-[#7a8ba3] mt-0.5">{subtitle}</p>
+          <p className="text-[12.5px] text-slate-500 dark:text-slate-300 mt-0.5">{subtitle}</p>
         )}
       </div>
       {action}

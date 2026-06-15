@@ -283,7 +283,7 @@ function CrmTable<R extends CrmContact>({
             </span>
           </div>
           {subtitle && (
-            <p className="text-[12px] text-slate-500 dark:text-[#7a8ba3] mt-0.5">{subtitle}</p>
+            <p className="text-[12px] text-slate-500 dark:text-slate-300 mt-0.5">{subtitle}</p>
           )}
         </div>
 
@@ -330,15 +330,15 @@ function CrmTable<R extends CrmContact>({
             <tr className="bg-slate-50/70 dark:bg-[#0e1a3a] border-b border-slate-100 dark:border-[#262831]">
               <th className="w-9 px-3 py-2.5">
                 <input
-                  type="checkbox"
-                  className="rounded border-slate-300 dark:border-[#262831] focus:ring-[#0B1957]/30"
-                  aria-label="Select all rows"
+                    type="checkbox"
+                    aria-label="Select all rows"
+                    className="h-[18px] w-[18px] shrink-0 rounded-[5px] border-2 border-blue-500/80 dark:border-blue-500/50 bg-transparent text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/50 cursor-pointer appearance-none checked:bg-primary checked:border-primary relative checked:after:content-[''] checked:after:absolute checked:after:left-[5px] checked:after:top-[1px] checked:after:w-[4px] checked:after:h-[8px] checked:after:border-white checked:after:border-r-2 checked:after:border-b-2 checked:after:rotate-45 transition-all"
                 />
               </th>
               {columns.map((c, i) => (
                 <th
                   key={i}
-                  className={`px-3 py-2.5 text-[10.5px] uppercase tracking-wider font-semibold text-slate-500 dark:text-[#7a8ba3] whitespace-nowrap ${
+                  className={`px-3 py-2.5 text-[10.5px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-300 whitespace-nowrap ${
                     c.align === 'right' ? 'text-right' : 'text-left'
                   }`}
                 >
@@ -360,9 +360,9 @@ function CrmTable<R extends CrmContact>({
               >
                 <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                   <input
-                    type="checkbox"
-                    className="rounded border-slate-300 dark:border-[#262831] focus:ring-[#0B1957]/30"
-                    aria-label={`Select ${r.name}`}
+                      type="checkbox"
+                      aria-label={`Select ${r.name}`}
+                      className="h-[18px] w-[18px] shrink-0 rounded-[5px] border-2 border-blue-500/80 dark:border-blue-500/50 bg-transparent text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/50 cursor-pointer appearance-none checked:bg-primary checked:border-primary relative checked:after:content-[''] checked:after:absolute checked:after:left-[5px] checked:after:top-[1px] checked:after:w-[4px] checked:after:h-[8px] checked:after:border-white checked:after:border-r-2 checked:after:border-b-2 checked:after:rotate-45 transition-all"
                   />
                 </td>
                 {columns.map((c, j) => (
@@ -384,7 +384,7 @@ function CrmTable<R extends CrmContact>({
               <tr>
                 <td
                   colSpan={columns.length + 2}
-                  className="text-center py-14 text-[12.5px] text-slate-500 dark:text-[#7a8ba3]"
+                  className="text-center py-14 text-[12.5px] text-slate-500 dark:text-slate-300"
                 >
                   <Inbox className="w-6 h-6 mx-auto mb-2 opacity-50" />
                   No matches.
@@ -395,7 +395,7 @@ function CrmTable<R extends CrmContact>({
         </table>
       </div>
 
-      <footer className="px-5 py-3 border-t border-slate-100 dark:border-[#262831] flex items-center justify-between text-[12px] text-slate-500 dark:text-[#7a8ba3]">
+      <footer className="px-5 py-3 border-t border-slate-100 dark:border-[#262831] flex items-center justify-between text-[12px] text-slate-500 dark:text-slate-300">
         <span>
           Showing <span className="font-semibold text-[#172560] dark:text-white">{filtered.length}</span> of {count}
         </span>
@@ -456,7 +456,7 @@ function NameCell({ row, withCompany = false }: { row: CrmContact; withCompany?:
       <div className="min-w-0 max-w-[260px] sm:max-w-[320px]">
         <p className="text-[12.5px] font-semibold text-[#172560] dark:text-white truncate">{row.name}</p>
         <p
-          className="text-[11px] text-slate-500 dark:text-[#7a8ba3] truncate"
+          className="text-[11px] text-slate-500 dark:text-slate-300 truncate"
           title={withCompany ? `${row.title} · ${row.company}` : row.title}
         >
           {withCompany ? `${row.title} · ${row.company}` : row.title}
@@ -473,7 +473,7 @@ export function AllContactsTable({
   const columns: Column<CrmContact>[] = [
     { label: 'Contact', nowrap: true, render: (r) => <NameCell row={r} /> },
     { label: 'Type',    render: (r) => <TypePill type={r.type} /> },
-    { label: 'Source',  render: (r) => <span className="text-[12px] text-slate-600 dark:text-[#7a8ba3]">{r.source}</span> },
+    { label: 'Source',  render: (r) => <span className="text-[12px] text-slate-600 dark:text-slate-300">{r.source}</span> },
     { label: 'Company', render: (r) => <span className="text-[12px] text-[#172560] dark:text-white">{r.company}</span> },
     { label: 'Email',   render: (r) => <EmailCell email={r.email} verified={r.emailVerified} /> },
     { label: 'Phone',   render: (r) => <PhoneCell phone={r.phone} verified={r.phoneVerified} /> },
@@ -482,7 +482,7 @@ export function AllContactsTable({
     {
       label: 'Last activity', sortable: true, nowrap: true,
       render: (r) => (
-        <span className="text-[12px] tabular-nums text-slate-600 dark:text-[#7a8ba3]" title={r.lastActivityAt ?? ''}>
+        <span className="text-[12px] tabular-nums text-slate-600 dark:text-slate-300" title={r.lastActivityAt ?? ''}>
           {r.lastActivityAt ? `${rel(r.lastActivityAt)} ago` : '—'}
         </span>
       ),
@@ -490,7 +490,7 @@ export function AllContactsTable({
     {
       label: 'Created', sortable: true, nowrap: true,
       render: (r) => (
-        <span className="text-[12px] text-slate-500 dark:text-[#7a8ba3] tabular-nums">
+        <span className="text-[12px] text-slate-500 dark:text-slate-300 tabular-nums">
           {fmtDate(r.createdAt)}
         </span>
       ),
@@ -533,7 +533,7 @@ export function ProspectsTable({
   const columns: Column<CrmContact>[] = [
     { label: 'Prospect', nowrap: true, render: (r) => <NameCell row={r} withCompany /> },
     { label: 'Industry', render: (r) => <span className="text-[12px] text-[#172560] dark:text-white">{r.industry}</span> },
-    { label: 'Geo',      render: (r) => <span className="text-[12px] text-slate-600 dark:text-[#7a8ba3]">{r.geo}</span> },
+    { label: 'Geo',      render: (r) => <span className="text-[12px] text-slate-600 dark:text-slate-300">{r.geo}</span> },
     { label: 'Fit',      sortable: true, render: (r) => (r.fit != null ? <ScoreBar value={r.fit} /> : <span className="text-[11.5px] text-slate-400">—</span>) },
     {
       label: 'Intent',
@@ -566,12 +566,12 @@ export function ProspectsTable({
         ),
     },
     { label: 'Channels', render: (r) => <ChannelChips channels={r.channels} /> },
-    { label: 'Source',   render: (r) => <span className="text-[12px] text-slate-600 dark:text-[#7a8ba3]">{r.source}</span> },
+    { label: 'Source',   render: (r) => <span className="text-[12px] text-slate-600 dark:text-slate-300">{r.source}</span> },
     { label: 'Owner',    nowrap: true, render: (r) => <OwnerCell ownerId={r.owner} /> },
     {
       label: 'Last touch', sortable: true, nowrap: true,
       render: (r) => (
-        <span className="text-[12px] tabular-nums text-slate-600 dark:text-[#7a8ba3]">
+        <span className="text-[12px] tabular-nums text-slate-600 dark:text-slate-300">
           {r.lastActivityAt ? `${rel(r.lastActivityAt)} ago` : '—'}
         </span>
       ),
@@ -625,17 +625,17 @@ export function LeadsTable({
     {
       label: 'Weighted', align: 'right', nowrap: true,
       render: (r) => (
-        <span className="text-[12px] tabular-nums text-slate-600 dark:text-[#7a8ba3]">
+        <span className="text-[12px] tabular-nums text-slate-600 dark:text-slate-300">
           {fmtCurrency((r.value ?? 0) * (r.probability ?? 0))}
         </span>
       ),
     },
-    { label: 'Source',    render: (r) => <span className="text-[12px] text-slate-600 dark:text-[#7a8ba3]">{r.source}</span> },
+    { label: 'Source',    render: (r) => <span className="text-[12px] text-slate-600 dark:text-slate-300">{r.source}</span> },
     { label: 'Next step', render: (r) => <span className="text-[12px] text-[#172560] dark:text-white">{r.nextStep || '—'}</span> },
     {
       label: 'Expected close', sortable: true, nowrap: true,
       render: (r) => (
-        <span className="text-[12px] tabular-nums text-slate-600 dark:text-[#7a8ba3]">
+        <span className="text-[12px] tabular-nums text-slate-600 dark:text-slate-300">
           {fmtDate(r.expectedClose)}
         </span>
       ),
@@ -644,7 +644,7 @@ export function LeadsTable({
     {
       label: 'Last activity', sortable: true, nowrap: true,
       render: (r) => (
-        <span className="text-[12px] tabular-nums text-slate-600 dark:text-[#7a8ba3]">
+        <span className="text-[12px] tabular-nums text-slate-600 dark:text-slate-300">
           {r.lastActivityAt ? `${rel(r.lastActivityAt)} ago` : '—'}
         </span>
       ),
@@ -719,7 +719,7 @@ export function ClientsTable({
     {
       label: 'ARR', align: 'right', nowrap: true,
       render: (r) => (
-        <span className="text-[12px] tabular-nums text-slate-600 dark:text-[#7a8ba3]">
+        <span className="text-[12px] tabular-nums text-slate-600 dark:text-slate-300">
           {fmtCurrency((r.mrr ?? 0) * 12, 'USD')}
         </span>
       ),
@@ -781,7 +781,7 @@ export function ClientsTable({
     {
       label: 'Last contact', nowrap: true,
       render: (r) => (
-        <span className="text-[12px] tabular-nums text-slate-600 dark:text-[#7a8ba3]">
+        <span className="text-[12px] tabular-nums text-slate-600 dark:text-slate-300">
           {r.lastActivityAt ? `${rel(r.lastActivityAt)} ago` : '—'}
         </span>
       ),

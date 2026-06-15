@@ -1060,7 +1060,7 @@ const PipelineLeadCard: React.FC<PipelineLeadCardProps> = ({
                 {globalEditingOverview ? (
                   <>
                     <div className="relative">
-                      <Label htmlFor="email" className="text-sm text-gray-600 dark:text-[#7a8ba3] mb-1 block">Email</Label>
+                      <Label htmlFor="email" className="text-sm text-gray-600 dark:text-slate-300 mb-1 block">Email</Label>
                       <div className="relative">
                         <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <Input
@@ -1073,7 +1073,7 @@ const PipelineLeadCard: React.FC<PipelineLeadCardProps> = ({
                       </div>
                     </div>
                     <div className="relative">
-                      <Label htmlFor="phone" className="text-sm text-gray-600 dark:text-[#7a8ba3] mb-1 block">Phone</Label>
+                      <Label htmlFor="phone" className="text-sm text-gray-600 dark:text-slate-300 mb-1 block">Phone</Label>
                       <div className="relative">
                         <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <Input
@@ -1086,7 +1086,7 @@ const PipelineLeadCard: React.FC<PipelineLeadCardProps> = ({
                       </div>
                     </div>
                     <div className="relative">
-                      <Label htmlFor="company" className="text-sm text-gray-600 dark:text-[#7a8ba3] mb-1 block">Company</Label>
+                      <Label htmlFor="company" className="text-sm text-gray-600 dark:text-slate-300 mb-1 block">Company</Label>
                       <div className="relative">
                         <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <Input
@@ -1098,7 +1098,7 @@ const PipelineLeadCard: React.FC<PipelineLeadCardProps> = ({
                       </div>
                     </div>
                     <div>
-                      <Label htmlFor="assignee" className="text-sm text-gray-600 dark:text-[#7a8ba3] mb-1 block">Assignee</Label>
+                      <Label htmlFor="assignee" className="text-sm text-gray-600 dark:text-slate-300 mb-1 block">Assignee</Label>
                       <Select
                         value={globalEditFormData.assignee || 'unassigned'}
                         onValueChange={(value: string) => handleFormFieldChange('assignee', value === 'unassigned' ? '' : value)}
@@ -1121,7 +1121,7 @@ const PipelineLeadCard: React.FC<PipelineLeadCardProps> = ({
                       </Select>
                     </div>
                     <div>
-                      <Label htmlFor="source" className="text-sm text-gray-600 dark:text-[#7a8ba3] mb-1 block">Source</Label>
+                      <Label htmlFor="source" className="text-sm text-gray-600 dark:text-slate-300 mb-1 block">Source</Label>
                       <Select
                         value={globalEditFormData.source || undefined}
                         onValueChange={(value: string) => handleFormFieldChange('source', value)}
@@ -1178,11 +1178,11 @@ const PipelineLeadCard: React.FC<PipelineLeadCardProps> = ({
                       )}
                     </div>
                     <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4 text-gray-500 dark:text-[#7a8ba3]" />
+                      <Phone className="h-4 w-4 text-gray-500 dark:text-slate-300" />
                       <span className="text-gray-900 dark:text-white">{String(lead.phone) || '-'}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4 text-gray-500 dark:text-[#7a8ba3]" />
+                      <Building2 className="h-4 w-4 text-gray-500 dark:text-slate-300" />
                       <span className="text-gray-900 dark:text-white">
                         {normalizeDisplayValue(
                           (
@@ -1205,7 +1205,7 @@ const PipelineLeadCard: React.FC<PipelineLeadCardProps> = ({
                       ''
                     ) && (
                       <div className="flex items-center gap-2">
-                        <UserStar className="h-4 w-4 text-gray-500 dark:text-[#7a8ba3]" />
+                        <UserStar className="h-4 w-4 text-gray-500 dark:text-slate-300" />
                         <span className="text-gray-900 dark:text-white">
                           {normalizeDisplayValue(
                             (
@@ -1218,13 +1218,13 @@ const PipelineLeadCard: React.FC<PipelineLeadCardProps> = ({
                       </div>
                     )}
                     <div className="flex items-center gap-2">
-                      <UserCircle className="h-4 w-4 text-gray-500 dark:text-[#7a8ba3]" />
+                      <UserCircle className="h-4 w-4 text-gray-500 dark:text-slate-300" />
                       <span className="text-gray-900 dark:text-white">
                         {getAssigneeName((lead.assignee || lead.assigned_to_id) as string | number | null | undefined)}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      {/* <AlertTriangle className="h-4 w-4 text-gray-500 dark:text-[#7a8ba3]" /> */}
+                      {/* <AlertTriangle className="h-4 w-4 text-gray-500 dark:text-slate-300" /> */}
                       {(() => {
                         const sourceKey = String((lead as any)?.source || '').toLowerCase();
                         
@@ -1280,7 +1280,7 @@ const PipelineLeadCard: React.FC<PipelineLeadCardProps> = ({
                 {globalEditingOverview ? (
                   <>
                     <div>
-                      <Label htmlFor="status" className="text-sm text-gray-600 dark:text-[#7a8ba3] mb-1 block">Status</Label>
+                      <Label htmlFor="status" className="text-sm text-gray-600 dark:text-slate-300 mb-1 block">Status</Label>
                       <Select
                         value={globalEditFormData.status || undefined}
                         onValueChange={(value: string) => handleFormFieldChange('status', value)}
@@ -1300,7 +1300,7 @@ const PipelineLeadCard: React.FC<PipelineLeadCardProps> = ({
                       </Select>
                     </div>
                     <div>
-                      <Label htmlFor="priority" className="text-sm text-gray-600 dark:text-[#7a8ba3] mb-1 block">Priority</Label>
+                      <Label htmlFor="priority" className="text-sm text-gray-600 dark:text-slate-300 mb-1 block">Priority</Label>
                       <Select
                         value={globalEditFormData.priority || undefined}
                         onValueChange={(value: string) => handleFormFieldChange('priority', value)}
@@ -1320,7 +1320,7 @@ const PipelineLeadCard: React.FC<PipelineLeadCardProps> = ({
                       </Select>
                     </div>
                     <div>
-                      <Label htmlFor="stage" className="text-sm text-gray-600 dark:text-[#7a8ba3] mb-1 block">Stage</Label>
+                      <Label htmlFor="stage" className="text-sm text-gray-600 dark:text-slate-300 mb-1 block">Stage</Label>
                       <Select
                         value={globalEditFormData.stage || undefined}
                         onValueChange={(value: string) => handleFormFieldChange('stage', value)}
@@ -1341,7 +1341,7 @@ const PipelineLeadCard: React.FC<PipelineLeadCardProps> = ({
                     </div>
 
                     {/* <div className="relative">
-                      <Label htmlFor="expectedCloseDate" className="text-sm text-gray-600 dark:text-[#7a8ba3] mb-1 block">Expected Close Date</Label>
+                      <Label htmlFor="expectedCloseDate" className="text-sm text-gray-600 dark:text-slate-300 mb-1 block">Expected Close Date</Label>
                       <div className="relative">
                         <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-blue-500" />
                         <Input
@@ -1363,13 +1363,13 @@ const PipelineLeadCard: React.FC<PipelineLeadCardProps> = ({
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      {/* <AlertTriangle className="h-4 w-4 text-gray-500 dark:text-[#7a8ba3]" /> */}
+                      {/* <AlertTriangle className="h-4 w-4 text-gray-500 dark:text-slate-300" /> */}
                       <span className="text-gray-900 dark:text-white">
                         {getOptionLabel(priorityOptions, String(lead.priority) || undefined) || 'No priority'}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <FolderTree className="h-4 w-4 text-gray-500 dark:text-[#7a8ba3]" />
+                      <FolderTree className="h-4 w-4 text-gray-500 dark:text-slate-300" />
                       <span className="text-gray-900 dark:text-white">
                         {getOptionLabel(stageOptions, lead.stage) || lead.stage || 'No stage'}
                       </span>
@@ -1477,7 +1477,7 @@ const PipelineLeadCard: React.FC<PipelineLeadCardProps> = ({
                     </Badge>
                   ))}
                   {allTags.length === 0 && (
-                    <p className="text-sm text-gray-500 dark:text-[#7a8ba3] italic">
+                    <p className="text-sm text-gray-500 dark:text-slate-300 italic">
                       No tags assigned
                     </p>
                   )}
@@ -1495,13 +1495,13 @@ const PipelineLeadCard: React.FC<PipelineLeadCardProps> = ({
         <div className="flex flex-col gap-4">
           {notesLoading ? (
             <div className="flex justify-center py-6">
-              <p className="text-sm text-gray-500 dark:text-[#7a8ba3]">Loading notes...</p>
+              <p className="text-sm text-gray-500 dark:text-slate-300">Loading notes...</p>
             </div>
           ) : (
             <div className="space-y-3">
               {notes.length === 0 ? (
                 <div className="text-center py-6 bg-gray-50 dark:bg-[#253456] rounded-lg">
-                  <p className="text-sm text-gray-500 dark:text-[#7a8ba3]">
+                  <p className="text-sm text-gray-500 dark:text-slate-300">
                     No notes yet.
                   </p>
                 </div>
@@ -1513,7 +1513,7 @@ const PipelineLeadCard: React.FC<PipelineLeadCardProps> = ({
                         <p className="text-sm font-medium text-gray-900 dark:text-white">
                           {note.user_name || 'User'}
                         </p>
-                        <p className="text-xs text-gray-500 dark:text-[#7a8ba3]">
+                        <p className="text-xs text-gray-500 dark:text-slate-300">
                           {formatDateTimeUnified(note.created_at)}
                         </p>
                       </div>
@@ -1587,7 +1587,7 @@ const PipelineLeadCard: React.FC<PipelineLeadCardProps> = ({
       content: (
         <div className="flex flex-col gap-4">
           <div className="bg-gray-50 dark:bg-[#253456] rounded-lg p-4">
-            <Label htmlFor="new-comment" className="text-sm font-medium text-gray-700 dark:text-[#7a8ba3]">
+            <Label htmlFor="new-comment" className="text-sm font-medium text-gray-700 dark:text-slate-300">
               Add a public comment
             </Label>
             <Textarea
@@ -1610,13 +1610,13 @@ const PipelineLeadCard: React.FC<PipelineLeadCardProps> = ({
           </div>
           {commentsLoading ? (
             <div className="flex justify-center py-6">
-              <p className="text-sm text-gray-500 dark:text-[#7a8ba3]">Loading comments...</p>
+              <p className="text-sm text-gray-500 dark:text-slate-300">Loading comments...</p>
             </div>
           ) : (
             <div className="space-y-3">
               {comments.length === 0 ? (
                 <div className="text-center py-6 bg-gray-50 dark:bg-[#253456] rounded-lg">
-                  <p className="text-sm text-gray-500 dark:text-[#7a8ba3]">
+                  <p className="text-sm text-gray-500 dark:text-slate-300">
                     No comments yet. Add your first comment above.
                   </p>
                 </div>
@@ -1628,7 +1628,7 @@ const PipelineLeadCard: React.FC<PipelineLeadCardProps> = ({
                         <p className="text-sm font-medium text-gray-900 dark:text-white">
                           {comment.user_name || 'User'}
                         </p>
-                        <p className="text-xs text-gray-500 dark:text-[#7a8ba3]">
+                        <p className="text-xs text-gray-500 dark:text-slate-300">
                           {formatDateTimeUnified(comment.created_at)}
                         </p>
                       </div>
@@ -1720,13 +1720,13 @@ const PipelineLeadCard: React.FC<PipelineLeadCardProps> = ({
           </div>
           {attachmentsLoading ? (
             <div className="flex justify-center py-6">
-              <p className="text-sm text-gray-500 dark:text-[#7a8ba3]">Loading attachments...</p>
+              <p className="text-sm text-gray-500 dark:text-slate-300">Loading attachments...</p>
             </div>
           ) : (
             <div className="space-y-3">
               {attachments.length === 0 ? (
                 <div className="text-center py-6 bg-gray-50 dark:bg-[#253456] rounded-lg">
-                  <p className="text-sm text-gray-500 dark:text-[#7a8ba3]">
+                  <p className="text-sm text-gray-500 dark:text-slate-300">
                     No attachments yet. Upload your first file above.
                   </p>
                 </div>
@@ -1803,7 +1803,7 @@ const PipelineLeadCard: React.FC<PipelineLeadCardProps> = ({
               <div className="flex-1">
                 <DialogTitle className="text-base font-semibold text-gray-900 dark:text-white">{getLeadDisplayName(lead)}</DialogTitle>
                 {normalizeDisplayValue((lead.company ?? (lead as any).company_name) as unknown, '') && (
-                  <p className="text-sm text-gray-500 dark:text-[#7a8ba3]">{normalizeDisplayValue((lead.company ?? (lead as any).company_name) as unknown)}</p>
+                  <p className="text-sm text-gray-500 dark:text-slate-300">{normalizeDisplayValue((lead.company ?? (lead as any).company_name) as unknown)}</p>
                 )}
               </div>
             </div>
@@ -1910,7 +1910,7 @@ const PipelineLeadCard: React.FC<PipelineLeadCardProps> = ({
           <button
             type="button"
             data-ignore-card-click
-            className="drag-handle text-gray-400 dark:text-[#7a8ba3] hover:text-gray-600 dark:hover:text-white mt-1 cursor-grab active:cursor-grabbing"
+            className="drag-handle text-gray-400 dark:text-slate-300 hover:text-gray-600 dark:hover:text-white mt-1 cursor-grab active:cursor-grabbing"
             {...listeners}
             onMouseDown={handleDragHandleMouseDown}
             style={{ touchAction: 'none' }}
@@ -1991,7 +1991,7 @@ const PipelineLeadCard: React.FC<PipelineLeadCardProps> = ({
               <button 
                 type="button" 
                 data-ignore-card-click 
-                className="text-gray-400 dark:text-[#7a8ba3] hover:text-gray-600 dark:hover:text-white focus:outline-none p-1 rounded hover:bg-gray-100 dark:hover:bg-[#253456]"
+                className="text-gray-400 dark:text-slate-300 hover:text-gray-600 dark:hover:text-white focus:outline-none p-1 rounded hover:bg-gray-100 dark:hover:bg-[#253456]"
               >
                 <MoreVertical className="h-4 w-4" />
               </button>
@@ -2060,12 +2060,12 @@ const PipelineLeadCard: React.FC<PipelineLeadCardProps> = ({
             </div>
 
             {(lead.description as string | undefined) && (
-              <p className="text-sm text-gray-600 dark:text-[#7a8ba3]">{String(lead.description as unknown)}</p>
+              <p className="text-sm text-gray-600 dark:text-slate-300">{String(lead.description as unknown)}</p>
             )}
           </div>
         )}
     
-        <div className="mt-4 border-t border-gray-100 dark:border-[#262831] pt-2 text-xs text-gray-500 dark:text-[#7a8ba3] flex items-center justify-between">
+        <div className="mt-4 border-t border-gray-100 dark:border-[#262831] pt-2 text-xs text-gray-500 dark:text-slate-300 flex items-center justify-between">
           <span className="flex items-center gap-1">
             <Clock className="h-3.5 w-3.5" />
             {formatDateTimeUnified(getFieldValueLocal(lead, 'updatedAt'))}
