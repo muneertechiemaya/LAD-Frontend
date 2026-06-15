@@ -427,7 +427,7 @@ export function CallLogsTable({
                 e.stopPropagation();
                 onSelectAll(!isChecked, visibleIds);
               }}
-              className="h-4 w-4 rounded border-border text-primary focus:ring-primary/50 cursor-pointer"
+              className="h-[18px] w-[18px] shrink-0 rounded-[5px] border-2 border-blue-500/80 dark:border-blue-500/50 bg-transparent text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/50 cursor-pointer appearance-none checked:bg-primary checked:border-primary indeterminate:bg-primary indeterminate:border-primary relative checked:after:content-[''] checked:after:absolute checked:after:left-[5px] checked:after:top-[1px] checked:after:w-[4px] checked:after:h-[8px] checked:after:border-white checked:after:border-r-2 checked:after:border-b-2 checked:after:rotate-45 indeterminate:after:content-[''] indeterminate:after:absolute indeterminate:after:left-[3px] indeterminate:after:top-[6px] indeterminate:after:w-[8px] indeterminate:after:h-[2px] indeterminate:after:bg-white transition-all"
             />
           </div>
         );
@@ -441,7 +441,7 @@ export function CallLogsTable({
               e.stopPropagation();
               onSelectCall(row.original.id);
             }}
-            className="h-4 w-4 rounded border-border text-primary focus:ring-primary/50 cursor-pointer"
+            className="h-[18px] w-[18px] shrink-0 rounded-[5px] border-2 border-blue-500/80 dark:border-blue-500/50 bg-transparent text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/50 cursor-pointer appearance-none checked:bg-primary checked:border-primary relative checked:after:content-[''] checked:after:absolute checked:after:left-[5px] checked:after:top-[1px] checked:after:w-[4px] checked:after:h-[8px] checked:after:border-white checked:after:border-r-2 checked:after:border-b-2 checked:after:rotate-45 transition-all"
           />
         </div>
       ),
@@ -728,7 +728,7 @@ export function CallLogsTable({
       <TableRow
         key={`batch-${batchId}`}
         onClick={() => onToggleBatch?.(batchId)}
-        className="bg-[#F8FAFC] dark:bg-[#1a2a43] hover:bg-[#F1F5F9] dark:hover:bg-[#253456] cursor-pointer border-b-2 border-[#E2E8F0] dark:border-[#262831] transition-colors"
+        className="cursor-pointer bg-white dark:bg-[#000724] hover:bg-gray-50 dark:hover:bg-[#1a2a43] border-b border-[#E2E8F0] dark:border-[#262831]"
       >
         <TableCell colSpan={columns.length} className="py-4">
           <div className="flex items-center gap-3">
@@ -844,7 +844,7 @@ export function CallLogsTable({
         key={callId}
         onClick={() => onRowClick(callId)}
         className={`cursor-pointer hover:bg-gray-50 dark:hover:bg-[#1a2a43] border-b border-[#E2E8F0] dark:border-[#262831] ${selectedCalls.has(callId) ? "bg-primary/5" : ""
-          } ${indent ? "bg-[#F8FAFC] dark:bg-[#253456]" : ""}`}
+          }`}
       >
         {tableRow.getVisibleCells().map((cell, cellIndex) => (
           <TableCell
@@ -1099,7 +1099,7 @@ export function CallLogsTable({
                                 <h3 className="text-lg font-semibold text-[#1E293B] dark:text-white mb-2">
                                   No calls in current batch
                                 </h3>
-                                <p className="text-sm text-[#64748B] dark:text-[#7a8ba3] mb-4">
+                                <p className="text-sm text-[#64748B] dark:text-slate-300 mb-4">
                                   Start making calls to see them appear here
                                 </p>
                               </div>
@@ -1120,7 +1120,7 @@ export function CallLogsTable({
                                 <h3 className="text-lg font-semibold text-[#1E293B] dark:text-white mb-2">
                                   Trigger a call
                                 </h3>
-                                <p className="text-sm text-[#64748B] dark:text-[#7a8ba3] mb-4">
+                                <p className="text-sm text-[#64748B] dark:text-slate-300 mb-4">
                                   Start making calls to see them appear here
                                 </p>
                               </div>
@@ -1252,7 +1252,7 @@ export function CallLogsTable({
       {table.getRowModel().rows.length > 0 && onPageChange && (
         <div className="flex items-center justify-between px-2 xs:px-4 py-3 gap-2 border-t border-[#E2E8F0] dark:border-[#262831] dark:bg-[#000724]">
           {/* Left Side: Records per page */}
-          <div className="flex items-center gap-2 text-xs xs:text-sm text-[#64748B] dark:text-[#7a8ba3]">
+          <div className="flex items-center gap-2 text-xs xs:text-sm text-[#64748B] dark:text-slate-300">
             <div className="flex items-center gap-2">
               <span>Show</span>
               <select
@@ -1287,7 +1287,7 @@ export function CallLogsTable({
 
           {/* Right Side: Page navigation */}
           <div className="flex items-center gap-2">
-            <div className="text-[10px] xs:text-xs sm:text-sm text-[#64748B] dark:text-[#7a8ba3] whitespace-nowrap">
+            <div className="text-[10px] xs:text-xs sm:text-sm text-[#64748B] dark:text-slate-300 whitespace-nowrap">
               Page {currentPage} of {totalPages}
             </div>
             <div className="flex items-center gap-1">
@@ -1336,15 +1336,22 @@ export function CallLogsTable({
       {/* Booking Dialog */}
       <Dialog open={bookingDialogOpen} onOpenChange={setBookingDialogOpen}>
         <DialogContent className="flex flex-col p-0 max-h-[90vh] overflow-hidden bg-white dark:bg-[#000724] border border-slate-200 dark:border-[#262831]">
-
           {/* Added padding and matching sub-borders to the dialog header line */}
           <DialogHeader className="p-6 border-b border-slate-100 dark:border-[#262831] dark:bg-[#0e1a3a]/60">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-full bg-blue-50 dark:bg-blue-500 text-blue-600 dark:text-blue-950 border border-blue-100 dark:border-transparent shadow-sm flex items-center justify-center w-10 h-10">
                 <CalendarRange className="h-5 w-5" />
               </div>
-              <DialogTitle className="dark:text-white text-[#0b1957]">
-                Schedule Appointment {selectedLead?.name ? `— ${selectedLead.name}` : ''}
+              <DialogTitle className="dark:text-white text-[#0b1957] text-left font-semibold text-lg leading-tight">
+                  <span className="block md:inline">Schedule</span>{' '}
+                  <span className="block md:inline">Appointment</span>
+                  {selectedLead?.name && (
+                      <span className="block md:inline">
+                      <span> — </span>
+                      <span className="md:hidden"><br /></span>
+                                      {selectedLead.name}
+                      </span>
+                  )}
               </DialogTitle>
             </div>
           </DialogHeader>
