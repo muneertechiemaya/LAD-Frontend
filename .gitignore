@@ -68,3 +68,5 @@ web/src/app/api/token/route.ts
 
 # Sentry Config File
 .env.sentry-build-plugin
+
+*.iml
