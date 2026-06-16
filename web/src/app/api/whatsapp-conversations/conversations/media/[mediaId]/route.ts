@@ -40,13 +40,23 @@ export async function GET(
 
   const headers: Record<string, string> = {};
 
-  // Auth + tenant extraction (same as python-proxy.ts)
+  // Auth + tenant extraction (same as python-proxy.ts).
+  // Browsers load media via <img src>, which sends cookies but NO Authorization
+  // header. The WAPA (Node) service verifies the JWT, so a missing Authorization
+  // header → 401 — lift the cookie token into it when the header is absent.
   const authHeader = req.headers.get('authorization');
   if (authHeader) {
     headers['Authorization'] = authHeader;
     const token = authHeader.replace('Bearer ', '');
     const tenantId = extractTenantIdFromJwt(token);
     if (tenantId) headers['X-Tenant-ID'] = tenantId;
+  } else {
+    const cookieToken = req.cookies.get('access_token')?.value || req.cookies.get('token')?.value;
+    if (cookieToken) {
+      headers['Authorization'] = `Bearer ${cookieToken}`;
+      const tenantId = extractTenantIdFromJwt(cookieToken);
+      if (tenantId) headers['X-Tenant-ID'] = tenantId;
+    }
   }
 
   const directTenantId = req.headers.get('x-tenant-id');

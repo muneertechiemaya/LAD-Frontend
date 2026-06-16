@@ -69,6 +69,7 @@ import {
 // ── New imports needed for the rich New Chat overlay ──────────────────────────
 import { TemplatePicker } from './TemplatePicker';
 import { ImportLeadsDialog } from './ImportLeadsDialog';
+import { StarredMessagesDialog } from './StarredMessagesDialog';
 import { ChatGroupManager, AddToGroupDropdown, type ChatGroup } from './ChatGroupManager';
 import { MessageComposer } from './MessageComposer';
 import type { Channel } from '@/types/conversation';
@@ -1056,12 +1057,21 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
     try {
       const res = await fetchWithTenant(`/api/whatsapp-conversations/chat-groups?channel=${backendChannel || 'waba'}`);
       const data = await res.json();
-      const rows = Array.isArray(data?.data) ? data.data : [];
+      // "Add to Group" targets broadcast groups: the manually-created chat groups
+      // (collections of contacts) AND the saved broadcast sets (is_broadcast_list).
+      // Only native WhatsApp groups (wa_group_jid) are excluded — you can't add
+      // members to a synced WA group from here.
+      const rows = (Array.isArray(data?.data) ? data.data : []).filter(
+        (g: { metadata?: { wa_group_jid?: string } | null }) =>
+          !(g?.metadata as { wa_group_jid?: string } | null | undefined)?.wa_group_jid,
+      );
       setAddGroups(
-        rows.map((g: { id: string | number; name: string; conversation_count?: number }) => ({
+        rows.map((g: { id: string | number; name: string; conversation_count?: number; metadata?: { member_group_ids?: unknown[] } | null }) => ({
           id: String(g.id),
           name: g.name,
-          conversation_count: g.conversation_count,
+          conversation_count: Array.isArray(g.metadata?.member_group_ids)
+            ? g.metadata!.member_group_ids!.length
+            : g.conversation_count,
         })),
       );
       setAddGroupsLoaded(true);
@@ -1117,6 +1127,8 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
   const [searchText, setSearchText] = useState('');
   const [searchMatchIndex, setSearchMatchIndex] = useState(0);
   const [deletedForMeIds, setDeletedForMeIds] = useState<Set<string>>(new Set());
+  // Optimistic per-message starred overrides (messageId → starred), merged into allMessages.
+  const [starOverrides, setStarOverrides] = useState<Record<string, boolean>>({});
   const [deletedForEveryoneIds, setDeletedForEveryoneIds] = useState<Set<string>>(new Set());
 
    const { messages: polledMessages, isLoading, total, isAgentTyping } = useConversationMessages(
@@ -1263,10 +1275,13 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
       baseMessages
         .filter((m) => !deletedForMeIds.has(m.id))
         .map((m) => {
-          if (!deletedForEveryoneIds.has(m.id)) return m;
+          // Apply optimistic star override so the indicator flips immediately.
+          const starred = m.id in starOverrides ? starOverrides[m.id] : m.starred;
+          const base = starred === m.starred ? m : ({ ...m, starred } as Message);
+          if (!deletedForEveryoneIds.has(m.id)) return base;
           return {
-            ...m,
-            content: m.isOutgoing ? 'You deleted this message' : 'This message was deleted',
+            ...base,
+            content: base.isOutgoing ? 'You deleted this message' : 'This message was deleted',
             mediaId: undefined,
             mediaType: undefined,
             mediaMimeType: undefined,
@@ -1279,7 +1294,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
             locationAddress: undefined,
           } as Message;
         }),
-    [baseMessages, deletedForMeIds, deletedForEveryoneIds]
+    [baseMessages, deletedForMeIds, deletedForEveryoneIds, starOverrides]
   );
   const hasMore = total > olderOffset;
 
@@ -1592,6 +1607,29 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
       }
     },
     [backendChannel, channel, conversationId, conversation?.id]
+  );
+
+  // ── Star / unstar a message (personal WhatsApp only) ────────────────────────
+  const handleToggleStar = useCallback(
+    async (message: Message) => {
+      const convId = conversationId || conversation?.id;
+      if (!convId) return;
+      const current = message.id in starOverrides ? starOverrides[message.id] : message.starred;
+      const next = !current;
+      setStarOverrides((prev) => ({ ...prev, [message.id]: next }));
+      try {
+        const selectedChannel = backendChannel || channel || 'waba';
+        const res = await fetchWithTenant(
+          `/api/whatsapp-conversations/conversations/${convId}/messages/${message.id}/star?channel=${selectedChannel}`,
+          { method: 'PATCH', headers: { 'Content-Type': 'application/json' } }
+        );
+        if (!res.ok) throw new Error('Star failed');
+      } catch {
+        setStarOverrides((prev) => ({ ...prev, [message.id]: !next }));
+        setSendError('Could not update star');
+      }
+    },
+    [backendChannel, channel, conversationId, conversation?.id, starOverrides]
   );
 
   // ── Template send ──────────────────────────────────────────────────────────
@@ -1994,6 +2032,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
         conversationId={conversation.id}
         contact={conversation.contact}
         onDeleteMessage={handleDeleteMessage}
+        onToggleStar={(backendChannel || channel) === 'personal' ? handleToggleStar : undefined}
         isAgentTyping={isAgentTyping}
         hasMore={hasMore}
         isLoadingMore={loadingOlder}
@@ -2344,6 +2383,7 @@ interface WABASidebarProps {
   // ── Misc ──────────────────────────────────────────────────────────────
   backendChannel?: 'personal' | 'waba';
   onRefresh?: () => void;
+  onOpenStarred?: () => void;
   // ── Group management callbacks (passed through to overlay) ─────────────
   onShowCreateGroupModal?: (selectedIds: string[]) => void;
   groupRefreshKey?: number;
@@ -2373,6 +2413,7 @@ function WABASidebar({
   contextStatuses = [],
   backendChannel,
   onRefresh,
+  onOpenStarred,
   onShowCreateGroupModal,
   groupRefreshKey,
   activeLastMsg,
@@ -2449,6 +2490,10 @@ function WABASidebar({
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
   const [isGroupsPanelOpen, setIsGroupsPanelOpen] = useState(false);
   const [selectedGroupsPanelIds, setSelectedGroupsPanelIds] = useState<Set<string>>(new Set());
+  // Broadcast-groups panel: checkboxes stay hidden until the user double-clicks a
+  // group (or taps "Select"), which turns on multi-select mode. A single click
+  // outside selection mode opens that group's chat instead.
+  const [panelSelectionMode, setPanelSelectionMode] = useState(false);
   const [createGroupIds, setCreateGroupIds] = useState<string[]>([]);
 
   // ── Group-chat broadcast: post one message into each selected WhatsApp group
@@ -2465,6 +2510,8 @@ function WABASidebar({
   const filteredPanelGroups = useMemo(() => {
     const q = groupsPanelSearch.trim().toLowerCase();
     return newChatGroups.filter((g) => {
+      // Saved broadcast sets (is_broadcast_list) are non-WhatsApp groups, so they
+      // surface under the "Broadcast groups" filter alongside the manual groups.
       const isWhatsappGroup = !!g.metadata?.wa_group_jid;
       const matchesType =
         groupTypeFilter === 'both' ||
@@ -2473,6 +2520,37 @@ function WABASidebar({
       return matchesType && matchesSearch;
     });
   }, [newChatGroups, groupsPanelSearch, groupTypeFilter]);
+
+  // Leaving the panel resets multi-select mode so it reopens in "single-click opens" mode.
+  useEffect(() => {
+    if (!isGroupsPanelOpen) setPanelSelectionMode(false);
+  }, [isGroupsPanelOpen]);
+
+  // Open a broadcast group's underlying chat. Native WA groups carry wa_group_jid,
+  // whose local part is the group conversation's contact phone; fall back to name.
+  const openGroupConversation = useCallback(
+    (group: ChatGroup) => {
+      const jid = (group.metadata as { wa_group_jid?: string } | undefined)?.wa_group_jid;
+      const local = jid ? jid.split('@')[0] : null;
+      const match = conversations.find((c) => {
+        const phone = c.contact?.phone || '';
+        if (local && (phone === local || phone === jid)) return true;
+        return !!c.contact?.name && c.contact.name === group.name;
+      });
+      if (match) {
+        onSelectConversation(match.id);
+        setIsGroupsPanelOpen(false);
+      } else {
+        // Most broadcast groups are contact collections with no single chat to open.
+        // Show a brief note instead of filling the chat search bar (which would hide
+        // every conversation behind a stale filter).
+        setGroupBroadcastResult(`No chat to open for "${group.name}".`);
+      }
+    },
+    [conversations, onSelectConversation]
+  );
+
+  const [savingBroadcastList, setSavingBroadcastList] = useState(false);
 
   // Import the owner's native WhatsApp groups (with JIDs) so they can receive a
   // group-chat broadcast. Mirrors the Chat Group Manager's "Sync WA Groups".
@@ -2498,6 +2576,55 @@ function WABASidebar({
       setIsSyncingWaGroups(false);
     }
   }, [isSyncingWaGroups, backendChannel]);
+
+  // Click a saved broadcast group → select all its member chat groups for broadcast.
+  const handleSelectBroadcastList = useCallback((list: ChatGroup) => {
+    const ids: string[] = Array.isArray((list.metadata as any)?.member_group_ids)
+      ? (list.metadata as any).member_group_ids.map(String)
+      : [];
+    const known = new Set(newChatGroups.map((g) => g.id));
+    const present = ids.filter((id) => known.has(id));
+    setSelectedGroupsPanelIds(new Set(present));
+    setPanelSelectionMode(true); // show checkboxes so the loaded set is visible/editable
+    setGroupBroadcastResult(
+      present.length < ids.length
+        ? `${present.length}/${ids.length} groups from "${list.name}" available — re-sync if some are missing.`
+        : `Loaded "${list.name}" — ${present.length} group${present.length === 1 ? '' : 's'} selected. Compose a message to broadcast.`,
+    );
+  }, [newChatGroups]);
+
+  // Save the current group selection as a reusable broadcast group.
+  const handleSaveBroadcastList = useCallback(async () => {
+    const ids = [...selectedGroupsPanelIds];
+    if (ids.length === 0) return;
+    const name = typeof window !== 'undefined'
+      ? window.prompt(`Name this broadcast group (${ids.length} groups):`)
+      : null;
+    if (!name || !name.trim()) return;
+    setSavingBroadcastList(true);
+    setGroupBroadcastResult(null);
+    try {
+      const res = await fetchWithTenant(
+        `/api/whatsapp-conversations/chat-groups/broadcast-lists?channel=${backendChannel || 'personal'}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: name.trim(), group_ids: ids }),
+        },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setGroupBroadcastResult(data.error || `Save failed (${res.status})`); return; }
+      setGroupBroadcastResult(`Saved broadcast group "${name.trim()}" (${ids.length} groups).`);
+      // Refresh so the new saved set appears.
+      const gr = await fetchWithTenant(`/api/whatsapp-conversations/chat-groups?channel=${backendChannel || 'personal'}`);
+      const gd = await gr.json().catch(() => ({}));
+      if (Array.isArray(gd.data)) setNewChatGroups(gd.data);
+    } catch (e) {
+      setGroupBroadcastResult(e instanceof Error ? e.message : 'Save failed');
+    } finally {
+      setSavingBroadcastList(false);
+    }
+  }, [selectedGroupsPanelIds, backendChannel]);
 
   // Dispatch a composed rich payload (text / media / poll / contact / location…)
   // to every currently-selected group, throttled server-side.
@@ -3034,7 +3161,10 @@ function WABASidebar({
                 >
                   <Users className="w-4 h-4" /><span>Broadcast group</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem className="focus:bg-muted dark:focus:bg-muted hover:bg-muted dark:hover:bg-muted focus:text-foreground dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4">
+                <DropdownMenuItem
+                  className="focus:bg-muted dark:focus:bg-muted hover:bg-muted dark:hover:bg-muted focus:text-foreground dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4"
+                  onClick={() => onOpenStarred?.()}
+                >
                   <Star className="w-4 h-4" /><span>Starred messages</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
@@ -3079,9 +3209,9 @@ function WABASidebar({
         </div>
       )}
 
-      {/* Filter Chips (All / Unread / Favourites) + Sort/Filter */}
+      {/* Filter Chips (All / Unread) + Sort/Filter */}
       <div className="px-4 pb-3 flex items-center gap-2 overflow-x-auto no-scrollbar border-b border-border dark:border-[#222d34]/80">
-        {(['all', 'unread', 'favourites'] as FilterTab[]).map((tab) => (
+        {(['all', 'unread'] as FilterTab[]).map((tab) => (
           <button
             key={tab}
             onClick={() => setFilterTab(tab)}
@@ -3932,6 +4062,17 @@ function WABASidebar({
                 {selectedGroupsPanelIds.size} selected
               </span>
             )}
+            {selectedGroupsPanelIds.size > 0 && (
+              <button
+                type="button"
+                onClick={handleSaveBroadcastList}
+                disabled={savingBroadcastList}
+                title="Save the selected groups as a reusable broadcast group"
+                className="flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-700 disabled:opacity-50"
+              >
+                {savingBroadcastList ? 'Saving…' : 'Save as group'}
+              </button>
+            )}
           </div>
           {groupBroadcastResult && (
             <p className="px-4 py-1.5 text-[11px] text-muted-foreground border-b border-border dark:border-[#222d34]">
@@ -3990,43 +4131,92 @@ function WABASidebar({
                     Groups
                   </span>
                   <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const filteredIds = filteredPanelGroups.map(g => g.id);
-                        const allFilteredSelected = filteredIds.length > 0 && filteredIds.every(id => selectedGroupsPanelIds.has(id));
-                        setSelectedGroupsPanelIds(prev => {
-                          const next = new Set(prev);
-                          if (allFilteredSelected) filteredIds.forEach(id => next.delete(id));
-                          else filteredIds.forEach(id => next.add(id));
-                          return next;
-                        });
-                      }}
-                      className="text-[10px] text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
-                    >
-                      {filteredPanelGroups.length > 0 && filteredPanelGroups.every(g => selectedGroupsPanelIds.has(g.id)) ? 'Deselect all' : 'Select all'}
-                    </button>
-                    <span className="text-[10px] text-muted-foreground">
-                      {selectedGroupsPanelIds.size} selected
-                    </span>
+                    {panelSelectionMode ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const filteredIds = filteredPanelGroups.map(g => g.id);
+                            const allFilteredSelected = filteredIds.length > 0 && filteredIds.every(id => selectedGroupsPanelIds.has(id));
+                            setSelectedGroupsPanelIds(prev => {
+                              const next = new Set(prev);
+                              if (allFilteredSelected) filteredIds.forEach(id => next.delete(id));
+                              else filteredIds.forEach(id => next.add(id));
+                              return next;
+                            });
+                          }}
+                          className="text-[10px] text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
+                        >
+                          {filteredPanelGroups.length > 0 && filteredPanelGroups.every(g => selectedGroupsPanelIds.has(g.id)) ? 'Deselect all' : 'Select all'}
+                        </button>
+                        <span className="text-[10px] text-muted-foreground">
+                          {selectedGroupsPanelIds.size} selected
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => { setPanelSelectionMode(false); setSelectedGroupsPanelIds(new Set()); }}
+                          className="text-[10px] text-muted-foreground hover:text-foreground font-medium transition-colors"
+                        >
+                          Done
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setPanelSelectionMode(true)}
+                        className="text-[10px] text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
+                      >
+                        Select
+                      </button>
+                    )}
                   </div>
                 </div>
  
                 {/* Group rows */}
                 {filteredPanelGroups.map((group) => {
                   const isChecked = selectedGroupsPanelIds.has(group.id);
+                  const isBroadcastList = !!(group.metadata as { is_broadcast_list?: boolean } | undefined)?.is_broadcast_list;
+                  const memberGroupCount = Array.isArray((group.metadata as { member_group_ids?: unknown[] } | undefined)?.member_group_ids)
+                    ? (group.metadata as { member_group_ids?: unknown[] }).member_group_ids!.length
+                    : 0;
                   return (
                     <div
                       key={group.id}
-                      className="group/item relative px-4 py-3 hover:bg-muted/60 dark:hover:bg-[#202c33]/60 transition-colors"
+                      onClick={() => {
+                        // A saved set: tapping loads its member groups for broadcast.
+                        if (isBroadcastList) { handleSelectBroadcastList(group); return; }
+                        if (panelSelectionMode) {
+                          setSelectedGroupsPanelIds((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(group.id)) next.delete(group.id);
+                            else next.add(group.id);
+                            return next;
+                          });
+                        } else {
+                          openGroupConversation(group);
+                        }
+                      }}
+                      onDoubleClick={() => {
+                        if (isBroadcastList) return;
+                        setPanelSelectionMode(true);
+                        setSelectedGroupsPanelIds((prev) => new Set(prev).add(group.id));
+                      }}
+                      title={
+                        isBroadcastList
+                          ? `Load ${memberGroupCount} group${memberGroupCount !== 1 ? 's' : ''} from "${group.name}"`
+                          : panelSelectionMode ? undefined : `Open ${group.name} — double-click to multi-select`
+                      }
+                      className="group/item relative px-4 py-3 hover:bg-muted/60 dark:hover:bg-[#202c33]/60 transition-colors cursor-pointer select-none"
                     >
                       <div className="flex items-center gap-3 w-full">
-                        {/* Checkbox */}
+                        {/* Checkbox — only in multi-select mode, and not for saved sets */}
+                        {panelSelectionMode && !isBroadcastList && (
                         <button
                           type="button"
                           aria-label={isChecked ? `Deselect ${group.name}` : `Select ${group.name}`}
                           title={isChecked ? `Deselect ${group.name}` : `Select ${group.name}`}
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setSelectedGroupsPanelIds((prev) => {
                               const next = new Set(prev);
                               if (next.has(group.id)) next.delete(group.id);
@@ -4047,7 +4237,8 @@ function WABASidebar({
                             </svg>
                           )}
                         </button>
- 
+                        )}
+
                         {/* Group avatar */}
                         <div
                           className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm"
@@ -4060,7 +4251,9 @@ function WABASidebar({
                         <div className="flex flex-col items-start overflow-hidden flex-1 min-w-0">
                           <span className="text-sm font-semibold truncate w-full">{group.name}</span>
                           <span className="text-xs text-muted-foreground">
-                            {group.conversation_count} member{group.conversation_count !== 1 ? 's' : ''}
+                            {isBroadcastList
+                              ? `${memberGroupCount} group${memberGroupCount !== 1 ? 's' : ''}`
+                              : `${group.conversation_count} member${group.conversation_count !== 1 ? 's' : ''}`}
                           </span>
                         </div>
  
@@ -4073,7 +4266,8 @@ function WABASidebar({
                                   type="button"
                                   aria-label={`Send template to ${group.name}`}
                                   title={`Send template to ${group.name}`}
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     handleGroupTemplateSend(group.id, group.conversation_count);
                                     setIsGroupsPanelOpen(false);
                                     setSelectedGroupsPanelIds(new Set());
@@ -4092,7 +4286,8 @@ function WABASidebar({
                                   type="button"
                                   aria-label={`Delete ${group.name}`}
                                   title={`Delete ${group.name}`}
-                                  onClick={async () => {
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
                                     if (!confirm(`Delete "${group.name}"?`)) return;
                                     try {
                                       const channelParam = backendChannel === 'personal' ? '?channel=personal' : '';
@@ -4172,6 +4367,7 @@ function WABASidebar({
                 disabled={groupBroadcastSending}
                 onSendMessage={handleGroupRichBroadcast}
                 onSendTemplate={handleGroupTemplateBroadcast}
+                broadcastTargetCount={selectedGroupsPanelIds.size}
               />
             </div>
           )}
@@ -4318,6 +4514,65 @@ export function WABusinessView({
 
   const [mockSelectedId, setMockSelectedId] = useState<string | null>(null);
   const [favOverrides, setFavOverrides] = useState<Record<string, boolean>>({});
+  const [isStarredOpen, setIsStarredOpen] = useState(false);
+
+  // Lazily resolve WhatsApp DPs (avatars) for visible personal-WhatsApp conversations.
+  // We POST the ids of any conversation still missing an avatar; the backend fetches
+  // the DP from Baileys, caches the URL in wa_contacts.metadata (24h TTL) and returns
+  // a { convId: url } map, which we merge straight into the cached conversation list so
+  // every AvatarImage render site picks it up without prop-threading.
+  const requestedAvatarsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (channel !== 'personal') return;
+    const batch = conversations
+      .filter((c) => !c.contact?.avatar && !requestedAvatarsRef.current.has(c.id))
+      .map((c) => c.id)
+      .slice(0, 50);
+    if (batch.length === 0) return;
+    batch.forEach((id) => requestedAvatarsRef.current.add(id));
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetchWithTenant(
+          `/api/whatsapp-conversations/conversations/avatars?channel=${channel}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ conversation_ids: batch }),
+          }
+        );
+        if (!res.ok || cancelled) return;
+        const data = await res.json().catch(() => null);
+        const avatars: Record<string, string | null> = data?.avatars || {};
+        const resolved = Object.entries(avatars).filter(([, url]) => !!url);
+        if (cancelled || resolved.length === 0) return;
+        const urlById = new Map(resolved as Array<[string, string]>);
+        queryClient.setQueriesData<{ pages?: Array<{ conversations: Conversation[] }> }>(
+          { queryKey: ['conversations', 'list'] },
+          (old) => {
+            if (!old?.pages) return old;
+            return {
+              ...old,
+              pages: old.pages.map((page) => ({
+                ...page,
+                conversations: page.conversations.map((c) =>
+                  urlById.has(c.id)
+                    ? { ...c, contact: { ...c.contact, avatar: urlById.get(c.id) } }
+                    : c
+                ),
+              })),
+            };
+          }
+        );
+      } catch {
+        /* avatar fetch is best-effort */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [conversations, channel, queryClient]);
 
   useEffect(() => {
     const syncViewport = () => setIsMobileViewport(window.innerWidth < 1024);
@@ -4367,22 +4622,31 @@ const handleFavorite = useCallback(
       if (!res.ok) {
         throw new Error(await getApiErrorMessage(res, 'Failed to update favorite status'));
       }
-      // Patch the list cache
-      queryClient.setQueryData(
-        ['conversations', 'list'],
-        (old: Conversation[] | undefined) =>
-          old?.map(c =>
-            c.id === id
-              ? { ...c, is_favorite: !(c as any).is_favorite }
-              : c
-          )
+      // Optimistically flip is_favorite in the infinite-list cache (the key the
+      // hook actually reads) so the heart icon and the Favourites filter update
+      // immediately. The backend persists to conversations.metadata.is_favorite,
+      // which getConversations now returns, so the subsequent refetch is consistent.
+      let nextFav = false;
+      queryClient.setQueriesData<{ pages?: Array<{ conversations: Conversation[] }> }>(
+        { queryKey: ['conversations', 'list'] },
+        (old) => {
+          if (!old?.pages) return old;
+          return {
+            ...old,
+            pages: old.pages.map((page) => ({
+              ...page,
+              conversations: page.conversations.map((c) => {
+                if (c.id !== id) return c;
+                nextFav = !(c.is_favorite ?? c.isFavorite);
+                return { ...c, is_favorite: nextFav, isFavorite: nextFav };
+              }),
+            })),
+          };
+        }
       );
-      // Read the new value from the updated cache and store as override so
-      // typedSelectedConversation (which comes from useConversations' own state)
-      // reflects the change immediately without waiting for a re-select.
-      const updated = (queryClient.getQueryData<any[]>(['conversations', 'list']))
-        ?.find(c => c.id === id);
-      setFavOverrides(prev => ({ ...prev, [id]: Boolean(updated?.is_favorite) }));
+      // Mirror onto the selected-conversation snapshot (which comes from
+      // useConversations' own state and doesn't update from cache patches).
+      setFavOverrides(prev => ({ ...prev, [id]: nextFav }));
       invalidate();
     } catch (err) {
       setActionError(getErrorMessage(err, 'Failed to update favorite status'));
@@ -4467,8 +4731,19 @@ const handleFavorite = useCallback(
   }, [channel]);
 
  const typedConversations = useMemo(
-    () => (conversations?.length ? conversations : []) as Conversation[],
-    [conversations]
+    () => {
+      const list = (conversations?.length ? conversations : []) as Conversation[];
+      // Apply locally-tracked favourite overrides so a just-toggled chat stays in
+      // the Favourites filter even if a refetch returns stale data (e.g. before the
+      // backend round-trip persists is_favorite). Overrides win over server state.
+      if (!Object.keys(favOverrides).length) return list;
+      return list.map((conv) =>
+        conv.id in favOverrides
+          ? ({ ...conv, is_favorite: favOverrides[conv.id], isFavorite: favOverrides[conv.id] } as Conversation)
+          : conv
+      );
+    },
+    [conversations, favOverrides]
   );
 
   const typedSelectedConversation = useMemo(
@@ -4532,6 +4807,7 @@ const handleFavorite = useCallback(
       <AnimatePresence mode="wait">
         {(!isSidebarCollapsed || (isMobileViewport && !typedSelectedConversation)) && (
           <motion.div
+            key="wa-sidebar"
             initial={{ width: 0, opacity: 0 }}
             animate={{ width: isMobileViewport ? '100%' : sidebarWidth, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
@@ -4570,6 +4846,7 @@ const handleFavorite = useCallback(
               contextStatuses={contextStatuses}
               backendChannel={channel}
               onRefresh={invalidate}
+              onOpenStarred={() => setIsStarredOpen(true)}
               activeLastMsg={activeLastMsg}
               loadMore={loadMore}
               hasMore={hasMore}
@@ -4671,6 +4948,18 @@ const handleFavorite = useCallback(
           </>
         )}
       </AnimatePresence>
+
+      {/* Global "Starred messages" viewer (opened from the sidebar kebab menu) */}
+      <StarredMessagesDialog
+        open={isStarredOpen}
+        onClose={() => setIsStarredOpen(false)}
+        channel={channel}
+        onSelectConversation={(id) => {
+          selectConversation(id);
+          setIsMobileChatOpen(true);
+          setIsSidebarCollapsed(false);
+        }}
+      />
     </div>
   );
 }

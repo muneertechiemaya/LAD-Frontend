@@ -21,6 +21,7 @@ interface MessageListProps {
   contact?: Contact;
   onAgentClick?: (agentId?: string) => void;
   onDeleteMessage?: (message: Message, scope: 'me' | 'everyone') => void;
+  onToggleStar?: (message: Message) => void;
   /** Whether older messages exist beyond the current window */
   hasMore?: boolean;
   /** Whether older messages are currently being fetched */
@@ -95,6 +96,7 @@ export const MessageList = memo(function MessageList({
   contact,
   onAgentClick,
   onDeleteMessage,
+  onToggleStar,
   hasMore,
   isLoadingMore,
   onLoadMore,
@@ -175,6 +177,7 @@ export const MessageList = memo(function MessageList({
           contact={contact}
           onAgentClick={onAgentClick}
           onDeleteMessage={onDeleteMessage}
+          onToggleStar={onToggleStar}
           searchText={searchText}
           isHighlighted={msg.id === highlightedMessageId}
         />
