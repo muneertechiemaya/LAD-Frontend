@@ -253,10 +253,6 @@ export default function WarmPathPanel({ wp, prospect, open, onToggle }: WarmPath
               )}
             </div>
           </div>
-          <span
-            className="text-[11.5px] font-semibold inline-flex items-center gap-1 text-[#0B1957] dark:text-white">
-            Open graph <ChevronDown className="w-3.5 h-3.5" />
-          </span>
         </button>
       ) : (
         <div className="relative">
