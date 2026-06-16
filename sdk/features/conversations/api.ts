@@ -143,6 +143,7 @@ function mapMessageFromApi(raw: any): Message {
     mediaMimeType: metadata.mime_type || raw.mime_type || raw.content_type || raw.media_mime_type || undefined,
     mediaFilename: metadata.filename || raw.filename || raw.media_filename || undefined,
     mediaCaption: metadata.caption || raw.caption || undefined,
+    starred: Boolean(metadata.starred),
   };
 }
 
@@ -157,6 +158,7 @@ function mapConversationFromApi(raw: any): Conversation {
       name: raw.lead_name || raw.lead_phone || raw.phone || 'Unknown',
       phone: raw.lead_phone,
       email: raw.lead_email,
+      avatar: raw.lead_avatar || undefined,
     },
     messages: [], // Messages loaded separately
     lastMessage: raw.last_message_content
@@ -178,6 +180,8 @@ function mapConversationFromApi(raw: any): Conversation {
     owner: (raw.owner || 'AI') as ConversationOwner,
     conversationState: raw.context_status as ConversationState,
     messageCount: raw.message_count || 0,
+    is_favorite: Boolean(raw.is_favorite),
+    isFavorite: Boolean(raw.is_favorite),
     createdAt: new Date(raw.started_at || raw.created_at),
     updatedAt: new Date(raw.updated_at || raw.last_message_at || raw.started_at),
   };

@@ -71,6 +71,8 @@ interface TemplatePickerProps {
   channel?: 'personal' | 'waba';
   /** Force batch settings to always be shown (e.g. group sends where count may be 0). */
   isBulkSend?: boolean;
+  /** Hide the batch / delivery-schedule UI (e.g. group broadcasts that throttle server-side). */
+  hideBatchSettings?: boolean;
 }
 
 const TEMPLATES_API = '/api/whatsapp-conversations/conversations/templates';
@@ -103,6 +105,7 @@ export function TemplatePicker({
   sendProgress = null,
   channel = 'waba',
   isBulkSend = false,
+  hideBatchSettings = false,
 }: TemplatePickerProps) {
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([]);
   const [loading, setLoading] = useState(false);
@@ -552,7 +555,7 @@ export function TemplatePicker({
                 </div>
 
                 {/* Batch Settings */}
-                {channel === 'personal' && (isBulkSend || selectedCount > 1) && (
+                {channel === 'personal' && (isBulkSend || selectedCount > 1) && !hideBatchSettings && (
                   <div className="space-y-3 pt-4 border-t border-gray-100">
                     <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Delivery Schedule</h4>
                     <div className="bg-amber-50/50 border border-amber-100 rounded-2xl p-6 space-y-4">

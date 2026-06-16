@@ -53,6 +53,8 @@ export interface MessageComposerProps {
   /** Broadcast-mode template send (no conversationId). When set, picking a
    *  template calls this instead of the per-conversation send endpoint. */
   onSendTemplate?: (templateName: string, languageCode: string, parameters: string[]) => void | Promise<void>;
+  /** Broadcast-mode target count (selected groups) — shown in the template dialog. */
+  broadcastTargetCount?: number;
   disabled?:       boolean;
   contactName?:    string;
   conversationId?: string;
@@ -439,7 +441,7 @@ function StickerPicker({ onSelect, onClose }: { onSelect: (s: string) => void; o
 }
 
 export const MessageComposer = memo(function MessageComposer({
-  channel, backendChannel: backendChannelProp, onSendMessage, onSendTemplate, disabled = false, contactName, conversationId, owner,
+  channel, backendChannel: backendChannelProp, onSendMessage, onSendTemplate, broadcastTargetCount, disabled = false, contactName, conversationId, owner,
 }: MessageComposerProps) {
   // Resolve which backend this conversation belongs to.
   // Explicit backendChannel prop takes priority. Every real caller (ChatWindow
@@ -851,12 +853,13 @@ export const MessageComposer = memo(function MessageComposer({
         <TemplatePicker
           open={isTemplatePickerOpen}
           onOpenChange={setIsTemplatePickerOpen}
-          selectedCount={1}
+          selectedCount={conversationId ? 1 : Math.max(1, broadcastTargetCount ?? 1)}
           onSend={handleTemplateSendFromComposer}
           sending={templateSending}
           sendProgress={templateSendProgress}
           channel={resolvedBackendChannel}
           isBulkSend={false}
+          hideBatchSettings={!conversationId}
         />
 
         {/* ── Text input ── */}
