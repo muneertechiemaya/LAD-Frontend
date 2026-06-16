@@ -18,6 +18,7 @@ export type MediaBuilderStep =
   | "builder-video-confirm"
   | "builder-video-output"
   | "builder-script-confirm"
+  | "builder-workflow-choice"
   | "builder-video-progress"
   | "builder-keyframes-confirm"
   | "gallery";
@@ -256,6 +257,11 @@ export function useMediaBuilder() {
   // Polling effect for background video generation loop progress
   useEffect(() => {
     if (step !== "builder-video-progress" && !(step === "builder-keyframes-confirm" && uiPayload?.phase === "Storyboard Generation")) return;
+    
+    // Stop polling if the status is failed, completed, or cancelled
+    if (uiPayload?.status === "completed" || uiPayload?.status === "failed" || uiPayload?.status === "cancelled") {
+      return;
+    }
 
     let active = true;
     const intervalId = setInterval(async () => {
@@ -299,7 +305,7 @@ export function useMediaBuilder() {
       active = false;
       clearInterval(intervalId);
     };
-  }, [step, sessionId, workerUrl]);
+  }, [step, sessionId, workerUrl, uiPayload?.status, uiPayload?.phase]);
 
   const uploadReference = useCallback(async (file: File) => {
     if (references.length >= 5) {

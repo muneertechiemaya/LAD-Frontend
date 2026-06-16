@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, Sparkles, AlertCircle, Film, Check, Trash2, ArrowRight } from "lucide-react";
+import { X, Sparkles, AlertCircle, Film, Check, Trash2, ArrowRight, Maximize2, ChevronLeft, ChevronRight } from "lucide-react";
 import { BuilderBottomInput } from "./BuilderBottomInput";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +30,7 @@ export function AgentBuilderKeyframesConfirm({
 }) {
   const [selectedFrame, setSelectedFrame] = useState<number | null>(null);
   const [feedbackText, setFeedbackText] = useState("");
+  const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
 
   const handleFilesSelected = (files: FileList) => {
     if (onUpload) {
@@ -113,8 +114,21 @@ export function AgentBuilderKeyframesConfirm({
                 >
                   <img src={url} alt={`Frame ${idx}`} className="w-full h-full object-cover pointer-events-none" />
                   
+                  {/* Expand Button */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setExpandedIdx(idx);
+                    }}
+                    className="absolute top-1.5 right-1.5 p-1.5 bg-black/55 hover:bg-black/75 rounded text-white z-30 transition-all hover:scale-105 active:scale-95 flex items-center justify-center opacity-0 group-hover:opacity-100 border border-white/10"
+                    title="Expand Image"
+                  >
+                    <Maximize2 className="size-3" />
+                  </button>
+                  
                   {/* Badge */}
-                  <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 bg-black/60 backdrop-blur-sm rounded text-[8px] text-white font-bold tracking-wider uppercase">
+                  <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 bg-black/60 backdrop-blur-sm rounded text-[8px] text-white font-bold tracking-wider uppercase z-10">
                     Frame {idx + 1}
                   </div>
                   
@@ -223,12 +237,15 @@ export function AgentBuilderKeyframesConfirm({
       {/* Dynamic input bar for instructions */}
       <div className="w-full flex flex-col pb-4 pt-2 bg-white relative z-20 border-t border-slate-50 shrink-0">
         <BuilderBottomInput
+          value={feedbackText}
+          onChange={setFeedbackText}
           onSend={(val) => {
-            setFeedbackText(val || "");
             if (selectedFrame !== null) {
-              // Submit change if prompt sent while frame selected
               onNext?.(`change frame ${selectedFrame}: ${val || ""}`);
               setSelectedFrame(null);
+              setFeedbackText("");
+            } else {
+              onNext?.(`regenerate storyboard: ${val || ""}`);
               setFeedbackText("");
             }
           }}
@@ -247,6 +264,52 @@ export function AgentBuilderKeyframesConfirm({
           </div>
         )}
       </div>
+
+      {/* Expanded Lightbox Modal Overlay */}
+      {expandedIdx !== null && (
+        <div className="absolute inset-0 bg-slate-950/90 z-50 flex items-center justify-center p-4 select-none animate-in fade-in duration-200">
+          {/* Close button */}
+          <button
+            type="button"
+            onClick={() => setExpandedIdx(null)}
+            className="absolute top-4 right-4 p-2 bg-black/40 hover:bg-black/60 rounded-full text-white/80 hover:text-white transition-all active:scale-95 border border-white/10 z-55"
+          >
+            <X className="size-5" />
+          </button>
+
+          {/* Prev Arrow */}
+          <button
+            type="button"
+            disabled={expandedIdx === 0}
+            onClick={() => setExpandedIdx(prev => prev !== null && prev > 0 ? prev - 1 : prev)}
+            className="absolute left-4 p-3 bg-black/40 hover:bg-black/60 disabled:opacity-20 disabled:cursor-not-allowed text-white/80 hover:text-white rounded-full transition-all border border-white/10 z-55 opacity-70 hover:opacity-100"
+          >
+            <ChevronLeft className="size-6" />
+          </button>
+
+          {/* Image */}
+          <div className="max-w-full max-h-[80%] flex flex-col items-center justify-center gap-3">
+            <img
+              src={keyframes[expandedIdx]}
+              alt={`Frame ${expandedIdx + 1}`}
+              className="max-w-full max-h-full object-contain rounded-lg shadow-2xl border border-white/10"
+            />
+            <div className="px-3 py-1 bg-black/45 backdrop-blur-sm rounded-full text-xs text-white/95 font-bold tracking-wider">
+              Frame {expandedIdx + 1} of {keyframes.length}
+            </div>
+          </div>
+
+          {/* Next Arrow */}
+          <button
+            type="button"
+            disabled={expandedIdx === keyframes.length - 1}
+            onClick={() => setExpandedIdx(prev => prev !== null && prev < keyframes.length - 1 ? prev + 1 : prev)}
+            className="absolute right-4 p-3 bg-black/40 hover:bg-black/60 disabled:opacity-20 disabled:cursor-not-allowed text-white/80 hover:text-white rounded-full transition-all border border-white/10 z-55 opacity-70 hover:opacity-100"
+          >
+            <ChevronRight className="size-6" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -419,77 +419,103 @@ export function AgentBuilderGallery({
 
             {/* ── PHOTO GROUPS (BOTTOM) ── */}
             {images.length > 0 && (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <h3 className="text-xs font-bold text-[#0b1957] uppercase tracking-wider flex items-center gap-1.5 pl-1">
                   <ImageIcon className="size-3.5 text-[#0b1957]" />
                   Image Generations ({images.length})
                 </h3>
 
-                {/* Vertical list of image groups */}
-                <div className="space-y-4">
-                  {images.map((group) => (
-                    <div
-                      key={group.generation_id}
-                      onClick={() => setSelectedGroup(group)}
-                      className="p-3 bg-white border border-slate-100 rounded-2xl hover:border-blue-200 hover:shadow-sm cursor-pointer transition-all space-y-2 group/card"
-                    >
-                      <div className="flex justify-between items-center px-1">
-                        <span className="text-[10px] font-bold text-[#0b1957]/70 uppercase tracking-wider">
-                          Group: {group.generation_id.slice(-6)}
-                        </span>
-                        <span className="text-[9px] text-slate-400 font-medium">
-                          {formatTimestamp(group.created_at)}
-                        </span>
-                      </div>
-                      
-                      {/* Row of 4 thumbnails (arranged horizontally) */}
-                      <div className="grid grid-cols-4 gap-2">
-                        {group.urls.slice(0, 4).map((url, i) => {
-                          const isSel = isAssetSelected(url);
-                          return (
-                            <div
-                              key={i}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveImage({ url, urls: group.urls });
-                              }}
-                              className={cn(
-                                "aspect-square rounded-lg overflow-hidden bg-slate-100 border relative group/thumb cursor-pointer transition-all",
-                                isSel ? "border-[#0b1957] ring-2 ring-[#0b1957]/10" : "border-slate-150"
-                              )}
-                            >
-                              <img
-                                src={url}
-                                alt={`Thumbnail ${i + 1}`}
-                                className="w-full h-full object-cover group-hover/card:scale-102 transition-transform duration-300"
-                                loading="lazy"
-                              />
-                              {/* Selection check icon overlay */}
-                              <div
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toggleAssetSelection(url, "image");
-                                }}
-                                className={cn(
-                                  "absolute top-1 right-1 size-5 rounded-full border flex items-center justify-center transition-all z-20 cursor-pointer active:scale-95",
-                                  isSel ? "bg-[#0b1957] border-[#0b1957] text-white animate-in zoom-in-50" : "bg-white/80 border-slate-300 backdrop-blur-sm opacity-100"
-                                )}
-                              >
-                                {isSel && <Check className="size-2.5 stroke-[3]" />}
-                              </div>
-                            </div>
-                          );
-                        })}
-                        {/* If less than 4 generated items exist in group */}
-                        {Array.from({ length: Math.max(0, 4 - group.urls.length) }).map((_, idx) => (
-                          <div
-                            key={`empty-${idx}`}
-                            className="aspect-square rounded-lg border border-dashed border-slate-200 bg-slate-50/50"
+                {/* Horizontal scroll container for image previews/stacks */}
+                <div className="flex gap-3 overflow-x-auto pb-3.5 scrollbar-thin scrollbar-thumb-slate-200 h-[120px] items-center animate-in fade-in duration-300">
+                  {images.map((group) => {
+                    const hasSelectedInGroup = group.urls.some((url) => isAssetSelected(url));
+                    const isGroup = group.urls.length > 1;
+
+                    if (!isGroup) {
+                      const url = group.urls[0];
+                      const isSel = isAssetSelected(url);
+                      return (
+                        <div
+                          key={group.generation_id}
+                          onClick={() => toggleAssetSelection(url, "image")}
+                          className={cn(
+                            "flex-shrink-0 w-[100px] h-[100px] rounded-xl bg-slate-900 border overflow-hidden relative cursor-pointer group shadow-sm hover:shadow transition-all",
+                            isSel ? "border-[#0b1957] ring-2 ring-[#0b1957]/20" : "border-slate-200 hover:border-[#0b1957]/30"
+                          )}
+                        >
+                          <img
+                            src={url}
+                            alt="Thumbnail"
+                            className="w-full h-full object-cover pointer-events-none"
+                            loading="lazy"
                           />
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+                          {/* Selection check icon overlay */}
+                          <div className={cn(
+                            "absolute top-1.5 right-1.5 size-4 rounded-full border flex items-center justify-center transition-all z-25",
+                            isSel ? "bg-[#0b1957] border-[#0b1957] text-white" : "bg-white/70 border-slate-300 backdrop-blur-sm opacity-0 group-hover:opacity-100"
+                          )}>
+                            {isSel && <Check className="size-2.5 stroke-[3]" />}
+                          </div>
+                          {/* Timestamp badge */}
+                          <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/60 rounded text-[9px] text-white font-medium">
+                            {formatTimestamp(group.created_at)}
+                          </div>
+                        </div>
+                      );
+                    } else {
+                      // Stacked card deck look
+                      const firstUrl = group.urls[0];
+                      return (
+                        <div
+                          key={group.generation_id}
+                          onClick={() => setSelectedGroup(group)}
+                          className="flex-shrink-0 w-[120px] h-[100px] relative mr-4 select-none cursor-pointer"
+                        >
+                          {/* Layer 3 (bottom card) */}
+                          <div className="absolute inset-0 rounded-xl bg-slate-200 border border-slate-300/40 translate-x-2.5 translate-y-2.5 rotate-3 shadow-sm" />
+                          {/* Layer 2 (middle card) */}
+                          <div className="absolute inset-0 rounded-xl bg-slate-100 border border-slate-200/60 translate-x-1.5 translate-y-1.5 rotate-1.5 shadow-sm" />
+                          
+                          {/* Layer 1 (top card) */}
+                          <div
+                            className={cn(
+                              "absolute inset-0 rounded-xl bg-slate-900 border overflow-hidden group shadow-md hover:shadow-lg transition-all",
+                              hasSelectedInGroup ? "border-[#0b1957] ring-2 ring-[#0b1957]/20" : "border-slate-200 hover:border-[#0b1957]/40"
+                            )}
+                          >
+                            <img
+                              src={firstUrl}
+                              alt="Top Thumbnail"
+                              className="w-full h-full object-cover pointer-events-none"
+                              loading="lazy"
+                            />
+                            {/* Stack indicator overlay */}
+                            <div className="absolute inset-0 bg-black/30 flex flex-col items-center justify-center group-hover:bg-black/45 transition-colors">
+                              <div className="size-7 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30 group-hover:scale-105 transition-transform mb-1">
+                                <ImageIcon className="size-3.5 text-white" />
+                              </div>
+                              <span className="text-[10px] font-bold text-white tracking-wide uppercase px-2 py-0.5 bg-[#0b1957]/90 rounded-full border border-blue-400/20 shadow-sm">
+                                {group.urls.length} frames
+                              </span>
+                            </div>
+                            
+                            {/* Selected icon badge */}
+                            <div className={cn(
+                              "absolute top-1.5 right-1.5 size-4 rounded-full border flex items-center justify-center transition-all z-25",
+                              hasSelectedInGroup ? "bg-[#0b1957] border-[#0b1957] text-white" : "bg-white/70 border-slate-300 backdrop-blur-sm opacity-0 group-hover:opacity-100"
+                            )}>
+                              {hasSelectedInGroup && <Check className="size-2.5 stroke-[3]" />}
+                            </div>
+                            
+                            {/* Timestamp badge */}
+                            <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/60 rounded text-[9px] text-white font-medium">
+                              {formatTimestamp(group.created_at)}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                  })}
                 </div>
               </div>
             )}

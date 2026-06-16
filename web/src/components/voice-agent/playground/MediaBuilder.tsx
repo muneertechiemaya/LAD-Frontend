@@ -10,6 +10,7 @@ import { AgentBuilderVideoConfirm } from "./builder-steps/AgentBuilderVideoConfi
 import { AgentBuilderVideoOutput } from "./builder-steps/AgentBuilderVideoOutput";
 import { AgentBuilderGallery } from "./builder-steps/AgentBuilderGallery";
 import { AgentBuilderScriptConfirm } from "./builder-steps/AgentBuilderScriptConfirm";
+import { AgentBuilderWorkflowChoice } from "./builder-steps/AgentBuilderWorkflowChoice";
 import { AgentBuilderVideoProgress } from "./builder-steps/AgentBuilderVideoProgress";
 import { AgentBuilderKeyframesConfirm } from "./builder-steps/AgentBuilderKeyframesConfirm";
 import { motion, AnimatePresence } from "framer-motion";
@@ -343,6 +344,20 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
   if (mb.step === "builder-script-confirm") {
     return (
       <AgentBuilderScriptConfirm
+        title={mb.uiPayload?.question}
+        description={mb.uiPayload?.description}
+        options={mb.uiPayload?.options as any || []}
+        onClose={onClose}
+        onNext={(val) => mb.advanceStep(val)}
+        phase={mb.uiPayload?.phase}
+      />
+    );
+  }
+
+  /* ── 7a-1. WORKFLOW CHOICE VIEW ── */
+  if (mb.step === "builder-workflow-choice") {
+    return (
+      <AgentBuilderWorkflowChoice
         title={mb.uiPayload?.question}
         description={mb.uiPayload?.description}
         options={mb.uiPayload?.options as any || []}

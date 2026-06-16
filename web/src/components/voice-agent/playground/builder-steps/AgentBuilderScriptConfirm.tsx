@@ -64,45 +64,24 @@ export function AgentBuilderScriptConfirm({
       </div>
 
       {/* Action Buttons */}
-      <div className="w-full flex-shrink-0 flex flex-col gap-2 px-6 pt-2 pb-1 border-t border-slate-50 bg-white">
-        {options && options.length > 0 ? (
-          options.map((opt, i) => {
-            const label = typeof opt === "string" ? opt : opt.label;
-            const isCancel = label.toLowerCase().includes("cancel") || label.toLowerCase().includes("no");
-            return (
-              <button
-                key={i}
-                type="button"
-                onClick={() => onNext?.(label)}
-                className={isCancel 
-                  ? "w-full py-2 border border-slate-200 hover:bg-slate-50 text-slate-500 font-bold text-[10px] rounded-xl transition-all active:scale-95 cursor-pointer text-center"
-                  : "w-full py-2 bg-gradient-to-br from-[#0b1957] to-[#1e293b] hover:from-[#0b1957] hover:to-[#0b1957] text-white font-bold text-[10px] rounded-xl transition-all active:scale-95 shadow-sm hover:shadow-md cursor-pointer text-center flex items-center justify-center gap-1.5"
-                }
-              >
-                {!isCancel && <Check className="size-3" />}
-                {label}
-              </button>
-            );
-          })
-        ) : (
-          <div className="flex w-full items-center gap-3">
-            <button
-              type="button"
-              onClick={() => onNext?.("No, cancel")}
-              className="flex-1 py-3 border border-slate-200 hover:bg-slate-50 text-[#0b1957] font-bold text-xs rounded-full transition-all active:scale-95 cursor-pointer text-center"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={() => onNext?.("Yes, approve script")}
-              className="flex-1 py-3 bg-gradient-to-br from-[#0b1957] to-[#1e293b] hover:from-[#0b1957] hover:to-[#0b1957] text-white font-bold text-xs rounded-full transition-all active:scale-95 shadow-md hover:shadow-lg shadow-[#0b1957]/10 cursor-pointer text-center flex items-center justify-center gap-1.5"
-            >
-              <Check className="size-3.5" />
-              Approve Script
-            </button>
-          </div>
-        )}
+      <div className="w-full flex-shrink-0 flex items-center gap-3 px-6 pt-2 pb-1 border-t border-slate-50 bg-white">
+        <div className="flex w-full items-center gap-3">
+          <button
+            type="button"
+            onClick={() => onNext?.("No, cancel")}
+            className="flex-1 py-3 border border-slate-200 hover:bg-slate-50 text-[#0b1957] font-bold text-xs rounded-full transition-all active:scale-95 cursor-pointer text-center"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => onNext?.("Yes, approve script")}
+            className="flex-1 py-3 bg-gradient-to-br from-[#0b1957] to-[#1e293b] hover:from-[#0b1957] hover:to-[#0b1957] text-white font-bold text-xs rounded-full transition-all active:scale-95 shadow-md hover:shadow-lg shadow-[#0b1957]/10 cursor-pointer text-center flex items-center justify-center gap-1.5"
+          >
+            <Check className="size-3.5" />
+            Approve Script
+          </button>
+        </div>
       </div>
 
       {/* Refinement input bar */}
