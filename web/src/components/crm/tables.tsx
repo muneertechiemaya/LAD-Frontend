@@ -13,7 +13,13 @@ import {
   VerifiedTag,
 } from './shared';
 import { CRM_OWNERS, NOW, type CrmContact } from './data';
-
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
 // ── Building blocks ──────────────────────────────────────────────────────
 function TypePill({ type }: { type: CrmContact['type'] }) {
   const map: Record<CrmContact['type'], { label: string; color: string; bg: string }> = {
@@ -431,19 +437,31 @@ function FilterDropdown({
 }) {
   return (
     <div className="relative">
-      <select
-        value={value || ''}
-        onChange={(e) => onChange(e.target.value || null)}
-        className="h-9 pl-3 pr-8 rounded-lg text-[12.5px] border border-slate-200 dark:border-[#262831] bg-white dark:bg-[#000724] text-[#172560] dark:text-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#0B1957]/30"
-      >
-        <option value="">{label}: All</option>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {label}: {o.label}
-          </option>
-        ))}
-      </select>
-      <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+      <Select value={value || ''} onValueChange={(val) => onChange(val || null)}>
+        <SelectTrigger className="h-9 px-3 text-[12.5px] font-medium border border-slate-200 dark:border-[#262831] bg-white dark:bg-[#000724] text-[#172560] dark:text-white rounded-lg focus:ring-2 focus:ring-[#0B1957]/30">
+          <SelectValue placeholder={`${label}: All`} />
+        </SelectTrigger>
+
+        {/* The Dropdown Popover Menu */}
+        <SelectContent className="bg-white dark:bg-[#000724] border border-slate-200 dark:border-[#262831] rounded-lg">
+          <SelectItem
+              value="all_placeholder"
+              className="text-[12.5px] text-[#172560] dark:text-white focus:bg-emerald-500 focus:text-black dark:focus:bg-emerald-600 dark:focus:text-white cursor-pointer"
+          >
+            {label}: All
+          </SelectItem>
+
+          {options.map((o) => (
+              <SelectItem
+                  key={o.value}
+                  value={o.value}
+                  className="text-[12.5px] text-[#172560] dark:text-white focus:bg-emerald-500 focus:text-black dark:focus:bg-emerald-600 dark:focus:text-white cursor-pointer"
+              >
+                {label}: {o.label}
+              </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }
