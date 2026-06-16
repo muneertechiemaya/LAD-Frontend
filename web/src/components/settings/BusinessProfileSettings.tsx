@@ -178,13 +178,13 @@ export const BusinessProfileSettings: React.FC = () => {
           </div>
           <div className="flex-1">
             <h2 className="text-gray-900 dark:text-slate-100 text-xl font-semibold">Business Profile</h2>
-            <p className="text-gray-600 dark:text-slate-400 text-sm mt-1">
+            <p className="text-gray-600 dark:text-slate-300 text-sm mt-1">
               The 14 fields that power ICP Discovery, lead scoring, and message personalisation.
               The wizard fills these in; edit anything here whenever your positioning changes.
             </p>
           </div>
           <div className="text-right">
-            <div className="text-xs text-gray-500 dark:text-slate-400 font-medium">Profile completeness</div>
+            <div className="text-xs text-gray-500 dark:text-slate-300 font-medium">Profile completeness</div>
             <div
               className={`text-lg font-bold ${
                 completeness.pct >= 70 ? 'text-emerald-600 dark:text-emerald-400' : 'text-[#0B1957] dark:text-blue-400'
@@ -215,7 +215,7 @@ export const BusinessProfileSettings: React.FC = () => {
           <Building2 className="w-4 h-4 text-[#0B1957] dark:text-blue-400" />
           Company basics
         </h3>
-        <p className="text-gray-500 dark:text-slate-400 text-xs mt-0.5 mb-4">Logo, location, and operating hours.</p>
+        <p className="text-gray-500 dark:text-slate-300 text-xs mt-0.5 mb-4">Logo, location, and operating hours.</p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Logo */}
@@ -243,7 +243,7 @@ export const BusinessProfileSettings: React.FC = () => {
             <span className="text-[12px] font-semibold text-[#172560] dark:text-slate-200 inline-flex items-center gap-1.5">
               <MapPin className="w-3.5 h-3.5 text-[#0B1957] dark:text-blue-400" /> Company location
             </span>
-            <span className="block text-[11.5px] text-slate-500 dark:text-slate-400 mt-0.5">Where your business is based.</span>
+            <span className="block text-[11.5px] text-slate-500 dark:text-slate-300 mt-0.5">Where your business is based.</span>
             <div className="mt-auto pt-1.5 flex gap-2">
               <input
                 type="text"
@@ -269,7 +269,7 @@ export const BusinessProfileSettings: React.FC = () => {
               </div>
               <div className="min-w-0">
                 <div className="text-[13px] font-semibold text-[#172560] dark:text-slate-200">Business hours</div>
-                <div className="text-[12px] text-slate-500 dark:text-slate-400 truncate">{bhSummary(savedBH) || 'Not set'}</div>
+                <div className="text-[12px] text-slate-500 dark:text-slate-300 truncate">{bhSummary(savedBH) || 'Not set'}</div>
               </div>
             </div>
             <button
@@ -286,7 +286,7 @@ export const BusinessProfileSettings: React.FC = () => {
       {SECTIONS.map((section) => (
         <div key={section.title} className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-gray-200 dark:border-slate-800 p-6">
           <h3 className="text-gray-900 dark:text-slate-100 text-base font-semibold">{section.title}</h3>
-          <p className="text-gray-500 dark:text-slate-400 text-xs mt-0.5 mb-4">{section.subtitle}</p>
+          <p className="text-gray-500 dark:text-slate-300 text-xs mt-0.5 mb-4">{section.subtitle}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {section.keys.map((k) => {
               const copy: FieldSpec = { key: k, ...FIELD_COPY[k as string] } as FieldSpec;
@@ -303,7 +303,7 @@ export const BusinessProfileSettings: React.FC = () => {
                     )}
                   </span>
                   {copy.hint && (
-                    <span className="block text-[11.5px] text-slate-500 dark:text-slate-400 mt-0.5">{copy.hint}</span>
+                    <span className="block text-[11.5px] text-slate-500 dark:text-slate-300 mt-0.5">{copy.hint}</span>
                   )}
                   {/* mt-auto pins the control to the bottom of the (stretched) grid
                       cell so paired inputs line up even when one field has a hint
@@ -348,7 +348,7 @@ export const BusinessProfileSettings: React.FC = () => {
               Saved.
             </span>
           ) : (
-            <span className="text-gray-500 dark:text-slate-400">Changes are saved when you click Save.</span>
+            <span className="text-gray-500 dark:text-slate-300">Changes are saved when you click Save.</span>
           )}
         </div>
         <button

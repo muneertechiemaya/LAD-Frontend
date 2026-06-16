@@ -278,7 +278,7 @@ export const TeamManagement: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-zinc-50 tracking-tight">Team Management</h2>
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-slate-300 tracking-tight">Team Management</h2>
           <p className="text-gray-500 dark:text-zinc-400 mt-1 font-medium">Manage team members and their granular page permissions</p>
         </div>
         <Button
@@ -318,11 +318,11 @@ export const TeamManagement: React.FC = () => {
             <table className="w-full">
               <thead className="bg-gray-50/50 dark:bg-transparent border-b border-gray-100 dark:border-zinc-800/80">
                 <tr>
-                  <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest">Team Member</th>
-                  <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest">Role & Status</th>
-                  <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest">Permissions</th>
-                  <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest">Privacy</th>
-                  <th className="px-8 py-5 text-right text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest">Actions</th>
+                  <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-400 dark:text-slate-300 uppercase tracking-widest">Team Member</th>
+                  <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-400 dark:text-slate-300 uppercase tracking-widest">Role & Status</th>
+                  <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-400 dark:text-slate-300 uppercase tracking-widest">Permissions</th>
+                  <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-400 dark:text-slate-300 uppercase tracking-widest">Privacy</th>
+                  <th className="px-8 py-5 text-right text-[10px] font-bold text-gray-400 dark:text-slate-3500 uppercase tracking-widest">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-zinc-800/60">
@@ -350,8 +350,8 @@ export const TeamManagement: React.FC = () => {
                           </div>
                           <div className="flex flex-col">
                             <span className="font-bold text-gray-900 dark:text-zinc-100">{user.name || '—'}</span>
-                            <span className="text-xs text-gray-500 dark:text-slate-400 flex items-center gap-1.5 mt-0.5">
-                              <Mail className="h-3 w-3 opacity-60 text-gray-400 dark:text-zinc-500" />
+                            <span className="text-xs text-gray-500 dark:text-slate-300 flex items-center gap-1.5 mt-0.5">
+                              <Mail className="h-3 w-3 opacity-60 text-gray-400 dark:text-slate-300" />
                               {user.email}
                             </span>
                           </div>
@@ -434,7 +434,7 @@ export const TeamManagement: React.FC = () => {
                               )}
                             />
                           </button>
-                          <span className="text-[9px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest">
+                          <span className="text-[9px] font-bold text-gray-400 dark:text-slate-300 uppercase tracking-widest">
                             {user.maskPhoneNumber ? 'Phone Masked' : 'Phone Visible'}
                           </span>
                         </div>
@@ -506,7 +506,7 @@ export const TeamManagement: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-zinc-500 dark:hover:text-zinc-300"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-slate-300 dark:hover:text-zinc-300"
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
                   </button>
@@ -549,7 +549,7 @@ export const TeamManagement: React.FC = () => {
                     onClick={() => setShowCapabilitiesDropdown(!showCapabilitiesDropdown)}
                     className="w-full h-11 px-4 rounded-xl border border-input bg-gray-50/50 dark:bg-[#09090b] dark:border-zinc-800 flex items-center justify-between text-sm transition-colors hover:bg-gray-100/50 dark:hover:bg-zinc-900 dark:text-zinc-100"
                   >
-                    <span className={newUser.capabilities.length ? 'text-foreground dark:text-zinc-100' : 'text-muted-foreground dark:text-zinc-500'}>
+                    <span className={newUser.capabilities.length ? 'text-foreground dark:text-zinc-100' : 'text-muted-foreground dark:text-slate-300'}>
                       {newUser.capabilities.length
                         ? `${newUser.capabilities.length} pages selected`
                         : 'Select pages...'}
