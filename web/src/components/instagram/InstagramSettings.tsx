@@ -84,7 +84,7 @@ export const InstagramSettings: React.FC = () => {
         <button
           type="button"
           onClick={() => router.push('/settings?tab=integrations')}
-          className="mb-6 inline-flex items-center gap-1.5 text-sm text-neutral-600 hover:text-neutral-900 dark:text-gray-400 dark:hover:text-white transition-colors"
+          className="mb-6 inline-flex items-center gap-1.5 text-sm text-neutral-600 hover:text-neutral-900 dark:text-slate-300 dark:hover:text-white transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Integrations
