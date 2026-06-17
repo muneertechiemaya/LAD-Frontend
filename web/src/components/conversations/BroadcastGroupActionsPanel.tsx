@@ -84,7 +84,13 @@ export function BroadcastGroupActionsPanel({ groupIds, channel }: BroadcastGroup
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
-      setNote({ ok: true, text: `Added ${groupIds.length} group${groupIds.length === 1 ? '' : 's'} to "${list.name}".` });
+      // Update the count from the backend's returned group (authoritative) rather
+      // than a re-fetch that can race or be cached — this is what showed "same count".
+      const updatedIds = Array.isArray(data?.group?.metadata?.member_group_ids)
+        ? data.group.metadata.member_group_ids.map(String)
+        : [...new Set([...list.member_group_ids, ...groupIds.map(String)])];
+      setLists((prev) => prev.map((l) => (l.id === list.id ? { ...l, member_group_ids: updatedIds } : l)));
+      setNote({ ok: true, text: `Added to "${list.name}" — now ${updatedIds.length} group${updatedIds.length === 1 ? '' : 's'}.` });
       loadLists();
     } catch (e) {
       setNote({ ok: false, text: e instanceof Error ? e.message : 'Failed to add' });
