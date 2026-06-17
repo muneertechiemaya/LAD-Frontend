@@ -1,0 +1,165 @@
+/**
+ * React-query hooks for LAD-Email-Comms broadcast endpoints.
+ *
+ * Surface — what the EmailChannelView needs:
+ *   useConnectedEmailAccounts()       — populates the "From" selector
+ *   useBroadcastRuns(limit?, offset?) — Sent folder list
+ *   useBroadcastRun(id)               — detail view; auto-polls if not-yet-terminal
+ *   useSendBroadcast()                — Compose submit
+ *
+ * All hooks rely on the global QueryClient configured in providers.tsx
+ * (staleTime 60s, gcTime 5min, retry 1).
+ */
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
+
+// ── Shared types — mirror LAD-Email-Comms api/schemas/* ─────────────────────
+
+export type EmailProvider = 'google' | 'microsoft' | 'custom_smtp';
+export type AccountStatus = 'active' | 'inactive' | 'error' | 'expired';
+
+export interface ConnectedAccount {
+  id: string;
+  provider: EmailProvider;
+  email: string;
+  display_name: string | null;
+  status: AccountStatus;
+  last_verified_at: string | null;
+}
+
+export type BroadcastStatus =
+  | 'queued'
+  | 'running'
+  | 'completed'
+  | 'failed'
+  | 'paused_quota_exceeded'
+  | 'cancelled';
+
+export interface BroadcastRunSummary {
+  id: string;
+  from_email: string;
+  subject: string;
+  status: BroadcastStatus;
+  recipient_count: number;
+  sent_count: number;
+  failed_count: number;
+  unsubscribed_skipped_count: number;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+}
+
+export interface BroadcastRunDetail extends BroadcastRunSummary {
+  body_html: string;
+  body_text: string | null;
+  error_message: string | null;
+}
+
+export interface RecipientPayload {
+  email: string;
+  name?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface SendBroadcastRequest {
+  from_email_account_id: string;
+  subject: string;
+  body_html: string;
+  body_text?: string | null;
+  template_id?: string | null;
+  recipients: RecipientPayload[];
+}
+
+export interface SendBroadcastResponse {
+  broadcast_run_id: string;
+  status: 'queued';
+  recipient_count: number;
+}
+
+// ── Internal fetcher ────────────────────────────────────────────────────────
+
+async function jsonFetch<T>(input: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(input, {
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
+    ...init,
+  });
+  if (!res.ok) {
+    let message: string;
+    try {
+      const body = await res.json();
+      message = body?.detail || body?.error || `HTTP ${res.status}`;
+    } catch {
+      message = `HTTP ${res.status}`;
+    }
+    throw new Error(message);
+  }
+  return (await res.json()) as T;
+}
+
+// ── Hooks ───────────────────────────────────────────────────────────────────
+
+const QUERY_KEYS = {
+  accounts: ['email-comms', 'accounts'] as const,
+  runs: (limit: number, offset: number) =>
+    ['email-comms', 'runs', { limit, offset }] as const,
+  run: (id: string) => ['email-comms', 'run', id] as const,
+};
+
+export function useConnectedEmailAccounts() {
+  return useQuery({
+    queryKey: QUERY_KEYS.accounts,
+    queryFn: () =>
+      jsonFetch<{ accounts: ConnectedAccount[] }>(
+        '/api/email-comms/accounts',
+      ).then((d) => d.accounts),
+  });
+}
+
+export function useBroadcastRuns(limit = 20, offset = 0) {
+  return useQuery({
+    queryKey: QUERY_KEYS.runs(limit, offset),
+    queryFn: () =>
+      jsonFetch<{ runs: BroadcastRunSummary[]; next_offset: number | null }>(
+        `/api/email-comms/broadcast/runs?limit=${limit}&offset=${offset}`,
+      ),
+  });
+}
+
+/** Detail view of one broadcast. Auto-polls every 3s while the broadcast is
+ *  not in a terminal state, so the Sent folder updates progress live. */
+export function useBroadcastRun(id: string | null) {
+  return useQuery({
+    enabled: !!id,
+    queryKey: id ? QUERY_KEYS.run(id) : ['email-comms', 'run', 'null'],
+    queryFn: () =>
+      jsonFetch<BroadcastRunDetail>(
+        `/api/email-comms/broadcast/runs/${encodeURIComponent(id as string)}`,
+      ),
+    refetchInterval: (query) => {
+      const data = query.state.data as BroadcastRunDetail | undefined;
+      if (!data) return 3000;
+      // Poll only while non-terminal.
+      const terminal = ['completed', 'failed', 'cancelled'];
+      return terminal.includes(data.status) ? false : 3000;
+    },
+  });
+}
+
+export function useSendBroadcast() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: SendBroadcastRequest) =>
+      jsonFetch<SendBroadcastResponse>('/api/email-comms/broadcast/send', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      // Refresh the Sent folder so the new run shows up immediately.
+      qc.invalidateQueries({ queryKey: ['email-comms', 'runs'] });
+    },
+  });
+}
