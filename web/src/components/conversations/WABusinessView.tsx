@@ -2537,19 +2537,20 @@ function WABASidebar({
     (group: ChatGroup) => {
       const jid = (group.metadata as { wa_group_jid?: string } | undefined)?.wa_group_jid;
       const local = jid ? jid.split('@')[0] : null;
+      const nameLc = (group.name || '').trim().toLowerCase();
       const match = conversations.find((c) => {
-        const phone = c.contact?.phone || '';
-        if (local && (phone === local || phone === jid)) return true;
-        return !!c.contact?.name && c.contact.name === group.name;
+        const phone = (c.contact?.phone || '').replace(/@.*$/, '');
+        if (local && (phone === local || c.contact?.phone === jid)) return true;
+        return !!c.contact?.name && c.contact.name.trim().toLowerCase() === nameLc;
       });
       if (match) {
         onSelectConversation(match.id);
         setIsGroupsPanelOpen(false);
       } else {
-        // Most broadcast groups are contact collections with no single chat to open.
-        // Show a brief note instead of filling the chat search bar (which would hide
-        // every conversation behind a stale filter).
-        setGroupBroadcastResult(`No chat to open for "${group.name}".`);
+        // No group chat conversation exists yet (e.g. a contact-collection group, or a
+        // synced WA group with no ingested messages). Surface a brief note rather than
+        // polluting the chat search bar.
+        setGroupBroadcastResult(`No chat to open for "${group.name}" yet — it has no messages.`);
       }
     },
     [conversations, onSelectConversation]
@@ -4195,6 +4196,12 @@ function WABASidebar({
                   const memberGroupCount = Array.isArray((group.metadata as { member_group_ids?: unknown[] } | undefined)?.member_group_ids)
                     ? (group.metadata as { member_group_ids?: unknown[] }).member_group_ids!.length
                     : 0;
+                  // WA groups carry the real participant count in metadata; manual groups
+                  // expose member_count from the backend. (conversation_count is unset.)
+                  const memberCount = (group.metadata as { participant_count?: number } | undefined)?.participant_count
+                    ?? group.member_count
+                    ?? group.conversation_count
+                    ?? 0;
                   return (
                     <div
                       key={group.id}
@@ -4269,7 +4276,7 @@ function WABASidebar({
                           <span className="text-xs text-muted-foreground">
                             {isBroadcastList
                               ? `${memberGroupCount} group${memberGroupCount !== 1 ? 's' : ''}`
-                              : `${group.conversation_count} member${group.conversation_count !== 1 ? 's' : ''}`}
+                              : `${memberCount} member${memberCount !== 1 ? 's' : ''}`}
                           </span>
                         </div>
  
