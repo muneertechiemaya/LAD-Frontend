@@ -814,11 +814,10 @@ export const MessageComposer = memo(function MessageComposer({
               <p className="text-[10px] font-semibold text-[#94A3B8] uppercase tracking-wide mb-2 px-1">Attach</p>
               <div className="grid grid-cols-3 gap-1">
                 {[
-                  // Broadcast mode drops Sticker (no broadcast payload) and adds Send Template,
-                  // keeping a clean 3×3 grid with the template in the 3rd row.
-                  ...(onSendTemplate && !conversationId
-                    ? ATTACH_ITEMS.filter(i => i.id !== 'sticker')
-                    : ATTACH_ITEMS),
+                  // Sticker is emoji-text (inserted into the message input), so it
+                  // broadcasts fine as text — keep it in every mode. Broadcast mode
+                  // additionally offers Send Template.
+                  ...ATTACH_ITEMS,
                   ...(onSendTemplate && !conversationId
                     ? [{ id: 'template', label: 'Send Template', icon: <LayoutTemplate className="w-6 h-6 text-white" />, bg: 'bg-[#0b1957]' } as AttachItem]
                     : []),
