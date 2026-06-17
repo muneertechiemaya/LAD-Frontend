@@ -75,6 +75,8 @@ import { MessageComposer } from './MessageComposer';
 import type { Channel } from '@/types/conversation';
 import type { RichMessagePayload as ComposerRichPayload } from '@lad/frontend-features/conversations';
 import { CreateBroadcastGroupModal } from './CreateBroadcastGroupModal';
+import { ScheduleBroadcastModal } from './ScheduleBroadcastModal';
+import { ScheduledBroadcastsModal } from './ScheduledBroadcastsModal';
 import { MessageSettings } from './MessageSettings';
 import { MrLadAvatar } from './MrLadAvatar';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -2494,6 +2496,9 @@ function WABASidebar({
   // group (or taps "Select"), which turns on multi-select mode. A single click
   // outside selection mode opens that group's chat instead.
   const [panelSelectionMode, setPanelSelectionMode] = useState(false);
+  // Scheduled broadcasts (Cloud-Task triggered): groups to schedule for + list-viewer toggle.
+  const [scheduleGroupIds, setScheduleGroupIds] = useState<string[] | null>(null);
+  const [isScheduledListOpen, setIsScheduledListOpen] = useState(false);
   const [createGroupIds, setCreateGroupIds] = useState<string[]>([]);
 
   // ── Group-chat broadcast: post one message into each selected WhatsApp group
@@ -4048,6 +4053,17 @@ function WABASidebar({
             {backendChannel === 'personal' && (
               <button
                 type="button"
+                onClick={() => setIsScheduledListOpen(true)}
+                title="View scheduled broadcasts"
+                className="flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-700"
+              >
+                <Clock className="h-3.5 w-3.5" />
+                Scheduled
+              </button>
+            )}
+            {backendChannel === 'personal' && (
+              <button
+                type="button"
                 onClick={handleSyncWaGroups}
                 disabled={isSyncingWaGroups}
                 title="Import your WhatsApp groups from the connected number"
@@ -4346,6 +4362,14 @@ function WABASidebar({
                 </label>
                 <button
                   type="button"
+                  className="flex items-center gap-1 border border-emerald-500 text-emerald-600 text-[11px] h-7 px-2 rounded-md hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors"
+                  onClick={() => setScheduleGroupIds(Array.from(selectedGroupsPanelIds))}
+                  title="Schedule this broadcast for a later time"
+                >
+                  <Clock className="h-3 w-3" /> Schedule
+                </button>
+                <button
+                  type="button"
                   className="border border-border text-[11px] h-7 px-2 rounded-md hover:bg-muted transition-colors"
                   onClick={() => setSelectedGroupsPanelIds(new Set())}
                 >
@@ -4373,6 +4397,21 @@ function WABASidebar({
           )}
         </div>
       )}
+
+      {/* Schedule a broadcast (message or template) for the selected groups */}
+      {scheduleGroupIds && (
+        <ScheduleBroadcastModal
+          open={!!scheduleGroupIds}
+          onClose={() => setScheduleGroupIds(null)}
+          groupIds={scheduleGroupIds}
+          channel={(backendChannel as 'personal' | 'waba') || 'personal'}
+        />
+      )}
+      <ScheduledBroadcastsModal
+        open={isScheduledListOpen}
+        onClose={() => setIsScheduledListOpen(false)}
+        channel={(backendChannel as 'personal' | 'waba') || 'personal'}
+      />
 
       {/* ── Chat Group Manager Dialog ───────────────────────────────────── */}
       <ChatGroupManager
