@@ -1641,7 +1641,12 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
     headerParamCount: number, headerType: string, headerUrl: string,
   ) => {
     const convId = conversationId || conversation?.id;
-    if (!convId) return;
+    if (!convId) {
+      // Never fail silently — otherwise the picker can appear to "succeed"
+      // while no request is ever sent.
+      setTemplateSendResult({ success: false, message: 'Cannot send: this conversation has no ID. Reopen the chat and try again.' });
+      return;
+    }
     setTemplateSending(true);
     setTemplateSendResult(null);
     setTemplateSendProgress({ sent: 0, total: 1, running: true });
@@ -1664,11 +1669,23 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
         }
       );
       const data = await res.json();
-      setTemplateSendProgress({ sent: data.sent || 1, total: 1, running: false });
-      if (!data.success) throw new Error(data.error || 'Failed');
+      const sent = Number(data.sent) || 0;
+      const failed = Number(data.failed) || 0;
+      setTemplateSendProgress({ sent, total: 1, running: false });
+      // Gate success on ACTUAL delivery. A 2xx with sent:0 means WhatsApp/Meta
+      // rejected the send (e.g. template not yet approved, or a parameter
+      // mismatch) — surface the real reason instead of a misleading "✓ sent".
+      if (!res.ok || !data.success || sent < 1) {
+        throw new Error(
+          data.results?.[0]?.error || data.error ||
+          (failed > 0
+            ? 'WhatsApp rejected the template (often: not yet approved, or a parameter mismatch).'
+            : 'Template was not sent.')
+        );
+      }
       setTemplateSendResult({ success: true, message: `Template "${templateName}" sent` });
       setTimeout(() => setIsTemplatePickerOpen(false), 500);
-      setTimeout(() => setTemplateSendResult(null), 3000);
+      setTimeout(() => setTemplateSendResult(null), 4000);
     } catch (err: unknown) {
       setTemplateSendResult({ success: false, message: getErrorMessage(err, 'Failed to send template') });
       setTemplateSendProgress(null);
