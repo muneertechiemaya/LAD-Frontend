@@ -2,13 +2,17 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { cn } from "@/lib/utils";
 // Same-origin fetcher — hits the Next.js proxy at /api/instagram-conversations/*
 // rather than lib/api (which prepends NEXT_PUBLIC_BACKEND_URL = LAD_backend :3004).
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { igGet as apiGet, igPost as apiPost, igPatch as apiPatch, igDelete as apiDelete } from './instagram-api';
 import { InstagramTenantOnboarding } from './InstagramTenantOnboarding';
 import {
   Target, Loader2, Plus, Trash2, CheckCircle2,
-  AlertCircle, Power, Link as LinkIcon, Building2, ArrowLeft,
+  AlertCircle, Power, Link as LinkIcon, Building2, ArrowLeft, Check
 } from 'lucide-react';
 
 type Tab = 'accounts' | 'goals';
@@ -76,28 +80,28 @@ export const InstagramSettings: React.FC = () => {
   }, [tab]);
 
   return (
-    <div className="min-h-screen bg-white text-neutral-900 dark:bg-transparent dark:text-white">
-      <div className="mx-auto max-w-6xl px-6 py-10">
+    <div className="min-h-screen bg-white text-slate-800 dark:bg-[#00051d] dark:text-white">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-10">
         {/* Back link — operator opened this page from /settings?tab=integrations
             (or the conversations chat-header AI Settings icons). Give them a
             one-click way home so they don't have to use the browser back button. */}
         <button
           type="button"
           onClick={() => router.push('/settings?tab=integrations')}
-          className="mb-6 inline-flex items-center gap-1.5 text-sm text-neutral-600 hover:text-neutral-900 dark:text-slate-300 dark:hover:text-white transition-colors"
+          className="mb-6 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-[#0b1957] dark:text-slate-400 dark:hover:text-white transition-colors cursor-pointer"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4 stroke-[2.5]" />
           Back to Integrations
         </button>
 
         <header className="mb-8">
-          <h1 className="text-3xl font-semibold tracking-tight">Instagram AI</h1>
-          <p className="mt-1 text-sm text-neutral-600 dark:text-white/60">
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Instagram AI</h1>
+          <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400 leading-relaxed max-w-3xl">
             Manage connected Instagram accounts and AI Goals. Toggle AI replies, comments, and likes per account from the Accounts tab.
           </p>
         </header>
 
-        <nav className="mb-6 flex gap-1 rounded-lg border border-neutral-200 bg-neutral-100/60 p-1 dark:border-white/10 dark:bg-white/5">
+        <nav className="mb-8 flex gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1 dark:border-slate-800/80 dark:bg-[#000724]">
           {TABS.map((t) => {
             const Icon = t.icon;
             const active = tab === t.id;
@@ -105,10 +109,10 @@ export const InstagramSettings: React.FC = () => {
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
-                className={`flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition ${
+                className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-bold transition-all cursor-pointer ${
                   active
-                    ? 'bg-neutral-50 dark:bg-neutral-900 text-neutral-900 dark:text-white dark:bg-white dark:text-neutral-900'
-                    : 'text-neutral-600 hover:bg-neutral-200/60 dark:text-white/70 dark:hover:bg-white/5'
+                    ? 'bg-[#0b1957] text-white shadow-sm dark:bg-[#1d4ed8]'
+                    : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800/40'
                 }`}
               >
                 <Icon className="h-4 w-4" />
@@ -118,8 +122,10 @@ export const InstagramSettings: React.FC = () => {
           })}
         </nav>
 
+          <div className="space-y-6">
         {tab === 'accounts' && <InstagramTenantOnboarding />}
         {tab === 'goals' && <AIGoalsPanel />}
+        </div>
       </div>
     </div>
   );
@@ -172,12 +178,12 @@ const AIGoalsPanel: React.FC = () => {
       title="AI Goals"
       blurb="Every AI reply (DM + comment) will be biased toward whichever active goal best matches the message."
     >
-      <div className="mb-5 flex items-center justify-end">
+      <div className="mb-4 flex items-center justify-end">
         <button
           onClick={() => setShowCreate(true)}
-          className="inline-flex items-center gap-2 rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-900 hover:bg-white/90 dark:bg-blue-600 dark:text-white dark:hover:bg-blue-700 transition-colors shadow-sm"
+          className="inline-flex items-center gap-2 rounded-xl bg-[#0b1957] hover:bg-[#0b1957]/90 dark:bg-[#1d4ed8] dark:hover:bg-blue-700 px-4 h-10 text-sm font-bold text-white transition-all cursor-pointer shadow-sm active:scale-95"
         >
-          <Plus className="h-4 w-4" /> New goal
+          <Plus className="h-4 w-4 stroke-[2.5]" /> New goal
         </button>
       </div>
 
@@ -198,35 +204,35 @@ const AIGoalsPanel: React.FC = () => {
 
       <div className="mt-4 space-y-3">
         {goals.map((g) => (
-          <div key={g.id} className="rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-100 dark:bg-white/5 p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <h4 className="text-base font-medium">{g.name}</h4>
-                  <span className="rounded bg-neutral-200 dark:bg-white/10 px-1.5 py-0.5 text-xs">{g.goal_type}</span>
-                  {g.applies_to_dms && <span className="rounded bg-violet-500/20 px-1.5 py-0.5 text-xs text-violet-200">DMs</span>}
-                  {g.applies_to_comments && <span className="rounded bg-pink-500/20 px-1.5 py-0.5 text-xs text-pink-200">Comments</span>}
+          <div key={g.id} className="rounded-xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#000724] p-4 shadow-sm">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                  <h4 className="text-sm font-bold text-slate-800 dark:text-white">{g.name}</h4>
+                  <Badge className="rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 border-none px-2.5 text-[10px] font-bold uppercase">{g.goal_type.replace('_', ' ')}</Badge>
+                  {g.applies_to_dms && <Badge className="rounded-full bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400 border-none px-2.5 text-[10px] font-bold">DMs</Badge>}
+                  {g.applies_to_comments && <Badge className="rounded-full bg-pink-50 text-pink-600 dark:bg-pink-950/40 dark:text-pink-400 border-none px-2.5 text-[10px] font-bold">Comments</Badge>}
                 </div>
-                {g.description && <p className="mt-1 text-sm text-neutral-600 dark:text-white/60">{g.description}</p>}
+                {g.description && <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed mt-1">{g.description}</p>}
                 {g.call_to_action && (
-                  <p className="mt-2 text-xs text-neutral-500 dark:text-white/50">CTA: <span className="text-neutral-800 dark:text-white/80">&quot;{g.call_to_action}&quot;</span></p>
+                  <p className="mt-2 text-xs font-medium text-slate-400 dark:text-slate-500">CTA: <span className="font-semibold text-slate-700 dark:text-slate-300">&quot;{g.call_to_action}&quot;</span></p>
                 )}
                 {g.target_url && (
-                  <p className="mt-1 text-xs text-neutral-500 dark:text-white/50 break-all">Link: {g.target_url}</p>
+                  <p className="mt-1 text-xs font-medium text-slate-400 dark:text-slate-500 break-all">Link: <span className="text-blue-500 underline font-semibold">{g.target_url}</span></p>
                 )}
                 {Array.isArray(g.keyword_triggers) && g.keyword_triggers.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1">
+                  <div className="mt-2.5 flex flex-wrap gap-1">
                     {g.keyword_triggers.map((k) => (
-                      <span key={k} className="rounded bg-neutral-200 dark:bg-white/10 px-1.5 py-0.5 text-[11px] text-neutral-700 dark:text-white/70">{k}</span>
+                      <span key={k} className="rounded-md bg-slate-100 text-slate-600 dark:bg-slate-800/60 dark:text-slate-300 px-2 py-0.5 text-[10px] font-bold font-mono">{k}</span>
                     ))}
                   </div>
                 )}
-                <div className="mt-3 flex gap-4 text-xs text-neutral-600 dark:text-white/60">
-                  <span>Impressions: <span className="text-white">{g.impressions_count}</span></span>
-                  <span>Conversions: <span className="text-white">{g.conversions_count}</span></span>
+                <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800/40 flex gap-4 text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+                  <span>Impressions: <span className="text-slate-700 dark:text-slate-300 font-bold">{g.impressions_count}</span></span>
+                  <span>Conversions: <span className="text-slate-700 dark:text-slate-300 font-bold">{g.conversions_count}</span></span>
                 </div>
               </div>
-              <div className="flex flex-col items-end gap-2">
+              <div className="flex flex-col items-end gap-3 shrink-0">
                 <ToggleSwitch
                   checked={g.is_active}
                   onChange={(v) => onToggle(g.id, v)}
@@ -234,7 +240,7 @@ const AIGoalsPanel: React.FC = () => {
                 />
                 <button
                   onClick={() => onDelete(g.id)}
-                  className="rounded p-1.5 text-neutral-400 dark:text-white/40 hover:bg-neutral-100 dark:hover:bg-white/5 hover:text-red-300"
+                  className="rounded-lg p-2 text-slate-400 dark:text-slate-500 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-600 dark:hover:text-red-400 transition-colors cursor-pointer"
                   title="Delete goal"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -283,16 +289,36 @@ const GoalForm: React.FC<{ onCancel: () => void; onSubmit: (g: Partial<Goal>) =>
   };
 
   return (
-    <div className="rounded-xl border border-neutral-200 dark:border-blue-950/60 bg-white dark:bg-[#030a21]/60 p-6 space-y-4 animate-in fade-in-50 duration-200">
-      <h4 className="text-sm font-semibold text-gray-900 dark:text-white">New goal</h4>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Field label="Goal name">
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-[#000724] p-5 sm:p-6 space-y-4 animate-in fade-in-50 duration-200 shadow-inner">
+      <h4 className="text-sm font-bold text-slate-800 dark:text-white uppercase tracking-wider">New Goal Configuration</h4>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Field label="Goal Name *">
           <input value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder="Book a discovery call" />
         </Field>
         <Field label="Type">
-          <select value={type} onChange={(e) => setType(e.target.value)} className={inputClass}>
-            {GOAL_TYPES.map((t) => <option key={t.value} value={t.value} className="bg-white dark:bg-[#030a21] text-gray-900 dark:text-white">{t.label}</option>)}
-          </select>
+          <Select
+              value={type || undefined}
+              onValueChange={(val) => setType(val)}
+          >
+            <SelectTrigger className="w-full h-11 px-3 text-sm border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#00051d] text-slate-800 dark:text-white rounded-xl focus:ring-0 focus-visible:ring-0 focus:border-slate-400 dark:focus:border-slate-600 font-semibold transition-all">
+              <SelectValue placeholder="Select type..." />
+            </SelectTrigger>
+
+            <SelectContent className="bg-white dark:bg-[#000724] border-slate-200 dark:border-[#262831]">
+              {GOAL_TYPES.map((t) => (
+                  <SelectItem
+                      key={t.value}
+                      value={t.value}
+                      /* FIXED: Passed only raw text to fix the blank dropdown bug, and used sub-selectors like [&>span]:!text-... to style the text layers safely from the outside */
+                      className="pl-3 pr-6 text-xs justify-start transition-colors cursor-pointer text-slate-800 dark:text-white dark:focus:bg-[#22C55E] dark:focus:text-[#000724] dark:data-[state=checked]:focus:bg-[#22C55E] dark:data-[state=checked]:focus:text-[#000724]"
+                  >
+                    {/* FIXED: No wrapping elements here — raw text makes Radix render your labels perfectly */}
+                    {t.label}
+                  </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </Field>
         <Field label="Call to action">
           <input value={cta} onChange={(e) => setCta(e.target.value)} className={inputClass} placeholder="Tap the link in bio to book" />
@@ -301,25 +327,27 @@ const GoalForm: React.FC<{ onCancel: () => void; onSubmit: (g: Partial<Goal>) =>
           <input value={url} onChange={(e) => setUrl(e.target.value)} className={inputClass} placeholder="https://cal.com/your-link" />
         </Field>
         <Field label="Description" className="sm:col-span-2">
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className={inputClass} placeholder="What's this goal for?" />
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className={cn(inputClass, "resize-none")} placeholder="What's this goal for?" />
         </Field>
         <Field label="Keyword triggers (comma-separated)" className="sm:col-span-2">
           <input value={keywords} onChange={(e) => setKeywords(e.target.value)} className={inputClass} placeholder="course, price, demo, book" />
         </Field>
-        <div className="flex items-center gap-4 text-sm sm:col-span-2 pt-1">
-          <label className="inline-flex items-center gap-2 cursor-pointer text-gray-700 dark:text-gray-300">
-            <input type="checkbox" checked={dms} onChange={(e) => setDms(e.target.checked)} className="rounded border-gray-300 dark:border-blue-950 bg-white dark:bg-[#030a21]" /> Apply to DMs
+        <div className="flex items-center gap-5 text-sm sm:col-span-2 pt-1">
+          <label className="inline-flex items-center gap-2.5 cursor-pointer text-slate-700 dark:text-slate-300 select-none group font-medium">
+            <input type="checkbox" checked={dms} onChange={(e) => setDms(e.target.checked)} className="cursor-pointer h-4 w-4 rounded accent-[#0b1957] dark:accent-[#1d4ed8]" />
+              <span className="group-hover:text-slate-900 dark:group-hover:text-white transition-colors">Apply to DMs</span>
           </label>
-          <label className="inline-flex items-center gap-2 cursor-pointer text-gray-700 dark:text-gray-300">
-            <input type="checkbox" checked={comments} onChange={(e) => setComments(e.target.checked)} className="rounded border-gray-300 dark:border-blue-950 bg-white dark:bg-[#030a21]" /> Apply to Comments
+          <label className="inline-flex items-center gap-2.5 cursor-pointer text-slate-700 dark:text-slate-300 select-none group font-medium">
+            <input type="checkbox" checked={comments} onChange={(e) => setComments(e.target.checked)} className="cursor-pointer h-4 w-4 rounded accent-[#0b1957] dark:accent-[#1d4ed8]" />
+              <span className="group-hover:text-slate-900 dark:group-hover:text-white transition-colors">Apply to Comments</span>
           </label>
         </div>
       </div>
       {err && <ErrorBanner message={err} />}
-      <div className="mt-4 flex justify-end gap-2">
-        <button onClick={onCancel} className="rounded-md border border-neutral-300 dark:border-blue-950/60 px-3 py-1.5 text-sm text-neutral-800 dark:text-gray-300 hover:bg-neutral-100 dark:hover:bg-blue-950/40 transition-colors">Cancel</button>
-        <button onClick={submit} disabled={saving} className="inline-flex items-center gap-2 rounded-md bg-blue-600 dark:bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700 dark:hover:bg-blue-700 disabled:opacity-50 transition-all shadow-sm">
-          {saving && <Loader2 className="h-4 w-4 animate-spin" />} Save goal
+      <div className="mt-4 flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/40">
+        <button onClick={onCancel} className="rounded-xl border border-slate-200 dark:border-slate-800 px-4 h-10 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors">Cancel</button>
+        <button onClick={submit} disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-[#0b1957] dark:bg-[#1d4ed8] px-5 h-10 text-sm font-bold text-white hover:opacity-95 disabled:opacity-50 transition-all shadow-md cursor-pointer">
+          {saving && <Loader2 className="h-4 w-4 animate-spin" />} Save Goal
         </button>
       </div>
     </div>
@@ -329,54 +357,53 @@ const GoalForm: React.FC<{ onCancel: () => void; onSubmit: (g: Partial<Goal>) =>
 // ── shared bits ─────────────────────────────────────────────────────────────
 
 const inputClass =
-  'w-full rounded-md border border-neutral-200 dark:border-blue-950/60 bg-neutral-100 dark:bg-[#061033]/70 px-3 py-2 text-sm text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-gray-600 outline-none focus:border-neutral-400 dark:focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all';
-
+    'w-full rounded-xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#00051d] px-3 py-2.5 text-sm text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 outline-none focus:border-slate-400 dark:focus:border-slate-600 focus:ring-0 focus-visible:ring-0 transition-all [box-shadow:0_0_0_30px_white_inset] dark:[box-shadow:0_0_0_30px_#00051d_inset] [-webkit-text-fill-color:#1e293b] dark:[-webkit-text-fill-color:white] [&:-webkit-autofill]:[box-shadow:0_0_0_30px_white_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:#1e293b] dark:[&:-webkit-autofill]:[box-shadow:0_0_0_30px_#00051d_inset] dark:[&:-webkit-autofill]:[-webkit-text-fill-color:white]';
 const Field: React.FC<{ label: string; className?: string; children: React.ReactNode }> = ({ label, className, children }) => (
   <label className={`block ${className || ''}`}>
-    <div className="mb-1 text-xs text-neutral-600 dark:text-gray-300 font-medium">{label}</div>
+    <div className="mb-1.5 text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">{label}</div>
     {children}
   </label>
 );
 
 const Section: React.FC<{ title: string; blurb: string; children: React.ReactNode }> = ({ title, blurb, children }) => (
-  <div className="rounded-2xl border border-neutral-200 dark:border-blue-950/40 bg-neutral-50 dark:bg-[#030a21]/60 p-6 shadow-sm">
-    <div className="mb-5">
-      <h2 className="text-xl font-semibold dark:text-white">{title}</h2>
-      <p className="mt-1 text-sm text-neutral-600 dark:text-gray-400">{blurb}</p>
+  <div className="rounded-2xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#000724] p-5 sm:p-6 shadow-sm">
+    <div className="mb-6">
+      <h2 className="text-xl font-bold text-slate-800 dark:text-white">{title}</h2>
+      <p className="mt-1 text-sm text-slate-400 dark:text-slate-300 leading-relaxed">{blurb}</p>
     </div>
     {children}
   </div>
 );
 
 const Loader: React.FC = () => (
-  <div className="flex items-center gap-2 py-8 text-sm text-neutral-600 dark:text-gray-400">
-    <Loader2 className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400" /> Loading…
+  <div className="flex items-center gap-2 py-10 text-sm font-medium text-slate-400 dark:text-slate-500">
+    <Loader2 className="h-4 w-4 animate-spin text-[#0b1957] dark:text-[#1d4ed8]" /> Loading…
   </div>
 );
 
 const ErrorBanner: React.FC<{ message: string }> = ({ message }) => (
-  <div className="mb-3 flex items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-rose-400 bg-red-50 dark:bg-rose-950/20 dark:border-rose-900/40">
-    <AlertCircle className="h-4 w-4 flex-shrink-0" /> {message}
+  <div className="mb-3 flex items-center gap-2.5 rounded-xl border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-950/20 px-4 py-3 text-sm text-red-700 dark:text-red-400 font-semibold leading-relaxed">
+    <AlertCircle className="h-4 w-4 flex-shrink-0 text-red-500" /> {message}
   </div>
 );
 
 const EmptyState: React.FC<{ icon: React.ElementType; title: string; blurb: string; action?: React.ReactNode }> = ({ icon: Icon, title, blurb, action }) => (
-  <div className="rounded-xl border border-dashed border-neutral-200 dark:border-blue-950/40 p-8 text-center bg-neutral-50/50 dark:bg-[#061033]/10">
-    <div className="mx-auto mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full bg-neutral-200 dark:bg-blue-950/40">
-      <Icon className="h-5 w-5 text-neutral-700 dark:text-blue-400" />
+  <div className="rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-800 p-8 text-center bg-slate-50/50 dark:bg-[#00051d]/40">
+    <div className="mx-auto mb-3 inline-flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+      <Icon className="h-5 w-5" />
     </div>
-    <h3 className="text-base font-medium dark:text-white">{title}</h3>
-    <p className="mt-1 text-sm text-neutral-600 dark:text-gray-400 max-w-sm mx-auto">{blurb}</p>
+    <h3 className="text-base font-bold text-slate-800 dark:text-white">{title}</h3>
+    <p className="mt-1 text-sm text-slate-400 dark:text-slate-300 max-w-sm mx-auto leading-relaxed">{blurb}</p>
     {action && <div className="mt-4">{action}</div>}
   </div>
 );
 
 const ToggleSwitch: React.FC<{ checked: boolean; onChange: (v: boolean) => void; label?: string }> = ({ checked, onChange, label }) => (
-  <label className="inline-flex cursor-pointer items-center gap-2 text-sm select-none">
-    {label && <span className="text-neutral-700 dark:text-gray-400 font-medium">{label}</span>}
+  <label className="inline-flex cursor-pointer items-center gap-2.5 text-xs font-bold uppercase tracking-wider select-none">
+    {label && <span className="text-slate-500 dark:text-slate-400">{label}</span>}
     <span className="relative inline-flex h-5 w-9 items-center">
       <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="peer sr-only" />
-      <span className="absolute inset-0 rounded-full bg-neutral-300 dark:bg-blue-950/60 transition peer-checked:bg-emerald-500" />
+      <span className="absolute inset-0 rounded-full bg-slate-200 dark:bg-slate-800 transition peer-checked:bg-[#22c55e]" />
       <span className="absolute left-0.5 h-4 w-4 transform rounded-full bg-white transition peer-checked:translate-x-4 shadow-sm" />
     </span>
   </label>
@@ -386,17 +413,17 @@ const AddAccountInline: React.FC<{ onAdd: (payload: any) => Promise<void> }> = (
   const [providerType, setProviderType] = useState<'meta' | 'unipile'>('meta');
 
   return (
-    <div className="rounded-xl border border-neutral-200 dark:border-blue-950/60 bg-neutral-100 dark:bg-[#061033]/40 p-4">
-      <div className="mb-2 flex items-center justify-between">
-        <div className="text-sm font-medium dark:text-white">Connect an Instagram account</div>
-        <div className="inline-flex gap-1 rounded-md border border-neutral-200 dark:border-blue-950/40 bg-neutral-50 dark:bg-[#030a21] p-0.5 text-xs">
+    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#00051d]/60 p-4">
+      <div className="mb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div className="text-sm font-bold text-slate-800 dark:text-white">Connect an Instagram account</div>
+        <div className="inline-flex gap-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#000724] p-0.5 text-xs font-semibold">
           <button
             onClick={() => setProviderType('meta')}
-            className={`rounded px-2 py-1 transition-all ${providerType === 'meta' ? 'bg-white text-neutral-900 dark:bg-blue-600 dark:text-white shadow-sm' : 'text-neutral-700 dark:text-gray-400 hover:text-neutral-900 dark:hover:text-white'}`}
+            className={`rounded-md px-2.5 py-1 transition-all cursor-pointer ${providerType === 'meta' ? 'bg-[#0b1957] text-white dark:bg-[#1d4ed8] shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'}`}
           >Meta (official)</button>
           <button
             onClick={() => setProviderType('unipile')}
-            className={`rounded px-2 py-1 transition-all ${providerType === 'unipile' ? 'bg-white text-neutral-900 dark:bg-blue-600 dark:text-white shadow-sm' : 'text-neutral-700 dark:text-gray-400 hover:text-neutral-900 dark:hover:text-white'}`}
+            className={`rounded-md px-2.5 py-1 transition-all cursor-pointer ${providerType === 'unipile' ? 'bg-[#0b1957] text-white dark:bg-[#1d4ed8] shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'}`}
           >Direct sign-in</button>
         </div>
       </div>
@@ -428,7 +455,7 @@ const DirectConnectForm: React.FC<{ onAdd: (payload: any) => Promise<void> }> = 
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-neutral-500 dark:text-gray-400">
+      <p className="text-xs text-slate-400 dark:text-slate-500 leading-relaxed">
         Paste the connection ID for your linked Instagram session.
         Direct sign-in is the only option that supports auto-liking comments.
       </p>
@@ -438,7 +465,7 @@ const DirectConnectForm: React.FC<{ onAdd: (payload: any) => Promise<void> }> = 
       </div>
       {err && <div className="mt-2"><ErrorBanner message={err} /></div>}
       <div className="mt-3 flex justify-end">
-        <button onClick={submit} disabled={saving} className="inline-flex items-center gap-2 rounded-md bg-white dark:bg-blue-600 px-3 py-1.5 text-sm font-medium text-neutral-900 dark:text-white hover:opacity-90 disabled:opacity-50 transition-all shadow-sm">
+        <button onClick={submit} disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-[#0b1957] dark:bg-[#1d4ed8] px-4 h-10 text-sm font-bold text-white hover:opacity-95 disabled:opacity-50 transition-all cursor-pointer shadow-sm">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />} Connect
         </button>
       </div>
@@ -511,11 +538,11 @@ const MetaConnectForm: React.FC<{ onAdd: (payload: any) => Promise<void> }> = ({
   };
 
   return (
-    <div>
-      <p className="text-xs text-neutral-500 dark:text-white/50 mb-3">
+    <div className="space-y-4">
+      <p className="text-xs text-slate-400 dark:text-slate-400 leading-relaxed">
         Pull these values from Meta App Dashboard → Instagram → &quot;Use cases&quot; → &quot;Customize&quot;. Required permissions:
-        <span className="text-neutral-700 dark:text-white/70"> instagram_business_basic, instagram_manage_comments, instagram_business_manage_messages</span>.
-        Auto-liking comments is <span className="text-amber-300">not supported</span> via Meta&apos;s official API.
+        <span className="font-semibold text-slate-600 dark:text-slate-300"> instagram_business_basic, instagram_manage_comments, instagram_business_manage_messages</span>.
+        Auto-liking comments is <span className="text-amber-500 dark:text-amber-400 font-bold">not supported</span> via Meta&apos;s official API.
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Meta app ID">
@@ -530,7 +557,7 @@ const MetaConnectForm: React.FC<{ onAdd: (payload: any) => Promise<void> }> = ({
         <Field label="Long-lived access token">
           <div className="flex gap-2">
             <input type="password" value={accessToken} onChange={(e) => setAccessToken(e.target.value)} className={`${inputClass} flex-1`} placeholder="EAAB…" />
-            <button onClick={verifyToken_} disabled={verifying} className="rounded-md border border-neutral-300 dark:border-white/20 px-2 py-1.5 text-xs text-neutral-800 dark:text-white/80 hover:bg-neutral-100 dark:hover:bg-white/5 disabled:opacity-50">
+            <button onClick={verifyToken_} disabled={verifying} className="rounded-xl border border-slate-200 dark:border-slate-800 px-3 text-xs font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-[#00051d] hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0">
               {verifying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Verify'}
             </button>
           </div>
@@ -543,21 +570,21 @@ const MetaConnectForm: React.FC<{ onAdd: (payload: any) => Promise<void> }> = ({
         </Field>
       </div>
       {verified && (
-        <div className="mt-3 flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
-          <CheckCircle2 className="h-4 w-4" />
-          Verified — id <code className="font-mono">{verified.id}</code>
+        <div className="flex items-center gap-2 rounded-xl border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-2.5 text-xs text-emerald-700 dark:text-emerald-400 font-medium">
+          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+          Verified — ID <code className="font-mono bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded">{verified.id}</code>
           {verified.username && <> · @{verified.username}</>}
         </div>
       )}
       {err && <div className="mt-2"><ErrorBanner message={err} /></div>}
-      <div className="mt-4 rounded-md border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-black/30 p-3 text-xs text-neutral-600 dark:text-white/60">
-        <div className="mb-1 font-medium text-neutral-800 dark:text-white/80">Set up the webhook on Meta side:</div>
-        <div>Callback URL: <code className="text-neutral-800 dark:text-white/90">{`${typeof window !== 'undefined' ? window.location.origin : 'https://your-host'}/api/instagram-conversations/webhook/meta`}</code></div>
-        <div>Verify token: whatever you typed above (Meta will probe with it once).</div>
-        <div>Subscribe to fields: <code>messages</code>, <code>comments</code>, <code>mentions</code>.</div>
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800/80 bg-slate-100/50 dark:bg-[#00051d]/40 p-3.5 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+        <div className="mb-1 font-bold text-slate-700 dark:text-slate-300">Set up the webhook on Meta side:</div>
+        <div>Callback URL: <code className="text-[#0b1957] dark:text-primary font-mono">{`${typeof window !== 'undefined' ? window.location.origin : 'https://your-host'}/api/instagram-conversations/webhook/meta`}</code></div>
+        <div className="mt-0.5">Verify token: whatever you typed above (Meta will probe with it once).</div>
+        <div className="mt-0.5">Subscribe to fields: <code className="font-mono text-slate-600 dark:text-slate-300">messages</code>, <code className="font-mono text-slate-600 dark:text-slate-300">comments</code>, <code className="font-mono text-slate-600 dark:text-slate-300">mentions</code>.</div>
       </div>
       <div className="mt-3 flex justify-end">
-        <button onClick={submit} disabled={saving} className="inline-flex items-center gap-2 rounded-md bg-white px-3 py-1.5 text-sm font-medium text-neutral-900 disabled:opacity-50">
+        <button onClick={submit} disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-[#0b1957] dark:bg-[#1d4ed8] px-4 h-10 text-sm font-bold text-white hover:opacity-95 disabled:opacity-50 transition-all shadow-md cursor-pointer">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />} Connect via Meta
         </button>
       </div>
