@@ -77,6 +77,7 @@ import type { RichMessagePayload as ComposerRichPayload } from '@lad/frontend-fe
 import { CreateBroadcastGroupModal } from './CreateBroadcastGroupModal';
 import { ScheduleBroadcastModal } from './ScheduleBroadcastModal';
 import { ScheduledBroadcastsModal } from './ScheduledBroadcastsModal';
+import { BroadcastGroupActionsPanel } from './BroadcastGroupActionsPanel';
 import { MessageSettings } from './MessageSettings';
 import { MrLadAvatar } from './MrLadAvatar';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -2386,6 +2387,8 @@ interface WABASidebarProps {
   backendChannel?: 'personal' | 'waba';
   onRefresh?: () => void;
   onOpenStarred?: () => void;
+  /** Reports the currently multi-selected broadcast-group ids (empty when none/closed). */
+  onSelectedGroupsChange?: (ids: string[]) => void;
   // ── Group management callbacks (passed through to overlay) ─────────────
   onShowCreateGroupModal?: (selectedIds: string[]) => void;
   groupRefreshKey?: number;
@@ -2416,6 +2419,7 @@ function WABASidebar({
   backendChannel,
   onRefresh,
   onOpenStarred,
+  onSelectedGroupsChange,
   onShowCreateGroupModal,
   groupRefreshKey,
   activeLastMsg,
@@ -2531,10 +2535,18 @@ function WABASidebar({
     if (!isGroupsPanelOpen) setPanelSelectionMode(false);
   }, [isGroupsPanelOpen]);
 
+  // Report the multi-selected groups up so the right pane can show broadcast-group
+  // actions (create / add to existing) instead of the default chat splash.
+  useEffect(() => {
+    onSelectedGroupsChange?.(
+      isGroupsPanelOpen && selectedGroupsPanelIds.size > 0 ? Array.from(selectedGroupsPanelIds) : [],
+    );
+  }, [isGroupsPanelOpen, selectedGroupsPanelIds, onSelectedGroupsChange]);
+
   // Open a broadcast group's underlying chat. Native WA groups carry wa_group_jid,
   // whose local part is the group conversation's contact phone; fall back to name.
   const openGroupConversation = useCallback(
-    (group: ChatGroup) => {
+    async (group: ChatGroup) => {
       const jid = (group.metadata as { wa_group_jid?: string } | undefined)?.wa_group_jid;
       const local = jid ? jid.split('@')[0] : null;
       const nameLc = (group.name || '').trim().toLowerCase();
@@ -2546,14 +2558,31 @@ function WABASidebar({
       if (match) {
         onSelectConversation(match.id);
         setIsGroupsPanelOpen(false);
-      } else {
-        // No group chat conversation exists yet (e.g. a contact-collection group, or a
-        // synced WA group with no ingested messages). Surface a brief note rather than
-        // polluting the chat search bar.
-        setGroupBroadcastResult(`No chat to open for "${group.name}" yet — it has no messages.`);
+        return;
+      }
+      // Not in the loaded list. For a synced WA group, resolve-or-create its chat so
+      // a single click always opens it — even before any messages have arrived.
+      if (!jid) {
+        setGroupBroadcastResult(`"${group.name}" isn't a synced WhatsApp group — no chat to open.`);
+        return;
+      }
+      try {
+        const res = await fetchWithTenant(
+          `/api/whatsapp-conversations/chat-groups/${group.id}/resolve-conversation?channel=${backendChannel || 'personal'}`,
+          { method: 'POST', headers: { 'Content-Type': 'application/json' } },
+        );
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data?.conversation_id) {
+          onSelectConversation(data.conversation_id);
+          setIsGroupsPanelOpen(false);
+        } else {
+          setGroupBroadcastResult(data?.error || `Couldn't open "${group.name}".`);
+        }
+      } catch {
+        setGroupBroadcastResult(`Couldn't open "${group.name}".`);
       }
     },
-    [conversations, onSelectConversation]
+    [conversations, onSelectConversation, backendChannel]
   );
 
   const [savingBroadcastList, setSavingBroadcastList] = useState(false);
@@ -4561,6 +4590,9 @@ export function WABusinessView({
   const [mockSelectedId, setMockSelectedId] = useState<string | null>(null);
   const [favOverrides, setFavOverrides] = useState<Record<string, boolean>>({});
   const [isStarredOpen, setIsStarredOpen] = useState(false);
+  // Groups currently multi-selected in the Broadcast Groups panel — when non-empty,
+  // the right pane shows broadcast-group actions instead of the chat splash.
+  const [multiSelectGroupIds, setMultiSelectGroupIds] = useState<string[]>([]);
 
   // Lazily resolve WhatsApp DPs (avatars) for visible personal-WhatsApp conversations.
   // We POST the ids of any conversation still missing an avatar; the backend fetches
@@ -4893,6 +4925,7 @@ const handleFavorite = useCallback(
               backendChannel={channel}
               onRefresh={invalidate}
               onOpenStarred={() => setIsStarredOpen(true)}
+              onSelectedGroupsChange={setMultiSelectGroupIds}
               activeLastMsg={activeLastMsg}
               loadMore={loadMore}
               hasMore={hasMore}
@@ -4918,8 +4951,14 @@ const handleFavorite = useCallback(
       {/* Main Chat Area — hidden on mobile when no conversation selected */}
       <div className={cn(
         "flex-1 overflow-hidden min-w-0",
-        !typedSelectedConversation ? "hidden lg:flex" : "flex"
+        (!typedSelectedConversation && multiSelectGroupIds.length === 0) ? "hidden lg:flex" : "flex"
       )}>
+        {multiSelectGroupIds.length > 0 ? (
+          <BroadcastGroupActionsPanel
+            groupIds={multiSelectGroupIds}
+            channel={(channel as 'personal' | 'waba') || 'personal'}
+          />
+        ) : (
         <WABAChatWindow
           conversation={typedSelectedConversation}
           onSendMessage={async (payload) => { await sendMessage(payload); return; }}
@@ -4942,6 +4981,7 @@ const handleFavorite = useCallback(
           owner={typedSelectedConversation?.owner}
           backendChannel={channel}
         />
+        )}
       </div>
 
       {/* Context Panel (Contact Info) */}
