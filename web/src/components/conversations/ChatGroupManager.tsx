@@ -51,6 +51,8 @@ export interface ChatGroup {
   color: string;
   description: string | null;
   conversation_count: number;
+  /** Count of chat_group_members rows — what the backend's getChatGroups returns. */
+  member_count?: number;
   created_at: string | null;
   /** Present for groups synced from native WhatsApp groups via Baileys */
   metadata?: {

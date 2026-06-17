@@ -77,6 +77,8 @@ import type { RichMessagePayload as ComposerRichPayload } from '@lad/frontend-fe
 import { CreateBroadcastGroupModal } from './CreateBroadcastGroupModal';
 import { ScheduleBroadcastModal } from './ScheduleBroadcastModal';
 import { ScheduledBroadcastsModal } from './ScheduledBroadcastsModal';
+import { BroadcastGroupActionsPanel } from './BroadcastGroupActionsPanel';
+import { GroupInfoModal } from './GroupInfoModal';
 import { MessageSettings } from './MessageSettings';
 import { MrLadAvatar } from './MrLadAvatar';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -2403,6 +2405,8 @@ interface WABASidebarProps {
   backendChannel?: 'personal' | 'waba';
   onRefresh?: () => void;
   onOpenStarred?: () => void;
+  /** Reports the currently multi-selected broadcast-group ids (empty when none/closed). */
+  onSelectedGroupsChange?: (ids: string[]) => void;
   // ── Group management callbacks (passed through to overlay) ─────────────
   onShowCreateGroupModal?: (selectedIds: string[]) => void;
   groupRefreshKey?: number;
@@ -2433,6 +2437,7 @@ function WABASidebar({
   backendChannel,
   onRefresh,
   onOpenStarred,
+  onSelectedGroupsChange,
   onShowCreateGroupModal,
   groupRefreshKey,
   activeLastMsg,
@@ -2513,6 +2518,7 @@ function WABASidebar({
   // group (or taps "Select"), which turns on multi-select mode. A single click
   // outside selection mode opens that group's chat instead.
   const [panelSelectionMode, setPanelSelectionMode] = useState(false);
+  const [infoGroup, setInfoGroup] = useState<ChatGroup | null>(null);
   // Scheduled broadcasts (Cloud-Task triggered): groups to schedule for + list-viewer toggle.
   const [scheduleGroupIds, setScheduleGroupIds] = useState<string[] | null>(null);
   const [isScheduledListOpen, setIsScheduledListOpen] = useState(false);
@@ -2548,28 +2554,54 @@ function WABASidebar({
     if (!isGroupsPanelOpen) setPanelSelectionMode(false);
   }, [isGroupsPanelOpen]);
 
+  // Report the multi-selected groups up so the right pane can show broadcast-group
+  // actions (create / add to existing) instead of the default chat splash.
+  useEffect(() => {
+    onSelectedGroupsChange?.(
+      isGroupsPanelOpen && selectedGroupsPanelIds.size > 0 ? Array.from(selectedGroupsPanelIds) : [],
+    );
+  }, [isGroupsPanelOpen, selectedGroupsPanelIds, onSelectedGroupsChange]);
+
   // Open a broadcast group's underlying chat. Native WA groups carry wa_group_jid,
   // whose local part is the group conversation's contact phone; fall back to name.
   const openGroupConversation = useCallback(
-    (group: ChatGroup) => {
+    async (group: ChatGroup) => {
       const jid = (group.metadata as { wa_group_jid?: string } | undefined)?.wa_group_jid;
       const local = jid ? jid.split('@')[0] : null;
+      const nameLc = (group.name || '').trim().toLowerCase();
       const match = conversations.find((c) => {
-        const phone = c.contact?.phone || '';
-        if (local && (phone === local || phone === jid)) return true;
-        return !!c.contact?.name && c.contact.name === group.name;
+        const phone = (c.contact?.phone || '').replace(/@.*$/, '');
+        if (local && (phone === local || c.contact?.phone === jid)) return true;
+        return !!c.contact?.name && c.contact.name.trim().toLowerCase() === nameLc;
       });
       if (match) {
         onSelectConversation(match.id);
         setIsGroupsPanelOpen(false);
-      } else {
-        // Most broadcast groups are contact collections with no single chat to open.
-        // Show a brief note instead of filling the chat search bar (which would hide
-        // every conversation behind a stale filter).
-        setGroupBroadcastResult(`No chat to open for "${group.name}".`);
+        return;
+      }
+      // Not in the loaded list. For a synced WA group, resolve-or-create its chat so
+      // a single click always opens it — even before any messages have arrived.
+      if (!jid) {
+        setGroupBroadcastResult(`"${group.name}" isn't a synced WhatsApp group — no chat to open.`);
+        return;
+      }
+      try {
+        const res = await fetchWithTenant(
+          `/api/whatsapp-conversations/chat-groups/${group.id}/resolve-conversation?channel=${backendChannel || 'personal'}`,
+          { method: 'POST', headers: { 'Content-Type': 'application/json' } },
+        );
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data?.conversation_id) {
+          onSelectConversation(data.conversation_id);
+          setIsGroupsPanelOpen(false);
+        } else {
+          setGroupBroadcastResult(data?.error || `Couldn't open "${group.name}".`);
+        }
+      } catch {
+        setGroupBroadcastResult(`Couldn't open "${group.name}".`);
       }
     },
-    [conversations, onSelectConversation]
+    [conversations, onSelectConversation, backendChannel]
   );
 
   const [savingBroadcastList, setSavingBroadcastList] = useState(false);
@@ -4212,6 +4244,12 @@ function WABASidebar({
                   const memberGroupCount = Array.isArray((group.metadata as { member_group_ids?: unknown[] } | undefined)?.member_group_ids)
                     ? (group.metadata as { member_group_ids?: unknown[] }).member_group_ids!.length
                     : 0;
+                  // WA groups carry the real participant count in metadata; manual groups
+                  // expose member_count from the backend. (conversation_count is unset.)
+                  const memberCount = (group.metadata as { participant_count?: number } | undefined)?.participant_count
+                    ?? group.member_count
+                    ?? group.conversation_count
+                    ?? 0;
                   return (
                     <div
                       key={group.id}
@@ -4286,13 +4324,27 @@ function WABASidebar({
                           <span className="text-xs text-muted-foreground">
                             {isBroadcastList
                               ? `${memberGroupCount} group${memberGroupCount !== 1 ? 's' : ''}`
-                              : `${group.conversation_count} member${group.conversation_count !== 1 ? 's' : ''}`}
+                              : `${memberCount} member${memberCount !== 1 ? 's' : ''}`}
                           </span>
                         </div>
  
                         {/* Hover actions */}
                         <TooltipProvider>
                           <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity flex-shrink-0">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  aria-label={`Group info for ${group.name}`}
+                                  title={`Group info for ${group.name}`}
+                                  onClick={(e) => { e.stopPropagation(); setInfoGroup(group); }}
+                                  className="p-1.5 hover:bg-muted rounded-md transition-all hover:shadow-sm"
+                                >
+                                  <Info className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom" className="text-xs">Group info</TooltipContent>
+                            </Tooltip>
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <button
@@ -4428,6 +4480,21 @@ function WABASidebar({
         open={isScheduledListOpen}
         onClose={() => setIsScheduledListOpen(false)}
         channel={(backendChannel as 'personal' | 'waba') || 'personal'}
+      />
+
+      <GroupInfoModal
+        open={!!infoGroup}
+        onClose={() => setInfoGroup(null)}
+        group={infoGroup}
+        allGroups={newChatGroups}
+        channel={(backendChannel as 'personal' | 'waba') || 'personal'}
+        onChanged={() => {
+          // Refresh the group list so counts reflect removals.
+          fetchWithTenant(`/api/whatsapp-conversations/chat-groups?channel=${backendChannel || 'personal'}`)
+            .then((r) => r.json())
+            .then((data) => { if (Array.isArray(data.data)) setNewChatGroups(data.data); })
+            .catch(() => {});
+        }}
       />
 
       {/* ── Chat Group Manager Dialog ───────────────────────────────────── */}
@@ -4571,6 +4638,9 @@ export function WABusinessView({
   const [mockSelectedId, setMockSelectedId] = useState<string | null>(null);
   const [favOverrides, setFavOverrides] = useState<Record<string, boolean>>({});
   const [isStarredOpen, setIsStarredOpen] = useState(false);
+  // Groups currently multi-selected in the Broadcast Groups panel — when non-empty,
+  // the right pane shows broadcast-group actions instead of the chat splash.
+  const [multiSelectGroupIds, setMultiSelectGroupIds] = useState<string[]>([]);
 
   // Lazily resolve WhatsApp DPs (avatars) for visible personal-WhatsApp conversations.
   // We POST the ids of any conversation still missing an avatar; the backend fetches
@@ -4903,6 +4973,7 @@ const handleFavorite = useCallback(
               backendChannel={channel}
               onRefresh={invalidate}
               onOpenStarred={() => setIsStarredOpen(true)}
+              onSelectedGroupsChange={setMultiSelectGroupIds}
               activeLastMsg={activeLastMsg}
               loadMore={loadMore}
               hasMore={hasMore}
@@ -4928,8 +4999,14 @@ const handleFavorite = useCallback(
       {/* Main Chat Area — hidden on mobile when no conversation selected */}
       <div className={cn(
         "flex-1 overflow-hidden min-w-0",
-        !typedSelectedConversation ? "hidden lg:flex" : "flex"
+        (!typedSelectedConversation && multiSelectGroupIds.length === 0) ? "hidden lg:flex" : "flex"
       )}>
+        {multiSelectGroupIds.length > 0 ? (
+          <BroadcastGroupActionsPanel
+            groupIds={multiSelectGroupIds}
+            channel={(channel as 'personal' | 'waba') || 'personal'}
+          />
+        ) : (
         <WABAChatWindow
           conversation={typedSelectedConversation}
           onSendMessage={async (payload) => { await sendMessage(payload); return; }}
@@ -4952,6 +5029,7 @@ const handleFavorite = useCallback(
           owner={typedSelectedConversation?.owner}
           backendChannel={channel}
         />
+        )}
       </div>
 
       {/* Context Panel (Contact Info) */}
