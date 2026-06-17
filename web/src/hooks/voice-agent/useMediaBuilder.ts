@@ -456,6 +456,7 @@ export function useMediaBuilder() {
   }, [sessionId, step, uiPayload, workerUrl, references]);
 
   const fetchGallery = useCallback(async () => {
+    setStep("gallery");
     setLoadingGallery(true);
     setError("");
     try {
@@ -469,7 +470,6 @@ export function useMediaBuilder() {
       const data = await res.json();
       setGalleryImages(data.images || []);
       setGalleryVideos(data.videos || []);
-      setStep("gallery");
     } catch (err) {
       const errorObj = err as Error;
       setError(errorObj.message || "Failed to retrieve media gallery.");

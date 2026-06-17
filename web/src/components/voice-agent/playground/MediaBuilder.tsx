@@ -413,6 +413,7 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
       <AgentBuilderGallery
         images={mb.galleryImages}
         videos={mb.galleryVideos}
+        loading={mb.loadingGallery}
         onBack={() => mb.setStep("welcome")}
         onClose={onClose}
         onGenerateImages={mb.generateImagesFromGallery}

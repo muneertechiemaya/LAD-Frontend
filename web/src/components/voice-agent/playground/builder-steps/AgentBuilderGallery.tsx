@@ -23,6 +23,7 @@ interface SelectedAsset {
 export function AgentBuilderGallery({
   images = [],
   videos = [],
+  loading = false,
   onBack,
   onClose,
   onGenerateImages,
@@ -33,6 +34,7 @@ export function AgentBuilderGallery({
 }: {
   images?: ImageGroup[];
   videos?: VideoAsset[];
+  loading?: boolean;
   onBack: () => void;
   onClose?: () => void;
   onGenerateImages?: (urls: string[]) => void;
@@ -314,7 +316,17 @@ export function AgentBuilderGallery({
 
       {/* Main Content (Scrollable Container) */}
       <div className="flex-1 w-full min-h-0 overflow-y-auto px-6 py-4 space-y-6 scrollbar-none bg-slate-50/50">
-        {images.length === 0 && videos.length === 0 ? (
+        {loading ? (
+          <div className="flex flex-col items-center justify-center h-full py-16 text-center space-y-4">
+            <div className="size-16 rounded-full flex items-center justify-center border-4 border-slate-100 border-t-[#0b1957] animate-spin" />
+            <div className="space-y-1">
+              <h3 className="font-bold text-slate-700 text-sm animate-pulse">Accessing Vault...</h3>
+              <p className="text-xs text-slate-400 max-w-[240px] leading-relaxed">
+                Retrieving your media assets and generation history.
+              </p>
+            </div>
+          </div>
+        ) : images.length === 0 && videos.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full py-16 text-center space-y-4">
             <div className="size-16 bg-slate-100 rounded-full flex items-center justify-center text-slate-400">
               <Sparkles className="size-8" />
@@ -632,7 +644,7 @@ export function AgentBuilderGallery({
 
       {/* Video Modal Player Overlay */}
       {activeVideo && (
-        <div className="absolute inset-0 bg-slate-950/90 z-50 flex items-center justify-center p-6 animate-in fade-in duration-200">
+        <div className="absolute inset-0 bg-slate-950/90 z-60 flex items-center justify-center p-6 animate-in fade-in duration-200">
           <div className="w-full max-w-[380px] bg-slate-900 rounded-2xl overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200 border border-slate-800 flex flex-col">
             <button
               onClick={() => setActiveVideo(null)}
