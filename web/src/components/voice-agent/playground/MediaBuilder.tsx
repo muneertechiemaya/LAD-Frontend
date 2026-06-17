@@ -105,9 +105,25 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
     mb.selectVideoGeneration();
   };
 
+  const handleBack = () => {
+    if (mb.step === "builder-mcq-few") {
+      mb.setStep("welcome");
+    } else if (mb.step === "builder-text") {
+      if (mb.uiPayload?.phase === "Phase 2: Describe Image") {
+        mb.selectImageCreation(); // Go back to references choice
+      } else {
+        mb.setStep("welcome");
+      }
+    } else {
+      mb.setStep("welcome");
+    }
+  };
+
+  let content = null;
+
   /* ── 1. LOADING SCREEN ── */
   if (mb.step === "loading" || mb.generating) {
-    return (
+    content = (
       <div className="relative flex flex-col items-center w-[448px] max-w-full p-10 bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden h-[450px] justify-center text-center space-y-8 animate-in fade-in zoom-in-95 duration-300">
         {onClose && (
           <button
@@ -131,8 +147,8 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
   }
 
   /* ── 2. WELCOME / CHOICE SCREEN ── */
-  if (mb.step === "welcome") {
-    return (
+  else if (mb.step === "welcome") {
+    content = (
       <div className="relative flex flex-col items-center w-[448px] max-w-full p-8 bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-300 h-[550px]">
         {onClose && (
           <button
@@ -215,23 +231,9 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
     );
   }
 
-  const handleBack = () => {
-    if (mb.step === "builder-mcq-few") {
-      mb.setStep("welcome");
-    } else if (mb.step === "builder-text") {
-      if (mb.uiPayload?.phase === "Phase 2: Describe Image") {
-        mb.selectImageCreation(); // Go back to references choice
-      } else {
-        mb.setStep("welcome");
-      }
-    } else {
-      mb.setStep("welcome");
-    }
-  };
-
   /* ── 3. MCQ VIEW ── */
-  if (mb.step === "builder-mcq-few") {
-    return (
+  else if (mb.step === "builder-mcq-few") {
+    content = (
       <div className="relative">
         <button
           onClick={handleBack}
@@ -253,11 +255,9 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
   }
 
   /* ── 4. TEXT INPUT VIEW (UPLOAD SUPPORTED) ── */
-  if (mb.step === "builder-text") {
-    // Determine if uploading should be enabled (e.g. Phase 1: Reference Guidance)
+  else if (mb.step === "builder-text") {
     const uploadEnabled = mb.uiPayload?.enable_upload || false;
-
-    return (
+    content = (
       <div className="relative">
         <button
           onClick={handleBack}
@@ -272,9 +272,7 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
           onClose={onClose}
           onNext={(val) => mb.advanceStep(val)}
           phase={mb.uiPayload?.phase}
-          showSkip={!uploadEnabled} // Don't show skip button on upload screen
-          
-          // Reference upload props
+          showSkip={!uploadEnabled}
           enableUpload={uploadEnabled}
           references={mb.references}
           onUpload={mb.uploadReference}
@@ -287,8 +285,8 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
   }
 
   /* ── 5. GRID IMAGE OUTPUT VIEW ── */
-  if (mb.step === "builder-image-output") {
-    return (
+  else if (mb.step === "builder-image-output") {
+    content = (
       <AgentBuilderImageOutput
         title={mb.uiPayload?.question}
         description={mb.uiPayload?.description}
@@ -308,8 +306,8 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
   }
 
   /* ── 6. VIDEO CONFIRM VIEW ── */
-  if (mb.step === "builder-video-confirm") {
-    return (
+  else if (mb.step === "builder-video-confirm") {
+    content = (
       <AgentBuilderVideoConfirm
         title={mb.uiPayload?.question}
         description={mb.uiPayload?.description}
@@ -327,8 +325,8 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
   }
 
   /* ── 7. VIDEO OUTPUT VIEW ── */
-  if (mb.step === "builder-video-output") {
-    return (
+  else if (mb.step === "builder-video-output") {
+    content = (
       <AgentBuilderVideoOutput
         title={mb.uiPayload?.question}
         description={mb.uiPayload?.description}
@@ -341,8 +339,8 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
   }
 
   /* ── 7a. SCRIPT CONFIRM VIEW ── */
-  if (mb.step === "builder-script-confirm") {
-    return (
+  else if (mb.step === "builder-script-confirm") {
+    content = (
       <AgentBuilderScriptConfirm
         title={mb.uiPayload?.question}
         description={mb.uiPayload?.description}
@@ -355,8 +353,8 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
   }
 
   /* ── 7a-1. WORKFLOW CHOICE VIEW ── */
-  if (mb.step === "builder-workflow-choice") {
-    return (
+  else if (mb.step === "builder-workflow-choice") {
+    content = (
       <AgentBuilderWorkflowChoice
         title={mb.uiPayload?.question}
         description={mb.uiPayload?.description}
@@ -369,8 +367,8 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
   }
 
   /* ── 7c. KEYFRAMES CONFIRM VIEW ── */
-  if (mb.step === "builder-keyframes-confirm") {
-    return (
+  else if (mb.step === "builder-keyframes-confirm") {
+    content = (
       <AgentBuilderKeyframesConfirm
         title={mb.uiPayload?.question}
         description={mb.uiPayload?.description}
@@ -388,8 +386,8 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
   }
 
   /* ── 7b. VIDEO PRODUCTION PROGRESS VIEW ── */
-  if (mb.step === "builder-video-progress") {
-    return (
+  else if (mb.step === "builder-video-progress") {
+    content = (
       <AgentBuilderVideoProgress
         title={mb.uiPayload?.question}
         description={mb.uiPayload?.description}
@@ -410,8 +408,8 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
   }
 
   /* ── 8. GALLERY VIEW ── */
-  if (mb.step === "gallery") {
-    return (
+  else if (mb.step === "gallery") {
+    content = (
       <AgentBuilderGallery
         images={mb.galleryImages}
         videos={mb.galleryVideos}
@@ -420,10 +418,70 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
         onGenerateImages={mb.generateImagesFromGallery}
         onAnimateImage={mb.animateImageFromGallery}
         onExtendVideo={mb.extendVideoFromGallery}
+        onAddDialogues={mb.addDialoguesFromGallery}
         onDeleteAssets={mb.deleteAssets}
       />
     );
   }
 
-  return null;
+  const showCost = process.env.NEXT_PUBLIC_SHOW_COST_INDICATOR === "true";
+  const cost = mb.uiPayload?.total_cost || 0;
+  const breakdown = mb.uiPayload?.cost_breakdown || [];
+
+  return (
+    <div className="relative">
+      {content}
+      
+      {showCost && cost > 0 && (
+        <div className="absolute top-[18px] right-[56px] z-50 group/cost select-none">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-full text-[11px] font-bold text-emerald-700 shadow-sm cursor-pointer transition-all active:scale-95">
+            <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span>${cost.toFixed(4)}</span>
+          </div>
+          
+          {/* Tooltip */}
+          <div className="absolute right-0 top-full mt-2 w-72 bg-white border border-slate-100 rounded-2xl shadow-xl p-4 transition-all duration-200 opacity-0 scale-95 origin-top-right group-hover/cost:opacity-100 group-hover/cost:scale-100 pointer-events-none z-[9999] text-left">
+            <h3 className="text-xs font-bold text-[#0b1957] mb-2 flex items-center justify-between">
+              <span>Session Cost</span>
+              <span className="text-emerald-600">${cost.toFixed(4)}</span>
+            </h3>
+            
+            {breakdown.length === 0 ? (
+              <p className="text-[10px] text-slate-400">No cost recorded yet.</p>
+            ) : (
+              <div className="max-h-48 overflow-y-auto space-y-2 pr-1 scrollbar-thin">
+                {breakdown.map((step: any, idx: number) => {
+                  const stepCost = step.cost || 0;
+                  const details = step.details || {};
+                  let detailText = "";
+                  if (step.component === "llm") {
+                    detailText = `${((details.prompt_tokens || 0)/1000).toFixed(1)}k prompt, ${((details.completion_tokens || 0)/1000).toFixed(1)}k completion`;
+                  } else if (step.component === "image_gen") {
+                    detailText = `${details.count || 1} image(s)`;
+                  } else if (step.component === "video_gen") {
+                    detailText = `${details.duration_seconds || 0}s video`;
+                  } else if (step.component === "tts") {
+                    detailText = `${details.character_count || 0} char(s)`;
+                  }
+
+                  return (
+                    <div key={idx} className="flex flex-col border-b border-slate-50 pb-1.5 last:border-0 last:pb-0">
+                      <div className="flex items-center justify-between text-[10px] font-semibold text-slate-700">
+                        <span className="truncate max-w-[170px]">{step.step_name}</span>
+                        <span className="text-emerald-600 font-bold">${stepCost.toFixed(4)}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[9px] text-slate-400">
+                        <span className="truncate max-w-[170px]">{step.model}</span>
+                        <span>{detailText}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }

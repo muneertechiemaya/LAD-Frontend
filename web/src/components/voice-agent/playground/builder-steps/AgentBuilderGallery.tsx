@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, ArrowLeft, Play, Download, ExternalLink, Image as ImageIcon, Video, Trash2, Paperclip, Check, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
+import { X, ArrowLeft, Play, Download, ExternalLink, Image as ImageIcon, Video, Trash2, Paperclip, Check, ChevronLeft, ChevronRight, Sparkles, Volume2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ImageGroup {
@@ -28,6 +28,7 @@ export function AgentBuilderGallery({
   onGenerateImages,
   onAnimateImage,
   onExtendVideo,
+  onAddDialogues,
   onDeleteAssets,
 }: {
   images?: ImageGroup[];
@@ -37,6 +38,7 @@ export function AgentBuilderGallery({
   onGenerateImages?: (urls: string[]) => void;
   onAnimateImage?: (url: string) => void;
   onExtendVideo?: (url: string) => void;
+  onAddDialogues?: (url: string) => void;
   onDeleteAssets?: (urls: string[]) => void;
 }) {
   const [selectedGroup, setSelectedGroup] = useState<ImageGroup | null>(null);
@@ -173,6 +175,13 @@ export function AgentBuilderGallery({
     }
   };
 
+  const handleAddDialogues = () => {
+    if (onAddDialogues && showExtend) {
+      onAddDialogues(selectedAssets[0].url);
+      setSelectedAssets([]);
+    }
+  };
+
   const handleAttach = () => {
     if (onGenerateImages && showAttach) {
       onGenerateImages(selectedAssets.map((a) => a.url));
@@ -231,6 +240,20 @@ export function AgentBuilderGallery({
                 </button>
                 <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 hidden group-hover:block bg-slate-800 text-white text-[9px] font-bold py-1 px-2 rounded-lg whitespace-nowrap z-[99] pointer-events-none shadow-lg border border-slate-700">
                   Extend Video
+                </div>
+              </div>
+            )}
+
+            {showExtend && (
+              <div className="relative group">
+                <button
+                  onClick={handleAddDialogues}
+                  className="p-2 hover:bg-slate-800 rounded-xl text-emerald-400 hover:text-emerald-300 transition-colors active:scale-95 cursor-pointer"
+                >
+                  <Volume2 className="size-4.5" />
+                </button>
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 hidden group-hover:block bg-slate-800 text-white text-[9px] font-bold py-1 px-2 rounded-lg whitespace-nowrap z-[99] pointer-events-none shadow-lg border border-slate-700">
+                  Add Dialogues
                 </div>
               </div>
             )}
@@ -640,6 +663,18 @@ export function AgentBuilderGallery({
                   >
                     <Video className="size-3.5" />
                     Extend Video
+                  </button>
+                )}
+                {onAddDialogues && (
+                  <button
+                    onClick={() => {
+                      onAddDialogues(activeVideo);
+                      setActiveVideo(null);
+                    }}
+                    className="py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Volume2 className="size-3.5" />
+                    Add Dialogues
                   </button>
                 )}
                 <button

@@ -34,6 +34,8 @@ export interface MediaUiPayload {
   enable_upload?: boolean;
   blocks?: { label: string; value: string }[];
   status?: string;
+  total_cost?: number;
+  cost_breakdown?: any[];
 }
 
 export function useMediaBuilder() {
@@ -201,6 +203,8 @@ export function useMediaBuilder() {
         enable_upload: data.enable_upload,
         blocks: data.blocks,
         status: data.status,
+        total_cost: data.total_cost,
+        cost_breakdown: data.cost_breakdown,
       });
       setStep(data.step as MediaBuilderStep);
     } catch (err) {
@@ -245,6 +249,8 @@ export function useMediaBuilder() {
         enable_upload: data.enable_upload,
         blocks: data.blocks,
         status: data.status,
+        total_cost: data.total_cost,
+        cost_breakdown: data.cost_breakdown,
       });
       setStep(data.step as MediaBuilderStep);
     } catch (err) {
@@ -293,6 +299,8 @@ export function useMediaBuilder() {
             enable_upload: data.enable_upload,
             blocks: data.blocks,
             status: data.status,
+            total_cost: data.total_cost,
+            cost_breakdown: data.cost_breakdown,
           });
           setStep(data.step as MediaBuilderStep);
         }
@@ -431,6 +439,8 @@ export function useMediaBuilder() {
         enable_upload: data.enable_upload,
         blocks: data.blocks,
         status: data.status,
+        total_cost: data.total_cost,
+        cost_breakdown: data.cost_breakdown,
       });
       setStep(data.step as MediaBuilderStep);
       
@@ -521,6 +531,8 @@ export function useMediaBuilder() {
         enable_upload: chatData.enable_upload,
         blocks: chatData.blocks,
         status: chatData.status,
+        total_cost: chatData.total_cost,
+        cost_breakdown: chatData.cost_breakdown,
       });
       setStep(chatData.step as MediaBuilderStep);
     } catch (err) {
@@ -564,6 +576,8 @@ export function useMediaBuilder() {
         enable_upload: data.enable_upload,
         blocks: data.blocks,
         status: data.status,
+        total_cost: data.total_cost,
+        cost_breakdown: data.cost_breakdown,
       });
       setStep(data.step as MediaBuilderStep);
     } catch (err) {
@@ -607,11 +621,58 @@ export function useMediaBuilder() {
         enable_upload: data.enable_upload,
         blocks: data.blocks,
         status: data.status,
+        total_cost: data.total_cost,
+        cost_breakdown: data.cost_breakdown,
       });
       setStep(data.step as MediaBuilderStep);
     } catch (err) {
       const errorObj = err as Error;
       setError(errorObj.message || "Failed to extend gallery video.");
+      setStep("welcome");
+    }
+  }, [sessionId, workerUrl, establishHold]);
+
+  const addDialoguesFromGallery = useCallback(async (url: string) => {
+    setStep("loading");
+    setError("");
+    try {
+      await establishHold(sessionId);
+      
+      const res = await fetch(`${workerUrl}/playground-media/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({
+          session_id: sessionId,
+          message: `[ADD_DIALOGUES] url=${url}`,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Server returned status ${res.status}`);
+      }
+
+      const data = await res.json();
+      setUiPayload({
+        step: data.step,
+        question: data.question,
+        description: data.description,
+        options: data.options,
+        images: data.images,
+        video: data.video,
+        phase: data.phase,
+        enable_upload: data.enable_upload,
+        blocks: data.blocks,
+        status: data.status,
+        total_cost: data.total_cost,
+        cost_breakdown: data.cost_breakdown,
+      });
+      setStep(data.step as MediaBuilderStep);
+    } catch (err) {
+      const errorObj = err as Error;
+      setError(errorObj.message || "Failed to add dialogues to gallery video.");
       setStep("welcome");
     }
   }, [sessionId, workerUrl, establishHold]);
@@ -667,6 +728,7 @@ export function useMediaBuilder() {
     generateImagesFromGallery,
     animateImageFromGallery,
     extendVideoFromGallery,
+    addDialoguesFromGallery,
     deleteAssets,
   };
 }

@@ -282,7 +282,7 @@ export function AgentBuilderKeyframesConfirm({
             type="button"
             disabled={expandedIdx === 0}
             onClick={() => setExpandedIdx(prev => prev !== null && prev > 0 ? prev - 1 : prev)}
-            className="absolute left-4 p-3 bg-black/40 hover:bg-black/60 disabled:opacity-20 disabled:cursor-not-allowed text-white/80 hover:text-white rounded-full transition-all border border-white/10 z-55 opacity-70 hover:opacity-100"
+            className="absolute left-4 p-3 bg-black/40 hover:bg-black/60 disabled:opacity-20 disabled:cursor-not-allowed text-white/80 hover:text-white rounded-full transition-all border border-white/10 z-55 opacity-50 hover:opacity-100"
           >
             <ChevronLeft className="size-6" />
           </button>
@@ -304,7 +304,7 @@ export function AgentBuilderKeyframesConfirm({
             type="button"
             disabled={expandedIdx === keyframes.length - 1}
             onClick={() => setExpandedIdx(prev => prev !== null && prev < keyframes.length - 1 ? prev + 1 : prev)}
-            className="absolute right-4 p-3 bg-black/40 hover:bg-black/60 disabled:opacity-20 disabled:cursor-not-allowed text-white/80 hover:text-white rounded-full transition-all border border-white/10 z-55 opacity-70 hover:opacity-100"
+            className="absolute right-4 p-3 bg-black/40 hover:bg-black/60 disabled:opacity-20 disabled:cursor-not-allowed text-white/80 hover:text-white rounded-full transition-all border border-white/10 z-55 opacity-50 hover:opacity-100"
           >
             <ChevronRight className="size-6" />
           </button>

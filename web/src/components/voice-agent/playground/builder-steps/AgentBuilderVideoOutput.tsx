@@ -184,31 +184,44 @@ export function AgentBuilderVideoOutput({
       </div>
 
       {/* Action Buttons */}
-      <div className="w-full flex-shrink-0 flex items-center gap-2 pb-8 px-4 pt-2 bg-gradient-to-t from-white via-white to-transparent relative z-20 border-t border-slate-50">
+      <div className="w-full flex-shrink-0 flex flex-col gap-2 pb-8 px-4 pt-2 bg-gradient-to-t from-white via-white to-transparent relative z-20 border-t border-slate-50">
+        {/* Row 1: Dialogue Overlay */}
         <button
           type="button"
-          onClick={() => onNext?.("[SHOW_GALLERY]")}
-          className="flex-1 py-3 border border-slate-200 hover:bg-slate-50 text-[#0b1957] font-bold text-[11px] rounded-full transition-all active:scale-95 cursor-pointer text-center flex items-center justify-center gap-1"
+          onClick={() => onNext?.("[ADD_DIALOGUES]")}
+          className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white font-bold text-[11px] rounded-full transition-all active:scale-95 shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer"
         >
-          <ArrowLeft className="size-3.5" />
-          Back to Gallery
+          <Volume2 className="size-4 animate-bounce" />
+          Add Dialogues (AI Voiceover)
         </button>
-        <button
-          type="button"
-          onClick={() => onNext?.("[EXTEND_VIDEO]")}
-          className="flex-1 py-3 border border-blue-200 hover:bg-blue-50/50 text-blue-700 bg-blue-50/25 font-bold text-[11px] rounded-full transition-all active:scale-95 cursor-pointer text-center flex items-center justify-center gap-1 shadow-sm hover:shadow"
-        >
-          <Sparkles className="size-3.5 text-amber-500 animate-pulse" />
-          Extend Video
-        </button>
-        <button
-          type="button"
-          onClick={handleDownload}
-          className="flex-1 py-3 bg-gradient-to-br from-[#0b1957] to-[#1e293b] hover:from-[#0b1957] hover:to-[#0b1957] text-white font-bold text-[11px] rounded-full transition-all active:scale-95 shadow-md hover:shadow-lg shadow-[#0b1957]/10 cursor-pointer text-center flex items-center justify-center gap-1"
-        >
-          <Download className="size-3.5" />
-          Download
-        </button>
+
+        {/* Row 2: Secondary Actions */}
+        <div className="flex gap-2 w-full">
+          <button
+            type="button"
+            onClick={() => onNext?.("[SHOW_GALLERY]")}
+            className="flex-1 py-3 border border-slate-200 hover:bg-slate-50 text-[#0b1957] font-bold text-[10px] rounded-full transition-all active:scale-95 cursor-pointer text-center flex items-center justify-center gap-1"
+          >
+            <ArrowLeft className="size-3.5" />
+            Back to Gallery
+          </button>
+          <button
+            type="button"
+            onClick={() => onNext?.("[EXTEND_VIDEO]")}
+            className="flex-1 py-3 border border-blue-200 hover:bg-blue-50/50 text-blue-700 bg-blue-50/25 font-bold text-[10px] rounded-full transition-all active:scale-95 cursor-pointer text-center flex items-center justify-center gap-1 shadow-sm hover:shadow"
+          >
+            <Sparkles className="size-3.5 text-amber-500 animate-pulse" />
+            Extend Video
+          </button>
+          <button
+            type="button"
+            onClick={handleDownload}
+            className="flex-1 py-3 bg-gradient-to-br from-[#0b1957] to-[#1e293b] hover:from-[#0b1957] hover:to-[#0b1957] text-white font-bold text-[10px] rounded-full transition-all active:scale-95 shadow-md hover:shadow-lg shadow-[#0b1957]/10 cursor-pointer text-center flex items-center justify-center gap-1"
+          >
+            <Download className="size-3.5" />
+            Download
+          </button>
+        </div>
       </div>
     </div>
   );
