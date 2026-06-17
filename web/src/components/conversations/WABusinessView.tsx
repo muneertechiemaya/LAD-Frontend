@@ -78,6 +78,7 @@ import { CreateBroadcastGroupModal } from './CreateBroadcastGroupModal';
 import { ScheduleBroadcastModal } from './ScheduleBroadcastModal';
 import { ScheduledBroadcastsModal } from './ScheduledBroadcastsModal';
 import { BroadcastGroupActionsPanel } from './BroadcastGroupActionsPanel';
+import { GroupInfoModal } from './GroupInfoModal';
 import { MessageSettings } from './MessageSettings';
 import { MrLadAvatar } from './MrLadAvatar';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -2500,6 +2501,7 @@ function WABASidebar({
   // group (or taps "Select"), which turns on multi-select mode. A single click
   // outside selection mode opens that group's chat instead.
   const [panelSelectionMode, setPanelSelectionMode] = useState(false);
+  const [infoGroup, setInfoGroup] = useState<ChatGroup | null>(null);
   // Scheduled broadcasts (Cloud-Task triggered): groups to schedule for + list-viewer toggle.
   const [scheduleGroupIds, setScheduleGroupIds] = useState<string[] | null>(null);
   const [isScheduledListOpen, setIsScheduledListOpen] = useState(false);
@@ -4316,6 +4318,20 @@ function WABASidebar({
                               <TooltipTrigger asChild>
                                 <button
                                   type="button"
+                                  aria-label={`Group info for ${group.name}`}
+                                  title={`Group info for ${group.name}`}
+                                  onClick={(e) => { e.stopPropagation(); setInfoGroup(group); }}
+                                  className="p-1.5 hover:bg-muted rounded-md transition-all hover:shadow-sm"
+                                >
+                                  <Info className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom" className="text-xs">Group info</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
                                   aria-label={`Send template to ${group.name}`}
                                   title={`Send template to ${group.name}`}
                                   onClick={(e) => {
@@ -4447,6 +4463,21 @@ function WABASidebar({
         open={isScheduledListOpen}
         onClose={() => setIsScheduledListOpen(false)}
         channel={(backendChannel as 'personal' | 'waba') || 'personal'}
+      />
+
+      <GroupInfoModal
+        open={!!infoGroup}
+        onClose={() => setInfoGroup(null)}
+        group={infoGroup}
+        allGroups={newChatGroups}
+        channel={(backendChannel as 'personal' | 'waba') || 'personal'}
+        onChanged={() => {
+          // Refresh the group list so counts reflect removals.
+          fetchWithTenant(`/api/whatsapp-conversations/chat-groups?channel=${backendChannel || 'personal'}`)
+            .then((r) => r.json())
+            .then((data) => { if (Array.isArray(data.data)) setNewChatGroups(data.data); })
+            .catch(() => {});
+        }}
       />
 
       {/* ── Chat Group Manager Dialog ───────────────────────────────────── */}
