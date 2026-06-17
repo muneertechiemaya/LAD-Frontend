@@ -20,6 +20,7 @@ import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { ImportLeadsDialog } from './ImportLeadsDialog';
 import { EmailTemplatePicker } from './EmailTemplatePicker';
+import { EmailBroadcastsSentList } from './EmailBroadcastsSentList';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -2041,7 +2042,23 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
   const restoreCompose = useCallback((id: string) => setComposeWindows(prev => prev.map(w => w.id === id ? { ...w, minimized: false, maximized: false } : w)), []);
 
   // ── Data loaders ───────────────────────────────────────────────────────────
+  //
+  // Gmail / Outlook short-circuit:
+  // The legacy /api/email-conversations/{contacts,groups,labels} endpoints
+  // proxy to LAD-WABA-Comms — those email surfaces don't exist there yet
+  // and the calls 502 in the network panel. The Sent folder is now powered
+  // by LAD-Email-Comms (EmailBroadcastsSentList), so the legacy fetches buy
+  // us nothing for those providers. Skip them and set empty state.
+  // For 'custom' SMTP we still fall through to the legacy path so any
+  // future / existing WABA-side email-contacts work continues to function.
+  const isHostedProvider = provider === 'gmail' || provider === 'outlook';
+
   const loadContacts = useCallback(async (search = '') => {
+    if (isHostedProvider) {
+      setContacts([]);
+      setLoadingContacts(false);
+      return;
+    }
     setLoadingContacts(true);
     try {
       const qs = new URLSearchParams({ limit: '500', ...(search ? { search } : {}) });
@@ -2064,9 +2081,13 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
       : MOCK_CONTACTS;
     setContacts(filtered);
     setLoadingContacts(false);
-  }, []);
+  }, [isHostedProvider]);
 
   const loadGroups = useCallback(async () => {
+    if (isHostedProvider) {
+      setGroups([]);
+      return;
+    }
     try {
       const res = await fetch(`${API}/groups?channel=${provider}`, { headers: authHeaders() });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -2079,9 +2100,13 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
       // Silently fall back to mock data - backend endpoint may not be implemented yet
     }
     setGroups(MOCK_GROUPS.filter(g => g.channel === provider));
-  }, [provider]);
+  }, [provider, isHostedProvider]);
 
   const loadLabels = useCallback(async () => {
+    if (isHostedProvider) {
+      setLabels([]);
+      return;
+    }
     try {
       const res = await fetch(`${API}/labels?channel=${provider}`, { headers: authHeaders() });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -2094,7 +2119,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
       // Silently fall back to mock data - backend endpoint may not be implemented yet
     }
     setLabels(MOCK_LABELS.filter(g => g.channel === provider));
-  }, [provider]);
+  }, [provider, isHostedProvider]);
 
   useEffect(() => { loadContacts(); }, [loadContacts]);
   useEffect(() => { loadGroups(); }, [loadGroups, groupRefreshKey]);
@@ -2226,6 +2251,22 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
   const handleCreateGroup = async () => {
     const name = newGroupName.trim();
     if (!name) return;
+    // Hosted providers (Gmail / Outlook): groups land in LAD-Email-Comms
+    // Phase 2 alongside inbound + AI replies. The legacy POST to
+    // /api/email-conversations/groups proxies to WABA-Comms and 502s.
+    // Short-circuit with a friendly toast instead of firing a known-bad
+    // request.
+    if (isHostedProvider) {
+      setCreatingGroup(false);
+      setCreateGroupError('');
+      setShowCreateGroup(false);
+      setNewGroupName('');
+      toast({
+        title: 'Coming soon',
+        description: 'Broadcast groups for Gmail / Outlook arrive with LAD-Email-Comms Phase 2.',
+      });
+      return;
+    }
     setCreatingGroup(true);
     setCreateGroupError('');
     try {
@@ -2267,6 +2308,18 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
   const handleCreateLabel = async () => {
     const name = newLabelName.trim();
     if (!name) return;
+    // Same Phase-2 gate as handleCreateGroup — see the comment there.
+    if (isHostedProvider) {
+      setCreatingLabel(false);
+      setCreateLabelError('');
+      setShowCreateLabel(false);
+      setNewLabelName('');
+      toast({
+        title: 'Coming soon',
+        description: 'Labels for Gmail / Outlook arrive with LAD-Email-Comms Phase 2.',
+      });
+      return;
+    }
     setCreatingLabel(true);
     setCreateLabelError('');
     try {
@@ -2963,7 +3016,18 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
 
               {/* Email list */}
               <div className="flex-1 overflow-y-auto" role="list" aria-label="Email list">
-                {loadingContacts ? (
+                {/*
+                  Sent folder on Gmail / Outlook is powered by LAD-Email-Comms broadcasts.
+                  The contacts list above is a legacy WhatsApp-derived view; for these
+                  providers we swap in the broadcast panel so users see their actual
+                  sent emails (subject, status, sent_count/recipient_count, live polling).
+                  Compose lives inside the panel — uses useSendBroadcast hook.
+                  For 'custom' provider or other folders, fall through to the existing
+                  contacts-list path.
+                */}
+                {activeFolder === 'sent' && (provider === 'gmail' || provider === 'outlook') ? (
+                  <EmailBroadcastsSentList />
+                ) : loadingContacts ? (
                   <div className="flex items-center justify-center py-20">
                     <Loader2 className="h-6 w-6 animate-spin text-[#5f6368] dark:text-[#9aa0a6]" />
                   </div>

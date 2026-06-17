@@ -149,6 +149,31 @@ export function useBroadcastRun(id: string | null) {
   });
 }
 
+/** Lazy-fetch recipients for one broadcast — used for the Sent-row hover
+ *  tooltip. `enabled` is the gate (we pass true only when the tooltip opens).
+ *  Returns the same shape as GET /runs/:id/recipients. */
+export function useBroadcastRecipients(id: string | null, enabled: boolean) {
+  return useQuery({
+    enabled: !!id && enabled,
+    queryKey: id ? ['email-comms', 'recipients', id] : ['email-comms', 'recipients', 'null'],
+    queryFn: () =>
+      jsonFetch<{
+        recipients: Array<{
+          id: string;
+          recipient_email: string;
+          recipient_name: string | null;
+          status: string;
+          error_code: string | null;
+          error_message: string | null;
+        }>;
+        next_offset: number | null;
+      }>(
+        `/api/email-comms/broadcast/runs/${encodeURIComponent(id as string)}/recipients?limit=200`,
+      ),
+    staleTime: 30_000,
+  });
+}
+
 export function useSendBroadcast() {
   const qc = useQueryClient();
   return useMutation({
