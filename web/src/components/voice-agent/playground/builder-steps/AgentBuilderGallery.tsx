@@ -299,8 +299,9 @@ export function AgentBuilderGallery({
             >
               <ArrowLeft className="size-4" />
             </button>
-            <span className="text-[11px] font-bold text-[#0b1957] uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-[#0b1957] uppercase tracking-wider flex items-center gap-2">
               Asset Vault & Gallery
+              {loading && <span className="inline-block size-3 rounded-full border-2 border-slate-200 border-t-[#0b1957] animate-spin" />}
             </span>
           </div>
           {onClose && (
@@ -316,7 +317,7 @@ export function AgentBuilderGallery({
 
       {/* Main Content (Scrollable Container) */}
       <div className="flex-1 w-full min-h-0 overflow-y-auto px-6 py-4 space-y-6 scrollbar-none bg-slate-50/50">
-        {loading ? (
+        {loading && images.length === 0 && videos.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full py-16 text-center space-y-4">
             <div className="size-16 rounded-full flex items-center justify-center border-4 border-slate-100 border-t-[#0b1957] animate-spin" />
             <div className="space-y-1">
@@ -421,15 +422,7 @@ export function AgentBuilderGallery({
                               preload="metadata"
                               className="w-full h-full object-cover pointer-events-none"
                             />
-                            {/* Stack indicator overlay */}
-                            <div className="absolute inset-0 bg-black/30 flex flex-col items-center justify-center group-hover:bg-black/45 transition-colors">
-                              <div className="size-7 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30 group-hover:scale-105 transition-transform mb-1">
-                                <Video className="size-3.5 text-white" />
-                              </div>
-                              <span className="text-[10px] font-bold text-white tracking-wide uppercase px-2 py-0.5 bg-[#0b1957]/90 rounded-full border border-blue-400/20 shadow-sm">
-                                {group.videos.length} clips
-                              </span>
-                            </div>
+
                             
                             {/* Selected icon badge */}
                             <div className={cn(
@@ -524,15 +517,7 @@ export function AgentBuilderGallery({
                               className="w-full h-full object-cover pointer-events-none"
                               loading="lazy"
                             />
-                            {/* Stack indicator overlay */}
-                            <div className="absolute inset-0 bg-black/30 flex flex-col items-center justify-center group-hover:bg-black/45 transition-colors">
-                              <div className="size-7 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30 group-hover:scale-105 transition-transform mb-1">
-                                <ImageIcon className="size-3.5 text-white" />
-                              </div>
-                              <span className="text-[10px] font-bold text-white tracking-wide uppercase px-2 py-0.5 bg-[#0b1957]/90 rounded-full border border-blue-400/20 shadow-sm">
-                                {group.urls.length} frames
-                              </span>
-                            </div>
+
                             
                             {/* Selected icon badge */}
                             <div className={cn(
