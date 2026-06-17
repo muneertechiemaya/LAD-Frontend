@@ -61,7 +61,7 @@ interface ImportLeadsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onImportComplete: () => void;
-  channel?: 'personal' | 'waba' | 'gmail' | 'outlook';
+  channel?: 'personal' | 'waba' | 'gmail' | 'outlook' | 'custom';
   /** If provided (email mode), imported contacts are also added to this email group */
   emailGroupId?: string;
 }
@@ -1577,9 +1577,13 @@ function LeadRow({ lead, index, errors, isSelected, onUpdate, onRemove, onToggle
                 errors.phone ? 'text-red-400' : 'text-green-500'
               )} />
               <Input
+                type="tel"
                 placeholder="+971501234567"
                 value={lead.phone}
-                onChange={(e) => onUpdate(lead.id, 'phone', e.target.value)}
+                onChange={(e) => {
+                  const cleaned = e.target.value.replace(/[^\d+]/g, '').replace(/(?!^)\+/g, '');
+                  onUpdate(lead.id, 'phone', cleaned);
+                }}
                 className={cn(
                   'h-8 text-sm pl-8',
                   errors.phone && 'border-red-400 focus-visible:ring-red-300'

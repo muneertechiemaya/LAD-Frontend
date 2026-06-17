@@ -1,0 +1,668 @@
+'use client';
+
+/**
+ * EmailBroadcastsSentList — Gmail-styled Sent folder powered by LAD-Email-Comms.
+ *
+ * Replaces the side-by-side compose+list panel with a single-column list of
+ * rows that match the existing EmailChannelView's Gmail aesthetic:
+ *
+ *   [avatar] [sender]  [To: <recipients>]  [subject] · [preview]   [time] [status]
+ *
+ * Hovering the "To: …" pill reveals a tooltip listing every recipient email
+ * in that broadcast (lazy-fetched on first open).
+ *
+ * Compose lives in a dialog triggered from the header button. The send path is
+ * the same `useSendBroadcast` mutation used by the (now deprecated) inline
+ * EmailBroadcastPanel — once this view ships, the broadcast-test debug route
+ * and the panel can be removed.
+ */
+import { useMemo, useState } from 'react';
+import DOMPurify from 'dompurify';
+import { Loader2, Pencil, Inbox, AlertCircle, Users, X } from 'lucide-react';
+
+import {
+  BroadcastRunSummary,
+  ConnectedAccount,
+  useBroadcastRecipients,
+  useBroadcastRun,
+  useBroadcastRuns,
+  useConnectedEmailAccounts,
+  useSendBroadcast,
+} from '@/features/conversations/useEmailBroadcast';
+
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+
+// ── Display helpers ────────────────────────────────────────────────────────
+
+function avatarInitials(email: string): string {
+  const left = email.split('@')[0] || email;
+  const parts = left.split(/[.\-_]+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return left.slice(0, 2).toUpperCase();
+}
+
+// Deterministic gradient per sender — matches the rest of EmailChannelView's vibe.
+const AVATAR_GRADIENTS = [
+  'from-rose-500 to-pink-600',
+  'from-amber-500 to-orange-600',
+  'from-emerald-500 to-teal-600',
+  'from-sky-500 to-indigo-600',
+  'from-violet-500 to-purple-600',
+  'from-cyan-500 to-blue-600',
+  'from-fuchsia-500 to-pink-600',
+];
+
+function avatarGradient(seed: string): string {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
+  return AVATAR_GRADIENTS[Math.abs(h) % AVATAR_GRADIENTS.length];
+}
+
+function relativeTime(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const now = new Date();
+  const sameDay =
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate();
+  if (sameDay) {
+    return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  }
+  const sameYear = d.getFullYear() === now.getFullYear();
+  return d.toLocaleDateString(undefined, sameYear
+    ? { month: 'short', day: 'numeric' }
+    : { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function stripHtml(html: string): string {
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function statusBadgeVariant(
+  status: string,
+): 'default' | 'secondary' | 'destructive' | 'outline' {
+  switch (status) {
+    case 'completed':
+      return 'default';
+    case 'queued':
+    case 'running':
+      return 'secondary';
+    case 'failed':
+      return 'destructive';
+    case 'paused_quota_exceeded':
+    case 'cancelled':
+      return 'outline';
+    default:
+      return 'outline';
+  }
+}
+
+function statusLabel(status: string): string {
+  return (
+    {
+      queued: 'Queued',
+      running: 'Sending',
+      completed: 'Sent',
+      failed: 'Failed',
+      paused_quota_exceeded: 'Paused',
+      cancelled: 'Cancelled',
+    }[status] ?? status
+  );
+}
+
+// ── Recipients pill (hover-tooltip with lazy fetch) ────────────────────────
+
+function RecipientsPill({ run }: { run: BroadcastRunSummary }) {
+  // Open the tooltip → fetch (`enabled` flips true). Subsequent hovers reuse
+  // the cached result via react-query's staleTime.
+  const [open, setOpen] = useState(false);
+  const { data, isLoading, error } = useBroadcastRecipients(run.id, open);
+
+  // Inline label: keep it scannable. Single recipient → just the email.
+  // Multiple → "(N recipients)" so the row doesn't get overwhelmed by a long
+  // comma-separated list. Real groups land in Phase 2 — synthesize a name
+  // here using metadata.group_name if/when callers start sending it.
+  const inlineLabel = useMemo(() => {
+    if (run.recipient_count === 1) {
+      // We don't have the recipient_email in the summary; show a generic
+      // single-recipient hint and let the tooltip surface the address.
+      return '1 recipient';
+    }
+    return `${run.recipient_count} recipients`;
+  }, [run.recipient_count]);
+
+  return (
+    <TooltipProvider delayDuration={250}>
+      <Tooltip onOpenChange={setOpen}>
+        <TooltipTrigger asChild>
+          <span
+            className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 bg-[#f6f8fc] dark:bg-[#3c4043] text-[11px] text-[#444746] dark:text-[#9aa0a6] cursor-default"
+            aria-label={`To ${inlineLabel}`}
+          >
+            <Users className="h-3 w-3 opacity-70" />
+            <span>{inlineLabel}</span>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent
+          side="bottom"
+          align="start"
+          className="max-w-sm max-h-72 overflow-auto p-2 text-xs"
+        >
+          {isLoading ? (
+            <div className="flex items-center gap-2 px-1 py-1">
+              <Loader2 className="h-3 w-3 animate-spin" /> Loading recipients…
+            </div>
+          ) : error ? (
+            <div className="text-destructive">Failed to load recipients.</div>
+          ) : !data || data.recipients.length === 0 ? (
+            <div className="text-muted-foreground">No recipients.</div>
+          ) : (
+            <ul className="space-y-1">
+              {data.recipients.map((r) => (
+                <li key={r.id} className="flex items-center gap-2">
+                  <span
+                    className={
+                      r.status === 'sent'
+                        ? 'h-1.5 w-1.5 rounded-full bg-emerald-500'
+                        : r.status === 'failed'
+                          ? 'h-1.5 w-1.5 rounded-full bg-red-500'
+                          : r.status === 'skipped_unsubscribed'
+                            ? 'h-1.5 w-1.5 rounded-full bg-amber-500'
+                            : 'h-1.5 w-1.5 rounded-full bg-slate-300'
+                    }
+                    aria-hidden
+                  />
+                  <span className="font-medium">
+                    {r.recipient_name ? `${r.recipient_name} · ` : ''}
+                    {r.recipient_email}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
+// ── One Gmail-styled row ────────────────────────────────────────────────────
+
+function BroadcastRow({
+  run,
+  onClick,
+}: {
+  run: BroadcastRunSummary;
+  onClick: () => void;
+}) {
+  return (
+    <div
+      role="listitem"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      aria-label={`Open broadcast: ${run.subject || '(no subject)'}`}
+      className="group flex items-center gap-3 px-4 py-2 border-b border-[#f0f0f0] dark:border-white/5 text-sm hover:shadow-[inset_1px_0_0_#dadce0,inset_-1px_0_0_#dadce0,0_1px_2px_0_rgba(60,64,67,.3),0_1px_3px_1px_rgba(60,64,67,.15)] dark:hover:shadow-[inset_1px_0_0_rgba(255,255,255,0.06),inset_-1px_0_0_rgba(255,255,255,0.06),0_1px_2px_0_rgba(0,0,0,.4)] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+    >
+      {/* Avatar — sender initials */}
+      <div
+        className={`h-9 w-9 rounded-full bg-gradient-to-br ${avatarGradient(
+          run.from_email,
+        )} flex items-center justify-center text-white font-bold text-xs flex-shrink-0`}
+        aria-hidden
+      >
+        {avatarInitials(run.from_email)}
+      </div>
+
+      {/* Sender + recipients pill */}
+      <div className="min-w-0 w-44 flex flex-col">
+        <span className="truncate font-medium text-[#202124] dark:text-[#e8eaed]">
+          {run.from_email}
+        </span>
+        <span className="mt-0.5">
+          <RecipientsPill run={run} />
+        </span>
+      </div>
+
+      {/* Subject + counts */}
+      <div className="flex-1 min-w-0 flex items-center gap-2">
+        <span className="truncate text-[#202124] dark:text-[#e8eaed]">
+          {run.subject || '(no subject)'}
+        </span>
+        <span className="text-xs text-[#5f6368] dark:text-[#9aa0a6] flex-shrink-0">
+          · {run.sent_count}/{run.recipient_count} sent
+          {run.failed_count > 0 && (
+            <span className="text-destructive ml-1">· {run.failed_count} failed</span>
+          )}
+          {run.unsubscribed_skipped_count > 0 && (
+            <span className="ml-1">· {run.unsubscribed_skipped_count} opted out</span>
+          )}
+        </span>
+      </div>
+
+      {/* Time + status */}
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <Badge variant={statusBadgeVariant(run.status)}>
+          {statusLabel(run.status)}
+        </Badge>
+        <span className="text-xs text-[#5f6368] dark:text-[#9aa0a6] tabular-nums w-16 text-right">
+          {relativeTime(run.created_at)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ── Compose dialog ─────────────────────────────────────────────────────────
+
+function parseRecipients(raw: string): { email: string; name?: string }[] {
+  const tokens = raw
+    .split(/[\n,;]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const out: { email: string; name?: string }[] = [];
+  for (const tok of tokens) {
+    const m = tok.match(/^(.+?)\s*<([^<>]+@[^<>]+)>$/);
+    if (m) {
+      out.push({ name: m[1].trim().replace(/^["']|["']$/g, ''), email: m[2].trim() });
+    } else if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(tok)) {
+      out.push({ email: tok });
+    }
+  }
+  return out;
+}
+
+function ComposeBroadcastDialog({
+  open,
+  onOpenChange,
+  accounts,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  accounts: ConnectedAccount[];
+}) {
+  const send = useSendBroadcast();
+  const activeAccounts = useMemo(
+    () => accounts.filter((a) => a.status === 'active'),
+    [accounts],
+  );
+
+  const [accountId, setAccountId] = useState('');
+  const [subject, setSubject] = useState('');
+  const [body, setBody] = useState('');
+  const [recipientsRaw, setRecipientsRaw] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const recipients = useMemo(() => parseRecipients(recipientsRaw), [recipientsRaw]);
+
+  const reset = () => {
+    setAccountId('');
+    setSubject('');
+    setBody('');
+    setRecipientsRaw('');
+    setError(null);
+  };
+
+  const handleSend = async () => {
+    setError(null);
+    if (!accountId) return setError('Pick a sender account.');
+    if (!subject.trim()) return setError('Subject is required.');
+    if (!body.trim()) return setError('Body cannot be empty.');
+    if (recipients.length === 0)
+      return setError('Add at least one recipient.');
+
+    try {
+      await send.mutateAsync({
+        from_email_account_id: accountId,
+        subject: subject.trim(),
+        body_html: body,
+        recipients,
+      });
+      reset();
+      onOpenChange(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to queue broadcast.');
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) reset(); }}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>New broadcast</DialogTitle>
+          <DialogDescription>
+            Send the same message to many recipients via a connected Gmail or Outlook account.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          <div>
+            <label className="text-sm font-medium">From</label>
+            <Select value={accountId} onValueChange={setAccountId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Pick a connected account" />
+              </SelectTrigger>
+              <SelectContent>
+                {activeAccounts.length === 0 ? (
+                  <div className="px-3 py-2 text-sm text-muted-foreground">
+                    No active accounts — connect Gmail / Outlook in Settings.
+                  </div>
+                ) : (
+                  activeAccounts.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.email} {a.display_name ? `· ${a.display_name}` : ''}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Subject</label>
+            <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Welcome to Mr LAD" />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">
+              Recipients <span className="text-muted-foreground">({recipients.length} parsed)</span>
+            </label>
+            <Textarea
+              value={recipientsRaw}
+              onChange={(e) => setRecipientsRaw(e.target.value)}
+              rows={3}
+              placeholder={`alice@example.com, "Bob Smith" <bob@example.com>\nor one per line`}
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Body (HTML)</label>
+            <Textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              rows={10}
+              placeholder={`<p>Hi {{first_name}},</p><p>...</p>`}
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Use <code>{'{{first_name}}'}</code> or <code>{'{first_name}'}</code> to personalise.
+              Unknown placeholders are removed before sending.
+            </p>
+          </div>
+
+          {error && <div className="text-sm text-destructive">{error}</div>}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleSend} disabled={send.isPending}>
+            {send.isPending ? 'Queuing…' : `Send to ${recipients.length}`}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Detail dialog (click a row to open the rendered email) ─────────────────
+
+function BroadcastDetailDialog({
+  runId,
+  open,
+  onOpenChange,
+}: {
+  runId: string | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  // Detail hook auto-polls while non-terminal (queued/running/paused), so
+  // the open dialog updates progress live without any extra wiring.
+  const { data, isLoading, error } = useBroadcastRun(runId);
+  // Recipients fetched eagerly while the dialog is open — feeds the "To" list.
+  const recipients = useBroadcastRecipients(runId, open);
+
+  const sanitizedHtml = useMemo(() => {
+    if (!data?.body_html) return '';
+    // DOMPurify is configured app-wide; here we just need a safe HTML render.
+    return DOMPurify.sanitize(data.body_html, {
+      USE_PROFILES: { html: true },
+    });
+  }, [data?.body_html]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col p-0">
+        {/* Header — subject + status + close */}
+        <DialogHeader className="px-6 pt-5 pb-3 border-b border-[#f0f0f0] dark:border-white/5 flex-row items-start justify-between space-y-0">
+          <div className="min-w-0 pr-4">
+            <DialogTitle className="text-base font-semibold truncate">
+              {isLoading ? 'Loading…' : data?.subject || '(no subject)'}
+            </DialogTitle>
+            {data && (
+              <DialogDescription className="mt-1 flex items-center gap-2 text-xs">
+                <Badge variant={statusBadgeVariant(data.status)}>
+                  {statusLabel(data.status)}
+                </Badge>
+                <span>·</span>
+                <span>
+                  {data.sent_count}/{data.recipient_count} sent
+                </span>
+                {data.failed_count > 0 && (
+                  <span className="text-destructive">
+                    · {data.failed_count} failed
+                  </span>
+                )}
+                {data.unsubscribed_skipped_count > 0 && (
+                  <span>· {data.unsubscribed_skipped_count} opted out</span>
+                )}
+                <span>·</span>
+                <span>{relativeTime(data.created_at)}</span>
+              </DialogDescription>
+            )}
+          </div>
+          <button
+            onClick={() => onOpenChange(false)}
+            aria-label="Close"
+            className="rounded-full p-1.5 hover:bg-[#f6f8fc] dark:hover:bg-[#3c4043] flex-shrink-0"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </DialogHeader>
+
+        {/* Sender + recipient strip */}
+        {data && (
+          <div className="px-6 py-3 border-b border-[#f0f0f0] dark:border-white/5 flex items-start gap-3 text-sm">
+            <div
+              className={`h-9 w-9 rounded-full bg-gradient-to-br ${avatarGradient(
+                data.from_email,
+              )} flex items-center justify-center text-white font-bold text-xs flex-shrink-0`}
+              aria-hidden
+            >
+              {avatarInitials(data.from_email)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="font-medium text-[#202124] dark:text-[#e8eaed]">
+                {data.from_email}
+              </div>
+              <div className="text-xs text-[#5f6368] dark:text-[#9aa0a6] mt-0.5 flex items-start gap-1">
+                <span className="font-medium">To:</span>
+                <span className="flex-1">
+                  {recipients.isLoading ? (
+                    <span className="inline-flex items-center gap-1">
+                      <Loader2 className="h-3 w-3 animate-spin" /> loading…
+                    </span>
+                  ) : recipients.data ? (
+                    recipients.data.recipients
+                      .map((r) =>
+                        r.recipient_name
+                          ? `"${r.recipient_name}" <${r.recipient_email}>`
+                          : r.recipient_email,
+                      )
+                      .join(', ')
+                  ) : (
+                    `${data.recipient_count} recipient${
+                      data.recipient_count === 1 ? '' : 's'
+                    }`
+                  )}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Body — sanitized HTML render */}
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="h-6 w-6 animate-spin text-[#5f6368] dark:text-[#9aa0a6]" />
+            </div>
+          ) : error ? (
+            <div className="text-destructive text-sm">
+              {error instanceof Error
+                ? error.message
+                : 'Failed to load broadcast.'}
+            </div>
+          ) : (
+            <>
+              {data?.error_message && (
+                <div className="mb-4 p-3 rounded-md bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 text-sm text-red-800 dark:text-red-200">
+                  <div className="font-medium mb-0.5">Broadcast error</div>
+                  <div>{data.error_message}</div>
+                </div>
+              )}
+              <div
+                className="prose prose-sm dark:prose-invert max-w-none text-[#202124] dark:text-[#e8eaed]"
+                dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
+              />
+            </>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Main component ─────────────────────────────────────────────────────────
+
+export function EmailBroadcastsSentList() {
+  const runs = useBroadcastRuns(50, 0);
+  const accounts = useConnectedEmailAccounts();
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
+
+  const accountsList = accounts.data ?? [];
+  const list = runs.data?.runs ?? [];
+
+  return (
+    <div className="h-full flex flex-col">
+      {/* Toolbar */}
+      <div className="flex items-center justify-between px-4 py-2 border-b border-[#f0f0f0] dark:border-white/5">
+        <div className="text-xs text-[#5f6368] dark:text-[#9aa0a6]">
+          {runs.isLoading
+            ? 'Loading…'
+            : list.length === 0
+              ? 'No broadcasts yet'
+              : `${list.length} broadcast${list.length === 1 ? '' : 's'}`}
+        </div>
+        <Button size="sm" onClick={() => setComposeOpen(true)}>
+          <Pencil className="h-3.5 w-3.5 mr-1.5" /> New broadcast
+        </Button>
+      </div>
+
+      {/* Body */}
+      <div className="flex-1 overflow-y-auto" role="list">
+        {runs.isLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="h-6 w-6 animate-spin text-[#5f6368] dark:text-[#9aa0a6]" />
+          </div>
+        ) : runs.error ? (
+          <div className="flex flex-col items-center justify-center py-16 px-4 text-center text-destructive">
+            <AlertCircle className="h-8 w-8 mb-3" />
+            <div className="text-sm">
+              {runs.error instanceof Error
+                ? runs.error.message
+                : 'Failed to load broadcasts.'}
+            </div>
+          </div>
+        ) : list.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+            <div className="h-16 w-16 rounded-full bg-[#f6f8fc] dark:bg-[#3c4043] flex items-center justify-center mb-4">
+              <Inbox className="h-8 w-8 text-[#5f6368] dark:text-[#9aa0a6]" />
+            </div>
+            <h3 className="font-semibold text-base text-[#202124] dark:text-[#e8eaed] mb-1">
+              No broadcasts yet
+            </h3>
+            <p className="text-xs text-[#5f6368] dark:text-[#9aa0a6] max-w-xs mb-5">
+              Compose a new broadcast to send the same message to many recipients at once.
+            </p>
+            <Button onClick={() => setComposeOpen(true)}>
+              <Pencil className="h-3.5 w-3.5 mr-1.5" /> New broadcast
+            </Button>
+          </div>
+        ) : (
+          list.map((r) => (
+            <BroadcastRow
+              key={r.id}
+              run={r}
+              onClick={() => setSelectedRunId(r.id)}
+            />
+          ))
+        )}
+      </div>
+
+      <ComposeBroadcastDialog
+        open={composeOpen}
+        onOpenChange={setComposeOpen}
+        accounts={accountsList}
+      />
+
+      <BroadcastDetailDialog
+        runId={selectedRunId}
+        open={selectedRunId !== null}
+        onOpenChange={(o) => {
+          if (!o) setSelectedRunId(null);
+        }}
+      />
+    </div>
+  );
+}

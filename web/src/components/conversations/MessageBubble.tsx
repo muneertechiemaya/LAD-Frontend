@@ -1,6 +1,6 @@
 import { memo, useState } from 'react';
 import { Message } from '@/types/conversation';
-import { Check, CheckCheck, Clock, AlertCircle, X, UserCircle, MessageSquare, MapPin, FileText, Music, Video, Download, MoreVertical } from 'lucide-react';
+import { Check, CheckCheck, Clock, AlertCircle, X, UserCircle, MessageSquare, MapPin, FileText, Music, Video, Download, MoreVertical, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -255,6 +255,7 @@ interface MessageBubbleProps {
   contact?: Contact;
   onAgentClick?: (agentId?: string) => void;
   onDeleteMessage?: (message: Message, scope: 'me' | 'everyone') => void;
+  onToggleStar?: (message: Message) => void;
   searchText?: string;
   isHighlighted?: boolean;
 }
@@ -408,6 +409,7 @@ export const MessageBubble = memo(function MessageBubble({
   contact,
   onAgentClick,
   onDeleteMessage,
+  onToggleStar,
   searchText,
   isHighlighted = false,
 }: MessageBubbleProps) {
@@ -484,25 +486,40 @@ export const MessageBubble = memo(function MessageBubble({
             {message.senderName}
           </span>
         )}
-        {isOutgoing && onDeleteMessage && (
+        {(onToggleStar || (isOutgoing && onDeleteMessage)) && (
           <div className="absolute top-1 right-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
                   aria-label="Message actions"
-                  className="h-6 w-6 rounded-full bg-black/15 hover:bg-black/25 text-white/90 inline-flex items-center justify-center"
+                  className={cn(
+                    'h-6 w-6 rounded-full inline-flex items-center justify-center',
+                    isOutgoing
+                      ? 'bg-black/15 hover:bg-black/25 text-white/90'
+                      : 'bg-black/5 hover:bg-black/10 text-foreground/70 dark:bg-white/10 dark:hover:bg-white/20 dark:text-white/80'
+                  )}
                 >
                   <MoreVertical className="h-3.5 w-3.5" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44">
-                <DropdownMenuItem onClick={() => onDeleteMessage(message, 'me')}>
-                  Delete for me
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onDeleteMessage(message, 'everyone')}>
-                  Delete for everyone
-                </DropdownMenuItem>
+                {onToggleStar && (
+                  <DropdownMenuItem onClick={() => onToggleStar(message)}>
+                    <Star className={cn('h-4 w-4 mr-2', message.starred && 'fill-amber-400 text-amber-400')} />
+                    {message.starred ? 'Unstar message' : 'Star message'}
+                  </DropdownMenuItem>
+                )}
+                {isOutgoing && onDeleteMessage && (
+                  <>
+                    <DropdownMenuItem onClick={() => onDeleteMessage(message, 'me')}>
+                      Delete for me
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onDeleteMessage(message, 'everyone')}>
+                      Delete for everyone
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -558,6 +575,12 @@ export const MessageBubble = memo(function MessageBubble({
             isOutgoing ? 'justify-end' : 'justify-start'
           )}
         >
+          {message.starred && (
+            <Star
+              className="h-3 w-3 fill-amber-400 text-amber-400"
+              aria-label="Starred"
+            />
+          )}
           <span
             className={cn(
              'wa-msg-time text-[#667781] dark:text-white/60'

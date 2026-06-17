@@ -49,6 +49,8 @@ export interface Message {
   humanAgentId?: string;
   /** Template name if this message was sent via a WhatsApp template */
   templateName?: string;
+  /** Whether the user has starred this message (persisted in message metadata). */
+  starred?: boolean;
 
   // ── Location message fields ──────────────────────────────────────────────
   /** GPS latitude for location messages */
@@ -137,6 +139,9 @@ export interface Conversation {
   conversationState?: ConversationState;
   leadId?: string;
   messageCount?: number;
+  /** User-marked favourite, persisted in conversations.metadata.is_favorite. */
+  is_favorite?: boolean;
+  isFavorite?: boolean;
 }
 
 // ============================
