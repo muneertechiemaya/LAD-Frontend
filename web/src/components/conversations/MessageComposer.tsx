@@ -794,8 +794,9 @@ export const MessageComposer = memo(function MessageComposer({
         </div>
         )}
 
-        {/* ── "+" Attachment menu ── */}
-        <div ref={attachBtnRef} className="relative flex-shrink-0 hidden lg:block">
+        {/* ── "+" Attachment menu (always visible — the only path to Send Template
+              in broadcast mode, so it must work on mobile too) ── */}
+        <div ref={attachBtnRef} className="relative flex-shrink-0">
           <button
             onClick={()=>{ if (!disabled) setShowAttachMenu(v=>!v); }}
             disabled={disabled}
