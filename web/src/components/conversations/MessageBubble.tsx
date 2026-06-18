@@ -1,11 +1,19 @@
 import { memo, useState } from 'react';
 import { Message } from '@/types/conversation';
-import { Check, CheckCheck, Clock, AlertCircle, X, UserCircle, MessageSquare, MapPin, FileText, Music, Video, Download, MoreVertical } from 'lucide-react';
+import { Check, CheckCheck, Clock, AlertCircle, X, UserCircle, MessageSquare, MapPin, FileText, Music, Video, Download, MoreVertical, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useTheme } from '@/contexts/ThemeContext';
+
+// ── Group sender colours (WhatsApp-style, deterministic per sender) ───────────
+const WA_SENDER_COLORS = ['#d9416a', '#0a7cff', '#e07b00', '#00a884', '#7b61ff', '#c0399f', '#0e8a8a', '#a8662a'];
+function senderColor(name: string): string {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return WA_SENDER_COLORS[h % WA_SENDER_COLORS.length];
+}
 
 // ── Location card renderer ───────────────────────────────────────────────────
 function LocationCard({
@@ -247,6 +255,7 @@ interface MessageBubbleProps {
   contact?: Contact;
   onAgentClick?: (agentId?: string) => void;
   onDeleteMessage?: (message: Message, scope: 'me' | 'everyone') => void;
+  onToggleStar?: (message: Message) => void;
   searchText?: string;
   isHighlighted?: boolean;
 }
@@ -283,6 +292,21 @@ function LeadAvatar({ contact }: { contact?: Contact }) {
         {initial}
       </AvatarFallback>
     </Avatar>
+  );
+}
+
+/** Forwarded-message avatar — colored initial of the customer the message is from,
+ *  using the same per-sender colour as the bubble's sender label (not the AI logo). */
+function ForwardAvatar({ name }: { name: string }) {
+  const initial = name ? name.charAt(0).toUpperCase() : '?';
+  return (
+    <div
+      className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold text-white"
+      style={{ backgroundColor: senderColor(name) }}
+      title={name}
+    >
+      {initial}
+    </div>
   );
 }
 
@@ -385,6 +409,7 @@ export const MessageBubble = memo(function MessageBubble({
   contact,
   onAgentClick,
   onDeleteMessage,
+  onToggleStar,
   searchText,
   isHighlighted = false,
 }: MessageBubbleProps) {
@@ -393,8 +418,10 @@ export const MessageBubble = memo(function MessageBubble({
 
   const [showAgentProfile, setShowAgentProfile] = useState(false);
 
-  // Determine the sender category
-  const isAI = isOutgoing && role !== 'human_agent';
+  // Determine the sender category. A forward is an outgoing message that carries a
+  // sender label (the customer it's from) and isn't a human-agent takeover.
+  const isForward = isOutgoing && !!message.senderName && role !== 'human_agent';
+  const isAI = isOutgoing && role !== 'human_agent' && !isForward;
   const isLead = !isOutgoing;
 
   const handleAgentAvatarClick = (agentId?: string) => {
@@ -415,10 +442,12 @@ export const MessageBubble = memo(function MessageBubble({
       {/* ── Incoming-side avatar (lead or nothing) ── */}
       {showAvatar && isLead && <LeadAvatar contact={contact} />}
 
-      {/* ── Outgoing-side avatar (AI or human agent) ── */}
+      {/* ── Outgoing-side avatar (forward, AI, or human agent) ── */}
       {showAvatar && isOutgoing && (
         <div className="relative">
-          {isAI ? (
+          {isForward ? (
+            <ForwardAvatar name={message.senderName as string} />
+          ) : isAI ? (
             <AiAvatar />
           ) : (
             <>
@@ -447,25 +476,50 @@ export const MessageBubble = memo(function MessageBubble({
           isHighlighted && 'ring-2 ring-amber-500 dark:ring-amber-400 bg-amber-100/40 dark:bg-amber-500/25 scale-[1.02]'
         )}
       >
-        {isOutgoing && onDeleteMessage && (
+        {/* Sender label — group participant or the customer an agent-forward is from.
+            (human_agent uses senderName for its avatar instead, so it's excluded.) */}
+        {message.senderName && role !== 'human_agent' && (
+          <span
+            className="text-[12.5px] font-semibold leading-tight mb-0.5 truncate max-w-full"
+            style={{ color: senderColor(message.senderName) }}
+          >
+            {message.senderName}
+          </span>
+        )}
+        {(onToggleStar || (isOutgoing && onDeleteMessage)) && (
           <div className="absolute top-1 right-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
                   aria-label="Message actions"
-                  className="h-6 w-6 rounded-full bg-black/15 hover:bg-black/25 text-white/90 inline-flex items-center justify-center"
+                  className={cn(
+                    'h-6 w-6 rounded-full inline-flex items-center justify-center',
+                    isOutgoing
+                      ? 'bg-black/15 hover:bg-black/25 text-white/90'
+                      : 'bg-black/5 hover:bg-black/10 text-foreground/70 dark:bg-white/10 dark:hover:bg-white/20 dark:text-white/80'
+                  )}
                 >
                   <MoreVertical className="h-3.5 w-3.5" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44">
-                <DropdownMenuItem onClick={() => onDeleteMessage(message, 'me')}>
-                  Delete for me
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onDeleteMessage(message, 'everyone')}>
-                  Delete for everyone
-                </DropdownMenuItem>
+                {onToggleStar && (
+                  <DropdownMenuItem onClick={() => onToggleStar(message)}>
+                    <Star className={cn('h-4 w-4 mr-2', message.starred && 'fill-amber-400 text-amber-400')} />
+                    {message.starred ? 'Unstar message' : 'Star message'}
+                  </DropdownMenuItem>
+                )}
+                {isOutgoing && onDeleteMessage && (
+                  <>
+                    <DropdownMenuItem onClick={() => onDeleteMessage(message, 'me')}>
+                      Delete for me
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onDeleteMessage(message, 'everyone')}>
+                      Delete for everyone
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -521,6 +575,12 @@ export const MessageBubble = memo(function MessageBubble({
             isOutgoing ? 'justify-end' : 'justify-start'
           )}
         >
+          {message.starred && (
+            <Star
+              className="h-3 w-3 fill-amber-400 text-amber-400"
+              aria-label="Starred"
+            />
+          )}
           <span
             className={cn(
              'wa-msg-time text-[#667781] dark:text-white/60'

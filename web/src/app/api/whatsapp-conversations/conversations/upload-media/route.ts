@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(
           {
             success: false,
-            error: data?.detail || data?.error || `Personal WA media upload failed (${response.status})`,
+            error: data?.detail || data?.error || `WAPA media upload failed (${response.status})`,
             upstream: data,
           },
           { status: response.status }
