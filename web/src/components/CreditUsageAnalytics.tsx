@@ -73,7 +73,7 @@ export const CreditUsageAnalytics: React.FC<CreditUsageAnalyticsProps> = ({
       case 'linkedin':  return 'bg-green-100 text-green-600 dark:bg-green-950/40 dark:text-green-400';
       case 'brain':     return 'bg-purple-100 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400';
       case 'zap':       return 'bg-yellow-100 text-yellow-600 dark:bg-yellow-950/40 dark:text-yellow-400';
-      default:          return 'bg-muted text-muted-foreground dark:bg-blue-950/30 dark:text-gray-400';
+      default:          return 'bg-muted text-muted-foreground dark:bg-blue-950/30 dark:text-slate-300';
     }
   };
   if (loading) {
@@ -94,7 +94,7 @@ export const CreditUsageAnalytics: React.FC<CreditUsageAnalyticsProps> = ({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-1">
           <h2 className="text-2xl font-bold text-foreground dark:text-white">Credit Usage Analytics</h2>
-          <p className="text-muted-foreground dark:text-gray-400">Track your credit consumption across features</p>
+          <p className="text-muted-foreground dark:text-slate-300">Track your credit consumption across features</p>
         </div>
         <div className="flex gap-3 justify-between md:justify-end">
           {['7d', '30d', '90d'].map((range) => (
@@ -122,7 +122,7 @@ export const CreditUsageAnalytics: React.FC<CreditUsageAnalyticsProps> = ({
         {/* Total Credits Used */}
         <div className="bg-card text-card-foreground rounded-xl shadow-md p-6 border border-border border-l-4 border-l-primary dark:bg-[#030a21]/60 dark:border-blue-950/40 dark:border-l-blue-500">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-muted-foreground dark:text-gray-400 text-sm font-medium">Total Credits Used</span>
+            <span className="text-muted-foreground dark:text-slate-300 text-sm font-medium">Total Credits Used</span>
             <BarChart3 className="h-5 w-5 text-primary dark:text-blue-500" />
           </div>
           <div className="text-3xl font-bold text-foreground dark:text-white">
@@ -135,7 +135,7 @@ export const CreditUsageAnalytics: React.FC<CreditUsageAnalyticsProps> = ({
         {/* Monthly Trend */}
         <div className="bg-card text-card-foreground rounded-xl shadow-md p-6 border border-border border-l-4 border-l-green-600 dark:bg-[#030a21]/60 dark:border-blue-950/40 dark:border-l-green-500">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-muted-foreground dark:text-gray-400 text-sm font-medium">Monthly Trend</span>
+            <span className="text-muted-foreground dark:text-slate-300 text-sm font-medium">Monthly Trend</span>
             <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-500" />
           </div>
           <div className="flex items-baseline">
@@ -151,7 +151,7 @@ export const CreditUsageAnalytics: React.FC<CreditUsageAnalyticsProps> = ({
         {/* Top Feature */}
         <div className="bg-card text-card-foreground rounded-xl shadow-md p-6 border border-border border-l-4 border-l-purple-600 dark:bg-[#030a21]/60 dark:border-blue-950/40 dark:border-l-purple-500">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-muted-foreground dark:text-gray-400 text-sm font-medium">Most Used Feature</span>
+            <span className="text-muted-foreground dark:text-slate-300 text-sm font-medium">Most Used Feature</span>
             <Calendar className="h-5 w-5 text-purple-600 dark:text-purple-500" />
           </div>
           <div className="text-xl font-bold text-foreground dark:text-white">
@@ -176,7 +176,7 @@ export const CreditUsageAnalytics: React.FC<CreditUsageAnalyticsProps> = ({
                   </div>
                   <div>
                     <div className="font-medium text-foreground dark:text-white">{feature.featureName}</div>
-                    <div className="text-sm text-muted-foreground dark:text-gray-400">
+                    <div className="text-sm text-muted-foreground dark:text-slate-300">
                       {feature.usageCount.toLocaleString()} uses
                     </div>
                   </div>
@@ -185,7 +185,7 @@ export const CreditUsageAnalytics: React.FC<CreditUsageAnalyticsProps> = ({
                   <div className="font-semibold text-foreground dark:text-white">
                     {feature.totalCredits.toLocaleString()} credits
                   </div>
-                  <div className="text-sm text-muted-foreground dark:text-gray-400">{feature.percentage.toFixed(1)}%</div>
+                  <div className="text-sm text-muted-foreground dark:text-slate-300">{feature.percentage.toFixed(1)}%</div>
                 </div>
               </div>
               <div className="w-full bg-muted dark:bg-[#061033]/70 rounded-full h-2">
@@ -217,14 +217,14 @@ export const CreditUsageAnalytics: React.FC<CreditUsageAnalyticsProps> = ({
                     </div>
                   </div>
                 </div>
-                <div className="text-xs text-muted-foreground dark:text-gray-400">
+                <div className="text-xs text-muted-foreground dark:text-slate-300">
                   {new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' })}
                 </div>
               </div>
             );
           })}
         </div>
-        <p className="text-xs text-muted-foreground dark:text-gray-500 mt-4 text-center">
+        <p className="text-xs text-muted-foreground dark:text-slate-300 mt-4 text-center">
           Hover over bars to see exact credit usage
         </p>
       </div>

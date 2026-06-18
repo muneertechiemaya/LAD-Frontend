@@ -69,7 +69,7 @@ export function VoiceAgentsList() {
 
       <button
         onClick={handleCreateAgent}
-        className="w-full bg-blue-900 hover:bg-blue-800 text-white font-semibold py-3 px-4 rounded-full flex items-center justify-center gap-2 mb-6 transition-colors"
+        className="h-12 px-6 bg-[#0B1957] hover:bg-[#0B1957]/90 dark:bg-[#1d4ed8] text-white dark:hover:bg-blue-700 rounded-2xl shadow-lg transition-all font-bold flex items-center gap-2"
       >
         <Plus size={20} />
         Create New Agent

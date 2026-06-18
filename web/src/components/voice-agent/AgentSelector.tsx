@@ -90,7 +90,7 @@ export function AgentSelector({
           <Button
             onClick={() => onSelectAgent(null)}
             className={cn(
-              "justify-center gap-2 h-10 transition-all duration-200 font-medium flex-1 px-3 sm:px-4",
+              "justify-center gap-2 h-10 px-6 bg-[#0B1957] hover:bg-[#0B1957]/90 dark:bg-[#1d4ed8] text-white dark:hover:bg-blue-700 shadow-lg transition-all font-medium flex",
               selectedAgentId === null && "gradient-primary shadow-lg scale-[1.02]"
             )}
             variant={selectedAgentId === null ? "default" : "outline"}

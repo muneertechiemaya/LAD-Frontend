@@ -200,7 +200,7 @@ export default function KnowledgeBaseManager({ tenantId, userId }: KnowledgeBase
     return (
       <div className="flex flex-col items-center justify-center w-full min-h-[300px] text-slate-400 dark:text-gray-500 border-2 border-dashed border-slate-200 dark:border-blue-950/60 rounded-2xl bg-slate-50 dark:bg-[#061033]/30 p-6">
         <BookOpen className="size-10 mb-3 opacity-30" />
-        <p className="text-sm font-medium text-slate-500 dark:text-gray-400">Voice Playground not available</p>
+        <p className="text-sm font-medium text-slate-500 dark:text-slate-300">Voice Playground not available</p>
         <p className="text-xs mt-1 text-center max-w-[260px] text-slate-400 dark:text-gray-500">
           Knowledge base management requires a configured playground worker URL.
         </p>
@@ -211,8 +211,8 @@ export default function KnowledgeBaseManager({ tenantId, userId }: KnowledgeBase
   // --- Render Store List View ---
   if (!rag.isAwake && !rag.wakeError) {
     return (
-      <div className="flex flex-col items-center justify-center w-full min-h-[300px] text-slate-500 dark:text-gray-400">
-        <Loader2 className="size-8 animate-spin text-purple-400 mb-4" />
+      <div className="flex flex-col items-center justify-center w-full min-h-[300px] text-slate-500 dark:text-slate-300">
+        <Loader2 className="size-8 animate-spin text-blue-400 mb-4" />
         <p className="text-sm font-medium animate-pulse">Waking up worker environment...</p>
         <p className="text-xs mt-2 text-slate-400 dark:text-gray-500 max-w-[250px] text-center">This may take a few seconds if the service is starting up.</p>
       </div>
@@ -240,7 +240,7 @@ export default function KnowledgeBaseManager({ tenantId, userId }: KnowledgeBase
 
         <div className="flex-1 w-full">
           {showCreateStore ? (
-            <div className="p-5 border border-purple-100 dark:border-blue-950/60 bg-purple-50/30 dark:bg-blue-950/20 rounded-xl space-y-4 mb-6">
+            <div className="p-5 border border-blue-100 dark:border-blue-950/60 bg-purple-50/30 dark:bg-blue-950/20 rounded-xl space-y-4 mb-6">
               <h3 className="text-sm font-semibold text-purple-900 dark:text-blue-400">Create New Folder</h3>
               <div className="space-y-3">
                 <input
@@ -274,13 +274,13 @@ export default function KnowledgeBaseManager({ tenantId, userId }: KnowledgeBase
 
           {rag.loadingStores && !showCreateStore ? (
             <div className="flex justify-center py-12">
-              <Loader2 className="size-8 animate-spin text-purple-400" />
+              <Loader2 className="size-8 animate-spin text-blue-400" />
             </div>
           ) : rag.stores.length === 0 ? (
             <div className="text-center py-12 px-4 border-2 border-dashed border-slate-200 dark:border-blue-950/40 rounded-2xl bg-slate-50/50 dark:bg-[#061033]/20">
               <Folder className="size-12 mx-auto text-slate-300 dark:text-gray-600 mb-3" />
               <h3 className="text-sm font-semibold text-slate-700 dark:text-white">No Folders Found</h3>
-              <p className="text-xs text-slate-500 dark:text-gray-400 mt-1 max-w-sm mx-auto">
+              <p className="text-xs text-slate-500 dark:text-slate-300 mt-1 max-w-sm mx-auto">
                 Create a knowledge base folder to upload documents. These documents will be used as context for your AI agent.
               </p>
             </div>
@@ -291,8 +291,8 @@ export default function KnowledgeBaseManager({ tenantId, userId }: KnowledgeBase
                   key={store.id}
                   className={`group relative flex items-center justify-between p-4 border rounded-xl transition-all cursor-pointer ${
                     store.is_default
-                      ? "border-purple-200 bg-purple-50/30 dark:border-blue-900/50 dark:bg-blue-950/20"
-                      : "border-slate-200 dark:border-blue-950/40 bg-white dark:bg-transparent hover:border-purple-300 dark:hover:border-blue-900/60 hover:shadow-md"
+                      ? " border-blue-200 bg-blue-50/30 dark:border-blue-900/50 dark:bg-blue-950/20"
+                      : "border-slate-200 dark:border-blue-950/40 bg-white dark:bg-transparent hover:border-blue-300 dark:hover:border-blue-900/60 hover:shadow-md"
                   }`}
                   onClick={(e) => {
                     // Prevent navigation if clicking the switch or delete button
@@ -301,12 +301,12 @@ export default function KnowledgeBaseManager({ tenantId, userId }: KnowledgeBase
                   }}
                 >
                   <div className="flex items-center gap-4">
-                    <div className={`p-2.5 rounded-lg ${store.is_default ? "bg-purple-100 text-purple-600 dark:bg-blue-950 dark:text-blue-400" : "bg-slate-100 text-slate-500 dark:bg-blue-950/40 dark:text-gray-400 group-hover:bg-purple-50 dark:group-hover:bg-blue-950 group-hover:text-purple-500 dark:group-hover:text-blue-400"}`}>
+                    <div className={`p-2.5 rounded-lg ${store.is_default ? "bg-blue-100  text-blue-500 dark:bg-blue-950 dark:text-blue-400" : "bg-slate-100 text-slate-500 dark:bg-blue-950/40 dark:text-slate-300 group-hover:bg-blue-50 dark:group-hover:bg-blue-950 group-hover:text-blue-500 dark:group-hover:text-blue-400"}`}>
                       <Folder className="size-5" />
                     </div>
                     <div>
                       <h3 className="text-sm font-semibold text-slate-800 dark:text-white">{store.display_name}</h3>
-                      <p className="text-xs text-slate-500 dark:text-gray-400">
+                      <p className="text-xs text-slate-500 dark:text-slate-300">
                         {store.document_count} {store.document_count === 1 ? "document" : "documents"}
                         {store.description && <span className="hidden sm:inline"> • {store.description}</span>}
                       </p>
@@ -315,7 +315,7 @@ export default function KnowledgeBaseManager({ tenantId, userId }: KnowledgeBase
 
                   <div className="flex items-center gap-4 pl-4 border-l border-slate-100 dark:border-blue-950/40">
                     <div className="flex flex-col items-center gap-1">
-                      <Label className="text-[10px] text-slate-500 dark:text-gray-400 uppercase font-bold tracking-wider cursor-pointer">
+                      <Label className="text-[10px] text-slate-500 dark:text-slate-300 uppercase font-bold tracking-wider cursor-pointer">
                         {store.is_default ? "Attached" : "Attach"}
                       </Label>
                       <Switch
@@ -367,26 +367,26 @@ export default function KnowledgeBaseManager({ tenantId, userId }: KnowledgeBase
               setSelectedStore(null);
               setShowChat(false);
             }}
-            className="p-1.5 hover:bg-slate-100 dark:hover:bg-[#061033]/60 rounded-full text-slate-500 dark:text-gray-400 transition-colors mr-3"
+            className="p-1.5 hover:bg-slate-100 dark:hover:bg-[#061033]/60 rounded-full text-slate-500 dark:text-slate-300 transition-colors mr-3"
           >
             <ArrowLeft className="size-5" />
           </button>
           <div>
             <h3 className="text-md font-bold text-gray-900 dark:text-white">{selectedStore.display_name}</h3>
-            <p className="text-xs text-slate-500 dark:text-gray-400">Manage documents for this folder</p>
+            <p className="text-xs text-slate-500 dark:text-slate-300">Manage documents for this folder</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <Button
             variant={showChat ? "default" : "outline"}
             size="sm"
-            className={showChat ? "bg-purple-600 hover:bg-purple-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white" : "text-purple-700 dark:text-blue-400 border-purple-200 dark:border-blue-950/60 hover:bg-purple-50 dark:hover:bg-blue-950/30"}
+            className={showChat ? "bg-purple-600 hover:bg-purple-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white" : "text-purple-700 dark:text-blue-400 border-blue-200 dark:border-blue-950/60 hover:bg-purple-50 dark:hover:bg-blue-950/30"}
             onClick={() => setShowChat(!showChat)}
           >
             <MessageSquare className="size-4 mr-1.5" />
             {showChat ? "Back to Docs" : "Test Chat"}
           </Button>
-          <span className="text-xs font-medium text-slate-500 dark:text-gray-400 bg-slate-100 dark:bg-blue-950/40 px-2.5 py-1 rounded-full">
+          <span className="text-xs font-medium text-slate-500 dark:text-slate-300 bg-slate-100 dark:bg-blue-950/40 px-2.5 py-1 rounded-full">
             {documents.length} docs
           </span>
         </div>
@@ -451,7 +451,7 @@ export default function KnowledgeBaseManager({ tenantId, userId }: KnowledgeBase
                     <div className="mt-1 px-1 text-[10px] text-slate-400 dark:text-gray-500 flex flex-wrap gap-1">
                       <span className="font-semibold uppercase tracking-wider mr-1">Sources:</span>
                       {msg.sources.map((s, i) => (
-                        <span key={i} className="bg-slate-100 dark:bg-blue-950/60 px-1.5 py-0.5 rounded text-slate-500 dark:text-gray-400">
+                        <span key={i} className="bg-slate-100 dark:bg-blue-950/60 px-1.5 py-0.5 rounded text-slate-500 dark:text-slate-300">
                           {s}
                         </span>
                       ))}
@@ -463,7 +463,7 @@ export default function KnowledgeBaseManager({ tenantId, userId }: KnowledgeBase
             {isChatting && (
               <div className="flex max-w-[85%] mr-auto">
                 <div className="px-4 py-2.5 bg-white dark:bg-[#030a21] border border-slate-200 dark:border-blue-950/60 text-slate-500 rounded-2xl rounded-bl-sm shadow-sm text-sm flex items-center gap-2">
-                  <Loader2 className="size-4 animate-spin text-purple-600 dark:text-blue-400" /> Thinking...
+                  <Loader2 className="size-4 animate-spin  text-blue-500 dark:text-blue-400" /> Thinking...
                 </div>
               </div>
             )}
@@ -512,7 +512,7 @@ export default function KnowledgeBaseManager({ tenantId, userId }: KnowledgeBase
                 }
               }}
             />
-            <div className="p-3 bg-white dark:bg-[#030a21] shadow-sm rounded-full mb-3 text-purple-600 dark:text-blue-400">
+            <div className="p-3 bg-white dark:bg-[#030a21] shadow-sm rounded-full mb-3  text-blue-500 dark:text-blue-400">
               {uploading ? (
                 <Loader2 className="size-6 animate-spin" />
               ) : (
@@ -522,7 +522,7 @@ export default function KnowledgeBaseManager({ tenantId, userId }: KnowledgeBase
             <p className="text-sm font-semibold text-slate-700 dark:text-white">
               {uploading ? "Uploading document..." : "Click or drag file to upload"}
             </p>
-            <p className="text-xs text-slate-500 dark:text-gray-400 mt-1">
+            <p className="text-xs text-slate-500 dark:text-slate-300 mt-1">
               Supports PDF, TXT, MD, CSV, DOCX (Max 100MB)
             </p>
             <Button
@@ -594,10 +594,10 @@ export default function KnowledgeBaseManager({ tenantId, userId }: KnowledgeBase
       <div className="p-6 border-b border-gray-100 dark:border-blue-950/40 flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <BookOpen className="h-5 w-5 text-purple-600 dark:text-blue-400" />
+            <BookOpen className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Knowledge Base</h2>
           </div>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-sm text-gray-500 dark:text-slate-300">
             This content is injected into all AI conversations as context. Add company info, FAQs, product details, etc.
           </p>
         </div>
@@ -605,10 +605,10 @@ export default function KnowledgeBaseManager({ tenantId, userId }: KnowledgeBase
           <Button
             variant="outline"
             size="sm"
-            className="text-purple-700 dark:text-blue-400 border-purple-200 dark:border-blue-950/60 hover:bg-purple-50 dark:hover:bg-blue-950/30"
+            className="h-12 px-6 bg-[#0B1957] hover:bg-[#0B1957]/90 dark:bg-[#1d4ed8] text-white dark:hover:bg-blue-700 rounded-2xl shadow-lg transition-all font-bold flex items-center gap-2"
             onClick={() => setShowCreateStore(true)}
           >
-            <Plus className="size-4 mr-1" />
+            <Plus className="h-5 w-5" />
             New Folder
           </Button>
         )}
@@ -621,16 +621,16 @@ export default function KnowledgeBaseManager({ tenantId, userId }: KnowledgeBase
       <div className="px-6 py-4 border-b border-gray-100 dark:border-blue-950/40 bg-purple-50/40 dark:bg-blue-950/10 flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
-            <MessageSquare className="h-4 w-4 text-purple-600 dark:text-blue-400" />
+            <MessageSquare className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             <p className="text-sm font-medium text-gray-900 dark:text-white">Use Knowledge Base in WhatsApp replies</p>
           </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <p className="text-xs text-gray-500 dark:text-slate-300">
             When ON, every inbound WhatsApp message is answered using content from the
             folders flagged <span className="font-medium">Attached</span> below.
           </p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0 pt-0.5">
-          {waGroundingSaving && <Loader2 className="size-3.5 animate-spin text-purple-400" />}
+          {waGroundingSaving && <Loader2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />}
           <Switch
             checked={waGroundingEnabled}
             disabled={waGroundingLoading || waGroundingSaving}

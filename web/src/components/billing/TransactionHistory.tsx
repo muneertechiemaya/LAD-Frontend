@@ -4,6 +4,13 @@ import { ArrowUpRight, ArrowDownLeft, Calendar, ExternalLink, Eye, Cpu } from 'l
 import { useTransactions } from '@lad/frontend-features/billing';
 import { LoadingSpinner } from '../LoadingSpinner';
 import { TransactionDetailModal } from './TransactionDetailModal';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 type TransactionType = 'credit' | 'debit' | 'all';
 type TimeRange = '7d' | '30d' | '90d' | 'all';
@@ -146,28 +153,67 @@ export const TransactionHistory: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Time Range</label>
-            <select
+
+            <Select
               value={timeRange}
-              onChange={(e) => setTimeRange(e.target.value as TimeRange)}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-blue-950/60 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-[#061033]/70 dark:text-white"
+                onValueChange={(value) => setTimeRange(value as TimeRange)}
             >
-              <option value="7d" className="dark:bg-[#030a21]">Last 7 days</option>
-              <option value="30d" className="dark:bg-[#030a21]">Last 30 days</option>
-              <option value="90d" className="dark:bg-[#030a21]">Last 90 days</option>
-              <option value="all" className="dark:bg-[#030a21]">All time</option>
-            </select>
+              <SelectTrigger className="w-full h-auto flex-1 border border-gray-300 dark:border-blue-950/60 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-transparent px-3 text-left min-h-[30px]">
+                <SelectValue placeholder="Select time range" />
+              </SelectTrigger>
+
+              <SelectContent className="bg-white dark:bg-[#000724] border-slate-200 dark:border-[#262831]">
+                <SelectItem
+                    value="7d"
+                    className="pl-3 pr-6 text-xs justify-start transition-colors cursor-pointer text-slate-800 dark:text-white dark:focus:bg-[#22C55E] dark:focus:text-[#000724] dark:data-[state=checked]:focus:bg-[#22C55E] dark:data-[state=checked]:focus:text-[#000724]">
+                  Last 7 days
+                </SelectItem>
+                <SelectItem
+                    value="30d"
+                    className="pl-3 pr-6 text-xs justify-start transition-colors cursor-pointer text-slate-800 dark:text-white dark:focus:bg-[#22C55E] dark:focus:text-[#000724] dark:data-[state=checked]:focus:bg-[#22C55E] dark:data-[state=checked]:focus:text-[#000724]">
+                  Last 30 days
+                </SelectItem>
+                <SelectItem
+                    value="90d"
+                    className="pl-3 pr-6 text-xs justify-start transition-colors cursor-pointer text-slate-800 dark:text-white dark:focus:bg-[#22C55E] dark:focus:text-[#000724] dark:data-[state=checked]:focus:bg-[#22C55E] dark:data-[state=checked]:focus:text-[#000724]">
+                  Last 90 days
+                </SelectItem>
+                <SelectItem
+                    value="all"
+                    className="pl-3 pr-6 text-xs justify-start transition-colors cursor-pointer text-slate-800 dark:text-white dark:focus:bg-[#22C55E] dark:focus:text-[#000724] dark:data-[state=checked]:focus:bg-[#22C55E] dark:data-[state=checked]:focus:text-[#000724]">
+                  All time
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Transaction Type</label>
-            <select
-              value={transactionType}
-              onChange={(e) => setTransactionType(e.target.value as TransactionType)}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-blue-950/60 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-[#061033]/70 dark:text-white"
+            <Select
+                value={transactionType}
+                onValueChange={(value) => setTransactionType(value as TransactionType)}
             >
-              <option value="all" className="dark:bg-[#030a21]">All Types</option>
-              <option value="credit" className="dark:bg-[#030a21]">Credits Only</option>
-              <option value="debit" className="dark:bg-[#030a21]">Debits Only</option>
-            </select>
+              <SelectTrigger className="w-full h-auto flex-1 border border-gray-300 dark:border-blue-950/60 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-transparent px-3 text-left min-h-[30px]">
+                <SelectValue placeholder="Select type" />
+              </SelectTrigger>
+
+              <SelectContent className="bg-white dark:bg-[#000724] border-slate-200 dark:border-[#262831]">
+                <SelectItem
+                    value="all"
+                    className="pl-3 pr-6 text-xs justify-start transition-colors cursor-pointer text-slate-800 dark:text-white dark:focus:bg-[#22C55E] dark:focus:text-[#000724] dark:data-[state=checked]:focus:bg-[#22C55E] dark:data-[state=checked]:focus:text-[#000724]">
+                  All Types
+                </SelectItem>
+                <SelectItem
+                    value="credit"
+                    className="pl-3 pr-6 text-xs justify-start transition-colors cursor-pointer text-slate-800 dark:text-white dark:focus:bg-[#22C55E] dark:focus:text-[#000724] dark:data-[state=checked]:focus:bg-[#22C55E] dark:data-[state=checked]:focus:text-[#000724]">
+                  Credits Only
+                </SelectItem>
+                <SelectItem
+                    value="debit"
+                    className="pl-3 pr-6 text-xs justify-start transition-colors cursor-pointer text-slate-800 dark:text-white dark:focus:bg-[#22C55E] dark:focus:text-[#000724] dark:data-[state=checked]:focus:bg-[#22C55E] dark:data-[state=checked]:focus:text-[#000724]">
+                  Debits Only
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Search</label>
@@ -176,7 +222,7 @@ export const TransactionHistory: React.FC = () => {
               placeholder="Search description, reference..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-blue-950/60 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-[#061033]/70 dark:text-white dark:placeholder-gray-600"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-blue-950/60 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-[#061033]/70 dark:text-white dark:placeholder-gray-600 min-h-[30px]"
             />
           </div>
         </div>

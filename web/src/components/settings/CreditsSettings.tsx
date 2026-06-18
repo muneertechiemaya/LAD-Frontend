@@ -79,15 +79,15 @@ export const CreditsSettings: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Wallet Balance Card */}
-      <div className="bg-gradient-to-br from-blue-600 to-blue-800 p-6 rounded-lg shadow-lg text-white dark:from-[#051139] dark:to-[#02081e] dark:border dark:border-blue-950/50">
-        <div className="flex items-center justify-between mb-4">
+      <div className="bg-gradient-to-br from-primary to-primary/80 text-[#ffffff] p-6 rounded-xl shadow-lg dark:from-[#051139] dark:to-[#02081e] dark:border dark:border-blue-950/50">
+        <div className="flex items-center justify-between mb-6">
           <div className="flex items-center">
-            <Wallet className="h-6 w-6 mr-3 text-white dark:text-blue-400" />
-            <h3 className="text-xl font-bold">Wallet Balance</h3>
+            <Wallet className="h-5 w-5 mr-2 text-[#ffffff] dark:text-blue-400" />
+            <h3 className="text-lg font-bold text-[#ffffff]">Wallet Balance</h3>
           </div>
           <button
             onClick={() => setShowAddCreditsModal(true)}
-            className="bg-white text-blue-600 px-4 py-2 rounded-lg font-medium hover:bg-blue-50 dark:bg-blue-600 dark:text-white dark:hover:bg-blue-700 transition-colors flex items-center text-sm"
+            className="bg-white/10 hover:bg-white/20 text-[#ffffff] px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center dark:bg-blue-600 dark:hover:bg-blue-700"
           >
             <Plus className="h-4 w-4 mr-2" />
             Add Credits

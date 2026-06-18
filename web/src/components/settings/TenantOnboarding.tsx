@@ -259,14 +259,14 @@ export function TenantOnboarding() {
               className="p-2 text-gray-400 hover:text-gray-600 dark:text-slate-300 dark:hover:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800"
               title="Refresh accounts"
             >
-              <RefreshCw className="h-4 w-4" />
+              <RefreshCw className="h-5 w-5" />
             </button>
             {!showForm && (
               <button
                 onClick={() => setShowForm(true)}
-                className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-primary-foreground bg-primary hover:bg-primary/90 rounded-md shadow-sm transition-all active:scale-95 disabled:pointer-events-none disabled:opacity-50 outline-none cursor-pointer"
+                className="h-12 px-6 bg-[#0B1957] hover:bg-[#0B1957]/90 dark:bg-[#1d4ed8] dark:text-white dark:hover:bg-blue-700 rounded-2xl shadow-lg transition-all font-bold flex items-center gap-2"
               >
-                <Plus className="h-4 w-4" />
+                <Plus className="h-5 w-5" />
                 New Account
               </button>
             )}

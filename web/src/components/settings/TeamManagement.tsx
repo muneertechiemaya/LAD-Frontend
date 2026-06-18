@@ -314,7 +314,7 @@ export const TeamManagement: React.FC = () => {
       {loading && users.length === 0 ? (
         <TeamManagementSkeleton />
       ) : (
-        <div className="bg-white dark:!bg-[#112240] rounded-[2rem] shadow-xl shadow-gray-100/50 dark:shadow-none border border-gray-100 dark:!border-[#3b82f6] dark:border-2 overflow-hidden">
+        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50/50 dark:bg-transparent border-b border-gray-100 dark:border-zinc-800/80">

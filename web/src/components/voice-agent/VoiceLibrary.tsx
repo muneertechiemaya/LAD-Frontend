@@ -653,7 +653,7 @@ Is the timing... correct? Or does it need... a bit more... tuning? Let's find ou
           
           <Dialog open={isCloneDialogOpen} onOpenChange={setIsCloneDialogOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" className="gradient-primary">
+              <Button size="sm" className="justify-center gap-2 h-10 px-6 bg-[#0B1957] hover:bg-[#0B1957]/90 dark:bg-[#1d4ed8] text-white dark:hover:bg-blue-700 shadow-lg transition-all font-medium flex">
                 <Plus className="h-4 w-4 mr-1" /> Clone Voice
               </Button>
             </DialogTrigger>
@@ -1020,7 +1020,7 @@ Is the timing... correct? Or does it need... a bit more... tuning? Let's find ou
               </button>
             ))}
             {voices.length === 0 && (
-              <div className="p-4 text-center text-sm text-muted-foreground">
+              <div className="p-4 text-center text-sm text-muted-foreground dark:text-slate-300">
                 No voices found.
               </div>
             )}
@@ -1045,12 +1045,33 @@ Is the timing... correct? Or does it need... a bit more... tuning? Let's find ou
           <CardContent className="space-y-6">
             {selectedVoice ? (
               <div className="space-y-4 animate-fade-in">
-                <div className="p-4 bg-muted/30 rounded-lg border">
-                  <h3 className="font-medium">{selectedVoice.description || "Unnamed Voice"}</h3>
-                  <div className="flex flex-wrap gap-x-6 gap-y-2 mt-2 text-sm text-muted-foreground">
-                    <div><span className="font-medium">Provider ID:</span> {selectedVoice.provider_voice_id || 'N/A'}</div>
-                    <div><span className="font-medium">Provider:</span> {selectedVoice.provider}</div>
-                    <div><span className="font-medium">Dialect / Accent:</span> {CLONE_LANGUAGES.find(l => l.value === selectedVoice.accent)?.label || selectedVoice.accent || 'Default (US Accent)'}</div>
+                <div className="p-4 bg-slate-50/50 dark:bg-[#00051d]/40 rounded-xl border border-slate-100 dark:border-slate-800/60 animate-in fade-in duration-150">
+
+                  <h3 className="font-bold text-sm sm:text-base text-slate-800 dark:text-white tracking-tight leading-tight">
+                    {selectedVoice.description || "Unnamed Voice"}</h3>
+                  <div className="flex flex-wrap gap-x-5 gap-y-2 mt-2.5 text-xs sm:text-sm font-semibold text-slate-400 dark:text-slate-400">
+
+                    <div className="flex items-center gap-1">
+                      <span className="text-slate-500 dark:text-slate-500 font-medium">Provider ID:</span>
+                      <span className="font-mono text-xs text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-900 px-1.5 py-0.5 rounded">
+        {selectedVoice.provider_voice_id || 'N/A'}
+      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <span className="text-slate-500 dark:text-slate-500 font-medium">Provider:</span>
+                      <span className="text-slate-700 dark:text-slate-300 font-bold">
+        {selectedVoice.provider}
+      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <span className="text-slate-500 dark:text-slate-500 font-medium">Dialect / Accent:</span>
+                      <span className="text-slate-700 dark:text-slate-300 font-bold">
+        {CLONE_LANGUAGES.find(l => l.value === selectedVoice.accent)?.label || selectedVoice.accent || 'Default (US Accent)'}
+      </span>
+                    </div>
+
                   </div>
                 </div>
 
@@ -1090,7 +1111,7 @@ Is the timing... correct? Or does it need... a bit more... tuning? Let's find ou
                     onClick={handleTestVoice} 
                     disabled={isGenerating || !testText}
                     className={cn(
-                      "min-w-36 transition-all duration-300 shadow-sm",
+                      "justify-center gap-2 h-10 px-6 bg-[#0B1957] hover:bg-[#0B1957]/90 dark:bg-[#1d4ed8] text-white dark:hover:bg-blue-700 shadow-lg transition-all font-medium flex",
                       isPlaying && "bg-primary/10 border-primary text-primary hover:bg-primary/20",
                       isCached && !isPlaying && !isGenerating && "bg-emerald-600 hover:bg-emerald-700 hover:text-white text-white border-emerald-700"
                     )}
@@ -1109,10 +1130,14 @@ Is the timing... correct? Or does it need... a bit more... tuning? Let's find ou
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center h-64 text-center border-2 border-dashed rounded-xl bg-muted/10">
-                <Volume2 className="h-10 w-10 text-muted-foreground/30 mb-4" />
-                <h3 className="font-medium text-lg mb-1">No Voice Selected</h3>
-                <p className="text-muted-foreground text-sm max-w-sm">
+              <div className="flex flex-col items-center justify-center h-64 text-center border-2 border-dashed border-slate-200 dark:border-slate-800/80 bg-transparent rounded-2xl p-6 animate-in fade-in duration-200">
+
+                <Volume2 className="h-10 w-10 text-slate-400 dark:text-slate-300 mb-3.5 shrink-0 stroke-[1.5]" />
+
+                <h3 className="font-bold text-base sm:text-lg text-slate-800 dark:text-white tracking-tight leading-tight">
+              No Voice Selected</h3>
+
+            <p className="text-xs sm:text-sm font-medium text-slate-400 dark:text-slate-300 mt-1.5 max-w-xs leading-relaxed">
                   Select a voice from the library list on the left to preview it with custom text.
                 </p>
               </div>
