@@ -551,7 +551,7 @@ export const IntegrationsSettings: React.FC = () => {
               setActiveView('grid');
               refreshStatuses();
             }}
-            className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+            className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors dark:text-slate-300"
           >
             &larr; Back to Integrations
           </button>
@@ -582,39 +582,41 @@ export const IntegrationsSettings: React.FC = () => {
             </div>
           )}
           {activeView === 'mindbody' && (
-            <div className="rounded-xl border border-border bg-card p-6 space-y-6">
+            <div className="rounded-xl border border-slate-200 dark:border-slate-900/60 bg-white dark:bg-[#000319] p-5 sm:p-6 space-y-6 shadow-sm overflow-hidden">
               <div className="flex items-center gap-3">
-                <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-teal-50 flex items-center justify-center">
+                <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/30 flex items-center justify-center">
                   <span className="text-2xl leading-none select-none" aria-label="MindBody">🧘</span>
                 </div>
                 <div>
-                  <h3 className="font-semibold text-base text-foreground">MindBody</h3>
-                  <p className="text-xs text-muted-foreground">Automate trial class booking via WhatsApp AI</p>
+                  <h3 className="font-bold text-lg text-slate-800 dark:text-white leading-tight">MindBody</h3>
+                  <p className="text-sm text-slate-400 dark:text-slate-400 mt-1 font-medium leading-relaxed">Automate trial class booking via WhatsApp AI</p>
                 </div>
               </div>
 
               {statusMap['mindbody'] === 'connected' ? (
-                <div className="space-y-4">
-                  <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-2 text-sm">
+                <div className="space-y-4 animate-in fade-in duration-200">
+
+                  <div className="rounded-xl border border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-[#00051d]/40 p-4 space-y-3 text-sm font-semibold">
                     {mindBodyStatusData?.display_name && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Display Name</span>
-                        <span className="font-medium text-foreground">{mindBodyStatusData.display_name}</span>
+                      <div className="flex justify-between items-center border-b border-slate-100/60 dark:border-slate-800/40 pb-2">
+                        <span className="text-slate-400 dark:text-slate-500 font-medium">Display Name</span>
+                        <span className="text-slate-700 dark:text-slate-300 font-bold">{mindBodyStatusData.display_name}</span>
                       </div>
                     )}
                     {mindBodyStatusData?.site_id && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Site ID</span>
-                        <span className="font-medium text-foreground">{mindBodyStatusData.site_id}</span>
+                      <div className="flex justify-between items-center border-b border-slate-100/60 dark:border-slate-800/40 pb-2">
+                        <span className="text-slate-400 dark:text-slate-500 font-medium">Site ID</span>
+                        <span className="text-slate-700 dark:text-slate-300 font-mono text-xs bg-slate-100 dark:bg-slate-900 px-1.5 py-0.5 rounded">{mindBodyStatusData.site_id}</span>
                       </div>
                     )}
-                    <div className="flex justify-between items-start gap-4">
-                      <span className="text-muted-foreground flex-shrink-0">Target Classes</span>
+                    <div className="flex justify-between items-start gap-4 pt-0.5">
+                      <span className="text-slate-400 dark:text-slate-500 font-medium flex-shrink-0">Target Classes</span>
                       <div className="flex items-start gap-2 min-w-0">
-                        <span className="font-medium text-foreground text-right break-words">
+                        <span className="text-slate-700 dark:text-slate-300 text-right break-words font-bold">
+
                           {mindBodyStatusData?.target_classes?.length
                             ? mindBodyStatusData.target_classes.join(', ')
-                            : <span className="text-muted-foreground italic">None selected</span>}
+                            : <span className="text-slate-400 dark:text-slate-500 italic font-medium">None selected</span>}
                         </span>
                         {!editingClasses && (
                           <button
@@ -638,7 +640,7 @@ export const IntegrationsSettings: React.FC = () => {
                                 setConnectedFetchingClasses(false);
                               }
                             }}
-                            className="text-[11px] font-medium text-primary hover:underline flex-shrink-0 mt-0.5"
+                            className="text-xs font-bold text-blue-500 hover:underline flex-shrink-0 mt-0.5 cursor-pointer"
                           >
                             Edit
                           </button>
@@ -648,9 +650,9 @@ export const IntegrationsSettings: React.FC = () => {
                   </div>
 
                   {editingClasses && (
-                    <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-3">
+                    <div className="rounded-xl border border-blue-200 bg-blue-50/30 dark:border-blue-900/30 dark:bg-blue-950/10 p-4 space-y-4 animate-in fade-in slide-in-from-top-1 duration-200">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-foreground">Select Target Classes</span>
+                        <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Select Target Classes</span>
                         <button
                           type="button"
                           onClick={() => {
@@ -658,29 +660,29 @@ export const IntegrationsSettings: React.FC = () => {
                             setConnectedAvailableClasses([]);
                             setConnectedClassFetchError(null);
                           }}
-                          className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                          className="text-xs font-bold text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors cursor-pointer"
                         >
                           ✕ Cancel
                         </button>
                       </div>
 
                       {connectedFetchingClasses && (
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span className="inline-block h-3 w-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                        <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 dark:text-slate-500 py-2">
+                          <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
                           Loading available classes…
                         </div>
                       )}
 
                       {connectedClassFetchError && (
-                        <p className="text-xs text-destructive">{connectedClassFetchError}</p>
+                        <p className="text-xs font-semibold text-red-500 leading-relaxed">{connectedClassFetchError}</p>
                       )}
 
                       {!connectedFetchingClasses && connectedAvailableClasses.length > 0 && (
-                        <div className="rounded-lg border border-border bg-background divide-y divide-border max-h-44 overflow-y-auto">
+                        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#00051d] divide-y divide-slate-100 dark:divide-slate-800/60 max-h-44 overflow-y-auto custom-scrollbar">
                           {connectedAvailableClasses.map((cls) => (
                             <label
                               key={cls}
-                              className="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-muted/40 transition-colors"
+                              className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900/40 transition-colors select-none font-semibold text-sm text-slate-700 dark:text-slate-300"
                             >
                               <input
                                 type="checkbox"
@@ -690,9 +692,9 @@ export const IntegrationsSettings: React.FC = () => {
                                     e.target.checked ? [...prev, cls] : prev.filter((c) => c !== cls)
                                   );
                                 }}
-                                className="h-3.5 w-3.5 rounded accent-primary flex-shrink-0"
+                                className="h-4 w-4 rounded accent-[#0b1957] dark:accent-[#2563eb] flex-shrink-0 cursor-pointer"
                               />
-                              <span className="text-sm text-foreground">{cls}</span>
+                              <span className="truncate">{cls}</span>
                             </label>
                           ))}
                         </div>
@@ -726,7 +728,7 @@ export const IntegrationsSettings: React.FC = () => {
                             setUpdatingClasses(false);
                           }
                         }}
-                        className="w-full flex items-center justify-center gap-1.5 text-sm font-medium text-primary-foreground bg-primary rounded-lg px-4 py-2 hover:bg-primary/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="w-full h-11 px-4 rounded-xl text-sm font-bold text-white bg-[#0b1957] hover:bg-[#122572] dark:bg-[#2563eb] dark:hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer border-none"
                       >
                         {updatingClasses ? 'Saving…' : 'Save Target Classes'}
                       </button>
@@ -743,14 +745,14 @@ export const IntegrationsSettings: React.FC = () => {
                         setConnectedAvailableClasses([]);
                       } catch {}
                     }}
-                    className="text-sm font-medium text-destructive border border-destructive/30 rounded-lg px-4 py-2 hover:bg-destructive/5 transition-colors"
+                    className="w-full sm:w-auto h-11 px-5 rounded-xl text-sm font-bold border border-red-200 bg-red-50 dark:border-red-900/40 dark:bg-red-950/20 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/40 transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
                     Disconnect MindBody
                   </button>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  <p className="text-sm text-muted-foreground">
+                <div className="space-y-4 animate-in fade-in duration-200">
+                  <p className="text-sm font-medium text-slate-400 dark:text-slate-400 leading-relaxed">
                     Connect your MindBody account to enable automated trial class booking workflows through the WhatsApp AI agent.
                   </p>
                   <button
@@ -758,9 +760,9 @@ export const IntegrationsSettings: React.FC = () => {
                       mindBodyFormReset();
                       setShowMindBodyModal(true);
                     }}
-                    className="flex items-center gap-1.5 text-sm font-medium text-primary border border-border rounded-lg px-4 py-2 hover:bg-primary/5 transition-colors"
+                    className="w-full sm:w-auto h-11 px-5 rounded-xl text-sm font-bold text-white bg-[#0b1957] hover:bg-[#122572] dark:bg-[#2563eb] dark:hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-md active:scale-[0.99] cursor-pointer border-none"
                   >
-                    <Settings2 className="h-3.5 w-3.5" />
+                    <Settings2 className="h-4 w-4 shrink-0 stroke-[2.5]" />
                     Connect to MindBody
                   </button>
                 </div>
@@ -768,42 +770,42 @@ export const IntegrationsSettings: React.FC = () => {
             </div>
           )}
           {activeView === 'routemagic' && (
-            <div className="rounded-xl border border-border bg-card p-6 space-y-6">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-900/60 bg-white dark:bg-[#000319] p-5 sm:p-6 space-y-6 shadow-sm overflow-hidden">
               <div className="flex items-center gap-3">
-                <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center">
-                  <Truck className="h-6 w-6 text-emerald-700" />
+                <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 flex items-center justify-center">
+                  <Truck className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-base text-foreground">Route Magic</h3>
-                  <p className="text-xs text-muted-foreground">Sync customers as leads · create sale orders from WhatsApp</p>
+                  <h3 className="font-bold text-lg text-slate-800 dark:text-white leading-tight">Route Magic</h3>
+                  <p className="text-sm text-slate-400 dark:text-slate-400 mt-1 font-medium leading-relaxed">Sync customers as leads · create sale orders from WhatsApp</p>
                 </div>
               </div>
 
               {statusMap['routemagic'] === 'connected' ? (
-                <div className="space-y-4">
-                  <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-2 text-sm">
+                <div className="space-y-4 animate-in fade-in duration-200">
+                  <div className="rounded-xl border border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-[#00051d]/40 p-4 space-y-3 text-sm font-semibold">
                     {routeMagicStatusData?.display_name && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Display Name</span>
-                        <span className="font-medium text-foreground">{routeMagicStatusData.display_name}</span>
+                      <div className="flex justify-between items-center border-b border-slate-100/60 dark:border-slate-800/40 pb-2">
+                        <span className="text-slate-400 dark:text-slate-500 font-medium">Display Name</span>
+                        <span className="text-slate-700 dark:text-slate-300 font-bold">{routeMagicStatusData.display_name}</span>
                       </div>
                     )}
                     {routeMagicStatusData?.rm_tenant_id && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Route Magic Tenant</span>
-                        <span className="font-medium text-foreground font-mono text-xs">{routeMagicStatusData.rm_tenant_id}</span>
+                      <div className="flex justify-between items-center border-b border-slate-100/60 dark:border-slate-800/40 pb-2">
+                        <span className="text-slate-400 dark:text-slate-500 font-medium">Route Magic Tenant</span>
+                        <span className="text-slate-700 dark:text-slate-300 font-mono text-xs bg-slate-100 dark:bg-slate-900 px-1.5 py-0.5 rounded">{routeMagicStatusData.rm_tenant_id}</span>
                       </div>
                     )}
                     {routeMagicStatusData?.base_url && (
-                      <div className="flex justify-between gap-4">
-                        <span className="text-muted-foreground flex-shrink-0">Base URL</span>
-                        <span className="font-medium text-foreground text-xs text-right break-all">{routeMagicStatusData.base_url}</span>
+                      <div className="flex justify-between items-start gap-4 border-b border-slate-100/60 dark:border-slate-800/40 pb-2">
+                        <span className="text-slate-400 dark:text-slate-500 font-medium flex-shrink-0">Base URL</span>
+                        <span className="text-slate-700 dark:text-slate-300 font-mono text-xs text-right break-all max-w-[70%]">{routeMagicStatusData.base_url}</span>
                       </div>
                     )}
                     {routeMagicStatusData?.last_sync_at && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Last Customer Sync</span>
-                        <span className="font-medium text-foreground text-xs">{new Date(routeMagicStatusData.last_sync_at).toLocaleString()}</span>
+                      <div className="flex justify-between items-center pt-0.5">
+                        <span className="text-slate-400 dark:text-slate-500 font-medium">Last Customer Sync</span>
+                        <span className="text-slate-700 dark:text-slate-300 font-bold text-xs">{new Date(routeMagicStatusData.last_sync_at).toLocaleString()}</span>
                       </div>
                     )}
                     {!routeMagicStatusData?.last_sync_at && (
@@ -815,18 +817,18 @@ export const IntegrationsSettings: React.FC = () => {
                   </div>
 
                   {routeMagicSyncResult && (
-                    <div className="rounded-lg border border-emerald-200 bg-emerald-50/60 dark:bg-emerald-900/20 dark:border-emerald-900/40 p-3 text-xs space-y-1">
-                      <div className="font-semibold text-emerald-700 dark:text-emerald-300">Last sync result</div>
-                      <div className="grid grid-cols-4 gap-2 text-foreground">
-                        <div><span className="text-muted-foreground">Fetched:</span> {routeMagicSyncResult.fetched}</div>
-                        <div><span className="text-muted-foreground">Inserted:</span> {routeMagicSyncResult.inserted}</div>
-                        <div><span className="text-muted-foreground">Skipped:</span> {routeMagicSyncResult.skipped}</div>
-                        <div><span className="text-muted-foreground">Errors:</span> {routeMagicSyncResult.errors}</div>
+                    <div className="rounded-xl border border-emerald-100 dark:border-emerald-950/60 bg-emerald-50/40 dark:bg-emerald-950/10 p-3.5 text-xs font-semibold space-y-2">
+                      <div className="font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider text-[10px]">Last sync result</div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-slate-700 dark:text-slate-300">
+                    <div className="bg-white dark:bg-[#000319]/40 rounded-lg p-2 border border-slate-100 dark:border-slate-900/40"><span className="text-slate-400 dark:text-slate-500 font-medium block mb-0.5">Fetched:</span> <span className="font-bold text-sm text-blue-500">{routeMagicSyncResult.fetched}</span></div>
+                        <div className="bg-white dark:bg-[#000319]/40 rounded-lg p-2 border border-slate-100 dark:border-slate-900/40"><span className="text-slate-400 dark:text-slate-500 font-medium block mb-0.5">Inserted:</span> <span className="font-bold text-sm text-emerald-500">{routeMagicSyncResult.inserted}</span></div>
+                        <div className="bg-white dark:bg-[#000319]/40 rounded-lg p-2 border border-slate-100 dark:border-slate-900/40"><span className="text-slate-400 dark:text-slate-500 font-medium block mb-0.5">Skipped:</span> <span className="font-bold text-sm text-slate-500">{routeMagicSyncResult.skipped}</span></div>
+                    <div className="bg-white dark:bg-[#000319]/40 rounded-lg p-2 border border-slate-100 dark:border-slate-900/40"><span className="text-slate-400 dark:text-slate-500 font-medium block mb-0.5">Errors:</span> <span className="font-bold text-sm text-red-500">{routeMagicSyncResult.errors}</span></div>
                       </div>
                     </div>
                   )}
 
-                  <div className="flex flex-wrap gap-2">
+                <div className="flex flex-col sm:flex-row items-center gap-3 pt-1">
                     <button
                       type="button"
                       disabled={routeMagicSyncing}
@@ -853,7 +855,7 @@ export const IntegrationsSettings: React.FC = () => {
                           setRouteMagicSyncing(false);
                         }
                       }}
-                      className="text-sm font-medium text-primary-foreground bg-primary rounded-lg px-4 py-2 hover:bg-primary/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="w-full sm:w-auto h-11 px-5 rounded-xl text-sm font-bold text-white bg-[#0b1957] hover:bg-[#122572] dark:bg-[#2563eb] dark:hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer border-none"
                     >
                       {routeMagicSyncing ? 'Syncing…' : 'Sync customers as leads'}
                     </button>
@@ -872,15 +874,15 @@ export const IntegrationsSettings: React.FC = () => {
                           setRouteMagicDisconnecting(false);
                         }
                       }}
-                      className="text-sm font-medium text-destructive border border-destructive/30 rounded-lg px-4 py-2 hover:bg-destructive/5 transition-colors disabled:opacity-60"
+                      className="w-full sm:w-auto h-11 px-5 rounded-xl text-sm font-bold border border-red-200 bg-red-50 dark:border-red-900/40 dark:bg-red-950/20 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/40 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40"
                     >
                       {routeMagicDisconnecting ? 'Disconnecting…' : 'Disconnect Route Magic'}
                     </button>
                   </div>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  <p className="text-sm text-muted-foreground">
+                <div className="space-y-4 animate-in fade-in duration-200">
+                  <p className="text-sm font-medium text-slate-400 dark:text-slate-400 leading-relaxed">
                     Connect Route Magic so Maya can look up customers, share product info, and place sale orders straight from WhatsApp conversations.
                   </p>
                   <button
@@ -888,9 +890,9 @@ export const IntegrationsSettings: React.FC = () => {
                       routeMagicFormReset();
                       setShowRouteMagicModal(true);
                     }}
-                    className="flex items-center gap-1.5 text-sm font-medium text-primary border border-border rounded-lg px-4 py-2 hover:bg-primary/5 transition-colors"
+                    className="w-full sm:w-auto h-11 px-5 rounded-xl text-sm font-bold text-white bg-[#0b1957] hover:bg-[#122572] dark:bg-[#2563eb] dark:hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-md active:scale-[0.99] cursor-pointer border-none"
                   >
-                    <Settings2 className="h-3.5 w-3.5" />
+                    <Settings2 className="h-4 w-4 shrink-0 stroke-[2.5]" />
                     Connect to Route Magic
                   </button>
                 </div>
@@ -992,11 +994,11 @@ export const IntegrationsSettings: React.FC = () => {
                     </div>
                     <div className="min-w-0">
                       <h3 className="font-medium text-sm text-foreground leading-tight">{integration.name}</h3>
-                      <span className="text-[11px] text-muted-foreground">{integration.category}</span>
+                      <span className="text-[11px] text-muted-foreground dark:text-slate-300">{integration.category}</span>
                     </div>
                   </div>
 
-                  <p className="text-xs text-muted-foreground line-clamp-2 mb-4 flex-1 leading-relaxed">
+                  <p className="text-xs text-muted-foreground line-clamp-2 mb-4 flex-1 leading-relaxed dark:text-slate-300">
                     {integration.description}
                   </p>
 
@@ -1017,7 +1019,7 @@ export const IntegrationsSettings: React.FC = () => {
                         }
                         onToggle={integration.id === 'whatsapp-ai' ? toggleWabaAi : toggleWapaAi}
                       />
-                      <p className="mt-1 text-[10px] text-muted-foreground leading-snug">
+                      <p className="mt-1 text-[10px] text-muted-foreground leading-snug dark:text-slate-300">
                         Applies to all chats on this account
                       </p>
                     </div>
@@ -1027,7 +1029,7 @@ export const IntegrationsSettings: React.FC = () => {
                     {integration.comingSoon ? (
                       <button
                         disabled
-                        className="w-full py-2.5 px-4 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-400 text-xs font-bold uppercase tracking-wider cursor-not-allowed border border-dashed border-gray-200"
+                        className="w-full py-2.5 px-4 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-400 text-xs font-bold uppercase tracking-wider cursor-not-allowed border border-dashed border-gray-200 dark:text-slate-300"
                       >
                         Coming Soon
                       </button>
@@ -1041,10 +1043,10 @@ export const IntegrationsSettings: React.FC = () => {
                       </button>
                     ) : (
                       <button
-                        className={`w-full py-2.5 px-4 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center justify-center gap-2 select-none active:scale-95 disabled:pointer-events-none disabled:opacity-50 outline-none cursor-pointer ${
+                        className={`w-full h-11 px-5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 select-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40 outline-none cursor-pointer border-none shadow-sm ${
                           status === 'connected'
-                            ? 'bg-white dark:bg-[#1a2a43]/40 text-gray-700 dark:text-gray-200 hover:bg-slate-50 dark:hover:bg-[#1a2a43]/60 border border-blue-500/40 dark:border-blue-500/40'
-                            : 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm'
+                            ? 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200 dark:bg-[#1a2a43]/40 dark:text-slate-300 dark:hover:bg-[#1a2a43]/60 dark:border-blue-500/30'
+                            : 'bg-[#0b1957] hover:bg-[#122572] text-white dark:bg-[#2563eb] dark:hover:bg-blue-700 shadow-md'
                         }`}
                       >
                         {status === 'connected' ? 'Manage Settings' : 'Connect Now'}
@@ -1061,25 +1063,30 @@ export const IntegrationsSettings: React.FC = () => {
       {/* MindBody Connect Modal - Standardized */}
       {showMindBodyModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-[#000724] border border-gray-200 dark:border-[#262831] rounded-[2rem] shadow-2xl w-full sm:max-w-5xl sm:w-[90vw] overflow-hidden animate-in zoom-in-95 duration-300">
-            <div className="px-8 pt-8 pb-4 flex items-center justify-between">
+          <div className="bg-white dark:bg-[#000319] border border-slate-200 dark:border-slate-900/60 rounded-2xl shadow-2xl w-full sm:max-w-5xl sm:w-[90vw] overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="px-6 sm:px-8 pt-6 sm:pt-8 pb-4 flex items-center justify-between border-b border-slate-100 dark:border-slate-900/40">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-2xl bg-teal-50 text-teal-600">
-                  <span className="text-xl">🧘</span>
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/30 shrink-0">
+                  <span className="text-xl select-none">🧘</span>
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Connect MindBody</h3>
+                <h3 className="text-xl font-bold text-slate-800 dark:text-white leading-tight">Connect MindBody</h3>
               </div>
               <button
                 onClick={() => {
                   setShowMindBodyModal(false);
                   mindBodyFormReset();
                 }}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-[#253456] rounded-xl transition-colors"
+                className="p-2 hover:bg-slate-50 dark:hover:bg-slate-900/60 rounded-xl transition-colors cursor-pointer"
               >
-                <X className="h-5 w-5 text-gray-400" />
+                <X className="h-5 w-5 text-slate-400 dark:text-slate-500" />
               </button>
             </div>
 
+              {(() => {
+                const modalInputClass =
+                    'w-full rounded-xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#00051d] px-3 py-2.5 text-sm text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 outline-none focus:border-slate-400 dark:focus:border-slate-600 focus:ring-0 focus-visible:ring-0 transition-all [box-shadow:0_0_0_30px_white_inset] dark:[box-shadow:0_0_0_30px_#00051d_inset] [-webkit-text-fill-color:#1e293b] dark:[-webkit-text-fill-color:white] [&:-webkit-autofill]:[box-shadow:0_0_0_30px_white_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:#1e293b] dark:[&:-webkit-autofill]:[box-shadow:0_0_0_30px_#00051d_inset] dark:[&:-webkit-autofill]:[-webkit-text-fill-color:white]';
+
+        return (
             <form
               onSubmit={async (e) => {
                 e.preventDefault();
@@ -1122,70 +1129,70 @@ export const IntegrationsSettings: React.FC = () => {
                   setMindBodyConnecting(false);
                 }
               }}
-              className="p-8 space-y-6"
+              className="p-6 sm:p-8 space-y-6"
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-gray-700 dark:text-[#7a8ba3] uppercase tracking-wider ml-1">Site ID <span className="text-destructive">*</span></label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Site ID <span className="text-destructive">*</span></label>
                   <Input
                     required
                     placeholder="e.g. -99"
                     value={mindBodyForm.site_id}
                     onChange={(e) => setMindBodyForm((f) => ({ ...f, site_id: e.target.value }))}
-                    className="h-12 bg-gray-50 dark:bg-[#1a2a43] border-gray-200 dark:border-[#262831] rounded-xl"
+                    className={modalInputClass}
                   />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-gray-700 dark:text-[#7a8ba3] uppercase tracking-wider ml-1">Display Name</label>
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Display Name</label>
                   <Input
                     placeholder="e.g. My Yoga Studio"
                     value={mindBodyForm.display_name}
                     onChange={(e) => setMindBodyForm((f) => ({ ...f, display_name: e.target.value }))}
-                    className="h-12 bg-gray-50 dark:bg-[#1a2a43] border-gray-200 dark:border-[#262831] rounded-xl"
+                    className={modalInputClass}
                   />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-gray-700 dark:text-[#7a8ba3] uppercase tracking-wider ml-1">Username <span className="text-destructive">*</span></label>
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Username <span className="text-destructive">*</span></label>
                   <Input
                     required
                     placeholder="MindBody username"
                     value={mindBodyForm.username}
                     onChange={(e) => setMindBodyForm((f) => ({ ...f, username: e.target.value }))}
-                    className="h-12 bg-gray-50 dark:bg-[#1a2a43] border-gray-200 dark:border-[#262831] rounded-xl"
+                    className={modalInputClass}
                   />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-gray-700 dark:text-[#7a8ba3] uppercase tracking-wider ml-1">API Key <span className="text-destructive">*</span></label>
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">API Key <span className="text-destructive">*</span></label>
                   <Input
                     required
                     placeholder="MindBody API key"
                     value={mindBodyForm.api_key}
                     onChange={(e) => setMindBodyForm((f) => ({ ...f, api_key: e.target.value }))}
-                    className="h-12 bg-gray-50 dark:bg-[#1a2a43] border-gray-200 dark:border-[#262831] rounded-xl"
+                    className={modalInputClass}
                   />
                 </div>
-                <div className="md:col-span-2 space-y-2">
-                  <label className="text-xs font-bold text-gray-700 dark:text-[#7a8ba3] uppercase tracking-wider ml-1">Password <span className="text-destructive">*</span></label>
+                <div className="md:col-span-2 space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Password *</label>
                   <Input
                     required
                     type="password"
                     placeholder="MindBody password"
                     value={mindBodyForm.password}
                     onChange={(e) => setMindBodyForm((f) => ({ ...f, password: e.target.value }))}
-                    className="h-12 bg-gray-50 dark:bg-[#1a2a43] border-gray-200 dark:border-[#262831] rounded-xl"
+                    className={modalInputClass}
                   />
                 </div>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-gray-700 dark:text-[#7a8ba3] uppercase tracking-wider ml-1">Target Classes</label>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Target Classes</label>
                   {mindBodyForm.site_id && mindBodyForm.api_key && (
                     <button
                       type="button"
                       onClick={fetchAvailableClasses}
                       disabled={fetchingClasses}
-                      className="flex items-center gap-1.5 text-[11px] font-bold text-primary uppercase tracking-widest border border-primary/30 rounded-lg px-4 py-1.5 hover:bg-primary/5 transition-all disabled:opacity-60"
+                      className="rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent px-4 h-9 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       {fetchingClasses ? 'Fetching...' : 'Fetch Classes'}
                     </button>
@@ -1193,11 +1200,11 @@ export const IntegrationsSettings: React.FC = () => {
                 </div>
 
                 {availableClasses.length > 0 && (
-                  <div className="rounded-2xl border border-gray-200 dark:border-[#262831] bg-gray-50/50 dark:bg-[#1a2a43]/30 divide-y divide-gray-100 dark:divide-[#262831] max-h-48 overflow-y-auto p-2">
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-[#00051d]/40 divide-y divide-slate-100 dark:divide-slate-800/60 max-h-48 overflow-y-auto p-2 custom-scrollbar">
                     {availableClasses.map((cls) => (
                       <label
                         key={cls}
-                        className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-white dark:hover:bg-[#1a2a43] rounded-xl transition-all"
+                        className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-white dark:hover:bg-[#00051d] rounded-xl transition-all select-none font-semibold text-sm text-slate-700 dark:text-slate-300"
                       >
                         <input
                           type="checkbox"
@@ -1207,35 +1214,46 @@ export const IntegrationsSettings: React.FC = () => {
                               e.target.checked ? [...prev, cls] : prev.filter((c) => c !== cls)
                             );
                           }}
-                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                          className="h-4 w-4 rounded accent-[#0b1957] dark:accent-[#2563eb] flex-shrink-0 cursor-pointer"
                         />
-                        <span className="text-sm font-medium text-gray-700 dark:text-white">{cls}</span>
+                        <span className="truncate">{cls}</span>
                       </label>
                     ))}
                   </div>
                 )}
 
                 {classFetchError && (
-                  <p className="text-sm text-destructive font-medium px-2">{classFetchError}</p>
+                  <p className="text-xs font-semibold text-red-500 leading-relaxed">{classFetchError}</p>
                 )}
               </div>
 
               {mindBodyError && (
-                <div className="p-4 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-900/30 rounded-2xl text-rose-600 dark:text-rose-400 text-sm font-medium">
-                  {mindBodyError}
+                <div className="p-4 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/30 rounded-xl text-rose-700 dark:text-rose-400 text-xs font-semibold leading-relaxed animate-in fade-in duration-200">
+                            <div className="flex items-start gap-2.5">
+                 {mindBodyError}
+              </div>
                 </div>
               )}
 
-              <div className="pt-4">
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800/40">
                 <button
                   type="submit"
                   disabled={mindBodyConnecting}
-                  className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold uppercase tracking-widest shadow-xl shadow-primary/20 hover:shadow-primary/30 hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full h-11 px-5 rounded-xl text-sm font-bold text-white bg-[#0b1957] hover:bg-[#122572] dark:bg-[#2563eb] dark:hover:bg-blue-700 disabled:opacity-40 disabled:hover:bg-[#0b1957] dark:disabled:hover:bg-[#2563eb] disabled:cursor-not-allowed transition-all shadow-md flex items-center justify-center gap-2 active:scale-[0.99] cursor-pointer border-none"
                 >
-                  {mindBodyConnecting ? 'Connecting...' : 'Connect MindBody Account'}
+                  {mindBodyConnecting ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Connecting MindBody Account...
+                              </>
+                          ) : (
+                              'Connect MindBody Account'
+                          )}
                 </button>
               </div>
             </form>
+        );
+      })()}
           </div>
         </div>
       )}
@@ -1243,15 +1261,15 @@ export const IntegrationsSettings: React.FC = () => {
       {/* Route Magic Connect Modal */}
       {showRouteMagicModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-[#000724] border border-gray-200 dark:border-[#262831] rounded-[2rem] shadow-2xl w-full sm:max-w-3xl sm:w-[90vw] overflow-hidden animate-in zoom-in-95 duration-300">
-            <div className="px-8 pt-8 pb-4 flex items-center justify-between">
+          <div className="bg-white dark:bg-[#000319] border border-slate-200 dark:border-slate-900/60 rounded-2xl shadow-2xl w-full sm:max-w-3xl sm:w-[90vw] overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="px-6 sm:px-8 pt-6 sm:pt-8 pb-4 flex items-center justify-between border-b border-slate-100 dark:border-slate-900/40">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-2xl bg-emerald-50 text-emerald-700">
-                  <Truck className="h-5 w-5" />
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 shrink-0">
+                  <Truck className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">Connect Route Magic</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">Provided by your Route Magic admin</p>
+                  <h3 className="text-xl font-bold text-slate-800 dark:text-white leading-tight">Connect Route Magic</h3>
+                  <p className="text-xs font-medium text-slate-400 dark:text-slate-500 mt-0.5">Provided by your Route Magic admin</p>
                 </div>
               </div>
               <button
@@ -1259,12 +1277,17 @@ export const IntegrationsSettings: React.FC = () => {
                   setShowRouteMagicModal(false);
                   routeMagicFormReset();
                 }}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-[#253456] rounded-xl transition-colors"
+                className="p-2 hover:bg-slate-50 dark:hover:bg-slate-900/60 rounded-xl transition-colors cursor-pointer"
               >
-                <X className="h-5 w-5 text-gray-400" />
+                <X className="h-5 w-5 text-slate-400 dark:text-slate-500" />
               </button>
             </div>
 
+              {(() => {
+                const modalInputClass =
+                    'w-full rounded-xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#00051d] px-3 py-2.5 text-sm text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 outline-none focus:border-slate-400 dark:focus:border-slate-600 focus:ring-0 focus-visible:ring-0 transition-all [box-shadow:0_0_0_30px_white_inset] dark:[box-shadow:0_0_0_30px_#00051d_inset] [-webkit-text-fill-color:#1e293b] dark:[-webkit-text-fill-color:white] [&:-webkit-autofill]:[box-shadow:0_0_0_30px_white_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:#1e293b] dark:[&:-webkit-autofill]:[box-shadow:0_0_0_30px_#00051d_inset] dark:[&:-webkit-autofill]:[-webkit-text-fill-color:white]';
+
+        return (
             <form
               onSubmit={async (e) => {
                 e.preventDefault();
@@ -1307,76 +1330,87 @@ export const IntegrationsSettings: React.FC = () => {
                   setRouteMagicConnecting(false);
                 }
               }}
-              className="p-8 space-y-6"
+              className="p-6 sm:p-8 space-y-6"
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-gray-700 dark:text-[#7a8ba3] uppercase tracking-wider ml-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     Route Magic Tenant ID <span className="text-destructive">*</span>
                   </label>
-                  <Input
+                  <input
                     required
+                      type="text"
                     placeholder="e.g. sunmeetdemo"
                     value={routeMagicForm.rm_tenant_id}
                     onChange={(e) => setRouteMagicForm((f) => ({ ...f, rm_tenant_id: e.target.value }))}
-                    className="h-12 bg-gray-50 dark:bg-[#1a2a43] border-gray-200 dark:border-[#262831] rounded-xl"
+                    className={modalInputClass}
                   />
-                  <p className="text-[11px] text-muted-foreground ml-1">Sent as <code className="text-foreground">RM-TENANT-ID</code> header</p>
+                  <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+                            Sent as <code className="font-mono text-slate-500 dark:text-slate-400 px-1 bg-slate-50 dark:bg-slate-900 rounded">RM-TENANT-ID</code> header
+                    </p>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-gray-700 dark:text-[#7a8ba3] uppercase tracking-wider ml-1">Display Name</label>
-                  <Input
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Display Name</label>
+                  <input
+                              type="text"
                     placeholder="e.g. Sunmeet (Sandbox)"
                     value={routeMagicForm.display_name}
                     onChange={(e) => setRouteMagicForm((f) => ({ ...f, display_name: e.target.value }))}
-                    className="h-12 bg-gray-50 dark:bg-[#1a2a43] border-gray-200 dark:border-[#262831] rounded-xl"
+                    className={modalInputClass}
                   />
                 </div>
-                <div className="md:col-span-2 space-y-2">
-                  <label className="text-xs font-bold text-gray-700 dark:text-[#7a8ba3] uppercase tracking-wider ml-1">
+                <div className="md:col-span-2 space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     API Key <span className="text-destructive">*</span>
                   </label>
-                  <Input
+                  <input
                     required
                     type="password"
                     placeholder="Route Magic API key (UUID format)"
                     value={routeMagicForm.api_key}
                     onChange={(e) => setRouteMagicForm((f) => ({ ...f, api_key: e.target.value }))}
-                    className="h-12 bg-gray-50 dark:bg-[#1a2a43] border-gray-200 dark:border-[#262831] rounded-xl font-mono"
+                    className={`${modalInputClass} font-mono`}
                   />
-                  <p className="text-[11px] text-muted-foreground ml-1">Sent as <code className="text-foreground">RM-API-KEY</code> header</p>
+                  <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+                        Sent as <code className="font-mono text-slate-500 dark:text-slate-400 px-1 bg-slate-50 dark:bg-slate-900 rounded">RM-API-KEY</code> header
+                      </p>
                 </div>
-                <div className="md:col-span-2 space-y-2">
-                  <label className="text-xs font-bold text-gray-700 dark:text-[#7a8ba3] uppercase tracking-wider ml-1">Base URL</label>
-                  <Input
+                <div className="md:col-span-2 space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Base URL</label>
+                  <input type="text"
                     placeholder="https://staging-api.routemagic.co.uk"
                     value={routeMagicForm.base_url}
                     onChange={(e) => setRouteMagicForm((f) => ({ ...f, base_url: e.target.value }))}
-                    className="h-12 bg-gray-50 dark:bg-[#1a2a43] border-gray-200 dark:border-[#262831] rounded-xl font-mono text-sm"
+                    className={`${modalInputClass} font-mono`}
                   />
-                  <p className="text-[11px] text-muted-foreground ml-1">Defaults to the sandbox endpoint. Switch to production when going live.</p>
+                  <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+                            Defaults to the sandbox endpoint. Switch to production when going live.</p>
                 </div>
               </div>
 
               {routeMagicError && (
-                <div className="p-4 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-900/30 rounded-2xl text-rose-600 dark:text-rose-400 text-sm font-medium">
+                <div className="p-4 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/30 rounded-xl text-rose-700 dark:text-rose-400 text-xs font-semibold leading-relaxed animate-in fade-in duration-200">
+                            <div className="flex items-start gap-2.5">
                   {routeMagicError}
+              </div>
                 </div>
               )}
 
-              <div className="pt-4">
+              <div className="pt-4 border-t border-slate-100 dark:border-slate-800/40">
                 <button
                   type="submit"
                   disabled={routeMagicConnecting}
-                  className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold uppercase tracking-widest shadow-xl shadow-primary/20 hover:shadow-primary/30 hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full h-11 px-5 rounded-xl text-sm font-bold text-white bg-[#0b1957] hover:bg-[#122572] dark:bg-[#2563eb] dark:hover:bg-blue-700 disabled:opacity-40 disabled:hover:bg-[#0b1957] dark:disabled:hover:bg-[#2563eb] disabled:cursor-not-allowed transition-all shadow-md flex items-center justify-center gap-2 active:scale-[0.99] cursor-pointer border-none"
                 >
                   {routeMagicConnecting ? 'Verifying & Connecting…' : 'Connect Route Magic Account'}
                 </button>
-                <p className="text-[11px] text-muted-foreground mt-3 text-center">
+                <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 mt-3 text-center">
                   We&apos;ll call <code className="text-foreground">GET /customers</code> against Route Magic to verify before saving.
                 </p>
               </div>
             </form>
+        );
+      })()}
           </div>
         </div>
       )}
@@ -1403,7 +1437,7 @@ function AiToggleChip({
       type="button"
       onClick={onToggle}
       disabled={disabled}
-      className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${
+      className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition disabled:cursor-not-allowed disabled:opacity-60 dark:text-slate-300 ${
         enabled
           ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200 dark:hover:bg-emerald-500/20'
           : 'border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-100 dark:border-white/10 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/10'
