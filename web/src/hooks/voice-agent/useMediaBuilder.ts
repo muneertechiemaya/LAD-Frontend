@@ -386,8 +386,21 @@ export function useMediaBuilder() {
   const advanceStep = useCallback(async (userInput?: string | string[]) => {
     const isCurrentlyGenerating = step === "builder-text" && uiPayload?.phase === "Phase 2: Describe Image";
     const isCurrentlyOutputs = step === "builder-image-output";
+    const isDialogueScriptInput = step === "builder-text" && uiPayload?.phase === "Phase 6: Script Input";
 
-    if (isCurrentlyGenerating || isCurrentlyOutputs) {
+    if (isDialogueScriptInput) {
+      setStep("builder-video-progress");
+      setUiPayload(prev => prev ? {
+        ...prev,
+        step: "builder-video-progress",
+        question: "Adding Dialogues to Video...",
+        description: "Please wait while our managers sequence, generate, and overlay Cartesia voice actor dialogues onto the video.",
+        blocks: [
+          { label: "Analyzing script and video timeline...", value: "active" }
+        ],
+        status: "active"
+      } : prev);
+    } else if (isCurrentlyGenerating || isCurrentlyOutputs) {
       setGenerating(true);
     } else {
       setStep("loading");

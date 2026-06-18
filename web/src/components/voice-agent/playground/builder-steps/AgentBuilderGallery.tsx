@@ -20,6 +20,14 @@ interface SelectedAsset {
   type: "image" | "video";
 }
 
+interface UnifiedGalleryAsset {
+  type: "image" | "video";
+  id: string;
+  urls?: string[];
+  videos?: VideoAsset[];
+  created_at: number;
+}
+
 export function AgentBuilderGallery({
   images = [],
   videos = [],
@@ -101,6 +109,89 @@ export function AgentBuilderGallery({
     
     return resultGroups;
   }, [videos]);
+
+  const [visibleCount, setVisibleCount] = useState(12);
+
+  React.useEffect(() => {
+    setVisibleCount(12);
+  }, [images, videos]);
+
+  const unifiedAssets = React.useMemo(() => {
+    const assets: UnifiedGalleryAsset[] = [];
+    
+    // Add image groups
+    images.forEach((imgGroup) => {
+      assets.push({
+        type: "image",
+        id: imgGroup.generation_id,
+        urls: imgGroup.urls,
+        created_at: imgGroup.created_at
+      });
+    });
+    
+    // Add video groups
+    videoGroups.forEach((vidGroup) => {
+      assets.push({
+        type: "video",
+        id: vidGroup.group_key,
+        videos: vidGroup.videos,
+        created_at: vidGroup.created_at
+      });
+    });
+    
+    // Sort all unified assets by created_at descending (most recent first)
+    assets.sort((a, b) => b.created_at - a.created_at);
+    return assets;
+  }, [images, videoGroups]);
+
+  const getDateHeader = (ts: number): string => {
+    if (!ts) return "Unknown Date";
+    const date = new Date(ts * 1000);
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+    
+    if (date.toDateString() === today.toDateString()) {
+      return "Today";
+    }
+    if (date.toDateString() === yesterday.toDateString()) {
+      return "Yesterday";
+    }
+    
+    return date.toLocaleDateString(undefined, {
+      month: "long",
+      day: "numeric",
+      year: "numeric"
+    });
+  };
+
+  const groupedAssetsByDate = React.useMemo(() => {
+    const sliced = unifiedAssets.slice(0, visibleCount);
+    const groups: { dateHeader: string; items: UnifiedGalleryAsset[] }[] = [];
+    const dateHeadersMap: { [header: string]: UnifiedGalleryAsset[] } = {};
+    
+    sliced.forEach((asset) => {
+      const header = getDateHeader(asset.created_at);
+      if (!dateHeadersMap[header]) {
+        dateHeadersMap[header] = [];
+      }
+      dateHeadersMap[header].push(asset);
+    });
+    
+    const seenHeaders = new Set<string>();
+    sliced.forEach((asset) => {
+      const header = getDateHeader(asset.created_at);
+      if (!seenHeaders.has(header)) {
+        seenHeaders.add(header);
+        groups.push({
+          dateHeader: header,
+          items: dateHeadersMap[header]
+        });
+      }
+    });
+    
+    return groups;
+  }, [unifiedAssets, visibleCount]);
 
   const formatTimestamp = (ts: number) => {
     if (!ts) return "Unknown Date";
@@ -341,202 +432,204 @@ export function AgentBuilderGallery({
           </div>
         ) : (
           <>
-            {/* ── VIDEOS SECTION (TOP) ── */}
-            {videos.length > 0 && (
-              <div className="space-y-2">
-                <h3 className="text-xs font-bold text-[#0b1957] uppercase tracking-wider flex items-center gap-1.5 pl-1">
-                  <Video className="size-3.5 text-[#0b1957]" />
-                  Videos ({videos.length})
-                </h3>
-                
-                {/* Horizontal scroll container for video previews */}
-                <div className="flex gap-3 overflow-x-auto pb-3.5 scrollbar-thin scrollbar-thumb-slate-200 h-[120px] items-center">
-                  {videoGroups.map((group) => {
-                    const isGroup = group.videos.length > 1;
-                    if (!isGroup) {
-                      const vid = group.videos[0];
-                      const isSel = isAssetSelected(vid.url);
-                      return (
-                        <div
-                          key={group.group_key}
-                          onClick={() => toggleAssetSelection(vid.url, "video")}
-                          className={cn(
-                            "flex-shrink-0 w-[160px] aspect-video rounded-xl bg-slate-900 border overflow-hidden relative cursor-pointer group shadow-sm hover:shadow transition-all",
-                            isSel ? "border-[#0b1957] ring-2 ring-[#0b1957]/20" : "border-slate-200 hover:border-[#0b1957]/30"
-                          )}
-                        >
-                          <video
-                            src={vid.url}
-                            preload="metadata"
-                            className="w-full h-full object-cover pointer-events-none"
-                          />
-                          {/* Play overlay */}
-                          <div
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActiveVideo(vid.url);
-                            }}
-                            className="absolute inset-0 bg-black/45 flex items-center justify-center opacity-70 group-hover:opacity-100 transition-opacity"
-                          >
-                            <div className="size-8 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30 group-hover:scale-110 transition-transform">
-                              <Play className="size-4 text-white fill-current translate-x-0.5" />
+            {groupedAssetsByDate.map((group) => {
+              return (
+                <div key={group.dateHeader} className="space-y-2.5">
+                  {/* Date Header */}
+                  <h3 className="text-xs font-extrabold text-[#0b1957]/80 uppercase tracking-wider pl-1.5 pt-2 select-none">
+                    {group.dateHeader}
+                  </h3>
+                  
+                  {/* 3-Column Grid */}
+                  <div className="grid grid-cols-3 gap-3">
+                    {group.items.map((asset) => {
+                      if (asset.type === "image") {
+                        const isGroup = (asset.urls?.length || 0) > 1;
+                        const hasSelectedInGroup = asset.urls?.some((url) => isAssetSelected(url)) || false;
+                        const topUrl = asset.urls?.[0] || "";
+                        
+                        if (!isGroup) {
+                          const isSel = isAssetSelected(topUrl);
+                          return (
+                            <div
+                              key={asset.id}
+                              onClick={() => toggleAssetSelection(topUrl, "image")}
+                              className="relative w-full aspect-square pr-1.5 pb-1.5 select-none cursor-pointer"
+                            >
+                              <div className={cn(
+                                "absolute inset-x-0 inset-y-0 mr-1 mb-1 rounded-2xl bg-slate-900 border overflow-hidden group shadow-sm hover:shadow transition-all",
+                                isSel ? "border-[#0b1957] ring-2 ring-[#0b1957]/20" : "border-slate-200 hover:border-[#0b1957]/30"
+                              )}>
+                                <img
+                                  src={topUrl}
+                                  alt="Asset"
+                                  className="w-full h-full object-cover pointer-events-none"
+                                  loading="lazy"
+                                />
+                                {/* Selection check overlay */}
+                                <div className={cn(
+                                  "absolute top-1.5 right-1.5 size-4 rounded-full border flex items-center justify-center transition-all z-25",
+                                  isSel ? "bg-[#0b1957] border-[#0b1957] text-white" : "bg-white/70 border-slate-300 backdrop-blur-sm opacity-0 group-hover:opacity-100"
+                                )}>
+                                  {isSel && <Check className="size-2.5 stroke-[3]" />}
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                          {/* Selection check icon overlay */}
-                          <div className={cn(
-                            "absolute top-1.5 right-1.5 size-4 rounded-full border flex items-center justify-center transition-all z-25",
-                            isSel ? "bg-[#0b1957] border-[#0b1957] text-white" : "bg-white/70 border-slate-300 backdrop-blur-sm opacity-0 group-hover:opacity-100"
-                          )}>
-                            {isSel && <Check className="size-2.5 stroke-[3]" />}
-                          </div>
-                          {/* Timestamp badge */}
-                          <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/60 rounded text-[9px] text-white font-medium">
-                            {formatTimestamp(vid.created_at)}
-                          </div>
-                        </div>
-                      );
-                    } else {
-                      // Stacked card deck look
-                      const firstGenVideo = group.videos[0];
-                      const hasSelectedInGroup = group.videos.some((v) => isAssetSelected(v.url));
-                      return (
-                        <div
-                          key={group.group_key}
-                          onClick={() => setSelectedVideoGroup(group)}
-                          className="flex-shrink-0 w-[180px] h-[101px] relative mr-4 select-none cursor-pointer"
-                        >
-                          {/* Layer 3 (bottom card) */}
-                          <div className="absolute inset-0 rounded-xl bg-slate-200 border border-slate-300/40 translate-x-2.5 translate-y-2.5 rotate-3 shadow-sm" />
-                          {/* Layer 2 (middle card) */}
-                          <div className="absolute inset-0 rounded-xl bg-slate-100 border border-slate-200/60 translate-x-1.5 translate-y-1.5 rotate-1.5 shadow-sm" />
-                          
-                          {/* Layer 1 (top card) */}
-                          <div
-                            className={cn(
-                              "absolute inset-0 rounded-xl bg-slate-900 border overflow-hidden group shadow-md hover:shadow-lg transition-all",
-                              hasSelectedInGroup ? "border-[#0b1957] ring-2 ring-[#0b1957]/20" : "border-slate-200 hover:border-[#0b1957]/40"
-                            )}
-                          >
-                            <video
-                              src={firstGenVideo.url}
-                              preload="metadata"
-                              className="w-full h-full object-cover pointer-events-none"
-                            />
-
-                            
-                            {/* Selected icon badge */}
-                            <div className={cn(
-                              "absolute top-1.5 right-1.5 size-4 rounded-full border flex items-center justify-center transition-all z-25",
-                              hasSelectedInGroup ? "bg-[#0b1957] border-[#0b1957] text-white" : "bg-white/70 border-slate-300 backdrop-blur-sm opacity-0 group-hover:opacity-100"
-                            )}>
-                              {hasSelectedInGroup && <Check className="size-2.5 stroke-[3]" />}
+                          );
+                        } else {
+                          // Stacked Image card deck
+                          return (
+                            <div
+                              key={asset.id}
+                              onClick={() => setSelectedGroup(images.find(g => g.generation_id === asset.id) || null)}
+                              className="relative w-full aspect-square pr-1.5 pb-1.5 select-none cursor-pointer"
+                            >
+                              {/* Layer 3 */}
+                              <div className="absolute inset-0 rounded-2xl bg-slate-300/80 border border-slate-300/50 -rotate-3 -translate-x-1 -translate-y-1 shadow-sm" />
+                              {/* Layer 2 */}
+                              <div className="absolute inset-0 rounded-2xl bg-slate-200/90 border border-slate-200/70 rotate-3 translate-x-1 translate-y-1 shadow-sm" />
+                              {/* Layer 1 */}
+                              <div className={cn(
+                                "absolute inset-0 rounded-2xl bg-slate-900 border overflow-hidden group shadow-md hover:shadow-lg transition-all",
+                                hasSelectedInGroup ? "border-[#0b1957] ring-2 ring-[#0b1957]/20" : "border-slate-200 hover:border-[#0b1957]/40"
+                              )}>
+                                <img
+                                  src={topUrl}
+                                  alt="Image Stack"
+                                  className="w-full h-full object-cover pointer-events-none"
+                                  loading="lazy"
+                                />
+                                <div className={cn(
+                                  "absolute top-1.5 right-1.5 size-4 rounded-full border flex items-center justify-center transition-all z-25",
+                                  hasSelectedInGroup ? "bg-[#0b1957] border-[#0b1957] text-white" : "bg-white/70 border-slate-300 backdrop-blur-sm opacity-0 group-hover:opacity-100"
+                                )}>
+                                  {hasSelectedInGroup && <Check className="size-2.5 stroke-[3]" />}
+                                </div>
+                              </div>
                             </div>
-                            
-                            {/* Timestamp badge */}
-                            <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/60 rounded text-[9px] text-white font-medium">
-                              {formatTimestamp(group.created_at)}
+                          );
+                        }
+                      } else {
+                        // Video type
+                        const isGroup = (asset.videos?.length || 0) > 1;
+                        const hasSelectedInGroup = asset.videos?.some((vid) => isAssetSelected(vid.url)) || false;
+                        const topVid = asset.videos?.[0];
+                        
+                        if (!topVid) return null;
+                        
+                        if (!isGroup) {
+                          const isSel = isAssetSelected(topVid.url);
+                          return (
+                            <div
+                              key={asset.id}
+                              onClick={() => toggleAssetSelection(topVid.url, "video")}
+                              className="relative w-full aspect-square pr-1.5 pb-1.5 select-none cursor-pointer"
+                            >
+                              <div className={cn(
+                                "absolute inset-x-0 inset-y-0 mr-1 mb-1 rounded-2xl bg-slate-900 border overflow-hidden group shadow-sm hover:shadow transition-all",
+                                isSel ? "border-[#0b1957] ring-2 ring-[#0b1957]/20" : "border-slate-200 hover:border-[#0b1957]/30"
+                              )}>
+                                <video
+                                  src={topVid.url}
+                                  preload="metadata"
+                                  className="w-full h-full object-cover pointer-events-none"
+                                />
+                                {topVid.duration !== undefined && topVid.duration > 0 && (
+                                  <div className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 bg-black/60 rounded text-[9px] text-white font-bold z-20 shadow-sm">
+                                    {topVid.duration}s
+                                  </div>
+                                )}
+                                {/* Play overlay */}
+                                <div
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveVideo(topVid.url);
+                                  }}
+                                  className="absolute inset-0 bg-black/35 flex items-center justify-center opacity-80 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <div className="size-8 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30 group-hover:scale-110 transition-transform">
+                                    <Play className="size-4 text-white fill-current translate-x-0.5" />
+                                  </div>
+                                </div>
+                                <div className={cn(
+                                  "absolute top-1.5 right-1.5 size-4 rounded-full border flex items-center justify-center transition-all z-25",
+                                  isSel ? "bg-[#0b1957] border-[#0b1957] text-white" : "bg-white/70 border-slate-300 backdrop-blur-sm opacity-0 group-hover:opacity-100"
+                                )}>
+                                  {isSel && <Check className="size-2.5 stroke-[3]" />}
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        </div>
-                      );
-                    }
-                  })}
+                          );
+                        } else {
+                          // Stacked Video card deck
+                          return (
+                            <div
+                              key={asset.id}
+                              onClick={() => {
+                                const derivedGroup = videoGroups.find(g => g.group_key === asset.id);
+                                if (derivedGroup) {
+                                  setSelectedVideoGroup(derivedGroup);
+                                }
+                              }}
+                              className="relative w-full aspect-square pr-1.5 pb-1.5 select-none cursor-pointer"
+                            >
+                              {/* Layer 3 */}
+                              <div className="absolute inset-0 rounded-2xl bg-slate-300/80 border border-slate-300/50 -rotate-3 -translate-x-1 -translate-y-1 shadow-sm" />
+                              {/* Layer 2 */}
+                              <div className="absolute inset-0 rounded-2xl bg-slate-200/90 border border-slate-200/70 rotate-3 translate-x-1 translate-y-1 shadow-sm" />
+                              {/* Layer 1 */}
+                              <div className={cn(
+                                "absolute inset-0 rounded-2xl bg-slate-900 border overflow-hidden group shadow-md hover:shadow-lg transition-all",
+                                hasSelectedInGroup ? "border-[#0b1957] ring-2 ring-[#0b1957]/20" : "border-slate-200 hover:border-[#0b1957]/40"
+                              )}>
+                                <video
+                                  src={topVid.url}
+                                  preload="metadata"
+                                  className="w-full h-full object-cover pointer-events-none"
+                                />
+                                {topVid.duration !== undefined && topVid.duration > 0 && (
+                                  <div className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 bg-black/60 rounded text-[9px] text-white font-bold z-20 shadow-sm">
+                                    {topVid.duration}s
+                                  </div>
+                                )}
+                                <div
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveVideo(topVid.url);
+                                  }}
+                                  className="absolute inset-0 bg-black/35 flex items-center justify-center opacity-80 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <div className="size-8 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30 group-hover:scale-110 transition-transform">
+                                    <Play className="size-4 text-white fill-current translate-x-0.5" />
+                                  </div>
+                                </div>
+                                <div className={cn(
+                                  "absolute top-1.5 right-1.5 size-4 rounded-full border flex items-center justify-center transition-all z-25",
+                                  hasSelectedInGroup ? "bg-[#0b1957] border-[#0b1957] text-white" : "bg-white/70 border-slate-300 backdrop-blur-sm opacity-0 group-hover:opacity-100"
+                                )}>
+                                  {hasSelectedInGroup && <Check className="size-2.5 stroke-[3]" />}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }
+                      }
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
-
-            {/* ── PHOTO GROUPS (BOTTOM) ── */}
-            {images.length > 0 && (
-              <div className="space-y-2">
-                <h3 className="text-xs font-bold text-[#0b1957] uppercase tracking-wider flex items-center gap-1.5 pl-1">
-                  <ImageIcon className="size-3.5 text-[#0b1957]" />
-                  Image Generations ({images.length})
-                </h3>
-
-                {/* Horizontal scroll container for image previews/stacks */}
-                <div className="flex gap-3 overflow-x-auto pb-3.5 scrollbar-thin scrollbar-thumb-slate-200 h-[120px] items-center animate-in fade-in duration-300">
-                  {images.map((group) => {
-                    const hasSelectedInGroup = group.urls.some((url) => isAssetSelected(url));
-                    const isGroup = group.urls.length > 1;
-
-                    if (!isGroup) {
-                      const url = group.urls[0];
-                      const isSel = isAssetSelected(url);
-                      return (
-                        <div
-                          key={group.generation_id}
-                          onClick={() => toggleAssetSelection(url, "image")}
-                          className={cn(
-                            "flex-shrink-0 w-[100px] h-[100px] rounded-xl bg-slate-900 border overflow-hidden relative cursor-pointer group shadow-sm hover:shadow transition-all",
-                            isSel ? "border-[#0b1957] ring-2 ring-[#0b1957]/20" : "border-slate-200 hover:border-[#0b1957]/30"
-                          )}
-                        >
-                          <img
-                            src={url}
-                            alt="Thumbnail"
-                            className="w-full h-full object-cover pointer-events-none"
-                            loading="lazy"
-                          />
-                          {/* Selection check icon overlay */}
-                          <div className={cn(
-                            "absolute top-1.5 right-1.5 size-4 rounded-full border flex items-center justify-center transition-all z-25",
-                            isSel ? "bg-[#0b1957] border-[#0b1957] text-white" : "bg-white/70 border-slate-300 backdrop-blur-sm opacity-0 group-hover:opacity-100"
-                          )}>
-                            {isSel && <Check className="size-2.5 stroke-[3]" />}
-                          </div>
-                          {/* Timestamp badge */}
-                          <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/60 rounded text-[9px] text-white font-medium">
-                            {formatTimestamp(group.created_at)}
-                          </div>
-                        </div>
-                      );
-                    } else {
-                      // Stacked card deck look
-                      const firstUrl = group.urls[0];
-                      return (
-                        <div
-                          key={group.generation_id}
-                          onClick={() => setSelectedGroup(group)}
-                          className="flex-shrink-0 w-[120px] h-[100px] relative mr-4 select-none cursor-pointer"
-                        >
-                          {/* Layer 3 (bottom card) */}
-                          <div className="absolute inset-0 rounded-xl bg-slate-200 border border-slate-300/40 translate-x-2.5 translate-y-2.5 rotate-3 shadow-sm" />
-                          {/* Layer 2 (middle card) */}
-                          <div className="absolute inset-0 rounded-xl bg-slate-100 border border-slate-200/60 translate-x-1.5 translate-y-1.5 rotate-1.5 shadow-sm" />
-                          
-                          {/* Layer 1 (top card) */}
-                          <div
-                            className={cn(
-                              "absolute inset-0 rounded-xl bg-slate-900 border overflow-hidden group shadow-md hover:shadow-lg transition-all",
-                              hasSelectedInGroup ? "border-[#0b1957] ring-2 ring-[#0b1957]/20" : "border-slate-200 hover:border-[#0b1957]/40"
-                            )}
-                          >
-                            <img
-                              src={firstUrl}
-                              alt="Top Thumbnail"
-                              className="w-full h-full object-cover pointer-events-none"
-                              loading="lazy"
-                            />
-
-                            
-                            {/* Selected icon badge */}
-                            <div className={cn(
-                              "absolute top-1.5 right-1.5 size-4 rounded-full border flex items-center justify-center transition-all z-25",
-                              hasSelectedInGroup ? "bg-[#0b1957] border-[#0b1957] text-white" : "bg-white/70 border-slate-300 backdrop-blur-sm opacity-0 group-hover:opacity-100"
-                            )}>
-                              {hasSelectedInGroup && <Check className="size-2.5 stroke-[3]" />}
-                            </div>
-                            
-                            {/* Timestamp badge */}
-                            <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/60 rounded text-[9px] text-white font-medium">
-                              {formatTimestamp(group.created_at)}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    }
-                  })}
-                </div>
+              );
+            })}
+            
+            {/* Cute load more button */}
+            {unifiedAssets.length > visibleCount && (
+              <div className="flex justify-center pt-3 pb-6 animate-in fade-in duration-300">
+                <button
+                  onClick={() => setVisibleCount((prev) => prev + 12)}
+                  className="px-5 py-2 text-[11px] font-bold text-slate-700 bg-white border border-slate-200 rounded-full hover:bg-slate-50 transition-all active:scale-95 shadow-sm flex items-center gap-1.5 hover:border-slate-300"
+                >
+                  <Sparkles className="size-3 text-[#0b1957] fill-current" />
+                  Load More
+                </button>
               </div>
             )}
           </>

@@ -94,6 +94,8 @@ export function AgentBuilderVideoProgress({
       case "analyzing visual flow": return 0.8;
       case "generating video": return 0.5;
       case "generating prompt": return 0.2;
+      case "active":
+      case "generating": return 0.4;
       default: return 0.0;
     }
   };
@@ -133,6 +135,13 @@ export function AgentBuilderVideoProgress({
           icon: <CheckCircle2 className="size-5 text-blue-500 shrink-0" />,
           statusText: "Completed",
           colorClass: "text-blue-700 bg-blue-50/40 border-blue-100",
+        };
+      case "active":
+      case "generating":
+        return {
+          icon: <Loader2 className="size-5 text-primary animate-spin shrink-0" />,
+          statusText: "Processing...",
+          colorClass: "text-primary bg-primary/5 border-primary/10 animate-pulse",
         };
       case "generating prompt":
         return {
@@ -198,7 +207,7 @@ export function AgentBuilderVideoProgress({
         </p>
 
         {/* Real-time Video Player Preview */}
-        {videoUrl && (
+        {videoUrl && (status === "completed" || !phase?.includes("Phase 6")) && (
           <div className="w-full flex flex-col items-center mb-6 shrink-0">
             <div className="w-full max-w-[340px] rounded-2xl overflow-hidden border border-slate-200 shadow-lg bg-slate-950 aspect-video relative group">
               <video
