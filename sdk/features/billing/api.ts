@@ -158,6 +158,53 @@ export async function rechargeWallet(params: {
   return response.data;
 }
 /**
+ * Recurring billing — monthly subscription + low-balance auto-recharge
+ */
+export interface RecurringPlan {
+  kind: 'monthly' | 'auto_recharge';
+  packageId: string;
+  priceUsd: number;
+  credits: number;
+  status: 'incomplete' | 'active' | 'past_due' | 'canceled';
+  thresholdCredits?: number | null;
+  currentPeriodEnd?: string | null;
+  lastChargedAt?: string | null;
+  lastError?: string | null;
+}
+export interface RecurringStatus {
+  monthly: RecurringPlan | null;
+  autoRecharge: RecurringPlan | null;
+}
+/** Start a hosted Checkout for a fixed MONTHLY subscription. */
+export async function subscribeMonthly(params: {
+  packageId: string;
+  successUrl: string;
+  cancelUrl: string;
+}): Promise<{ sessionUrl: string }> {
+  const response = await apiClient.post('/api/stripe/subscribe', params);
+  return response.data;
+}
+/** Start a hosted Checkout (setup mode) to save a card for low-balance auto-recharge. */
+export async function setupAutoRecharge(params: {
+  packageId: string;
+  thresholdCredits?: number;
+  successUrl: string;
+  cancelUrl: string;
+}): Promise<{ sessionUrl: string }> {
+  const response = await apiClient.post('/api/stripe/auto-recharge', params);
+  return response.data;
+}
+/** Current recurring arrangements (monthly + auto-recharge). */
+export async function getRecurring(): Promise<RecurringStatus> {
+  const response = await apiClient.get('/api/stripe/recurring');
+  return { monthly: response.data.monthly, autoRecharge: response.data.autoRecharge };
+}
+/** Cancel the monthly subscription (at period end) or disable auto-recharge. */
+export async function cancelRecurring(kind: 'monthly' | 'auto_recharge'): Promise<{ cancelled: boolean }> {
+  const response = await apiClient.post('/api/stripe/recurring/cancel', { kind });
+  return response.data;
+}
+/**
  * Get usage aggregation summary
  */
 export async function getUsageAggregation(params?: {
