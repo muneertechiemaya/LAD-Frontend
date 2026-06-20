@@ -18,7 +18,6 @@ export const CreditsSettings: React.FC = () => {
     { value: 99, credits: 1000, label: 'Starter' },
     { value: 199, credits: 3000, label: 'Professional' },
     { value: 499, credits: 12000, label: 'Business' },
-    { value: 999, credits: 12000, label: 'Enterprise' },
   ];
 
   // Extract balance from SDK response  
