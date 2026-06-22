@@ -171,7 +171,8 @@ export const BusinessProfileSettings: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-gray-200 dark:border-slate-800 p-6">
+      <div>
+      <div className="hidden md:block bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-gray-200 dark:border-slate-800 p-6">
         <div className="flex items-start gap-4">
           <div className="w-10 h-10 rounded-xl grid place-items-center bg-[#e8ebf7] dark:bg-slate-800">
             <Target className="w-5 h-5 text-[#0B1957] dark:text-blue-400" />
@@ -208,6 +209,55 @@ export const BusinessProfileSettings: React.FC = () => {
         </div>
       </div>
 
+      {/* ── MOBILE VERSION (Matches the screenshot exactly) ── */}
+      <div className="block md:hidden bg-white dark:bg-[#000319] rounded-2xl border border-slate-100 dark:border-slate-900/60 p-4 shadow-sm flex flex-col gap-4">
+        <div className="flex flex-row items-start gap-3">
+          <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-[#00051d]/60 border border-slate-100 dark:border-slate-800/60 flex items-center justify-center shadow-sm shrink-0">
+            <Target className="w-5 h-5 text-[#0B1957] dark:text-blue-400 stroke-[2]" />
+          </div>
+          <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
+                Business Profile
+              </h2>
+              <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 rounded border border-transparent dark:border-slate-800/40">
+          Configuration Mode
+        </span>
+            </div>
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 leading-relaxed mt-1">
+              The 14 fields that power ICP Discovery, lead scoring, and outbound message personalization. The strategic AI wizard references these inputs directly; updates apply globally.
+            </p>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-xl border border-slate-900/80 bg-white dark:bg-[#00051d]/30 space-y-2.5">
+          <div className="flex items-center justify-between">
+      <span className="text-[10px] font-bold text-slate-400 dark:text-slate-300 uppercase tracking-wider">
+        Profile Completeness
+      </span>
+            <span className={`text-xs font-bold text-blue-600 dark:text-blue-400 font-mono tracking-tight ${
+              completeness.pct >= 70 ? 'text-emerald-600 dark:text-emerald-400' : 'text-[#0B1957] dark:text-blue-400'
+            }`}>
+
+        {completeness.pct}% ({completeness.filled}/{completeness.total})
+      </span>
+          </div>
+
+          {/* Progress Bar Track */}
+          <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-slate-900 overflow-hidden border border-transparent dark:border-slate-950">
+            <div
+              className="h-full rounded-full transition-all duration-500 bg-gradient-to-r from-blue-950/40 via-[#0B1957] to-[#2563eb]"
+              style={{ width: `${completeness.pct}%` }}
+            />
+          </div>
+
+          <div className="flex items-center gap-1.5 text-[10.5px] font-semibold text-slate-400 dark:text-slate-300">
+            <span className="w-3.5 h-3.5 rounded-full border border-blue-500 text-blue-500 flex items-center justify-center text-[9px] font-bold shrink-0">!</span>
+            <span>{completeness.total - completeness.filled} metrics need completion for 100% target match</span>
+          </div>
+        </div>
+      </div>
+    </div>
       {/* Company basics — merged in from the former Company tab. Operational
           fields (logo, location, hours) that aren't part of the 14-field ICP. */}
       <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-gray-200 dark:border-slate-800 p-6">
@@ -297,7 +347,7 @@ export const BusinessProfileSettings: React.FC = () => {
                   <span className="text-[12px] font-semibold text-[#172560] dark:text-slate-200 inline-flex items-center gap-1.5">
                     {copy.label}
                     {isOptional && (
-                      <span className="text-[10px] uppercase tracking-wide font-medium text-gray-400 dark:text-slate-500">
+                      <span className="text-[10px] uppercase tracking-wide font-medium text-gray-400 dark:text-slate-300">
                         optional
                       </span>
                     )}
