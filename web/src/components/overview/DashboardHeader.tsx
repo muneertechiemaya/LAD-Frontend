@@ -61,7 +61,7 @@ export const DashboardHeader: React.FC = () => {
     <div className="flex flex-wrap items-center justify-between gap-3 mb-5 mt-6 sm:mt-10">
 
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-        <TvMinimalPlay className="w-6 h-6 sm:w-8 sm:h-8 text-[#1E293B] dark:text-[#2B7CFF] shrink-0" color="#0b1957" />
+        <TvMinimalPlay className="w-6 h-6 sm:w-8 sm:h-8 text-[#0b1957] dark:text-[#2B7CFF] shrink-0" color="currentColor"/>
         <div className="min-w-0">
           <h1 className="text-xl sm:text-4xl font-bold text-[#1E293B] dark:text-white truncate">Smart Overview</h1>
           <p className="text-xs sm:text-sm text-muted-foreground dark:text-[#a0a9c9] mt-0.5">

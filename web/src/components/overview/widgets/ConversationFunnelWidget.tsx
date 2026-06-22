@@ -84,7 +84,7 @@ const FunnelBody: React.FC<{ data: NonNullable<ReturnType<typeof useConversation
       {/* Daily volume + spike headline */}
       <div className="flex items-end justify-between gap-3">
         <div>
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">New conversations</p>
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground dark:text-slate-300">New conversations</p>
           <div className="flex items-baseline gap-2 mt-0.5">
             <span className="text-2xl font-bold font-display dark:text-[#E0E0E0]">{volume_spike.latest}</span>
             <span className="text-[11px] text-muted-foreground">{fmtDay(volume_spike.latest_day)}</span>
