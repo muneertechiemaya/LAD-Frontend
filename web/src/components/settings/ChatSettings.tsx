@@ -1,5 +1,5 @@
 'use client';
-
+import { createPortal } from 'react-dom';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   MessageSquare,
@@ -25,11 +25,18 @@ import {
   X,
   Send,
   Sparkles,
+  Check
 } from 'lucide-react';
 import KnowledgeBaseManager from './KnowledgeBaseManager';
 import dynamic from 'next/dynamic';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
-
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 // AIPlayground is a heavy client-only component (framer-motion, refs, browser
 // APIs). Loading it dynamically with ssr:false keeps it out of the SSR bundle
 // and only fetches the chunk when the user clicks "Test in AI Playground".
@@ -879,20 +886,20 @@ export function ChatSettings() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+        <Loader2 className="h-6 w-6 animate-spin text-gray-400 dark:text-blue-500" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 relative">
+    <div className="space-y-6 relative text-gray-900 dark:text-white">
       {/* ── Sticky "Test in Playground" button ─────────────────────── */}
       {/* ── Test in Playground button ─────────────────────── */}
       <div className="flex justify-end mb-2">
         <button
           type="button"
           onClick={() => setPlaygroundOpen(true)}
-          className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-[#0B1957] rounded-xl shadow-md hover:bg-[#0B1957]/90 transition-all active:scale-95"
+          className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-[#0B1957] dark:bg-blue-600 rounded-xl shadow-md hover:opacity-90 dark:hover:bg-blue-700 transition-all active:scale-95"
           title="Open the AI Playground to test your prompts, knowledge base, and shareable assets"
         >
           <FlaskConical className="h-4 w-4" />
@@ -901,19 +908,19 @@ export function ChatSettings() {
       </div>
 
       {/* ── Section 1: System Prompts ─────────────────────────────── */}
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-        <div className="p-6 border-b border-gray-100">
+      <div className="bg-white dark:bg-[#030a21]/60 rounded-lg border border-gray-200 dark:border-blue-950/40 shadow-sm">
+        <div className="p-6 border-b border-gray-100 dark:border-blue-950/40">
           <div className="flex items-center gap-2 mb-1">
-            <MessageSquare className="h-5 w-5 text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-900">System Prompts</h2>
+            <MessageSquare className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">System Prompts</h2>
           </div>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 dark:text-slate-300">
             Manage AI conversation prompts for each channel. Edit prompt text to customize agent behavior.
           </p>
         </div>
 
         {/* Channel tabs */}
-        <div className="border-b border-gray-100 overflow-x-auto hide-scrollbar">
+        <div className="border-b border-gray-100 dark:border-blue-950/40 overflow-x-auto hide-scrollbar">
           <div className="flex gap-1 -mb-px px-6 min-w-max flex-nowrap">
             {CHANNELS.map((ch) => (
               <button
@@ -921,8 +928,8 @@ export function ChatSettings() {
                 onClick={() => setActiveChannel(ch.id)}
                 className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
                   activeChannel === ch.id
-                    ? 'border-[#0B1957] text-[#0B1957]'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-[#0B1957] text-[#0B1957] dark:border-blue-500 dark:text-blue-400'
+                    : 'border-transparent text-gray-500 dark:text-slate-300 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-blue-950/50'
                 }`}
               >
                 <span className={`h-2 w-2 rounded-full ${ch.color}`} />
@@ -933,9 +940,9 @@ export function ChatSettings() {
         </div>
 
         {/* Prompts list */}
-        <div className="divide-y divide-gray-100">
+        <div className="divide-y divide-gray-100 dark:divide-blue-950/40">
           {filteredPrompts.length === 0 ? (
-            <div className="px-6 py-12 text-center text-gray-400">
+            <div className="px-6 py-12 text-center text-gray-400 dark:text-slate-300">
               <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-40" />
               <p className="text-sm">No prompts for {CHANNELS.find((c) => c.id === activeChannel)?.label}</p>
               <p className="text-xs mt-1">Create one to get started</p>
@@ -949,18 +956,18 @@ export function ChatSettings() {
                 <div key={prompt.name} className="group">
                   {/* Prompt header row */}
                   <div
-                    className="flex items-center gap-3 px-6 py-3 cursor-pointer hover:bg-gray-50 transition-colors"
+                    className="flex items-center gap-3 px-6 py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-[#061033]/40 transition-colors"
                     onClick={() => setExpandedPrompt(isExpanded ? null : prompt.name)}
                   >
                     {isExpanded ? (
-                      <ChevronDown className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                      <ChevronDown className="h-4 w-4 text-gray-400 dark:text-slate-300 flex-shrink-0" />
                     ) : (
-                      <ChevronRight className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                      <ChevronRight className="h-4 w-4 text-gray-400 dark:text-slate-300 flex-shrink-0" />
                     )}
-                    <span className="text-sm font-medium text-gray-800 flex-1">
+                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200 flex-1">
                       {getLabel(prompt.name)}
                     </span>
-                    <span className="text-[10px] text-gray-400 font-mono mr-2">v{prompt.version || 1}</span>
+                    <span className="text-[10px] text-gray-400 dark:text-slate-300 font-mono mr-2">v{prompt.version || 1}</span>
 
                     {/* Active toggle */}
                     <button
@@ -972,9 +979,9 @@ export function ChatSettings() {
                       title={prompt.is_active ? 'Active — click to deactivate' : 'Inactive — click to activate'}
                     >
                       {prompt.is_active ? (
-                        <ToggleRight className="h-5 w-5 text-blue-500" />
+                        <ToggleRight className="h-5 w-5 text-blue-500 dark:text-blue-400" />
                       ) : (
-                        <ToggleLeft className="h-5 w-5 text-gray-300" />
+                        <ToggleLeft className="h-5 w-5 text-gray-300 dark:text-gray-600" />
                       )}
                     </button>
 
@@ -987,7 +994,7 @@ export function ChatSettings() {
                       className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
                       title="Delete prompt"
                     >
-                      <Trash2 className="h-3.5 w-3.5 text-red-400 hover:text-red-600" />
+                      <Trash2 className="h-3.5 w-3.5 text-red-400 dark:text-red-500 hover:text-red-600 dark:hover:text-red-400" />
                     </button>
                   </div>
 
@@ -995,7 +1002,7 @@ export function ChatSettings() {
                   {isExpanded && (
                     <div className="px-6 pb-4">
                       <textarea
-                        className="w-full h-64 p-3 text-sm font-mono border border-gray-200 rounded-lg resize-y focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 bg-gray-50"
+                        className="w-full h-64 p-3 text-sm font-mono border border-gray-200 dark:border-blue-950/60 rounded-lg resize-y focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 bg-gray-50 dark:bg-[#061033]/70 dark:text-white"
                         value={hasEdit ? editedTexts[prompt.name] : prompt.prompt_text}
                         onChange={(e) =>
                           setEditedTexts((prev) => ({ ...prev, [prompt.name]: e.target.value }))
@@ -1003,7 +1010,7 @@ export function ChatSettings() {
                         placeholder="Enter prompt text..."
                       />
                       <div className="flex items-center justify-between mt-2">
-                        <span className="text-[10px] text-gray-400">
+                        <span className="text-[10px] text-gray-400 dark:text-slate-300">
                           {prompt.updated_at
                             ? `Last updated: ${new Date(prompt.updated_at).toLocaleDateString()}`
                             : ''}
@@ -1011,7 +1018,7 @@ export function ChatSettings() {
                         <button
                           onClick={() => handleSavePrompt(prompt.name)}
                           disabled={!hasEdit || savingPrompt === prompt.name}
-                          className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                          className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors dark:bg-blue-600 dark:hover:bg-blue-700"
                         >
                           {savingPrompt === prompt.name ? (
                             <Loader2 className="h-3 w-3 animate-spin" />
@@ -1030,49 +1037,60 @@ export function ChatSettings() {
         </div>
 
         {/* Add new prompt */}
-        <div className="px-6 py-3 border-t border-gray-100">
+        <div className="px-6 py-3 border-t border-gray-100 dark:border-blue-950/40">
           {!showNewPrompt ? (
             <button
               onClick={() => setShowNewPrompt(true)}
-              className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 font-medium"
+              className="flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
             >
               <Plus className="h-3.5 w-3.5" />
               Add New Prompt
             </button>
           ) : (
-            <div className="space-y-3 p-4 rounded-lg border border-blue-100 bg-blue-50/30">
+            <div className="space-y-3 p-4 rounded-lg border border-blue-100 dark:border-blue-950/50 bg-blue-50/30 dark:bg-blue-950/20">
               <input
                 type="text"
                 placeholder="Prompt name (e.g. WELCOME_MESSAGE)"
                 value={newPromptName}
                 onChange={(e) => setNewPromptName(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+                className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-blue-950/60 bg-white dark:bg-[#061033]/70 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
                 autoFocus
               />
               {/* Channel selector — pre-fills from active tab but user can override */}
               <div className="flex items-center gap-2">
-                <label className="text-xs text-gray-500 whitespace-nowrap">Channel:</label>
-                <select
+                <label className="text-xs text-gray-500 dark:text-slate-300 whitespace-nowrap">Channel:</label>
+                <Select
                   value={newPromptName ? activeChannel : activeChannel}
-                  onChange={(e) => setActiveChannel(e.target.value)}
-                  className="flex-1 px-3 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 bg-white"
+                    onValueChange={(value) => setActiveChannel(value)}
                 >
-                  {CHANNELS.map((ch) => (
-                    <option key={ch.id} value={ch.id}>{ch.label}</option>
-                  ))}
-                </select>
+                  <SelectTrigger className="h-auto flex-1 border-0 rounded-none focus:ring-0 shadow-none bg-transparent px-3 text-left min-h-[48px]">
+                    <SelectValue placeholder="Select a channel" />
+                  </SelectTrigger>
+
+                  {/* FIXED: Mapped content backing panel box directly to your theme tokens (#00051d) to ensure smooth legibility */}
+                  <SelectContent className="bg-white dark:bg-[#000724] border-slate-200 dark:border-[#262831]">
+                    {CHANNELS.map((ch) => (
+                        <SelectItem
+                            key={ch.id}
+                            value={ch.id}
+                            className="pl-3 pr-6 text-xs justify-start transition-colors cursor-pointer text-slate-800 dark:text-white dark:focus:bg-[#22C55E] dark:focus:text-[#000724] dark:data-[state=checked]:focus:bg-[#22C55E] dark:data-[state=checked]:focus:text-[#000724]">
+                          {ch.label}
+                        </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <textarea
                 placeholder="Enter the prompt text..."
                 value={newPromptText}
                 onChange={(e) => setNewPromptText(e.target.value)}
-                className="w-full h-32 px-3 py-2 text-sm font-mono border border-gray-200 rounded-md resize-y focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+                className="w-full h-32 px-3 py-2 text-sm font-mono border border-gray-200 dark:border-blue-950/60 bg-white dark:bg-[#061033]/70 dark:text-white rounded-md resize-y focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
               />
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleCreatePrompt}
                   disabled={!newPromptName.trim() || !newPromptText.trim() || creatingPrompt}
-                  className="w-full flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="w-full flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-[#0B1957] dark:bg-[#1d4ed8] rounded-md hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed dark:bg-blue-600 dark:hover:bg-blue-700"
                 >
                   {creatingPrompt ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
                   Create Prompt
@@ -1083,18 +1101,18 @@ export function ChatSettings() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+      <div className="bg-white dark:bg-[#030a21]/60 rounded-lg border border-gray-200 dark:border-blue-950/40 shadow-sm">
         <KnowledgeBaseManager />
       </div>
 
       {/* ── Shareable Assets ─────────────────────────────────────── */}
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-        <div className="p-6 border-b border-gray-100">
+      <div className="bg-white dark:bg-[#030a21]/60 rounded-lg border border-gray-200 dark:border-blue-950/40 shadow-sm">
+        <div className="p-6 border-b border-gray-100 dark:border-blue-950/40">
           <div className="flex items-center gap-2 mb-1">
-            <BookOpen className="h-5 w-5 text-violet-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Shareable Assets</h2>
+            <BookOpen className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Shareable Assets</h2>
           </div>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 dark:text-slate-300">
             Files (price list, brochure, menu…) the AI agent can attach automatically
             in WhatsApp when the customer asks. The system listens for the trigger
             keywords in the AI&apos;s reply, downloads the file from the URL, and sends
@@ -1103,13 +1121,13 @@ export function ChatSettings() {
         </div>
         <div className="p-6 space-y-4">
           {loadingAssets ? (
-            <div className="flex items-center gap-2 text-sm text-gray-500">
+            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-slate-300">
               <Loader2 className="h-4 w-4 animate-spin" /> Loading assets…
             </div>
           ) : (
             <>
               {shareableAssets.length === 0 && (
-                <p className="text-sm text-gray-400 italic">
+                <p className="text-sm text-gray-400 dark:text-slate-300 italic">
                   No assets configured yet. Click &quot;Add Asset&quot; to register your first one.
                 </p>
               )}
@@ -1123,29 +1141,29 @@ export function ChatSettings() {
                   return (
                     <div
                       key={idx}
-                      className="flex items-center justify-between border border-gray-200 rounded-lg p-3 bg-white hover:bg-gray-50 cursor-pointer transition-colors"
+                      className="flex items-center justify-between border border-gray-200 dark:border-blue-950/40 rounded-lg p-3 bg-white dark:bg-transparent hover:bg-gray-50 dark:hover:bg-[#061033]/40 cursor-pointer transition-colors"
                       onClick={() => setExpandedAssetIdx(idx)}
                     >
                       <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <BookOpen className="h-5 w-5 text-violet-500 flex-shrink-0" />
+                        <BookOpen className="h-5 w-5 text-violet-500 dark:text-violet-400 flex-shrink-0" />
                         <div className="min-w-0 flex-1">
-                          <div className="text-sm font-medium text-gray-900 truncate">
+                          <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
                             {asset.filename || asset.key || `Asset #${idx + 1}`}
                           </div>
-                          <div className="text-xs text-gray-500 truncate">
+                          <div className="text-xs text-gray-500 dark:text-slate-300 truncate">
                             {triggers ? `Triggers: ${triggers}` : 'No trigger keywords set'}
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <ChevronRight className="h-4 w-4 text-gray-400" />
+                        <ChevronRight className="h-4 w-4 text-gray-400 dark:text-slate-300" />
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             removeShareableAsset(idx);
                           }}
-                          className="text-red-500 hover:text-red-700 p-1"
+                          className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1"
                           title="Remove this asset"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -1159,13 +1177,13 @@ export function ChatSettings() {
                 return (
                   <div
                     key={idx}
-                    className="border border-violet-300 rounded-lg p-4 space-y-3 bg-gray-50"
+                    className="border border-violet-300 dark:border-blue-900/50 rounded-lg p-4 space-y-3 bg-gray-50 dark:bg-[#061033]/50"
                   >
                     <div className="flex items-start justify-between">
                       <button
                         type="button"
                         onClick={() => setExpandedAssetIdx(null)}
-                        className="text-xs font-semibold text-violet-600 uppercase tracking-wide hover:text-violet-700 flex items-center gap-1"
+                        className="text-xs font-semibold text-violet-600 dark:text-violet-400 uppercase tracking-wide hover:text-violet-700 dark:hover:text-violet-300 flex items-center gap-1"
                         title="Collapse"
                       >
                         <ChevronDown className="h-3 w-3" />
@@ -1174,7 +1192,7 @@ export function ChatSettings() {
                       <button
                         type="button"
                         onClick={() => removeShareableAsset(idx)}
-                        className="text-red-500 hover:text-red-700"
+                        className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                         title="Remove this asset"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -1183,7 +1201,7 @@ export function ChatSettings() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                           Display Filename
                         </label>
                         <input
@@ -1193,12 +1211,12 @@ export function ChatSettings() {
                           onChange={(e) =>
                             updateShareableAsset(idx, { filename: e.target.value })
                           }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:focus:ring-blue-500"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                           Internal Key (optional)
                         </label>
                         <input
@@ -1208,13 +1226,13 @@ export function ChatSettings() {
                           onChange={(e) =>
                             updateShareableAsset(idx, { key: e.target.value })
                           }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:focus:ring-blue-500"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                         File URL <span className="text-red-500">*</span>
                       </label>
                       <input
@@ -1224,18 +1242,18 @@ export function ChatSettings() {
                         onChange={(e) =>
                           updateShareableAsset(idx, { url: e.target.value })
                         }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:focus:ring-blue-500"
                       />
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-gray-500 dark:text-slate-300 mt-1">
                         Must be a publicly downloadable URL. For Google Drive use
-                        <code className="text-xs bg-gray-200 px-1 mx-1 rounded">uc?export=download&id=…</code>
+                        <code className="text-xs bg-gray-200 dark:bg-blue-950 px-1 mx-1 rounded dark:text-gray-300">uc?export=download&id=…</code>
                         format (not the share-view link).
                       </p>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                           MIME Type
                         </label>
                         <input
@@ -1245,12 +1263,12 @@ export function ChatSettings() {
                           onChange={(e) =>
                             updateShareableAsset(idx, { mime_type: e.target.value })
                           }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:focus:ring-blue-500"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                           Send As
                         </label>
                         <select
@@ -1260,16 +1278,16 @@ export function ChatSettings() {
                               media_type: e.target.value as 'document' | 'image',
                             })
                           }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:focus:ring-blue-500"
                         >
-                          <option value="document">Document (file)</option>
-                          <option value="image">Image (preview)</option>
+                          <option value="document" className="dark:bg-[#030a21]">Document (file)</option>
+                          <option value="image" className="dark:bg-[#030a21]">Image (preview)</option>
                         </select>
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Trigger Keywords <span className="text-red-500">*</span>
                       </label>
                       <input
@@ -1311,9 +1329,9 @@ export function ChatSettings() {
                             return next;
                           });
                         }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:focus:ring-blue-500"
                       />
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-gray-500 dark:text-slate-300 mt-1">
                         Comma-separated. The file is sent when ANY keyword appears in
                         the AI&apos;s reply (matches plurals + variants — e.g. &quot;pricelist&quot;
                         also matches &quot;prices&quot;, &quot;pricing&quot;, &quot;price list&quot;).
@@ -1327,16 +1345,16 @@ export function ChatSettings() {
                 <button
                   type="button"
                   onClick={addShareableAsset}
-                  className="inline-flex items-center gap-1 text-sm font-medium text-violet-600 hover:text-violet-700"
+                  className="flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
                 >
-                  <Plus className="h-4 w-4" /> Add Asset
+                  <Plus className="h-5 w-5" /> Add Asset
                 </button>
 
                 <button
                   type="button"
                   onClick={handleSaveShareableAssets}
                   disabled={savingAssets}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-violet-600 rounded-md hover:bg-violet-700 disabled:opacity-50"
+                  className="h-12 px-6 bg-[#0B1957] hover:bg-[#0B1957]/90 dark:bg-[#1d4ed8] text-white dark:hover:bg-blue-700 rounded-2xl shadow-lg transition-all font-bold flex items-center gap-2"
                 >
                   {savingAssets ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -1352,13 +1370,13 @@ export function ChatSettings() {
       </div>
 
       {/* ── Section 2.5: Company Website Context ─────────────────── */}
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-        <div className="p-6 border-b border-gray-100">
+      <div className="bg-white dark:bg-[#030a21]/60 rounded-lg border border-gray-200 dark:border-blue-950/40 shadow-sm">
+        <div className="p-6 border-b border-gray-100 dark:border-blue-950/40">
           <div className="flex items-center gap-2 mb-1">
-            <Globe className="h-5 w-5 text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Company Website Context</h2>
+            <Globe className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Company Website Context</h2>
           </div>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 dark:text-slate-300">
             Let the AI answer WhatsApp questions using content from your website or blog pages.
             URLs are scraped once when you save and the text is cached — no live requests on each reply.
           </p>
@@ -1367,8 +1385,8 @@ export function ChatSettings() {
           {/* Enable toggle */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-800">Enable Website Context</p>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Enable Website Context</p>
+              <p className="text-xs text-gray-500 dark:text-slate-300 mt-0.5">
                 When ON, scraped website content is included in every WhatsApp AI reply
               </p>
             </div>
@@ -1382,27 +1400,27 @@ export function ChatSettings() {
               title={chatSettings.web_scraping_enabled ? 'On — click to disable' : 'Off — click to enable'}
             >
               {chatSettings.web_scraping_enabled ? (
-                <ToggleRight className="h-6 w-6 text-blue-600" />
+                <ToggleRight className="h-6 w-6 text-blue-600 dark:text-blue-400" />
               ) : (
-                <ToggleLeft className="h-6 w-6 text-gray-300" />
+                <ToggleLeft className="h-6 w-6 text-gray-300 dark:text-gray-600" />
               )}
             </button>
           </div>
 
           {/* URL list */}
           <div>
-            <p className="text-sm font-medium text-gray-800 mb-2">Website URLs</p>
-            <p className="text-xs text-gray-500 mb-3">
+            <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">Website URLs</p>
+            <p className="text-xs text-gray-500 dark:text-slate-300 mb-3">
               Add your company website homepage, about page, pricing page, blog, FAQ, etc.
             </p>
 
             {chatSettings.web_scraping_urls.length > 0 && (
-              <div className="mb-3 border border-gray-100 rounded-lg divide-y divide-gray-100 overflow-hidden">
+              <div className="mb-3 border border-gray-100 dark:border-blue-950/40 rounded-lg divide-y divide-gray-100 dark:divide-blue-950/40 overflow-hidden">
                 {chatSettings.web_scraping_urls.map((url, idx) => (
-                  <div key={idx} className="flex items-center justify-between px-3 py-2.5 bg-white hover:bg-gray-50">
+                  <div key={idx} className="flex items-center justify-between px-3 py-2.5 bg-white dark:bg-[#061033]/30 hover:bg-gray-50 dark:hover:bg-[#061033]/60">
                     <div className="flex items-center gap-2 overflow-hidden min-w-0">
                       <Globe className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
-                      <span className="text-sm text-gray-700 truncate">{url}</span>
+                      <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{url}</span>
                     </div>
                     <button
                       onClick={() =>
@@ -1411,7 +1429,7 @@ export function ChatSettings() {
                           web_scraping_urls: prev.web_scraping_urls.filter((_, i) => i !== idx),
                         }))
                       }
-                      className="ml-2 p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded flex-shrink-0 transition-colors"
+                      className="ml-2 p-1 text-gray-400 dark:text-slate-300 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded flex-shrink-0 transition-colors"
                       title="Remove URL"
                     >
                       <X className="h-3.5 w-3.5" />
@@ -1442,7 +1460,7 @@ export function ChatSettings() {
                     }
                   }
                 }}
-                className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+                className="flex-1 px-3 py-2 text-sm border border-gray-200 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
               />
               <button
                 onClick={() => {
@@ -1460,30 +1478,30 @@ export function ChatSettings() {
                   !newWebUrl.trim() ||
                   (!newWebUrl.trim().startsWith('http://') && !newWebUrl.trim().startsWith('https://'))
                 }
-                className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-blue-700 border border-blue-200 bg-blue-50 rounded-md hover:bg-blue-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-blue-700 border border-blue-200 bg-blue-50 rounded-md hover:bg-blue-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors dark:border-blue-950/40 dark:bg-blue-950/40 dark:text-blue-400 dark:hover:bg-blue-950/70"
               >
                 <Plus className="h-3.5 w-3.5" />
                 Add
               </button>
             </div>
-            <p className="text-xs text-gray-400 mt-1.5">Press Enter or click Add. Must start with https://</p>
+            <p className="text-xs text-gray-400 dark:text-slate-300 mt-1.5">Press Enter or click Add. Must start with https://</p>
           </div>
 
           {/* Per-URL scrape diagnostics — appears after Save & Scrape */}
           {webScrapingDiagnostics.length > 0 && (
-            <div className="border border-gray-100 rounded-lg overflow-hidden">
-              <div className="px-3 py-2 bg-gray-50 border-b border-gray-100 text-xs font-medium text-gray-600 uppercase tracking-wider flex items-center justify-between">
+            <div className="border border-gray-100 dark:border-blue-950/40 rounded-lg overflow-hidden">
+              <div className="px-3 py-2 bg-gray-50 dark:bg-[#051139] border-b border-gray-100 dark:border-blue-950/40 text-xs font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wider flex items-center justify-between">
                 <span>Last Scrape Result</span>
-                <span className="text-gray-400 normal-case tracking-normal">
+                <span className="text-gray-400 dark:text-slate-300 normal-case tracking-normal">
                   {webScrapingDiagnostics.filter((d) => d.ok).length} / {webScrapingDiagnostics.length} pages scraped
                 </span>
               </div>
-              <div className="divide-y divide-gray-100">
+              <div className="divide-y divide-gray-100 dark:divide-blue-950/40">
                 {webScrapingDiagnostics.map((d, i) => (
                   <div
                     key={i}
                     className={`flex items-start justify-between px-3 py-2.5 gap-3 ${
-                      d.auto_discovered ? 'pl-8 bg-gray-50/30' : ''
+                      d.auto_discovered ? 'pl-8 bg-gray-50/30 dark:bg-[#061033]/20' : 'dark:bg-[#030a21]/20'
                     }`}
                   >
                     <div className="flex items-start gap-2 min-w-0 flex-1">
@@ -1494,10 +1512,10 @@ export function ChatSettings() {
                       )}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <p className="text-xs text-gray-700 truncate" title={d.url}>{d.url}</p>
+                          <p className="text-xs text-gray-700 dark:text-gray-300 truncate" title={d.url}>{d.url}</p>
                           {d.auto_discovered && (
                             <span
-                              className="text-[10px] uppercase tracking-wider text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded font-medium"
+                              className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-300 bg-gray-100 dark:bg-blue-950 px-1.5 py-0.5 rounded font-medium"
                               title={
                                 d.discovery_method === 'sitemap'
                                   ? `Auto-discovered from sitemap.xml of ${d.discovered_from}`
@@ -1509,11 +1527,11 @@ export function ChatSettings() {
                           )}
                         </div>
                         {d.ok ? (
-                          <p className="text-[11px] text-green-600 mt-0.5">
+                          <p className="text-[11px] text-green-600 dark:text-emerald-400 mt-0.5">
                             ✓ {d.chars.toLocaleString()} chars extracted
                           </p>
                         ) : (
-                          <p className="text-[11px] text-red-600 mt-0.5">
+                          <p className="text-[11px] text-red-600 dark:text-rose-400 mt-0.5">
                             {d.error || 'Failed'}
                             {d.status ? ` (HTTP ${d.status})` : ''}
                           </p>
@@ -1529,7 +1547,7 @@ export function ChatSettings() {
           <div className="flex justify-between items-center pt-2 gap-2">
             <button
               onClick={() => setShowWebTestChat((v) => !v)}
-              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-blue-700 border border-blue-200 bg-white rounded-md hover:bg-blue-50 transition-colors"
+              className="h-12 px-6 bg-[#0B1957] hover:bg-[#0B1957]/90 dark:bg-[#1d4ed8] text-white dark:hover:bg-blue-700 rounded-2xl shadow-lg transition-all font-bold flex items-center gap-2"
               title="Preview how the AI answers using your scraped website content"
             >
               <Sparkles className="h-4 w-4" />
@@ -1538,7 +1556,7 @@ export function ChatSettings() {
             <button
               onClick={handleSaveWebScraping}
               disabled={webScrapingSaving}
-              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              className="h-12 px-6 bg-[#0B1957] hover:bg-[#0B1957]/90 dark:bg-[#1d4ed8] text-white dark:hover:bg-blue-700 rounded-2xl shadow-lg transition-all font-bold flex items-center gap-2"
             >
               {webScrapingSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               {webScrapingSaving ? 'Scraping & saving…' : 'Save & Scrape'}
@@ -1547,18 +1565,18 @@ export function ChatSettings() {
 
           {/* Test Chat panel — Claude-powered preview against cached scraped content */}
           {showWebTestChat && (
-            <div className="mt-4 border border-blue-200 rounded-xl overflow-hidden bg-slate-50/40">
-              <div className="px-4 py-2.5 bg-blue-50 border-b border-blue-200 flex items-center justify-between">
+            <div className="mt-4 border border-blue-200 dark:border-blue-950/40 rounded-xl overflow-hidden bg-slate-50/40 dark:bg-[#061033]/20">
+              <div className="px-4 py-2.5 bg-blue-50 dark:bg-[#051139] border-b border-blue-200 dark:border-blue-950/40 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-blue-600" />
-                  <span className="text-sm font-medium text-blue-900">
+                  <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <span className="text-sm font-medium text-blue-900 dark:text-white">
                     Test against scraped content
                   </span>
                 </div>
                 {webChatMessages.length > 0 && (
                   <button
                     onClick={() => setWebChatMessages([])}
-                    className="text-xs text-blue-700 hover:text-blue-900 font-medium"
+                    className="text-xs text-blue-700 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 font-medium"
                   >
                     Clear
                   </button>
@@ -1567,7 +1585,7 @@ export function ChatSettings() {
 
               <div className="max-h-[360px] overflow-y-auto p-4 space-y-3">
                 {webChatMessages.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-8 text-slate-400">
+                  <div className="flex flex-col items-center justify-center py-8 text-slate-400 dark:text-slate-300">
                     <Sparkles className="h-7 w-7 mb-2 opacity-50" />
                     <p className="text-xs text-center max-w-xs">
                       Ask a question to see how the AI answers it using only your scraped website content.
@@ -1586,16 +1604,16 @@ export function ChatSettings() {
                         className={`px-3.5 py-2 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
                           msg.role === 'user'
                             ? 'bg-blue-600 text-white rounded-br-sm'
-                            : 'bg-white border border-slate-200 text-slate-700 rounded-bl-sm shadow-sm'
+                            : 'bg-white dark:bg-[#030a21] border border-slate-200 dark:border-blue-950/60 text-slate-700 dark:text-gray-200 rounded-bl-sm shadow-sm'
                         }`}
                       >
                         {msg.content}
                       </div>
                       {msg.role === 'assistant' && msg.sources && msg.sources.length > 0 && (
-                        <div className="mt-1 px-1 text-[10px] text-slate-400 flex flex-wrap gap-1">
+                        <div className="mt-1 px-1 text-[10px] text-slate-400 dark:text-slate-300 flex flex-wrap gap-1">
                           <span className="font-semibold uppercase tracking-wider">Sources:</span>
                           {msg.sources.map((s, idx) => (
-                            <span key={idx} className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 truncate max-w-[200px]" title={s}>
+                            <span key={idx} className="bg-slate-100 dark:bg-blue-950/80 px-1.5 py-0.5 rounded text-slate-500 dark:text-slate-300 truncate max-w-[200px]" title={s}>
                               {s}
                             </span>
                           ))}
@@ -1606,14 +1624,14 @@ export function ChatSettings() {
                 )}
                 {webChatBusy && (
                   <div className="flex w-fit max-w-[85%] mr-auto">
-                    <div className="px-3.5 py-2 bg-white border border-slate-200 text-slate-500 rounded-2xl rounded-bl-sm shadow-sm text-sm flex items-center gap-2">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> Thinking…
+                    <div className="px-3.5 py-2 bg-white dark:bg-[#030a21] border border-slate-200 dark:border-blue-950/60 text-slate-500 rounded-2xl rounded-bl-sm shadow-sm text-sm flex items-center gap-2">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" /> Thinking…
                     </div>
                   </div>
                 )}
               </div>
 
-              <div className="p-3 border-t border-blue-200 bg-white">
+              <div className="p-3 border-t border-blue-200 dark:border-blue-950/40 bg-white dark:bg-[#030a21]/80">
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -1627,7 +1645,7 @@ export function ChatSettings() {
                       }
                     }}
                     disabled={webChatBusy}
-                    className="flex-1 px-3.5 py-2 text-sm bg-slate-50 border border-slate-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 disabled:opacity-60"
+                    className="flex-1 px-3.5 py-2 text-sm bg-slate-50 dark:bg-[#061033]/60 border border-slate-200 dark:border-blue-950/50 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 dark:text-white disabled:opacity-60"
                   />
                   <button
                     onClick={handleWebTestChatSend}
@@ -1649,33 +1667,33 @@ export function ChatSettings() {
       </div>
 
       {/* ── Section 3: Chat Behaviour ────────────────────────────── */}
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-        <div className="p-6 border-b border-gray-100">
+      <div className="bg-white dark:bg-[#030a21]/60 rounded-lg border border-gray-200 dark:border-blue-950/40 shadow-sm">
+        <div className="p-6 border-b border-gray-100 dark:border-blue-950/40">
           <div className="flex items-center gap-2 mb-1">
-            <Zap className="h-5 w-5 text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Chat Behaviour</h2>
+            <Zap className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Chat Behaviour</h2>
           </div>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 dark:text-slate-300">
             Control how the AI agent behaves during conversations.
           </p>
         </div>
         <div className="p-6 space-y-5">
           {/* Typing indicator — per channel */}
           <div>
-            <p className="text-sm font-medium text-gray-800 mb-1">Typing Indicator</p>
-            <p className="text-xs text-gray-500 mb-3">
+            <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Typing Indicator</p>
+            <p className="text-xs text-gray-500 dark:text-slate-300 mb-3">
               Show &quot;typing…&quot; to the contact while the AI is composing a reply.
               Configure separately for each channel.
             </p>
 
-            <div className="space-y-3 border border-gray-100 rounded-lg divide-y divide-gray-100 overflow-hidden">
+            <div className="space-y-3 border border-gray-100 dark:border-blue-950/40 rounded-lg divide-y divide-gray-100 dark:divide-blue-950/40 overflow-hidden">
               {/* Personal WhatsApp row */}
-              <div className="flex items-center justify-between px-4 py-3">
+              <div className="flex items-center justify-between px-4 py-3 bg-white dark:bg-transparent">
                 <div className="flex items-center gap-2.5">
                   <span className="h-2 w-2 rounded-full bg-emerald-400 flex-shrink-0" />
                   <div>
-                    <p className="text-sm font-medium text-gray-800">WAPA</p>
-                    <p className="text-xs text-gray-500">Shows a &quot;typing…&quot; presence to the contact while replying</p>
+                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Personal WhatsApp</p>
+                    <p className="text-xs text-gray-500 dark:text-slate-300">Shows a &quot;typing…&quot; presence to the contact while replying</p>
                   </div>
                 </div>
                 <button
@@ -1685,20 +1703,20 @@ export function ChatSettings() {
                   title={chatSettings.typing_indicator ? 'On — click to disable' : 'Off — click to enable'}
                 >
                   {chatSettings.typing_indicator ? (
-                    <ToggleRight className="h-6 w-6 text-blue-500" />
+                    <ToggleRight className="h-6 w-6 text-blue-500 dark:text-blue-400" />
                   ) : (
-                    <ToggleLeft className="h-6 w-6 text-gray-300" />
+                    <ToggleLeft className="h-6 w-6 text-gray-300 dark:text-gray-600" />
                   )}
                 </button>
               </div>
 
               {/* WABA row */}
-              <div className="flex items-center justify-between px-4 py-3">
+              <div className="flex items-center justify-between px-4 py-3 bg-white dark:bg-transparent">
                 <div className="flex items-center gap-2.5">
                   <span className="h-2 w-2 rounded-full bg-green-500 flex-shrink-0" />
                   <div>
-                    <p className="text-sm font-medium text-gray-800">WhatsApp Business API</p>
-                    <p className="text-xs text-gray-500">Sends a read receipt and shows a typing bubble while replying</p>
+                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200">WhatsApp Business API</p>
+                    <p className="text-xs text-gray-500 dark:text-slate-300">Sends a read receipt and shows a typing bubble while replying</p>
                   </div>
                 </div>
                 <button
@@ -1708,9 +1726,9 @@ export function ChatSettings() {
                   title={chatSettings.waba_typing_indicator ? 'On — click to disable' : 'Off — click to enable'}
                 >
                   {chatSettings.waba_typing_indicator ? (
-                    <ToggleRight className="h-6 w-6 text-blue-500" />
+                    <ToggleRight className="h-6 w-6 text-blue-500 dark:text-blue-400" />
                   ) : (
-                    <ToggleLeft className="h-6 w-6 text-gray-300" />
+                    <ToggleLeft className="h-6 w-6 text-gray-300 dark:text-gray-600" />
                   )}
                 </button>
               </div>
@@ -1721,7 +1739,7 @@ export function ChatSettings() {
             <button
               onClick={handleSaveBehaviour}
               disabled={savingBehaviour}
-              className="flex items-center gap-1.5 px-5 py-2.5 text-sm font-semibold text-white bg-[#0B1957] rounded-xl hover:opacity-90 disabled:opacity-50 transition-all shadow-md active:scale-95"
+              className="flex items-center gap-1.5 px-5 py-2.5 text-sm font-semibold text-white bg-[#0B1957] dark:bg-blue-600 rounded-xl hover:opacity-90 disabled:opacity-50 transition-all shadow-md active:scale-95"
             >
               {savingBehaviour ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Save Behaviour
@@ -1731,13 +1749,13 @@ export function ChatSettings() {
       </div>
 
       {/* ── Section 5: Campaign Settings ──────────────────────────── */}
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-        <div className="p-6 border-b border-gray-100">
+      <div className="bg-white dark:bg-[#030a21]/60 rounded-lg border border-gray-200 dark:border-blue-950/40 shadow-sm">
+        <div className="p-6 border-b border-gray-100 dark:border-blue-950/40">
           <div className="flex items-center gap-2 mb-1">
-            <Clock className="h-5 w-5 text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Campaign Settings</h2>
+            <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Campaign Settings</h2>
           </div>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 dark:text-slate-300">
             Configure automated campaign frequency and limits.
           </p>
         </div>
@@ -1745,8 +1763,8 @@ export function ChatSettings() {
           {/* Enable toggle */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-800">Enable Automated Campaigns</p>
-              <p className="text-xs text-gray-500 mt-0.5">Send automated follow-up messages to leads</p>
+              <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Enable Automated Campaigns</p>
+              <p className="text-xs text-gray-500 dark:text-slate-300 mt-0.5">Send automated follow-up messages to leads</p>
             </div>
             <button
               onClick={() =>
@@ -1760,19 +1778,19 @@ export function ChatSettings() {
               }
             >
               {chatSettings.campaign_frequency.enabled ? (
-                <ToggleRight className="h-6 w-6 text-blue-500" />
+                <ToggleRight className="h-6 w-6 text-blue-500 dark:text-blue-400" />
               ) : (
-                <ToggleLeft className="h-6 w-6 text-gray-300" />
+                <ToggleLeft className="h-6 w-6 text-gray-300 dark:text-gray-600" />
               )}
             </button>
           </div>
 
           {/* Interval hours */}
           <div>
-            <label className="block text-sm font-medium text-gray-800 mb-1">
+            <label className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">
               Message Interval (hours)
             </label>
-            <p className="text-xs text-gray-500 mb-2">Minimum time between automated messages to the same lead</p>
+            <p className="text-xs text-gray-500 dark:text-slate-300 mb-2">Minimum time between automated messages to the same lead</p>
             <input
               type="number"
               min={1}
@@ -1787,16 +1805,16 @@ export function ChatSettings() {
                   },
                 }))
               }
-              className="w-32 px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+              className="w-32 px-3 py-2 text-sm border border-gray-200 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
             />
           </div>
 
           {/* Max daily messages */}
           <div>
-            <label className="block text-sm font-medium text-gray-800 mb-1">
+            <label className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">
               Max Daily Messages
             </label>
-            <p className="text-xs text-gray-500 mb-2">Maximum number of automated messages sent per day across all leads</p>
+            <p className="text-xs text-gray-500 dark:text-slate-300 mb-2">Maximum number of automated messages sent per day across all leads</p>
             <input
               type="number"
               min={1}
@@ -1811,7 +1829,7 @@ export function ChatSettings() {
                   },
                 }))
               }
-              className="w-32 px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+              className="w-32 px-3 py-2 text-sm border border-gray-200 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
             />
           </div>
 
@@ -1819,7 +1837,7 @@ export function ChatSettings() {
             <button
               onClick={handleSaveCampaign}
               disabled={savingSettings}
-              className="flex items-center gap-1.5 px-5 py-2.5 text-sm font-semibold text-white bg-[#0B1957] rounded-xl hover:opacity-90 disabled:opacity-50 transition-all shadow-md active:scale-95"
+              className="flex items-center gap-1.5 px-5 py-2.5 text-sm font-semibold text-white bg-[#0B1957] dark:bg-blue-600 rounded-xl hover:opacity-90 disabled:opacity-50 transition-all shadow-md active:scale-95"
             >
               {savingSettings ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Save Campaign Settings
@@ -1829,13 +1847,13 @@ export function ChatSettings() {
       </div>
 
       {/* ── Section 6: Post-Conversation Follow-up Timing ────────── */}
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-        <div className="p-6 border-b border-gray-100">
+      <div className="bg-white dark:bg-[#030a21]/60 rounded-lg border border-gray-200 dark:border-blue-950/40 shadow-sm">
+        <div className="p-6 border-b border-gray-100 dark:border-blue-950/40">
           <div className="flex items-center gap-2 mb-1">
-            <Bell className="h-5 w-5 text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Post-Conversation Follow-ups</h2>
+            <Bell className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Post-Conversation Follow-ups</h2>
           </div>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 dark:text-slate-300">
             Configure when automated follow-up messages are sent after a conversation ends.
             Each stage fires once at the scheduled delay.
           </p>
@@ -1844,8 +1862,8 @@ export function ChatSettings() {
           {/* Master enable */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-800">Enable Post-Conversation Follow-ups</p>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Enable Post-Conversation Follow-ups</p>
+              <p className="text-xs text-gray-500 dark:text-slate-300 mt-0.5">
                 Automatically send follow-up messages when a customer stops responding
               </p>
             </div>
@@ -1853,32 +1871,32 @@ export function ChatSettings() {
               onClick={() => setFollowupConfig((prev) => ({ ...prev, enabled: !prev.enabled }))}
             >
               {followupConfig.enabled ? (
-                <ToggleRight className="h-6 w-6 text-blue-500" />
+                <ToggleRight className="h-6 w-6 text-blue-500 dark:text-blue-400" />
               ) : (
-                <ToggleLeft className="h-6 w-6 text-gray-300" />
+                <ToggleLeft className="h-6 w-6 text-gray-300 dark:text-gray-600" />
               )}
             </button>
           </div>
 
           {/* Stage timing table */}
-          <div className="border border-gray-100 rounded-lg overflow-x-auto custom-scrollbar">
+          <div className="border border-gray-100 dark:border-blue-950/40 rounded-lg overflow-x-auto custom-scrollbar">
             <table className="w-full min-w-[600px]">
-              <thead className="bg-gray-50 border-b border-gray-100">
+              <thead className="bg-gray-50 dark:bg-[#051139] border-b border-gray-100 dark:border-blue-950/40">
                 <tr>
-                  <th className="text-left text-xs font-medium text-gray-500 px-4 py-3 w-32">Stage</th>
-                  <th className="text-left text-xs font-medium text-gray-500 px-4 py-3">Description</th>
-                  <th className="text-left text-xs font-medium text-gray-500 px-4 py-3 w-32">Delay (hrs)</th>
-                  <th className="text-left text-xs font-medium text-gray-500 px-4 py-3 w-56">WhatsApp Template</th>
-                  <th className="text-left text-xs font-medium text-gray-500 px-4 py-3 w-20">Enabled</th>
+                  <th className="text-left text-xs font-medium text-gray-500 dark:text-slate-300 px-4 py-3 w-32">Stage</th>
+                  <th className="text-left text-xs font-medium text-gray-500 dark:text-slate-300 px-4 py-3">Description</th>
+                  <th className="text-left text-xs font-medium text-gray-500 dark:text-slate-300 px-4 py-3 w-32">Delay (hrs)</th>
+                  <th className="text-left text-xs font-medium text-gray-500 dark:text-slate-300 px-4 py-3 w-56">WhatsApp Template</th>
+                  <th className="text-left text-xs font-medium text-gray-500 dark:text-slate-300 px-4 py-3 w-20">Enabled</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-100 dark:divide-blue-950/40">
                 {(
                   [
-                    { key: 'FIRST',  label: '1st Follow-up', desc: 'Warm first check-in',           color: 'text-green-600 bg-green-50' },
-                    { key: 'SECOND', label: '2nd Follow-up', desc: 'Value offer / nudge',            color: 'text-yellow-600 bg-yellow-50' },
-                    { key: 'THIRD',  label: '3rd Follow-up', desc: 'Non-pushy check-in (1 week)',    color: 'text-orange-600 bg-orange-50' },
-                    { key: 'FOURTH', label: 'Final message', desc: 'Warm goodbye (2 weeks)',         color: 'text-red-600 bg-red-50' },
+                    { key: 'FIRST',  label: '1st Follow-up', desc: 'Warm first check-in',           color: 'text-green-600 bg-green-50 dark:text-emerald-400 dark:bg-emerald-950/30' },
+                    { key: 'SECOND', label: '2nd Follow-up', desc: 'Value offer / nudge',            color: 'text-yellow-600 bg-yellow-50 dark:text-yellow-400 dark:bg-yellow-950/20' },
+                    { key: 'THIRD',  label: '3rd Follow-up', desc: 'Non-pushy check-in (1 week)',    color: 'text-orange-600 bg-orange-50 dark:text-orange-400 dark:bg-orange-950/20' },
+                    { key: 'FOURTH', label: 'Final message', desc: 'Warm goodbye (2 weeks)',         color: 'text-red-600 bg-red-50 dark:text-rose-400 dark:bg-rose-950/30' },
                   ] as Array<{ key: keyof FollowupTimingConfig['stages']; label: string; desc: string; color: string }>
                 ).map(({ key, label, desc, color }) => {
                   const stage = followupConfig.stages[key];
@@ -1886,13 +1904,13 @@ export function ChatSettings() {
                   const needsTemplate = stage.delay_hours > 24;
                   const templateMissing = needsTemplate && !(stage.template_name || '').trim();
                   return (
-                    <tr key={key} className={!followupConfig.enabled ? 'opacity-50' : ''}>
+                    <tr key={key} className={`dark:bg-transparent ${!followupConfig.enabled ? 'opacity-50' : ''}`}>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${color}`}>
                           {label}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-xs text-gray-500">{desc}</td>
+                      <td className="px-4 py-3 text-xs text-gray-500 dark:text-slate-300">{desc}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
                           <input
@@ -1902,46 +1920,54 @@ export function ChatSettings() {
                             value={stage.delay_hours}
                             disabled={!followupConfig.enabled || !stage.enabled}
                             onChange={(e) => updateStage(key, 'delay_hours', parseInt(e.target.value) || 24)}
-                            className="w-20 px-2 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 disabled:opacity-40 disabled:bg-gray-50"
+                            className="w-20 px-2 py-1.5 text-sm border border-gray-200 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 disabled:opacity-40 disabled:bg-gray-50"
                           />
-                          <span className="text-xs text-gray-400">h</span>
+                          <span className="text-xs text-gray-400 dark:text-slate-300">h</span>
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <select
-                          value={stage.template_name || ''}
+                        <Select
+                          value={stage.template_name || "placeholder-fallback"}
                           disabled={!followupConfig.enabled || !stage.enabled || loadingTemplates}
-                          onChange={(e) => updateStage(key, 'template_name', e.target.value)}
-                          className={`w-full pl-3 pr-10 py-2 text-sm border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 disabled:opacity-40 disabled:bg-gray-50 transition-all appearance-none ${
-                            templateMissing ? 'border-red-300 text-red-900' : 'border-gray-200'
-                          }`}
-                          style={{
-                            backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
-                            backgroundPosition: 'right 0.5rem center',
-                            backgroundRepeat: 'no-repeat',
-                            backgroundSize: '1.5em 1.5em'
-                          }}
-                          title={
-                            needsTemplate
-                              ? 'Required: Meta blocks free-text replies after 24 h'
-                              : 'Optional: leave blank to use AI-generated reply within 24 h window'
-                          }
+                            onValueChange={(value) => updateStage(key, 'template_name', value === "placeholder-fallback" ? "" : value)}
                         >
-                          <option value="">
-                            {loadingTemplates
-                              ? 'Loading templates…'
-                              : needsTemplate
-                                ? '— Pick a template (required) —'
-                                : '— AI-generated (within 24 h) —'}
-                          </option>
-                          {approvedTemplates.map((t) => (
-                            <option key={`${t.name}-${t.language}`} value={t.name}>
-                              {t.name} {t.parameter_count > 0 ? `({{${t.parameter_count}}})` : ''}
-                            </option>
-                          ))}
-                        </select>
+                          <SelectTrigger
+                              className={`h-auto flex-1 border-0 rounded-none focus:ring-0 shadow-none bg-transparent px-3 text-left min-h-[48px] 
+                              ${templateMissing ? 'border-red-300 text-red-900 dark:text-rose-400' : 'border-gray-200 dark:border-blue-950/60'} `}
+                              title={
+                                needsTemplate
+                                    ? 'Required: Meta blocks free-text replies after 24 h'
+                                    : 'Optional: leave blank to use AI-generated reply within 24 h window'
+                              }
+                          >
+                            <SelectValue placeholder="Select a template" />
+                          </SelectTrigger>
+
+                          {/* FIXED: Synced floating window canvas directly to your midnight theme box (#00051d) */}
+                          <SelectContent className="bg-white dark:bg-[#000724] border-slate-200 dark:border-[#262831]">
+                            <SelectItem
+                                value="placeholder-fallback"
+                                className="pl-3 pr-6 text-xs justify-start transition-colors cursor-pointer text-slate-800 dark:text-white dark:focus:bg-[#22C55E] dark:focus:text-[#000724] dark:data-[state=checked]:focus:bg-[#22C55E] dark:data-[state=checked]:focus:text-[#000724]">
+
+                              {loadingTemplates
+                                  ? 'Loading templates…'
+                                  : needsTemplate
+                                      ? '— Pick a template (required) —'
+                                      : '— AI-generated (within 24 h) —'}
+                            </SelectItem>
+
+                            {approvedTemplates.map((t) => (
+                                <SelectItem
+                                    key={`${t.name}-${t.language}`}
+                                    value={t.name}
+                                    className="pl-3 pr-6 text-xs justify-start transition-colors cursor-pointer text-slate-800 dark:text-white dark:focus:bg-[#22C55E] dark:focus:text-[#000724] dark:data-[state=checked]:focus:bg-[#22C55E] dark:data-[state=checked]:focus:text-[#000724]">
+                                  {t.name} {t.parameter_count > 0 ? `({{${t.parameter_count}}})` : ''}
+                                </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         {templateMissing && (
-                          <p className="text-[10px] text-red-600 mt-1">
+                          <p className="text-[10px] text-red-600 dark:text-rose-400 mt-1">
                             Required — delays past 24 h need an approved template
                           </p>
                         )}
@@ -1952,9 +1978,9 @@ export function ChatSettings() {
                           onClick={() => updateStage(key, 'enabled', !stage.enabled)}
                         >
                           {stage.enabled ? (
-                            <ToggleRight className="h-5 w-5 text-blue-500 disabled:opacity-40" />
+                            <ToggleRight className="h-5 w-5 text-blue-500 dark:text-blue-400 disabled:opacity-40" />
                           ) : (
-                            <ToggleLeft className="h-5 w-5 text-gray-300" />
+                            <ToggleLeft className="h-5 w-5 text-gray-300 dark:text-gray-600" />
                           )}
                         </button>
                       </td>
@@ -1964,19 +1990,19 @@ export function ChatSettings() {
               </tbody>
             </table>
             {!loadingTemplates && approvedTemplates.length === 0 && (
-              <div className="px-4 py-2 bg-amber-50 border-t border-amber-100 text-[11px] text-amber-700">
+              <div className="px-4 py-2 bg-amber-50 dark:bg-amber-950/20 border-t border-amber-100 dark:border-amber-900/40 text-[11px] text-amber-700 dark:text-amber-400">
                 No approved WhatsApp templates found.  Add and approve templates in your Meta Business Manager — without a template, follow-ups past 24 h will fail to send.
               </div>
             )}
           </div>
 
           {/* Booking reminders — list of N pre-booking nudges */}
-          <div className="border border-gray-100 rounded-lg p-4 bg-gray-50/40 space-y-3">
+          <div className="border border-gray-100 dark:border-blue-950/40 rounded-lg p-4 bg-gray-50/40 dark:bg-[#061033]/20 space-y-3">
             <div>
-              <label className="block text-sm font-medium text-gray-800 mb-1">
+              <label className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">
                 Booking Reminders
               </label>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-500 dark:text-slate-300">
                 Sent to the customer BEFORE their booking start time so they don&apos;t miss the session.
                 Add as many reminders as you need (e.g. a 24h heads-up + a 3h nudge).
               </p>
@@ -1985,10 +2011,10 @@ export function ChatSettings() {
               {followupConfig.booking_reminders.map((reminder, idx) => (
                 <div
                   key={idx}
-                  className="flex flex-wrap items-end gap-2 p-3 bg-white rounded-md border border-gray-200"
+                  className="flex flex-wrap items-end gap-2 p-3 bg-white dark:bg-[#030a21]/80 rounded-md border border-gray-200 dark:border-blue-950/40"
                 >
                   <div className="flex flex-col min-w-[140px]">
-                    <label className="text-[11px] font-medium text-gray-600 mb-1">
+                    <label className="text-[11px] font-medium text-gray-600 dark:text-slate-300 mb-1">
                       Reminder #{idx + 1}
                     </label>
                     <div className="flex items-center gap-1.5">
@@ -2005,48 +2031,59 @@ export function ChatSettings() {
                             ),
                           }))
                         }
-                        className="w-20 px-2 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+                        className="w-20 px-2 py-1.5 text-sm border border-gray-200 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
                       />
-                      <span className="text-xs text-gray-500">h before</span>
+                      <span className="text-xs text-gray-500 dark:text-slate-300">h before</span>
                     </div>
                   </div>
 
                   <div className="flex-1 min-w-[200px]">
-                    <label className="text-[11px] font-medium text-gray-600 mb-1 block">
+                    <label className="text-[11px] font-medium text-gray-600 dark:text-slate-300 mb-1 block">
                       WhatsApp Template
                     </label>
-                    <select
-                      value={reminder.template_name || ''}
+
+                    <Select
+                      value={reminder.template_name || "placeholder-fallback"}
                       disabled={loadingTemplates}
-                      onChange={(e) =>
+                        onValueChange={(value) =>
                         setFollowupConfig((prev) => ({
                           ...prev,
                           booking_reminders: prev.booking_reminders.map((r, i) =>
-                            i === idx ? { ...r, template_name: e.target.value } : r
+                            i === idx ? { ...r, template_name: value === "placeholder-fallback" ? "" : value } : r
                           ),
                         }))
                       }
-                      className={`w-full pl-3 pr-10 py-2 text-sm border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all appearance-none ${
-                        !reminder.template_name ? 'border-red-300' : 'border-gray-200'
+                  >
+              <SelectTrigger
+                      className={`w-full h-auto flex-1 border-0 rounded-none focus:ring-0 shadow-none bg-transparent px-3 text-left min-h-[48px] ${
+                        !reminder.template_name
+                                  ? '!border-red-500 !text-red-400'
+                                  : 'border-slate-800/80 focus:border-slate-600'
                       }`}
-                      style={{
-                        backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
-                        backgroundPosition: 'right 0.5rem center',
-                        backgroundRepeat: 'no-repeat',
-                        backgroundSize: '1.5em 1.5em'
-                      }}
-                    >
-                      <option value="">
-                        {loadingTemplates
-                          ? 'Loading templates…'
-                          : '— Pick a template (required) —'}
-                      </option>
-                      {approvedTemplates.map((t) => (
-                        <option key={`${t.name}-${t.language}`} value={t.name}>
-                          {t.name} {t.parameter_count > 0 ? `({{${t.parameter_count}}})` : ''}
-                        </option>
-                      ))}
-                    </select>
+                      >
+                        <SelectValue placeholder="Select a template" />
+                      </SelectTrigger>
+
+                      {/* FIXED: Locked layout viewports back to deep dark panels (#00051d) with clean vertical scroll bounding */}
+                      <SelectContent className="bg-white dark:bg-[#000724] border-slate-200 dark:border-[#262831]">
+                        <SelectItem
+                            value="placeholder-fallback"
+                            className="pl-3 pr-6 text-xs justify-start transition-colors cursor-pointer text-slate-800 dark:text-white dark:focus:bg-[#22C55E] dark:focus:text-[#000724] dark:data-[state=checked]:focus:bg-[#22C55E] dark:data-[state=checked]:focus:text-[#000724]">
+                          {loadingTemplates
+                              ? 'Loading templates…'
+                              : '— Pick a template (required) —'}
+                        </SelectItem>
+
+                        {approvedTemplates.map((t) => (
+                            <SelectItem
+                                key={`${t.name}-${t.language}`}
+                                value={t.name}
+                                className="pl-3 pr-6 text-xs justify-start transition-colors cursor-pointer text-slate-800 dark:text-white dark:focus:bg-[#22C55E] dark:focus:text-[#000724] dark:data-[state=checked]:focus:bg-[#22C55E] dark:data-[state=checked]:focus:text-[#000724]">
+                              {t.name} {t.parameter_count > 0 ? `({{${t.parameter_count}}})` : ''}
+                            </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <button
@@ -2063,7 +2100,7 @@ export function ChatSettings() {
                         ? 'At least one reminder is required'
                         : 'Remove this reminder'
                     }
-                    className="px-2 py-1.5 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                    className="px-2 py-1.5 text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                   >
                     ✕
                   </button>
@@ -2085,23 +2122,23 @@ export function ChatSettings() {
                 }))
               }
               disabled={followupConfig.booking_reminders.length >= 10}
-              className="flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <span className="text-lg leading-none">＋</span> Add another reminder
             </button>
 
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-500 dark:text-slate-300">
               All reminders need an APPROVED WhatsApp template — Meta blocks free-text replies outside the 24-hour conversation window.
               {followupConfig.booking_reminders.length >= 10 && (
-                <span className="block mt-1 text-amber-600">Maximum 10 reminders per booking.</span>
+                <span className="block mt-1 text-amber-600 dark:text-amber-400">Maximum 10 reminders per booking.</span>
               )}
             </p>
           </div>
 
           {/* Reliability indicator */}
-          <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 rounded-md border border-blue-100">
-            <Zap className="h-4 w-4 text-blue-500 flex-shrink-0" />
-            <p className="text-xs text-blue-700">
+          <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-950/20 rounded-md border border-blue-100 dark:border-blue-900/40">
+            <Zap className="h-4 w-4 text-blue-500 dark:text-blue-400 flex-shrink-0" />
+            <p className="text-xs text-blue-700 dark:text-blue-400">
               Follow-ups are delivered reliably even if the server restarts.
             </p>
           </div>
@@ -2110,7 +2147,7 @@ export function ChatSettings() {
             <button
               onClick={handleSaveFollowup}
               disabled={savingFollowup}
-              className="flex items-center gap-1.5 px-5 py-2.5 text-sm font-semibold text-white bg-[#0B1957] rounded-xl hover:opacity-90 disabled:opacity-50 transition-all shadow-md active:scale-95"
+              className="flex items-center gap-1.5 px-5 py-2.5 text-sm font-semibold text-white bg-[#0B1957] dark:bg-blue-600 rounded-xl hover:opacity-90 disabled:opacity-50 transition-all shadow-md active:scale-95"
             >
               {savingFollowup ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Save Follow-up Settings
@@ -2120,26 +2157,26 @@ export function ChatSettings() {
       </div>
 
       {/* ── Section 7: LinkedIn Automation ──────────────────────── */}
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-        <div className="p-6 border-b border-gray-100">
+      <div className="bg-white dark:bg-[#030a21]/60 rounded-lg border border-gray-200 dark:border-blue-950/40 shadow-sm">
+        <div className="p-6 border-b border-gray-100 dark:border-blue-950/40">
           <div className="flex items-center gap-2 mb-1">
-            <Linkedin className="h-5 w-5 text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-900">LinkedIn Automation</h2>
+            <Linkedin className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">LinkedIn Automation</h2>
           </div>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 dark:text-slate-300">
             Automatically engage with the post used to personalise each connection request or follow-up message.
             Actions fire after a successful send — never before.
           </p>
         </div>
         <div className="p-6 space-y-5">
-          <div className="border border-gray-100 rounded-lg divide-y divide-gray-100 overflow-hidden">
+          <div className="border border-gray-100 dark:border-blue-950/40 rounded-lg divide-y divide-gray-100 dark:divide-blue-950/40 overflow-hidden">
             {/* Auto Like */}
-            <div className="flex items-center justify-between px-4 py-3">
+            <div className="flex items-center justify-between px-4 py-3 bg-white dark:bg-transparent">
               <div className="flex items-center gap-2.5">
                 <ThumbsUp className="h-4 w-4 text-blue-500 flex-shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-gray-800">Auto Like Post</p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Auto Like Post</p>
+                  <p className="text-xs text-gray-500 dark:text-slate-300">
                     Like the lead&apos;s most recent LinkedIn post when a connection request or follow-up is sent
                   </p>
                 </div>
@@ -2151,20 +2188,20 @@ export function ChatSettings() {
                 title={linkedinAutomation.auto_like_posts ? 'On — click to disable' : 'Off — click to enable'}
               >
                 {linkedinAutomation.auto_like_posts ? (
-                  <ToggleRight className="h-6 w-6 text-blue-500" />
+                  <ToggleRight className="h-6 w-6 text-blue-500 dark:text-blue-400" />
                 ) : (
-                  <ToggleLeft className="h-6 w-6 text-gray-300" />
+                  <ToggleLeft className="h-6 w-6 text-gray-300 dark:text-gray-600" />
                 )}
               </button>
             </div>
 
             {/* Auto Comment */}
-            <div className="flex items-center justify-between px-4 py-3">
+            <div className="flex items-center justify-between px-4 py-3 bg-white dark:bg-transparent">
               <div className="flex items-center gap-2.5">
                 <MessageCircle className="h-4 w-4 text-blue-500 flex-shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-gray-800">Auto Comment on Post</p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Auto Comment on Post</p>
+                  <p className="text-xs text-gray-500 dark:text-slate-300">
                     AI generates a short, natural comment on the lead&apos;s most recent post — no generic phrases
                   </p>
                 </div>
@@ -2176,20 +2213,20 @@ export function ChatSettings() {
                 title={linkedinAutomation.auto_comment_posts ? 'On — click to disable' : 'Off — click to enable'}
               >
                 {linkedinAutomation.auto_comment_posts ? (
-                  <ToggleRight className="h-6 w-6 text-blue-500" />
+                  <ToggleRight className="h-6 w-6 text-blue-500 dark:text-blue-400" />
                 ) : (
-                  <ToggleLeft className="h-6 w-6 text-gray-300" />
+                  <ToggleLeft className="h-6 w-6 text-gray-300 dark:text-gray-600" />
                 )}
               </button>
             </div>
 
             {/* AI Agent reply delay */}
-            <div className="flex items-center justify-between px-4 py-3">
+            <div className="flex items-center justify-between px-4 py-3 bg-white dark:bg-transparent">
               <div className="flex items-center gap-2.5">
                 <Clock className="h-4 w-4 text-blue-500 flex-shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-gray-800">AI Agent Reply Delay</p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-sm font-medium text-gray-800 dark:text-gray-200">AI Agent Reply Delay</p>
+                  <p className="text-xs text-gray-500 dark:text-slate-300">
                     Hold the AI&apos;s reply for this many seconds before sending — makes the response feel more human. 0 = instant.
                   </p>
                 </div>
@@ -2208,9 +2245,9 @@ export function ChatSettings() {
                       ai_agent_reply_delay_seconds: Number.isFinite(v) ? Math.max(0, Math.min(300, v)) : 0,
                     }));
                   }}
-                  className="w-20 px-2 py-1.5 border border-gray-200 rounded-md text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  className="w-20 px-2 py-1.5 border border-gray-200 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-200"
                 />
-                <span className="text-xs text-gray-500 w-8">sec</span>
+                <span className="text-xs text-gray-500 dark:text-slate-300 w-8">sec</span>
               </div>
             </div>
           </div>
@@ -2219,7 +2256,7 @@ export function ChatSettings() {
             <button
               onClick={handleSaveLinkedinAutomation}
               disabled={savingLinkedinAutomation}
-              className="flex items-center gap-1.5 px-5 py-2.5 text-sm font-semibold text-white bg-[#0B1957] rounded-xl hover:opacity-90 disabled:opacity-50 transition-all shadow-md active:scale-95"
+              className="flex items-center gap-1.5 px-5 py-2.5 text-sm font-semibold text-white bg-[#0B1957] dark:bg-blue-600 rounded-xl hover:opacity-90 disabled:opacity-50 transition-all shadow-md active:scale-95"
             >
               {savingLinkedinAutomation ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Save LinkedIn Settings
@@ -2229,26 +2266,26 @@ export function ChatSettings() {
       </div>
 
       {/* ───── LinkedIn Follow-up Sequence (post-acceptance cadence) ───── */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-gray-200">
+      <div className="bg-white dark:bg-[#030a21]/60 rounded-xl border border-gray-200 dark:border-blue-950/40 shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-gray-200 dark:border-blue-950/40">
           <div className="flex items-center gap-3 mb-1">
-            <div className="p-2.5 bg-amber-50 rounded-lg">
-              <Clock className="h-5 w-5 text-amber-600" />
+            <div className="p-2.5 bg-amber-50 dark:bg-amber-950/20 rounded-lg">
+              <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900">LinkedIn Follow-up Sequence</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">LinkedIn Follow-up Sequence</h3>
           </div>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 dark:text-slate-300">
             After a connection request is accepted, the AI agent schedules this sequence of messages towards booking a meeting. Each message uses your LinkedIn chat-agent prompt (above), is auto-cancelled when the lead replies, and is dynamically rescheduled when the lead asks for a specific future time.
           </p>
         </div>
         <div className="p-6 space-y-5">
           {/* On/off toggle */}
-          <div className="border border-gray-100 rounded-lg px-4 py-3 flex items-center justify-between">
+          <div className="border border-gray-100 dark:border-blue-950/40 rounded-lg px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <Sparkles className="h-4 w-4 text-amber-500 flex-shrink-0" />
               <div>
-                <p className="text-sm font-medium text-gray-800">Auto-schedule sequence on acceptance</p>
-                <p className="text-xs text-gray-500">When off, no scheduled follow-ups are created — the live agent still replies to inbound DMs.</p>
+                <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Auto-schedule sequence on acceptance</p>
+                <p className="text-xs text-gray-500 dark:text-slate-300">When off, no scheduled follow-ups are created — the live agent still replies to inbound DMs.</p>
               </div>
             </div>
             <button
@@ -2258,23 +2295,23 @@ export function ChatSettings() {
               {linkedinFollowup.enabled ? (
                 <ToggleRight className="h-6 w-6 text-amber-500" />
               ) : (
-                <ToggleLeft className="h-6 w-6 text-gray-300" />
+                <ToggleLeft className="h-6 w-6 text-gray-300 dark:text-gray-600" />
               )}
             </button>
           </div>
 
           {/* Cadence editor */}
-          <div className="border border-gray-100 rounded-lg p-4">
+          <div className="border border-gray-100 dark:border-blue-950/40 rounded-lg p-4">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <p className="text-sm font-medium text-gray-800">Cadence (hours from acceptance)</p>
-                <p className="text-xs text-gray-500">
+                <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Cadence (hours from acceptance)</p>
+                <p className="text-xs text-gray-500 dark:text-slate-300">
                   One entry = one follow-up. Default: 24, 72, 168, 336 (≈ +1d, +3d, +7d, +14d).
                 </p>
               </div>
               <button
                 onClick={() => setLinkedinFollowup((prev) => ({ ...prev, schedule_hours: DEFAULT_LI_FOLLOWUP_HOURS }))}
-                className="text-xs text-amber-600 hover:underline"
+                className="text-xs text-amber-600 dark:text-amber-400 hover:underline"
                 disabled={!linkedinFollowup.enabled}
                 title="Reset to default cadence"
               >
@@ -2285,7 +2322,7 @@ export function ChatSettings() {
             <div className="space-y-2">
               {linkedinFollowup.schedule_hours.map((hours, idx) => (
                 <div key={idx} className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-gray-500 w-16">
+                  <span className="text-xs font-semibold text-gray-500 dark:text-slate-300 w-16">
                     Touch {idx + 1}
                   </span>
                   <input
@@ -2302,9 +2339,9 @@ export function ChatSettings() {
                         return { ...prev, schedule_hours: next };
                       });
                     }}
-                    className="w-24 px-2 py-1 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-200 disabled:bg-gray-50 disabled:text-gray-400"
+                    className="w-24 px-2 py-1 border border-gray-200 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-200 disabled:bg-gray-50 dark:disabled:bg-blue-950/40 disabled:text-gray-400"
                   />
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs text-gray-400 dark:text-slate-300">
                     hours (≈ {(hours / 24).toFixed(hours % 24 === 0 ? 0 : 1)}d)
                   </span>
                   <button
@@ -2315,7 +2352,7 @@ export function ChatSettings() {
                       }))
                     }
                     disabled={!linkedinFollowup.enabled || linkedinFollowup.schedule_hours.length <= 1}
-                    className="text-gray-300 hover:text-red-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                     title="Remove this touch"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -2332,7 +2369,7 @@ export function ChatSettings() {
                 }))
               }
               disabled={!linkedinFollowup.enabled || linkedinFollowup.schedule_hours.length >= 10}
-              className="mt-3 flex items-center gap-1 text-xs text-amber-600 hover:underline disabled:opacity-40 disabled:cursor-not-allowed"
+              className="mt-3 flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 hover:underline disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Plus className="h-3 w-3" />
               Add another touch
@@ -2343,7 +2380,7 @@ export function ChatSettings() {
             <button
               onClick={handleSaveLinkedinFollowup}
               disabled={savingLinkedinFollowup}
-              className="flex items-center gap-1.5 px-5 py-2.5 text-sm font-semibold text-white bg-[#0B1957] rounded-xl hover:opacity-90 disabled:opacity-50 transition-all shadow-md active:scale-95"
+              className="flex items-center gap-1.5 px-5 py-2.5 text-sm font-semibold text-white bg-[#0B1957] dark:bg-blue-600 rounded-xl hover:opacity-90 disabled:opacity-50 transition-all shadow-md active:scale-95"
             >
               {savingLinkedinFollowup ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Save Follow-up Cadence
@@ -2355,17 +2392,20 @@ export function ChatSettings() {
       {/* Toast */}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-      {/* AI Playground side panel — opens over current page */}
-      {playgroundOpen && (
+      {playgroundOpen && typeof window !== 'undefined' && createPortal(
         <>
           <div
-            className="fixed inset-0 z-[100] bg-black/30"
+            className="fixed inset-0 z-[140] bg-black/60 backdrop-blur-[2px] transition-opacity animate-in fade-in duration-200"
             onClick={() => setPlaygroundOpen(false)}
           />
-          <div className="fixed top-0 right-0 z-[110] h-full w-full sm:w-[480px] bg-background shadow-2xl">
+
+          <div
+            className="fixed right-0 top-0 bottom-0 z-[150] h-full w-full"
+          >
             <AIPlayground onClose={() => setPlaygroundOpen(false)} />
           </div>
-        </>
+        </>,
+        document.body
       )}
     </div>
   );

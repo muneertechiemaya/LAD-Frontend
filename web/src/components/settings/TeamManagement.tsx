@@ -1,9 +1,9 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { 
-  UserPlus, 
-  Edit2, 
-  Trash2, 
+import {
+  UserPlus,
+  Edit2,
+  Trash2,
   CheckCircle,
   XCircle,
   ChevronDown,
@@ -13,7 +13,8 @@ import {
   Mail,
   User,
   Shield,
-  Eye as EyeIcon
+  Eye as EyeIcon,
+  Check
 } from 'lucide-react';
 import {
   Dialog,
@@ -32,7 +33,7 @@ import {
   SelectItem,
 } from '@/components/ui/select';
 import { useRouter } from 'next/navigation';
-import { safeStorage } from '@lad/shared/storage';  
+import { safeStorage } from '@lad/shared/storage';
 import { TeamManagementSkeleton } from '../skeletons';
 import { getApiBaseUrl } from '@/lib/api-utils';
 import { cn } from '@/lib/utils';
@@ -218,7 +219,7 @@ export const TeamManagement: React.FC = () => {
         body: JSON.stringify({ capabilities: newCapabilities }),
       });
       if (response.ok) {
-        setUsers(users.map(u => 
+        setUsers(users.map(u =>
           u.id === userId ? { ...u, capabilities: newCapabilities } : u
         ));
       }
@@ -265,11 +266,11 @@ export const TeamManagement: React.FC = () => {
 
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
-      case 'owner':  return 'bg-purple-50 text-purple-700 border border-purple-200 dark:!bg-transparent dark:!border-transparent dark:!px-0 dark:!py-0 dark:!rounded-none dark:!font-extrabold dark:!text-sky-400';
+      case 'owner':  return 'bg-purple-50 text-purple-700 border border-purple-200 dark:!bg-transparent dark:!border-transparent dark:!px-0 dark:!py-0 dark:!rounded-none dark:!font-extrabold dark:!text-purple-400';
       case 'admin':  return 'bg-blue-50 text-blue-700 border border-blue-200 dark:!bg-transparent dark:!border-transparent dark:!px-0 dark:!py-0 dark:!rounded-none dark:!font-extrabold dark:!text-sky-400';
       case 'member': return 'bg-green-50 text-green-700 border border-green-200 dark:!bg-transparent dark:!border-transparent dark:!px-0 dark:!py-0 dark:!rounded-none dark:!font-extrabold dark:!text-emerald-400';
-      case 'viewer': return 'bg-gray-50 text-gray-700 border border-gray-200 dark:!bg-transparent dark:!border-transparent dark:!px-0 dark:!py-0 dark:!rounded-none dark:!font-extrabold dark:!text-slate-300';
-      default:       return 'bg-gray-50 text-gray-700 border border-gray-200 dark:!bg-transparent dark:!border-transparent dark:!px-0 dark:!py-0 dark:!rounded-none dark:!font-extrabold dark:!text-slate-300';
+      case 'viewer': return 'bg-gray-50 text-gray-700 border border-gray-200 dark:!bg-transparent dark:!border-transparent dark:!px-0 dark:!py-0 dark:!rounded-none dark:!font-extrabold dark:!text-zinc-400';
+      default:       return 'bg-gray-50 text-gray-700 border border-gray-200 dark:!bg-transparent dark:!border-transparent dark:!px-0 dark:!py-0 dark:!rounded-none dark:!font-extrabold dark:!text-zinc-400';
     }
   };
 
@@ -278,12 +279,12 @@ export const TeamManagement: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Team Management</h2>
-          <p className="text-gray-500 mt-1 font-medium">Manage team members and their granular page permissions</p>
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-slate-300 tracking-tight">Team Management</h2>
+          <p className="text-gray-500 dark:text-zinc-400 mt-1 font-medium">Manage team members and their granular page permissions</p>
         </div>
         <Button
           onClick={() => setShowAddModal(true)}
-          className="h-12 px-6 bg-[#0B1957] hover:bg-[#0B1957]/90 text-white rounded-2xl shadow-lg transition-all font-bold flex items-center gap-2"
+          className="h-12 px-6 bg-[#0B1957] hover:bg-[#0B1957]/90 dark:bg-[#1d4ed8] dark:text-white dark:hover:bg-blue-700 rounded-2xl shadow-lg transition-all font-bold flex items-center gap-2"
         >
           <UserPlus className="w-5 h-5" />
           Add Team Member
@@ -291,19 +292,19 @@ export const TeamManagement: React.FC = () => {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-100 rounded-2xl p-6 flex items-center gap-4">
-          <div className="p-2 rounded-xl bg-red-100">
-            <XCircle className="h-5 w-5 text-red-600" />
+        <div className="bg-red-50 border border-red-100 dark:bg-red-950/20 dark:border-red-900/30 rounded-2xl p-6 flex items-center gap-4">
+          <div className="p-2 rounded-xl bg-red-100 dark:bg-red-950/50">
+            <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
           </div>
           <div className="flex-1">
-            <p className="text-red-700 font-bold">Error loading team</p>
-            <p className="text-red-600/80 text-sm mt-0.5">{error}</p>
+            <p className="text-red-700 dark:text-red-400 font-bold">Error loading team</p>
+            <p className="text-red-600/80 dark:text-red-400/60 text-sm mt-0.5">{error}</p>
           </div>
-          <Button 
+          <Button
             variant="outline"
             size="sm"
             onClick={fetchUsers}
-            className="rounded-xl border-red-200 text-red-700 hover:bg-red-100/50"
+            className="rounded-xl border-red-200 dark:border-zinc-800 text-red-700 dark:text-red-400 hover:bg-red-100/50 dark:hover:bg-red-950/50"
           >
             Try Again
           </Button>
@@ -313,28 +314,28 @@ export const TeamManagement: React.FC = () => {
       {loading && users.length === 0 ? (
         <TeamManagementSkeleton />
       ) : (
-        <div className="bg-white rounded-[2rem] shadow-xl shadow-gray-100/50 border border-gray-100 overflow-hidden">
+        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50/50 border-b border-gray-100">
+              <thead className="bg-gray-50/50 dark:bg-transparent border-b border-gray-100 dark:border-zinc-800/80">
                 <tr>
-                  <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Team Member</th>
-                  <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Role & Status</th>
-                  <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Permissions</th>
-                  <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Privacy</th>
-                  <th className="px-8 py-5 text-right text-[10px] font-bold text-gray-400 uppercase tracking-widest">Actions</th>
+                  <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-400 dark:text-slate-300 uppercase tracking-widest">Team Member</th>
+                  <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-400 dark:text-slate-300 uppercase tracking-widest">Role & Status</th>
+                  <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-400 dark:text-slate-300 uppercase tracking-widest">Permissions</th>
+                  <th className="px-8 py-5 text-left text-[10px] font-bold text-gray-400 dark:text-slate-300 uppercase tracking-widest">Privacy</th>
+                  <th className="px-8 py-5 text-right text-[10px] font-bold text-gray-400 dark:text-slate-300 uppercase tracking-widest">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-100 dark:divide-zinc-800/60">
                 {users.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="px-8 py-16 text-center">
                       <div className="flex flex-col items-center">
-                        <div className="p-4 rounded-full bg-gray-50 mb-4">
-                          <UserPlus className="h-8 w-8 text-gray-300" />
+                        <div className="p-4 rounded-full bg-gray-50 dark:bg-zinc-900 mb-4">
+                          <UserPlus className="h-8 w-8 text-gray-300 dark:text-zinc-600" />
                         </div>
-                        <h3 className="text-lg font-bold text-gray-900">No team members</h3>
-                        <p className="text-gray-500 text-sm mt-1 max-w-xs">Start by adding your first team member to collaborate on conversations.</p>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-zinc-100">No team members</h3>
+                        <p className="text-gray-500 dark:text-zinc-400 text-sm mt-1 max-w-xs">Start by adding your first team member to collaborate on conversations.</p>
                       </div>
                     </td>
                   </tr>
@@ -342,16 +343,16 @@ export const TeamManagement: React.FC = () => {
                   // Row layout merges develop's 5-column schema (matches
                   // the header) with HEAD's dark-mode hover state.
                   users.map((user) => (
-                    <tr key={user.id} className="hover:bg-gray-50/50 dark:hover:bg-slate-800/50 transition-colors group">
+                    <tr key={user.id} className="hover:bg-gray-50/50 dark:hover:bg-zinc-900/20 transition-colors group">
                       <td className="px-8 py-6">
                         <div className="flex items-center gap-4">
-                          <div className="h-10 w-10 rounded-full bg-[#0B1957] flex items-center justify-center text-white font-bold shadow-sm">
+                          <div className="h-10 w-10 rounded-full bg-[#0B1957] dark:bg-zinc-800 flex items-center justify-center text-white dark:text-zinc-200 font-bold shadow-sm border dark:border-zinc-700">
                             {(user.name || user.email || '?').charAt(0).toUpperCase()}
                           </div>
                           <div className="flex flex-col">
-                            <span className="font-bold text-gray-900 dark:text-slate-100">{user.name || '—'}</span>
-                            <span className="text-xs text-gray-500 dark:text-slate-400 flex items-center gap-1.5 mt-0.5">
-                              <Mail className="h-3 w-3 opacity-60" />
+                            <span className="font-bold text-gray-900 dark:text-zinc-100">{user.name || '—'}</span>
+                            <span className="text-xs text-gray-500 dark:text-slate-300 flex items-center gap-1.5 mt-0.5">
+                              <Mail className="h-3 w-3 opacity-60 text-gray-400 dark:text-slate-300" />
                               {user.email}
                             </span>
                           </div>
@@ -368,12 +369,12 @@ export const TeamManagement: React.FC = () => {
                               value={user.role}
                               onValueChange={(val) => handleUpdateRole(user.id, val)}
                             >
-                              <SelectTrigger className={cn("h-8 w-fit min-w-[160px] border-none shadow-none text-xs font-bold rounded-lg px-3", getRoleBadgeColor(user.role))}>
+                              <SelectTrigger className={cn("h-8 w-fit min-w-[160px] border-none shadow-none text-xs font-bold rounded-lg px-3 bg-transparent dark:bg-transparent", getRoleBadgeColor(user.role))}>
                                 <SelectValue placeholder="Select role" />
                               </SelectTrigger>
-                              <SelectContent>
+                              <SelectContent className="dark:bg-[#112240] dark:border-zinc-800">
                                 {ROLE_OPTIONS.map(opt => (
-                                  <SelectItem key={opt.value} value={opt.value} className="text-xs font-medium">
+                                  <SelectItem key={opt.value} value={opt.value} className="text-xs font-medium dark:text-zinc-300 dark:focus:bg-zinc-900">
                                     {opt.label}
                                   </SelectItem>
                                 ))}
@@ -400,18 +401,18 @@ export const TeamManagement: React.FC = () => {
                               <label key={page.key} className="flex items-center gap-2 cursor-pointer group w-fit">
                                 <div className={cn(
                                   "w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-colors",
-                                  isChecked ? "bg-[#0B1957] border-[#0B1957]" : "border-gray-300 group-hover:border-[#0B1957]"
+                                  isChecked ? "bg-[#0B1957] border-[#0B1957] dark:bg-zinc-100 dark:border-zinc-100" : "border-gray-300 dark:border-zinc-700 group-hover:border-[#0B1957] dark:group-hover:border-zinc-500"
                                 )}>
-                                  {isChecked && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                                  {isChecked && <div className="w-1.5 h-1.5 bg-white dark:bg-[#112240] rounded-full" />}
                                 </div>
-                                <span className="text-xs text-gray-600 group-hover:text-gray-900 transition-colors">
+                                <span className="text-xs text-gray-600 dark:text-zinc-400 group-hover:text-gray-900 dark:group-hover:text-zinc-200 transition-colors">
                                   {page.label}
                                 </span>
-                                <input 
-                                  type="checkbox" 
-                                  className="hidden" 
-                                  checked={isChecked || false} 
-                                  onChange={() => toggleCapability(user.id, page.key)} 
+                                <input
+                                  type="checkbox"
+                                  className="hidden"
+                                  checked={isChecked || false}
+                                  onChange={() => toggleCapability(user.id, page.key)}
                                 />
                               </label>
                             );
@@ -424,31 +425,31 @@ export const TeamManagement: React.FC = () => {
                             onClick={() => toggleMaskPhone(user.id, !!user.maskPhoneNumber)}
                             className={cn(
                               "relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
-                              user.maskPhoneNumber ? "bg-orange-500" : "bg-gray-200"
+                              user.maskPhoneNumber ? "bg-orange-500 dark:bg-orange-600" : "bg-gray-200 dark:bg-zinc-800"
                             )}
                           >
                             <span
                               className={cn(
-                                "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                                "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out dark:bg-zinc-100",
                                 user.maskPhoneNumber ? "translate-x-5" : "translate-x-0"
                               )}
                             />
                           </button>
-                          <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
+                          <span className="text-[9px] font-bold text-gray-400 dark:text-slate-300 uppercase tracking-widest">
                             {user.maskPhoneNumber ? 'Phone Masked' : 'Phone Visible'}
                           </span>
                         </div>
                       </td>
                       <td className="px-8 py-6 text-right">
                         <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button variant="ghost" size="sm" className="h-9 w-9 p-0 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-900">
+                          <Button variant="ghost" size="sm" className="h-9 w-9 p-0 rounded-xl hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400 hover:text-gray-900 dark:hover:text-zinc-100">
                             <Edit2 className="h-4 w-4" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => handleDeleteUser(user.id)}
-                            className="h-9 w-9 p-0 rounded-xl hover:bg-red-50 text-gray-400 hover:text-red-600"
+                            className="h-9 w-9 p-0 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/20 text-gray-400 hover:text-red-600 dark:hover:text-red-400"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -465,48 +466,57 @@ export const TeamManagement: React.FC = () => {
 
       {/* Add User Modal */}
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-        <DialogContent className="sm:w-[90vw] sm:max-w-5xl flex flex-col p-0 overflow-hidden max-h-[90vh]">
-          <DialogHeader className="px-8 pt-6">
-            <DialogTitle>Add Team Member</DialogTitle>
+        <DialogContent className="sm:w-[90vw] sm:max-w-5xl flex flex-col p-0 overflow-hidden max-h-[90vh] bg-white dark:bg-[#000724] border border-slate-200 dark:border-[#262831]">
+
+          {/* Synchronized Header Row UI */}
+          <DialogHeader className="p-6 border-b border-slate-100 dark:border-[#262831] dark:bg-[#0e1a3a]/60">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-blue-50 dark:bg-blue-500 text-blue-600 dark:text-blue-950 border border-blue-100 dark:border-transparent shadow-sm flex items-center justify-center w-10 h-10">
+                <UserPlus className="h-5 w-5" />
+              </div>
+              <DialogTitle className="dark:text-white text-[#0b1957] text-left font-semibold text-lg leading-tight">
+                Add Team Member
+              </DialogTitle>
+            </div>
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto px-8 py-6 space-y-6">
             <div className="grid grid-cols-2 gap-x-12 gap-y-6">
               <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">Name</label>
+                <label className="text-sm font-medium text-gray-700 dark:text-zinc-300">Name</label>
                 <Input
                   placeholder="John Doe"
-                  className="h-11 rounded-xl bg-gray-50/50"
+                  className="h-11 rounded-xl bg-gray-50/50 dark:bg-[#000724] dark:border-[#262831] dark:text-white dark:placeholder-zinc-600 dark:autofill:shadow-[inset_0_0_0_1000px_#000724] dark:autofill:[text-fill-color:white] dark:autofill:[-webkit-text-fill-color:white]"
                   value={newUser.name}
                   onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">Email</label>
+                <label className="text-sm font-medium text-gray-700 dark:text-zinc-300">Email</label>
                 <Input
                   type="email"
                   placeholder="admin@techiemaya.com"
-                  className="h-11 rounded-xl bg-gray-50/50"
+                  className="h-11 rounded-xl bg-gray-50/50 dark:bg-[#000724] dark:border-[#262831] dark:text-white dark:placeholder-zinc-600 dark:autofill:shadow-[inset_0_0_0_1000px_#000724] dark:autofill:[text-fill-color:white] dark:autofill:[-webkit-text-fill-color:white]"
                   value={newUser.email}
                   onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
                 />
               </div>
 
               <div className="space-y-1 relative">
-                <label className="text-sm font-medium text-gray-700">Password</label>
+                <label className="text-sm font-medium text-gray-700 dark:text-zinc-300">Password</label>
                 <div className="relative">
                   <Input
                     type={showPassword ? 'text' : 'password'}
                     placeholder="••••••••••••"
-                    className="h-11 rounded-xl bg-gray-50/50 pr-10"
+                    className="h-11 rounded-xl bg-gray-50/50 dark:bg-[#000724] dark:border-[#262831] dark:text-white dark:placeholder-zinc-600 dark:autofill:shadow-[inset_0_0_0_1000px_#000724] dark:autofill:[text-fill-color:white] dark:autofill:[-webkit-text-fill-color:white]"
                     value={newUser.password}
                     onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-slate-300 dark:hover:text-zinc-300"
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
                   </button>
@@ -514,56 +524,58 @@ export const TeamManagement: React.FC = () => {
               </div>
 
               <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">Phone Number <span className="text-red-500">*</span></label>
+                <label className="text-sm font-medium text-gray-700 dark:text-zinc-300">Phone Number <span className="text-red-500">*</span></label>
                 <Input
                   type="tel"
                   placeholder="+1 (555) 123-4567"
-                  className="h-11 rounded-xl bg-gray-50/50"
+                  className="h-11 rounded-xl bg-gray-50/50 dark:bg-[#000724] dark:border-[#262831] dark:text-white dark:placeholder-zinc-600 dark:autofill:shadow-[inset_0_0_0_1000px_#000724] dark:autofill:[text-fill-color:white] dark:autofill:[-webkit-text-fill-color:white]"
                   value={newUser.phoneNumber}
                   onChange={(e) => setNewUser({ ...newUser, phoneNumber: e.target.value })}
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">Role</label>
+                <label className="text-sm font-medium text-gray-700 dark:text-zinc-300">Role</label>
                 <Select
                   value={newUser.role}
                   onValueChange={(val) => setNewUser({ ...newUser, role: val })}
                 >
-                  <SelectTrigger className="h-11 rounded-xl bg-gray-50/50">
+                  <SelectTrigger className="h-11 rounded-xl bg-gray-50/50 dark:bg-[#000724] dark:border-[#262831] dark:text-white">
                     <SelectValue placeholder="Select role..." />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white dark:bg-[#000c3b] border border-slate-200 dark:border-[#262831] rounded-xl shadow-xl">
                     {ROLE_OPTIONS.map(opt => (
-                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      <SelectItem key={opt.value} value={opt.value} className="text-slate-900 dark:text-white focus:bg-emerald-500 focus:text-black dark:focus:bg-emerald-500 dark:focus:text-white cursor-pointer"
+                        >
+                          {opt.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className="space-y-1 relative">
-                <label className="text-sm font-medium text-gray-700">Page Access</label>
+              <div className="space-y-1 relative capabilities-dropdown">
+                <label className="text-sm font-medium text-gray-700 dark:text-zinc-300">Page Access</label>
                 <div className="relative">
                   <button
                     type="button"
                     onClick={() => setShowCapabilitiesDropdown(!showCapabilitiesDropdown)}
-                    className="w-full h-11 px-4 rounded-xl border border-input bg-gray-50/50 flex items-center justify-between text-sm transition-colors hover:bg-gray-100/50"
+                    className="w-full h-11 px-4 rounded-xl border border-input bg-gray-50/50 dark:bg-[#000724] dark:border-[#262831] flex items-center justify-between text-sm transition-colors hover:bg-gray-100/50 dark:hover:bg-[#1a2a43] dark:text-white"
                   >
-                    <span className={newUser.capabilities.length ? 'text-foreground' : 'text-muted-foreground'}>
-                      {newUser.capabilities.length 
+                    <span className={newUser.capabilities.length ? 'text-foreground dark:text-white' : 'text-muted-foreground dark:text-slate-400'}>
+                      {newUser.capabilities.length
                         ? `${newUser.capabilities.length} pages selected`
                         : 'Select pages...'}
                     </span>
-                    <ChevronDown className={cn("w-4 h-4 opacity-50", showCapabilitiesDropdown && "rotate-180")} />
+                    <ChevronDown className={cn("w-4 h-4 opacity-50 dark:text-zinc-400", showCapabilitiesDropdown && "rotate-180")} />
                   </button>
 
                   {showCapabilitiesDropdown && (
-                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border rounded-xl shadow-xl z-[60] max-h-60 overflow-y-auto p-2 custom-scrollbar">
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-[#000724] border border-[#E2E8F0] dark:border-[#262831] rounded-xl shadow-xl z-[60] max-h-60 overflow-y-auto p-2">
                       {PAGE_CAPABILITIES.map(page => (
-                        <label key={page.key} className="flex items-center px-3 py-2 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors group">
+                        <label key={page.key} className="flex items-center px-3 py-2 hover:bg-slate-100 dark:hover:bg-[#1a2a43] rounded-lg cursor-pointer transition-colors group">
                           <input
                             type="checkbox"
-                            className="w-4 h-4 rounded border-gray-300 text-[#0B1957] focus:ring-[#0B1957]"
+                            className="h-[18px] w-[18px] shrink-0 rounded-[5px] border-2 border-blue-500/80 dark:border-blue-500/50 bg-transparent text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/50 cursor-pointer appearance-none checked:bg-primary checked:border-primary relative checked:after:content-[''] checked:after:absolute checked:after:left-[5px] checked:after:top-[1px] checked:after:w-[4px] checked:after:h-[8px] checked:after:border-white checked:after:border-r-2 checked:after:border-b-2 checked:after:rotate-45 transition-all"
                             checked={newUser.capabilities.includes(page.key)}
                             onChange={() => {
                               const current = [...newUser.capabilities];
@@ -574,7 +586,7 @@ export const TeamManagement: React.FC = () => {
                               }
                             }}
                           />
-                          <span className="ml-3 text-sm text-gray-700 font-medium group-hover:text-gray-900">{page.label}</span>
+                          <span className="ml-3 text-sm text-gray-700 dark:text-zinc-300 font-medium group-hover:text-gray-900 dark:group-hover:text-white">{page.label}</span>
                         </label>
                       ))}
                     </div>
@@ -583,17 +595,17 @@ export const TeamManagement: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-6 bg-gray-50/50 rounded-2xl border border-gray-100">
+            <div className="flex items-center justify-between p-6 bg-gray-50/50 dark:bg-[#000c3b]/40 rounded-2xl border border-gray-100 dark:border-[#262831]">
               <div className="flex flex-col gap-1">
-                <label className="text-sm font-bold text-gray-900">Mask Phone Numbers</label>
-                <span className="text-xs text-gray-500">Hide lead phone numbers from this team member for privacy (e.g. ••••3456)</span>
+                <label className="text-sm font-bold text-gray-900 dark:text-white">Mask Phone Numbers</label>
+                <span className="text-xs text-gray-500 dark:text-zinc-400">Hide lead phone numbers from this team member for privacy (e.g. ••••3456)</span>
               </div>
               <button
                 type="button"
                 onClick={() => setNewUser({ ...newUser, maskPhoneNumber: !newUser.maskPhoneNumber })}
                 className={cn(
                   "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
-                  newUser.maskPhoneNumber ? "bg-[#0B1957]" : "bg-gray-200"
+                  newUser.maskPhoneNumber ? "bg-[#0B1957] dark:bg-blue-500" : "bg-gray-200 dark:bg-zinc-800"
                 )}
               >
                 <span
@@ -604,17 +616,17 @@ export const TeamManagement: React.FC = () => {
                 />
               </button>
             </div>
-          </div>
 
-          <DialogActions className="px-8 pb-8 pt-4">
+          <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-[#262831]">
             <Button
               onClick={handleAddUser}
               disabled={loading || !newUser.name || !newUser.email || !newUser.password}
-              className="bg-[#0B1957] hover:bg-[#0B1957]/90 text-white rounded-xl h-11 px-8 font-bold shadow-sm transition-all"
+              className="bg-[#0B1957] hover:bg-[#0B1957]/90 dark:bg-blue-600 dark:text-white dark:hover:bg-blue-500 rounded-xl h-11 px-8 font-bold shadow-sm transition-all"
             >
               {loading ? 'Adding...' : 'Add Member'}
             </Button>
-          </DialogActions>
+          </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
