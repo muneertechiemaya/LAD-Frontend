@@ -462,7 +462,7 @@ export function AIPlayground({ onClose }: AIPlaygroundProps) {
       animate={{ x: 0, opacity: 1 }}
       exit={{ x: "100%", opacity: 0 }}
       transition={{ duration: 0.25, ease: "easeOut" }}
-      className="fixed right-0 top-0 h-full w-full sm:w-[480px] z-[110] flex flex-col bg-background border-l border-border shadow-2xl"
+      className="fixed right-0 top-0 h-full w-full sm:w-[480px] z-[110] flex flex-col bg-white dark:bg-[#030a21] border-l border-gray-200 dark:border-blue-950/60 shadow-2xl text-gray-900 dark:text-white"
     >
       {/* ── Header ────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card shrink-0">

@@ -24,7 +24,7 @@ export type VisualizerState =
   | 'disconnected';
 
 // ── Brand constants ──────────────────────────────────────────────────────────
-const BRAND = '#0b1958';
+const BRAND = 'var(--visualizer-brand, #0b1958)';
 const DOT_X = [324.4, 344.5, 364.8];
 
 // Clip-path shape (full logo outline with 3 eye-dots, used for liquid mask)
@@ -213,7 +213,7 @@ export default function AgentVisualizer({ state = 'idle', size = 36 }: Props) {
   const XFORM = 'translate(144.48,-148.655) scale(1.88)';
 
   return (
-    <svg viewBox="225 75 230 248" width={size} height={size} style={{ display: 'block', flexShrink: 0 }}>
+    <svg viewBox="225 75 230 248" width={size} height={size} style={{ display: 'block', flexShrink: 0, '--visualizer-brand': 'rgba(11, 25, 88, 1)'}}  className="[--visualizer-brand:#0b1958] dark:[--visualizer-brand:#3b82f6]">
       <defs>
         <clipPath id={clipId}>
           <path clipRule="evenodd" transform={XFORM} d={CLIP_PATH} />
