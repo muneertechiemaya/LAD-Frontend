@@ -32,7 +32,7 @@ const VIEW_TITLES: Record<Exclude<CrmView, 'board'>, string> = {
 };
 
 const EMPTY_BOX =
-  'rounded-[20px] border border-slate-200 dark:border-[#262831] bg-white dark:bg-[#000724] p-10 text-center text-[13px] text-slate-500 dark:text-[#7a8ba3]';
+  'rounded-[20px] border border-slate-200 dark:border-[#262831] bg-white dark:bg-[#000724] p-10 text-center text-[13px] text-slate-500 dark:text-slate-300';
 
 export default function CrmPage() {
   const router = useRouter();
@@ -117,7 +117,7 @@ export default function CrmPage() {
               >
                 Deals Pipeline
               </h1>
-              <p className="text-[13px] text-[#6b7280] dark:text-[#7a8ba3]">
+              <p className="text-[13px] text-[#6b7280] dark:text-slate-300">
                 Live cross-channel prospects across all your channels
               </p>
             </div>
@@ -143,7 +143,7 @@ export default function CrmPage() {
           renderMain()
         )}
 
-        <footer className="pt-6 pb-2 text-[11.5px] text-slate-400 dark:text-[#7a8ba3]/60 flex items-center justify-between">
+        <footer className="pt-6 pb-2 text-[11.5px] text-slate-400 dark:text-slate-300/60 flex items-center justify-between">
           <span>
             {counts.all} contacts · {counts.leads} active deals · {counts.clients} clients
           </span>
