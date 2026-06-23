@@ -226,7 +226,13 @@ export async function listTransactions(params?: {
   limit?: number;
   offset?: number;
 }): Promise<any> {
-  const response = await apiClient.get('/api/billing/transactions', { params });
+  // The backend reads `fromDate`/`toDate` query params (not `from`/`to`), so map them —
+  // otherwise the date-range filter is silently ignored.
+  const { from, to, ...rest } = params || {};
+  const query: Record<string, any> = { ...rest };
+  if (from) query.fromDate = from;
+  if (to) query.toDate = to;
+  const response = await apiClient.get('/api/billing/transactions', { params: query });
   
   const creditsPerDollar: number = response.data.creditsPerDollar ?? (1000 / 99);
   const planTier: string = response.data.planTier ?? 'starter';
@@ -248,9 +254,10 @@ export async function listTransactions(params?: {
       balanceBefore: balanceBeforeUsd,
       balanceAfter: balanceAfterUsd,
       // Credits equivalents (converted using plan rate)
-      credits_amount: Math.round(Math.abs(amountUsd) * creditsPerDollar * 100) / 100,
-      credits_balance_after: balanceAfterUsd != null ? Math.round(balanceAfterUsd * creditsPerDollar * 100) / 100 : null,
-      credits_balance_before: balanceBeforeUsd != null ? Math.round(balanceBeforeUsd * creditsPerDollar * 100) / 100 : null,
+      // Ledger amounts are already CREDIT-denominated — do NOT multiply by creditsPerDollar.
+      credits_amount: Math.round(Math.abs(amountUsd) * 100) / 100,
+      credits_balance_after: balanceAfterUsd != null ? Math.round(balanceAfterUsd * 100) / 100 : null,
+      credits_balance_before: balanceBeforeUsd != null ? Math.round(balanceBeforeUsd * 100) / 100 : null,
       description: tx.description || '',
       reference_type: tx.reference_type,
       reference_id: tx.reference_id,
