@@ -264,7 +264,7 @@ export function TenantOnboarding() {
             {!showForm && (
               <button
                 onClick={() => setShowForm(true)}
-                className="h-12 px-6 bg-[#0B1957] hover:bg-[#0B1957]/90 dark:bg-[#1d4ed8] dark:text-white dark:hover:bg-blue-700 rounded-2xl shadow-lg transition-all font-bold flex items-center gap-2"
+                className="h-12 px-6 bg-[#0B1957] hover:bg-[#0B1957]/90 dark:bg-[#1d4ed8] text-white dark:hover:bg-blue-700 rounded-2xl shadow-lg transition-all font-bold flex items-center gap-2"
               >
                 <Plus className="h-5 w-5" />
                 New Account
