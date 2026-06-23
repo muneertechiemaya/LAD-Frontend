@@ -35,13 +35,13 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
 }) => {
   if (!transaction) return null;
 
-  const formatCurrency = (amount: string | number) => {
+  // Ledger amounts are CREDIT-denominated — format as credits, not USD.
+  const formatCredits = (amount: string | number) => {
     const num = typeof amount === 'string' ? parseFloat(amount) : amount;
     return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-    }).format(num);
+      maximumFractionDigits: 2,
+      minimumFractionDigits: 0,
+    }).format(num) + ' cr';
   };
 
   const formatDate = (date: string) => {
@@ -131,7 +131,7 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
                 }
               >
                 {transaction.type === 'credit' ? '+' : '-'}
-                {formatCurrency(transaction.amount)}
+                {formatCredits(transaction.amount)}
               </span>
             </div>
           </div>
@@ -190,7 +190,7 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
                 Balance After Transaction
               </label>
               <div className="mt-1 text-lg font-semibold text-gray-900">
-                {formatCurrency(transaction.balance_after)}
+                {formatCredits(transaction.balance_after)}
               </div>
             </div>
           )}
