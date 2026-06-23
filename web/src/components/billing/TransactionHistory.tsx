@@ -35,8 +35,8 @@ export const TransactionHistory: React.FC = () => {
   // Fetch transactions
   const { data: txData, isLoading } = useTransactions({
     type: transactionType !== 'all' ? transactionType : undefined,
-    startDate,
-    endDate,
+    from: startDate,
+    to: endDate,
     limit: 200,
   });
 
@@ -69,10 +69,10 @@ export const TransactionHistory: React.FC = () => {
     if (!filteredTransactions.length) return { credits: 0, debits: 0, net: 0 };
     const added = filteredTransactions
       .filter((tx: any) => tx.type === 'credit')
-      .reduce((sum: number, tx: any) => sum + (tx.credits_amount ?? Math.abs(parseFloat(tx.amount)) * creditsPerDollar), 0);
+      .reduce((sum: number, tx: any) => sum + (tx.credits_amount ?? Math.abs(parseFloat(tx.amount))), 0);
     const used = filteredTransactions
       .filter((tx: any) => tx.type === 'debit')
-      .reduce((sum: number, tx: any) => sum + (tx.credits_amount ?? Math.abs(parseFloat(tx.amount)) * creditsPerDollar), 0);
+      .reduce((sum: number, tx: any) => sum + (tx.credits_amount ?? Math.abs(parseFloat(tx.amount))), 0);
     return { credits: added, debits: used, net: added - used };
   }, [filteredTransactions, creditsPerDollar]);
 
@@ -95,10 +95,10 @@ export const TransactionHistory: React.FC = () => {
   const isLLMUsage = (tx: any) => tx.source === 'llm_usage' || tx.reference_type === 'llm_usage';
 
   const getCreditsAmount = (tx: any): number =>
-    tx.credits_amount ?? Math.abs(parseFloat(tx.amount || '0')) * creditsPerDollar;
+    tx.credits_amount ?? Math.abs(parseFloat(tx.amount || '0'));
 
   const getCreditsBalance = (tx: any): number | null =>
-    tx.credits_balance_after ?? (tx.balance_after != null ? parseFloat(tx.balance_after) * creditsPerDollar : null);
+    tx.credits_balance_after ?? (tx.balance_after != null ? parseFloat(tx.balance_after) : null);
 
   if (isLoading) return <LoadingSpinner size="md" message="Loading transaction history..." />;
 

@@ -35,13 +35,13 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
 }) => {
   if (!transaction) return null;
 
-  const formatCurrency = (amount: string | number) => {
+  // Ledger amounts are CREDIT-denominated — format as credits, not USD.
+  const formatCredits = (amount: string | number) => {
     const num = typeof amount === 'string' ? parseFloat(amount) : amount;
     return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-    }).format(num);
+      maximumFractionDigits: 2,
+      minimumFractionDigits: 0,
+    }).format(num) + ' cr';
   };
 
   const formatDate = (date: string) => {
@@ -112,7 +112,7 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
                   }
               >
                 {transaction.type === 'credit' ? '+' : '-'}
-                {formatCurrency(transaction.amount)}
+                {formatCredits(transaction.amount)}
               </span>
               </div>
             </div>
@@ -187,17 +187,17 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
                 </div>
             )}
 
-            {/* Balance After Transaction Block */}
-            {transaction.balance_after && (
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-300 uppercase tracking-wider">
-                    Balance After Transaction
-                  </label>
-                  <div className="mt-1 text-base font-bold text-slate-700 dark:text-slate-300">
-                    {formatCurrency(transaction.balance_after)}
-                  </div>
-                </div>
-            )}
+          {/* Balance After */}
+          {transaction.balance_after && (
+            <div>
+              <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-300 uppercase tracking-wider">
+                Balance After Transaction
+              </label>
+              <div className="mt-1 text-base font-bold text-slate-700 dark:text-slate-300">
+                {formatCredits(transaction.balance_after)}
+              </div>
+            </div>
+          )}
 
             {/* Timestamp Footer Section */}
             <div className="pt-3 border-t border-slate-100 dark:border-slate-900/40">
