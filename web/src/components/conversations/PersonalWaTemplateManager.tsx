@@ -182,15 +182,15 @@ function TemplateFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto bg-white dark:bg-[#000724] border-slate-200 dark:border-slate-800/60 rounded-2xl shadow-2xl">
-        <DialogHeader className="bg-slate-50 dark:bg-[#000724] px-6 py-4 border-b border-slate-200 dark:border-slate-800/80 rounded-t-2xl">
-          <div className="text-slate-900 dark:text-white font-bold text-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto bg-white dark:bg-[#000724] border-slate-200 dark:border-slate-800/60 rounded-2xl shadow-2xl custom-scrollbar outline-none focus:outline-none max-md:w-[80vw] max-md:max-w-[80vw] max-md:max-h-[78vh] max-md:p-0">
+        <DialogHeader className="bg-slate-50 dark:bg-[#000724] px-5 md:px-6 py-4 border-b border-slate-200 dark:border-slate-800/80 rounded-t-2xl text-left shrink-0">
+          <div className="text-slate-900 dark:text-white font-bold text-base md:text-lg tracking-tight">
             {initial.name ? 'Edit Template' : 'New Template'}
           </div>
           <div className="sr-only">Template Form configuration modal options view</div>
         </DialogHeader>
 
-        <div className="space-y-5 px-1 sm:px-4 py-2">
+        <div className="space-y-6 md:space-y-5 px-5 md:px-4 py-5 md:py-2">
           {/* Name */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Template Name *</label>
@@ -204,7 +204,12 @@ function TemplateFormDialog({
 
           {/* Header */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Header (optional)</label>
+            <div className="flex items-center justify-between text-[11px] font-semibold tracking-wider uppercase">
+              <label className="text-slate-700 md:text-slate-500 dark:text-slate-400">
+                <span className="hidden md:inline">Header (optional)</span>
+                <span className="inline md:hidden">Header (optional)</span>
+              </label>
+            </div>
             <Input
               placeholder="Short header text line"
               value={form.header_text}
@@ -215,31 +220,42 @@ function TemplateFormDialog({
 
           {/* Body */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Message Body *</label>
+            <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider">
+              <label className="text-slate-700 dark:text-slate-200">Message Body *</label>
+            </div>
+            <div className="md:border-none border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-[#00051d] md:bg-transparent">
             <Textarea
               placeholder={"Hi {{name}}, thanks for reaching out!\n\nUse {{variable}} for dynamic placeholders."}
               value={form.content}
               onChange={(e) => set('content', e.target.value)}
               rows={5}
-              className="resize-none font-mono text-sm bg-white dark:bg-[#00051d] border-slate-200 dark:border-slate-800/80 rounded-xl text-slate-800 dark:text-white"
+              className="w-full resize-none font-mono text-sm bg-transparent md:bg-white dark:md:bg-[#00051d] border-none md:border md:border-slate-200 md:dark:border-slate-800/80 rounded-none md:rounded-xl text-slate-800 dark:text-white p-3 focus:ring-0 focus-visible:ring-0 outline-none"
             />
-            <p className="text-[11px] text-slate-400 dark:text-slate-400/70">
+            <div className="text-[11px] text-slate-400 dark:text-slate-400/70 leading-normal">
+              <div className="hidden md:block">
               Use <code className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono">{'{{name}}'}</code> for contact name,{' '}
               <code className="px-1 py-0.5 rounded bg-muted">{'{{1}}'}</code> for custom variables.
               Variables are auto-corrected to double-brace format on save.
-            </p>
+            </div>
             {placeholders.length > 0 && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground hidden md:block">
                 Detected: {placeholders.map((p) => (
                   <code key={p} className="mx-0.5 px-1 py-0.5 rounded bg-muted text-xs">{`{{${p}}}`}</code>
                 ))}
               </p>
             )}
           </div>
+        </div>
+     </div>
 
           {/* Footer */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Footer (optional)</label>
+            <div className="flex items-center justify-between text-[11px] font-semibold tracking-wider uppercase">
+              <label className="text-slate-500 dark:text-slate-400">
+                <span className="hidden md:inline">Footer (optional)</span>
+                <span className="inline md:hidden">Footer(optional)</span>
+              </label>
+            </div>
             <Input
               placeholder="e.g. Reply STOP to unsubscribe"
               value={form.footer_text}
@@ -249,25 +265,25 @@ function TemplateFormDialog({
           </div>
 
           {/* ── Media Attachment ─────────────────────────────────────── */}
-          <div className="space-y-3 border border-slate-200 dark:border-slate-800/80 rounded-xl p-4 bg-slate-50/50 dark:bg-[#00051d]/40">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Media Attachment (optional)</label>
+          <div className="space-y-3">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Media Attachment  (optional)</label>
 
             {/* Type selector */}
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-row flex-nowrap gap-1 bg-slate-50/80 dark:bg-[#000724]/60 md:bg-transparent p-1 md:p-0 rounded-xl md:rounded-none border border-slate-100 dark:border-slate-800/60 md:border-none w-full overflow-x-hidden">
               {(['none', 'image', 'video', 'document'] as MediaType[]).map((type) => (
                 <button
                   key={type}
                   type="button"
                   onClick={() => handleMediaTypeChange(type)}
                   className={cn(
-                    'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer capitalize',
+                    'flex-1 md:flex-initial flex items-center justify-center gap-1 px-1 md:px-3 py-1.5 rounded-lg text-[11px] md:text-xs font-bold border-none outline-none transition-all cursor-pointer capitalize shrink-0',
                     form.media_type === type
-                      ? 'bg-[#2563eb] text-white border-[#2563eb] shadow-sm'
-                      : 'bg-white dark:bg-[#000724] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      ? 'bg-[#0B1957] md:bg-[#2563eb] text-white shadow-sm'
+                      : 'bg-white dark:bg-[#000724] md:bg-white md:dark:bg-[#000724] text-slate-600 dark:text-slate-400 md:border md:border-slate-200 md:dark:border-slate-800 hover:bg-slate-100'
                   )}
                 >
-                  {type !== 'none' && mediaTypeIcons[type]}
-                  {type === 'none' ? 'None' : type.charAt(0).toUpperCase() + type.slice(1)}
+                  {type !== 'none' && <span className="scale-90 md:scale-100">{mediaTypeIcons[type]}</span>}
+                  <span>{type === 'none' ? 'None' : type === 'document' ? 'Doc' : type}</span>
                 </button>
               ))}
             </div>
@@ -364,16 +380,28 @@ function TemplateFormDialog({
 
           {/* Description */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Description (optional)</label>
+            <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              Description(optional)
+            </label>
+            <div className="block md:hidden">
+          <textarea
+            placeholder="Internal note about this template..."
+            value={form.description}
+            onChange={(e) => set('description', e.target.value)}
+            rows={3}
+            className="w-full resize-none text-sm bg-white dark:bg-[#00051d] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-white p-3 outline-none"
+          />
+            </div>
+            <div className="hidden md:block">
             <Input
               placeholder="Internal notes"
               value={form.description}
               onChange={(e) => set('description', e.target.value)}
               className="bg-white dark:bg-[#00051d] border-slate-200 dark:border-slate-800 text-sm rounded-xl h-11 text-slate-800 dark:text-white"
             />
-          </div>
+            </div>
 
-          {/* Default toggle */}
+          {/* Default Template checkbox element */}
           <label className="flex items-center gap-2.5 cursor-pointer select-none group w-fit pt-1">
             <div
               className={cn(
@@ -388,7 +416,10 @@ function TemplateFormDialog({
           </label>
         </div>
 
-        <DialogFooter className="bg-slate-50 dark:bg-[#000724] px-6 py-4 border-t border-slate-200 dark:border-slate-800/80 rounded-b-2xl mt-4">
+        </div>
+
+        {/* Action Buttons Footer Container */}
+        <DialogFooter className="bg-slate-50 dark:bg-[#000724] px-4 md:px-6 py-4 border-t border-slate-200 dark:border-slate-800/80 rounded-b-2xl mt-4 shrink-0 flex flex-row items-center justify-end">
           <Button
             onClick={() => onSave(form)}
             disabled={saving || uploading || !form.name.trim() || !form.content.trim()}
@@ -398,6 +429,7 @@ function TemplateFormDialog({
             Save Template
           </Button>
         </DialogFooter>
+
       </DialogContent>
     </Dialog>
   );
