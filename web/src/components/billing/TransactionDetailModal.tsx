@@ -92,9 +92,9 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
               </div>
               <span>Transaction Details</span>
             </DialogTitle>
-            <DialogDescription className="text-xs font-semibold text-slate-400 dark:text-slate-300 uppercase tracking-wider mt-1">
-              {transaction.type === 'credit' ? 'Credit' : 'Debit'} transaction
-            </DialogDescription>
+            {/*<DialogDescription className="text-xs font-semibold text-slate-400 dark:text-slate-300 uppercase tracking-wider mt-1">*/}
+              {/*{transaction.type === 'credit' ? 'Credit' : 'Debit'} transaction*/}
+            {/*</DialogDescription>*/}
           </DialogHeader>
 
           <div className="space-y-4 pt-4">

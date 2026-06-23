@@ -388,8 +388,8 @@ export function VoiceAgentSettings() {
     <div className="min-h-screen p-2 md:p-2 lg:p-2">
       <div className="mx-auto">
         <Tabs defaultValue="agents" className="w-full">
-          <div className="pl-6 pr-4 sm:px-8 pt-4 pb-2">
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white tracking-tight">Voice Agents Workspace</h2>
+          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 md:gap-0 mb-6">
+            <h1 className="text-2xl font-bold font-display">Voice Agents Workspace</h1>
             <TabsList className="w-full grid grid-cols-2 md:w-auto md:flex">
               <TabsTrigger value="agents">Agent Configuration</TabsTrigger>
               <TabsTrigger value="library">Voice Library</TabsTrigger>

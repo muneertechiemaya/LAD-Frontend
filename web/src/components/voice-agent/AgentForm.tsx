@@ -166,7 +166,7 @@ export function AgentForm({
           <Button 
             onClick={onSave} 
             disabled={!isValid || isSaving}
-            className="gradient-primary min-w-32"
+            className="justify-center gap-2 h-10 px-6 bg-[#0B1957] hover:bg-[#0B1957]/90 dark:bg-[#1d4ed8] text-white dark:hover:bg-blue-700 shadow-lg transition-all font-medium flex"
           >
             {isSaving ? (
               <>
@@ -293,7 +293,7 @@ export function AgentForm({
                           {voice.gender}
                         </span>
                         <span>{voice.description}</span>
-                        <span className="text-xs text-muted-foreground">({voice.accent})</span>
+                        <span>({voice.accent})</span>
                       </div>
                     </SelectItem>
                   ))}
