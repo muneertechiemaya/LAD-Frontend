@@ -4567,10 +4567,13 @@ export default function AdvancedSearchAIPage() {
                                         <button
                                             onClick={pgStartConversation}
                                             title="Restart conversation"
-                                        className="px-2.5 py-1 text-[11px] font-bold rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#000724] text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1A2A43] flex items-center gap-1 cursor-pointer transition-all"
+                                        className="p-2 sm:px-2.5 sm:py-1 text-[11px] font-bold rounded-lg border-none text-white dark:text-white bg-[#0B1957] dark:bg-[#2563eb] hover:bg-[#13257e] dark:hover:bg-[#2563eb]/90 flex items-center justify-center gap-1 cursor-pointer transition-all shadow-sm outline-none"
                                       >
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /></svg>
-                                            Restart
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-white dark:text-white flex-shrink-0">
+                                                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                                                <path d="M3 3v5h5" />
+                                            </svg>
+                                            <span className="hidden sm:inline">Restart</span>
                                         </button>
                                         <button onClick={() => setShowPlayground(false)}
                                               className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#000724] hover:bg-gray-50 dark:hover:bg-[#1A2A43] cursor-pointer text-gray-600 dark:text-gray-300 transition-all"
@@ -5645,38 +5648,26 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onStartTargeting,
                 {/* ── NAS.io-style MAIN PRODUCT CARD (only for first search results) ── */}
                 {msg.targeting && (
                     <div
-                        className="adv-main-product-card"
-                        onClick={onStartCheckpoints}
-                        style={{
-                            background: "#f9fafb",
-                            border: "1px solid #e5e7eb",
-                            borderRadius: "14px",
-                            padding: "16px",
-                            cursor: "pointer",
-                            transition: "all 0.15s",
-                            marginBottom: "12px",
-                            marginTop: "12px",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "14px"
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.backgroundColor = "#f3f4f6"; e.currentTarget.style.borderColor = "#0b1957"; }}
-                        onMouseLeave={e => { e.currentTarget.style.backgroundColor = "#f9fafb"; e.currentTarget.style.borderColor = "#e5e7eb"; }}
-                    >
-                        <div style={{
-                            width: "48px", height: "48px", background: "#0b1957", borderRadius: "10px",
-                            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0
-                        }}>
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" /></svg>
-                        </div>
-                        <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: "15px", fontWeight: 700, color: "#111827", marginBottom: "4px" }}>
-                                Automate Your Business Processes with AI Agents
-                            </div>
-                            <div style={{ fontSize: "12px", color: "#6b7280" }}>V1</div>
-                        </div>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6" /></svg>
-                    </div>
+                    onClick={onStartCheckpoints}
+                    className="adv-main-product-card flex items-center gap-[14px] p-4 my-3 border rounded-[14px] cursor-pointer transition-all duration-150
+                       bg-gray-50 dark:bg-gray-800
+                       border-gray-200 dark:border-gray-700
+                       hover:bg-gray-100 dark:hover:bg-gray-700
+                       hover:border-[#0b1957] dark:hover:border-blue-400 adv-main-product-card"
+                      >
+                      <div className="w-[48px] h-[48px] bg-[#0b1957] dark:bg-blue-600 rounded-[10px] flex items-center justify-center flex-shrink-0">
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" /></svg>
+                      </div>
+                      <div className="flex-1">
+                          <div className="text-[15px] font-bold text-gray-900 dark:text-gray-100 mb-1">
+                              Automate Your Business Processes with AI Agents
+                          </div>
+                          <div className="text-[12px] text-gray-500 dark:text-slate-300">V1</div>
+                      </div>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-gray-400 dark:text-gray-500" strokeWidth="2" strokeLinecap="round">
+                          <path d="M9 18l6-6-6-6" />
+                      </svg>
+                  </div>
                 )}
 
                 {/* ── NAS.io-style clickable result cards ── */}
@@ -8797,7 +8788,6 @@ const css = `
             .adv-chat-root {height:100vh; display:flex; flex-direction:column; background:#fff; }
             .adv-yellow-bar {height:4px; background:linear-gradient(90deg,#0b1957,#1a3a8f,#2563eb); flex-shrink:0; }
             .adv-chat-main {flex:1; display:flex; overflow:hidden; }
-            /* adv-chat-left defined below with split-screen update */
             .adv-chat-back {position:absolute; top:16px; left:20px; z-index:10; width:42px; height:42px; border-radius:50%; border:1px solid #e5e7eb; background:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,.06); transition:all .15s; }
             .adv-chat-back:hover {background:#f3f4f6; }
             .adv-chat-msgs {flex:1; overflow-y:auto; padding:72px 0 8px; display:flex; flex-direction:column; }
@@ -8848,7 +8838,7 @@ const css = `
             .adv-spinner {width:15px; height:15px; border:2px solid #fff; border-top:2px solid transparent; border-radius:50%; animation:spin .8s linear infinite; }
 
             /* ── TARGETING CARD ── */
-            .adv-targeting-card {margin - top:12px; background:linear-gradient(135deg,#f2f6fa,#e0eaf5); border:1px solid #c2d6eb; border-radius:16px; padding:14px 16px; }
+            .adv-targeting-card {margin-top:12px; background:linear-gradient(135deg,#f2f6fa,#e0eaf5); border:1px solid #c2d6eb; border-radius:16px; padding:14px 16px; }
             .adv-tc-header {display:flex; align-items:center; gap:6px; margin-bottom:10px; font-size:13px; color:#0b1957; }
             .adv-tag-row {display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-bottom:6px; }
             .adv-tag-label {font-size:11px; font-weight:600; color:#0b1957; min-width:70px; }
@@ -8873,11 +8863,10 @@ const css = `
                 to { opacity: 1; transform: translateX(0); }
             }
 
-
             /* ── MINI LEADS IN CHAT ── */
-            .adv-mini-leads {margin - top:12px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:16px; padding:12px 14px; }
+            .adv-mini-leads {margin-top:12px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:16px; padding:12px 14px; }
             .adv-ml-header {display:flex; align-items:center; gap:6px; margin-bottom:10px; font-size:12px; font-weight:600; color:#166534; }
-            .adv-ml-count {margin - left:auto; font-size:11px; color:#16a34a; background:#dcfce7; padding:2px 10px; border-radius:20px; font-weight:500; }
+            .adv-ml-count {margin-left:auto; font-size:11px; color:#16a34a; background:#dcfce7; padding:2px 10px; border-radius:20px; font-weight:500; }
             .adv-ml-item {display:flex; align-items:center; gap:10px; padding:8px 0; border-top:1px solid #dcfce7; }
             .adv-ml-item:first-of-type {border-top:none; }
             .adv-ml-avatar {width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-size:10px; font-weight:700; flex-shrink:0; }
@@ -8933,13 +8922,13 @@ const css = `
             .adv-lead-name {font-size:14px; font-weight:700; color:#111827; display:flex; align-items:center; gap:4px; }
             .adv-verified {background:#10b981; color:#fff; border-radius:50%; width:16px; height:16px; display:inline-flex; align-items:center; justify-content:center; font-size:9px; font-weight:800; }
             .adv-lead-title {font-size:12px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-            .adv-lead-platform {margin - top:4px; display:flex; gap:4px; }
+            .adv-lead-platform {margin-top:4px; display:flex; gap:4px; }
             .adv-lead-action {width:36px; height:36px; border-radius:50%; border:1.5px solid #e5e7eb; background:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; transition:all .15s; }
             .adv-lead-action:hover:not(:disabled) {border-color:#0b1957; background:#f2f6fa; }
             .adv-lead-action:disabled {cursor:default; }
             .adv-lead-avatar-img {width:42px; height:42px; border-radius:50%; object-fit:cover; flex-shrink:0; border:1.5px solid #e5e7eb; }
             .adv-lead-location {font-size:11px; color:#9ca3af; margin-top:2px; }
-            .adv-panel-footer {text - align:center; padding:20px 0 8px; font-size:12px; color:#9ca3af; border-top:1px solid #f3f4f6; margin-top:16px; }
+            .adv-panel-footer {text-align:center; padding:20px 0 8px; font-size:12px; color:#9ca3af; border-top:1px solid #f3f4f6; margin-top:16px; }
 
             /* ── GEMINI-STYLE LANDING ── */
             .adv-gemini-hero {
@@ -9071,15 +9060,16 @@ const css = `
                     min-height: 64px !important;
                     flex: 0 0 auto !important;
                 }
-                html, body, .adv-landing, .adv-chat-root, main { background: #FFFFFF !important; }
-                .adv-chat-input-box { width: 100% !important; max-width: 100% !important; border-radius: 20px; padding: 16px 18px 12px; border: none !important; box-shadow: none !important; outline: none !important; background: #FFFFFF !important; }
-                .adv-chat-ta { text-align: center; font-size: 15px !important; outline: none !important; border: none !important; background: #FFFFFF !important; }
-                .adv-chat-back { width: 36px; height: 36px; top: 82px; left: 12px; z-index: 2000 !important; }
+                /* FIXED: Extracted background color overrides so dark utility classes do not get blocked by media reset queries */
+                .adv-chat-input-box { width: 100% !important; max-width: 100% !important; border-radius: 20px; padding: 16px 18px 12px; border: none !important; box-shadow: none !important; outline: none !important; }
+                .adv-chat-back { width: 36px; height: 36px; top: 82px; left: 12px; z-index: 10 !important; }
                 .adv-leads-panel {width: 100% !important; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 50; border-left: none; }
-                main { overflow: hidden !important; height: calc(100vh - 64px) !important; padding-top: 0 !important; background: #FFFFFF !important; }
-                .adv-chat-root { height: calc(100vh - 64px) !important; overflow: hidden !important; background: #FFFFFF !important; }
-                .adv-chat-main { background: #FFFFFF !important; }
-                .adv-chat-left { width: 100% !important; max-width: 100vw !important; overflow: hidden !important; display: flex; flex-direction: column; align-items: stretch !important; height: calc(100vh - 64px) !important; position: relative; background: #FFFFFF !important; }
+                
+                /* FIXED: Combined height calculations with fallback thresholds to guarantee absolute full coverage on viewports */
+                main { overflow: hidden !important; padding-top: 0 !important; }
+                .adv-chat-root { height: calc(100vh - 64px) !important; min-height: calc(100vmax - 64px) !important; overflow: hidden !important; }
+                
+                .adv-chat-left { width: 100% !important; max-width: 100vw !important; overflow: hidden !important; display: flex; flex-direction: column; align-items: stretch !important; height: calc(100vh - 64px) !important; min-height: calc(100vmax - 64px) !important; position: relative; }
                 .adv-chat-left-empty { justify-content: center !important; padding-bottom: 40px !important; gap: 20px; }
                 .adv-chat-left-empty .adv-chat-msgs { flex: 0 0 auto !important; display: flex; flex-direction: column; justify-content: center; padding: 0 !important; height: auto !important; margin-bottom: 0 !important; }
                 .adv-chat-left-empty .adv-msgs-inner { display: none !important; }
@@ -9088,14 +9078,13 @@ const css = `
                 .adv-chat-left-empty .adv-chat-ta { font-size: 20px !important; }
                 .adv-mobile-icp-box { display: flex; width: auto !important; left: auto !important; right: 12px !important; top: 82px !important; }
                 /* Decrease width for a more contained look on mobile */
-                .adv-chat-msgs { flex: 1 !important; overflow-y: auto !important; padding: 72px 0 10px !important; width: 100% !important; display: flex; flex-direction: column; overflow-x: hidden !important; border: none !important; background: #FFFFFF !important; }
+                .adv-chat-msgs { flex: 1 !important; overflow-y: auto !important; padding: 72px 0 10px !important; width: 100% !important; display: flex; flex-direction: column; overflow-x: hidden !important; border: none !important; }
                 .adv-msgs-inner { width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 0 20px !important; box-sizing: border-box !important; }
-                .adv-chat-input-wrap { width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 1px 16px 20px !important; box-sizing: border-box !important; background: #FFFFFF !important; border-top: none !important; flex: 0 0 auto !important; position: relative; z-index: 10; }
-                .adv-mobile-footer { background: #FFFFFF !important; }
-                .adv-chat-input-box { width: 100% !important; max-width: 88% !important; margin: 0 auto !important; border-radius: 16px; padding: 10px 14px; background: #FFFFFF !important; border: 1.5px solid #e5e7eb !important; }
+                .adv-chat-input-wrap { width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 1px 16px 20px !important; box-sizing: border-box !important; border-top: none !important; flex: 0 0 auto !important; position: relative; z-index: 10; }
+                .adv-chat-input-box { width: 100% !important; max-width: 88% !important; margin: 0 auto !important; border-radius: 16px; padding: 10px 14px; }
                 .adv-input-central-group { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; }
-                  .adv-chat-ta { width: 100% !important; border: none !important; background: none !important; font-size: 14px !important; text-align: center !important; padding: 2px 0 !important; min-height: 24px !important; height: 24px !important; line-height: 24px !important; }
-                .adv-chat-input-foot { padding: 4px 0 2px !important; margin-top: 4px !important; border: none !important; background: none !important; justify-content: center !important; gap: 10px !important; }
+                .adv-chat-ta { width: 100% !important; border: none !important; background: none !important; font-size: 11px !important; text-align: left !important; padding: 2px 0 !important; min-height: 24px !important; height: 24px !important; line-height: 24px !important; }
+                .adv-chat-input-foot { padding: 4px 0 2px !important; margin-top: 4px !important; border: none !important; background: none !important; justify-content: space-between !important; gap: 10px !important; }
                 .adv-premium-btn { width: auto !important; min-width: 95px !important; justify-content: center !important; padding: 3px 10px !important; margin: 0 !important; font-size: 10px !important; }
                 .adv-chat-attach-btn, .adv-send-sm { width: 28px !important; height: 28px !important; }
                 .adv-chat-attach-btn svg, .adv-send-sm svg { width: 13px !important; height: 13px !important; }
@@ -9157,7 +9146,6 @@ const css = `
                 .adv-result-cards { display: flex !important; flex-wrap: wrap !important; visibility: visible !important; opacity: 1 !important; justify-content: center !important; }
                 .adv-rc { display: flex !important; width: 100% !important; }
                 .adv-rc-leads { display: none !important; }
-                .adv-rc-leads { display: none !important; }
                 .adv-icp-discover-btn { display: none !important; }
                 .adv-mobile-icp-box { top: 90px !important; }
                 .adv-mobile-icp-btn {
@@ -9186,7 +9174,7 @@ const css = `
                 /* MOBILE FOOTER */
                 .adv-mobile-footer {
                     display: flex; position: fixed; bottom: 10px; left: 6%; right: 6%;
-                    height: 60px; background: #FFFFFF !important; border-radius: 40px; z-index: 1000;
+                    height: 60px; border-radius: 40px; z-index: 1000;
                     box-shadow: 0 8px 24px rgba(0,0,0,0.12);
                     justify-content: space-around; align-items: center;
                     padding: 0 10px; border: none;
@@ -9248,17 +9236,44 @@ const css = `
                     min-height: 64px !important;
                 }
                 .adv-recent-wrap { width: 90% !important; margin: 16px auto 0 !important; }
+
+                /* ── MOBILE LIGHT THEME DEFAULTS ── */
+                html, body, main, .adv-landing, .adv-chat-root, .adv-chat-main, .adv-chat-left, .adv-mobile-footer, .adv-chat-msgs, .adv-chat-input-wrap { background: #FFFFFF; }
+                .adv-chat-input-box { background: #FFFFFF; border: 1.5px solid #e5e7eb; }
+                .adv-chat-ta { background: transparent; }
+
+                /* ── MOBILE DARK MODE OVERRIDES ── */
+                .dark html, .dark body, .dark main, .dark #__next, .dark [data-reactroot], .dark .adv-landing, .dark .adv-chat-root, .dark .adv-chat-main, .dark .adv-chat-left { background: #000724 !important; }
+                .dark .adv-chat-input-box { background: #1A2A43 !important; border: 1.5px solid #1e293b !important; }
+                .dark .adv-chat-ta { background: transparent !important; }
+                .dark .adv-chat-input-wrap { background: #000724 !important; }
+                .dark .adv-mobile-footer { background: #000724 !important; border-top: 1px solid #1e293b !important; box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4) !important; }
+                .dark .adv-footer-btn.active .adv-footer-btn-icon { background: #2B7CFF !important; color: #000724 !important; }
+                .dark .adv-footer-btn { color: #7a8ba3; }
+                .dark .adv-footer-btn-icon { color: #cbd5e1; }
+                .dark .adv-footer-btn.active { color: #ffffff; }
+                .dark .adv-mobile-add-btn { background: #1A2A43 !important; border-color: #1e293b !important; color: #ffffff !important; }
+                .dark .adv-mobile-send-btn { background: #2B7CFF !important; border-color: #2B7CFF !important; color: #000724 !important; }
+                .dark .adv-mobile-send-btn:disabled { background: #1A2A43 !important; border-color: #1e293b !important; color: #7a8ba3 !important; }
+                .dark .adv-opt-btn { background: #1A2A43 !important; border-color: #1e293b !important; color: #ffffff !important; }
+                .dark .adv-opt-btn:first-child { background: #2B7CFF !important; color: #000724 !important; border: none !important; }
+                .dark .adv-mobile-chip { border-color: #1e293b !important; }
+                .dark .adv-chip-primary { background: #1A2A43 !important; color: #ffffff !important; }
+                .dark .adv-chip-navy { background: #2B7CFF !important; color: #000724 !important; }
+                .dark .adv-chat-msgs { background: #000724 !important; }
             }
             @media (max-width: 480px) {
                 .adv-gemini-title {font-size: 18px; margin-bottom: 20px; }
                 .adv-gemini-chips { gap: 8px !important; padding: 0 12px 12px !important; }
                 .adv-gemini-chip { padding: 10px 8px !important; font-size: 11px !important; gap: 6px !important; min-height: 56px !important; }
 
+                /* ── MOBILE DARK MODE OVERRIDES (EXTRA SMALL DEVICES) ── */
+                .dark .adv-gemini-chip { background: #1A2A43 !important; border-color: #1e293b !important; }
             }
 
             /* Dark Mode Styling - uses .dark class on <html> */
             .dark .adv-landing { background: #000724; color: #ffffff; }
-            .dark .adv-chat-root { background: #000724; color: #ffffff; }
+            .dark .adv-chat-root { background: #000724 !important; color: #ffffff; }
             .dark .adv-chat-body { background: #000724; }
             .dark .adv-chat-left { background: #000724; }
             .dark .adv-chat-left-empty .adv-chat-input-wrap { background: transparent; }
@@ -9323,15 +9338,15 @@ const css = `
             .dark .adv-ai-text { color: #e5e7eb; }
             .dark .adv-ai-h3 { color: #f3f4f6; }
             .dark .adv-ai-bullet {
-                color: #e5e7eb; /* Soft light grey text for readability */
+                color: #e5e7eb; 
             }
             .dark .adv-ai-bullet-dot {
-                background: #60a5fa; /* Lighter blue to pop against dark background */
+                background: #60a5fa; 
                 opacity: 1;
             }
             /* Dark Mode Override */
             .dark .adv-ai-text strong {
-                color: #ffffff; /* Pure white for maximum clarity against the dark chat background */
+                color: #ffffff; 
                 font-weight: 600;
             }
             .dark .adv-ai-num-badge { background: linear-gradient(135deg, #253456, #1A2A43); color: #60a5fa; }
@@ -9360,7 +9375,7 @@ const css = `
 
             /* MINI LEADS */
             .dark .adv-mini-leads { background: #1A2A43; border-color: #000724; }
-            .dark .adv-ml-header { color: #60a5fa; }
+            .dark .dark .adv-ml-header { color: #60a5fa; }
             .dark .adv-ml-count { background: #253456; color: #60a5fa; }
             .dark .adv-ml-item { border-top-color: #000724; }
             .dark .adv-ml-name { color: #ffffff; }
@@ -9411,7 +9426,6 @@ const css = `
             :root { --header-start: #f0f3ff; --header-end: #e8ecfa; }
             .dark { --header-start: #000c3b; --header-end: #000724; }
                         
-                        /* Update these in your existing css constant */
             .dark .adv-attach-menu {
                 background: #000724;
                 border: 1px solid #1e293b;
@@ -9433,15 +9447,12 @@ const css = `
             .dark .adv-attach-divider {
                 background: #1e293b;
             }
-            /* Apply these styles in your global CSS or inside your dark mode media query */
             .dark .adv-ai-body {
-                background-color: #000724; /* Your theme's dark background */
-                border-color: #1e293b;     /* A dark border to separate the AI body */
-                color: #e5e7eb;            /* Light grey text for better readability */
+                background-color: #000724; 
+                border-color: #1e293b;     
+                color: #e5e7eb;            
             }
-            /* ── ADDITIONAL DARK MODE REFINEMENTS ── */
             
-            /* 1. Improved Form Inputs for Dark Mode */
             .dark .adv-ta,
             .dark .adv-chat-ta {
                 color: #f9fafb !important;
@@ -9452,7 +9463,6 @@ const css = `
                 color: #cbd5e1 !important;
             }
             
-            /* 2. Scrollbar Styling (So it doesn't stand out on dark themes) */
             .dark ::-webkit-scrollbar {
                 width: 8px;
                 height: 8px;
@@ -9468,7 +9478,6 @@ const css = `
                 background: #334155;
             }
             
-            /* 3. Markdown/Rich Text Link Cleanup */
             .dark .adv-ai-text a {
                 color: #60a5fa !important;
                 text-decoration: underline;
@@ -9478,7 +9487,6 @@ const css = `
                 color: #93c5fd !important;
             }
             
-            /* 4. Enhanced Buttons and Dividers */
             .dark .adv-ai-hr {
                 border-top: 1px solid #1e293b;
             }
@@ -9487,7 +9495,6 @@ const css = `
                 border-top: 1px solid #1e293b !important;
             }
             
-            /* 5. Tooltip & Popover Fixes */
             .dark .journey-tip {
                 background: #1e293b !important;
                 color: #f1f5f9 !important;
@@ -9497,7 +9504,6 @@ const css = `
                 border-top-color: #1e293b !important;
             }
             
-            /* 6. Specifically fix the "Source" link block for better contrast */
             .dark .adv-ai-body a[target="_blank"] {
                 background: #0f172a !important;
                 border: 1px solid #1e293b !important;
@@ -9508,25 +9514,21 @@ const css = `
                 color: #f8fafc !important;
             }
             
-            /* 7. Ensure Code Blocks are readable in dark mode */
             .dark .adv-ai-text code {
                 background: #1e293b !important;
                 color: #cbd5e1 !important;
             }
             
-            /* 8. Fix for the "Suggested Journey" labels */
             .dark .adv-ai-name {
                 color: #60a5fa !important;
             }
             
-            /* --- Dark Mode (Matches image_58975a.png) --- */
 .dark .adv-ai-avatar {
   background: transparent !important;
   box-shadow: none !important;
   border-radius: 0px;
 }
 
-/* Forces the inner icon to turn pure white in dark mode */
 .dark .adv-ai-avatar-viz svg,
 .dark .adv-ai-avatar-viz img,
 .dark .adv-ai-avatar-viz * {
@@ -9535,17 +9537,16 @@ const css = `
   color: #ffffff !important;
 }
 
-/* When dark mode is active, completely strip the wrapper and force the graphic to white */
 .dark .agent-avatar-wrapper {
   background: transparent !important;
   background-image: none !important;
   box-shadow: none !important;
 }
 
-/* This forces every possible layer inside the Visualizer (SVGs, paths, divs, text) to turn white */
 .dark .agent-avatar-wrapper * {
   fill: #ffffff !important;
   stroke: #ffffff !important;
   color: #ffffff !important;
 }
-            `;
+            .dark .adv-chat-root { background: #000724 !important; }
+`;
