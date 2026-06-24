@@ -3678,18 +3678,11 @@ export default function AdvancedSearchAIPage() {
                         <button
                             onClick={() => setShowPlayground(true)}
                             title="Configure AI context: company, ICP, sales script, etc."
-                            className="adv-icp-discover-btn"
-                            style={{
-                                position: 'absolute', top: '16px', right: '20px', zIndex: 10,
-                                display: 'flex', alignItems: 'center', gap: '7px',
-                                padding: '8px 14px', borderRadius: '20px',
-                                border: '1.5px solid',
-                                borderColor: Object.values(businessProfile).some(v => v) ? '#0b1957' : '#e5e7eb',
-                                background: Object.values(businessProfile).some(v => v) ? 'linear-gradient(135deg,#e8ecfa,#f0f3ff)' : '#fff',
-                                color: Object.values(businessProfile).some(v => v) ? '#0b1957' : '#6b7280',
-                                fontSize: '12.5px', fontWeight: 600, cursor: 'pointer',
-                                boxShadow: '0 2px 8px rgba(0,0,0,.06)', transition: 'all .15s',
-                            }}
+                            className={`adv-icp-discover-btn absolute top-4 right-5 z-10 flex items-center gap-2 px-4 h-9 sm:h-10 rounded-full text-xs font-bold uppercase tracking-wider text-white !text-white bg-[#0b1957] hover:bg-[#122572] dark:bg-[#2563eb] dark:hover:bg-blue-700 transition-all shadow-md active:scale-[0.98] cursor-pointer outline-none border-none ${
+                              Object.values(businessProfile).some((v) => v)
+                                ? 'opacity-100 ring-2 ring-emerald-500/50 dark:ring-emerald-400/40'
+                                : 'opacity-90 hover:opacity-100'
+                            }`}
                             onMouseEnter={e => { e.currentTarget.style.borderColor = '#0b1957'; e.currentTarget.style.color = '#0b1957'; }}
                             onMouseLeave={e => {
                                 e.currentTarget.style.borderColor = Object.values(businessProfile).some(v => v) ? '#0b1957' : '#e5e7eb';
@@ -4550,59 +4543,39 @@ export default function AdvancedSearchAIPage() {
                         display: 'flex', alignItems: 'stretch',
                     }}>
                         {/* Backdrop */}
-                        <div onClick={() => setShowPlayground(false)} style={{ flex: 1, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }} />
+                        <div onClick={() => setShowPlayground(false)} className="flex-1 bg-black/35 backdrop-blur-[2px]" />
 
                         {/* Drawer */}
-                        <div style={{
-                            width: 480, maxWidth: '96vw', background: '#fff',
-                            display: 'flex', flexDirection: 'column',
-                            boxShadow: '-8px 0 40px rgba(0,0,0,.18)',
-                            animation: 'slideInRight .28s cubic-bezier(.4,0,.2,1) both',
-                            overflow: 'hidden',
-                        }}>
+                        <div className="w-[480px] max-w-[96vw] bg-white dark:bg-[#000724] flex flex-col shadow-[-8px_0_40px_rgba(0,0,0,.18)] animate-[slideInRight_0.28s_cubic-bezier(0.4,0,0.2,1)_both] overflow-hidden">
                             {/* ── Header ── */}
-                            <div style={{
-                                padding: '16px 20px 12px',
-                                borderBottom: '1.5px solid #e5e7eb',
-                                background: 'linear-gradient(135deg,#f0f3ff 0%,#e8ecfa 100%)',
-                                flexShrink: 0,
-                            }}>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                        <div style={{
-                                            width: 36, height: 36, borderRadius: 10,
-                                            background: 'linear-gradient(135deg,#0b1957,#1a3a8f)',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        }}>
+                            <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-800 bg-gradient-to-br from-[#f0f3ff] to-[#e8ecfa] dark:from-[#000c3b] dark:to-[#000724] flex-shrink-0">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#0b1957] to-[#1a3a8f] dark:from-[#0b1957] dark:to-[#1a3a8f] flex items-center justify-center">
                                             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round">
                                                 <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                                             </svg>
                                         </div>
                                         <div>
-                                            <div style={{ fontSize: 15, fontWeight: 800, color: '#111827' }}>ICP Discovery</div>
-                                            <div style={{ fontSize: 11.5, color: '#0b1957', fontWeight: 500 }}>
+                                            <div className="text-[15px] font-bold text-gray-900 dark:text-white">ICP Discovery</div>
+                                            <div className="text-[11.5px] font-semibold text-[#0b1957] dark:text-blue-300">
                                                 {pgIsComplete ? '✅ ICP profile complete!' : 'Answer questions to power smarter lead discovery'}
                                             </div>
                                         </div>
                                     </div>
-                                    <div style={{ display: 'flex', gap: 6 }}>
+                                    <div className="flex gap-2">
                                         <button
                                             onClick={pgStartConversation}
                                             title="Restart conversation"
-                                            style={{
-                                                padding: '5px 10px', borderRadius: 8, border: '1px solid #e5e7eb',
-                                                background: '#fff', color: '#6b7280', fontSize: 11.5, fontWeight: 600,
-                                                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-                                            }}
-                                        >
+                                        className="px-2.5 py-1 text-[11px] font-bold rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#000724] text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1A2A43] flex items-center gap-1 cursor-pointer transition-all"
+                                      >
                                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /></svg>
                                             Restart
                                         </button>
-                                        <button onClick={() => setShowPlayground(false)} style={{
-                                            width: 30, height: 30, border: '1px solid #e5e7eb', borderRadius: 8,
-                                            background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        }}>
-                                            <X size={15} color="#6b7280" />
+                                        <button onClick={() => setShowPlayground(false)}
+                                              className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#000724] hover:bg-gray-50 dark:hover:bg-[#1A2A43] cursor-pointer text-gray-600 dark:text-gray-300 transition-all"
+                                      >
+                                          <X size={15} />
                                         </button>
                                     </div>
                                 </div>
@@ -4616,17 +4589,16 @@ export default function AdvancedSearchAIPage() {
                                     const total = c.total;
                                     const pct = pgIsComplete ? 100 : c.pct;
                                     return (
-                                        <div style={{ marginTop: 10 }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                                                <span style={{ fontSize: 11, color: '#9ca3af', fontWeight: 600 }}>Profile completeness</span>
-                                                <span style={{ fontSize: 11, color: pct >= 70 ? '#10b981' : '#0b1957', fontWeight: 700 }}>{pct}% ({filled}/{total} fields)</span>
+                                        <div className="mt-3">
+                                            <div className="flex justify-between mb-1">
+                                                <span className="text-[11px] font-semibold text-gray-400 dark:text-gray-500">Profile completeness</span>
+                                                <span className={`text-[11px] font-bold ${pct >= 70 ? 'text-emerald-500' : 'text-[#0b1957] dark:text-blue-400'}`}>{pct}% ({filled}/{total} fields)</span>
                                             </div>
-                                            <div style={{ height: 5, borderRadius: 99, background: '#dce3f5', overflow: 'hidden' }}>
-                                                <div style={{
-                                                    height: '100%', borderRadius: 99,
-                                                    background: pct >= 70 ? 'linear-gradient(90deg,#10b981,#059669)' : 'linear-gradient(90deg,#0b1957,#0b1957)',
-                                                    width: `${pct}%`, transition: 'width .5s ease',
-                                                }} />
+                                            <div className="h-1.5 w-full bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
+                                                <div
+                                              className="h-full bg-emerald-500 transition-all duration-500"
+                                              style={{ width: `${pct}%` }}
+                                            />
                                             </div>
 
                                             {/* Edit affordance — once any field is filled, the tenant can jump
@@ -4635,16 +4607,10 @@ export default function AdvancedSearchAIPage() {
                                             {filled > 0 && (
                                                 <button
                                                     onClick={() => router.push('/settings?tab=businessprofile')}
-                                                    style={{
-                                                        marginTop: 8, width: '100%', padding: '7px 10px',
-                                                        borderRadius: 8, border: '1px solid #c7d2fe',
-                                                        background: '#fff', color: '#0b1957',
-                                                        fontSize: 11.5, fontWeight: 600, cursor: 'pointer',
-                                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                                                    }}
-                                                    title="Open the Business Profile editor to change any saved field"
-                                                >
-                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                                            title="Open the Business Profile editor to change any saved field"
+                                            className="mt-2 w-full px-2.5 py-2 rounded-lg border border-[#c7d2fe] dark:border-blue-900 bg-white dark:bg-[#000724] text-[#0b1957] dark:text-blue-300 text-[11.5px] font-semibold flex items-center justify-center gap-1.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-[#1A2A43] transition-colors"
+                                          >
+                                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
                                                     Review &amp; edit your {total} fields
                                                 </button>
                                             )}
@@ -4654,27 +4620,21 @@ export default function AdvancedSearchAIPage() {
                             </div>
 
                             {/* ── Chat Messages ── */}
-                            <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: 14, background: '#f9fafb' }}>
+                            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3.5 bg-gray-50 dark:bg-[#000724]">
                                 {pgChatHistory.length === 0 && !pgBusy && (
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: 14, padding: '40px 20px' }}>
-                                        <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'linear-gradient(135deg,#0b1957,#1a3a8f)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 24px rgba(11,25,87,.3)' }}>
+                                    <div className="flex flex-col items-center justify-center flex-1 p-10 text-center gap-4">
+                                        <div className="agent-avatar-wrapper w-16 h-16 rounded-full bg-gradient-to-br from-[#0b1957] to-[#1a3a8f] flex items-center justify-center shadow-[0_8px_24px_rgba(11,25,87,.3)]">
                                             <AgentVisualizer state="idle" size={36} />
                                         </div>
-                                        <div style={{ textAlign: 'center' }}>
-                                            <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', marginBottom: 6 }}>Define Your Ideal Customer Profile</div>
-                                            <div style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.6 }}>
+                                        <div className="max-w-[300px]">
+                                            <div className="text-base font-bold text-gray-900 dark:text-white mb-2">Define Your Ideal Customer Profile</div>
+                                            <div className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
                                                 Answer a few questions about your business and I&apos;ll identify exactly who you should target for outreach.
                                             </div>
                                         </div>
                                         <button
                                             onClick={pgStartConversation}
-                                            style={{
-                                                padding: '12px 28px', borderRadius: 12, border: 'none',
-                                                background: 'linear-gradient(135deg,#0b1957,#1a3a8f)',
-                                                color: '#fff', fontSize: 14, fontWeight: 700,
-                                                cursor: 'pointer', boxShadow: '0 4px 14px rgba(11,25,87,.4)',
-                                                display: 'flex', alignItems: 'center', gap: 8,
-                                            }}
+                                      className="flex items-center gap-2 px-7 py-3 rounded-xl border-none font-bold text-sm cursor-pointer transition-all shadow-[0_4px_14px_rgba(11,25,87,.4)] bg-gradient-to-br from-[#0b1957] to-[#1a3a8f] dark:from-blue-600 dark:to-blue-800 text-white"
                                         >
                                             <Sparkles size={16} />
                                             Start AI Setup
@@ -4685,29 +4645,20 @@ export default function AdvancedSearchAIPage() {
                                 {pgChatHistory.map((msg, idx) => (
                                     <div key={idx}>
                                         {msg.role === 'user' ? (
-                                            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                                                <div style={{
-                                                    maxWidth: '78%', background: 'linear-gradient(135deg,#0b1957,#2563eb)',
-                                                    color: '#fff', borderRadius: '18px 18px 4px 18px',
-                                                    padding: '10px 14px', fontSize: 13.5, lineHeight: 1.55,
-                                                    boxShadow: '0 2px 8px rgba(23,37,96,.2)',
-                                                }}>
+                                            <div className="flex justify-end">
+                                          <div className="max-w-[78%] bg-gradient-to-br from-[#0b1957] to-[#2563eb] text-white rounded-[18px_18px_4px_18px] p-[10px_14px] text-[13.5px] leading-[1.55] shadow-[0_2px_8px_rgba(23,37,96,.2)]"
+                                              >
                                                     {/* Hide card submission raw messages */}
                                                     {msg.content.startsWith('[Card submission:') ? '✅ Submitted' : msg.content}
                                                 </div>
                                             </div>
                                         ) : (
-                                            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                                                <div className="adv-ai-avatar adv-ai-avatar-viz" style={{ width: 32, height: 32, flexShrink: 0 }}>
+                                            <div className="flex gap-2.5 items-start">
+                                                <div className="w-8 h-8 flex-shrink-0">
                                                     <AgentVisualizer state="idle" size={32} />
                                                 </div>
-                                                <div style={{ flex: 1 }}>
-                                                    <div style={{
-                                                        background: '#fff', borderRadius: '4px 18px 18px 18px',
-                                                        padding: '10px 14px', fontSize: 13.5, color: '#374151',
-                                                        lineHeight: 1.65, boxShadow: '0 1px 4px rgba(0,0,0,.06)',
-                                                        border: '1px solid #f3f4f6',
-                                                    }}>
+                                                <div className="flex-1">
+                                                    <div className="bg-white dark:bg-gray-800 rounded-[4px_18px_18px_18px] p-[10px_14px] text-[13.5px] text-gray-700 dark:text-gray-200 leading-[1.65] shadow-[0_1px_4px_rgba(0,0,0,.06)] border border-gray-100 dark:border-gray-700">
                                                         {msg.content}
                                                     </div>
                                                 </div>
@@ -4718,13 +4669,13 @@ export default function AdvancedSearchAIPage() {
 
                                 {/* Typing indicator */}
                                 {pgBusy && (
-                                    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                                        <div className="adv-ai-avatar adv-ai-avatar-viz" style={{ width: 32, height: 32, flexShrink: 0 }}>
+                                    <div className="flex gap-2.5 items-start">
+                                        <div className="w-8 h-8 flex-shrink-0">
                                             <AgentVisualizer state="thinking" size={32} />
                                         </div>
-                                        <div style={{ background: '#fff', borderRadius: '4px 18px 18px 18px', padding: '12px 16px', boxShadow: '0 1px 4px rgba(0,0,0,.06)', border: '1px solid #f3f4f6', display: 'flex', gap: 4, alignItems: 'center' }}>
+                                        <div className="bg-white dark:bg-gray-800 rounded-[4px_18px_18px_18px] p-[12px_16px] shadow-[0_1px_4px_rgba(0,0,0,.06)] border border-gray-100 dark:border-gray-700 flex gap-1 items-center">
                                             {[0, 1, 2].map(i => (
-                                                <div key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: '#0b1957', animation: `pulse 1.2s ease ${i * 0.2}s infinite` }} />
+                                                <div key={i} className="w-1.5 h-1.5 rounded-full bg-[#0b1957] dark:bg-blue-400 animate-pulse" />
                                             ))}
                                         </div>
                                     </div>
@@ -4736,33 +4687,25 @@ export default function AdvancedSearchAIPage() {
                                     const fieldVal = pgCardValues[card.field];
 
                                     return (
-                                        <div style={{
-                                            background: '#fff', border: '1.5px solid #dce3f5', borderRadius: 14,
-                                            padding: '14px 16px', boxShadow: '0 2px 12px rgba(11,25,87,.08)',
-                                        }}>
-                                            <div style={{ fontSize: 12, fontWeight: 700, color: '#0b1957', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 shadow-[0_2px_12px_rgba(0,0,0,.08)]">
+                                            <div className="text-[12px] font-bold text-[#0b1957] dark:text-blue-300 mb-2.5 flex items-center gap-1.5">
                                                 <Sparkles size={12} /> {card.label}
                                             </div>
 
                                             {/* TEXT / TEXTAREA */}
                                             {(card.type === 'text' || card.type === 'textarea') && (
-                                                <div style={{ position: 'relative' }}>
+                                                <div className="relative">
                                                     <textarea
                                                         rows={card.type === 'textarea' ? 3 : 1}
                                                         value={fieldVal || ''}
                                                         onChange={e => setPgCardValues({ [card.field]: e.target.value })}
                                                         placeholder={card.placeholder || ''}
                                                         autoFocus
-                                                        style={{
-                                                            width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 8,
-                                                            padding: '9px 12px', paddingBottom: card.type === 'textarea' ? '36px' : '9px',
-                                                            fontSize: 13, color: '#374151',
-                                                            resize: 'vertical', outline: 'none', fontFamily: 'inherit',
-                                                            lineHeight: 1.5, background: '#fafafa', boxSizing: 'border-box',
-                                                        }}
-                                                        onFocus={e => { e.currentTarget.style.borderColor = '#0b1957'; }}
-                                                        onBlur={e => { e.currentTarget.style.borderColor = '#e5e7eb'; }}
-                                                        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && card.type !== 'textarea') { e.preventDefault(); pgSubmitCard(); } }}
+                                                      className={`w-full border border-gray-200 dark:border-gray-600 rounded-lg p-2.5 text-[13px] text-gray-700 dark:text-gray-100 resize-vertical outline-none bg-gray-50 dark:bg-gray-900 focus:border-[#0b1957] dark:focus:border-blue-500 ${card.type === 'textarea' ? 'pb-9' : ''}`}
+
+                                                      onFocus={e => { e.currentTarget.style.borderColor = '#0b1957'; }}
+                                                      onBlur={e => { e.currentTarget.style.borderColor = '#e5e7eb'; }}
+                                                      onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && card.type !== 'textarea') { e.preventDefault(); pgSubmitCard(); } }}
                                                     />
                                                     {card.type === 'textarea' && (
                                                         <button
@@ -4770,15 +4713,7 @@ export default function AdvancedSearchAIPage() {
                                                             onClick={pgGenerateSuggestion}
                                                             disabled={pgSuggesting}
                                                             title="Generate with AI"
-                                                            style={{
-                                                                position: 'absolute', bottom: 8, right: 8,
-                                                                display: 'flex', alignItems: 'center', gap: 4,
-                                                                padding: '4px 10px', borderRadius: 6, border: 'none',
-                                                                background: pgSuggesting ? '#e5e7eb' : 'linear-gradient(135deg,#0b1957,#1a3a8f)',
-                                                                color: pgSuggesting ? '#9ca3af' : '#fff',
-                                                                fontSize: 11.5, fontWeight: 600, cursor: pgSuggesting ? 'default' : 'pointer',
-                                                                transition: 'all .15s',
-                                                            }}
+                                                  className="absolute bottom-2 right-2 flex items-center gap-1 px-2.5 py-1 rounded-md border-none bg-gradient-to-br from-[#0b1957] to-[#1a3a8f] dark:from-blue-700 dark:to-blue-900 text-white text-[11.5px] font-semibold cursor-pointer disabled:bg-gray-300"
                                                         >
                                                             <Sparkles size={11} />
                                                             {pgSuggesting ? 'Generating…' : 'Generate with AI'}
@@ -4909,13 +4844,7 @@ export default function AdvancedSearchAIPage() {
                                             <button
                                                 onClick={pgSubmitCard}
                                                 disabled={!fieldVal && !pgTagInput.trim() && card.type !== 'hours'}
-                                                style={{
-                                                    marginTop: 12, width: '100%', padding: '9px 0', borderRadius: 9, border: 'none',
-                                                    background: fieldVal || pgTagInput.trim() || card.type === 'hours' ? 'linear-gradient(135deg,#0b1957,#1a3a8f)' : '#e5e7eb',
-                                                    color: fieldVal || pgTagInput.trim() || card.type === 'hours' ? '#fff' : '#9ca3af',
-                                                    fontSize: 13, fontWeight: 700, cursor: fieldVal || pgTagInput.trim() || card.type === 'hours' ? 'pointer' : 'default',
-                                                    transition: 'all .15s',
-                                                }}
+                                          className="mt-3 w-full py-2 rounded-lg border-none text-[13px] font-bold text-white bg-[#0b1957] dark:bg-blue-700 disabled:bg-gray-200 dark:disabled:bg-gray-700 disabled:text-gray-400 cursor-pointer transition-all"
                                             >
                                                 Submit →
                                             </button>
@@ -4928,34 +4857,27 @@ export default function AdvancedSearchAIPage() {
 
                             {/* ── Text Input Bar ── */}
                             {pgChatHistory.length > 0 && (
-                                <div style={{
-                                    padding: '10px 14px', borderTop: '1.5px solid #e5e7eb',
-                                    background: '#fff', flexShrink: 0, display: 'flex', gap: 8,
-                                }}>
+                                <div className="px-3.5 py-2.5 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex-shrink-0 flex gap-2">
                                     <input
                                         value={pgInput}
                                         onChange={e => setPgInput(e.target.value)}
                                         onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); pgSendMessage(pgInput); } }}
                                         placeholder="Type a message or skip to next question…"
                                         disabled={pgBusy}
-                                        style={{
-                                            flex: 1, border: '1.5px solid #e5e7eb', borderRadius: 24,
-                                            padding: '9px 16px', fontSize: 13.5, outline: 'none', fontFamily: 'inherit',
-                                            background: pgBusy ? '#f9fafb' : '#fff', color: '#374151',
-                                            transition: 'border .15s',
-                                        }}
-                                        onFocus={e => { e.currentTarget.style.borderColor = '#0b1957'; }}
-                                        onBlur={e => { e.currentTarget.style.borderColor = '#e5e7eb'; }}
+                                  className={`flex-1 border-[1.5px] rounded-[24px] px-4 py-2.5 text-[13.5px] outline-none transition-colors font-inherit 
+                                        ${pgBusy
+                                    ? 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-400'
+                                    : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-100 focus:border-[#0b1957] dark:focus:border-blue-500'
+                                  }`}
                                     />
                                     <button
                                         onClick={() => pgSendMessage(pgInput)}
                                         disabled={!pgInput.trim() || pgBusy}
-                                        style={{
-                                            width: 38, height: 38, borderRadius: '50%', border: 'none', flexShrink: 0,
-                                            background: pgInput.trim() && !pgBusy ? 'linear-gradient(135deg,#0b1957,#1a3a8f)' : '#e5e7eb',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            cursor: pgInput.trim() && !pgBusy ? 'pointer' : 'default', transition: 'all .15s',
-                                        }}
+                                    className={`w-[38px] h-[38px] rounded-full border-none shrink-0 flex items-center justify-center transition-all ${
+                                    pgInput.trim() && !pgBusy
+                                      ? 'bg-gradient-to-br from-[#0b1957] to-[#1a3a8f] dark:from-blue-700 dark:to-blue-900 cursor-pointer'
+                                      : 'bg-gray-200 dark:bg-gray-700 cursor-default'
+                                        }`}
                                     >
                                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
                                     </button>
@@ -9056,7 +8978,7 @@ const css = `
             .adv-gemini-sparkle {
                 width: 32px;
                 height: 32px;
-                color: #c2d6eb;
+                color: #1f2937;
                 opacity: 0.7;
                 animation: fadeUp 0.6s ease 0.2s both;
             }
@@ -9066,12 +8988,14 @@ const css = `
                 gap: 10px;
                 padding: 0 20px 20px;
                 width: 100%;
-                max-width: 70%;
-                margin: 0 auto;
-                flex-wrap: wrap;
-                justify-content: center;
+                max-width: 100%;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
                 animation: fadeUp 0.5s ease 0.15s both;
+                justify-content: center;
             }
+            .adv-gemini-chips::-webkit-scrollbar {display:none; }
             .adv-gemini-chip {
                 display: inline-flex;
                 align-items: center;
@@ -9149,8 +9073,8 @@ const css = `
                 }
                 html, body, .adv-landing, .adv-chat-root, main { background: #FFFFFF !important; }
                 .adv-chat-input-box { width: 100% !important; max-width: 100% !important; border-radius: 20px; padding: 16px 18px 12px; border: none !important; box-shadow: none !important; outline: none !important; background: #FFFFFF !important; }
-                .adv-chat-ta { text-align: left; font-size: 11px !important; outline: none !important; border: none !important; background: #FFFFFF !important; }
-                .adv-chat-back { width: 36px; height: 36px; top: 82px; left: 12px; z-index: 10 !important; }
+                .adv-chat-ta { text-align: center; font-size: 15px !important; outline: none !important; border: none !important; background: #FFFFFF !important; }
+                .adv-chat-back { width: 36px; height: 36px; top: 82px; left: 12px; z-index: 2000 !important; }
                 .adv-leads-panel {width: 100% !important; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 50; border-left: none; }
                 main { overflow: hidden !important; height: calc(100vh - 64px) !important; padding-top: 0 !important; background: #FFFFFF !important; }
                 .adv-chat-root { height: calc(100vh - 64px) !important; overflow: hidden !important; background: #FFFFFF !important; }
@@ -9161,7 +9085,7 @@ const css = `
                 .adv-chat-left-empty .adv-msgs-inner { display: none !important; }
                 .adv-chat-left-empty .adv-chat-input-wrap { padding-bottom: 0 !important; flex: 0 0 auto !important; }
                 .adv-chat-left-empty .adv-chat-input-box { padding: 24px 30px !important; max-width: 90% !important; margin: 0 auto !important; }
-                .adv-chat-left-empty .adv-chat-ta { font-size: 12px !important; }
+                .adv-chat-left-empty .adv-chat-ta { font-size: 20px !important; }
                 .adv-mobile-icp-box { display: flex; width: auto !important; left: auto !important; right: 12px !important; top: 82px !important; }
                 /* Decrease width for a more contained look on mobile */
                 .adv-chat-msgs { flex: 1 !important; overflow-y: auto !important; padding: 72px 0 10px !important; width: 100% !important; display: flex; flex-direction: column; overflow-x: hidden !important; border: none !important; background: #FFFFFF !important; }
@@ -9170,8 +9094,9 @@ const css = `
                 .adv-mobile-footer { background: #FFFFFF !important; }
                 .adv-chat-input-box { width: 100% !important; max-width: 88% !important; margin: 0 auto !important; border-radius: 16px; padding: 10px 14px; background: #FFFFFF !important; border: 1.5px solid #e5e7eb !important; }
                 .adv-input-central-group { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; }
-                .adv-chat-ta { width: 100% !important; border: none !important; background: none !important; font-size: 11px !important; text-align: left !important; padding: 2px 0 !important; min-height: 24px !important; height: 24px !important; line-height: 24px !important; }
-                .adv-chat-input-foot { padding: 4px 0 2px !important; margin-top: 4px !important; border: none !important; background: none !important; justify-content: space-between !important; gap: 10px !important; }                .adv-premium-btn { width: auto !important; min-width: 95px !important; justify-content: center !important; padding: 3px 10px !important; margin: 0 !important; font-size: 10px !important; }
+                  .adv-chat-ta { width: 100% !important; border: none !important; background: none !important; font-size: 14px !important; text-align: center !important; padding: 2px 0 !important; min-height: 24px !important; height: 24px !important; line-height: 24px !important; }
+                .adv-chat-input-foot { padding: 4px 0 2px !important; margin-top: 4px !important; border: none !important; background: none !important; justify-content: center !important; gap: 10px !important; }
+                .adv-premium-btn { width: auto !important; min-width: 95px !important; justify-content: center !important; padding: 3px 10px !important; margin: 0 !important; font-size: 10px !important; }
                 .adv-chat-attach-btn, .adv-send-sm { width: 28px !important; height: 28px !important; }
                 .adv-chat-attach-btn svg, .adv-send-sm svg { width: 13px !important; height: 13px !important; }
                 .adv-msg-counter { font-size: 10px !important; color: #9ca3af !important; margin: 4px 0 0 !important; padding: 0 !important; line-height: 1.2 !important; }
@@ -9261,7 +9186,7 @@ const css = `
                 /* MOBILE FOOTER */
                 .adv-mobile-footer {
                     display: flex; position: fixed; bottom: 10px; left: 6%; right: 6%;
-                    height: 60px; background: #FFFFFF !important; border-radius: 40px; z-index: 40;
+                    height: 60px; background: #FFFFFF !important; border-radius: 40px; z-index: 1000;
                     box-shadow: 0 8px 24px rgba(0,0,0,0.12);
                     justify-content: space-around; align-items: center;
                     padding: 0 10px; border: none;
@@ -9337,7 +9262,11 @@ const css = `
             .dark .adv-chat-body { background: #000724; }
             .dark .adv-chat-left { background: #000724; }
             .dark .adv-chat-left-empty .adv-chat-input-wrap { background: transparent; }
-
+            /* ── Chat Input Wrap ── */
+            .dark .adv-chat-input-wrap { 
+                background: #000724; 
+                border-top: 1px solid #000724; /* Prevents a light line appearing above the input */
+            }
             /* Text & Titles */
             .dark .adv-title { color: #ffffff; }
             .dark .adv-gemini-title { color: #ffffff; }
@@ -9377,7 +9306,7 @@ const css = `
             .dark .adv-chat-input-box input { color: #ffffff; }
             .dark .adv-chat-input-foot { border-top: none; }
             .dark .adv-chat-ta { color: #ffffff; }
-            .dark .adv-chat-ta::placeholder { color: #7a8ba3; }
+            .dark .adv-chat-ta::placeholder { color: #cbd5e1; }
 
             /* Recent Items */
             .dark .adv-recent-item { color: #ffffff; background: #1A2A43; }
@@ -9389,11 +9318,22 @@ const css = `
 
             /* CHAT BUBBLES & MESSAGES */
             .dark .adv-user-msg { background: #2563eb; color: #ffffff; box-shadow: 0 2px 14px rgba(37, 99, 235, 0.3); }
-            .dark .adv-ai-avatar { background: linear-gradient(135deg, #2563eb, #1e40af); box-shadow: 0 3px 10px rgba(37, 99, 235, 0.3); }
+ 
             .dark .adv-ai-name { color: #60a5fa; }
             .dark .adv-ai-text { color: #e5e7eb; }
             .dark .adv-ai-h3 { color: #f3f4f6; }
-            .dark .adv-ai-bullet-dot { background: #2B7CFF; }
+            .dark .adv-ai-bullet {
+                color: #e5e7eb; /* Soft light grey text for readability */
+            }
+            .dark .adv-ai-bullet-dot {
+                background: #60a5fa; /* Lighter blue to pop against dark background */
+                opacity: 1;
+            }
+            /* Dark Mode Override */
+            .dark .adv-ai-text strong {
+                color: #ffffff; /* Pure white for maximum clarity against the dark chat background */
+                font-weight: 600;
+            }
             .dark .adv-ai-num-badge { background: linear-gradient(135deg, #253456, #1A2A43); color: #60a5fa; }
 
             /* LEADS PANEL */
@@ -9461,8 +9401,151 @@ const css = `
             .dark .adv-tag { background: #253456; color: #ffffff; border-color: #000724; }
 
             /* MISC ELEMENTS */
-            .dark .adv-gemini-sparkle { color: #2B7CFF; }
+            .dark .adv-gemini-sparkle { color: white; }
             .dark .adv-web-searched { background: #1A2A43; border-color: #000724; color: #7a8ba3; }
-            .dark .adv-thinking-wrap { color: #60a5fa; }
+            .dark .adv-thinking-wrap,
+            .dark .adv-thinking-word {
+              color: #ffffff !important;
+            }
             .dark .adv-gemini-logo { filter: brightness(0) invert(1); }
+            :root { --header-start: #f0f3ff; --header-end: #e8ecfa; }
+            .dark { --header-start: #000c3b; --header-end: #000724; }
+                        
+                        /* Update these in your existing css constant */
+            .dark .adv-attach-menu {
+                background: #000724;
+                border: 1px solid #1e293b;
+                box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+            }
+            
+            .dark .adv-attach-item:hover {
+                background: #1e293b;
+            }
+            
+            .dark .adv-attach-label {
+                color: #f3f4f6;
+            }
+            
+            .dark .adv-attach-sub {
+                color: #94a3b8;
+            }
+            
+            .dark .adv-attach-divider {
+                background: #1e293b;
+            }
+            /* Apply these styles in your global CSS or inside your dark mode media query */
+            .dark .adv-ai-body {
+                background-color: #000724; /* Your theme's dark background */
+                border-color: #1e293b;     /* A dark border to separate the AI body */
+                color: #e5e7eb;            /* Light grey text for better readability */
+            }
+            /* ── ADDITIONAL DARK MODE REFINEMENTS ── */
+            
+            /* 1. Improved Form Inputs for Dark Mode */
+            .dark .adv-ta,
+            .dark .adv-chat-ta {
+                color: #f9fafb !important;
+            }
+            
+            .dark .adv-ta::placeholder,
+            .dark .adv-chat-ta::placeholder {
+                color: #cbd5e1 !important;
+            }
+            
+            /* 2. Scrollbar Styling (So it doesn't stand out on dark themes) */
+            .dark ::-webkit-scrollbar {
+                width: 8px;
+                height: 8px;
+            }
+            .dark ::-webkit-scrollbar-track {
+                background: #000724;
+            }
+            .dark ::-webkit-scrollbar-thumb {
+                background: #1e293b;
+                border-radius: 4px;
+            }
+            .dark ::-webkit-scrollbar-thumb:hover {
+                background: #334155;
+            }
+            
+            /* 3. Markdown/Rich Text Link Cleanup */
+            .dark .adv-ai-text a {
+                color: #60a5fa !important;
+                text-decoration: underline;
+                text-decoration-color: rgba(96, 165, 250, 0.3);
+            }
+            .dark .adv-ai-text a:hover {
+                color: #93c5fd !important;
+            }
+            
+            /* 4. Enhanced Buttons and Dividers */
+            .dark .adv-ai-hr {
+                border-top: 1px solid #1e293b;
+            }
+            
+            .dark .adv-chat-input-foot {
+                border-top: 1px solid #1e293b !important;
+            }
+            
+            /* 5. Tooltip & Popover Fixes */
+            .dark .journey-tip {
+                background: #1e293b !important;
+                color: #f1f5f9 !important;
+                border: 1px solid #334155 !important;
+            }
+            .dark .journey-tip div {
+                border-top-color: #1e293b !important;
+            }
+            
+            /* 6. Specifically fix the "Source" link block for better contrast */
+            .dark .adv-ai-body a[target="_blank"] {
+                background: #0f172a !important;
+                border: 1px solid #1e293b !important;
+                color: #94a3b8 !important;
+            }
+            .dark .adv-ai-body a[target="_blank"]:hover {
+                background: #1e293b !important;
+                color: #f8fafc !important;
+            }
+            
+            /* 7. Ensure Code Blocks are readable in dark mode */
+            .dark .adv-ai-text code {
+                background: #1e293b !important;
+                color: #cbd5e1 !important;
+            }
+            
+            /* 8. Fix for the "Suggested Journey" labels */
+            .dark .adv-ai-name {
+                color: #60a5fa !important;
+            }
+            
+            /* --- Dark Mode (Matches image_58975a.png) --- */
+.dark .adv-ai-avatar {
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0px;
+}
+
+/* Forces the inner icon to turn pure white in dark mode */
+.dark .adv-ai-avatar-viz svg,
+.dark .adv-ai-avatar-viz img,
+.dark .adv-ai-avatar-viz * {
+  fill: #ffffff !important;
+  stroke: #ffffff !important;
+  color: #ffffff !important;
+}
+
+/* When dark mode is active, completely strip the wrapper and force the graphic to white */
+.dark .agent-avatar-wrapper {
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+/* This forces every possible layer inside the Visualizer (SVGs, paths, divs, text) to turn white */
+.dark .agent-avatar-wrapper * {
+  fill: #ffffff !important;
+  stroke: #ffffff !important;
+  color: #ffffff !important;
+}
             `;
