@@ -57,6 +57,7 @@ export function useMediaBuilder() {
   const mageHoldAbortRef = useRef<AbortController | null>(null);
   const sessionIdRef = useRef<string>("");
   const wasInBrandDnaExtractionRef = useRef<boolean>(false);
+  const prevStepRef = useRef<MediaBuilderStep>("welcome");
 
   const workerUrl =
     process.env.NEXT_PUBLIC_PLAYGROUND_WORKER_URL || "http://localhost:8080";
@@ -409,13 +410,22 @@ export function useMediaBuilder() {
     };
   }, [step, sessionId, workerUrl, uiPayload?.status, uiPayload?.phase]);
 
-  // Auto-release MAGe hold if we transition away from the progress step
+  // Auto-release MAGe hold if we transition away from the progress step (only after we've actually entered it)
   useEffect(() => {
-    if (step !== "builder-video-progress" && wasInBrandDnaExtractionRef.current) {
+    if (
+      step !== "builder-video-progress" &&
+      prevStepRef.current === "builder-video-progress" &&
+      wasInBrandDnaExtractionRef.current
+    ) {
       wasInBrandDnaExtractionRef.current = false;
       releaseMageHold(sessionIdRef.current);
     }
   }, [step, releaseMageHold]);
+
+  // Keep track of the previous step
+  useEffect(() => {
+    prevStepRef.current = step;
+  }, [step]);
 
   const uploadReference = useCallback(async (file: File) => {
     if (references.length >= 5) {
