@@ -57,7 +57,7 @@ export function useMediaBuilder() {
   const mageHoldAbortRef = useRef<AbortController | null>(null);
   const sessionIdRef = useRef<string>("");
   const wasInBrandDnaExtractionRef = useRef<boolean>(false);
-  const prevStepRef = useRef<MediaBuilderStep>("welcome");
+  const isMageExtractionRef = useRef<boolean>(false);
 
   const workerUrl =
     process.env.NEXT_PUBLIC_PLAYGROUND_WORKER_URL || "http://localhost:8080";
@@ -410,22 +410,21 @@ export function useMediaBuilder() {
     };
   }, [step, sessionId, workerUrl, uiPayload?.status, uiPayload?.phase]);
 
-  // Auto-release MAGe hold if we transition away from the progress step (only after we've actually entered it)
+  // Set wasInBrandDnaExtractionRef when entering builder-video-progress step for MAGe
   useEffect(() => {
-    if (
-      step !== "builder-video-progress" &&
-      prevStepRef.current === "builder-video-progress" &&
-      wasInBrandDnaExtractionRef.current
-    ) {
+    if (step === "builder-video-progress" && isMageExtractionRef.current) {
+      wasInBrandDnaExtractionRef.current = true;
+    }
+  }, [step]);
+
+  // Auto-release MAGe hold if we transition away from the progress step
+  useEffect(() => {
+    if (step !== "builder-video-progress" && wasInBrandDnaExtractionRef.current) {
       wasInBrandDnaExtractionRef.current = false;
+      isMageExtractionRef.current = false;
       releaseMageHold(sessionIdRef.current);
     }
   }, [step, releaseMageHold]);
-
-  // Keep track of the previous step
-  useEffect(() => {
-    prevStepRef.current = step;
-  }, [step]);
 
   const uploadReference = useCallback(async (file: File) => {
     if (references.length >= 5) {
@@ -537,7 +536,7 @@ export function useMediaBuilder() {
     if (messageToSend === "Analyze a new website") {
       try {
         await establishMageHold(sessionId);
-        wasInBrandDnaExtractionRef.current = true;
+        isMageExtractionRef.current = true;
       } catch (e) {
         console.error("Failed to establish MAGe hold:", e);
       }
