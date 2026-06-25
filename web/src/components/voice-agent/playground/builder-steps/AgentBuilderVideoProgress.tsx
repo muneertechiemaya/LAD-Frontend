@@ -16,6 +16,7 @@ export function AgentBuilderVideoProgress({
   videoUrl,
   status = "active",
   onNext,
+  progress,
 }: {
   title?: string;
   description?: string;
@@ -25,6 +26,7 @@ export function AgentBuilderVideoProgress({
   videoUrl?: string;
   status?: "active" | "completed" | "cancelled" | "failed";
   onNext?: (val?: string) => void;
+  progress?: number;
 }) {
   const [retryCounts, setRetryCounts] = React.useState<Record<string, number>>({});
   const [cooldowns, setCooldowns] = React.useState<Record<string, number>>({});
@@ -64,14 +66,14 @@ export function AgentBuilderVideoProgress({
   };
 
   const handleGlobalRetry = () => {
-    const failedBlocks = blocks.filter(b => b.value === "failed");
+    const failedBlocks = cleanBlocks.filter(b => b.value === "failed");
     let triggeredAny = false;
     
     const nextCooldowns = { ...cooldowns };
     const nextRetryCounts = { ...retryCounts };
 
-    failedBlocks.forEach((block, idx) => {
-      const blockIdx = blocks.indexOf(block);
+    failedBlocks.forEach((block) => {
+      const blockIdx = cleanBlocks.indexOf(block);
       const key = getBlockKey(block, blockIdx);
       const currentCount = nextRetryCounts[key] || 0;
       if (currentCount < 3 && !(nextCooldowns[key] > 0)) {
@@ -100,10 +102,40 @@ export function AgentBuilderVideoProgress({
     }
   };
   
-  const total = blocks.length || 4;
-  const totalWeight = blocks.reduce((acc, b) => acc + getWeight(b.value), 0);
-  const allCompleted = blocks.length > 0 && blocks.every((b) => b.value === "completed");
-  const progressPercent = allCompleted ? 100 : Math.min(99, Math.round((totalWeight / total) * 100));
+  // Extract percentage in parentheses/brackets from title, description, or blocks
+  let extractedProgress: number | undefined = progress;
+  const pctRegex = /[\(\[]\s*(\d+)\s*%\s*[\)\]]/;
+
+  let cleanTitle = title;
+  const titleMatch = cleanTitle.match(pctRegex);
+  if (titleMatch) {
+    extractedProgress = parseInt(titleMatch[1], 10);
+    cleanTitle = cleanTitle.replace(pctRegex, "").replace(/\s+/g, " ").trim();
+  }
+
+  let cleanDescription = description;
+  const descMatch = cleanDescription.match(pctRegex);
+  if (descMatch) {
+    extractedProgress = parseInt(descMatch[1], 10);
+    cleanDescription = cleanDescription.replace(pctRegex, "").replace(/\s+/g, " ").trim();
+  }
+
+  const cleanBlocks = blocks.map((block) => {
+    let cleanLabel = block.label;
+    const blockMatch = cleanLabel.match(pctRegex);
+    if (blockMatch) {
+      if (extractedProgress === undefined || extractedProgress === progress) {
+        extractedProgress = parseInt(blockMatch[1], 10);
+      }
+      cleanLabel = cleanLabel.replace(pctRegex, "").replace(/\s+/g, " ").trim();
+    }
+    return { ...block, label: cleanLabel };
+  });
+
+  const total = cleanBlocks.length || 4;
+  const totalWeight = cleanBlocks.reduce((acc, b) => acc + getWeight(b.value), 0);
+  const allCompleted = cleanBlocks.length > 0 && cleanBlocks.every((b) => b.value === "completed");
+  const progressPercent = extractedProgress !== undefined ? extractedProgress : (allCompleted ? 100 : Math.min(99, Math.round((totalWeight / total) * 100)));
 
   const handleDownload = async () => {
     if (!videoUrl) return;
@@ -178,9 +210,9 @@ export function AgentBuilderVideoProgress({
   };
 
   // Check retry eligibility for global button
-  const failedBlocks = blocks.filter(b => b.value === "failed");
+  const failedBlocks = cleanBlocks.filter(b => b.value === "failed");
   const retryableFailedBlocks = failedBlocks.filter(b => {
-    const key = getBlockKey(b, blocks.indexOf(b));
+    const key = getBlockKey(b, cleanBlocks.indexOf(b));
     return (retryCounts[key] || 0) < 3 && !(cooldowns[key] > 0);
   });
   const allFailedReachedLimit = failedBlocks.length > 0 && retryableFailedBlocks.length === 0;
@@ -200,10 +232,10 @@ export function AgentBuilderVideoProgress({
       {/* Main Content Area */}
       <div className="relative flex-1 min-h-0 w-full flex flex-col pt-6 px-6 overflow-y-auto scrollbar-none">
         <h2 className="text-xl font-bold text-[#0b1957] text-center leading-snug mb-2">
-          {title}
+          {cleanTitle}
         </h2>
         <p className="text-xs text-slate-500 text-center mb-6 font-medium max-w-[320px] mx-auto leading-relaxed">
-          {description}
+          {cleanDescription}
         </p>
 
         {/* Real-time Video Player Preview */}
@@ -247,7 +279,7 @@ export function AgentBuilderVideoProgress({
 
         {/* Segments Progress List */}
         <div className="flex-1 w-full space-y-3 pb-8">
-          {blocks.map((block, idx) => {
+          {cleanBlocks.map((block, idx) => {
             const { icon, statusText, colorClass } = getStatusDetails(block.value);
             
             const itemKey = getBlockKey(block, idx);

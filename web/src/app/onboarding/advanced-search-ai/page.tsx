@@ -753,6 +753,16 @@ export default function AdvancedSearchAIPage() {
     // ── AI Playground state ──────────────────────────────────────────────────
     // ── AI Playground (chat-based business profiling) ────────────────────────
     const [showPlayground, setShowPlayground] = useState(false);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('open_icp') === 'true') {
+                setShowPlayground(true);
+            }
+        }
+    }, []);
+
     const [showMediaModal, setShowMediaModal] = useState(false);
     const [pgChatHistory, setPgChatHistory] = useState<Array<{ role: 'user' | 'assistant'; content: string; card?: any }>>([]);
     const [pgInput, setPgInput] = useState('');

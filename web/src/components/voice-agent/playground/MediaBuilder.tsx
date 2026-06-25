@@ -13,6 +13,7 @@ import { AgentBuilderScriptConfirm } from "./builder-steps/AgentBuilderScriptCon
 import { AgentBuilderWorkflowChoice } from "./builder-steps/AgentBuilderWorkflowChoice";
 import { AgentBuilderVideoProgress } from "./builder-steps/AgentBuilderVideoProgress";
 import { AgentBuilderKeyframesConfirm } from "./builder-steps/AgentBuilderKeyframesConfirm";
+import { AgentBuilderBrandDNA } from "./builder-steps/AgentBuilderBrandDNA";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface MediaBuilderProps {
@@ -396,6 +397,7 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
         phase={mb.uiPayload?.phase}
         videoUrl={mb.uiPayload?.video}
         status={mb.uiPayload?.status as any}
+        progress={mb.uiPayload?.progress}
         onNext={(val) => {
           if (val === "[SHOW_GALLERY]") {
             mb.fetchGallery();
@@ -403,6 +405,18 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
             mb.advanceStep(val);
           }
         }}
+      />
+    );
+  }
+
+  /* ── 7d. BRAND DNA VIEW ── */
+  else if (mb.step === "builder-brand-dna") {
+    content = (
+      <AgentBuilderBrandDNA
+        brandDna={mb.uiPayload?.brand_dna}
+        onClose={onClose}
+        onNext={(val) => mb.advanceStep(val)}
+        phase={mb.uiPayload?.phase}
       />
     );
   }

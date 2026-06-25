@@ -21,6 +21,7 @@ export type MediaBuilderStep =
   | "builder-workflow-choice"
   | "builder-video-progress"
   | "builder-keyframes-confirm"
+  | "builder-brand-dna"
   | "gallery";
 
 export interface MediaUiPayload {
@@ -36,6 +37,8 @@ export interface MediaUiPayload {
   status?: string;
   total_cost?: number;
   cost_breakdown?: any[];
+  brand_dna?: any;
+  progress?: number;
 }
 
 export function useMediaBuilder() {
@@ -51,10 +54,14 @@ export function useMediaBuilder() {
   const [loadingGallery, setLoadingGallery] = useState(false);
 
   const holdAbortRef = useRef<AbortController | null>(null);
+  const mageHoldAbortRef = useRef<AbortController | null>(null);
   const sessionIdRef = useRef<string>("");
+  const wasInBrandDnaExtractionRef = useRef<boolean>(false);
 
   const workerUrl =
     process.env.NEXT_PUBLIC_PLAYGROUND_WORKER_URL || "http://localhost:8080";
+  const mageUrl =
+    process.env.NEXT_PUBLIC_MAGE_API_URL || "http://localhost:8001";
 
   const getAuthHeaders = () => {
     const token = safeStorage.getItem("token");
@@ -126,6 +133,85 @@ export function useMediaBuilder() {
     [workerUrl],
   );
 
+  const establishMageHold = useCallback(
+    async (id: string) => {
+      try {
+        console.warn(`[MediaBuilder] Establishing hold for MAGe ${id}...`);
+        
+        const startTime = Date.now();
+        const timeoutMs = 60000; // 1 minute
+        let connected = false;
+        
+        while (Date.now() - startTime < timeoutMs) {
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3000);
+            
+            const probe = await fetch(mageUrl, {
+              method: "GET",
+              signal: controller.signal,
+            });
+            clearTimeout(timeoutId);
+            
+            if (probe.ok) {
+              connected = true;
+              break;
+            }
+          } catch {
+            console.warn("[MediaBuilder] MAGe status probe failed, retrying...");
+          }
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+        }
+        
+        if (!connected) {
+          throw new Error("Failed to wake up MAGe Brand DNA extractor service.");
+        }
+
+        if (mageHoldAbortRef.current) mageHoldAbortRef.current.abort();
+        const controller = new AbortController();
+        mageHoldAbortRef.current = controller;
+
+        fetch(`${mageUrl}/api/brand-profiler/hold`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ session_id: id }),
+          signal: controller.signal,
+        }).catch((e) => {
+          if (e.name !== "AbortError") {
+            console.error("MAGe hold request ended:", e);
+          }
+        });
+      } catch (e: unknown) {
+        console.error("Failed to hold MAGe worker:", e);
+      }
+    },
+    [mageUrl],
+  );
+
+  const releaseMageHold = useCallback(
+    async (id: string) => {
+      if (!id) return;
+      if (mageHoldAbortRef.current) {
+        mageHoldAbortRef.current.abort();
+      }
+      try {
+        await fetch(`${mageUrl}/api/brand-profiler/release`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ session_id: id }),
+        });
+        console.warn(`[MediaBuilder] Released hold for MAGe ${id}`);
+      } catch (e) {
+        console.error("Failed to release MAGe worker:", e);
+      }
+    },
+    [mageUrl],
+  );
+
   const releaseHold = useCallback(
     async (id: string) => {
       if (!id) return;
@@ -150,11 +236,15 @@ export function useMediaBuilder() {
     if (holdAbortRef.current) {
       holdAbortRef.current.abort();
     }
+    if (mageHoldAbortRef.current) {
+      mageHoldAbortRef.current.abort();
+    }
     const currentSessionId = sessionIdRef.current;
     if (currentSessionId) {
       await releaseHold(currentSessionId);
+      await releaseMageHold(currentSessionId);
     }
-  }, [releaseHold]);
+  }, [releaseHold, releaseMageHold]);
 
   const startFlow = useCallback(() => {
     const newSessionId = `media-${Math.random().toString(36).substring(2, 9)}`;
@@ -205,6 +295,7 @@ export function useMediaBuilder() {
         status: data.status,
         total_cost: data.total_cost,
         cost_breakdown: data.cost_breakdown,
+        brand_dna: data.brand_dna,
       });
       setStep(data.step as MediaBuilderStep);
     } catch (err) {
@@ -251,6 +342,7 @@ export function useMediaBuilder() {
         status: data.status,
         total_cost: data.total_cost,
         cost_breakdown: data.cost_breakdown,
+        brand_dna: data.brand_dna,
       });
       setStep(data.step as MediaBuilderStep);
     } catch (err) {
@@ -301,6 +393,8 @@ export function useMediaBuilder() {
             status: data.status,
             total_cost: data.total_cost,
             cost_breakdown: data.cost_breakdown,
+            brand_dna: data.brand_dna,
+            progress: data.progress,
           });
           setStep(data.step as MediaBuilderStep);
         }
@@ -314,6 +408,14 @@ export function useMediaBuilder() {
       clearInterval(intervalId);
     };
   }, [step, sessionId, workerUrl, uiPayload?.status, uiPayload?.phase]);
+
+  // Auto-release MAGe hold if we transition away from the progress step
+  useEffect(() => {
+    if (step !== "builder-video-progress" && wasInBrandDnaExtractionRef.current) {
+      wasInBrandDnaExtractionRef.current = false;
+      releaseMageHold(sessionIdRef.current);
+    }
+  }, [step, releaseMageHold]);
 
   const uploadReference = useCallback(async (file: File) => {
     if (references.length >= 5) {
@@ -415,6 +517,22 @@ export function useMediaBuilder() {
       messageToSend = userInput.join(", ");
     }
 
+    if (messageToSend === "Create new ICP profile") {
+      if (typeof window !== "undefined") {
+        window.location.href = window.location.origin + "/onboarding/advanced-search-ai?open_icp=true";
+      }
+      return;
+    }
+
+    if (messageToSend === "Analyze a new website") {
+      try {
+        await establishMageHold(sessionId);
+        wasInBrandDnaExtractionRef.current = true;
+      } catch (e) {
+        console.error("Failed to establish MAGe hold:", e);
+      }
+    }
+
     if (references.length > 0) {
       if (step === "builder-image-output") {
         messageToSend += ` from the generated image user selected the attachements for improvemnts`;
@@ -454,6 +572,7 @@ export function useMediaBuilder() {
         status: data.status,
         total_cost: data.total_cost,
         cost_breakdown: data.cost_breakdown,
+        brand_dna: data.brand_dna,
       });
       setStep(data.step as MediaBuilderStep);
       
@@ -466,7 +585,7 @@ export function useMediaBuilder() {
     } finally {
       setGenerating(false);
     }
-  }, [sessionId, step, uiPayload, workerUrl, references]);
+  }, [sessionId, step, uiPayload, workerUrl, references, establishMageHold]);
 
   const fetchGallery = useCallback(async () => {
     setStep("gallery");
