@@ -519,7 +519,7 @@ export function AgentBuilderImageOutput({
       )}
 
       {/* Refinement input bar */}
-      <div className="w-full flex flex-col mt-auto pb-4 pt-2 bg-gradient-to-t from-white via-white to-transparent relative z-20 border-t border-slate-50">
+      <div className="w-full flex flex-col mt-auto pb-6 pt-2 bg-gradient-to-t from-white via-white to-transparent relative z-20 border-t border-slate-50">
         {references.length > 0 && (
           <div className="text-[10px] text-slate-500 font-medium italic text-center px-6 mb-2 animate-in fade-in duration-200">
             user has attached {references.length} references with this request.
