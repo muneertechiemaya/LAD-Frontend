@@ -147,6 +147,20 @@ function mapMessageFromApi(raw: any): Message {
   };
 }
 
+// A conversation's "last activity" can live in either column: updated_at is
+// bumped on every message, but last_message_at historically was NOT (so it could
+// be stale). Use whichever is NEWER for both display and sort, so a freshly-active
+// chat is never ranked/shown as old (real bug 2026-06-20: a chat active "2 min"
+// ago sorted among 2-month chats because the sort keyed off the stale
+// last_message_at). Backend now keeps the two in lock-step; this is belt-and-
+// braces and self-heals before the backfill runs.
+function latestActivityDate(...candidates: Array<string | null | undefined>): Date {
+  const times = candidates
+    .map((c) => (c ? new Date(c).getTime() : NaN))
+    .filter((t) => !Number.isNaN(t));
+  return new Date(times.length ? Math.max(...times) : Date.now());
+}
+
 function mapConversationFromApi(raw: any): Conversation {
   return {
     id: raw.id,
@@ -166,7 +180,7 @@ function mapConversationFromApi(raw: any): Conversation {
           id: `last-${raw.id}`,
           conversationId: raw.id,
           content: raw.last_message_content,
-          timestamp: new Date(raw.last_message_at || raw.updated_at),
+          timestamp: latestActivityDate(raw.last_message_at, raw.updated_at),
           isOutgoing: raw.last_message_role !== 'user',
           status: 'sent',
           sender: {
@@ -183,7 +197,7 @@ function mapConversationFromApi(raw: any): Conversation {
     is_favorite: Boolean(raw.is_favorite),
     isFavorite: Boolean(raw.is_favorite),
     createdAt: new Date(raw.started_at || raw.created_at),
-    updatedAt: new Date(raw.updated_at || raw.last_message_at || raw.started_at),
+    updatedAt: latestActivityDate(raw.updated_at, raw.last_message_at, raw.started_at),
   };
 }
 
