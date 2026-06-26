@@ -48,6 +48,7 @@ export function AgentBuilderBrandDNA({
   const [copiedColor, setCopiedColor] = useState<string | null>(null);
   const [zoomedAsset, setZoomedAsset] = useState<BrandAsset | null>(null);
   const [loadedAssets, setLoadedAssets] = useState<Record<string, boolean>>({});
+  const [failedAssets, setFailedAssets] = useState<Record<string, boolean>>({});
 
   const checkersStyle: React.CSSProperties = {
     backgroundImage: "conic-gradient(#f1f5f9 25%, transparent 0 50%, #f1f5f9 0 75%, transparent 0)",
@@ -384,12 +385,23 @@ export function AgentBuilderBrandDNA({
                             <div className="w-14 h-1.5 rounded bg-slate-200/80" />
                           </div>
                         )}
-                        {asset.url.endsWith(".svg") ? (
+                        {failedAssets[asset.key] ? (
+                          <div className="flex flex-col items-center justify-center text-slate-300 gap-1.5 p-4 w-full h-full bg-slate-50">
+                            <svg className="size-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <span className="text-[8px] font-semibold text-slate-400">Failed to load</span>
+                          </div>
+                        ) : asset.url.endsWith(".svg") ? (
                           <div className="p-3 w-full h-full flex items-center justify-center bg-white/40">
                             <img
                               src={asset.url}
                               alt={asset.key}
                               onLoad={() => setLoadedAssets((prev) => ({ ...prev, [asset.key]: true }))}
+                              onError={() => {
+                                setLoadedAssets((prev) => ({ ...prev, [asset.key]: true }));
+                                setFailedAssets((prev) => ({ ...prev, [asset.key]: true }));
+                              }}
                               className={`max-h-full max-w-full object-contain transition-opacity duration-300 ${
                                 loadedAssets[asset.key] ? "opacity-100" : "opacity-0"
                               }`}
@@ -400,6 +412,10 @@ export function AgentBuilderBrandDNA({
                             src={asset.url}
                             alt={asset.key}
                             onLoad={() => setLoadedAssets((prev) => ({ ...prev, [asset.key]: true }))}
+                            onError={() => {
+                              setLoadedAssets((prev) => ({ ...prev, [asset.key]: true }));
+                              setFailedAssets((prev) => ({ ...prev, [asset.key]: true }));
+                            }}
                             className={`w-full h-full object-cover group-hover:scale-105 transition-all duration-300 ${
                               loadedAssets[asset.key] ? "opacity-100" : "opacity-0"
                             }`}
