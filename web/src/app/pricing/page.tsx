@@ -45,44 +45,44 @@ export default function PricingPage() {
           </header>
 
           {/* ===== Sticky plan header ===== */}
-          <div className="plan-row">
+          <div className="plan-row bg-slate-50 dark:bg-[#000724] border-b border-slate-200 dark:border-[#262831]">
             <div className="grid">
-              <div className="corner">Features by plan</div>
+              <div className="corner text-slate-500 dark:text-slate-400">Features by plan</div>
 
-              <div className="plan-card noai">
+              <div className="plan-card noai bg-slate-50 dark:bg-[#0d152a] border border-slate-200 dark:border-[#262831]">
                 <span className="badge gray">No AI</span>
-                <h3>Broadcast</h3>
-                <div className="price">$39<small>/mo</small></div>
-                <div className="seg">Email &amp; WhatsApp campaigns only</div>
+                <h3 className="text-slate-800 dark:text-white">Broadcast</h3>
+                <div className="price text-slate-800 dark:text-white">$39<small>/mo</small></div>
+                <div className="seg text-slate-500 dark:text-slate-400">Email &amp; WhatsApp campaigns only</div>
                 <button type="button" className="cta" onClick={handleGetStarted}>Start free trial</button>
               </div>
 
-              <div className="plan-card">
-                <h3>Starter</h3>
-                <div className="price">$99<small>/mo</small></div>
-                <div className="seg">Solopreneurs · Outreach</div>
+              <div className="plan-card bg-white dark:bg-[#101935] border border-slate-200 dark:border-[#262831]">
+                <h3 className="text-slate-800 dark:text-white">Starter</h3>
+                <div className="price text-slate-800 dark:text-white">$99<small>/mo</small></div>
+                <div className="seg text-slate-500 dark:text-slate-400">Solopreneurs · Outreach</div>
                 <button type="button" className="cta" onClick={handleGetStarted}>Start free trial</button>
               </div>
 
-              <div className="plan-card popular">
+              <div className="plan-card popular bg-white dark:bg-[#101935] border-2 border-teal-600 dark:border-blue-500">
                 <span className="badge">Most popular</span>
-                <h3>Growth</h3>
-                <div className="price">$199<small>/mo</small></div>
-                <div className="seg">Small teams · Outreach + Engage</div>
+                <h3 className="text-slate-800 dark:text-white">Growth</h3>
+                <div className="price text-slate-800 dark:text-white">$199<small>/mo</small></div>
+                <div className="seg text-slate-500 dark:text-slate-400">Small teams · Outreach + Engage</div>
                 <button type="button" className="cta" onClick={handleGetStarted}>Start free trial</button>
               </div>
 
-              <div className="plan-card">
-                <h3>Scale</h3>
-                <div className="price">$499<small>/mo</small></div>
-                <div className="seg">Sales teams · All pillars + Voice</div>
+              <div className="plan-card bg-white dark:bg-[#101935] border border-slate-200 dark:border-[#262831]">
+                <h3 className="text-slate-800 dark:text-white">Scale</h3>
+                <div className="price text-slate-800 dark:text-white">$499<small>/mo</small></div>
+                <div className="seg text-slate-500 dark:text-slate-400">Sales teams · All pillars + Voice</div>
                 <button type="button" className="cta" onClick={handleGetStarted}>Start free trial</button>
               </div>
 
-              <div className="plan-card">
-                <h3>Enterprise</h3>
-                <div className="price">Custom</div>
-                <div className="seg">10+ channels · Omnichannel layer</div>
+              <div className="plan-card bg-white dark:bg-[#101935] border border-slate-200 dark:border-[#262831]">
+                <h3 className="text-slate-800 dark:text-white">Enterprise</h3>
+                <div className="price text-slate-800 dark:text-white">Custom</div>
+                <div className="seg text-slate-500 dark:text-slate-400">10+ channels · Omnichannel layer</div>
                 <button type="button" className="cta" onClick={handleTalkToSales}>Talk to sales</button>
               </div>
             </div>
@@ -497,6 +497,160 @@ export default function PricingPage() {
             .pricing-root :global(.fname span) { display: none; }
             .pricing-root :global(.cell) { font-size: 10.5px; padding: 8px 3px; }
           }
+          
+          /* --- Dark Mode Additions --- */
+          
+          .pricing-root {
+        --paper: #F8FAFC; 
+        --paper-dark: #000724;
+        --card: #FFFFFF; 
+        --card-dark: #101935;
+        --ink: #222B45; 
+        --ink-dark: #F1F5F9;
+        --ink-soft: #8F9BB3; 
+        --ink-soft-dark: #7a8ba3;
+        --line: #E5EAF2; 
+        --line-dark: #262831;
+        --teal: #1A3F7F; 
+        --teal-light: #EEF3FB;
+        --teal-dark: #1e295d;
+        
+        background: var(--paper);
+        color: var(--ink);
+      }
+      
+      /* Dark Mode Overrides */
+        :global(.dark) .pricing-root {
+          background: var(--paper-dark);
+          color: var(--ink-dark);
+        }
+  
+        .pricing-root :global(section.fgroup) { 
+          background: var(--card); 
+          border: 1px solid var(--line); 
+        }
+        :global(.dark) .pricing-root :global(section.fgroup) { 
+          background: var(--card-dark); 
+          border: 1px solid var(--line-dark); 
+        }
+  
+        .pricing-root :global(.frow:nth-child(even)) { background: #FBFCFE; }
+        :global(.dark) .pricing-root :global(.frow:nth-child(even)) { background: #151f3d; }
+  
+        .pricing-root :global(.fname .mkt) { color: var(--teal); background: var(--teal-light); }
+        :global(.dark) .pricing-root :global(.fname .mkt) { color: #93c5fd; background: #1e3a8a; }
+  
+        .note { 
+          background: var(--teal-light); 
+          border: 1px solid #D7E1F1; 
+          color: var(--ink); 
+        }
+        :global(.dark) .note { 
+          background: #1e295d; 
+          border: 1px solid #334155; 
+          color: #f1f5f9; 
+        }
+  
+        /* Calculator Dark Mode */
+        :global(.dark) .scc-slider::-webkit-slider-runnable-track { background: linear-gradient(to right, #3b82f6 var(--fill, 0%), #334155 var(--fill, 0%)); }
+        :global(.dark) .scc-slider::-webkit-slider-thumb { border: 3px solid #3b82f6; background: #000724; }
+        
+        :global(.dark) .scc-receipt, 
+        :global(.dark) .scc-lad-card { 
+          background: var(--card-dark); 
+          border-color: var(--line-dark); 
+        }
+  
+        :global(.dark) .scc-rname em, 
+        :global(.dark) .scc-item-label { color: var(--ink-soft-dark); }
+  
+        :global(.dark) .scc-verdict.idle { background: var(--card-dark); border-color: var(--line-dark); color: var(--ink-soft-dark); }
+
+        :global(.dark) .pricing-root {
+          --paper: #000724;
+          --card: #101935;
+          --ink: #F1F5F9;
+          --ink-soft: #7a8ba3;
+          --line: #262831;
+          --teal: #3b82f6; /* Adjust to your preferred dark-mode accent */
+          --teal-soft: #1e295d;
+        }
+        
+        :global(.dark) .pricing-root :global(.frow:nth-child(even)) { 
+          background: #151f3d; 
+        }
+        
+        :global(.dark) .pricing-root :global(.fname .mkt) { 
+          color: #93c5fd; 
+          background: #1e3a8a; 
+        }
+        
+        :global(.dark) .note { 
+          background: #1e295d; 
+          border: 1px solid #334155; 
+          color: #f1f5f9; 
+        }
+        
+        :global(.dark) .scc-slider::-webkit-slider-runnable-track { 
+          background: linear-gradient(to right, var(--teal) var(--fill, 0%), #334155 var(--fill, 0%)); 
+        }
+        
+        :global(.dark) .scc-slider::-webkit-slider-thumb { 
+          border: 3px solid var(--teal); 
+          background: #000724; 
+        }
+        
+        :global(.dark) .scc-receipt, 
+        :global(.dark) .scc-lad-card { 
+          background: var(--card); 
+          border-color: var(--line); 
+        }
+        
+        :global(.dark) .scc-rname em, 
+        :global(.dark) .scc-item-label { 
+          color: var(--ink-soft); 
+        }
+        
+        :global(.dark) .scc-verdict.idle { 
+          background: var(--card); 
+          border-color: var(--line); 
+          color: var(--ink-soft); 
+        }
+        
+        /* --- Dark Mode Additions for Plan Cards --- */
+        
+        /* Reset background for the "No AI" card in dark mode */
+        :global(.dark) .plan-card.noai { 
+          background: var(--paper); 
+        }
+        
+        /* Ensure text colors within the plan card inherit the dark theme variables */
+        :global(.dark) .plan-card :global(h3),
+        :global(.dark) .plan-card .price { 
+          color: var(--ink); 
+        }
+        
+        /* The badge text is already white, so it remains visible; 
+           we just ensure the gray badge looks appropriate in dark mode */
+        :global(.dark) .badge.gray { 
+          background: var(--ink-soft); 
+          color: var(--paper); 
+        }
+        
+        /* Ensure the CTA button colors invert or stay readable */
+        :global(.dark) .plan-card .cta { 
+          background: var(--ink); 
+          color: var(--paper); 
+        }
+        :global(.dark) .plan-card.popular .cta { 
+          background: var(--teal); 
+          color: #fff; 
+        }
+        
+        /* Ensure corner label is readable */
+        :global(.dark) .corner { 
+          color: var(--ink-soft); 
+        }
         `}</style>
     </div>
   );
