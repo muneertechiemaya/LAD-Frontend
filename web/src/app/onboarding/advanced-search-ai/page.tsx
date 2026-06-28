@@ -4089,23 +4089,23 @@ export default function AdvancedSearchAIPage() {
 
                         {showPanel === 'leads' ? (
 
-                            <div className="adv-panel-body">
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <h2 className="adv-panel-title" style={{ margin: 0 }}>
+                          <div className="adv-panel-body">
+                              <div className="flex justify-between items-center">
+                                  <h2 className="adv-panel-title m-0 text-gray-900 dark:text-gray-100">
                                         {inboundMode ? 'Your Imported Leads' : 'Your Lead Results'}
                                     </h2>
                                     {!inboundMode && totalResults > 0 && (
-                                        <span style={{ fontSize: '12px', color: '#6b7280', whiteSpace: 'nowrap' }}>
+                                      <span className="text-[12px] text-gray-500 dark:text-slate-300 whitespace-nowrap">
                                             {((searchPage - 1) * leadCount) + 1}-{Math.min(searchPage * leadCount, totalResults)} of {totalResults}
                                         </span>
                                     )}
                                     {inboundMode && inboundLeads.length > 0 && (
-                                        <span style={{ fontSize: '12px', background: '#e0eaf5', color: '#0b1957', padding: '3px 10px', borderRadius: '20px', fontWeight: 600 }}>
+                                      <span className="text-[12px] bg-blue-100 dark:bg-blue-900/50 text-[#0b1957] dark:text-blue-200 px-[10px] py-[3px] rounded-[20px] font-semibold">
                                             {inboundLeads.length} contacts
                                         </span>
                                     )}
                                     {!inboundMode && leads.length > 0 && totalResults === 0 && (
-                                        <span style={{ fontSize: '12px', background: '#e0eaf5', color: '#0b1957', padding: '3px 10px', borderRadius: '20px', fontWeight: 600 }}>
+                                      <span className="text-[12px] bg-blue-100 dark:bg-blue-900/50 text-[#0b1957] dark:text-blue-200 px-[10px] py-[3px] rounded-[20px] font-semibold">
                                             {leads.length} contact{leads.length !== 1 ? 's' : ''}
                                         </span>
                                     )}
@@ -4125,40 +4125,30 @@ export default function AdvancedSearchAIPage() {
                                 {inboundMode && inboundLeads.length > 0 && (
                                     <div className="adv-leads-list">
                                         {inboundLeads.map((lead, i) => (
-                                            <div key={i} className="adv-lead-card">
-                                                <div className="adv-lead-avatar" style={{ background: avatarColor(`${lead.firstName} ${lead.lastName}`) }}>
+                                            <div key={i} className="adv-lead-card flex items-center gap-3 p-4 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                                                <div className="adv-lead-avatar w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0" style={{ background: avatarColor(`${lead.firstName} ${lead.lastName}`) }}>
                                                     {initials(`${lead.firstName} ${lead.lastName}`) || '?'}
                                                 </div>
-                                                <div className="adv-lead-info">
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                        <span className="adv-lead-name">{[lead.firstName, lead.lastName].filter(Boolean).join(' ') || 'Unknown'}</span>
-                                                        <span className="adv-verified">✓</span>
+                                                <div className="adv-lead-info flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="adv-lead-name text-gray-900 dark:text-gray-100 font-bold text-sm">{[lead.firstName, lead.lastName].filter(Boolean).join(' ') || 'Unknown'}</span>
+                                                        <span className="adv-verified text-green-600 dark:text-green-400">✓</span>
                                                     </div>
-                                                    <div className="adv-lead-title">{lead.companyName || 'No company'}</div>
-                                                    {lead.email && <div style={{ fontSize: '12px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden', whiteSpace: 'nowrap' }}><span style={{ flexShrink: 0 }}>✉️</span><span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{lead.email}</span></div>}
-                                                    {lead.phone && <div style={{ fontSize: '12px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden', whiteSpace: 'nowrap' }}><span style={{ flexShrink: 0 }}>📞</span><span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{lead.phone}</span></div>}
+                                                    <div className="adv-lead-title text-xs text-gray-500 dark:text-slate-300 truncate">{lead.companyName || 'No company'}</div>
+                                                    {lead.email && <div className="text-xs text-gray-500 dark:text-slate-300 flex items-center gap-1 overflow-hidden"><span className="flex-shrink-0">✉️</span><span className="truncate">{lead.email}</span></div>}
+                                                    {lead.phone && <div className="text-xs text-gray-500 dark:text-slate-300 flex items-center gap-1 overflow-hidden"><span className="flex-shrink-0">📞</span><span className="truncate">{lead.phone}</span></div>}
                                                     {lead.linkedinProfile && (
-                                                        <div style={{ fontSize: '12px', color: '#0a66c2' }}>
+                                                      <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
                                                             <a href={lead.linkedinProfile} target="_blank" rel="noopener noreferrer"
-                                                                style={{ color: '#0a66c2', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                               className="flex items-center gap-1 no-underline hover:underline">
                                                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="#0a66c2"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" /></svg>
                                                                 LinkedIn Profile
                                                             </a>
                                                         </div>
                                                     )}
                                                     {lead.notes && lead.notes.length > 0 && (
-                                                        <div style={{
-                                                            fontSize: '11px',
-                                                            color: '#374151',
-                                                            marginTop: '6px',
-                                                            padding: '8px 10px',
-                                                            background: 'linear-gradient(135deg, #f0f4ff 0%, #f8fafc 100%)',
-                                                            borderRadius: '8px',
-                                                            border: '1px solid #c7d7f5',
-                                                            lineHeight: '1.6',
-                                                            maxWidth: '300px',
-                                                        }}>
-                                                            <span style={{ color: '#172560', fontWeight: 700, fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
+                                                        <div className="text-[11px] text-gray-700 dark:text-gray-300 mt-2 p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-100 dark:border-indigo-800 leading-relaxed max-w-[300px]">
+                                                            <span className="text-[#172560] dark:text-indigo-300 font-bold flex items-center gap-1 mb-1">
                                                                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#172560" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
                                                                 AI Research Summary
                                                             </span>
@@ -4166,21 +4156,10 @@ export default function AdvancedSearchAIPage() {
                                                         </div>
                                                     )}
                                                 </div>
-                                                <div style={{ display: 'flex', gap: '8px' }}>
+                                                <div className="flex gap-2">
                                                     <button
-                                                        onClick={() => openEditLead(i)}
-                                                        style={{
-                                                            padding: '6px 12px',
-                                                            background: '#f3f4f6',
-                                                            border: '1px solid #e5e7eb',
-                                                            borderRadius: '6px',
-                                                            cursor: 'pointer',
-                                                            fontSize: '12px',
-                                                            fontWeight: '500',
-                                                            color: '#4b5563',
-                                                            transition: 'all 0.2s',
-                                                        }}
-                                                        onMouseEnter={(e) => {
+                                                      onClick={() => openEditLead(i)}
+                                                      className="px-3 py-1.5 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md text-[12px] font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"        onMouseEnter={(e) => {
                                                             e.currentTarget.style.background = '#e5e7eb';
                                                             e.currentTarget.style.borderColor = '#d1d5db';
                                                         }}
@@ -4193,17 +4172,7 @@ export default function AdvancedSearchAIPage() {
                                                     </button>
                                                     <button
                                                         onClick={() => openDeleteConfirmation(i)}
-                                                        style={{
-                                                            padding: '6px 12px',
-                                                            background: '#fee2e2',
-                                                            border: '1px solid #fecaca',
-                                                            borderRadius: '6px',
-                                                            cursor: 'pointer',
-                                                            fontSize: '12px',
-                                                            fontWeight: '500',
-                                                            color: '#dc2626',
-                                                            transition: 'all 0.2s',
-                                                        }}
+                                                        className="px-3 py-1.5 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-md text-[12px] font-medium text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
                                                         onMouseEnter={(e) => {
                                                             e.currentTarget.style.background = '#fecaca';
                                                             e.currentTarget.style.borderColor = '#fca5a5';
@@ -4225,30 +4194,25 @@ export default function AdvancedSearchAIPage() {
                                 {!inboundMode && (
                                     <div className="adv-leads-list">
                                         {leads.map((lead, i) => (
-                                            <div key={i} className={`adv-lead-card ${lead.locked ? 'adv-lead-locked' : ''}`}>
+                                            <div key={i} className={`adv-lead-card flex items-center gap-[14px] p-[14px_16px] border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${lead.locked ? 'adv-lead-locked' : ''}`}>
                                                 {lead.profile_picture ? (
-                                                    <img src={lead.profile_picture} alt={lead.name} className="adv-lead-avatar-img" />
+                                                    <img src={lead.profile_picture} alt={lead.name} className="w-[42px] h-[42px] rounded-full object-cover flex-shrink-0" />
                                                 ) : (
-                                                    <div className="adv-lead-avatar" style={{ background: avatarColor(lead.name) }}>
+                                                    <div className="adv-lead-avatar w-[42px] h-[42px] rounded-full flex items-center justify-center text-white font-bold text-[14px] flex-shrink-0" style={{ background: avatarColor(lead.name) }}>
                                                         {initials(lead.name)}
                                                     </div>
                                                 )}
-                                                <div className="adv-lead-info">
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <div className="adv-lead-info flex-1 min-w-0">
+                                                    <div className="flex items-center gap-[8px]">
                                                         {lead.profile_url && lead.profile_url.startsWith('http') ? (
                                                             <a href={lead.profile_url} target="_blank" rel="noopener noreferrer" className="adv-lead-name" style={{ textDecoration: 'none', color: 'inherit' }} onClick={e => e.stopPropagation()}>
-                                                                {lead.name} {!lead.locked && <span className="adv-verified">✓</span>}
+                                                                {lead.name} {!lead.locked && <span className="adv-verified text-green-600 dark:text-green-400 ml-1">✓</span>}
                                                             </a>
                                                         ) : (
-                                                            <span className="adv-lead-name">{lead.name} {!lead.locked && <span className="adv-verified">✓</span>}</span>
+                                                            <span className="adv-lead-name text-gray-900 dark:text-gray-100 font-bold text-[14px]">{lead.name} {!lead.locked && <span className="adv-verified">✓</span>}</span>
                                                         )}
                                                         {!targetingFiltersActive && lead.icp_score !== undefined && (
-                                                            <span style={{
-                                                                display: 'inline-flex', alignItems: 'center', gap: '3px',
-                                                                padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 700,
-                                                                background: scoreToMatchLevel(lead.icp_score) === 'strong' ? '#dcfce7' : '#fef9c3',
-                                                                color: scoreToMatchLevel(lead.icp_score) === 'strong' ? '#166534' : '#854d0e',
-                                                            }}>
+                                                          <span className={`inline-flex items-center gap-[3px] px-[8px] py-[2px] rounded-[12px] text-[11px] font-bold ${scoreToMatchLevel(lead.icp_score) === 'strong' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300' : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-300'}`}>
                                                                 {scoreToMatchLevel(lead.icp_score) === 'strong' ? '🟢' : '🟡'} {lead.icp_score}%
                                                             </span>
                                                         )}
@@ -4256,38 +4220,32 @@ export default function AdvancedSearchAIPage() {
                                                     <div className="adv-lead-title">
                                                         {lead.headline || lead.current_company || (lead.profile_url ? 'LinkedIn User' : lead.phone ? 'Phone Contact' : lead.email ? 'Email Contact' : 'Contact')}
                                                     </div>
-                                                    {lead.location && <div className="adv-lead-location">📍 {lead.location}</div>}
+                                                    {lead.location && <div className="adv-lead-location text-[11px] text-gray-400 dark:text-gray-500">📍 {lead.location}</div>}
                                                     {lead.inferred_nationality && (
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '3px' }}>
-                                                            <span style={{
-                                                                display: 'inline-flex', alignItems: 'center', gap: '3px',
-                                                                padding: '1px 7px', borderRadius: '10px', fontSize: '10px', fontWeight: 600,
-                                                                background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe',
-                                                            }}>
+                                                        <div className="flex items-center gap-[4px] mt-[3px]">
+                                                            <span className="inline-flex items-center gap-[3px] px-[7px] py-[1px] rounded-[10px] text-[10px] font-semibold bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                                                                 🌍 {lead.inferred_nationality}
                                                                 {lead.nationality_confidence && lead.nationality_confidence >= 70 && (
-                                                                    <span style={{ opacity: 0.6, fontWeight: 400, marginLeft: '2px' }}>·{lead.nationality_confidence}%</span>
+                                                                    <span className="opacity-60 ml-[2px]">·{lead.nationality_confidence}%</span>
                                                                 )}
                                                             </span>
                                                         </div>
                                                     )}
                                                     {!targetingFiltersActive && lead.icp_reasoning && (
-                                                        <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px', lineHeight: '1.4', fontStyle: 'italic' }}>
+                                                        <div className="text-[11px] text-gray-500 dark:text-slate-300 mt-[4px] italic leading-relaxed">
                                                             {lead.icp_reasoning}
                                                         </div>
                                                     )}
                                                     {lead.enriched_profile?.skills && lead.enriched_profile.skills.length > 0 && (
-                                                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '6px' }}>
+                                                        <div className="flex gap-[4px] flex-wrap mt-[6px]">
                                                             {lead.enriched_profile.skills.slice(0, 4).map((skill, si) => (
-                                                                <span key={si} style={{
-                                                                    padding: '1px 6px', borderRadius: '8px', fontSize: '10px',
-                                                                    background: '#f3f4f6', color: '#4b5563', border: '1px solid #e5e7eb',
-                                                                }}>{skill}</span>
+                                                                <span key={si} className="px-[6px] py-[1px] rounded-[8px] text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600">
+                                                                    {skill}</span>
                                                             ))}
                                                         </div>
                                                     )}
                                                     {lead.profile_url ? (
-                                                        <div className="adv-lead-platform">
+                                                        <div className="adv-lead-platform mt-[4px]">
                                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="#0a66c2"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" /></svg>
                                                         </div>
                                                     ) : lead.phone ? (
@@ -4296,15 +4254,14 @@ export default function AdvancedSearchAIPage() {
                                                         <div className="adv-lead-platform" style={{ fontSize: '13px' }}>✉️</div>
                                                     ) : null}
                                                 </div>
-                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                                                <div className="flex flex-col items-center gap-[4px] flex-shrink-0">
                                                     <button
-                                                        className="adv-lead-action"
+                                                       className="adv-lead-action flex items-center justify-center w-[36px] h-[36px] rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700"
                                                         title="Generate Summary"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             if (!lead.locked) handleViewSummary(lead);
                                                         }}
-                                                        style={{ pointerEvents: lead.locked ? 'none' : 'auto', border: 'none', background: 'transparent', cursor: lead.locked ? 'default' : 'pointer' }}
                                                     >
                                                         {lead.locked ? (
                                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0110 0v4" /></svg>
@@ -4313,15 +4270,11 @@ export default function AdvancedSearchAIPage() {
                                                         )}
                                                     </button>
                                                     {!lead.locked && (
-                                                        <div style={{ display: 'flex', gap: '2px' }}>
+                                                        <div className="flex gap-[2px]">
                                                             <button
                                                                 title="Good match"
                                                                 onClick={(e) => { e.stopPropagation(); toggleFeedback(lead.id, 'good'); }}
-                                                                style={{
-                                                                    border: 'none', background: leadFeedback[lead.id] === 'good' ? '#dcfce7' : 'transparent',
-                                                                    borderRadius: '6px', padding: '3px 5px', cursor: 'pointer', fontSize: '14px', lineHeight: 1,
-                                                                    transition: 'all 0.15s',
-                                                                }}
+                                                                className={`p-[3px_5px] rounded-[6px] text-[14px] ${leadFeedback[lead.id] === 'good' ? 'bg-green-100 dark:bg-green-900' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
                                                             >
                                                                 👍
                                                             </button>
@@ -5607,11 +5560,11 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onStartTargeting,
 
                 {/* ── Web search source links ── */}
                 {msg.sources && msg.sources.length > 0 && (
-                    <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid #f0f0f0' }}>
-                        <div style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', letterSpacing: '0.06em', marginBottom: '8px', textTransform: 'uppercase' }}>
+                    <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800">
+                        <div className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2">
                             Sources
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                        <div className="flex flex-col gap-1.5">
                             {msg.sources.slice(0, 5).map((src, i) => {
                                 let hostname = '';
                                 try { hostname = new URL(src.url).hostname.replace('www.', ''); } catch { hostname = src.url; }
@@ -5621,23 +5574,16 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onStartTargeting,
                                         href={src.url}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        style={{
-                                            display: 'flex', alignItems: 'center', gap: '7px',
-                                            fontSize: '12px', color: '#2563eb', textDecoration: 'none',
-                                            padding: '5px 8px', borderRadius: '8px', background: '#f8faff',
-                                            border: '1px solid #e0eaf5', transition: 'background .12s',
-                                        }}
-                                        onMouseEnter={e => (e.currentTarget.style.background = '#e8ecfa')}
-                                        onMouseLeave={e => (e.currentTarget.style.background = '#f8faff')}
+                                  className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400 no-underline px-2 py-1.5 rounded-lg border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                                     >
                                         {/* Globe icon */}
-                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}>
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-gray-500 dark:text-slate-300 flex-shrink-0" strokeWidth="2" strokeLinecap="round">
                                             <circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
                                         </svg>
-                                        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
                                             {src.title || hostname}
                                         </span>
-                                        <span style={{ fontSize: '10px', color: '#9ca3af', flexShrink: 0 }}>{hostname}</span>
+                                        <span className="text-[10px] text-gray-400 dark:text-gray-500 flex-shrink-0">{hostname}</span>
                                     </a>
                                 );
                             })}
@@ -5672,113 +5618,123 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onStartTargeting,
 
                 {/* ── NAS.io-style clickable result cards ── */}
                 {msg.targeting && (
-                    <div className="adv-result-cards" style={{ display: "flex", gap: "12px", marginBottom: "16px" }}>
+                    <div className="adv-result-cards flex gap-3 mb-4">
                         {/* Targeting card */}
-                        <div className="adv-rc" onClick={onStartTargeting} style={{
-                            flex: 1, padding: "14px", border: useSalesNav ? "1px solid #e5e7eb" : "1px solid #fde68a", borderRadius: "12px", display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", background: useSalesNav ? "#fff" : "#fffbeb"
-                        }}>
-                            <div className="adv-rc-icon adv-rc-icon-target" style={{ width: "32px", height: "32px", borderRadius: "8px", background: "#e8ecfa", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0b1957" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6" /><line x1="8" y1="12" x2="20" y2="12" /><line x1="12" y1="18" x2="20" y2="18" /><circle cx="2" cy="6" r="1" fill="#0b1957" /><circle cx="4" cy="12" r="1" fill="#0b1957" /><circle cx="8" cy="18" r="1" fill="#0b1957" /></svg>
-                            </div>
-                            <div className="adv-rc-body" style={{ flex: 1 }}>
-                                <div className="adv-rc-label" style={{ fontSize: "13px", fontWeight: 700 }}>Targeting</div>
-                                {!useSalesNav && (
-                                    <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "4px" }}>
-                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
-                                        <span style={{ fontSize: "10px", color: "#d97706", fontWeight: 500, lineHeight: 1.3 }}>Sales Navigator required for narrow filters</span>
-                                    </div>
-                                )}
-                            </div>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6" /></svg>
-                        </div>
-                        <div className="adv-rc adv-rc-leads" onClick={() => onShowPanel('leads')} style={{
-                            flex: 1, padding: "14px", border: "1px solid #e5e7eb", borderRadius: "12px", display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", background: "#fff"
-                        }}>
-                            <div className="adv-rc-icon adv-rc-icon-leads" style={{ width: "32px", height: "32px", borderRadius: "8px", background: "#e0eaf5", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0b1957" strokeWidth="2" strokeLinecap="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="8.5" cy="7" r="4" /><line x1="20" y1="8" x2="20" y2="14" /><line x1="23" y1="11" x2="17" y2="11" /></svg>
-                            </div>
-                            <div className="adv-rc-body" style={{ flex: 1 }}>
-                                <div className="adv-rc-label" style={{ fontSize: "13px", fontWeight: 700 }}>Leads</div>
-                                <div className="adv-rc-sub" style={{ fontSize: "11px", color: "#0b1957", fontWeight: 500 }}>
-                                    {leadsCount > 0
-                                        ? `${leadsCount} Leads found`
-                                        : filteredLeadsCount && filteredLeadsCount > 0
-                                            ? `${filteredLeadsCount} lead${filteredLeadsCount !== 1 ? 's' : ''} (below ICP threshold)`
-                                            : '0 Leads found'}
+                        <div className={`adv-rc flex flex-1 items-center gap-3 p-4 rounded-xl cursor-pointer border transition-colors ${
+                               useSalesNav
+                                ? "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                                : "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800"
+                            }`}
+                               onClick={onStartTargeting}
+                        >
+                            <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/40 flex items-center justify-center shrink-0">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-indigo-900 dark:text-indigo-300" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6" /><line x1="8" y1="12" x2="20" y2="12" /><line x1="12" y1="18" x2="20" y2="18" /><circle cx="2" cy="6" r="1" fill="currentColor" /><circle cx="4" cy="12" r="1" fill="currentColor" /><circle cx="8" cy="18" r="1" fill="currentColor" /></svg>
+                          </div>
+                            <div className="adv-rc-body">
+                                <div className="text-[13px] font-bold text-gray-900 dark:text-gray-100">Targeting</div>
+                              {!useSalesNav && (
+                                <div className="flex items-center gap-1 mt-1">
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-amber-600 dark:text-amber-500" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+                                    <span className="text-[10px] text-amber-600 dark:text-amber-500 font-medium leading-tight">Sales Navigator required</span>
                                 </div>
-                            </div>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6" /></svg>
-                        </div>
-                        <div className="adv-rc adv-rc-leads" onClick={() => onShowPanel('workflow')} style={{
-                            flex: 1, padding: "14px", border: "1px solid #e5e7eb", borderRadius: "12px", display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", background: "#fff"
-                        }}>
-                            <div className="adv-rc-icon" style={{ width: "32px", height: "32px", borderRadius: "8px", background: "#e0eaf5", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0b1957" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="2" /><circle cx="5" cy="19" r="2" /><circle cx="19" cy="19" r="2" /><path d="M12 7v4M9.5 17.5L12 11l2.5 6.5" /></svg>
-                            </div>
-                            <div className="adv-rc-body" style={{ flex: 1 }}>
-                                <div className="adv-rc-label" style={{ fontSize: "13px", fontWeight: 700 }}>Workflow</div>
-                                <div className="adv-rc-sub" style={{ fontSize: "11px", color: "#0b1957", fontWeight: 500 }}>Live preview</div>
-                            </div>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6" /></svg>
-                        </div>
-                    </div>
+                              )}
+                          </div>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-gray-400 dark:text-gray-500" strokeWidth="2"><path d="M9 18l6-6-6-6" /></svg>
+                      </div>
+                      <div className="adv-rc adv-rc-leads flex flex-1 items-center gap-3 p-4 rounded-xl cursor-pointer border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800" onClick={() => onShowPanel('leads')}>
+                          <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-indigo-900 dark:text-blue-300" strokeWidth="2"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="8.5" cy="7" r="4" /><line x1="20" y1="8" x2="20" y2="14" /><line x1="23" y1="11" x2="17" y2="11" /></svg>
+                          </div>
+                          <div className="flex-1">
+                              <div className="text-[13px] font-bold text-gray-900 dark:text-gray-100">Leads</div>
+                              <div className="text-[11px] text-indigo-900 dark:text-blue-300 font-medium">
+                                  {leadsCount > 0
+                                    ? `${leadsCount} Leads found`
+                                    : filteredLeadsCount && filteredLeadsCount > 0
+                                      ? `${filteredLeadsCount} lead${filteredLeadsCount !== 1 ? 's' : ''} (below ICP threshold)`
+                                      : '0 Leads found'}
+                              </div>
+                          </div>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-gray-400 dark:text-gray-500" strokeWidth="2"><path d="M9 18l6-6-6-6" /></svg>
+                      </div>
+                      <div className="adv-rc adv-rc-leads flex flex-1 items-center gap-3 p-4 rounded-xl cursor-pointer border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800" onClick={() => onShowPanel('workflow')}>
+                          <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-indigo-900 dark:text-blue-300" strokeWidth="2"><circle cx="12" cy="5" r="2" /><circle cx="5" cy="19" r="2" /><circle cx="19" cy="19" r="2" /><path d="M12 7v4M9.5 17.5L12 11l2.5 6.5" /></svg>
+                          </div>
+                          <div className="flex-1">
+                              <div className="text-[13px] font-bold text-gray-900 dark:text-gray-100">Workflow</div>
+                              <div className="text-[11px] text-indigo-900 dark:text-blue-300 font-medium">Live preview</div>
+                          </div>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-gray-400 dark:text-gray-500" strokeWidth="2"><path d="M9 18l6-6-6-6" /></svg>
+                      </div>
+                  </div>
                 )}
 
                 {/* ── Modern action buttons (Example 1 style) ── */}
                 {msg.targeting && (
 
-                    <div className="adv-action-btns" style={{ display: "flex", gap: "8px", flexWrap: "nowrap", borderTop: "1px solid #e5e7eb", paddingTop: "12px", justifyContent: "space-between" }}>
-                        <button className="adv-act-btn adv-act-btn-refine" style={{
-                            padding: "8px 12px", background: "#fff", border: "1px solid #e5e7eb", borderRadius: "20px", fontSize: "12px", fontWeight: 600, color: "#374151"
-                        }} onClick={() => onOpt('Refine my targeting criteria')}>Refine</button>
-                        <button className="adv-act-btn adv-act-btn-journey" style={{
-                            padding: "9px 16px", background: "#0b1957", border: "none", borderRadius: "20px", fontSize: "12.5px", fontWeight: 700, color: "#fff",
-                            boxShadow: "0 2px 8px rgba(23,37,96,0.35)", display: "flex", alignItems: "center", gap: "6px", letterSpacing: "0.01em"
-                        }} onClick={onStartCheckpoints}>
-                            Create Outreach Journey
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
-                        </button>
-                    </div>
+                  <div className="adv-action-btns flex flex-nowrap gap-2 border-t border-gray-200 dark:border-gray-800 pt-3 justify-between">
+                      <button className="adv-act-btn adv-act-btn-refine px-4 py-2 bg-white dark:bg-[#0b1229] border border-gray-200 dark:border-gray-700 rounded-full text-xs font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#161d36] transition-colors"
+                              onClick={() => onOpt('Refine my targeting criteria')}
+                      >
+                          Refine</button>
+                      <button className="adv-act-btn adv-act-btn-journey px-4 py-2 bg-[#0b1957] dark:bg-blue-600 border-none rounded-full text-[12.5px] font-bold text-white shadow-lg shadow-blue-900/20 flex items-center gap-1.5 tracking-[0.01em] hover:bg-[#152775] dark:hover:bg-blue-500 transition-all active:scale-[0.98]"
+                              onClick={onStartCheckpoints}
+                      >
+                          Create Outreach Journey
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M5 12h14M12 5l7 7-7 7" />
+                          </svg>
+                      </button>
+                  </div>
                 )}
 
                 {/* ── Inbound: Download Template + Upload buttons ── */}
                 {(msg.inboundAction === 'download' || msg.inboundAction === 'upload') && (
-                    <div style={{ display: 'flex', flexDirection: 'row', gap: '8px', flexWrap: 'nowrap', width: '100%', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e5e7eb' }}>
-                        <button onClick={downloadInboundTemplate} style={{
-                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 1, gap: '6px', padding: '10px 8px',
-                            background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', color: '#fff',
-                            border: 'none', borderRadius: '12px', fontWeight: 600, fontSize: '13px', cursor: 'pointer',
-                            boxShadow: '0 4px 12px rgba(16,185,129,0.25)', transition: 'all 0.2s', whiteSpace: 'nowrap'
-                        }}><Download size={16} /> Download</button>
-                        <button onClick={() => onUploadClick?.()} style={{
-                            display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 18px',
-                            background: '#fff', color: '#0b1957', border: '2px solid #0b1957', borderRadius: '12px',
-                            fontWeight: 600, fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s',
-                        }}><Upload size={16} /> Upload CSV File</button>
-                    </div>
+                  <div className="flex flex-row flex-nowrap gap-2 w-full mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                      <button onClick={downloadInboundTemplate}
+                              className="inline-flex items-center justify-center flex-1 gap-1.5 px-2 py-2.5 bg-gradient-to-br from-emerald-600 to-emerald-500 text-white border-none rounded-xl font-semibold text-[13px] cursor-pointer shadow-md hover:shadow-lg transition-all whitespace-nowrap"
+                      >
+                          <Download size={16} /> Download
+                      </button>
+                      <button
+                        onClick={() => onUploadClick?.()}
+                        className="inline-flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-800 text-[#0b1957] dark:text-blue-300 border-2 border-[#0b1957] dark:border-blue-400 rounded-xl font-semibold text-[13px] cursor-pointer transition-all hover:bg-gray-50 dark:hover:bg-gray-700"
+                      >
+                          <Upload size={16} /> Upload CSV File
+                      </button>
+                  </div>
                 )}
 
                 {/* ── Inbound: Summary with platform badges ── */}
                 {msg.inboundAction === 'summary' && msg.inboundSummary && (
-                    <div style={{ marginTop: '12px', padding: '14px', background: 'linear-gradient(135deg, #ecfdf5, #d1fae5)', borderRadius: '14px', border: '1px solid #a7f3d0' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                            <CheckCircle2 size={18} color="#059669" />
-                            <span style={{ fontSize: '14px', fontWeight: 700, color: '#065f46' }}>{msg.inboundSummary.total} Leads Ready</span>
-                        </div>
-                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                            {msg.inboundSummary.linkedin > 0 && <span style={{ fontSize: '11px', background: '#fff', color: '#1e40af', padding: '4px 10px', borderRadius: '12px', fontWeight: 600, border: '1px solid #bfdbfe', display: 'inline-flex', alignItems: 'center', gap: '4px' }}><LinkedInIcon size={12} /> LinkedIn ({msg.inboundSummary.linkedin})</span>}
-                            {msg.inboundSummary.email > 0 && <span style={{ fontSize: '11px', background: '#fff', color: '#be185d', padding: '4px 10px', borderRadius: '12px', fontWeight: 600, border: '1px solid #fbcfe8' }}>✉️ Email ({msg.inboundSummary.email})</span>}
-                            {msg.inboundSummary.whatsapp > 0 && <span style={{ fontSize: '11px', background: '#fff', color: '#166534', padding: '4px 10px', borderRadius: '12px', fontWeight: 600, border: '1px solid #bbf7d0' }}>💬 WhatsApp ({msg.inboundSummary.whatsapp})</span>}
-                            {msg.inboundSummary.phone > 0 && <span style={{ fontSize: '11px', background: '#fff', color: '#9a3412', padding: '4px 10px', borderRadius: '12px', fontWeight: 600, border: '1px solid #fed7aa' }}>📞 Phone ({msg.inboundSummary.phone})</span>}
-                            {msg.inboundSummary.website > 0 && <span style={{ fontSize: '11px', background: '#fff', color: '#6b21a8', padding: '4px 10px', borderRadius: '12px', fontWeight: 600, border: '1px solid #e9d5ff' }}>🌐 Website ({msg.inboundSummary.website})</span>}
-                        </div>
-                        <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
-                            <button style={{
-                                width: '100%', padding: "10px 14px", background: "#172560", border: "none", borderRadius: "10px", fontSize: "13px", fontWeight: 700, color: "#fff", cursor: 'pointer', boxShadow: '0 4px 12px rgba(23,37,96,0.2)',
-                                display: 'block'
-                            }} onClick={onStartCheckpoints}>Create Outreach Journey</button>
-                        </div>
-                    </div>
+                  <div className="mt-3 p-4 rounded-[14px] border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20">
+                      {/* Header */}
+                      <div className="flex items-center gap-2 mb-2.5">
+                          <CheckCircle2 size={18} className="text-emerald-600 dark:text-emerald-400" />
+                          <span className="text-[14px] font-bold text-emerald-800 dark:text-emerald-300">
+            {msg.inboundSummary.total} Leads Ready</span>
+                      </div>
+                      <div className="flex gap-1.5 flex-wrap">
+                          {msg.inboundSummary.linkedin > 0 && <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 bg-white dark:bg-gray-800 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-900">
+                <LinkedInIcon size={12} /> LinkedIn ({msg.inboundSummary.linkedin})</span>}
+                          {msg.inboundSummary.email > 0 && <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-white dark:bg-gray-800 text-pink-700 dark:text-pink-300 border border-pink-100 dark:border-pink-900">
+                ✉️ Email ({msg.inboundSummary.email})</span>}
+                          {msg.inboundSummary.whatsapp > 0 && <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-white dark:bg-gray-800 text-green-700 dark:text-green-300 border border-green-100 dark:border-green-900">
+                💬 WhatsApp ({msg.inboundSummary.whatsapp})</span>}
+                          {msg.inboundSummary.phone > 0 && <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-white dark:bg-gray-800 text-orange-700 dark:text-orange-300 border border-orange-100 dark:border-orange-900">
+                📞 Phone ({msg.inboundSummary.phone})</span>}
+                          {msg.inboundSummary.website > 0 && <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-white dark:bg-gray-800 text-purple-700 dark:text-purple-300 border border-purple-100 dark:border-purple-900">
+                🌐 Website ({msg.inboundSummary.website})</span>}
+                      </div>
+                      <div className="mt-3 pt-3 border-t border-emerald-200/50 dark:border-emerald-800/50">
+                          <button
+                            onClick={onStartCheckpoints}
+                            className="w-full px-4 py-2.5 bg-[#172560] dark:bg-blue-700 text-white border-none rounded-[10px] text-[13px] font-bold cursor-pointer transition-all hover:bg-[#0b1957] dark:hover:bg-blue-600 shadow-sm"
+                          >
+                              Create Outreach Journey</button>
+                      </div>
+                  </div>
                 )}
 
                 {/* Option buttons from AI */}
@@ -5790,110 +5746,119 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onStartTargeting,
 
                 {/* ── Outreach Journey Stepper ── */}
                 {msg.outreach_journey && msg.outreach_journey.length > 0 && (
-                    <div style={{ marginTop: '16px' }}>
-                        <div style={{ fontSize: '12px', fontWeight: 700, color: '#374151', marginBottom: '10px', letterSpacing: '.04em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0b1957" strokeWidth="2.5" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
-                            Suggested Outreach Journey
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0', overflowX: 'auto', paddingBottom: '4px', justifyContent: "center" }}>
-                            {msg.outreach_journey.map((step, si) => {
-                                const channelConfig = {
-                                    linkedin: {
-                                        color: '#0a66c2', icon: (
-                                            <svg width="24" height="24" viewBox="0 0 24 24" fill={step.recommended ? '#fff' : '#9ca3af'}>
-                                                <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
-                                            </svg>
-                                        )
-                                    },
-                                    email: {
-                                        color: '#4f46e5', icon: (
-                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={step.recommended ? '#fff' : '#9ca3af'} strokeWidth="1.8" strokeLinecap="round"><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /></svg>
-                                        )
-                                    },
-                                    whatsapp: {
-                                        color: '#25d366', icon: (
-                                            <svg width="20" height="20" viewBox="0 0 24 24" fill={step.recommended ? '#fff' : '#9ca3af'}><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" /></svg>
-                                        )
-                                    },
-                                    voice: {
-                                        color: '#f97316', icon: (
-                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={step.recommended ? '#fff' : '#9ca3af'} strokeWidth="1.8" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.8 10.5 19.79 19.79 0 01.74 1.84 2 2 0 012.72 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.69a16 16 0 006.4 6.4l1.06-1.06a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" /></svg>
-                                        )
-                                    },
-                                };
-                                const config = channelConfig[step.channel as keyof typeof channelConfig] || channelConfig.email;
-                                const bgColor = step.recommended
-                                    ? step.channel === 'linkedin' ? '#0a66c2'
-                                        : step.channel === 'email' ? '#0b1957'
-                                            : step.channel === 'whatsapp' ? '#25d366'
-                                                : '#f97316'
-                                    : '#f3f4f6';
-                                return (
-                                    <div key={si} style={{ display: 'flex', alignItems: 'flex-start', flexShrink: 0 }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100px' }}>
-                                            {/* Icon circle with custom tooltip */}
-                                            <div style={{ position: 'relative', display: 'inline-flex' }}
-                                                onMouseEnter={e => {
-                                                    const tip = (e.currentTarget as HTMLElement).querySelector('.journey-tip') as HTMLElement;
-                                                    if (tip) tip.style.opacity = '1';
-                                                }}
-                                                onMouseLeave={e => {
-                                                    const tip = (e.currentTarget as HTMLElement).querySelector('.journey-tip') as HTMLElement;
-                                                    if (tip) tip.style.opacity = '0';
-                                                }}
+                  <div style={{ marginTop: '16px' }}>
+                      <div className="text-slate-700 dark:text-slate-300" style={{ fontSize: '12px', fontWeight: 700, marginBottom: '10px', letterSpacing: '.04em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="text-[#0b1957] dark:text-blue-400"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
+                          Suggested Outreach Journey
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0', overflowX: 'auto', paddingBottom: '4px', justifyContent: "center" }}>
+                          {msg.outreach_journey.map((step, si) => {
+                              const channelConfig = {
+                                  linkedin: {
+                                      icon: (
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className={step.recommended ? "text-white" : "text-slate-400 dark:text-slate-500"}>
+                                            <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
+                                        </svg>
+                                      )
+                                  },
+                                  email: {
+                                      icon: (
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className={step.recommended ? "text-white" : "text-slate-400 dark:text-slate-500"}>
+                                            <rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                                        </svg>
+                                      )
+                                  },
+                                  whatsapp: {
+                                      icon: (
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className={step.recommended ? "text-white" : "text-slate-400 dark:text-slate-500"}>
+                                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                                        </svg>
+                                      )
+                                  },
+                                  voice: {
+                                      icon: (
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className={step.recommended ? "text-white" : "text-slate-400 dark:text-slate-500"}>
+                                            <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.8 10.5 19.79 19.79 0 01.74 1.84 2 2 0 012.72 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.69a16 16 0 006.4 6.4l1.06-1.06a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" />
+                                        </svg>
+                                      )
+                                  },
+                              };
+                              const config = channelConfig[step.channel as keyof typeof channelConfig] || channelConfig.email;
+
+                              const shadowColor = step.channel === 'linkedin' ? '#0a66c2'
+                                : step.channel === 'email' ? '#0b1957'
+                                  : step.channel === 'whatsapp' ? '#25d366'
+                                    : '#f97316';
+
+                              return (
+                                <div key={si} style={{ display: 'flex', alignItems: 'flex-start', flexShrink: 0 }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100px' }}>
+                                        <div style={{ position: 'relative', display: 'inline-flex' }}
+                                             onMouseEnter={e => {
+                                                 const tip = (e.currentTarget as HTMLElement).querySelector('.journey-tip') as HTMLElement;
+                                                 if (tip) tip.style.opacity = '1';
+                                             }}
+                                             onMouseLeave={e => {
+                                                 const tip = (e.currentTarget as HTMLElement).querySelector('.journey-tip') as HTMLElement;
+                                                 if (tip) tip.style.opacity = '0';
+                                             }}
+                                        >
+                                            <div
+                                              className={`journey-icon-circle flex items-center justify-center border ${
+                                                step.recommended
+                                                  ? step.channel === 'linkedin' ? 'bg-[#0a66c2] dark:bg-[#0a66c2]'
+                                                    : step.channel === 'email' ? 'bg-[#0b1957] dark:bg-[#2563eb]'
+                                                      : step.channel === 'whatsapp' ? 'bg-[#25d366] dark:bg-[#22c55e]'
+                                                        : 'bg-[#f97316] dark:bg-[#ea580c]'
+                                                  : 'bg-[#f3f4f6] dark:bg-[#1e293b] border-slate-200 dark:border-slate-800'
+                                              }`}
+                                              style={{
+                                                  width: '44px',
+                                                  height: '44px',
+                                                  borderRadius: '50%',
+                                                  boxShadow: step.recommended ? (typeof window !== 'undefined' && document.documentElement.classList.contains('dark') ? `0 4px 12px ${shadowColor}33` : `0 4px 12px ${shadowColor}55`) : 'none',
+                                                  flexShrink: 0,
+                                                  cursor: 'default'
+                                              }}
                                             >
-                                                <div className="journey-icon-circle" style={{
-                                                    width: '44px', height: '44px', borderRadius: '50%',
-                                                    background: bgColor,
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    boxShadow: step.recommended ? `0 4px 12px ${bgColor}55` : 'none',
-                                                    border: step.recommended ? 'none' : '1.5px solid #e5e7eb',
-                                                    flexShrink: 0, cursor: 'default', opacity: 1, visibility: 'visible'
-                                                }}>
-                                                    {config.icon}
-                                                </div>
-                                                {/* Custom tooltip */}
-                                                <div className="journey-tip" style={{
-                                                    opacity: 0, pointerEvents: 'none', transition: 'opacity 0.15s',
-                                                    position: 'absolute', bottom: 'calc(100% + 8px)', left: '50%',
+                                                {config.icon}
+                                            </div>
+                                            <div className="journey-tip border border-slate-200 dark:border-slate-800 bg-slate-900 dark:bg-[#111827] text-white" style={{
+                                                opacity: 0, pointerEvents: 'none', transition: 'opacity 0.15s',
+                                                position: 'absolute', bottom: 'calc(100% + 8px)', left: '50%',
+                                                transform: 'translateX(-50%)',
+                                                fontSize: '11px', borderRadius: '8px', padding: '6px 10px', width: '160px',
+                                                lineHeight: 1.4, textAlign: 'center', zIndex: 50,
+                                                boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                                                whiteSpace: 'normal',
+                                            }}>
+                                                {step.reason}
+                                                <div style={{
+                                                    position: 'absolute', top: '100%', left: '50%',
                                                     transform: 'translateX(-50%)',
-                                                    background: '#1f2937', color: '#fff', fontSize: '11px',
-                                                    borderRadius: '8px', padding: '6px 10px', width: '160px',
-                                                    lineHeight: 1.4, textAlign: 'center', zIndex: 50,
-                                                    boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-                                                    whiteSpace: 'normal',
-                                                }}>
-                                                    {step.reason}
-                                                    {/* Arrow */}
-                                                    <div style={{
-                                                        position: 'absolute', top: '100%', left: '50%',
-                                                        transform: 'translateX(-50%)',
-                                                        borderWidth: '5px', borderStyle: 'solid',
-                                                        borderColor: '#1f2937 transparent transparent transparent',
-                                                    }} />
-                                                </div>
+                                                    borderWidth: '5px', borderStyle: 'solid',
+                                                    borderColor: 'currentColor transparent transparent transparent'
+                                                }} className="text-slate-900 dark:text-[#111827]" />
                                             </div>
-                                            {/* Label */}
-                                            <div style={{ fontSize: '11px', fontWeight: 700, color: step.recommended ? '#111827' : '#9ca3af', marginTop: '6px', textAlign: 'center' }}>{step.label}</div>
-                                            {/* Action */}
-                                            <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '2px', textAlign: 'center', lineHeight: 1.3, padding: '0 4px' }}>{step.action}</div>
-                                            {step.recommended && (
-                                                <div style={{ marginTop: '4px', fontSize: '9px', background: '#eff6ff', color: '#2563eb', borderRadius: '8px', padding: '1px 6px', fontWeight: 700, textTransform: 'uppercase' }}>Recommended</div>
-                                            )}
                                         </div>
-                                        {/* Connector arrow between steps */}
-                                        {si < msg.outreach_journey!.length - 1 && (
-                                            <div style={{ display: 'flex', alignItems: 'center', paddingTop: '14px', flexShrink: 0 }}>
-                                                <svg width="24" height="16" viewBox="0 0 24 16" fill="none">
-                                                    <path d="M0 8h20M16 4l4 4-4 4" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                                </svg>
-                                            </div>
+                                        <div className="text-slate-800 dark:text-slate-200" style={{ fontSize: '11px', fontWeight: 700, marginTop: '6px', textAlign: 'center' }}>{step.label}</div>
+                                        <div className="text-slate-500 dark:text-slate-400" style={{ fontSize: '10px', marginTop: '2px', textAlign: 'center', lineHeight: 1.3, padding: '0 4px' }}>{step.action}</div>
+                                        {step.recommended && (
+                                          <div className="bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400" style={{ marginTop: '4px', fontSize: '9px', borderRadius: '8px', padding: '1px 6px', fontWeight: 700, textTransform: 'uppercase' }}>Recommended</div>
                                         )}
                                     </div>
-                                );
-                            })}
-                        </div>
-                    </div>
+                                    {si < msg.outreach_journey!.length - 1 && (
+                                      <div style={{ display: 'flex', alignItems: 'center', paddingTop: '14px', flexShrink: 0 }}>
+                                          <svg width="24" height="16" viewBox="0 0 24 16" fill="none">
+                                              <path d="M0 8h20M16 4l4 4-4 4" className="stroke-slate-300 dark:stroke-slate-700" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                          </svg>
+                                      </div>
+                                    )}
+                                </div>
+                              );
+                          })}
+                      </div>
+                  </div>
                 )}
 
                 {/* ── Lead Detail Form (inline card) ── */}
@@ -6999,13 +6964,13 @@ function CheckpointFormInline({
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             {/* Context badge for direct contacts */}
                             {isDirectContact && (
-                                <div style={{ padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', fontSize: '12px', color: '#166534', fontWeight: 500, marginBottom: '4px' }}>
-                                    {hasPhone && hasEmail
-                                        ? `📱✉️ Phone & email detected — select how you want to reach this contact${hasLinkedInInfo ? ' (LinkedIn available)' : ''}`
-                                        : hasPhone
-                                            ? `📱 Phone detected — WhatsApp or Voice Call recommended${hasLinkedInInfo ? ' · LinkedIn available' : ''}`
-                                            : `✉️ Email detected — Email outreach recommended${hasLinkedInInfo ? ' · LinkedIn available' : ''}`}
-                                </div>
+                              <div className="px-3.5 py-2.5 mb-1 rounded-[10px] text-xs font-medium border bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-300">
+                                  {hasPhone && hasEmail
+                                    ? `📱✉️ Phone & email detected — select how you want to reach this contact${hasLinkedInInfo ? ' (LinkedIn available)' : ''}`
+                                    : hasPhone
+                                      ? `📱 Phone detected — WhatsApp or Voice Call recommended${hasLinkedInInfo ? ' · LinkedIn available' : ''}`
+                                      : `✉️ Email detected — Email outreach recommended${hasLinkedInInfo ? ' · LinkedIn available' : ''}`}
+                              </div>
                             )}
 
                             {/* Channel Configuration Sequential UI */}
@@ -8068,71 +8033,103 @@ function CheckpointFormInline({
 
                     {/* Step 2: Trigger Condition — options are dynamic based on primary channel */}
                     {step === 2 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {/* Channel sequence badge */}
-                            <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                                {nextChannels.map((ch, idx) => {
-                                    const label = ch === 'voice_call' ? 'Voice Call' : ch === 'linkedin' ? 'LinkedIn' : ch.charAt(0).toUpperCase() + ch.slice(1);
-                                    return (
-                                        <span key={ch} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <span style={{ background: '#e8ecfa', color: '#0b1957', padding: '2px 8px', borderRadius: '99px', fontWeight: 600, fontSize: '11px' }}>{label}</span>
-                                            {idx < nextChannels.length - 1 && <span style={{ color: '#9ca3af' }}>→</span>}
-                                        </span>
-                                    );
-                                })}
-                            </div>
-                            {triggerOptions.map((opt, i) => (
-                                <div key={opt.id} onClick={() => setTriggerCondition(opt.id)} style={optStyle(triggerCondition === opt.id)}>
-                                    <div style={numBadge(i + 1, triggerCondition === opt.id)}>{triggerCondition === opt.id ? '✓' : i + 1}</div>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 600 }}>{opt.label}</div>
-                                        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{opt.desc}</div>
-                                    </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {/* Channel sequence badge */}
+                          <div className="text-slate-500 dark:text-slate-400" style={{ fontSize: '12px', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                              {nextChannels.map((ch, idx) => {
+                                  const label = ch === 'voice_call' ? 'Voice Call' : ch === 'linkedin' ? 'LinkedIn' : ch.charAt(0).toUpperCase() + ch.slice(1);
+                                  return (
+                                    <span key={ch} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span className="bg-[#e8ecfa] dark:bg-blue-950/60 text-[#0b1957] dark:text-blue-300" style={{ padding: '2px 8px', borderRadius: '99px', fontWeight: 600, fontSize: '11px' }}>{label}</span>
+                                        {idx < nextChannels.length - 1 && <span className="text-slate-400 dark:text-slate-600">→</span>}
+                </span>
+                                  );
+                              })}
+                          </div>
+                          {triggerOptions.map((opt, i) => (
+                            <div
+                              key={opt.id}
+                              onClick={() => setTriggerCondition(opt.id)}
+                              style={optStyle(triggerCondition === opt.id)}
+                              className="group"
+                            >
+                                <div style={numBadge(i + 1, triggerCondition === opt.id)}>{triggerCondition === opt.id ? '✓' : i + 1}</div>
+                                <div style={{ flex: 1 }}>
+                                    <div className="text-slate-900 dark:text-white font-semibold transition-colors">{opt.label}</div>
+                                    <div className="text-slate-500 dark:text-slate-400" style={{ fontSize: '12px', marginTop: '2px' }}>{opt.desc}</div>
                                 </div>
-                            ))}
-                        </div>
+                            </div>
+                          ))}
+                      </div>
                     )}
 
                     {/* Step 3: Duration */}
                     {step === 3 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {['7', '14', '30', '60', '90'].map((d, i) => {
-                                const dNum = parseInt(d);
-                                const wd = Math.floor(dNum * 5 / 7);
-                                const perDay = Math.min(LINKEDIN_DAILY_LIMIT, Math.max(1, qualifiedLeadCount));
-                                const totalOverDuration = perDay * wd;
-                                const capped = qualifiedLeadCount > LINKEDIN_DAILY_LIMIT;
-                                return (
-                                    <div key={d} onClick={() => setDays(d)} style={optStyle(days === d)}>
-                                        <div style={numBadge(i + 1, days === d)}>{days === d ? '✓' : i + 1}</div>
-                                        <div style={{ flex: 1 }}>
-                                            <div style={{ fontWeight: 600 }}>{d} days</div>
-                                            <div style={{ fontSize: '11px', color: capped ? '#b45309' : '#6b7280', marginTop: '2px' }}>
-                                                {capped
-                                                    ? `Targets ${perDay}/day (capped from ${qualifiedLeadCount}; LinkedIn safe limit), ~${totalOverDuration} new leads over ${wd} working days`
-                                                    : `Targets ${perDay} new leads/day via pagination, ~${totalOverDuration} leads over ${wd} working days`}
-                                            </div>
+                      <div className="flex flex-col gap-3 w-full">
+                          {['7', '14', '30', '60', '90'].map((d, i) => {
+                              const dNum = parseInt(d);
+                              const wd = Math.floor(dNum * 5 / 7);
+                              const perDay = Math.min(LINKEDIN_DAILY_LIMIT, Math.max(1, qualifiedLeadCount));
+                              const totalOverDuration = perDay * wd;
+                              const capped = qualifiedLeadCount > LINKEDIN_DAILY_LIMIT;
+                              const isSelected = days === d;
+
+                              return (
+                                <div
+                                  key={d}
+                                  onClick={() => setDays(d)}
+                                  className={`p-4 rounded-xl cursor-pointer border flex items-center gap-4 transition-all active:scale-[0.99] select-none ${
+                                    isSelected
+                                      ? 'border-blue-600 bg-blue-50/70 dark:bg-[#1e295d]/40 dark:border-blue-500 shadow-sm'
+                                      : 'border-slate-200 dark:border-[#262831] bg-white dark:bg-[#101935] hover:border-slate-300 dark:hover:border-slate-700 shadow-xs'
+                                  }`}
+                                >
+                                    {/* Premium Adaptive Badge */}
+                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 border transition-colors ${
+                                      isSelected
+                                        ? 'bg-blue-600 border-blue-600 text-white dark:bg-blue-500 dark:border-blue-500'
+                                        : 'bg-slate-100 dark:bg-slate-800 border-slate-200/60 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                                    }`}>
+                                        {isSelected ? '✓' : i + 1}
+                                    </div>
+
+                                    {/* Content Column */}
+                                    <div className="flex-1 min-w-0">
+                                        <div className={`font-bold text-sm transition-colors ${isSelected ? 'text-blue-600 dark:text-blue-400' : 'text-slate-800 dark:text-slate-100'}`}>
+                                            {d} days
+                                        </div>
+                                        <div className={`text-xs mt-0.5 leading-normal transition-colors ${
+                                          capped
+                                            ? 'text-amber-700 dark:text-amber-400 font-semibold'
+                                            : isSelected ? 'text-slate-600 dark:text-slate-200' : 'text-slate-500 dark:text-[#7a8ba3]'
+                                        }`}>
+                                            {capped
+                                              ? `Targets ${perDay}/day (capped from ${qualifiedLeadCount}; LinkedIn safe limit), ~${totalOverDuration} new leads over ${wd} working days`
+                                              : `Targets ${perDay} new leads/day via pagination, ~${totalOverDuration} leads over ${wd} working days`}
                                         </div>
                                     </div>
-                                );
-                            })}
-                            <div style={{ marginTop: '8px' }}>
-                                <input type="number" value={days} onChange={e => setDays(e.target.value)}
-                                    placeholder="Or enter custom days..."
-                                    style={{ width: '100%', border: '1px solid #e0eaf5', borderRadius: '10px', padding: '10px 14px', fontSize: '14px', outline: 'none', background: '#fafbff', fontFamily: 'inherit' }}
-                                />
-                            </div>
-                            {/* Warning when prospect-time qualified count exceeds LinkedIn's safe daily limit */}
-                            {exceedsLinkedInLimits && (
-                                <div style={{
-                                    padding: '10px 14px', borderRadius: '10px', fontSize: '12px', lineHeight: 1.5,
-                                    background: '#fef3c7', border: '1px solid #f59e0b', color: '#92400e', marginTop: '4px',
-                                }}>
-                                    <strong>LinkedIn safe-limit cap:</strong> Your ICP threshold matches {qualifiedLeadCount} leads, but LinkedIn&apos;s safe daily action limit is {LINKEDIN_DAILY_LIMIT}.
-                                    The campaign will source {safeLeadsPerDay} new qualified leads/day via pagination, totalling ~{safeLeadsPerDay * workingDays} over {workingDays} working days.
                                 </div>
-                            )}
-                        </div>
+                              );
+                          })}
+
+                          <div className="mt-2">
+                              <input
+                                type="number"
+                                value={days}
+                                onChange={e => setDays(e.target.value)}
+                                placeholder="Or enter custom days..."
+                                className="w-full border border-slate-200 dark:border-[#262831] rounded-xl px-4 py-3 text-sm outline-none bg-slate-50 dark:bg-[#101935] text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-blue-500 dark:focus:border-blue-500 font-medium transition-all"
+                              />
+                          </div>
+
+                          {/* Warning when count exceeds safe parameters */}
+                          {exceedsLinkedInLimits && (
+                            <div className="p-4 rounded-xl text-xs leading-relaxed mt-1 border bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/30 text-amber-800 dark:text-amber-400 font-medium">
+                                <strong>LinkedIn safe-limit cap:</strong> Your ICP threshold matches {qualifiedLeadCount} leads, but LinkedIn&apos;s safe daily action limit is {LINKEDIN_DAILY_LIMIT}.
+                                The campaign will source {safeLeadsPerDay} new qualified leads/day via pagination, totalling ~{safeLeadsPerDay * workingDays} over {workingDays} working days.
+                            </div>
+                          )}
+                      </div>
                     )}
 
                     {/* Step 4: Campaign Name */}
