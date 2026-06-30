@@ -23,7 +23,7 @@ import {
     computeCompleteness,
     type BusinessProfile,
 } from '@lad/frontend-features/ai-icp-assistant';
-import { getCampaign, updateCampaign } from '@lad/frontend-features/campaigns';
+import { getCampaign, updateCampaign, updateCampaignSteps } from '@lad/frontend-features/campaigns';
 
 /* ═══════════════════════════════════════════════
    TYPES
@@ -7038,11 +7038,14 @@ function CheckpointFormInline({
                 ],
             };
             if (editingCampaignId) {
-                // Edit mode: update THIS campaign's name + config + steps. Status and
-                // leads are intentionally omitted so the campaign's running/draft state
-                // and its existing leads are preserved — the user is editing the
-                // workflow (steps + messages), not re-adding leads.
-                await updateCampaign(editingCampaignId, { name: payload.name, config: payload.config, steps: payload.steps });
+                // Edit mode: update THIS campaign in place. PATCH /:id updates the
+                // campaign row (name/config) but does NOT persist steps, so the steps
+                // are saved separately via updateCampaignSteps (POST /:id/steps,
+                // destructive replace) — otherwise the edited workflow silently doesn't
+                // save and the campaign shows "No actions". Status + leads are left
+                // untouched so the running/draft state and existing leads are preserved.
+                await updateCampaign(editingCampaignId, { name: payload.name, config: payload.config });
+                await updateCampaignSteps(editingCampaignId, payload.steps);
                 window.location.href = '/campaigns';
             } else {
                 const data = await campaignCreation.createCampaign(payload);

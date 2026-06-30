@@ -122,6 +122,21 @@ export async function updateCampaign(
 }
 
 /**
+ * Replace a campaign's workflow steps (destructive replace on the backend:
+ * deletes existing steps, then bulk-creates the provided ones).
+ *
+ * IMPORTANT: updateCampaign (PATCH /:id) only updates the campaign row — it does
+ * NOT persist steps. Editing a campaign's workflow must call this separately, or
+ * the steps silently don't save (the campaign shows "No actions").
+ */
+export async function updateCampaignSteps(
+  campaignId: string,
+  steps: any[]
+): Promise<void> {
+  await apiClient.post(`/api/campaigns/${campaignId}/steps`, { steps });
+}
+
+/**
  * Delete a campaign
  */
 export async function deleteCampaign(campaignId: string): Promise<void> {
