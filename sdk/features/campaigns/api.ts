@@ -116,7 +116,8 @@ export async function updateCampaign(
   campaignId: string,
   data: UpdateCampaignRequest
 ): Promise<Campaign> {
-  const response = await apiClient.put<{ data: Campaign }>(`/api/campaigns/${campaignId}`, data);
+  // Backend registers PATCH /api/campaigns/:id (not PUT) — sending PUT 404s.
+  const response = await apiClient.patch<{ data: Campaign }>(`/api/campaigns/${campaignId}`, data);
   return response.data.data;
 }
 
