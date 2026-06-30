@@ -7045,7 +7045,16 @@ function CheckpointFormInline({
                 // save and the campaign shows "No actions". Status + leads are left
                 // untouched so the running/draft state and existing leads are preserved.
                 await updateCampaign(editingCampaignId, { name: payload.name, config: payload.config });
-                await updateCampaignSteps(editingCampaignId, payload.steps);
+                // The steps endpoint passes steps straight to CampaignStepModel.bulkCreate,
+                // which reads step.type + step.order (NOT order_index). The create path maps
+                // these first; mirror that here so step_type/step_order aren't NULL → 500.
+                const stepsForSave = (payload.steps || []).map((s: any, i: number) => ({
+                    ...s,
+                    type: s.step_type || s.type,
+                    order: s.step_order ?? s.order ?? s.order_index ?? i,
+                    title: s.title || s.type,
+                }));
+                await updateCampaignSteps(editingCampaignId, stepsForSave);
                 window.location.href = '/campaigns';
             } else {
                 const data = await campaignCreation.createCampaign(payload);
