@@ -1,5 +1,8 @@
 'use client';
 
+import {
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
@@ -3513,7 +3516,8 @@ export default function AdvancedSearchAIPage() {
             <div className="adv-center">
                 {/* Mr LAD logo */}
                 <div className="adv-asterisk-wrap">
-                    <img src="/MrLAD-logo.svg" alt="Mr LAD" className="adv-lad-logo" />
+                    <img src="/MrLAD-logo.svg" alt="Mr LAD" className="dark:hidden adv-lad-logo" />
+                    <img src="/MrLAD-logo-white.svg" alt="Mr LAD" className="hidden dark:block adv-lad-logo" />
                 </div>
 
                 <h1 className="adv-title">Hey! I am LAD, How can I help you today?</h1>
@@ -4049,41 +4053,38 @@ export default function AdvancedSearchAIPage() {
                 {(showPanel === 'leads' || showPanel === 'workflow') && (leads.length > 0 || inboundLeads.length > 0 || filteredLeads.length > 0 || showPanel === 'workflow') && (
                     <div className="adv-leads-panel">
                         {/* Split-screen panel header */}
-                        <div style={{
-                            display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 20px',
-                            borderBottom: '1.5px solid #e5e7eb', background: '#fff', flexShrink: 0,
-                        }}>
-                            <div style={{ display: 'flex', gap: '4px', flex: 1, background: '#f3f4f6', borderRadius: '10px', padding: '3px' }}>
-                                <button onClick={() => setShowPanel('leads')} style={{
-                                    flex: 1, background: showPanel === 'leads' ? '#fff' : 'transparent',
-                                    border: 'none', fontSize: '13.5px', fontWeight: 600,
-                                    color: showPanel === 'leads' ? '#0b1957' : '#6b7280',
-                                    borderRadius: '8px', padding: '6px 12px', cursor: 'pointer',
-                                    boxShadow: showPanel === 'leads' ? '0 1px 4px rgba(0,0,0,.1)' : 'none',
-                                    transition: 'all .15s',
-                                }}>
+                        <div className="flex flex-shrink-0 items-center gap-3 border-b border-gray-200 bg-white px-5 py-3.5 dark:border-gray-800 dark:bg-[#000724]">
+                            {/* Toggle Container */}
+                            <div className="flex flex-1 gap-1 rounded-[10px] bg-gray-100 p-[3px] dark:bg-[#0b1229]">
+                                <button
+                                  onClick={() => setShowPanel('leads')}
+                                  className={`flex-1 rounded-[8px] px-3 py-1.5 text-[13.5px] font-semibold transition-all duration-150 ${
+                                    showPanel === 'leads'
+                                      ? 'bg-white text-[#0b1957] shadow-sm dark:bg-[#2563eb] dark:text-white'
+                                      : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                                  }`}
+                                >
                                     👤 Leads {leads.length > 0 || inboundLeads.length > 0 ? `(${inboundMode ? inboundLeads.length : leads.length})` : ''}
                                 </button>
-                                <button onClick={() => setShowPanel('workflow')} style={{
-                                    flex: 1, background: showPanel === 'workflow' ? '#fff' : 'transparent',
-                                    border: 'none', fontSize: '13.5px', fontWeight: 600,
-                                    color: showPanel === 'workflow' ? '#0b1957' : '#6b7280',
-                                    borderRadius: '8px', padding: '6px 12px', cursor: 'pointer',
-                                    boxShadow: showPanel === 'workflow' ? '0 1px 4px rgba(0,0,0,.1)' : 'none',
-                                    transition: 'all .15s',
-                                }}>
+                                <button
+                                  onClick={() => setShowPanel('workflow')}
+                                  className={`flex-1 rounded-[8px] px-3 py-1.5 text-[13.5px] font-semibold transition-all duration-150 ${
+                                    showPanel === 'workflow'
+                                      ? 'bg-white text-[#0b1957] shadow-sm dark:bg-[#2563eb] dark:text-white'
+                                      : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                                  }`}
+                                >
                                     ⚡ Workflow
                                 </button>
                             </div>
-                            <button onClick={() => setShowPanel(false)} style={{
-                                width: '32px', height: '32px', borderRadius: '8px', border: '1px solid #e5e7eb',
-                                background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center',
-                                justifyContent: 'center', flexShrink: 0, transition: 'all .15s',
-                            }}
-                                onMouseEnter={e => { e.currentTarget.style.background = '#f3f4f6'; }}
-                                onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}
+
+                            <button
+                              onClick={() => setShowPanel(false)}
+                              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition-colors hover:bg-gray-100 dark:border-gray-700 dark:bg-[#0b1229] dark:text-gray-400 dark:hover:bg-[#161d36] dark:hover:text-white"
                             >
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                                    <path d="M18 6L6 18M6 6l12 12" />
+                                </svg>
                             </button>
                         </div>
 
@@ -4159,14 +4160,8 @@ export default function AdvancedSearchAIPage() {
                                                 <div className="flex gap-2">
                                                     <button
                                                       onClick={() => openEditLead(i)}
-                                                      className="px-3 py-1.5 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md text-[12px] font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"        onMouseEnter={(e) => {
-                                                            e.currentTarget.style.background = '#e5e7eb';
-                                                            e.currentTarget.style.borderColor = '#d1d5db';
-                                                        }}
-                                                        onMouseLeave={(e) => {
-                                                            e.currentTarget.style.background = '#f3f4f6';
-                                                            e.currentTarget.style.borderColor = '#e5e7eb';
-                                                        }}
+                                                      className="px-3 py-1.5 bg-gray-100 dark:bg-[#2563eb] border border-gray-200 dark:border-gray-700 rounded-md text-[12px] font-medium text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-blue-700 transition-colors"
+
                                                     >
                                                         ✏️ Edit
                                                     </button>
@@ -4473,16 +4468,22 @@ export default function AdvancedSearchAIPage() {
                                 )}
                             </div>
                         ) : (
-                            <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
-                                {/* Workflow panel header */}
-                                <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', background: '#fff', flexShrink: 0 }}>
-                                    <div style={{ fontSize: '17px', fontWeight: 800, color: '#111827', marginBottom: '4px' }}>Campaign Workflow</div>
-                                    <div style={{ fontSize: '12.5px', color: '#6b7280' }}>Live preview of your outreach sequence</div>
-                                </div>
-                                <div style={{ flex: 1, overflow: 'hidden', padding: '4px 0' }}>
-                                    <WorkflowPreviewPanel />
-                                </div>
-                            </div>
+                          <div className="flex flex-1 flex-col overflow-auto bg-white dark:bg-[#000724]">
+                              {/* Workflow panel header */}
+                              <div className="flex-shrink-0 border-b border-gray-200 bg-white px-5 py-4 dark:border-gray-800 dark:bg-[#000724]">
+                                  <div className="mb-1 text-[17px] font-extrabold text-gray-900 dark:text-slate-300">
+                                      Campaign Workflow
+                                  </div>
+                                  <div className="text-[12.5px] text-gray-500 dark:text-slate-300">
+                                      Live preview of your outreach sequence
+                                  </div>
+                              </div>
+
+                              {/* Preview Body */}
+                              <div className="flex-1 overflow-hidden p-0 py-1">
+                                  <WorkflowPreviewPanel />
+                              </div>
+                          </div>
                         )}
                     </div>
                 )}
@@ -4823,7 +4824,7 @@ export default function AdvancedSearchAIPage() {
                                   className={`flex-1 border-[1.5px] rounded-[24px] px-4 py-2.5 text-[13.5px] outline-none transition-colors font-inherit 
                                         ${pgBusy
                                     ? 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-400'
-                                    : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-100 focus:border-[#0b1957] dark:focus:border-blue-500'
+                                    : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-slate-300 focus:border-[#0b1957] dark:focus:border-blue-500'
                                   }`}
                                     />
                                     <button
@@ -5051,186 +5052,69 @@ export default function AdvancedSearchAIPage() {
 
             {/* Edit Inbound Lead Modal */}
             {editingLeadIndex !== null && editFormData && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', zIndex: 9999
-                }} onClick={closeEditLead}>
-                    <div style={{
-                        background: 'white', borderRadius: '12px', padding: '24px',
-                        width: '90%', maxWidth: '500px', maxHeight: '80vh', overflow: 'auto',
-                        boxShadow: '0 20px 25px rgba(0,0,0,0.15)'
-                    }} onClick={(e) => e.stopPropagation()}>
-                        <h2 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>
-                            Edit Lead #{editingLeadIndex + 1}
-                        </h2>
+              <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={closeEditLead}>
+                  <div className="relative w-[90%] max-w-[500px] max-h-[80vh] overflow-auto rounded-2xl bg-white p-8 shadow-2xl dark:bg-[#101935] dark:text-white" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={closeEditLead}
+                        className="absolute top-6 right-6 text-gray-400 transition-colors hover:text-gray-600 dark:text-gray-400 dark:hover:text-white"
+                      >
+                          ✕
+                      </button>
 
-                        <div style={{ display: 'grid', gap: '16px' }}>
-                            {/* First Name */}
-                            <div>
-                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '6px', color: '#374151' }}>
-                                    First Name
+                      <h2 className="mb-6 text-lg font-bold">
+                          Edit Lead #{editingLeadIndex + 1}
+                      </h2>
+
+                      <div className="grid gap-5">
+                          {/* Reusable Input Helper Component logic would go here */}
+                          {/* Updated Inputs Map */}
+                          {[
+                              { label: 'First Name', key: 'firstName', placeholder: 'Lead first name' },
+                              { label: 'Last Name', key: 'lastName', placeholder: 'Lead last name' },
+                              { label: 'Email', key: 'email', placeholder: 'Lead email address' },
+                              { label: 'Phone', key: 'phone', placeholder: 'Lead phone number' },
+                              { label: 'Company', key: 'companyName', placeholder: 'Company name' },
+                              { label: 'LinkedIn URL', key: 'linkedinProfile', placeholder: 'https://linkedin.com/in/...' },
+                              { label: 'Website', key: 'website', placeholder: 'https://...' }
+                          ].map((field) => (
+                            <div key={field.key}>
+                                <label className="mb-2 block text-xs font-semibold text-gray-500 dark:text-gray-400">
+                                    {field.label}
                                 </label>
                                 <input
-                                    type="text"
-                                    value={editFormData.firstName}
-                                    onChange={(e) => updateEditField('firstName', e.target.value)}
-                                    style={{
-                                        width: '100%', padding: '8px 12px', border: '1px solid #d1d5db',
-                                        borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box'
-                                    }}
-                                    placeholder="First name"
+                                  type="text"
+                                  value={editFormData[field.key]}
+                                  onChange={(e) => updateEditField(field.key, e.target.value)}
+                                  placeholder={field.placeholder} // Using the placeholder property here
+                                  className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm transition-colors focus:border-blue-500 focus:outline-none dark:border-[#262831] dark:bg-[#000724] dark:text-white dark:placeholder-gray-500"
                                 />
                             </div>
+                          ))}
 
-                            {/* Last Name */}
-                            <div>
-                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '6px', color: '#374151' }}>
-                                    Last Name
-                                </label>
-                                <input
-                                    type="text"
-                                    value={editFormData.lastName}
-                                    onChange={(e) => updateEditField('lastName', e.target.value)}
-                                    style={{
-                                        width: '100%', padding: '8px 12px', border: '1px solid #d1d5db',
-                                        borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box'
-                                    }}
-                                    placeholder="Last name"
-                                />
-                            </div>
+                          {/* Notes */}
+                          <div>
+                              <label className="mb-2 block text-xs font-semibold text-gray-500 dark:text-gray-400">
+                                  Notes
+                              </label>
+                              <textarea
+                                value={editFormData.notes}
+                                onChange={(e) => updateEditField('notes', e.target.value)}
+                                className="h-20 w-full resize-y rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm transition-colors focus:border-blue-500 focus:outline-none dark:border-[#262831] dark:bg-[#000724] dark:text-white"
+                              />
+                          </div>
+                      </div>
+                      <div className="mt-8">
+                          <button
+                            onClick={saveEditedLead}
+                            disabled={savingLead}
+                            className="w-full rounded-xl bg-blue-600 py-3 text-sm font-bold text-white transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                              {savingLead ? 'Saving...' : 'Save Changes'}
+                          </button>
+                      </div>
 
-                            {/* Email */}
-                            <div>
-                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '6px', color: '#374151' }}>
-                                    Email
-                                </label>
-                                <input
-                                    type="email"
-                                    value={editFormData.email}
-                                    onChange={(e) => updateEditField('email', e.target.value)}
-                                    style={{
-                                        width: '100%', padding: '8px 12px', border: '1px solid #d1d5db',
-                                        borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box'
-                                    }}
-                                    placeholder="Email address"
-                                />
-                            </div>
-
-                            {/* Phone */}
-                            <div>
-                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '6px', color: '#374151' }}>
-                                    Phone
-                                </label>
-                                <input
-                                    type="tel"
-                                    value={editFormData.phone}
-                                    onChange={(e) => updateEditField('phone', e.target.value)}
-                                    style={{
-                                        width: '100%', padding: '8px 12px', border: '1px solid #d1d5db',
-                                        borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box'
-                                    }}
-                                    placeholder="Phone number"
-                                />
-                            </div>
-
-                            {/* Company */}
-                            <div>
-                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '6px', color: '#374151' }}>
-                                    Company
-                                </label>
-                                <input
-                                    type="text"
-                                    value={editFormData.companyName}
-                                    onChange={(e) => updateEditField('companyName', e.target.value)}
-                                    style={{
-                                        width: '100%', padding: '8px 12px', border: '1px solid #d1d5db',
-                                        borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box'
-                                    }}
-                                    placeholder="Company name"
-                                />
-                            </div>
-
-                            {/* LinkedIn Profile */}
-                            <div>
-                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '6px', color: '#374151' }}>
-                                    LinkedIn URL
-                                </label>
-                                <input
-                                    type="url"
-                                    value={editFormData.linkedinProfile}
-                                    onChange={(e) => updateEditField('linkedinProfile', e.target.value)}
-                                    style={{
-                                        width: '100%', padding: '8px 12px', border: '1px solid #d1d5db',
-                                        borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box'
-                                    }}
-                                    placeholder="https://linkedin.com/in/..."
-                                />
-                            </div>
-
-                            {/* Website */}
-                            <div>
-                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '6px', color: '#374151' }}>
-                                    Website
-                                </label>
-                                <input
-                                    type="url"
-                                    value={editFormData.website}
-                                    onChange={(e) => updateEditField('website', e.target.value)}
-                                    style={{
-                                        width: '100%', padding: '8px 12px', border: '1px solid #d1d5db',
-                                        borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box'
-                                    }}
-                                    placeholder="https://..."
-                                />
-                            </div>
-
-                            {/* Notes */}
-                            <div>
-                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '6px', color: '#374151' }}>
-                                    Notes
-                                </label>
-                                <textarea
-                                    value={editFormData.notes}
-                                    onChange={(e) => updateEditField('notes', e.target.value)}
-                                    style={{
-                                        width: '100%', padding: '8px 12px', border: '1px solid #d1d5db',
-                                        borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box',
-                                        minHeight: '80px', fontFamily: 'inherit', resize: 'vertical'
-                                    }}
-                                    placeholder="Any additional notes"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Action Buttons */}
-                        <div style={{ display: 'flex', gap: '12px', marginTop: '24px', justifyContent: 'flex-end' }}>
-                            <button
-                                onClick={closeEditLead}
-                                disabled={savingLead}
-                                style={{
-                                    padding: '8px 16px', border: '1px solid #d1d5db', borderRadius: '6px',
-                                    background: 'white', color: '#374151', cursor: savingLead ? 'not-allowed' : 'pointer',
-                                    fontSize: '14px', fontWeight: '500', opacity: savingLead ? 0.6 : 1
-                                }}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={saveEditedLead}
-                                disabled={savingLead}
-                                style={{
-                                    padding: '8px 16px', border: 'none', borderRadius: '6px',
-                                    background: savingLead ? '#d1d5db' : '#3b82f6', color: 'white',
-                                    cursor: savingLead ? 'not-allowed' : 'pointer',
-                                    fontSize: '14px', fontWeight: '500'
-                                }}
-                            >
-                                {savingLead ? 'Saving...' : 'Save Changes'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
+              </div>
+              </div>
             )}
 
             {/* Delete Confirmation Dialog */}
@@ -5672,14 +5556,17 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onStartTargeting,
 
                 {/* ── Modern action buttons (Example 1 style) ── */}
                 {msg.targeting && (
-
-                  <div className="adv-action-btns flex flex-nowrap gap-2 border-t border-gray-200 dark:border-gray-800 pt-3 justify-between">
-                      <button className="adv-act-btn adv-act-btn-refine px-4 py-2 bg-white dark:bg-[#0b1229] border border-gray-200 dark:border-gray-700 rounded-full text-xs font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#161d36] transition-colors"
-                              onClick={() => onOpt('Refine my targeting criteria')}
+                  <div className="flex flex-nowrap items-center justify-between border-t border-gray-200 dark:border-gray-800 pt-3 gap-2">
+                      <button
+                        className="adv-act-btn adv-act-btn-refine flex items-center gap-1.5 px-4 py-2.5 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-[12.5px] font-semibold text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-blue-600 hover:text-gray-900 dark:hover:text-white transition-colors"
+                        onClick={() => onOpt('Refine my targeting criteria')}
                       >
-                          Refine</button>
-                      <button className="adv-act-btn adv-act-btn-journey px-4 py-2 bg-[#0b1957] dark:bg-blue-600 border-none rounded-full text-[12.5px] font-bold text-white shadow-lg shadow-blue-900/20 flex items-center gap-1.5 tracking-[0.01em] hover:bg-[#152775] dark:hover:bg-blue-500 transition-all active:scale-[0.98]"
-                              onClick={onStartCheckpoints}
+                          Refine
+                      </button>
+
+                      <button
+                        className="flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-[#0b1957] dark:bg-blue-600 text-[12.5px] font-bold text-white shadow-lg shadow-blue-900/20 hover:opacity-90 transition-all tracking-[0.01em]"
+                        onClick={onStartCheckpoints}
                       >
                           Create Outreach Journey
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -5793,6 +5680,7 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onStartTargeting,
                               return (
                                 <div key={si} style={{ display: 'flex', alignItems: 'flex-start', flexShrink: 0 }}>
                                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100px' }}>
+                                            {/* Icon circle with custom tooltip */}
                                         <div style={{ position: 'relative', display: 'inline-flex' }}
                                              onMouseEnter={e => {
                                                  const tip = (e.currentTarget as HTMLElement).querySelector('.journey-tip') as HTMLElement;
@@ -6885,17 +6773,30 @@ function CheckpointFormInline({
     };
 
     const baseBox: React.CSSProperties = {
-        background: '#fff', border: '1px solid #e0eaf5', borderRadius: '16px',
-        padding: '24px', maxWidth: '520px', width: '100%',
-        boxShadow: '0 4px 20px rgba(23,37,96,0.06)', animation: 'fadeUp 0.3s ease both',
+        background: 'var(--box-bg)',
+        border: '1px solid var(--box-border)',
+        borderRadius: '16px',
+        padding: '24px',
+        maxWidth: '520px',
+        width: '100%',
+        boxShadow: 'var(--box-shadow)',
+        animation: 'fadeUp 0.3s ease both',
     };
 
     const optStyle = (selected: boolean): React.CSSProperties => ({
-        display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px',
-        border: `2px solid ${selected ? '#0b1957' : '#e5e7eb'}`,
-        background: selected ? '#e8ecfa' : '#fff',
-        borderRadius: '12px', cursor: 'pointer', transition: 'all 0.15s', width: '100%',
-        fontSize: '14px', fontWeight: 500, color: selected ? '#0b1957' : '#374151',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        padding: '12px 16px',
+        border: `2px solid ${selected ? 'var(--opt-selected-border)' : 'var(--opt-border)'}`,
+        background: selected ? 'var(--opt-selected-bg)' : 'var(--opt-bg)',
+        borderRadius: '12px',
+        cursor: 'pointer',
+        transition: 'all 0.15s',
+        width: '100%',
+        fontSize: '14px',
+        fontWeight: 500,
+        color: selected ? 'var(--opt-selected-text)' : 'var(--opt-text)',
     });
 
     const numBadge = (n: number, selected: boolean): React.CSSProperties => ({
@@ -6923,14 +6824,16 @@ function CheckpointFormInline({
                 </div>
 
                 {/* Question header */}
-                <div style={{ fontSize: '15px', fontWeight: 600, color: '#111827', marginBottom: '16px', lineHeight: 1.4 }}>
+                <div
+                  className="text-gray-900 dark:text-gray-100"
+                  style={{ fontSize: '15px', fontWeight: 600, marginBottom: '16px', lineHeight: 1.4 }}
+                >
                     {q.question}
                 </div>
-
                 <div style={baseBox}>
                     {/* Step 0: ICP Threshold */}
                     {step === 0 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div className="flex flex-col dark:bg-[#000724]" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             {[
                                 { value: '80', label: 'Above 80%', desc: 'Only top-tier matches' },
                                 { value: '75', label: 'Above 75%', desc: 'High quality leads' },
@@ -6944,16 +6847,32 @@ function CheckpointFormInline({
                                     ? linkedInDailyLimit
                                     : count;
                                 return (
-                                    <div key={opt.value} onClick={() => setIcpThreshold(opt.value)} style={optStyle(selected)}>
-                                        <div style={numBadge(i + 1, selected)}>{selected ? '✓' : i + 1}</div>
-                                        <div style={{ flex: 1 }}>
-                                            <div style={{ fontWeight: 600 }}>{opt.label}</div>
-                                            <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{opt.desc}</div>
-                                        </div>
-                                        <div style={{ fontSize: '12px', fontWeight: 700, color: selected ? '#0b1957' : '#9ca3af', whiteSpace: 'nowrap' }}>
-                                            {displayCount} lead{displayCount !== 1 ? 's' : ''}
-                                        </div>
-                                    </div>
+                                  <div
+                                    key={opt.value}
+                                    onClick={() => setIcpThreshold(opt.value)}
+                                    className={`flex items-center gap-3 p-4 rounded-xl border transition-all cursor-pointer ${
+                                      selected
+                                        ? 'border-indigo-500 bg-indigo-950/30'
+                                        : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-[#000724] hover:border-gray-300 dark:hover:border-gray-700'
+                                    }`}
+                                  >
+                                      <div style={numBadge(i + 1, selected)}>{selected ? '✓' : i + 1}</div>
+                                      <div style={{ flex: 1 }}>
+                                          <div className="font-semibold text-gray-900 dark:text-gray-100">
+                                              {opt.label}
+                                          </div>
+                                          <div className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">
+                                              {opt.desc}
+                                          </div>
+                                      </div>
+                                      <div
+                                        className={`text-[12px] font-bold whitespace-nowrap ${
+                                          selected ? 'text-indigo-400' : 'text-gray-400 dark:text-gray-500'
+                                        }`}
+                                      >
+                                          {displayCount} lead{displayCount !== 1 ? 's' : ''}
+                                      </div>
+                                  </div>
                                 );
                             })}
                         </div>
@@ -6961,10 +6880,20 @@ function CheckpointFormInline({
 
                     {/* Step 1: Campaign Channels */}
                     {step === 1 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div className="flex flex-col gap-2 dark:bg-[#000724]"
+                             style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             {/* Context badge for direct contacts */}
                             {isDirectContact && (
-                              <div className="px-3.5 py-2.5 mb-1 rounded-[10px] text-xs font-medium border bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-300">
+                              <div
+                                className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-400"
+                                style={{
+                                    padding: '10px 14px',
+                                    borderRadius: '10px',
+                                    fontSize: '12px',
+                                    fontWeight: 500,
+                                    marginBottom: '4px'
+                                }}
+                              >
                                   {hasPhone && hasEmail
                                     ? `📱✉️ Phone & email detected — select how you want to reach this contact${hasLinkedInInfo ? ' (LinkedIn available)' : ''}`
                                     : hasPhone
@@ -6975,21 +6904,35 @@ function CheckpointFormInline({
 
                             {/* Channel Configuration Sequential UI */}
                             {isInChannelConfiguration && (
-                                <div style={{ marginTop: '12px', padding: '16px', background: '#f9fafb', border: '2px solid #e5e7eb', borderRadius: '12px' }}>
-                                    {/* Step indicator */}
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                                        <div style={{ fontSize: '14px', fontWeight: 700, color: '#111827' }}>
-                                            {channelIcons[currentChannelBeingConfigured]} Configure {channelNames[currentChannelBeingConfigured]}
+                              <div
+                                className="bg-gray-50 dark:bg-[#000724] border-gray-200 dark:border-gray-800"
+                                style={{ marginTop: '12px', padding: '16px', borderRadius: '12px', border: '2px solid' }}
+                              >
+                                  {/* Step indicator */}
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                                      <div className="text-gray-900 dark:text-gray-100" style={{ fontSize: '14px', fontWeight: 700 }}>
+                                          {channelIcons[currentChannelBeingConfigured]} Configure {channelNames[currentChannelBeingConfigured]}
                                         </div>
-                                        <div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', background: '#fff', padding: '4px 10px', borderRadius: '12px', border: '1px solid #d1d5db' }}>
+                                      <div className="bg-white dark:bg-[#0b1229] border-gray-300 dark:border-gray-700 text-gray-500 dark:text-gray-400" style={{
+                                            fontSize: '12px',
+                                            fontWeight: 600,
+                                            padding: '4px 10px',
+                                            borderRadius: '12px',
+                                            border: '1px solid'
+                                        }}>
                                             Step {channelConfigStep + 1} of {selectedChannelsList.length}
                                         </div>
                                     </div>
 
                                     {/* Progress bar */}
-                                    <div style={{ width: '100%', height: '4px', background: '#e5e7eb', borderRadius: '2px', overflow: 'hidden', marginBottom: '16px' }}>
-                                        <div style={{ height: '100%', background: '#3b82f6', width: `${((channelConfigStep + 1) / selectedChannelsList.length) * 100}%`, transition: 'width 0.3s' }}></div>
-                                    </div>
+                                  <div className="bg-gray-200 dark:bg-gray-800" style={{ width: '100%', height: '4px', borderRadius: '2px', overflow: 'hidden', marginBottom: '16px' }}>
+                                      <div className="bg-blue-500" style={{
+                                            height: '100%',
+                                            width: `${((channelConfigStep + 1) / selectedChannelsList.length) * 100}%`,
+                                            transition: 'width 0.3s'
+                                        }}
+                                      ></div>
+                                  </div>
                                 </div>
                             )}
 
@@ -7006,57 +6949,103 @@ function CheckpointFormInline({
                                 { id: 'whatsapp', label: 'WhatsApp', desc: isDirectContact ? 'Send a WhatsApp message to this contact' : 'Send a WhatsApp message', icon: '💬', disabled: isDirectContact && !hasPhone },
                                 { id: 'voice_call', label: 'Voice Call', desc: isDirectContact ? 'Trigger an AI voice call to this contact' : 'Trigger an AI voice call', icon: '📞', disabled: isDirectContact && !hasPhone },
                             ].filter(ch => !ch.disabled).map((ch, i) => (
-                                <div key={ch.id} onClick={() => toggleNextChannel(ch.id)} style={optStyle(nextChannels.includes(ch.id))}>
-                                    <div style={numBadge(i + 1, nextChannels.includes(ch.id))}>{nextChannels.includes(ch.id) ? '✓' : i + 1}</div>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 600 }}>{ch.icon} {ch.label}</div>
-                                        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{ch.desc}</div>
-                                    </div>
-                                </div>
+                              <div key={ch.id} onClick={() => toggleNextChannel(ch.id)} className={`flex items-center gap-3 p-4 rounded-xl border transition-all cursor-pointer ${
+                                  nextChannels.includes(ch.id)
+                                    ? 'border-indigo-500 bg-indigo-950/30 dark:bg-[#2563eb]'
+                                    : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-[#000724] hover:border-gray-300 dark:hover:border-gray-700'
+                                }`}
+                              >
+                                  <div style={numBadge(i + 1, nextChannels.includes(ch.id))}>{nextChannels.includes(ch.id) ? '✓' : i + 1}</div>
+                                  <div style={{ flex: 1 }}>
+                                      <div className="font-semibold text-gray-900 dark:text-slate-300">{ch.icon} {ch.label}</div>
+                                      <div className="text-[12px] text-gray-500 dark:text-slate-300 mt-[2px]">{ch.desc}</div>
+                                  </div>
+                              </div>
                             ))}
                             {!isDirectContact && (
-                                <div onClick={() => { setNextChannels([]); setStep(step + 1); }} style={optStyle(nextChannels.length === 0)}>
-                                    <div style={numBadge(4, nextChannels.length === 0)}>{nextChannels.length === 0 ? '✓' : 4}</div>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 600 }}>Skip</div>
-                                        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>No additional channels — LinkedIn only</div>
-                                    </div>
-                                </div>
+                              <div
+                                onClick={() => { setNextChannels([]); setStep(step + 1); }}
+                                style={optStyle(nextChannels.length === 0)}
+                                className="dark:bg-[#000724] dark:border-gray-800"
+                              >
+                                  <div style={numBadge(4, nextChannels.length === 0)}>{nextChannels.length === 0 ? '✓' : 4}</div>
+                                  <div style={{ flex: 1 }}>
+                                      <div style={{ fontWeight: 600 }} className="text-gray-900 dark:text-slate-300">
+                                          Skip
+                                      </div>
+                                      <div style={{ fontSize: '12px', marginTop: '2px' }} className="text-gray-500 dark:text-slate-300">
+                                          No additional channels — LinkedIn only
+                                      </div>
+                                  </div>
+                              </div>
                             )}
 
 
                             {/* Email Config (inline when email selected) */}
                             {nextChannels.includes('email') && (isInChannelConfiguration ? currentChannelBeingConfigured === 'email' : true) && (
-                                <div style={{ marginTop: '12px', padding: '14px', background: '#f8faff', border: '1px solid #e0eaf5', borderRadius: '12px' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                                        <div style={{ fontSize: '13px', fontWeight: 700, color: '#0b1957' }}>✉️ Email Settings</div>
-                                        <button disabled={emailGenLoading} onClick={generateEmail}
-                                            style={{ background: 'none', border: 'none', fontSize: '12px', fontWeight: 700, color: emailGenLoading ? '#9ca3af' : '#0b1957', cursor: emailGenLoading ? 'default' : 'pointer' }}>
-                                            {emailGenLoading ? 'Generating...' : '✨ AI Generate'}
-                                        </button>
+                              <div
+                                className="bg-gray-50 dark:bg-[#000724] border border-gray-200 dark:border-gray-800"
+                                style={{ marginTop: '12px', padding: '14px', borderRadius: '12px' }}
+                              >
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                      <div
+                                        className="text-[#0b1957] dark:text-white"
+                                        style={{ fontSize: '13px', fontWeight: 700 }}
+                                      >✉️ Email Settings</div>
+                                      <button
+                                        disabled={emailGenLoading}
+                                        onClick={generateEmail}
+                                        className={emailGenLoading
+                                          ? 'text-[#9ca3af] dark:text-gray-600'
+                                          : 'text-[#0b1957] dark:text-slate-300'
+                                        }
+                                        style={{
+                                            background: 'none',
+                                            border: 'none',
+                                            fontSize: '12px',
+                                            fontWeight: 700,
+                                            cursor: emailGenLoading ? 'default' : 'pointer'
+                                        }}
+                                      >
+                                          {emailGenLoading ? 'Generating...' : '✨ AI Generate'}
+                                      </button>
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                         {/* From account selector */}
                                         <div>
-                                            <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '4px', display: 'block' }}>
+                                            <label
+                                              className="text-[#374151] dark:text-slate-300"
+                                              style={{ fontSize: '12px', fontWeight: 600, marginBottom: '4px', display: 'block' }}
+                                            >
                                                 Send From <span style={{ color: '#ef4444' }}>*</span>
                                             </label>
                                             {connectedSenders.length > 0 ? (
-                                                <select
-                                                    value={emailFromAddress}
-                                                    onChange={e => {
-                                                        const sender = connectedSenders.find(s => s.email === e.target.value);
-                                                        setEmailFromAddress(e.target.value);
-                                                        setEmailProvider(sender?.provider || '');
-                                                    }}
-                                                    style={{ width: '100%', border: '1px solid #e0eaf5', borderRadius: '8px', padding: '8px 10px', fontSize: '13px', background: '#fff', outline: 'none' }}>
-                                                    <option value="">— Select sender account —</option>
-                                                    {connectedSenders.map(s => (
-                                                        <option key={s.email} value={s.email}>
-                                                            {s.provider === 'google' ? '📧 Gmail' : '📨 Outlook'} — {s.email}
-                                                        </option>
-                                                    ))}
-                                                </select>
+                                              <Select
+                                                value={emailFromAddress}
+                                                onValueChange={(value) => {
+                                                    const sender = connectedSenders.find(s => s.email === value);
+                                                    setEmailFromAddress(value);
+                                                    setEmailProvider(sender?.provider || '');
+                                                }}
+                                              >
+                                                  <SelectTrigger className="flex items-center w-full px-3 bg-white dark:bg-[#000724] border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-[#111c3a] rounded-lg focus:ring-0 shadow-none h-[42px] text-sm">
+                                                      <SelectValue placeholder="— Select sender account —" />
+                                                  </SelectTrigger>
+                                                  <SelectContent  className="bg-white dark:bg-[#000724] border-slate-200 dark:border-[#262831]">
+                                                      {connectedSenders.map((s) => (
+                                                        <SelectItem
+                                                          key={s.email}
+                                                          value={s.email}
+                                                          className="pl-3 pr-6 text-sm justify-start transition-colors cursor-pointer text-slate-800 dark:text-white dark:focus:bg-[#22C55E] dark:focus:text-[#000724] dark:data-[state=checked]:focus:bg-[#22C55E] dark:data-[state=checked]:focus:text-[#000724]">
+                                                            <div className="flex items-center gap-3">
+                                                              <span className="text-sm">
+                                                                {s.provider === 'google' ? '📧 Gmail' : '📨 Outlook'} — {s.email}
+                                                              </span>
+                                                            </div>
+                                                        </SelectItem>
+                                                      ))}
+                                                  </SelectContent>
+                                              </Select>
                                             ) : (
                                                 <div style={{ fontSize: '12px', color: '#ef4444', padding: '8px 10px', background: '#fff5f5', border: '1px solid #fecaca', borderRadius: '8px' }}>
                                                     No email account connected.{' '}
@@ -7068,42 +7057,59 @@ function CheckpointFormInline({
                                         {/* Template picker */}
                                         {emailTemplates.length > 0 && (
                                             <div>
-                                                <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '4px', display: 'block' }}>Use Saved Template</label>
-                                                <select
-                                                    value={selectedEmailTemplateId}
-                                                    onChange={e => {
-                                                        const tpl = emailTemplates.find(t => t.id === e.target.value);
-                                                        if (tpl) { setEmailSubject(tpl.subject); setEmailBody(tpl.body); }
-                                                        setSelectedEmailTemplateId(e.target.value);
-                                                    }}
-                                                    style={{ width: '100%', border: '1px solid #e0eaf5', borderRadius: '8px', padding: '8px 10px', fontSize: '13px', background: '#fff', outline: 'none' }}>
-                                                    <option value="">— Select a template —</option>
-                                                    {emailTemplates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                                                </select>
+                                                <label className="text-[#374151] dark:text-slate-300"
+                                                       style={{ fontSize: '12px', fontWeight: 600,  marginBottom: '4px', display: 'block' }}>Use Saved Template</label>
+                                                <Select
+                                                  value={selectedEmailTemplateId}
+                                                  onValueChange={(value) => {
+                                                      const tpl = emailTemplates.find(t => t.id === value);
+                                                      if (tpl) {
+                                                          setEmailSubject(tpl.subject);
+                                                          setEmailBody(tpl.body);
+                                                      }
+                                                      setSelectedEmailTemplateId(value);
+                                                  }}
+                                                >
+                                                    <SelectTrigger className="flex items-center w-full px-3 bg-white dark:bg-[#000724] border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-[#111c3a] rounded-lg focus:ring-0 shadow-none h-[42px] text-sm">
+                                                        <SelectValue placeholder="— Select a template —" />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="bg-white dark:bg-[#000724] border-slate-200 dark:border-[#262831]">
+                                                        {emailTemplates.map((t) => (
+                                                          <SelectItem
+                                                            key={t.id}
+                                                            value={t.id}
+                                                            className="pl-3 pr-6 text-sm justify-start transition-colors cursor-pointer text-slate-800 dark:text-white dark:focus:bg-[#22C55E] dark:focus:text-[#000724] dark:data-[state=checked]:focus:bg-[#22C55E] dark:data-[state=checked]:focus:text-[#000724]">
+                                                              {t.name}
+                                                          </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
                                             </div>
                                         )}
                                         {/* Subject */}
                                         <div>
-                                            <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '4px', display: 'block' }}>Subject <span style={{ color: '#ef4444' }}>*</span></label>
+                                            <label className="text-[#374151] dark:text-slate-300"
+                                                   style={{ fontSize: '12px', fontWeight: 600, marginBottom: '4px', display: 'block' }}>Subject <span style={{ color: '#ef4444' }}>*</span></label>
                                             <input
-                                                type="text"
-                                                value={emailSubject}
-                                                onChange={e => setEmailSubject(e.target.value)}
-                                                placeholder="e.g. Quick question for {{first_name}}"
-                                                style={{ width: '100%', border: '1px solid #e0eaf5', borderRadius: '8px', padding: '8px 10px', fontSize: '13px', background: '#fff', outline: 'none', fontFamily: 'inherit' }}
+                                              type="text"
+                                              value={emailSubject}
+                                              onChange={e => setEmailSubject(e.target.value)}
+                                              placeholder="e.g. Quick question for {{first_name}}"
+                                              className="w-full px-[10px] py-[8px] border border-gray-200 dark:border-gray-800 rounded-lg bg-white dark:bg-[#000724] text-gray-900 dark:text-gray-100 text-[13px] outline-none focus:border-indigo-500 dark:focus:border-indigo-500 transition-colors"
                                             />
                                         </div>
                                         {/* Body */}
                                         <div>
-                                            <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '4px', display: 'block' }}>Email Body <span style={{ color: '#ef4444' }}>*</span></label>
+                                            <label  className="text-[#374151] dark:text-slate-300"
+                                                    style={{ fontSize: '12px', fontWeight: 600, marginBottom: '4px', display: 'block' }}>Email Body <span style={{ color: '#ef4444' }}>*</span></label>
                                             <textarea
-                                                value={emailBody}
-                                                onChange={e => setEmailBody(e.target.value)}
-                                                placeholder={'Hi {{first_name}},\n\nI came across your profile at {{company}} and wanted to reach out...\n\nBest,\n[Your name]'}
-                                                rows={6}
-                                                style={{ width: '100%', border: '1px solid #e0eaf5', borderRadius: '8px', padding: '10px 12px', fontSize: '13px', background: '#fff', outline: 'none', resize: 'vertical', fontFamily: 'inherit' }}
+                                              value={emailBody}
+                                              onChange={e => setEmailBody(e.target.value)}
+                                              placeholder={'Hi {{first_name}},\n\nI came across your profile at {{company}} and wanted to reach out...\n\nBest,\n[Your name]'}
+                                              rows={6}
+                                              className="w-full p-[10px_12px] border border-gray-200 dark:border-gray-800 rounded-lg bg-white dark:bg-[#000724] text-gray-900 dark:text-gray-100 text-[13px] outline-none resize-vertical focus:border-indigo-500 dark:focus:border-indigo-500 transition-colors"
                                             />
-                                            <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px' }}>
+                                          <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-[4px]">
                                                 Placeholders: {'{{first_name}}'} {'{{last_name}}'} {'{{company}}'} {'{{title}}'} {'{{industry}}'}
                                             </div>
                                         </div>
@@ -7123,7 +7129,8 @@ function CheckpointFormInline({
                                                     style={{ flex: 1, border: '1px solid #e0eaf5', borderRadius: '8px', padding: '8px 10px', fontSize: '13px', outline: 'none', fontFamily: 'inherit' }}
                                                 />
                                                 <button onClick={saveEmailTemplate}
-                                                    style={{ padding: '8px 14px', background: '#0b1957', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
+                                                    className="bg-[#0b1957] dark:bg-[#2563eb]"
+                                                    style={{ padding: '8px 14px', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
                                                     Save
                                                 </button>
                                                 <button onClick={() => { setSaveTemplateMode(false); setSaveTemplateName(''); }}
@@ -7138,26 +7145,37 @@ function CheckpointFormInline({
 
                             {/* Navigation & Summary for Channel Configuration */}
                             {isInChannelConfiguration && (
-                                <div style={{ marginTop: '16px', padding: '14px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '12px' }}>
-                                    {/* Per-Channel Delay Configuration */}
-                                    <div style={{ marginBottom: '16px', paddingBottom: '16px', borderBottom: '1px solid #e5e7eb' }}>
-                                        <div style={{ fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '10px' }}>⏱️ Delay before next step (Optional)</div>
+                              <div
+                                className="dark:bg-[#000724] dark:border-gray-800 bg-[#f9fafb]"
+                                style={{ marginTop: '16px', padding: '14px', border: '1px solid #e5e7eb', borderRadius: '12px' }}
+                              >
+                                  {/* Per-Channel Delay Configuration */}
+                                  <div
+                                    className="dark:border-gray-800"
+                                    style={{ marginBottom: '16px', paddingBottom: '16px', borderBottom: '1px solid #e5e7eb' }}
+                                  >
+                                      <div
+                                        className="dark:text-gray-300 text-[#374151]"
+                                        style={{ fontSize: '12px', fontWeight: 600,  marginBottom: '10px' }}
+                                      >⏱️ Delay before next step (Optional)</div>
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                                             <div>
-                                                <label style={{ fontSize: '11px', fontWeight: 600, color: '#6b7280', marginBottom: '4px', display: 'block' }}>Days</label>
+                                                <label className="text-[#6b7280] dark:text-slate-300"
+                                                       style={{ fontSize: '11px', fontWeight: 600, marginBottom: '4px', display: 'block' }}>Days</label>
                                                 <input
-                                                    type="number"
-                                                    value={channelDelays[currentChannelBeingConfigured]?.days || '0'}
-                                                    onChange={e => {
-                                                        const updated = { ...channelDelays, [currentChannelBeingConfigured]: { ...(channelDelays[currentChannelBeingConfigured] || { hours: '0' }), days: e.target.value } };
-                                                        setChannelDelays(updated);
-                                                    }}
-                                                    min="0" max="365" placeholder="0"
-                                                    style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '6px', padding: '7px 9px', fontSize: '12px', background: '#fff', outline: 'none' }}
+                                                  type="number"
+                                                  value={channelDelays[currentChannelBeingConfigured]?.days || '0'}
+                                                  onChange={e => {
+                                                      const updated = { ...channelDelays, [currentChannelBeingConfigured]: { ...(channelDelays[currentChannelBeingConfigured] || { hours: '0' }), days: e.target.value } };
+                                                      setChannelDelays(updated);
+                                                  }}
+                                                  min="0" max="365" placeholder="0"
+                                                  className="w-full px-[10px] py-[8px] border border-gray-200 dark:border-gray-800 rounded-lg bg-white dark:bg-[#000724] text-gray-900 dark:text-gray-100 text-[13px] outline-none focus:border-indigo-500 dark:focus:border-indigo-500 transition-colors"
                                                 />
                                             </div>
                                             <div>
-                                                <label style={{ fontSize: '11px', fontWeight: 600, color: '#6b7280', marginBottom: '4px', display: 'block' }}>Hours</label>
+                                                <label className="text-[#6b7280] dark:text-slate-300"
+                                                       style={{ fontSize: '11px', fontWeight: 600, color: '#6b7280', marginBottom: '4px', display: 'block' }}>Hours</label>
                                                 <input
                                                     type="number"
                                                     value={channelDelays[currentChannelBeingConfigured]?.hours || '0'}
@@ -7166,7 +7184,7 @@ function CheckpointFormInline({
                                                         setChannelDelays(updated);
                                                     }}
                                                     min="0" max="23" placeholder="0"
-                                                    style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '6px', padding: '7px 9px', fontSize: '12px', background: '#fff', outline: 'none' }}
+                                                    className="w-full px-[10px] py-[8px] border border-gray-200 dark:border-gray-800 rounded-lg bg-white dark:bg-[#000724] text-gray-900 dark:text-gray-100 text-[13px] outline-none focus:border-indigo-500 dark:focus:border-indigo-500 transition-colors"
                                                 />
                                             </div>
                                         </div>
@@ -7201,10 +7219,16 @@ function CheckpointFormInline({
 
                             {/* WhatsApp Config (inline when whatsapp selected) */}
                             {nextChannels.includes('whatsapp') && (isInChannelConfiguration ? currentChannelBeingConfigured === 'whatsapp' : true) && (
-                                <div style={{ marginTop: '12px', padding: '14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px' }}>
+                              <div
+                                className="dark:bg-emerald-950/30 dark:border-emerald-800 bg-[#f0fdf4]"
+                                style={{ marginTop: '12px', padding: '14px', border: '1px solid #bbf7d0', borderRadius: '12px' }}
+                              >
                                     {/* Header row */}
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                                        <div style={{ fontSize: '13px', fontWeight: 700, color: '#166534' }}>💬 WhatsApp Settings</div>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                      <div
+                                        className="dark:text-emerald-400 text-[#166534]"
+                                        style={{ fontSize: '13px', fontWeight: 700 }}
+                                      >💬 WhatsApp Settings</div>
                                         <button disabled={waGenLoading} onClick={generateWhatsApp}
                                             style={{ background: 'none', border: 'none', fontSize: '12px', fontWeight: 700, color: waGenLoading ? '#9ca3af' : '#166534', cursor: waGenLoading ? 'default' : 'pointer' }}>
                                             {waGenLoading ? 'Generating...' : '✨ AI Generate'}
@@ -7214,33 +7238,67 @@ function CheckpointFormInline({
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                         {/* Send From selector */}
                                         <div>
-                                            <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '4px', display: 'block' }}>
+                                            <label
+                                              className="dark:text-gray-300 text-[#374151]"
+                                              style={{ fontSize: '12px', fontWeight: 600, marginBottom: '4px', display: 'block' }}
+                                            >
                                                 Send From <span style={{ color: '#ef4444' }}>*</span>
                                             </label>
                                             {whatsAppAccounts.length > 0 ? (
-                                                <select value={waAccountId} onChange={e => setWaAccountId(e.target.value)}
-                                                    style={{ width: '100%', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '8px 10px', fontSize: '13px', background: '#fff', outline: 'none' }}>
-                                                    <option value="">— Select WhatsApp account —</option>
-                                                    {whatsAppAccounts.map((acc: any) => (
-                                                        <option key={acc.id} value={acc.id}>
-                                                            {acc.display_name} ({acc.account_type === 'business_api' ? 'Business API' : 'Personal'})
-                                                        </option>
-                                                    ))}
-                                                </select>
+                                              <Select
+                                                value={waAccountId}
+                                                onValueChange={setWaAccountId}
+                                              >
+                                                  <SelectTrigger className="flex items-center w-full px-3 bg-white dark:bg-[#000724] border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-[#111c3a] rounded-lg focus:ring-0 shadow-none h-[42px] text-sm">
+                                                      <SelectValue placeholder="— Select WhatsApp account —" />
+                                                  </SelectTrigger>
+                                                  <SelectContent className="bg-white dark:bg-[#000724] border-slate-200 dark:border-[#262831]">
+                                                      {whatsAppAccounts.map((acc: any) => (
+                                                        <SelectItem
+                                                          key={acc.id}
+                                                          value={acc.id}
+                                                          className="flex items-center w-full px-3 bg-white dark:bg-[#000724] border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-[#111c3a] rounded-lg focus:ring-0 shadow-none h-[42px] text-sm">
+
+                                                            <div className="flex items-center gap-2">
+                                                                <span>{acc.display_name}</span>
+                                                                <span className="text-[10px] opacity-70 bg-gray-100 dark:bg-emerald-900 px-1.5 py-0.5 rounded">
+            {acc.account_type === 'business_api' ? 'Business API' : 'Personal'}
+          </span>
+                                                            </div>
+                                                        </SelectItem>
+                                                      ))}
+                                                  </SelectContent>
+                                              </Select>
                                             ) : (
-                                                <div style={{ fontSize: '12px', color: '#b45309', padding: '8px 10px', background: '#fff', border: '1px solid #bbf7d0', borderRadius: '8px' }}>
-                                                    No WhatsApp account connected.{' '}
-                                                    <a href="/settings?tab=integrations" style={{ color: '#166534', fontWeight: 600 }}>Connect an account →</a>
-                                                </div>
+                                              <div
+                                                className="bg-white dark:bg-[#000724] border border-[#bbf7d0] dark:border-emerald-800 rounded-lg p-[8px_10px] text-[12px] text-[#b45309]"
+                                              >
+                                                  No WhatsApp account connected.{' '}
+                                                  <a
+                                                    href="/settings?tab=integrations"
+                                                    className="dark:text-emerald-400"
+                                                    style={{ color: '#166534', fontWeight: 600 }}
+                                                  >
+                                                      Connect an account →
+                                                  </a>
+                                              </div>
                                             )}
                                         </div>
 
                                         {/* ── Template Selector ── */}
                                         <div>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                                                <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151' }}>Message Template</label>
-                                                <button onClick={() => { setShowWaTemplatePanel(p => !p); setShowWaNewTmplForm(false); }}
-                                                    style={{ background: 'none', border: 'none', fontSize: '11px', fontWeight: 600, color: '#166534', cursor: 'pointer', padding: 0 }}>
+                                                <label
+                                                  className="dark:text-slate-300 text-[#374151]"
+                                                  style={{ fontSize: '12px', fontWeight: 600 }}
+                                                >
+                                                    Message Template
+                                                </label>
+                                                <button
+                                                  onClick={() => { setShowWaTemplatePanel(p => !p); setShowWaNewTmplForm(false); }}
+                                                  className="dark:text-emerald-400 text-[#166534]"
+                                                  style={{ background: 'none', border: 'none', fontSize: '11px', fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                                                >
                                                     {showWaTemplatePanel ? '✕ Close' : '📋 Browse templates'}
                                                 </button>
                                             </div>
@@ -7249,52 +7307,150 @@ function CheckpointFormInline({
                                             {selectedWaTemplateId && !showWaTemplatePanel && (() => {
                                                 const tmpl = waTemplates.find(t => t.id === selectedWaTemplateId);
                                                 return tmpl ? (
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 10px', background: '#dcfce7', border: '1px solid #86efac', borderRadius: '6px', fontSize: '12px' }}>
-                                                        <span style={{ fontWeight: 600, color: '#166534', flex: 1 }}>✓ {tmpl.name}</span>
-                                                        <span style={{ background: tmpl.channel_type === 'business_api' ? '#dbeafe' : '#f0fdf4', color: tmpl.channel_type === 'business_api' ? '#1d4ed8' : '#166534', border: `1px solid ${tmpl.channel_type === 'business_api' ? '#93c5fd' : '#86efac'}`, borderRadius: '4px', padding: '1px 6px', fontSize: '10px', fontWeight: 600 }}>
-                                                            {tmpl.channel_type === 'business_api' ? 'WABA' : 'Personal'}
+                                                  <div
+                                                    className="dark:bg-emerald-950/40 dark:border-emerald-800 bg-[#dcfce7]"
+                                                    style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 10px', border: '1px solid #86efac', borderRadius: '6px', fontSize: '12px' }}
+                                                  >
+                                                        <span className="dark:text-emerald-300 text-[#166534]" style={{ fontWeight: 600, flex: 1 }}>
+                                                            ✓ {tmpl.name}
                                                         </span>
-                                                        <button onClick={() => { setSelectedWaTemplateId(''); setWaBody(''); }}
-                                                            style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '12px', padding: 0 }}>✕</button>
-                                                    </div>
+                                                      <span
+                                                        className={`dark:border-opacity-40 ${tmpl.channel_type === 'business_api' ? 'dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800' : 'dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800'}`}
+                                                        style={{ background: tmpl.channel_type === 'business_api' ? '#dbeafe' : '#f0fdf4', color: tmpl.channel_type === 'business_api' ? '#1d4ed8' : '#166534', border: `1px solid ${tmpl.channel_type === 'business_api' ? '#93c5fd' : '#86efac'}`, borderRadius: '4px', padding: '1px 6px', fontSize: '10px', fontWeight: 600 }}
+                                                      >
+                                                        {tmpl.channel_type === 'business_api' ? 'WABA' : 'Personal'}
+                                                    </span>
+                                                      <button
+                                                        onClick={() => { setSelectedWaTemplateId(''); setWaBody(''); }}
+                                                        className="dark:text-gray-400 dark:hover:text-white text-[#6b7280]"
+                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', padding: 0 }}
+                                                      >
+                                                          ✕
+                                                      </button>
+                                                  </div>
                                                 ) : null;
                                             })()}
 
                                             {/* Template browser panel */}
                                             {showWaTemplatePanel && (
-                                                <div style={{ border: '1px solid #bbf7d0', borderRadius: '8px', background: '#fff', overflow: 'hidden' }}>
+                                              <div
+                                                className="dark:bg-[#000724] dark:border-emerald-900 bg-[#fff]"
+                                                style={{ border: '1px solid #bbf7d0', borderRadius: '8px', overflow: 'hidden' }}
+                                              >
                                                     {/* Existing templates list */}
                                                     {waTemplates.length > 0 && !showWaNewTmplForm && (
                                                         <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
                                                             {waTemplates.map(tmpl => (
-                                                                <div key={tmpl.id} onClick={() => applyWaTemplate(tmpl)}
-                                                                    style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '10px 12px', cursor: 'pointer', borderBottom: '1px solid #f0fdf4', transition: 'background 0.15s', background: selectedWaTemplateId === tmpl.id ? '#dcfce7' : 'transparent' }}
-                                                                    onMouseEnter={e => { if (selectedWaTemplateId !== tmpl.id) (e.currentTarget as HTMLDivElement).style.background = '#f0fdf4'; }}
-                                                                    onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = selectedWaTemplateId === tmpl.id ? '#dcfce7' : 'transparent'; }}>
+                                                              <div key={tmpl.id} onClick={() => applyWaTemplate(tmpl)}
+                                                                   className="group dark:border-emerald-950 dark:hover:bg-[#111c3a] dark:data-[selected=true]:bg-[#064e3b]"
+                                                                   data-selected={selectedWaTemplateId === tmpl.id}
+                                                                   style={{
+                                                                       display: 'flex',
+                                                                       alignItems: 'flex-start',
+                                                                       gap: '8px',
+                                                                       padding: '10px 12px',
+                                                                       cursor: 'pointer',
+                                                                       borderBottom: '1px solid #f0fdf4',
+                                                                       transition: 'background 0.15s',
+                                                                       background: selectedWaTemplateId === tmpl.id ? '#dcfce7' : 'transparent'
+                                                                   }}
+                                                                   onMouseEnter={e => { if (selectedWaTemplateId !== tmpl.id) (e.currentTarget as HTMLDivElement).style.background = '#f0fdf4'; }}
+                                                                   onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = selectedWaTemplateId === tmpl.id ? '#dcfce7' : 'transparent'; }}>
+
                                                                     <div style={{ flex: 1, minWidth: 0 }}>
                                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
-                                                                            <span style={{ fontSize: '12px', fontWeight: 600, color: '#166534' }}>{tmpl.name}</span>
-                                                                            <span style={{ background: tmpl.channel_type === 'business_api' ? '#dbeafe' : '#f0fdf4', color: tmpl.channel_type === 'business_api' ? '#1d4ed8' : '#166534', border: `1px solid ${tmpl.channel_type === 'business_api' ? '#93c5fd' : '#86efac'}`, borderRadius: '4px', padding: '1px 5px', fontSize: '9px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
-                                                                                {tmpl.channel_type === 'business_api' ? 'WABA' : 'Personal'}
+                                                                            <span
+                                                                              className="dark:text-emerald-300"
+                                                                              style={{ fontSize: '12px', fontWeight: 600, color: '#166534' }}
+                                                                            >
+                                                                              {tmpl.name}
                                                                             </span>
-                                                                            {tmpl.is_default && <span style={{ background: '#fef3c7', color: '#92400e', borderRadius: '4px', padding: '1px 5px', fontSize: '9px', fontWeight: 700 }}>Default</span>}
+                                                                            <span
+                                                                              className={`dark:border-opacity-30 ${
+                                                                                tmpl.channel_type === 'business_api'
+                                                                                  ? 'dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800'
+                                                                                  : 'dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-800'
+                                                                              }`}
+                                                                              style={{
+                                                                                  background: tmpl.channel_type === 'business_api' ? '#dbeafe' : '#f0fdf4',
+                                                                                  color: tmpl.channel_type === 'business_api' ? '#1d4ed8' : '#166534',
+                                                                                  border: `1px solid ${tmpl.channel_type === 'business_api' ? '#93c5fd' : '#86efac'}`,
+                                                                                  borderRadius: '4px',
+                                                                                  padding: '1px 5px',
+                                                                                  fontSize: '9px',
+                                                                                  fontWeight: 700,
+                                                                                  textTransform: 'uppercase',
+                                                                                  letterSpacing: '0.3px'
+                                                                              }}
+                                                                            >
+                                                                              {tmpl.channel_type === 'business_api' ? 'WABA' : 'Personal'}
+                                                                            </span>
+                                                                            {tmpl.is_default && (
+                                                                              <span
+                                                                                className="bg-[#fef3c7] text-[#92400e] dark:bg-amber-900/30 dark:text-amber-300 dark:border dark:border-amber-800/50"
+                                                                                style={{
+                                                                                    borderRadius: '4px',
+                                                                                    padding: '1px 5px',
+                                                                                    fontSize: '9px',
+                                                                                    fontWeight: 700
+                                                                                }}
+                                                                              >
+                                                                                Default
+                                                                            </span>
+                                                                            )}
                                                                         </div>
-                                                                        {tmpl.header_text && <div style={{ fontSize: '11px', color: '#6b7280', fontStyle: 'italic', marginBottom: '1px' }}>Header: {tmpl.header_text}</div>}
-                                                                        <div style={{ fontSize: '11px', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '260px' }}>{tmpl.content}</div>
-                                                                        {tmpl.footer_text && <div style={{ fontSize: '10px', color: '#9ca3af', marginTop: '1px' }}>Footer: {tmpl.footer_text}</div>}
+                                                                        {tmpl.header_text && (
+                                                                          <div
+                                                                            className="dark:text-gray-400 text-[#6b7280]"
+                                                                            style={{ fontSize: '11px', fontStyle: 'italic', marginBottom: '1px' }}
+                                                                          >
+                                                                              Header: {tmpl.header_text}
+                                                                          </div>
+                                                                        )}
+
+                                                                        <div
+                                                                          className="dark:text-gray-200 text-[#374151]"
+                                                                          style={{ fontSize: '11px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '260px' }}
+                                                                        >
+                                                                            {tmpl.content}
+                                                                        </div>
+
+                                                                        {tmpl.footer_text && (
+                                                                          <div
+                                                                            className="dark:text-gray-500 text-[#9ca3af]"
+                                                                            style={{ fontSize: '10px',  marginTop: '1px' }}
+                                                                          >
+                                                                              Footer: {tmpl.footer_text}
+                                                                          </div>
+                                                                        )}
                                                                     </div>
-                                                                    <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                                                                        <button onClick={e => { e.stopPropagation(); applyWaTemplate(tmpl); }}
-                                                                            style={{ background: '#166534', color: '#fff', border: 'none', borderRadius: '4px', padding: '3px 8px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>Use</button>
-                                                                        <button onClick={e => deleteWaTemplate(tmpl.id, e)}
-                                                                            style={{ background: 'none', border: '1px solid #fca5a5', color: '#dc2626', borderRadius: '4px', padding: '3px 6px', fontSize: '11px', cursor: 'pointer' }}>✕</button>
-                                                                    </div>
+                                                                  <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                                                                      <button
+                                                                        onClick={e => { e.stopPropagation(); applyWaTemplate(tmpl); }}
+                                                                        className="dark:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors"
+                                                                        style={{ background: '#166534', color: '#fff', border: 'none', borderRadius: '4px', padding: '3px 8px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+                                                                      >
+                                                                          Use
+                                                                      </button>
+                                                                      <button
+                                                                        onClick={e => deleteWaTemplate(tmpl.id, e)}
+                                                                        className="dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/30 transition-colors"
+                                                                        style={{ background: 'none', border: '1px solid #fca5a5', color: '#dc2626', borderRadius: '4px', padding: '3px 6px', fontSize: '11px', cursor: 'pointer' }}
+                                                                      >
+                                                                          ✕
+                                                                      </button>
+                                                                  </div>
                                                                 </div>
                                                             ))}
                                                         </div>
                                                     )}
                                                     {waTemplates.length === 0 && !showWaNewTmplForm && (
-                                                        <div style={{ padding: '16px', textAlign: 'center', fontSize: '12px', color: '#6b7280' }}>No saved templates yet.</div>
+                                                      <div
+                                                        className="dark:text-slate-300 text-[#6b7280]"
+                                                        style={{ padding: '16px', textAlign: 'center', fontSize: '12px', color: '' }}
+                                                      >
+                                                          No saved templates yet.
+                                                      </div>
                                                     )}
 
                                                     {/* Create new template form */}
@@ -7305,10 +7461,34 @@ function CheckpointFormInline({
                                                     {showWaNewTmplForm ? (
                                                         <div style={{ borderTop: waTemplates.length > 0 ? '1px solid #bbf7d0' : 'none' }}>
                                                             {/* Form header with preview toggle */}
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px 6px', background: '#f0fdf4' }}>
-                                                                <div style={{ fontSize: '12px', fontWeight: 700, color: '#166534' }}>➕ New WhatsApp Template</div>
-                                                                <button onClick={() => setWaNewTmplShowPreview(p => !p)}
-                                                                    style={{ background: waNewTmplShowPreview ? '#166534' : 'none', color: waNewTmplShowPreview ? '#fff' : '#166534', border: '1px solid #166534', borderRadius: '5px', padding: '3px 8px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>
+                                                            <div
+                                                              className="dark:bg-green-950 bg-[#f0fdf4]"
+                                                              style={{
+                                                                  display: 'flex',
+                                                                  justifyContent: 'space-between',
+                                                                  alignItems: 'center',
+                                                                  padding: '10px 12px 6px',
+                                                              }}
+                                                            >
+                                                                <div
+                                                                  className="dark:text-green-300 text-[#166534]"
+                                                                  style={{ fontSize: '12px', fontWeight: 700 }}
+                                                                >
+                                                                    ➕ New WhatsApp Template
+                                                                </div>
+
+                                                                <button
+                                                                  onClick={() => setWaNewTmplShowPreview(p => !p)}
+                                                                  className={`dark:border-green-500 dark:text-green-400 ${waNewTmplShowPreview ? "bg-[#166534] text-#fff" : 'none text-#166534'}`}
+                                                                  style={{
+                                                                      border: '1px solid #166534',
+                                                                      borderRadius: '5px',
+                                                                      padding: '3px 8px',
+                                                                      fontSize: '11px',
+                                                                      fontWeight: 600,
+                                                                      cursor: 'pointer'
+                                                                  }}
+                                                                >
                                                                     {waNewTmplShowPreview ? '✕ Hide Preview' : '👁 Preview'}
                                                                 </button>
                                                             </div>
@@ -7559,12 +7739,18 @@ function CheckpointFormInline({
                                                             </div>
                                                         </div>
                                                     ) : (
-                                                        <div style={{ padding: '8px 12px', borderTop: waTemplates.length > 0 ? '1px solid #bbf7d0' : 'none', background: '#f8fffe' }}>
-                                                            <button onClick={() => setShowWaNewTmplForm(true)}
-                                                                style={{ width: '100%', background: 'none', border: '1px dashed #86efac', borderRadius: '6px', padding: '7px', fontSize: '12px', fontWeight: 600, color: '#166534', cursor: 'pointer', textAlign: 'center' }}>
-                                                                + Create New Template
-                                                            </button>
-                                                        </div>
+                                                      <div
+                                                        className="dark:bg-[#000724] dark:border-emerald-900 text-[#f8fffe]"
+                                                        style={{ padding: '8px 12px', borderTop: waTemplates.length > 0 ? '1px solid #bbf7d0' : 'none'}}
+                                                      >
+                                                          <button
+                                                            onClick={() => setShowWaNewTmplForm(true)}
+                                                            className="dark:border-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-950/30 text-[#166534]"
+                                                            style={{ width: '100%', background: 'none', border: '1px dashed #86efac', borderRadius: '6px', padding: '7px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', textAlign: 'center' }}
+                                                          >
+                                                              + Create New Template
+                                                          </button>
+                                                      </div>
                                                     )}
                                                 </div>
                                             )}
@@ -7575,35 +7761,103 @@ function CheckpointFormInline({
 
                             {/* Voice Agent Config (inline when voice_call selected) */}
                             {nextChannels.includes('voice_call') && (
-                                <div style={{ marginTop: '12px', padding: '14px', background: '#f8faff', border: '1px solid #e0eaf5', borderRadius: '12px' }}>
-                                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#0b1957', marginBottom: '10px' }}>Voice Call Settings</div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                              <div
+                                className="bg-[#f8faff] dark:bg-[#000724] border border-[#e0eaf5] dark:border-[#1e3a8a] rounded-xl"
+                                style={{ marginTop: '12px', padding: '14px', borderRadius: '12px' }}
+                              >
+                                  <div
+                                    className="text-[#0b1957] dark:text-slate-300"
+                                    style={{ fontSize: '13px', fontWeight: 700, marginBottom: '10px' }}
+                                  >
+                                      Voice Call Settings
+                                  </div>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                         <div>
-                                            <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '4px', display: 'block' }}>AI Agent</label>
+                                            <label
+                                              className="text-[#374151] dark:text-gray-300"
+                                              style={{ fontSize: '12px', fontWeight: 600, marginBottom: '4px', display: 'block' }}
+                                            >AI Agent</label>
                                             {voiceAgents.length > 0 ? (
-                                                <select value={selectedAgentId} onChange={e => {
-                                                    setSelectedAgentId(e.target.value);
-                                                    const agent = voiceAgents.find((a: any) => a.id === e.target.value);
+                                              <Select
+                                                value={selectedAgentId}
+                                                onValueChange={(val) => {
+                                                    setSelectedAgentId(val);
+                                                    const agent = voiceAgents.find((a: any) => a.id === val);
                                                     if (agent?.voice_id) setSelectedVoiceId(agent.voice_id);
-                                                }} style={{ width: '100%', border: '1px solid #e0eaf5', borderRadius: '8px', padding: '8px 10px', fontSize: '13px', background: '#fff', outline: 'none' }}>
-                                                    {voiceAgents.map((a: any) => <option key={a.id} value={a.id}>{a.name}{a.agent_language ? ` (${a.agent_language})` : ''}</option>)}
-                                                </select>
+                                                }}
+                                              >
+                                                  <SelectTrigger className="flex items-center w-full px-3 bg-white dark:bg-[#000724] border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-[#111c3a] rounded-lg focus:ring-0 shadow-none h-[42px] text-sm">
+                                                      <SelectValue placeholder="Select an AI Agent" />
+                                                  </SelectTrigger>
+                                                  <SelectContent  className="bg-white dark:bg-[#000724] border-slate-200 dark:border-[#262831]">
+                                                      {voiceAgents.map((a: any) => (
+                                                        <SelectItem
+                                                          key={a.id}
+                                                          value={a.id}
+                                                          className="pl-3 pr-6 text-sm justify-start transition-colors cursor-pointer text-slate-800 dark:text-white dark:focus:bg-[#22C55E] dark:focus:text-[#000724] dark:data-[state=checked]:focus:bg-[#22C55E] dark:data-[state=checked]:focus:text-[#000724]">
+
+                                                            {a.name}{a.agent_language ? ` (${a.agent_language})` : ''}
+                                                        </SelectItem>
+                                                      ))}
+                                                  </SelectContent>
+                                              </Select>
                                             ) : (
-                                                <div style={{ fontSize: '12px', color: '#9ca3af' }}>No agents found — <a href="/voice-agent" style={{ color: '#0b1957' }}>set up an agent</a></div>
+                                              <div
+                                                className="text-[12px] text-[#9ca3af] dark:text-slate-300"
+                                              >
+                                                  No agents found —
+                                                  <a
+                                                    href="/voice-agent"
+                                                    className="text-[#0b1957] dark:text-blue-300 underline"
+                                                  >
+                                                      set up an agent
+                                                  </a>
+                                              </div>
                                             )}
                                         </div>
                                         <div>
-                                            <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '4px', display: 'block' }}>From Number</label>
+                                            <label
+                                              className="text-[#374151] dark:text-slate-300"
+                                              style={{ fontSize: '12px', fontWeight: 600, marginBottom: '4px', display: 'block' }}
+                                            >
+                                                From Number
+                                            </label>
                                             {voiceNumbers.length > 0 ? (
-                                                <select value={selectedFromNumber} onChange={e => setSelectedFromNumber(e.target.value)} style={{ width: '100%', border: '1px solid #e0eaf5', borderRadius: '8px', padding: '8px 10px', fontSize: '13px', background: '#fff', outline: 'none' }}>
-                                                    {voiceNumbers.map((n: any) => {
-                                                        const num = n.phone_number || n.number || n.phoneNumber || '';
-                                                        const label = num + (n.number_type ? ` (${n.number_type})` : '') + (n.provider ? ` — ${n.provider}` : '');
-                                                        return <option key={n.id || num} value={num}>{label || n.id || 'Unknown number'}</option>;
-                                                    })}
-                                                </select>
+                                              <Select
+                                                value={selectedFromNumber}
+                                                onValueChange={setSelectedFromNumber}
+                                              >
+                                                  <SelectTrigger className="flex items-center w-full px-3 bg-white dark:bg-[#000724] border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-[#111c3a] rounded-lg focus:ring-0 shadow-none h-[42px] text-sm">
+                                                      <SelectValue placeholder="Select a number" />
+                                                  </SelectTrigger>
+                                                  <SelectContent  className="bg-white dark:bg-[#000724] border-slate-200 dark:border-[#262831]">
+                                                      {voiceNumbers.map((n: any) => {
+                                                          const num = n.phone_number || n.number || n.phoneNumber || '';
+                                                          const label = num + (n.number_type ? ` (${n.number_type})` : '') + (n.provider ? ` — ${n.provider}` : '');
+                                                          return (
+                                                            <SelectItem
+                                                              key={n.id || num}
+                                                              value={num}
+                                                              className="pl-3 pr-6 text-sm justify-start transition-colors cursor-pointer text-slate-800 dark:text-white dark:focus:bg-[#22C55E] dark:focus:text-[#000724] dark:data-[state=checked]:focus:bg-[#22C55E] dark:data-[state=checked]:focus:text-[#000724]">
+
+                                                                {label || n.id || 'Unknown number'}
+                                                            </SelectItem>
+                                                          );
+                                                      })}
+                                                  </SelectContent>
+                                              </Select>
                                             ) : (
-                                                <div style={{ fontSize: '12px', color: '#9ca3af' }}>No phone numbers found — <a href="/voice-agent" style={{ color: '#0b1957' }}>add a number</a></div>
+                                              <div
+                                                className="text-[12px] text-[#9ca3af] dark:text-slate-300"
+                                              >
+                                                  No phone numbers found —
+                                                  <a
+                                                    href="/voice-agent"
+                                                    className="text-[#0b1957] dark:text-blue-300 underline"
+                                                  >
+                                                      add a number
+                                                  </a>
+                                              </div>
                                             )}
                                         </div>
                                     </div>
@@ -7612,11 +7866,23 @@ function CheckpointFormInline({
 
                             {/* LinkedIn Activity Config (inline when linkedin selected as follow-up channel in step 3) */}
                             {nextChannels.includes('linkedin') && (isInChannelConfiguration ? currentChannelBeingConfigured === 'linkedin' : true) && (
-                                <div style={{ marginTop: '12px', padding: '14px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '12px' }}>
-                                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#1e40af', marginBottom: '10px' }}>💼 LinkedIn Activity Settings</div>
-                                    <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>Select LinkedIn actions (multi-select):</div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-
+                              <div
+                                className="bg-[#eff6ff] dark:bg-[#000724] border border-[#bfdbfe] dark:border-[#1e3a8a] rounded-xl"
+                                style={{ marginTop: '12px', padding: '14px', borderRadius: '12px' }}
+                              >
+                                  <div
+                                    className="text-[#1e40af] dark:text-blue-200"
+                                    style={{ fontSize: '13px', fontWeight: 700, marginBottom: '10px' }}
+                                  >
+                                      💼 LinkedIn Activity Settings
+                                  </div>
+                                  <div
+                                    className="text-[#6b7280] dark:text-gray-400"
+                                    style={{ fontSize: '12px', marginBottom: '8px' }}
+                                  >
+                                      Select LinkedIn actions (multi-select):
+                                  </div>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                         {/* ── Option 1: Visit Profile ── */}
                                         {[
                                             { id: 'profile_view', label: 'Visit profile', desc: 'Visit their LinkedIn profile to warm up the connection', icon: '👁️' },
@@ -7628,50 +7894,72 @@ function CheckpointFormInline({
                                                 <div key={opt.id} style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
                                                     {/* Checkbox row */}
                                                     <div
-                                                        onClick={() => toggleLiChannelAction(opt.id)}
-                                                        style={{
-                                                            display: 'flex', alignItems: 'flex-start', gap: '10px',
-                                                            padding: '10px 12px',
-                                                            border: `1.5px solid ${isSelected ? '#3b82f6' : '#bfdbfe'}`,
-                                                            borderRadius: isSelected && (opt.id === 'connect' || opt.id === 'message') ? '10px 10px 0 0' : '10px',
-                                                            cursor: 'pointer',
-                                                            background: isSelected ? '#dbeafe' : '#fff',
-                                                            transition: 'all 0.15s',
-                                                        }}>
-                                                        <div style={{
-                                                            width: '18px', height: '18px', borderRadius: '4px', flexShrink: 0, marginTop: '1px',
-                                                            border: `2px solid ${isSelected ? '#3b82f6' : '#bfdbfe'}`,
-                                                            background: isSelected ? '#3b82f6' : 'transparent',
-                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                        }}>
-                                                            {isSelected && <span style={{ color: '#fff', fontSize: '11px', fontWeight: 700 }}>✓</span>}
+                                                      onClick={() => toggleLiChannelAction(opt.id)}
+                                                      className={`group flex items-start gap-[10px] p-[10px_12px] cursor-pointer transition-all duration-150 border-[1.5px]
+        ${isSelected
+                                                        ? 'bg-[#dbeafe] border-[#3b82f6] dark:bg-blue-900/30 dark:border-blue-500'
+                                                        : 'bg-white border-[#bfdbfe] dark:bg-[#000724] dark:border-blue-900'
+                                                      }`}
+                                                      style={{
+                                                          borderRadius: isSelected && (opt.id === 'connect' || opt.id === 'message') ? '10px 10px 0 0' : '10px',
+                                                      }}
+                                                    >
+                                                        <div className={`w-[18px] h-[18px] rounded-[4px] flex-shrink-0 mt-[1px] flex items-center justify-center border-[2px] transition-colors
+                                                        ${isSelected
+                                                          ? 'bg-[#3b82f6] border-[#3b82f6] dark:border-blue-500'
+                                                          : 'border-[#bfdbfe] dark:border-blue-800'
+                                                        }`}
+                                                        >
+                                                            {isSelected && <span className="text-white text-[11px] font-bold">✓</span>}
                                                         </div>
-                                                        <div style={{ flex: 1 }}>
-                                                            <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e3a8a' }}>{opt.icon} {opt.label}</div>
-                                                            <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>{opt.desc}</div>
+                                                        <div className="flex-1">
+                                                            <div className="text-[13px] font-semibold text-[#1e3a8a] dark:text-blue-100">
+                                                                {opt.icon} {opt.label}
+                                                            </div>
+                                                            <div className="text-[11px] text-[#6b7280] dark:text-slate-300 mt-[2px]">
+                                                                {opt.desc}
+                                                            </div>
                                                         </div>
                                                     </div>
 
                                                     {/* ── Expanded config for 'connect' ── */}
                                                     {opt.id === 'connect' && isSelected && (
-                                                        <div style={{ border: '1.5px solid #3b82f6', borderTop: 'none', borderRadius: '0 0 10px 10px', background: '#f0f6ff', padding: '12px' }}>
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                                                <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151' }}>Connection Message</label>
-                                                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                                                    <button
-                                                                        onClick={() => { setLiNewTmplCategory('linkedin_connection'); setShowLiConnTmplPanel(p => !p); setShowLiFollowTmplPanel(false); setShowLiNewTmplForm(false); }}
-                                                                        style={{ background: 'none', border: 'none', fontSize: '11px', fontWeight: 600, color: '#1e40af', cursor: 'pointer', padding: 0 }}>
-                                                                        {showLiConnTmplPanel ? '✕ Close' : '📋 Templates'}
-                                                                    </button>
-                                                                    <button disabled={liFollowGenLoading} onClick={() => { setShowAiConnPanel(v => !v); setShowAiFollowPanel(false); }}
-                                                                        style={{ background: showAiConnPanel ? '#e8ecfa' : 'none', border: showAiConnPanel ? '1px solid #c2d6eb' : 'none', borderRadius: '6px', padding: showAiConnPanel ? '2px 7px' : 0, fontSize: '11px', fontWeight: 700, color: liFollowGenLoading ? '#9ca3af' : '#0b1957', cursor: liFollowGenLoading ? 'default' : 'pointer' }}>
-                                                                        {liFollowGenLoading ? '⏳ Generating...' : (showAiConnPanel ? '✕ Close' : '✨ AI Generate')}
-                                                                    </button>
+                                                      <div
+                                                        className="border-[1.5px] border-t-0 border-[#3b82f6] bg-[#f0f6ff] dark:bg-[#060b21] dark:border-blue-700 p-3 rounded-b-[10px]"
+                                                        style={{ borderTop: 'none', borderRadius: '0 0 10px 10px', padding: '12px' }}
+                                                      >
+                                                          <div className="flex justify-between items-center mb-2">
+                                                              <label className="text-[12px] font-semibold text-[#374151] dark:text-gray-300">
+                                                                  Connection Message
+                                                              </label>
+                                                              <div className="flex gap-2 items-center">
+                                                                  <button
+                                                                    onClick={() => { setLiNewTmplCategory('linkedin_connection'); setShowLiConnTmplPanel(p => !p); setShowLiFollowTmplPanel(false); setShowLiNewTmplForm(false); }}
+                                                                    className="bg-none border-none text-[#1e40af] dark:text-blue-300 hover:opacity-80 transition-opacity"
+                                                                    style={{ fontSize: '11px', fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                                                                  >
+                                                                      {showLiConnTmplPanel ? '✕ Close' : '📋 Templates'}
+                                                                  </button>
+
+                                                                  <button
+                                                                    disabled={liFollowGenLoading}
+                                                                    onClick={() => { setShowAiConnPanel(v => !v); setShowAiFollowPanel(false); }}
+                                                                    className={`px-2 py-1 rounded-md text-[11px] font-bold transition-all
+                                                                    ${showAiConnPanel
+                                                                      ? 'bg-[#e8ecfa] border border-[#c2d6eb] dark:bg-blue-900/50 dark:border-blue-700 dark:text-blue-200'
+                                                                      : 'bg-none border-none'}
+                                                                        ${liFollowGenLoading
+                                                                      ? 'text-[#9ca3af] dark:text-gray-600 cursor-default'
+                                                                      : 'text-[#0b1957] dark:text-blue-100 cursor-pointer'
+                                                                    }`}
+                                                                  >
+                                                                      {liFollowGenLoading ? '⏳ Generating...' : (showAiConnPanel ? '✕ Close' : '✨ AI Generate')}
+                                                                  </button>
                                                                 </div>
                                                             </div>
                                                             {/* Connection template browser */}
                                                             {showLiConnTmplPanel && (
-                                                                <div style={{ border: '1px solid #bfdbfe', borderRadius: '8px', background: '#fff', marginBottom: '8px', overflow: 'hidden' }}>
+                                                              <div className="border border-[#bfdbfe] dark:border-[#1e3a8a] bg-white dark:bg-[#060b21]" style={{ borderRadius: '8px', marginBottom: '8px', overflow: 'hidden' }}>
                                                                     {liTemplates.filter(t => t.category === 'linkedin_connection').length > 0 && !showLiNewTmplForm ? (
                                                                         <div style={{ maxHeight: '160px', overflowY: 'auto' }}>
                                                                             {liTemplates.filter(t => t.category === 'linkedin_connection').map(tmpl => (
@@ -7692,7 +7980,12 @@ function CheckpointFormInline({
                                                                             ))}
                                                                         </div>
                                                                     ) : !showLiNewTmplForm ? (
-                                                                        <div style={{ padding: '10px', textAlign: 'center', fontSize: '12px', color: '#6b7280' }}>No saved templates.</div>
+                                                                      <div
+                                                                        className="dark:text-slate-300 text-[#6b7280]"
+                                                                        style={{ padding: '16px', textAlign: 'center', fontSize: '12px', color: '' }}
+                                                                      >
+                                                                        No saved templates yet.
+                                                                      </div>
                                                                     ) : null}
                                                                     {/* Create new template form */}
                                                                     {showLiNewTmplForm && liNewTmplCategory === 'linkedin_connection' ? (
@@ -7707,7 +8000,8 @@ function CheckpointFormInline({
                                                                     ) : (
                                                                         <div style={{ padding: '6px 10px', borderTop: liTemplates.filter(t => t.category === 'linkedin_connection').length > 0 ? '1px solid #bfdbfe' : 'none' }}>
                                                                             <button onClick={() => { setLiNewTmplCategory('linkedin_connection'); setShowLiNewTmplForm(true); }}
-                                                                                style={{ width: '100%', background: 'none', border: '1px dashed #93c5fd', borderRadius: '6px', padding: '5px', fontSize: '12px', fontWeight: 600, color: '#1e40af', cursor: 'pointer', textAlign: 'center' }}>
+                                                                                    className="dark:border-emerald-700 dark:text-slate-300 text-[#1e40af]"
+                                                                                    style={{ width: '100%', background: 'none', border: '1px dashed #86efac', borderRadius: '6px', padding: '7px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', textAlign: 'center' }}>
                                                                                 + Create New Template
                                                                             </button>
                                                                         </div>
@@ -7724,21 +8018,56 @@ function CheckpointFormInline({
                                                                     </div>
                                                                 ) : null;
                                                             })()}
-                                                            <textarea
-                                                                value={connMsg}
-                                                                onChange={e => setConnMsg(e.target.value.slice(0, 300))}
-                                                                placeholder={'Hi {{first_name}}, I noticed your work at {{company}} and would love to connect...'}
-                                                                rows={3}
-                                                                maxLength={300}
-                                                                style={{ width: '100%', border: `1px solid ${connMsg.length > 270 ? (connMsg.length >= 300 ? '#ef4444' : '#f59e0b') : '#bfdbfe'}`, borderRadius: '8px', padding: '8px 10px', fontSize: '13px', background: '#fff', outline: 'none', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }}
-                                                            />
+                                                        <textarea
+                                                          value={connMsg}
+                                                          onChange={e => setConnMsg(e.target.value.slice(0, 300))}
+                                                          placeholder={'Hi {{first_name}}, I noticed your work at {{company}} and would love to connect...'}
+                                                          rows={3}
+                                                          maxLength={300}
+                                                          className={`w-full rounded-[8px] border transition-colors outline-none
+                                                            ${connMsg.length >= 300
+                                                                                                                ? 'border-[#ef4444]'
+                                                                                                                : connMsg.length > 270
+                                                                                                                  ? 'border-[#f59e0b]'
+                                                                                                                  : 'border-[#bfdbfe] dark:border-[#1e3a8a]'
+                                                                                                              }
+                                                            bg-white dark:bg-[#060b21] text-[#374151] dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:ring-0
+                                                        `}
+                                                          style={{
+                                                            width: '100%',
+                                                            padding: '8px 10px',
+                                                            fontSize: '13px',
+                                                            fontFamily: 'inherit',
+                                                            boxSizing: 'border-box',
+                                                            resize: 'vertical'
+                                                          }}
+                                                        />
                                                             {/* Character counter */}
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '3px' }}>
-                                                                <div style={{ fontSize: '11px', color: '#9ca3af' }}>Placeholders: {'{{first_name}}'} {'{{last_name}}'} {'{{company}}'} {'{{title}}'} <span style={{ color: '#0b1957', fontWeight: 600 }}>{'{{web_insight}}'} {'{{recent_post}}'} {'{{article}}'} {'{{news}}'}</span> <span style={{ color: '#0b1957' }}>← AI-personalised at send time</span></div>
-                                                                <div style={{ fontSize: '11px', fontWeight: 700, flexShrink: 0, marginLeft: '8px', color: connMsg.length >= 300 ? '#ef4444' : connMsg.length > 270 ? '#f59e0b' : '#9ca3af', whiteSpace: 'nowrap' }}>
-                                                                    {connMsg.length}/300{connMsg.length >= 300 && ' ⚠️ limit reached'}
-                                                                </div>
-                                                            </div>
+                                                        <div
+                                                          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '3px' }}
+                                                        >
+                                                          <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-[4px]">
+                                                            Placeholders: {'{{first_name}}'} {'{{last_name}}'} {'{{company}}'} {'{{title}}'}
+                                                            <span className="text-[#0b1957] dark:text-blue-300 font-semibold">
+                                                              {' {{web_insight}}'} {'{{recent_post}}'} {'{{article}}'} {'{{news}}'}
+                                                            </span>
+                                                            <span className="text-[#0b1957] dark:text-blue-400">
+                                                              {' ← AI-personalised at send time'}
+                                                            </span>
+                                                          </div>
+                                                          <div
+                                                            className={`text-[11px] font-bold flex-shrink-0 ml-[8px] whitespace-nowrap
+                                                          ${connMsg.length >= 300
+                                                              ? 'text-[#ef4444]'
+                                                              : connMsg.length > 270
+                                                                ? 'text-[#f59e0b]'
+                                                                : 'text-[#9ca3af] dark:text-gray-500'
+                                                            }
+                                                          `}
+                                                          >
+                                                            {connMsg.length}/300{connMsg.length >= 300 && ' ⚠️ limit reached'}
+                                                          </div>
+                                                        </div>
                                                             {connMsg.length >= 300 && (
                                                                 <div style={{ fontSize: '11px', color: '#ef4444', marginTop: '2px', fontWeight: 500 }}>
                                                                     LinkedIn hard limit is 300 characters. Message will be sent as-is — keep it concise.
@@ -7759,45 +8088,94 @@ function CheckpointFormInline({
 
                                                     {/* ── Expanded config for 'message' ── */}
                                                     {opt.id === 'message' && isSelected && (
-                                                        <div style={{ border: '1.5px solid #3b82f6', borderTop: 'none', borderRadius: '0 0 10px 10px', background: '#f0f6ff', padding: '12px' }}>
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                                                <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151' }}>Follow-up Message</label>
-                                                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                                                    <button
-                                                                        onClick={() => { setLiNewTmplCategory('linkedin_followup'); setShowLiFollowTmplPanel(p => !p); setShowLiConnTmplPanel(false); setShowLiNewTmplForm(false); }}
-                                                                        style={{ background: 'none', border: 'none', fontSize: '11px', fontWeight: 600, color: '#1e40af', cursor: 'pointer', padding: 0 }}>
-                                                                        {showLiFollowTmplPanel ? '✕ Close' : '📋 Templates'}
-                                                                    </button>
-                                                                    <button disabled={liFollowGenLoading} onClick={() => { setShowAiFollowPanel(v => !v); setShowAiConnPanel(false); }}
-                                                                        style={{ background: showAiFollowPanel ? '#e8ecfa' : 'none', border: showAiFollowPanel ? '1px solid #c2d6eb' : 'none', borderRadius: '6px', padding: showAiFollowPanel ? '2px 7px' : 0, fontSize: '11px', fontWeight: 700, color: liFollowGenLoading ? '#9ca3af' : '#0b1957', cursor: liFollowGenLoading ? 'default' : 'pointer' }}>
-                                                                        {liFollowGenLoading ? '⏳ Generating...' : (showAiFollowPanel ? '✕ Close' : '✨ AI Generate')}
-                                                                    </button>
+                                                      <div  className="border-[1.5px] border-t-0 border-[#3b82f6] dark:border-blue-700 bg-[#f0f6ff] dark:bg-[#060b21]" style={{ borderTop: 'none', borderRadius: '0 0 10px 10px', padding: '12px' }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                                          <label className="text-[#374151] dark:text-gray-300" style={{ fontSize: '12px', fontWeight: 600 }}>
+                                                            Follow-up Message
+                                                          </label>
+                                                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                            <button
+                                                              onClick={() => { setLiNewTmplCategory('linkedin_followup'); setShowLiFollowTmplPanel(p => !p); setShowLiConnTmplPanel(false); setShowLiNewTmplForm(false); }}
+                                                              className="text-[#1e40af] dark:text-blue-300 hover:opacity-80 transition-opacity"
+                                                              style={{ background: 'none', border: 'none', fontSize: '11px', fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                                                            >
+                                                              {showLiFollowTmplPanel ? '✕ Close' : '📋 Templates'}
+                                                            </button>
+
+                                                            <button
+                                                              disabled={liFollowGenLoading}
+                                                              onClick={() => { setShowAiFollowPanel(v => !v); setShowAiConnPanel(false); }}
+                                                              className={`rounded-[6px] transition-all
+                                                            ${showAiFollowPanel
+                                                                ? 'bg-[#e8ecfa] dark:bg-blue-900/40 border border-[#c2d6eb] dark:border-blue-700'
+                                                                : 'bg-transparent border-transparent'}
+                                                              ${liFollowGenLoading
+                                                                ? 'text-[#9ca3af] dark:text-gray-600'
+                                                                : 'text-[#0b1957] dark:text-blue-100'
+                                                              }
+                                                        `} style={{
+                                                                padding: showAiFollowPanel ? '2px 7px' : 0,
+                                                                fontSize: '11px',
+                                                                fontWeight: 700,
+                                                                cursor: liFollowGenLoading ? 'default' : 'pointer'
+                                                              }}
+                                                            >
+                                                              {liFollowGenLoading ? '⏳ Generating...' : (showAiFollowPanel ? '✕ Close' : '✨ AI Generate')}
+                                                            </button>
                                                                 </div>
                                                             </div>
                                                             {/* Followup template browser */}
                                                             {showLiFollowTmplPanel && (
-                                                                <div style={{ border: '1px solid #bfdbfe', borderRadius: '8px', background: '#fff', marginBottom: '8px', overflow: 'hidden' }}>
+                                                              <div className="border border-[#bfdbfe] dark:border-[#1e3a8a] bg-white dark:bg-[#060b21]" style={{ borderRadius: '8px', marginBottom: '8px', overflow: 'hidden' }}>
                                                                     {liTemplates.filter(t => t.category === 'linkedin_followup').length > 0 && !showLiNewTmplForm ? (
                                                                         <div style={{ maxHeight: '160px', overflowY: 'auto' }}>
                                                                             {liTemplates.filter(t => t.category === 'linkedin_followup').map(tmpl => (
-                                                                                <div key={tmpl.id}
-                                                                                    onClick={() => { setSelectedLiFollowTmplId(tmpl.id); setFollowMsg(tmpl.content); setShowLiFollowTmplPanel(false); }}
-                                                                                    style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '8px 10px', cursor: 'pointer', borderBottom: '1px solid #eff6ff', background: selectedLiFollowTmplId === tmpl.id ? '#dbeafe' : 'transparent' }}>
-                                                                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                                                                        <div style={{ fontSize: '12px', fontWeight: 600, color: '#1e40af', marginBottom: '2px' }}>{tmpl.name}</div>
-                                                                                        <div style={{ fontSize: '11px', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tmpl.content}</div>
-                                                                                    </div>
-                                                                                    <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                                                                                        <button onClick={e => { e.stopPropagation(); setSelectedLiFollowTmplId(tmpl.id); setFollowMsg(tmpl.content); setShowLiFollowTmplPanel(false); }}
-                                                                                            style={{ background: '#1e40af', color: '#fff', border: 'none', borderRadius: '4px', padding: '3px 8px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>Use</button>
-                                                                                        <button onClick={e => deleteLiTemplate(tmpl.id, e)}
-                                                                                            style={{ background: 'none', border: '1px solid #fca5a5', color: '#dc2626', borderRadius: '4px', padding: '3px 6px', fontSize: '11px', cursor: 'pointer' }}>✕</button>
-                                                                                    </div>
+                                                                              <div key={tmpl.id}
+                                                                                   onClick={() => { setSelectedLiFollowTmplId(tmpl.id); setFollowMsg(tmpl.content); setShowLiFollowTmplPanel(false); }}
+                                                                                   className={`border-b transition-colors ${selectedLiFollowTmplId === tmpl.id ? 'bg-[#dbeafe] dark:bg-blue-900/30' : 'bg-transparent'} border-[#eff6ff] dark:border-[#1e3a8a]`}
+                                                                                   style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '8px 10px', cursor: 'pointer' }}>
+
+                                                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                                                  <div
+                                                                                    className="text-[#1e40af] dark:text-blue-300"
+                                                                                    style={{ fontSize: '12px', fontWeight: 600, marginBottom: '2px' }}
+                                                                                  >
+                                                                                    {tmpl.name}
+                                                                                  </div>
+                                                                                  <div
+                                                                                    className="text-[#374151] dark:text-gray-400"
+                                                                                    style={{ fontSize: '11px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                                                                  >
+                                                                                    {tmpl.content}
+                                                                                  </div>
                                                                                 </div>
+
+                                                                                <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                                                                                  <button
+                                                                                    onClick={e => { e.stopPropagation(); setSelectedLiFollowTmplId(tmpl.id); setFollowMsg(tmpl.content); setShowLiFollowTmplPanel(false); }}
+                                                                                    className="bg-[#1e40af] dark:bg-blue-600 text-white"
+                                                                                    style={{ border: 'none', borderRadius: '4px', padding: '3px 8px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+                                                                                  >
+                                                                                    Use
+                                                                                  </button>
+                                                                                  <button
+                                                                                    onClick={e => deleteLiTemplate(tmpl.id, e)}
+                                                                                    className="bg-transparent border border-[#fca5a5] dark:border-red-900 text-[#dc2626] dark:text-red-400"
+                                                                                    style={{ borderRadius: '4px', padding: '3px 6px', fontSize: '11px', cursor: 'pointer' }}
+                                                                                  >
+                                                                                    ✕
+                                                                                  </button>
+                                                                                </div>
+                                                                              </div>
                                                                             ))}
                                                                         </div>
                                                                     ) : !showLiNewTmplForm ? (
-                                                                        <div style={{ padding: '10px', textAlign: 'center', fontSize: '12px', color: '#6b7280' }}>No saved templates.</div>
+                                                                      <div
+                                                                        className="dark:text-slate-300 text-[#6b7280]"
+                                                                        style={{ padding: '16px', textAlign: 'center', fontSize: '12px', color: '' }}
+                                                                      >
+                                                                        No saved templates yet.
+                                                                      </div>
                                                                     ) : null}
                                                                     {/* Create new template form */}
                                                                     {showLiNewTmplForm && liNewTmplCategory === 'linkedin_followup' ? (
@@ -7812,7 +8190,8 @@ function CheckpointFormInline({
                                                                     ) : (
                                                                         <div style={{ padding: '6px 10px', borderTop: liTemplates.filter(t => t.category === 'linkedin_followup').length > 0 ? '1px solid #bfdbfe' : 'none' }}>
                                                                             <button onClick={() => { setLiNewTmplCategory('linkedin_followup'); setShowLiNewTmplForm(true); }}
-                                                                                style={{ width: '100%', background: 'none', border: '1px dashed #93c5fd', borderRadius: '6px', padding: '5px', fontSize: '12px', fontWeight: 600, color: '#1e40af', cursor: 'pointer', textAlign: 'center' }}>
+                                                                                    className="dark:border-emerald-700 dark:text-slate-300 text-[#1e40af]"
+                                                                                    style={{ width: '100%', background: 'none', border: '1px dashed #86efac', borderRadius: '6px', padding: '7px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', textAlign: 'center' }}>
                                                                                 + Create New Template
                                                                             </button>
                                                                         </div>
@@ -7829,14 +8208,23 @@ function CheckpointFormInline({
                                                                     </div>
                                                                 ) : null;
                                                             })()}
-                                                            <textarea
-                                                                value={followMsg}
-                                                                onChange={e => setFollowMsg(e.target.value)}
-                                                                placeholder={'Hi {{first_name}}, great connecting! I wanted to reach out about how we help companies like {{company}}...'}
-                                                                rows={3}
-                                                                style={{ width: '100%', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '8px 10px', fontSize: '13px', background: '#fff', outline: 'none', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }}
-                                                            />
-                                                            <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '3px' }}>Placeholders: {'{{first_name}}'} {'{{last_name}}'} {'{{company}}'} {'{{title}}'} <span style={{ color: '#0b1957', fontWeight: 600 }}>{'{{web_insight}}'} {'{{recent_post}}'} {'{{article}}'} {'{{news}}'}</span> <span style={{ color: '#0b1957' }}>← AI-personalised at send time</span></div>
+                                                        <textarea
+                                                          value={followMsg}
+                                                          onChange={e => setFollowMsg(e.target.value)}
+                                                          placeholder={'Hi {{first_name}}, great connecting! I wanted to reach out about how we help companies like {{company}}...'}
+                                                          rows={3}
+                                                          className="w-full border border-[#bfdbfe] dark:border-[#1e3a8a] bg-white dark:bg-[#060b21] text-[#374151] dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:ring-0 outline-none"
+                                                          style={{
+                                                            width: '100%',
+                                                            borderRadius: '8px',
+                                                            padding: '8px 10px',
+                                                            fontSize: '13px',
+                                                            resize: 'vertical',
+                                                            fontFamily: 'inherit',
+                                                            boxSizing: 'border-box'
+                                                          }}
+                                                        />
+                                                        <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-[4px]">Placeholders: {'{{first_name}}'} {'{{last_name}}'} {'{{company}}'} {'{{title}}'} <span className="text-[#0b1957] dark:text-blue-300 font-semibold">{'{{web_insight}}'} {'{{recent_post}}'} {'{{article}}'} {'{{news}}'}</span> <span style={{ color: '#0b1957' }}>← AI-personalised at send time</span></div>
 
                                                             {/* ── AI Generate inline panel (follow-up) ── */}
                                                             {showAiFollowPanel && <AiMsgContextPanel
@@ -7869,11 +8257,17 @@ function CheckpointFormInline({
                                                     setEnableAiPersonalization(true);
                                                 }
                                             }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                                                <span style={{ fontSize: '13px' }}>🤖</span>
-                                                <span style={{ fontSize: '13px', fontWeight: 700, color: '#4338ca' }}>AI Daily Personalisation</span>
-                                                <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: 400 }}>— unique messages per lead, powered by live data</span>
-                                            </div>
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                                            <span style={{ fontSize: '13px' }}>🤖</span>
+                                            <span className="text-[#4338ca] dark:text-blue-300"
+                                              style={{ fontSize: '13px', fontWeight: 700 }}>
+                                              AI Daily Personalisation
+                                          </span>
+                                            <span
+                                              className="text-[#6b7280] dark:text-gray-400"
+                                              style={{ fontSize: '11px', fontWeight: 400 }}>— unique messages per lead, powered by live data
+                                            </span>
+                                          </div>
                                             <div style={{
                                                 width: '36px', height: '20px', borderRadius: '99px', flexShrink: 0,
                                                 background: (enableDailyWebPresence || enableDailyPosts || enableAiPersonalization) ? '#0b1957' : '#d1d5db',
@@ -8065,44 +8459,37 @@ function CheckpointFormInline({
 
                     {/* Step 3: Duration */}
                     {step === 3 && (
-                      <div className="flex flex-col gap-3 w-full">
+                      <div
+                        className="flex flex-col gap-2 dark:bg-[#000724]"
+                        style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}
+                      >
                           {['7', '14', '30', '60', '90'].map((d, i) => {
                               const dNum = parseInt(d);
                               const wd = Math.floor(dNum * 5 / 7);
                               const perDay = Math.min(LINKEDIN_DAILY_LIMIT, Math.max(1, qualifiedLeadCount));
                               const totalOverDuration = perDay * wd;
                               const capped = qualifiedLeadCount > LINKEDIN_DAILY_LIMIT;
-                              const isSelected = days === d;
-
                               return (
                                 <div
                                   key={d}
                                   onClick={() => setDays(d)}
-                                  className={`p-4 rounded-xl cursor-pointer border flex items-center gap-4 transition-all active:scale-[0.99] select-none ${
-                                    isSelected
-                                      ? 'border-blue-600 bg-blue-50/70 dark:bg-[#1e295d]/40 dark:border-blue-500 shadow-sm'
-                                      : 'border-slate-200 dark:border-[#262831] bg-white dark:bg-[#101935] hover:border-slate-300 dark:hover:border-slate-700 shadow-xs'
-                                  }`}
+                                  // Using 'dark:' modifiers to update background/border while keeping original style logic
+                                  className={`${days === d ? 'border-indigo-500 bg-indigo-50 dark:bg-[#2563eb]' : 'border-[#e0eaf5] dark:border-gray-800 bg-white dark:bg-[#000724]'} transition-all cursor-pointer`}
+                                  style={{
+                                      /* Keep your existing style object properties here if preferred, or use the class above */
+                                      display: 'flex', alignItems: 'center', gap: '12px', padding: '12px',
+                                      borderRadius: '12px', border: '1px solid', marginBottom: '8px'
+                                  }}
                                 >
-                                    {/* Premium Adaptive Badge */}
-                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 border transition-colors ${
-                                      isSelected
-                                        ? 'bg-blue-600 border-blue-600 text-white dark:bg-blue-500 dark:border-blue-500'
-                                        : 'bg-slate-100 dark:bg-slate-800 border-slate-200/60 dark:border-slate-700 text-slate-600 dark:text-slate-300'
-                                    }`}>
-                                        {isSelected ? '✓' : i + 1}
-                                    </div>
-
-                                    {/* Content Column */}
-                                    <div className="flex-1 min-w-0">
-                                        <div className={`font-bold text-sm transition-colors ${isSelected ? 'text-blue-600 dark:text-blue-400' : 'text-slate-800 dark:text-slate-100'}`}>
+                                    <div style={numBadge(i + 1, days === d)}>{days === d ? '✓' : i + 1}</div>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontWeight: 600 }} className="text-gray-900 dark:text-gray-100">
                                             {d} days
                                         </div>
-                                        <div className={`text-xs mt-0.5 leading-normal transition-colors ${
-                                          capped
-                                            ? 'text-amber-700 dark:text-amber-400 font-semibold'
-                                            : isSelected ? 'text-slate-600 dark:text-slate-200' : 'text-slate-500 dark:text-[#7a8ba3]'
-                                        }`}>
+                                        <div
+                                          style={{ fontSize: '11px', marginTop: '2px' }}
+                                          className={capped ? 'text-[#b45309] dark:text-amber-500' : 'text-[#6b7280] dark:text-slate-300'}
+                                        >
                                             {capped
                                               ? `Targets ${perDay}/day (capped from ${qualifiedLeadCount}; LinkedIn safe limit), ~${totalOverDuration} new leads over ${wd} working days`
                                               : `Targets ${perDay} new leads/day via pagination, ~${totalOverDuration} leads over ${wd} working days`}
@@ -8111,20 +8498,21 @@ function CheckpointFormInline({
                                 </div>
                               );
                           })}
-
                           <div className="mt-2">
                               <input
                                 type="number"
                                 value={days}
                                 onChange={e => setDays(e.target.value)}
                                 placeholder="Or enter custom days..."
-                                className="w-full border border-slate-200 dark:border-[#262831] rounded-xl px-4 py-3 text-sm outline-none bg-slate-50 dark:bg-[#101935] text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-blue-500 dark:focus:border-blue-500 font-medium transition-all"
+                                className="w-full rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#000724] px-[14px] py-[10px] text-[14px] text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600 outline-none focus:border-indigo-500 transition-colors"
                               />
                           </div>
-
-                          {/* Warning when count exceeds safe parameters */}
+                          {/* Warning when prospect-time qualified count exceeds LinkedIn's safe daily limit */}
                           {exceedsLinkedInLimits && (
-                            <div className="p-4 rounded-xl text-xs leading-relaxed mt-1 border bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/30 text-amber-800 dark:text-amber-400 font-medium">
+                            <div style={{
+                                padding: '10px 14px', borderRadius: '10px', fontSize: '12px', lineHeight: 1.5,
+                                background: '#fef3c7', border: '1px solid #f59e0b', color: '#92400e', marginTop: '4px',
+                            }}>
                                 <strong>LinkedIn safe-limit cap:</strong> Your ICP threshold matches {qualifiedLeadCount} leads, but LinkedIn&apos;s safe daily action limit is {LINKEDIN_DAILY_LIMIT}.
                                 The campaign will source {safeLeadsPerDay} new qualified leads/day via pagination, totalling ~{safeLeadsPerDay * workingDays} over {workingDays} working days.
                             </div>
@@ -8134,19 +8522,25 @@ function CheckpointFormInline({
 
                     {/* Step 4: Campaign Name */}
                     {step === 4 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            <div style={{ display: 'flex', gap: '8px' }}>
-                                <input type="text" value={name} onChange={e => setName(e.target.value)}
-                                    placeholder="e.g. Q3 Outreach Strategy"
-                                    style={{ flex: 1, border: '1px solid #e0eaf5', borderRadius: '10px', padding: '10px 14px', fontSize: '14px', outline: 'none', background: '#fafbff', fontFamily: 'inherit', minWidth: 0 }}
-                                />
-                                <button onClick={suggestName} style={{
-                                    background: '#e8ecfa', border: '1.5px solid #0b1957', borderRadius: '10px', padding: '0 14px',
-                                    fontSize: '12px', fontWeight: 700, color: '#0b1957', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
-                                    transition: 'all 0.15s',
-                                }}>✨ Suggest</button>
-                            </div>
-                        </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                              <input
+                                type="text"
+                                value={name}
+                                onChange={e => setName(e.target.value)}
+                                placeholder="e.g. Q3 Outreach Strategy"
+                                className="flex-1 border border-[#e0eaf5] rounded-[10px] px-[14px] py-[10px] text-[14px] outline-none bg-[#fafbff] font-inherit min-w-0
+                       dark:bg-[#060b21] dark:border-[#1e3a8a] dark:text-gray-100 dark:placeholder-gray-600"
+                              />
+                              <button
+                                onClick={suggestName}
+                                className="bg-[#e8ecfa] border-[1.5px] border-[#0b1957] rounded-[10px] px-[14px] text-[12px] font-bold text-[#0b1957] cursor-pointer whitespace-nowrap flex-shrink-0 transition-all
+                       dark:bg-[#2563eb] dark:border-blue-500 dark:text-slate-300 hover:bg-[#dbeafe] dark:hover:bg-blue-900/50"
+                              >
+                                  ✨ Suggest
+                              </button>
+                          </div>
+                      </div>
                     )}
                 </div>
 
@@ -8572,12 +8966,24 @@ function AiMsgContextPanel({
     ].filter(Boolean);
 
     return (
-        <div style={{ marginTop: '10px', border: '1.5px solid #c2d6eb', borderRadius: '12px', background: '#f8faff', padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div
+        className="border-[1.5px] border-[#c2d6eb] dark:border-[#1e3a8a] bg-[#f8faff] dark:bg-[#060b21]"
+        style={{
+          marginTop: '10px',
+          borderRadius: '12px',
+          padding: '14px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px'
+        }}
+      >
             {/* Header */}
-            <div style={{ fontSize: '12px', fontWeight: 700, color: '#0b1957', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                ✨ AI Generate — tell us about your offer
-                <span style={{ fontWeight: 400, color: '#9ca3af', fontSize: '11px' }}>Will use lead&apos;s web presence &amp; posts</span>
-            </div>
+        <div className="text-[#0b1957] dark:text-blue-300" style={{ fontSize: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+          ✨ AI Generate — tell us about your offer
+          <span className="text-[#9ca3af] dark:text-slate-300"style={{ fontWeight: 400, fontSize: '11px' }}>
+              Will use lead&apos;s web presence &amp; posts
+          </span>
+        </div>
 
             {/* Value prop */}
             <div>
@@ -9353,7 +9759,7 @@ const css = `
             .dark .adv-panel-header { background: #0f1629; border-bottom-color: #000724; }
             .dark .adv-panel-body { background: #000724; }
             .dark .adv-panel-title { color: #ffffff; }
-            .dark .adv-panel-desc { background: #1A2A43; color: #7a8ba3; border-color: #000724; }
+            .dark .adv-panel-desc { background: #1A2A43; color: #e5e7eb; border-color: #000724; }
             .dark .adv-lead-card { background: transparent; }
             .dark .adv-lead-card:hover { background: #253456; }
             .dark .adv-lead-name { color: #ffffff; }
@@ -9546,4 +9952,37 @@ const css = `
   color: #ffffff !important;
 }
             .dark .adv-chat-root { background: #000724 !important; }
+:root {
+  /* Light mode variables matching image_d9ace3.png */
+  --box-bg: #ffffff;
+  --box-border: #e2e8f0; /* Soft border color */
+  --box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+}
+
+.dark            {
+  /* Keep your dark mode variables here */
+  --box-bg: #000724;
+  --box-border: #1e293b;
+  --box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+:root {
+  /* Light Mode */
+  --opt-border: #e5e7eb;
+  --opt-selected-border: #0b1957;
+  --opt-bg: #fff;
+  --opt-selected-bg: #e8ecfa;
+  --opt-text: #374151;
+  --opt-selected-text: #0b1957;
+}
+
+.dark {
+  /* Dark Mode */
+  --opt-border: #1e293b;
+  --opt-selected-border: #6366f1; /* Indigo-500 */
+  --opt-bg: #000724;
+  --opt-selected-bg: #2563eb; /* Indigo-900/30 */
+  --opt-text: #9ca3af;
+  --opt-selected-text: #e2e8f0;
+}
 `;
