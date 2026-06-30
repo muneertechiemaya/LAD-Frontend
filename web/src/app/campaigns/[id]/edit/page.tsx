@@ -7,10 +7,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { ArrowLeft, Save, Play, Loader2 } from 'lucide-react';
 import { useCampaign, updateCampaign } from '@lad/frontend-features/campaigns';
 import { useToast } from '@/components/ui/app-toaster';
-import Screen3ManualEditor from '@/app/onboarding/components/Screen3ManualEditor';
-import { useOnboardingStore } from '@/store/onboardingStore';
+import { useCampaignStore } from '@/store/campaignStore';
+import { StepLibrary, FlowCanvas, StepSettings } from '@/components/campaigns';
 import { logger } from '@/lib/logger';
-import type { StepType, FlowNode, FlowEdge, StepData } from '@/types/campaign';
+
+// Campaign workflow editor.
+//
+// This page previously rendered the onboarding `Screen3ManualEditor`, whose
+// StepLibrary/StepSettings were stubbed out as "Coming Soon" — so Edit Workflow
+// showed no steps and couldn't add/remove steps or edit messages. It now uses the
+// SAME campaignStore-wired editor the campaign detail page uses (StepLibrary +
+// FlowCanvas + StepSettings), so the existing steps load, steps can be added/
+// removed, and LinkedIn connection/message text can be edited.
 export default function CampaignEditPage() {
   const params = useParams();
   const router = useRouter();
@@ -18,143 +26,60 @@ export default function CampaignEditPage() {
   const { push } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [campaignName, setCampaignName] = useState('');
   const [showStartDialog, setShowStartDialog] = useState(false);
-  // Get workflow data from onboarding store
-  const {
-    manualFlow,
-    setManualFlow,
-    setIsEditMode,
-    workflowPreview,
-  } = useOnboardingStore();
-  // Use SDK hook for campaign data
-  const { data: campaign, isPending: campaignLoading, error: campaignError } = useCampaign(
+
+  // The campaign editor store: nodes/edges + add/update/delete/select, plus
+  // loadCampaign() (steps → nodes) and serialize() (nodes → steps).
+  const { name, nodes, setName, loadCampaign, serialize } = useCampaignStore();
+
+  const { data: campaign, isLoading: campaignLoading, error: campaignError } = useCampaign(
     campaignId && campaignId !== 'new' ? campaignId : null
   );
-  // Load campaign into workflow editor when it loads
+
+  // Hydrate the editor from the campaign's saved steps once it loads.
   useEffect(() => {
     if (campaign) {
-      setCampaignName(campaign.name || '');
-      // Convert campaign steps to workflow format for the editor
-      if (campaign.steps && Array.isArray(campaign.steps)) {
-        const nodes: FlowNode[] = [
-          {
-            id: 'start',
-            type: 'start',
-            data: { title: 'Start' },
-            position: { x: 250, y: 50 },
-          },
-        ];
-        const edges: FlowEdge[] = [];
-        let lastNodeId = 'start';
-        // Add step nodes
-        campaign.steps.forEach((step: any, index: number) => {
-          const nodeId = `step_${step.id || index}`;
-          nodes.push({
-            id: nodeId,
-            type: (step.type || 'lead_generation') as StepType,
-            data: {
-              title: step.title || step.type,
-              message: step.message,
-              subject: step.subject,
-              ...step.config,
-            } as StepData,
-            position: { x: 250, y: 150 + index * 100 },
-          });
-          // Create edge from previous node
-          edges.push({
-            id: `edge_${lastNodeId}_${nodeId}`,
-            source: lastNodeId,
-            target: nodeId,
-          });
-          lastNodeId = nodeId;
-        });
-        // Add end node
-        nodes.push({
-          id: 'end',
-          type: 'end',
-          data: { title: 'End' },
-          position: { x: 250, y: 150 + campaign.steps.length * 100 },
-        });
-        edges.push({
-          id: `edge_${lastNodeId}_end`,
-          source: lastNodeId,
-          target: 'end',
-        });
-        // Set manual flow in store
-        setManualFlow({
-          nodes,
-          edges,
-        });
-      }
+      loadCampaign({ name: campaign.name, steps: campaign.steps || [] });
       setLoading(false);
     } else if (campaignError) {
       push({
         variant: 'error',
         title: 'Error',
-        description: campaignError?.message || 'Failed to load campaign',
+        description: (campaignError as Error)?.message || 'Failed to load campaign',
       });
       router.push('/campaigns');
+    } else if (campaignId === 'new') {
+      setLoading(false);
     } else if (!campaignLoading) {
       setLoading(false);
     }
-  }, [campaign, campaignLoading, campaignError, setManualFlow, push, router]);
-  // Set edit mode on mount
-  useEffect(() => {
-    setIsEditMode(true);
-    return () => {
-      setIsEditMode(false);
-    };
-  }, [setIsEditMode]);
+  }, [campaign, campaignId, campaignLoading, campaignError, loadCampaign, push, router]);
+
   const handleSave = async (startAfterSave = false) => {
-    if (!campaignName.trim()) {
-      push({
-        variant: 'error',
-        title: 'Error',
-        description: 'Campaign name is required',
-      });
+    if (!name.trim()) {
+      push({ variant: 'error', title: 'Error', description: 'Campaign name is required' });
       return;
     }
-    if (!manualFlow || manualFlow.nodes.length === 0) {
-      push({
-        variant: 'error',
-        title: 'Error',
-        description: 'Please add at least one step to your campaign',
-      });
+    // Ignore the synthetic start/end nodes when checking for real steps.
+    const realSteps = nodes.filter((n) => n.type !== 'start' && n.type !== 'end');
+    if (realSteps.length === 0) {
+      push({ variant: 'error', title: 'Error', description: 'Please add at least one step to your campaign' });
       return;
     }
     try {
       setSaving(true);
-      // Convert workflow nodes/edges back to campaign steps format
-      const stepNodes = manualFlow.nodes.filter(
-        (n: any) => n.type !== 'start' && n.type !== 'end'
-      );
-      const steps = stepNodes.map((node: any, index: number) => ({
-        id: node.id,
-        type: node.data.stepType || node.type,
-        title: node.data.title || node.data.label,
-        description: node.data.description || '',
-        order: index,
-        config: node.data.stepData || {},
-      }));
-      // Update campaign with new name and steps
+      const campaignData = serialize();
       await updateCampaign(campaignId, {
-        name: campaignName,
+        name: campaignData.name,
         status: startAfterSave ? 'running' : 'draft',
-        steps,
+        steps: campaignData.steps,
       });
       push({
         variant: 'success',
         title: 'Success',
         description: startAfterSave ? 'Campaign saved and started!' : 'Campaign saved successfully',
       });
-      if (startAfterSave) {
-        // Redirect to campaigns list
-        router.push('/campaigns');
-      } else {
-        // Stay on edit page or redirect to campaign detail
-        router.push(`/campaigns/${campaignId}`);
-      }
+      router.push(startAfterSave ? '/campaigns' : `/campaigns/${campaignId}`);
     } catch (error: any) {
       logger.error('Failed to save campaign:', error);
       push({
@@ -166,6 +91,7 @@ export default function CampaignEditPage() {
       setSaving(false);
     }
   };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -173,8 +99,9 @@ export default function CampaignEditPage() {
       </div>
     );
   }
+
   return (
-    <div className="h-full flex flex-col bg-gray-50">
+    <div className="h-screen flex flex-col bg-gray-50">
       {/* Header */}
       <div className="border-b p-4 sticky top-0 z-10 bg-white shadow-sm">
         <div className="flex gap-4 items-center">
@@ -188,8 +115,8 @@ export default function CampaignEditPage() {
           </Button>
           <Input
             size="default"
-            value={campaignName}
-            onChange={(e) => setCampaignName(e.target.value)}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
             placeholder="Campaign name"
             className="flex-1 max-w-md"
           />
@@ -206,9 +133,7 @@ export default function CampaignEditPage() {
             <Button
               variant="default"
               size="sm"
-              onClick={() => {
-                setShowStartDialog(true);
-              }}
+              onClick={() => setShowStartDialog(true)}
               disabled={saving}
               className="bg-green-600 hover:bg-green-700 text-white"
             >
@@ -218,10 +143,17 @@ export default function CampaignEditPage() {
           </div>
         </div>
       </div>
-      {/* Workflow Editor - using AI Assistant workflow editor */}
-      <div className="flex-1 overflow-auto">
-        <Screen3ManualEditor />
+
+      {/* Workflow editor — 3-column campaignStore-wired layout (StepLibrary →
+          FlowCanvas → StepSettings), identical to the campaign detail editor. */}
+      <div className="flex-1 flex overflow-hidden">
+        <StepLibrary />
+        <div className="flex-1 relative">
+          <FlowCanvas />
+        </div>
+        <StepSettings />
       </div>
+
       {/* Start Confirmation Dialog */}
       <Dialog open={showStartDialog} onOpenChange={setShowStartDialog}>
         <DialogContent>
