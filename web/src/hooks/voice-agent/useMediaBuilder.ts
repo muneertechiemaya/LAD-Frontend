@@ -52,6 +52,7 @@ export function useMediaBuilder() {
   const [galleryImages, setGalleryImages] = useState<any[]>([]);
   const [galleryVideos, setGalleryVideos] = useState<any[]>([]);
   const [loadingGallery, setLoadingGallery] = useState(false);
+  const [isGalleryFullHistory, setIsGalleryFullHistory] = useState<boolean>(false);
 
   const holdAbortRef = useRef<AbortController | null>(null);
   const mageHoldAbortRef = useRef<AbortController | null>(null);
@@ -596,12 +597,15 @@ export function useMediaBuilder() {
     }
   }, [sessionId, step, uiPayload, workerUrl, references, establishMageHold]);
 
-  const fetchGallery = useCallback(async () => {
+  const fetchGallery = useCallback(async (loadAll: boolean = false) => {
     setStep("gallery");
     setLoadingGallery(true);
     setError("");
     try {
-      const res = await fetch(`${workerUrl}/playground-media/gallery`, {
+      const url = loadAll
+        ? `${workerUrl}/playground-media/gallery?max_age_days=`
+        : `${workerUrl}/playground-media/gallery?max_age_days=90`;
+      const res = await fetch(url, {
         method: "GET",
         headers: getAuthHeaders(),
       });
@@ -611,6 +615,7 @@ export function useMediaBuilder() {
       const data = await res.json();
       setGalleryImages(data.images || []);
       setGalleryVideos(data.videos || []);
+      setIsGalleryFullHistory(loadAll);
     } catch (err) {
       const errorObj = err as Error;
       setError(errorObj.message || "Failed to retrieve media gallery.");
@@ -845,6 +850,56 @@ export function useMediaBuilder() {
     }
   }, [workerUrl, fetchGallery]);
 
+  const undoStep = useCallback(async () => {
+    setStep("loading");
+    setError("");
+    try {
+      await establishHold(sessionId);
+
+      const res = await fetch(`${workerUrl}/playground-media/undo`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({
+          session_id: sessionId,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Undo failed with status ${res.status}`);
+      }
+
+      const data = await res.json();
+      setUiPayload({
+        step: data.step,
+        question: data.question,
+        description: data.description,
+        options: data.options,
+        images: data.images,
+        video: data.video,
+        phase: data.phase,
+        enable_upload: data.enable_upload,
+        blocks: data.blocks,
+        status: data.status,
+        total_cost: data.total_cost,
+        cost_breakdown: data.cost_breakdown,
+        brand_dna: data.brand_dna,
+      });
+      setStep(data.step as MediaBuilderStep);
+    } catch (err) {
+      const errorObj = err as Error;
+      setError(errorObj.message || "Failed to undo step.");
+      if (uiPayload) {
+        setStep(uiPayload.step);
+      } else {
+        setStep("welcome");
+      }
+    }
+  }, [sessionId, workerUrl, establishHold, uiPayload]);
+
   return {
     step,
     setStep,
@@ -858,6 +913,7 @@ export function useMediaBuilder() {
     galleryImages,
     galleryVideos,
     loadingGallery,
+    isGalleryFullHistory,
     startFlow,
     selectImageCreation,
     selectVideoGeneration,
@@ -871,5 +927,6 @@ export function useMediaBuilder() {
     extendVideoFromGallery,
     addDialoguesFromGallery,
     deleteAssets,
+    undoStep,
   };
 }

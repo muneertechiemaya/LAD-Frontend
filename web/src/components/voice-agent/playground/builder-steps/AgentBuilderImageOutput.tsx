@@ -1,5 +1,5 @@
 import React from "react";
-import { X, Sparkles, Download, Maximize2, ChevronLeft, ChevronRight, Check, Loader2, Video } from "lucide-react";
+import { X, Sparkles, Download, Maximize2, ChevronLeft, ChevronRight, Check, Loader2, Video, ArrowLeft } from "lucide-react";
 import { BuilderBottomInput } from "./BuilderBottomInput";
 import ReactMarkdown from "react-markdown";
 
@@ -38,6 +38,7 @@ export function AgentBuilderImageOutput({
   onRemove,
   isUploading = false,
   error = "",
+  onBack,
 }: {
   title?: string;
   description?: string;
@@ -52,6 +53,7 @@ export function AgentBuilderImageOutput({
   onRemove?: (path: string) => Promise<void>;
   isUploading?: boolean;
   error?: string;
+  onBack?: () => void;
 }) {
   const [previewImage, setPreviewImage] = React.useState<string | null>(null);
   const [activeIndex, setActiveIndex] = React.useState(0);
@@ -216,6 +218,15 @@ export function AgentBuilderImageOutput({
       {/* Header */}
       <div className="w-full flex shrink-0 items-center justify-between p-4 border-b border-slate-100 bg-white/80 z-10">
         <div className="flex items-center gap-2">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="mr-1 p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-all active:scale-95 border border-transparent hover:border-slate-100"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="size-4" />
+            </button>
+          )}
           <Sparkles className="size-4 text-emerald-500 animate-pulse" />
           <span className="text-[11px] font-bold text-[#0b1957] uppercase tracking-wider">
             {phase || "Media Generation"}

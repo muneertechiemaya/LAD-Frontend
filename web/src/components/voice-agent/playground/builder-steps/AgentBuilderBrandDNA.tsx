@@ -39,11 +39,13 @@ export function AgentBuilderBrandDNA({
   onClose,
   onNext,
   phase,
+  onBack,
 }: {
   brandDna?: BrandDnaData;
   onClose?: () => void;
   onNext: (val: string) => void;
   phase?: string;
+  onBack?: () => void;
 }) {
   const [copiedColor, setCopiedColor] = useState<string | null>(null);
   const [zoomedAsset, setZoomedAsset] = useState<BrandAsset | null>(null);
@@ -150,7 +152,7 @@ export function AgentBuilderBrandDNA({
 
       {/* Back Arrow */}
       <button
-        onClick={() => onNext("Go back")}
+        onClick={onBack || (() => onNext("Go back"))}
         className="absolute top-4 left-4 z-50 p-1.5 bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 transition-all active:scale-95 border border-slate-100"
         aria-label="Go back"
       >

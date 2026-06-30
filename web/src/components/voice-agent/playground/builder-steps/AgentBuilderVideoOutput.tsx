@@ -8,6 +8,7 @@ export function AgentBuilderVideoOutput({
   onClose,
   onNext,
   phase,
+  onBack,
 }: {
   title?: string;
   description?: string;
@@ -15,6 +16,7 @@ export function AgentBuilderVideoOutput({
   onClose?: () => void;
   onNext?: (val?: string) => void;
   phase?: string;
+  onBack?: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(true);
@@ -83,6 +85,15 @@ export function AgentBuilderVideoOutput({
       {/* Header */}
       <div className="w-full flex shrink-0 items-center justify-between p-4 border-b border-slate-100 bg-white/80 z-10">
         <div className="flex items-center gap-2 pl-4">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="mr-1 p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-all active:scale-95 border border-transparent hover:border-slate-100"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="size-4" />
+            </button>
+          )}
           <Video className="size-4 text-emerald-500 animate-pulse" />
           <span className="text-[11px] font-bold text-[#0b1957] uppercase tracking-wider">
             {phase || "Animation Complete"}

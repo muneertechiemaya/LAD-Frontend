@@ -17,6 +17,7 @@ export function AgentBuilderVideoProgress({
   status = "active",
   onNext,
   progress,
+  onBack,
 }: {
   title?: string;
   description?: string;
@@ -27,6 +28,7 @@ export function AgentBuilderVideoProgress({
   status?: "active" | "completed" | "cancelled" | "failed";
   onNext?: (val?: string) => void;
   progress?: number;
+  onBack?: () => void;
 }) {
   const [retryCounts, setRetryCounts] = React.useState<Record<string, number>>({});
   const [cooldowns, setCooldowns] = React.useState<Record<string, number>>({});
@@ -222,6 +224,15 @@ export function AgentBuilderVideoProgress({
       {/* Header */}
       <div className="w-full flex shrink-0 items-center justify-between p-4 border-b border-slate-100 bg-white/80 z-10">
         <div className="flex items-center gap-2 pl-4">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="mr-1 p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-all active:scale-95 border border-transparent hover:border-slate-100"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="size-4" />
+            </button>
+          )}
           <Video className={cn("size-4 text-primary", status === "active" && "animate-pulse")} />
           <span className="text-[11px] font-bold text-primary uppercase tracking-wider">
             {phase || "Production Pipeline"}
