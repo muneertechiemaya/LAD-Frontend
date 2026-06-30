@@ -1261,7 +1261,17 @@ export default function AdvancedSearchAIPage() {
                 }
                 // Restore the config-step selections (connection/follow-up messages, actions, etc.).
                 if (cs.icp_threshold != null) setCpIcpThreshold(String(cs.icp_threshold));
-                if (Array.isArray(cs.linkedin_actions)) setCpActions(cs.linkedin_actions);
+                // LinkedIn actions: prefer the saved checkpoint selection, else derive from
+                // the persisted steps (the workflow is the source of truth) so the action
+                // checkboxes re-check even for campaigns missing checkpoint_selections.
+                let liActions: string[] = Array.isArray(cs.linkedin_actions) ? [...cs.linkedin_actions] : [];
+                if (liActions.length === 0 && Array.isArray(camp?.steps)) {
+                    const stepTypes = camp.steps.map((s: any) => s.type || s.step_type);
+                    if (stepTypes.includes('linkedin_visit')) liActions.push('profile_view');
+                    if (stepTypes.includes('linkedin_connect')) liActions.push('connect');
+                    if (stepTypes.includes('linkedin_message')) liActions.push('message');
+                }
+                if (liActions.length) setCpActions(liActions);
                 setCpConnMsg(cs.connection_message ?? cfg.connection_message ?? '');
                 setCpFollowMsg(cs.followup_message ?? cfg.followup_message ?? '');
                 if (Array.isArray(cs.next_channels)) setCpNextChannels(cs.next_channels);
@@ -6369,7 +6379,10 @@ function CheckpointFormInline({
 
     // LinkedIn follow-up config (when linkedin selected as next channel in step 3)
     // Multi-select: 'profile_view' | 'connect' | 'message'
-    const [liChannelActions, setLiChannelActions] = useState<string[]>([]);
+    // Initialise from the `actions` prop so edit-mode hydration (the parent sets
+    // cpActions from the saved campaign / its steps) pre-checks the LinkedIn action
+    // boxes. In the create flow `actions` is [] at mount, so this is a no-op there.
+    const [liChannelActions, setLiChannelActions] = useState<string[]>(actions || []);
     const [liFollowGenLoading, setLiFollowGenLoading] = useState(false);
 
     // AI Generate inline context panel state (one per message type)
