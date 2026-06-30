@@ -23,7 +23,7 @@ import {
     computeCompleteness,
     type BusinessProfile,
 } from '@lad/frontend-features/ai-icp-assistant';
-import { getCampaign, updateCampaign, updateCampaignSteps } from '@lad/frontend-features/campaigns';
+import { getCampaign, updateCampaign, updateCampaignSteps, startCampaign } from '@lad/frontend-features/campaigns';
 
 /* ═══════════════════════════════════════════════
    TYPES
@@ -7055,6 +7055,12 @@ function CheckpointFormInline({
                     title: s.title || s.type,
                 }));
                 await updateCampaignSteps(editingCampaignId, stepsForSave);
+                // Re-run the campaign so the edited steps actually execute. Saving alone
+                // only persists — the engine runs steps via processCampaign, which the
+                // create flow kicks off on launch. startCampaign (POST /:id/start) sets
+                // the campaign running and runs processCampaign against the NEW steps; it
+                // respects per-lead progress, so nobody already contacted is re-messaged.
+                await startCampaign(editingCampaignId);
                 window.location.href = '/campaigns';
             } else {
                 const data = await campaignCreation.createCampaign(payload);
