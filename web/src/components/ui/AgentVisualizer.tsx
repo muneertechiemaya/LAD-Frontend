@@ -24,7 +24,7 @@ export type VisualizerState =
   | 'disconnected';
 
 // ── Brand constants ──────────────────────────────────────────────────────────
-const BRAND = '#ffffff';
+const BRAND = '#1e3a8a';
 const DOT_X = [324.4, 344.5, 364.8];
 
 // Clip-path shape (full logo outline with 3 eye-dots, used for liquid mask)
@@ -213,7 +213,14 @@ export default function AgentVisualizer({ state = 'idle', size = 36 }: Props) {
   const XFORM = 'translate(144.48,-148.655) scale(1.88)';
 
   return (
-    <svg viewBox="225 75 230 248" width={size} height={size} style={{ display: 'block', flexShrink: 0 }}>
+    <svg viewBox="225 75 230 248" width={size} height={size}
+         className="fill-current" style={{ display: 'block', flexShrink: 0}}>
+      <style>{`
+        /* Default (Light Mode): Blue logo */
+        svg { --logo-color: #1e3a8a; }
+        /* Dark Mode: White logo */
+        :global(.dark) svg { --logo-color: #ffffff; }
+      `}</style>
       <defs>
         <clipPath id={clipId}>
           <path clipRule="evenodd" transform={XFORM} d={CLIP_PATH} />
@@ -222,7 +229,7 @@ export default function AgentVisualizer({ state = 'idle', size = 36 }: Props) {
 
       {/* ── Static logo + animated dots ── */}
       <g opacity={1 - liquidOpacity}>
-        <path fill={BRAND} transform={XFORM} d={SOLID_PATH} />
+        <path  transform={XFORM} d={SOLID_PATH} />
         {DOT_X.map((cx, i) => {
           const { h, dy, dx, opacity } = dots[i];
           const w = Math.max(11, h);
@@ -230,7 +237,6 @@ export default function AgentVisualizer({ state = 'idle', size = 36 }: Props) {
           return (
             <rect
               key={i}
-              fill={BRAND}
               opacity={opacity}
               x={cx - 5.5 + dx}
               y={227.2 - w / 2 + dy}
@@ -246,14 +252,15 @@ export default function AgentVisualizer({ state = 'idle', size = 36 }: Props) {
       {/* ── Liquid logo ── */}
       <g opacity={liquidOpacity}>
         <path
-          fill={BRAND} fillOpacity={0.06}
-          stroke={BRAND} strokeWidth={1.4} strokeOpacity={0.22}
+           fillOpacity={0.06}
+          strokeWidth={1.4} strokeOpacity={0.22}
           fillRule="evenodd" transform={XFORM} d={CLIP_PATH}
         />
         <g clipPath={`url(#${clipId})`}>
-          <path d={wave2} fill={BRAND} opacity={0.24} />
-          <path d={wave1} fill={BRAND} opacity={0.86} />
+          <path d={wave2} opacity={0.24} />
+          <path d={wave1} opacity={0.86} />
         </g>
+
       </g>
     </svg>
   );

@@ -6,7 +6,8 @@ import {
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Gem, Upload, FileSpreadsheet, Download, CheckCircle2, Trash2, ChevronLeft, ChevronRight, X, MessageSquare, Users, Zap, Plus } from 'lucide-react';
+import { Sparkles, Gem, Upload, FileSpreadsheet, Download, CheckCircle2,Pencil, Trash2,ChevronDown, ChevronLeft, ChevronRight, X, MessageSquare, Users, Zap, Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { ProfileSummaryDialog } from '@/components/campaigns';
 import AgentVisualizer from '@/components/ui/AgentVisualizer';
 import { useOnboardingStore } from '@/store/onboardingStore';
@@ -783,7 +784,7 @@ export default function AdvancedSearchAIPage() {
         geographicFocus: '', valueProposition: '', competitors: '', campaignTone: '',
     });
     const [bpHydrated, setBpHydrated] = useState(false);
-
+    const [isOpen, setIsOpen] = useState(false);
     // Hydrate local state once when the hook's initial load completes.
     // We keep `businessProfile` as a local Record<string, string> because the
     // chat continues to mutate it through many setBusinessProfile calls — the
@@ -4196,10 +4197,11 @@ export default function AdvancedSearchAIPage() {
                                 {inboundMode && inboundLeads.length > 0 && (
                                     <div className="adv-leads-list">
                                         {inboundLeads.map((lead, i) => (
-                                            <div key={i} className="adv-lead-card flex items-center gap-3 p-4 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                                                <div className="adv-lead-avatar w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0" style={{ background: avatarColor(`${lead.firstName} ${lead.lastName}`) }}>
-                                                    {initials(`${lead.firstName} ${lead.lastName}`) || '?'}
-                                                </div>
+                                          <div key={i} className="adv-lead-card flex items-start gap-3 p-4 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                                              <div className="adv-lead-avatar w-10 h-10 self-start rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
+                                                   style={{ background: avatarColor(`${lead.firstName} ${lead.lastName}`) }}>
+                                                  {initials(`${lead.firstName} ${lead.lastName}`) || '?'}
+                                              </div>
                                                 <div className="adv-lead-info flex-1 min-w-0">
                                                     <div className="flex items-center gap-2">
                                                         <span className="adv-lead-name text-gray-900 dark:text-gray-100 font-bold text-sm">{[lead.firstName, lead.lastName].filter(Boolean).join(' ') || 'Unknown'}</span>
@@ -4217,27 +4219,45 @@ export default function AdvancedSearchAIPage() {
                                                             </a>
                                                         </div>
                                                     )}
-                                                    {lead.notes && lead.notes.length > 0 && (
-                                                        <div className="text-[11px] text-gray-700 dark:text-gray-300 mt-2 p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-100 dark:border-indigo-800 leading-relaxed max-w-[300px]">
-                                                            <span className="text-[#172560] dark:text-indigo-300 font-bold flex items-center gap-1 mb-1">
-                                                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#172560" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-                                                                AI Research Summary
-                                                            </span>
-                                                            {lead.notes.length > 200 ? lead.notes.substring(0, 200) + '…' : lead.notes}
-                                                        </div>
+                                                    {lead.notes && (
+                                                      <div className="mt-4 border border-gray-800 rounded-lg overflow-hidden bg-transparent">
+                                                          {/* Header */}
+                                                          <button
+                                                            onClick={() => setIsOpen(!isOpen)}
+                                                            className="w-full flex items-center justify-between p-3 text-gray-400 hover:bg-gray-800/50 transition-colors"
+                                                          >
+                                                              <div className="flex items-center gap-2 text-[10px] font-mono tracking-widest uppercase">
+                                                                  {/* Replace your previous SVG with a sparkle icon */}
+                                                                  <Sparkles className="w-3 h-3 text-indigo-400" />
+                                                                  AI Research Sumary
+                                                              </div>
+                                                              <ChevronDown className={`w-3 h-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                                                          </button>
+
+                                                          {/* Content */}
+                                                          {isOpen && (
+                                                            <div className="p-4 pt-0 text-sm text-gray-300 leading-relaxed border-t border-gray-800 bg-gray-900/30">
+                                                                {lead.notes}
+                                                            </div>
+                                                          )}
+                                                      </div>
                                                     )}
                                                 </div>
                                                 <div className="flex gap-2">
-                                                    <button
+                                                    <Button
+                                                      variant="ghost"
+                                                      size="icon"
                                                       onClick={() => openEditLead(i)}
-                                                      className="px-3 py-1.5 bg-gray-100 dark:bg-[#2563eb] border border-gray-200 dark:border-gray-700 rounded-md text-[12px] font-medium text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-blue-700 transition-colors"
+                                                      className="h-5 w-5"
 
                                                     >
-                                                        ✏️ Edit
-                                                    </button>
-                                                    <button
+                                                        <Pencil className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                      variant="ghost"
+                                                      size="icon"
                                                         onClick={() => openDeleteConfirmation(i)}
-                                                        className="px-3 py-1.5 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-md text-[12px] font-medium text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
+                                                        className="h-5 w-5 text-destructive"
                                                         onMouseEnter={(e) => {
                                                             e.currentTarget.style.background = '#fecaca';
                                                             e.currentTarget.style.borderColor = '#fca5a5';
@@ -4247,8 +4267,8 @@ export default function AdvancedSearchAIPage() {
                                                             e.currentTarget.style.borderColor = '#fecaca';
                                                         }}
                                                     >
-                                                        🗑️ Delete
-                                                    </button>
+                                                        <Trash2 className="h-5 w-5" />
+                                                    </Button>
                                                 </div>
                                             </div>
                                         ))}
@@ -4651,7 +4671,7 @@ export default function AdvancedSearchAIPage() {
                                 {pgChatHistory.length === 0 && !pgBusy && (
                                     <div className="flex flex-col items-center justify-center flex-1 p-10 text-center gap-4">
                                         <div className="w-[50px] h-[50px] rounded-full flex items-center justify-center
-                                                                            bg-[#0b1958] dark:bg-transparent transition-colors duration-300">
+                                                                            bg-transparent transition-colors duration-300">
                                             <AgentVisualizer state="idle" size={36} />
                                         </div>
                                         <div className="max-w-[300px]">
@@ -9723,7 +9743,7 @@ const css = `
             .adv-lead-info {flex:1; min-width:0; }
             .adv-lead-name {font-size:14px; font-weight:700; color:#111827; display:flex; align-items:center; gap:4px; }
             .adv-verified {background:#10b981; color:#fff; border-radius:50%; width:16px; height:16px; display:inline-flex; align-items:center; justify-content:center; font-size:9px; font-weight:800; }
-            .adv-lead-title {font-size:12px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+            .adv-lead-title {font-size:12px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:10px}
             .adv-lead-platform {margin-top:4px; display:flex; gap:4px; }
             .adv-lead-action {width:36px; height:36px; border-radius:50%; border:1.5px solid #e5e7eb; background:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; transition:all .15s; }
             .adv-lead-action:hover:not(:disabled) {border-color:#0b1957; background:#f2f6fa; }
