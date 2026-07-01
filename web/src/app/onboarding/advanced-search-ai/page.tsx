@@ -4650,7 +4650,8 @@ export default function AdvancedSearchAIPage() {
                             <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3.5 bg-gray-50 dark:bg-[#000724]">
                                 {pgChatHistory.length === 0 && !pgBusy && (
                                     <div className="flex flex-col items-center justify-center flex-1 p-10 text-center gap-4">
-                                        <div className="agent-avatar-wrapper w-16 h-16 rounded-full bg-gradient-to-br from-[#0b1957] to-[#1a3a8f] flex items-center justify-center shadow-[0_8px_24px_rgba(11,25,87,.3)]">
+                                        <div className="w-[50px] h-[50px] rounded-full flex items-center justify-center
+                                                                            bg-[#0b1958] dark:bg-transparent transition-colors duration-300">
                                             <AgentVisualizer state="idle" size={36} />
                                         </div>
                                         <div className="max-w-[300px]">

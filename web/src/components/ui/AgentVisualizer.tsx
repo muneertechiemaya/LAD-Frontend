@@ -24,7 +24,7 @@ export type VisualizerState =
   | 'disconnected';
 
 // ── Brand constants ──────────────────────────────────────────────────────────
-const BRAND = '#0b1958';
+const BRAND = '#ffffff';
 const DOT_X = [324.4, 344.5, 364.8];
 
 // Clip-path shape (full logo outline with 3 eye-dots, used for liquid mask)
