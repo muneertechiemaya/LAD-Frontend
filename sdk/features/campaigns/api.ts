@@ -116,8 +116,24 @@ export async function updateCampaign(
   campaignId: string,
   data: UpdateCampaignRequest
 ): Promise<Campaign> {
-  const response = await apiClient.put<{ data: Campaign }>(`/api/campaigns/${campaignId}`, data);
+  // Backend registers PATCH /api/campaigns/:id (not PUT) — sending PUT 404s.
+  const response = await apiClient.patch<{ data: Campaign }>(`/api/campaigns/${campaignId}`, data);
   return response.data.data;
+}
+
+/**
+ * Replace a campaign's workflow steps (destructive replace on the backend:
+ * deletes existing steps, then bulk-creates the provided ones).
+ *
+ * IMPORTANT: updateCampaign (PATCH /:id) only updates the campaign row — it does
+ * NOT persist steps. Editing a campaign's workflow must call this separately, or
+ * the steps silently don't save (the campaign shows "No actions").
+ */
+export async function updateCampaignSteps(
+  campaignId: string,
+  steps: any[]
+): Promise<void> {
+  await apiClient.post(`/api/campaigns/${campaignId}/steps`, { steps });
 }
 
 /**
