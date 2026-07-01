@@ -23,10 +23,12 @@ import { Loader2, Pencil, Inbox, AlertCircle, Users, X } from 'lucide-react';
 import {
   BroadcastRunSummary,
   ConnectedAccount,
+  EmailChannel,
   useBroadcastRecipients,
   useBroadcastRun,
   useBroadcastRuns,
   useConnectedEmailAccounts,
+  useEmailGroups,
   useSendBroadcast,
 } from '@/features/conversations/useEmailBroadcast';
 
@@ -327,18 +329,54 @@ function ComposeBroadcastDialog({
     [accounts],
   );
 
+  // Recipient source — 'manual' (paste-a-list) or 'group' (pick a saved group).
+  // The backend enforces exactly-one; the UI mirrors that with a tab-style
+  // toggle so it's clear which one will be sent.
+  const [mode, setMode] = useState<'manual' | 'group'>('manual');
+
   const [accountId, setAccountId] = useState('');
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [recipientsRaw, setRecipientsRaw] = useState('');
+  const [groupId, setGroupId] = useState('');
   const [error, setError] = useState<string | null>(null);
+
   const recipients = useMemo(() => parseRecipients(recipientsRaw), [recipientsRaw]);
 
+  // Map account provider → group channel so the group picker only shows
+  // groups usable with the currently-selected From account.
+  const selectedAccount = useMemo(
+    () => activeAccounts.find((a) => a.id === accountId) ?? null,
+    [accountId, activeAccounts],
+  );
+  const channelForGroups: EmailChannel | undefined =
+    selectedAccount?.provider === 'google'
+      ? 'gmail'
+      : selectedAccount?.provider === 'microsoft'
+        ? 'outlook'
+        : undefined;
+  const groupsQuery = useEmailGroups(channelForGroups);
+  const groupsList = groupsQuery.data?.groups ?? [];
+  const selectedGroup = useMemo(
+    () => groupsList.find((g) => g.id === groupId) ?? null,
+    [groupId, groupsList],
+  );
+
+  // When the account (and therefore channel) changes, clear the group
+  // selection so we don't send to a group meant for a different channel.
+  useMemo(() => {
+    if (groupId && !groupsList.some((g) => g.id === groupId)) {
+      setGroupId('');
+    }
+  }, [groupId, groupsList]);
+
   const reset = () => {
+    setMode('manual');
     setAccountId('');
     setSubject('');
     setBody('');
     setRecipientsRaw('');
+    setGroupId('');
     setError(null);
   };
 
@@ -347,15 +385,21 @@ function ComposeBroadcastDialog({
     if (!accountId) return setError('Pick a sender account.');
     if (!subject.trim()) return setError('Subject is required.');
     if (!body.trim()) return setError('Body cannot be empty.');
-    if (recipients.length === 0)
+    if (mode === 'manual' && recipients.length === 0)
       return setError('Add at least one recipient.');
+    if (mode === 'group' && !groupId)
+      return setError('Pick a group to send to.');
+    if (mode === 'group' && selectedGroup && selectedGroup.member_count === 0)
+      return setError(
+        `Group "${selectedGroup.name}" has no members. Add contacts before sending.`,
+      );
 
     try {
       await send.mutateAsync({
         from_email_account_id: accountId,
         subject: subject.trim(),
         body_html: body,
-        recipients,
+        ...(mode === 'group' ? { group_id: groupId } : { recipients }),
       });
       reset();
       onOpenChange(false);
@@ -363,6 +407,12 @@ function ComposeBroadcastDialog({
       setError(err instanceof Error ? err.message : 'Failed to queue broadcast.');
     }
   };
+
+  // How many recipients will actually go? Used to drive the send-button label.
+  const sendCount =
+    mode === 'group'
+      ? (selectedGroup?.member_count ?? 0)
+      : recipients.length;
 
   return (
     <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) reset(); }}>
@@ -402,16 +452,103 @@ function ComposeBroadcastDialog({
             <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Welcome to Mr LAD" />
           </div>
 
+          {/* Recipients — tab toggle between manual list and saved group */}
           <div>
-            <label className="text-sm font-medium">
-              Recipients <span className="text-muted-foreground">({recipients.length} parsed)</span>
-            </label>
-            <Textarea
-              value={recipientsRaw}
-              onChange={(e) => setRecipientsRaw(e.target.value)}
-              rows={3}
-              placeholder={`alice@example.com, "Bob Smith" <bob@example.com>\nor one per line`}
-            />
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-sm font-medium">Recipients</label>
+              <div
+                role="tablist"
+                aria-label="Recipient source"
+                className="inline-flex items-center rounded-md border border-input p-0.5 text-xs"
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === 'manual'}
+                  onClick={() => setMode('manual')}
+                  className={`px-2 py-1 rounded ${
+                    mode === 'manual'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-accent'
+                  }`}
+                >
+                  Manual list
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === 'group'}
+                  onClick={() => setMode('group')}
+                  className={`px-2 py-1 rounded ${
+                    mode === 'group'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-accent'
+                  }`}
+                >
+                  From group
+                </button>
+              </div>
+            </div>
+
+            {mode === 'manual' ? (
+              <>
+                <Textarea
+                  value={recipientsRaw}
+                  onChange={(e) => setRecipientsRaw(e.target.value)}
+                  rows={3}
+                  placeholder={`alice@example.com, "Bob Smith" <bob@example.com>\nor one per line`}
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {recipients.length} parsed. Names in{' '}
+                  <code>{'"Name" <email>'}</code> format are picked up too.
+                </p>
+              </>
+            ) : (
+              <>
+                <Select value={groupId} onValueChange={setGroupId}>
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={
+                        !accountId
+                          ? 'Pick a sender account first'
+                          : groupsQuery.isLoading
+                            ? 'Loading groups…'
+                            : groupsList.length === 0
+                              ? 'No groups for this channel yet'
+                              : 'Pick a group'
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {groupsList.length === 0 ? (
+                      <div className="px-3 py-2 text-sm text-muted-foreground">
+                        Create a group in the sidebar first, then add contacts to it.
+                      </div>
+                    ) : (
+                      groupsList.map((g) => (
+                        <SelectItem key={g.id} value={g.id}>
+                          {g.name}
+                          <span className="text-muted-foreground">
+                            {' '}
+                            · {g.member_count} member
+                            {g.member_count === 1 ? '' : 's'}
+                          </span>
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+                {selectedGroup && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Sending to{' '}
+                    <span className="font-medium">{selectedGroup.name}</span>{' '}
+                    ({selectedGroup.member_count} recipient
+                    {selectedGroup.member_count === 1 ? '' : 's'}). Add or
+                    remove members from the sidebar.
+                  </p>
+                )}
+              </>
+            )}
           </div>
 
           <div>
@@ -436,7 +573,7 @@ function ComposeBroadcastDialog({
             Cancel
           </Button>
           <Button onClick={handleSend} disabled={send.isPending}>
-            {send.isPending ? 'Queuing…' : `Send to ${recipients.length}`}
+            {send.isPending ? 'Queuing…' : `Send to ${sendCount}`}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -2084,10 +2084,26 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
   }, [isHostedProvider]);
 
   const loadGroups = useCallback(async () => {
+    // Hosted providers (Gmail / Outlook) fetch groups from LAD-Email-Comms
+    // via /api/email-comms/groups. The response shape maps 1:1 to the local
+    // EmailGroup interface (id, name, color, description, channel,
+    // member_count) so no adapter is needed.
     if (isHostedProvider) {
-      setGroups([]);
+      try {
+        const res = await fetch(
+          `/api/email-comms/groups?channel=${provider}`,
+          { headers: authHeaders() },
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        setGroups(data.groups ?? []);
+      } catch (err) {
+        console.error('[EmailChannelView] failed to load email-comms groups', err);
+        setGroups([]);
+      }
       return;
     }
+    // Custom SMTP still uses the legacy WABA-Comms email-groups endpoint.
     try {
       const res = await fetch(`${API}/groups?channel=${provider}`, { headers: authHeaders() });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -2251,24 +2267,47 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
   const handleCreateGroup = async () => {
     const name = newGroupName.trim();
     if (!name) return;
-    // Hosted providers (Gmail / Outlook): groups land in LAD-Email-Comms
-    // Phase 2 alongside inbound + AI replies. The legacy POST to
-    // /api/email-conversations/groups proxies to WABA-Comms and 502s.
-    // Short-circuit with a friendly toast instead of firing a known-bad
-    // request.
+    setCreateGroupError('');
+    setCreatingGroup(true);
+
+    // Hosted providers (Gmail / Outlook) → LAD-Email-Comms POST /groups.
+    // Response is the created group as { id, name, color, ... } — no
+    // { success, data } envelope. Insert it directly into state.
     if (isHostedProvider) {
+      try {
+        const res = await fetch('/api/email-comms/groups', {
+          method: 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify({
+            name,
+            channel: provider,
+            color: PROVIDER_COLOR[provider],
+          }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || err.error || `HTTP ${res.status}`);
+        }
+        const created = await res.json();
+        setGroups(p => [created, ...p]);
+        setNewGroupName('');
+        setShowCreateGroup(false);
+        setActiveGroup(created);
+        toast({
+          title: 'Success',
+          description: `Group "${name}" created successfully.`,
+        });
+      } catch (err) {
+        console.error('[EmailChannelView] failed to create hosted group', err);
+        setCreateGroupError(
+          err instanceof Error ? err.message : 'Failed to create group.',
+        );
+      }
       setCreatingGroup(false);
-      setCreateGroupError('');
-      setShowCreateGroup(false);
-      setNewGroupName('');
-      toast({
-        title: 'Coming soon',
-        description: 'Broadcast groups for Gmail / Outlook arrive with LAD-Email-Comms Phase 2.',
-      });
       return;
     }
-    setCreatingGroup(true);
-    setCreateGroupError('');
+
+    // Custom SMTP falls through to the legacy WABA-Comms endpoint.
     try {
       const res = await fetch(`${API}/groups`, {
         method: 'POST',
