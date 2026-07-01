@@ -320,7 +320,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate }: EmailTemp
         throw new Error(errData.error || errData.details || `${res.status} ${res.statusText}`);
       }
 
-      if (andRedirect) router.push('/campaigns/templates');
+      if (andRedirect) router.push('/conversations/templates');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error occurred');
     } finally {
@@ -397,7 +397,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate }: EmailTemp
       {/* ── Top bar ── */}
       <header className="flex-shrink-0 bg-white border-b border-gray-200 px-5 py-3 flex items-center gap-3">
         <Link
-          href="/campaigns/templates"
+          href="/conversations/templates"
           className="p-1.5 rounded-lg text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
