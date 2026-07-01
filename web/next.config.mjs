@@ -78,6 +78,24 @@ const nextConfig = {
     ];
   },
 
+  // Templates moved from /campaigns/templates → /conversations/templates
+  // (now nested under Conversations in the sidebar). Redirect old bookmarks
+  // and deep links so they don't 404.
+  async redirects() {
+    return [
+      {
+        source: '/campaigns/templates',
+        destination: '/conversations/templates',
+        permanent: false,
+      },
+      {
+        source: '/campaigns/templates/:path*',
+        destination: '/conversations/templates/:path*',
+        permanent: false,
+      },
+    ];
+  },
+
   async headers() {
     return [
       {
