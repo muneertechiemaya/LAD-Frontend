@@ -23,6 +23,7 @@ import {
     computeCompleteness,
     type BusinessProfile,
 } from '@lad/frontend-features/ai-icp-assistant';
+import { getCampaign, updateCampaign, updateCampaignSteps, startCampaign } from '@lad/frontend-features/campaigns';
 
 /* ═══════════════════════════════════════════════
    TYPES
@@ -491,6 +492,9 @@ export default function AdvancedSearchAIPage() {
     // Unified single-screen mode - always show chat interface
     // const [screen, setScreen] = useState<'landing' | 'chat'>('landing');
     const [messages, setMessages] = useState<ChatMsg[]>([]);
+    // Edit mode: set when "Edit Workflow" routes here with ?campaignId=<id>.
+    const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
+    const editHydratedRef = useRef(false);
     const [input, setInput] = useState('');
     const [busy, setBusy] = useState(false);
     const [typedPlaceholder, setTypedPlaceholder] = useState('');
@@ -1225,6 +1229,71 @@ export default function AdvancedSearchAIPage() {
     // Scroll to bottom whenever a form is opened from the card/button clicks
     useEffect(() => { if (cpStep >= 0) endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [cpStep]);
     useEffect(() => { if (tgStep >= 0) endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [tgStep]);
+
+    // ── Edit mode: hydrate the setup flow from an existing campaign ──────────────
+    // "Edit Workflow" routes here with ?campaignId=<id>. The setup flow already
+    // persists the chat (config.conversation_history) and the config-step
+    // selections (config.checkpoint_selections), so we reload them and open the
+    // checkpoint form pre-filled. Saving then updates THIS campaign (gated in
+    // CheckpointFormInline via editingCampaignId). The normal create flow (no
+    // campaignId) is untouched. Read-once via the ref guard.
+    useEffect(() => {
+        if (editHydratedRef.current) return;
+        const cid = typeof window !== 'undefined'
+            ? new URLSearchParams(window.location.search).get('campaignId')
+            : null;
+        if (!cid) return;
+        editHydratedRef.current = true;
+        (async () => {
+            try {
+                const camp: any = await getCampaign(cid);
+                const cfg = camp?.config || {};
+                const cs = cfg.checkpoint_selections || {};
+                // Restore the chat thread.
+                const hist = Array.isArray(cfg.conversation_history) ? cfg.conversation_history : [];
+                if (hist.length) {
+                    setMessages(hist.map((m: any, i: number) => ({
+                        id: `hist-${i}`,
+                        role: m.role === 'user' ? 'user' : 'assistant',
+                        text: m.text || '',
+                        ts: m.ts || Date.now(),
+                    })) as ChatMsg[]);
+                }
+                // Restore the config-step selections (connection/follow-up messages, actions, etc.).
+                if (cs.icp_threshold != null) setCpIcpThreshold(String(cs.icp_threshold));
+                // LinkedIn actions: prefer the saved checkpoint selection, else derive from
+                // the persisted steps (the workflow is the source of truth) so the action
+                // checkboxes re-check even for campaigns missing checkpoint_selections.
+                let liActions: string[] = Array.isArray(cs.linkedin_actions) ? [...cs.linkedin_actions] : [];
+                if (liActions.length === 0 && Array.isArray(camp?.steps)) {
+                    const stepTypes = camp.steps.map((s: any) => s.type || s.step_type);
+                    if (stepTypes.includes('linkedin_visit')) liActions.push('profile_view');
+                    if (stepTypes.includes('linkedin_connect')) liActions.push('connect');
+                    if (stepTypes.includes('linkedin_message')) liActions.push('message');
+                }
+                if (liActions.length) setCpActions(liActions);
+                setCpConnMsg(cs.connection_message ?? cfg.connection_message ?? '');
+                setCpFollowMsg(cs.followup_message ?? cfg.followup_message ?? '');
+                if (Array.isArray(cs.next_channels)) setCpNextChannels(cs.next_channels);
+                setCpTriggerCondition(cs.trigger_condition ?? cfg.trigger_condition ?? '');
+                if (cs.campaign_days != null) setCpDays(String(cs.campaign_days));
+                setCpName(cs.campaign_name ?? camp?.name ?? '');
+                if (typeof cs.enable_daily_web_presence === 'boolean') setCpEnableDailyWebPresence(cs.enable_daily_web_presence);
+                if (typeof cs.enable_daily_posts === 'boolean') setCpEnableDailyPosts(cs.enable_daily_posts);
+                if (typeof cs.enable_ai_personalization === 'boolean') setCpEnableAiPersonalization(cs.enable_ai_personalization);
+                if (typeof cs.enable_ai_connection_personalization === 'boolean') setCpEnableAiConnectionPersonalization(cs.enable_ai_connection_personalization);
+                if (typeof cs.enable_ai_followup_personalization === 'boolean') setCpEnableAiFollowupPersonalization(cs.enable_ai_followup_personalization);
+                setEditingCampaignId(cid);
+                // Open the checkpoint/config form, pre-filled, so the user edits steps + messages.
+                setCpStep(0);
+            } catch (e) {
+                editHydratedRef.current = false; // allow a retry on next mount
+                // eslint-disable-next-line no-console
+                console.error('[EditWorkflow] Failed to load campaign for editing', e);
+            }
+        })();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // Sync credit balance from billing hook
     useEffect(() => {
@@ -3786,6 +3855,7 @@ export default function AdvancedSearchAIPage() {
                         {cpStep >= 0 && (
                             <div className="adv-msgs-inner">
                                 <CheckpointFormInline
+                                    editingCampaignId={editingCampaignId}
                                     step={cpStep}
                                     setStep={setCpStep}
                                     icpThreshold={cpIcpThreshold}
@@ -6128,6 +6198,7 @@ function CheckpointFormInline({
     enableAiPersonalization, setEnableAiPersonalization,
     enableAiConnectionPersonalization, setEnableAiConnectionPersonalization,
     enableAiFollowupPersonalization, setEnableAiFollowupPersonalization,
+    editingCampaignId,
 }: {
     step: number; setStep: (s: number) => void;
     icpThreshold: string; setIcpThreshold: (v: string) => void;
@@ -6173,6 +6244,7 @@ function CheckpointFormInline({
     enableAiPersonalization: boolean; setEnableAiPersonalization: (v: boolean) => void;
     enableAiConnectionPersonalization: boolean; setEnableAiConnectionPersonalization: (v: boolean) => void;
     enableAiFollowupPersonalization: boolean; setEnableAiFollowupPersonalization: (v: boolean) => void;
+    editingCampaignId?: string | null;
 }) {
     const totalSteps = CP_QUESTIONS.length;
 
@@ -6307,7 +6379,10 @@ function CheckpointFormInline({
 
     // LinkedIn follow-up config (when linkedin selected as next channel in step 3)
     // Multi-select: 'profile_view' | 'connect' | 'message'
-    const [liChannelActions, setLiChannelActions] = useState<string[]>([]);
+    // Initialise from the `actions` prop so edit-mode hydration (the parent sets
+    // cpActions from the saved campaign / its steps) pre-checks the LinkedIn action
+    // boxes. In the create flow `actions` is [] at mount, so this is a no-op there.
+    const [liChannelActions, setLiChannelActions] = useState<string[]>(actions || []);
     const [liFollowGenLoading, setLiFollowGenLoading] = useState(false);
 
     // AI Generate inline context panel state (one per message type)
@@ -6975,9 +7050,36 @@ function CheckpointFormInline({
                     ...actionSteps,
                 ],
             };
-            const data = await campaignCreation.createCampaign(payload);
-            if (data?.success) { window.location.href = '/campaigns'; }
-            else { alert('Failed to launch campaign: ' + (data?.error || 'Unknown error')); setLaunching(false); }
+            if (editingCampaignId) {
+                // Edit mode: update THIS campaign in place. PATCH /:id updates the
+                // campaign row (name/config) but does NOT persist steps, so the steps
+                // are saved separately via updateCampaignSteps (POST /:id/steps,
+                // destructive replace) — otherwise the edited workflow silently doesn't
+                // save and the campaign shows "No actions". Status + leads are left
+                // untouched so the running/draft state and existing leads are preserved.
+                await updateCampaign(editingCampaignId, { name: payload.name, config: payload.config });
+                // The steps endpoint passes steps straight to CampaignStepModel.bulkCreate,
+                // which reads step.type + step.order (NOT order_index). The create path maps
+                // these first; mirror that here so step_type/step_order aren't NULL → 500.
+                const stepsForSave = (payload.steps || []).map((s: any, i: number) => ({
+                    ...s,
+                    type: s.step_type || s.type,
+                    order: s.step_order ?? s.order ?? s.order_index ?? i,
+                    title: s.title || s.type,
+                }));
+                await updateCampaignSteps(editingCampaignId, stepsForSave);
+                // Re-run the campaign so the edited steps actually execute. Saving alone
+                // only persists — the engine runs steps via processCampaign, which the
+                // create flow kicks off on launch. startCampaign (POST /:id/start) sets
+                // the campaign running and runs processCampaign against the NEW steps; it
+                // respects per-lead progress, so nobody already contacted is re-messaged.
+                await startCampaign(editingCampaignId);
+                window.location.href = '/campaigns';
+            } else {
+                const data = await campaignCreation.createCampaign(payload);
+                if (data?.success) { window.location.href = '/campaigns'; }
+                else { alert('Failed to launch campaign: ' + (data?.error || 'Unknown error')); setLaunching(false); }
+            }
         } catch (err: any) { console.error('Campaign creation error', err); alert('Error: ' + err.message); setLaunching(false); }
     };
 
