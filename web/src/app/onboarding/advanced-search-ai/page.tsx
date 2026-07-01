@@ -7494,12 +7494,19 @@ function CheckpointFormInline({
                                                             </div>
 
                                                             {/* Side-by-side: Form + Preview */}
-                                                            <div style={{ display: 'flex', gap: '0', background: '#f8fffe' }}>
-                                                                {/* ── FORM (left) ── */}
-                                                                <div style={{ flex: 1, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '8px', minWidth: 0 }}>
-                                                                    {/* Template Name */}
-                                                                    <div>
-                                                                        <label style={{ fontSize: '11px', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '3px' }}>Template Name <span style={{ color: '#ef4444' }}>*</span></label>
+                                                            <div
+                                                              className="flex bg-[#f8fffe] dark:bg-[#0f1a18]"
+                                                              style={{ gap: '0' }}
+                                                            >
+                                                                <div
+                                                                  className="flex flex-1 flex-col gap-[8px] min-w-0 p-[10px_12px]"
+                                                                >                                                                    <div>
+                                                                    <label
+                                                                      className="text-[#374151] dark:text-gray-300"
+                                                                      style={{ fontSize: '11px', fontWeight: 600, display: 'block', marginBottom: '3px' }}
+                                                                    >
+                                                                        Template Name <span className="text-[#ef4444] dark:text-red-400">*</span>
+                                                                    </label>
                                                                         <input value={waNewTmplName} onChange={e => setWaNewTmplName(e.target.value)}
                                                                             placeholder="e.g. Intro outreach, Follow-up..."
                                                                             style={{ width: '100%', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '6px 8px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
@@ -7990,10 +7997,58 @@ function CheckpointFormInline({
                                                                     {/* Create new template form */}
                                                                     {showLiNewTmplForm && liNewTmplCategory === 'linkedin_connection' ? (
                                                                         <div style={{ padding: '10px', borderTop: liTemplates.filter(t => t.category === 'linkedin_connection').length > 0 ? '1px solid #bfdbfe' : 'none' }}>
-                                                                            <input value={liNewTmplName} onChange={e => setLiNewTmplName(e.target.value)} placeholder="Template name..." style={{ width: '100%', border: '1px solid #bfdbfe', borderRadius: '6px', padding: '6px 8px', fontSize: '12px', outline: 'none', marginBottom: '6px', boxSizing: 'border-box', fontFamily: 'inherit' }} />
-                                                                            <textarea value={liNewTmplBody} onChange={e => setLiNewTmplBody(e.target.value)} placeholder="Hi {{first_name}}, I would love to connect..." rows={3} style={{ width: '100%', border: '1px solid #bfdbfe', borderRadius: '6px', padding: '6px 8px', fontSize: '12px', outline: 'none', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: '6px' }} />
+                                                                            <input
+                                                                              value={liNewTmplName}
+                                                                              onChange={e => setLiNewTmplName(e.target.value)}
+                                                                              placeholder="Template name..."
+                                                                              className="w-full border border-[#bfdbfe] dark:border-[#1e3a8a] bg-white dark:bg-[#060b21] text-[#111827] dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-gray-600 outline-none"
+                                                                              style={{
+                                                                                  width: '100%',
+                                                                                  borderRadius: '6px',
+                                                                                  padding: '6px 8px',
+                                                                                  fontSize: '12px',
+                                                                                  marginBottom: '6px',
+                                                                                  boxSizing: 'border-box',
+                                                                                  fontFamily: 'inherit'
+                                                                              }}
+                                                                            />
+                                                                            <textarea
+                                                                              value={liNewTmplBody}
+                                                                              onChange={e => setLiNewTmplBody(e.target.value)}
+                                                                              placeholder="Hi {{first_name}}, I would love to connect..."
+                                                                              rows={3}
+                                                                              className="w-full border border-[#bfdbfe] dark:border-[#1e3a8a] bg-white dark:bg-[#060b21] text-[#111827] dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-gray-600 outline-none"
+                                                                              style={{
+                                                                                  width: '100%',
+                                                                                  borderRadius: '6px',
+                                                                                  padding: '6px 8px',
+                                                                                  fontSize: '12px',
+                                                                                  resize: 'vertical',
+                                                                                  fontFamily: 'inherit',
+                                                                                  boxSizing: 'border-box',
+                                                                                  marginBottom: '6px'
+                                                                              }}
+                                                                            />
                                                                             <div style={{ display: 'flex', gap: '6px' }}>
-                                                                                <button onClick={saveLiTemplate} disabled={liNewTmplSaving} style={{ flex: 1, background: '#1e40af', color: '#fff', border: 'none', borderRadius: '6px', padding: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>{liNewTmplSaving ? 'Saving...' : '💾 Save'}</button>
+                                                                                <button
+                                                                                  onClick={saveLiTemplate}
+                                                                                  disabled={liNewTmplSaving}
+                                                                                  className={`flex-1 rounded-[6px] text-white
+                                                                                ${liNewTmplSaving
+                                                                                    ? 'bg-gray-400 dark:bg-gray-600'
+                                                                                    : 'bg-[#1e40af] dark:bg-blue-600'
+                                                                                  }
+                                                                                `}
+                                                                                  style={{
+                                                                                      border: 'none',
+                                                                                      padding: '6px',
+                                                                                      fontSize: '12px',
+                                                                                      fontWeight: 600,
+                                                                                      cursor: 'pointer'
+                                                                                  }}
+                                                                                >
+                                                                                    {liNewTmplSaving ? 'Saving...' : '💾 Save'}
+                                                                                </button>
                                                                                 <button onClick={() => setShowLiNewTmplForm(false)} style={{ background: '#f3f4f6', border: 'none', borderRadius: '6px', padding: '6px 10px', fontSize: '12px', color: '#6b7280', cursor: 'pointer' }}>Cancel</button>
                                                                             </div>
                                                                         </div>
@@ -8183,7 +8238,19 @@ function CheckpointFormInline({
                                                                             <input value={liNewTmplName} onChange={e => setLiNewTmplName(e.target.value)} placeholder="Template name..." style={{ width: '100%', border: '1px solid #bfdbfe', borderRadius: '6px', padding: '6px 8px', fontSize: '12px', outline: 'none', marginBottom: '6px', boxSizing: 'border-box', fontFamily: 'inherit' }} />
                                                                             <textarea value={liNewTmplBody} onChange={e => setLiNewTmplBody(e.target.value)} placeholder={'Hi {{first_name}}, great connecting! I wanted to share...'} rows={3} style={{ width: '100%', border: '1px solid #bfdbfe', borderRadius: '6px', padding: '6px 8px', fontSize: '12px', outline: 'none', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: '6px' }} />
                                                                             <div style={{ display: 'flex', gap: '6px' }}>
-                                                                                <button onClick={saveLiTemplate} disabled={liNewTmplSaving} style={{ flex: 1, background: '#1e40af', color: '#fff', border: 'none', borderRadius: '6px', padding: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>{liNewTmplSaving ? 'Saving...' : '💾 Save'}</button>
+                                                                                <button onClick={saveLiTemplate} disabled={liNewTmplSaving} className={`flex-1 rounded-[6px] text-white
+                                                                                ${liNewTmplSaving
+                                                                                  ? 'bg-gray-400 dark:bg-gray-600'
+                                                                                  : 'bg-[#1e40af] dark:bg-blue-600'
+                                                                                }
+                                                                                `}
+                                                                                        style={{
+                                                                                            border: 'none',
+                                                                                            padding: '6px',
+                                                                                            fontSize: '12px',
+                                                                                            fontWeight: 600,
+                                                                                            cursor: 'pointer'
+                                                                                        }}>{liNewTmplSaving ? 'Saving...' : '💾 Save'}</button>
                                                                                 <button onClick={() => setShowLiNewTmplForm(false)} style={{ background: '#f3f4f6', border: 'none', borderRadius: '6px', padding: '6px 10px', fontSize: '12px', color: '#6b7280', cursor: 'pointer' }}>Cancel</button>
                                                                             </div>
                                                                         </div>
@@ -8285,135 +8352,294 @@ function CheckpointFormInline({
                                         {(enableDailyWebPresence || enableDailyPosts || enableAiPersonalization) && (
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                                 {/* Toggle: Web Presence */}
-                                                <div style={{
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                                    padding: '9px 12px', background: enableDailyWebPresence ? '#e8ecfa' : '#f9fafb',
-                                                    border: `1px solid ${enableDailyWebPresence ? '#c2d6eb' : '#e5e7eb'}`, borderRadius: '8px', cursor: 'pointer',
-                                                }} onClick={() => setEnableDailyWebPresence(!enableDailyWebPresence)}>
+                                                <div
+                                                  onClick={() => setEnableDailyWebPresence(!enableDailyWebPresence)}
+                                                  className={`flex items-center justify-between border rounded-[8px] cursor-pointer transition-colors
+                                                ${enableDailyWebPresence
+                                                    ? 'bg-[#e8ecfa] dark:bg-blue-900/40 border-[#c2d6eb] dark:border-blue-700'
+                                                    : 'bg-[#f9fafb] dark:bg-[#0f172a] border-[#e5e7eb] dark:border-[#334155]'
+                                                  }
+                                                `}
+                                                  style={{
+                                                      display: 'flex',
+                                                      alignItems: 'center',
+                                                      justifyContent: 'space-between',
+                                                      padding: '9px 12px'
+                                                  }}
+                                                >
                                                     <div>
-                                                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>🌐 Refresh web presence daily</div>
-                                                        <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>Re-runs Google search for articles, news & social profiles per lead</div>
+                                                        <div
+                                                          className="text-[#1e293b] dark:text-gray-100"
+                                                          style={{ fontSize: '13px', fontWeight: 600 }}
+                                                        >
+                                                            🌐 Refresh web presence daily
+                                                        </div>
+                                                        <div
+                                                          className="text-[#6b7280] dark:text-slate-300"
+                                                          style={{ fontSize: '11px', marginTop: '2px' }}
+                                                        >
+                                                            Re-runs Google search for articles, news & social profiles per lead
+                                                        </div>
                                                     </div>
-                                                    <div style={{
-                                                        width: '32px', height: '18px', borderRadius: '99px', flexShrink: 0,
-                                                        background: enableDailyWebPresence ? '#0b1957' : '#d1d5db', position: 'relative', transition: 'background 0.2s',
-                                                    }}>
-                                                        <div style={{
-                                                            position: 'absolute', top: '2px',
-                                                            left: enableDailyWebPresence ? '16px' : '2px',
-                                                            width: '14px', height: '14px', borderRadius: '50%', background: '#fff',
-                                                            transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                                                        }} />
+                                                    <div
+                                                      className={`w-[32px] h-[18px] rounded-[99px] flex-shrink-0 relative transition-colors
+                                                        ${enableDailyWebPresence ? 'bg-[#0b1957] dark:bg-blue-500' : 'bg-[#d1d5db] dark:bg-gray-600'}
+                                                        `}
+                                                      style={{
+                                                          position: 'relative',
+                                                          transition: 'background 0.2s'
+                                                      }}
+                                                    >
+                                                        <div
+                                                          className="absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white transition-[left] shadow-[0_1px_3px_rgba(0,0,0,0.2)]"
+                                                          style={{
+                                                              left: enableDailyWebPresence ? '16px' : '2px',
+                                                              transition: 'left 0.2s'
+                                                          }}
+                                                        />
                                                     </div>
                                                 </div>
 
                                                 {/* Toggle: LinkedIn Posts */}
-                                                <div style={{
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                                    padding: '9px 12px', background: enableDailyPosts ? '#e8ecfa' : '#f9fafb',
-                                                    border: `1px solid ${enableDailyPosts ? '#c2d6eb' : '#e5e7eb'}`, borderRadius: '8px', cursor: 'pointer',
-                                                }} onClick={() => setEnableDailyPosts(!enableDailyPosts)}>
+                                                <div
+                                                  onClick={() => setEnableDailyPosts(!enableDailyPosts)}
+                                                  className={`flex items-center justify-between border rounded-[8px] cursor-pointer transition-colors
+        ${enableDailyPosts
+                                                    ? 'bg-[#e8ecfa] dark:bg-blue-900/40 border-[#c2d6eb] dark:border-blue-700'
+                                                    : 'bg-[#f9fafb] dark:bg-[#0f172a] border-[#e5e7eb] dark:border-[#334155]'
+                                                  }
+    `}
+                                                  style={{
+                                                      display: 'flex',
+                                                      alignItems: 'center',
+                                                      justifyContent: 'space-between',
+                                                      padding: '9px 12px'
+                                                  }}
+                                                >
                                                     <div>
-                                                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>📝 Fetch live LinkedIn posts</div>
-                                                        <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>Pulls the lead&apos;s recent LinkedIn posts before each send</div>
+                                                        <div
+                                                          className="text-[#1e293b] dark:text-gray-100"
+                                                          style={{ fontSize: '13px', fontWeight: 600 }}
+                                                        >
+                                                            📝 Fetch live LinkedIn posts
+                                                        </div>
+                                                        <div
+                                                          className="text-[#6b7280] dark:text-gray-400"
+                                                          style={{ fontSize: '11px', marginTop: '2px' }}
+                                                        >
+                                                            Pulls the lead&apos;s recent LinkedIn posts before each send
+                                                        </div>
                                                     </div>
-                                                    <div style={{
-                                                        width: '32px', height: '18px', borderRadius: '99px', flexShrink: 0,
-                                                        background: enableDailyPosts ? '#0b1957' : '#d1d5db', position: 'relative', transition: 'background 0.2s',
-                                                    }}>
-                                                        <div style={{
-                                                            position: 'absolute', top: '2px',
-                                                            left: enableDailyPosts ? '16px' : '2px',
-                                                            width: '14px', height: '14px', borderRadius: '50%', background: '#fff',
-                                                            transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                                                        }} />
+                                                    <div
+                                                      className={`w-[32px] h-[18px] rounded-[99px] flex-shrink-0 relative transition-colors
+                                                        ${enableDailyPosts ? 'bg-[#0b1957] dark:bg-blue-500' : 'bg-[#d1d5db] dark:bg-gray-600'}
+                                                    `}
+                                                      style={{
+                                                          position: 'relative',
+                                                          transition: 'background 0.2s'
+                                                      }}
+                                                    >
+                                                        <div
+                                                          className="absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white transition-[left] shadow-[0_1px_3px_rgba(0,0,0,0.2)]"
+                                                          style={{
+                                                              left: enableDailyPosts ? '16px' : '2px',
+                                                              transition: 'left 0.2s'
+                                                          }}
+                                                        />
                                                     </div>
                                                 </div>
 
                                                 {/* Toggle: AI Generate unique message */}
-                                                <div style={{
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                                    padding: '9px 12px', background: enableAiPersonalization ? '#f5f3ff' : '#f9fafb',
-                                                    border: `1px solid ${enableAiPersonalization ? '#ddd6fe' : '#e5e7eb'}`, borderRadius: '8px', cursor: 'pointer',
-                                                    opacity: (!enableDailyWebPresence && !enableDailyPosts) ? 0.5 : 1,
-                                                    pointerEvents: (!enableDailyWebPresence && !enableDailyPosts) ? 'none' : 'auto',
-                                                }} onClick={() => setEnableAiPersonalization(!enableAiPersonalization)}>
+                                                <div
+                                                  onClick={() => setEnableAiPersonalization(!enableAiPersonalization)}
+                                                  className={`flex items-center justify-between border rounded-[8px] cursor-pointer transition-colors
+                                                ${enableAiPersonalization
+                                                    ? 'bg-[#f5f3ff] dark:bg-violet-900/30 border-[#ddd6fe] dark:border-violet-700'
+                                                    : 'bg-[#f9fafb] dark:bg-[#0f172a] border-[#e5e7eb] dark:border-[#334155]'
+                                                  }
+                                                `}
+                                                  style={{
+                                                      display: 'flex',
+                                                      alignItems: 'center',
+                                                      justifyContent: 'space-between',
+                                                      padding: '9px 12px',
+                                                      opacity: (!enableDailyWebPresence && !enableDailyPosts) ? 0.5 : 1,
+                                                      pointerEvents: (!enableDailyWebPresence && !enableDailyPosts) ? 'none' : 'auto'
+                                                  }}
+                                                >
                                                     <div>
-                                                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>✨ AI-generate unique message per lead</div>
-                                                        <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>AI creates a personalised connect + follow-up using live web & post data{(!enableDailyWebPresence && !enableDailyPosts) ? ' — enable web presence or posts first' : ''}</div>
+                                                        <div
+                                                          className="text-[#1e293b] dark:text-gray-100"
+                                                          style={{ fontSize: '13px', fontWeight: 600 }}
+                                                        >
+                                                            ✨ AI-generate unique message per lead
+                                                        </div>
+                                                        <div
+                                                          className="text-[#6b7280] dark:text-gray-400"
+                                                          style={{ fontSize: '11px', marginTop: '2px' }}
+                                                        >
+                                                            AI creates a personalised connect + follow-up using live web & post data
+                                                            {(!enableDailyWebPresence && !enableDailyPosts) ? ' — enable web presence or posts first' : ''}
+                                                        </div>
                                                     </div>
-                                                    <div style={{
-                                                        width: '32px', height: '18px', borderRadius: '99px', flexShrink: 0,
-                                                        background: enableAiPersonalization ? '#7c3aed' : '#d1d5db', position: 'relative', transition: 'background 0.2s',
-                                                    }}>
-                                                        <div style={{
-                                                            position: 'absolute', top: '2px',
-                                                            left: enableAiPersonalization ? '16px' : '2px',
-                                                            width: '14px', height: '14px', borderRadius: '50%', background: '#fff',
-                                                            transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                                                        }} />
+                                                    <div
+                                                      className={`w-[32px] h-[18px] rounded-[99px] flex-shrink-0 relative transition-colors
+                                                        ${enableAiPersonalization ? 'bg-[#7c3aed] dark:bg-violet-500' : 'bg-[#d1d5db] dark:bg-gray-600'}
+                                                    `}
+                                                      style={{
+                                                          position: 'relative',
+                                                          transition: 'background 0.2s'
+                                                      }}
+                                                    >
+                                                        <div
+                                                          className="absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white transition-[left] shadow-[0_1px_3px_rgba(0,0,0,0.2)]"
+                                                          style={{
+                                                              left: enableAiPersonalization ? '16px' : '2px',
+                                                              transition: 'left 0.2s'
+                                                          }}
+                                                        />
                                                     </div>
                                                 </div>
 
                                                 {(enableDailyWebPresence || enableDailyPosts) && enableAiPersonalization && (
-                                                    <div style={{ fontSize: '11px', color: '#7c3aed', background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '7px', padding: '7px 10px', lineHeight: 1.5 }}>
-                                                        ✅ Each lead will receive a <strong>unique AI-generated message</strong> based on their live web presence & LinkedIn posts. Your static template message is used as a fallback.
-                                                    </div>
+                                                  <div
+                                                    className="bg-[#faf5ff] dark:bg-violet-900/20 border border-[#e9d5ff] dark:border-violet-800 text-[#7c3aed] dark:text-violet-300"
+                                                    style={{
+                                                        fontSize: '11px',
+                                                        borderRadius: '7px',
+                                                        padding: '7px 10px',
+                                                        lineHeight: 1.5
+                                                    }}
+                                                  >
+                                                      ✅ Each lead will receive a <strong>unique AI-generated message</strong> based on their live web presence & LinkedIn posts. Your static template message is used as a fallback.
+                                                  </div>
                                                 )}
 
                                                 {(enableDailyWebPresence || enableDailyPosts) && enableAiPersonalization && (
-                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e5e7eb' }}>
-                                                        <div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280' }}>Granular AI Message Control:</div>
-
+                                                  <div
+                                                    className="border-t border-[#e5e7eb] dark:border-[#334155]"
+                                                    style={{
+                                                        display: 'flex',
+                                                        flexDirection: 'column',
+                                                        gap: '10px',
+                                                        marginTop: '12px',
+                                                        paddingTop: '12px'
+                                                    }}
+                                                  >
+                                                      <div
+                                                        className="text-[#6b7280] dark:text-gray-400"
+                                                        style={{ fontSize: '12px', fontWeight: 600 }}
+                                                      >
+                                                          Granular AI Message Control:
+                                                      </div>
                                                         {/* Toggle: AI Generate Connection Message */}
-                                                        <div style={{
-                                                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                                            padding: '9px 12px', background: enableAiConnectionPersonalization ? '#f5f3ff' : '#f9fafb',
-                                                            border: `1px solid ${enableAiConnectionPersonalization ? '#ddd6fe' : '#e5e7eb'}`, borderRadius: '8px', cursor: 'pointer',
-                                                        }} onClick={() => setEnableAiConnectionPersonalization(!enableAiConnectionPersonalization)}>
-                                                            <div>
-                                                                <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>🔗 AI-generate connection request</div>
-                                                                <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>Create personalized connection messages</div>
-                                                            </div>
-                                                            <div style={{
-                                                                width: '32px', height: '18px', borderRadius: '99px', flexShrink: 0,
-                                                                background: enableAiConnectionPersonalization ? '#7c3aed' : '#d1d5db', position: 'relative', transition: 'background 0.2s',
-                                                            }}>
-                                                                <div style={{
-                                                                    position: 'absolute', top: '2px',
+                                                      <div
+                                                        onClick={() => setEnableAiConnectionPersonalization(!enableAiConnectionPersonalization)}
+                                                        className={`flex items-center justify-between border rounded-[8px] cursor-pointer transition-colors
+                                                        ${enableAiConnectionPersonalization
+                                                          ? 'bg-[#f5f3ff] dark:bg-violet-900/30 border-[#ddd6fe] dark:border-violet-700'
+                                                          : 'bg-[#f9fafb] dark:bg-[#0f172a] border-[#e5e7eb] dark:border-[#334155]'
+                                                        }
+                                                        `}
+                                                        style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'space-between',
+                                                            padding: '9px 12px'
+                                                        }}
+                                                      >
+                                                          <div>
+                                                              <div
+                                                                className="text-[#1e293b] dark:text-gray-100"
+                                                                style={{ fontSize: '13px', fontWeight: 600 }}
+                                                              >
+                                                                  🔗 AI-generate connection request
+                                                              </div>
+                                                              <div
+                                                                className="text-[#6b7280] dark:text-gray-400"
+                                                                style={{ fontSize: '11px', marginTop: '2px' }}
+                                                              >
+                                                                  Create personalized connection messages
+                                                              </div>
+                                                          </div>
+                                                          <div
+                                                            className={`w-[32px] h-[18px] rounded-[99px] flex-shrink-0 relative transition-colors
+                                                                ${enableAiConnectionPersonalization ? 'bg-[#7c3aed] dark:bg-violet-500' : 'bg-[#d1d5db] dark:bg-gray-600'}
+                                                            `}
+                                                            style={{
+                                                                position: 'relative',
+                                                                transition: 'background 0.2s'
+                                                            }}
+                                                          >
+                                                              <div
+                                                                className="absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white transition-[left] shadow-[0_1px_3px_rgba(0,0,0,0.2)]"
+                                                                style={{
                                                                     left: enableAiConnectionPersonalization ? '16px' : '2px',
-                                                                    width: '14px', height: '14px', borderRadius: '50%', background: '#fff',
-                                                                    transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                                                                }} />
-                                                            </div>
+                                                                    transition: 'left 0.2s'
+                                                                }}
+                                                              />
+                                                          </div>
                                                         </div>
 
                                                         {/* Toggle: AI Generate Followup Message */}
-                                                        <div style={{
-                                                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                                            padding: '9px 12px', background: enableAiFollowupPersonalization ? '#f5f3ff' : '#f9fafb',
-                                                            border: `1px solid ${enableAiFollowupPersonalization ? '#ddd6fe' : '#e5e7eb'}`, borderRadius: '8px', cursor: 'pointer',
-                                                        }} onClick={() => setEnableAiFollowupPersonalization(!enableAiFollowupPersonalization)}>
-                                                            <div>
-                                                                <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>💬 AI-generate follow-up message</div>
-                                                                <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>Create personalized follow-up messages</div>
-                                                            </div>
-                                                            <div style={{
-                                                                width: '32px', height: '18px', borderRadius: '99px', flexShrink: 0,
-                                                                background: enableAiFollowupPersonalization ? '#7c3aed' : '#d1d5db', position: 'relative', transition: 'background 0.2s',
-                                                            }}>
-                                                                <div style={{
-                                                                    position: 'absolute', top: '2px',
+                                                      <div
+                                                        onClick={() => setEnableAiFollowupPersonalization(!enableAiFollowupPersonalization)}
+                                                        className={`flex items-center justify-between border rounded-[8px] cursor-pointer transition-colors
+        ${enableAiFollowupPersonalization
+                                                          ? 'bg-[#f5f3ff] dark:bg-violet-900/30 border-[#ddd6fe] dark:border-violet-700'
+                                                          : 'bg-[#f9fafb] dark:bg-[#0f172a] border-[#e5e7eb] dark:border-[#334155]'
+                                                        }
+    `}
+                                                        style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'space-between',
+                                                            padding: '9px 12px'
+                                                        }}
+                                                      >
+                                                          <div>
+                                                              <div
+                                                                className="text-[#1e293b] dark:text-gray-100"
+                                                                style={{ fontSize: '13px', fontWeight: 600 }}
+                                                              >
+                                                                  💬 AI-generate follow-up message
+                                                              </div>
+                                                              <div
+                                                                className="text-[#6b7280] dark:text-gray-400"
+                                                                style={{ fontSize: '11px', marginTop: '2px' }}
+                                                              >
+                                                                  Create personalized follow-up messages
+                                                              </div>
+                                                          </div>
+                                                          <div
+                                                            className={`w-[32px] h-[18px] rounded-[99px] flex-shrink-0 relative transition-colors
+                                                                ${enableAiFollowupPersonalization ? 'bg-[#7c3aed] dark:bg-violet-500' : 'bg-[#d1d5db] dark:bg-gray-600'}
+                                                            `}
+                                                            style={{
+                                                                position: 'relative',
+                                                                transition: 'background 0.2s'
+                                                            }}
+                                                          >
+                                                              <div
+                                                                className="absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white transition-[left] shadow-[0_1px_3px_rgba(0,0,0,0.2)]"
+                                                                style={{
                                                                     left: enableAiFollowupPersonalization ? '16px' : '2px',
-                                                                    width: '14px', height: '14px', borderRadius: '50%', background: '#fff',
-                                                                    transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                                                                }} />
-                                                            </div>
-                                                        </div>
-
-                                                        <div style={{ fontSize: '11px', color: '#7c3aed', background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '7px', padding: '7px 10px', lineHeight: 1.5 }}>
-                                                            💡 <strong>Tip:</strong> Choose which message(s) should be AI-generated. Unchecked messages will use your static template.
-                                                        </div>
+                                                                    transition: 'left 0.2s'
+                                                                }}
+                                                              />
+                                                          </div>
+                                                      </div>
+                                                      <div
+                                                        className="bg-[#faf5ff] dark:bg-violet-900/20 border border-[#e9d5ff] dark:border-violet-800 text-[#7c3aed] dark:text-violet-300"
+                                                        style={{
+                                                            fontSize: '11px',
+                                                            borderRadius: '7px',
+                                                            padding: '7px 10px',
+                                                            lineHeight: 1.5
+                                                        }}
+                                                      >
+                                                          💡 <strong>Tip:</strong> Choose which message(s) should be AI-generated. Unchecked messages will use your static template.
+                                                      </div>
                                                     </div>
                                                 )}
                                             </div>
@@ -8986,42 +9212,78 @@ function AiMsgContextPanel({
         </div>
 
             {/* Value prop */}
-            <div>
-                <label style={{ fontSize: '11px', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '4px' }}>
-                    What do you offer? <span style={{ color: '#9ca3af', fontWeight: 400 }}>product / service / value prop</span>
-                </label>
-                <textarea
-                    value={valueProp}
-                    onChange={e => setValueProp(e.target.value)}
-                    placeholder="e.g. We help SaaS companies reduce churn with AI-powered customer success..."
-                    rows={2}
-                    style={{ width: '100%', border: '1px solid #c2d6eb', borderRadius: '8px', padding: '7px 10px', fontSize: '12px', outline: 'none', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', background: '#fff', color: '#111827' }}
-                />
-            </div>
+          <div>
+              <label
+                className="text-[#374151] dark:text-gray-300"
+                style={{ fontSize: '11px', fontWeight: 600, display: 'block', marginBottom: '4px' }}
+              >
+                  What do you offer? <span className="text-[#9ca3af] dark:text-gray-500" style={{ fontWeight: 400 }}>product / service / value prop</span>
+              </label>
+              <textarea
+                value={valueProp}
+                onChange={e => setValueProp(e.target.value)}
+                placeholder="e.g. We help SaaS companies reduce churn with AI-powered customer success..."
+                rows={2}
+                className="w-full border border-[#c2d6eb] dark:border-[#1e3a8a] bg-white dark:bg-[#060b21] text-[#111827] dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-gray-600 outline-none"
+                style={{
+                    width: '100%',
+                    borderRadius: '8px',
+                    padding: '7px 10px',
+                    fontSize: '12px',
+                    resize: 'vertical',
+                    fontFamily: 'inherit',
+                    boxSizing: 'border-box'
+                }}
+              />
+          </div>
 
             {/* Tone + Goal */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                    <div style={{ fontSize: '11px', fontWeight: 600, color: '#374151', marginBottom: '5px' }}>Tone</div>
+                    <div className="text-[#374151] dark:text-gray-300" style={{ fontSize: '11px', fontWeight: 600, marginBottom: '5px' }}>Tone</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         {tones.map(t => (
-                            <div key={t.id} onClick={() => setTone(t.id)}
-                                style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 8px', border: `1.5px solid ${tone === t.id ? '#0b1957' : '#e5e7eb'}`, borderRadius: '7px', cursor: 'pointer', background: tone === t.id ? '#e8ecfa' : '#fff', fontSize: '12px', fontWeight: tone === t.id ? 600 : 400, color: tone === t.id ? '#0b1957' : '#374151' }}>
-                                {tone === t.id && <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#0b1957', flexShrink: 0 }} />}
-                                {t.label}
-                            </div>
+                          <div
+                            key={t.id}
+                            onClick={() => setTone(t.id)}
+                            className={`flex items-center gap-[6px] px-[8px] py-[6px] border-[1.5px] rounded-[7px] cursor-pointer text-[12px] transition-colors
+                                ${tone === t.id
+                                          ? 'border-[#0b1957] dark:border-blue-400 bg-[#e8ecfa] dark:bg-blue-900/40 text-[#0b1957] dark:text-blue-100 font-semibold'
+                                          : 'border-[#e5e7eb] dark:border-[#1e3a8a] bg-white dark:bg-[#060b21] text-[#374151] dark:text-gray-400 font-normal'
+                                        }
+                            `}
+                                >
+                              {tone === t.id && (
+                                <span
+                                  className="w-[6px] h-[6px] rounded-full bg-[#0b1957] dark:bg-blue-400 flex-shrink-0"
+                                />
+                              )}
+                              {t.label}
+                          </div>
                         ))}
                     </div>
                 </div>
                 <div>
-                    <div style={{ fontSize: '11px', fontWeight: 600, color: '#374151', marginBottom: '5px' }}>Goal</div>
+                    <div className="text-[#374151] dark:text-gray-300" style={{ fontSize: '11px', fontWeight: 600, marginBottom: '5px' }}>Goal</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         {goals.map(g => (
-                            <div key={g.id} onClick={() => setGoal(g.id)}
-                                style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 8px', border: `1.5px solid ${goal === g.id ? '#0b1957' : '#e5e7eb'}`, borderRadius: '7px', cursor: 'pointer', background: goal === g.id ? '#e8ecfa' : '#fff', fontSize: '12px', fontWeight: goal === g.id ? 600 : 400, color: goal === g.id ? '#0b1957' : '#374151' }}>
-                                {goal === g.id && <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#0b1957', flexShrink: 0 }} />}
-                                {g.label}
-                            </div>
+                          <div
+                            key={g.id}
+                            onClick={() => setGoal(g.id)}
+                            className={`flex items-center gap-[6px] px-[8px] py-[6px] border-[1.5px] rounded-[7px] cursor-pointer text-[12px] transition-colors
+                            ${goal === g.id
+                                      ? 'border-[#0b1957] dark:border-blue-400 bg-[#e8ecfa] dark:bg-blue-900/40 text-[#0b1957] dark:text-blue-100 font-semibold'
+                                      : 'border-[#e5e7eb] dark:border-[#1e3a8a] bg-white dark:bg-[#060b21] text-[#374151] dark:text-gray-400 font-normal'
+                                    }
+                        `}
+                            >
+                              {goal === g.id && (
+                                <span
+                                  className="w-[6px] h-[6px] rounded-full bg-[#0b1957] dark:bg-blue-400 flex-shrink-0"
+                                />
+                              )}
+                              {g.label}
+                          </div>
                         ))}
                     </div>
                 </div>
@@ -9029,18 +9291,52 @@ function AiMsgContextPanel({
 
             {/* Targeting badge */}
             {targetingTags.length > 0 && (
-                <div style={{ background: '#e8ecfa', border: '1px solid #c2d6eb', borderRadius: '7px', padding: '6px 10px', fontSize: '11px', color: '#0b1957', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px' }}>
-                    <span style={{ fontWeight: 700 }}>🎯</span>
-                    {targetingTags.join(' · ')}
-                    {leadsCount > 0 && <span style={{ marginLeft: '4px', color: '#0b1957' }}>· {leadsCount} lead{leadsCount !== 1 ? 's' : ''} with live web insights</span>}
-                </div>
+              <div
+                className="bg-[#e8ecfa] dark:bg-blue-900/40 border border-[#c2d6eb] dark:border-blue-700 text-[#0b1957] dark:text-blue-100"
+                style={{
+                    borderRadius: '7px',
+                    padding: '6px 10px',
+                    fontSize: '11px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '4px'
+                }}
+              >
+                  <span style={{ fontWeight: 700 }}>🎯</span>
+                  {targetingTags.join(' · ')}
+                  {leadsCount > 0 && (
+                    <span
+                      className="text-[#0b1957] dark:text-blue-200"
+                      style={{ marginLeft: '4px' }}
+                    >
+                    · {leadsCount} lead{leadsCount !== 1 ? 's' : ''} with live web insights
+                </span>
+                  )}
+              </div>
             )}
 
             {/* Generate button */}
-            <button onClick={onGenerate} disabled={loading}
-                style={{ background: loading ? '#9ca3af' : 'linear-gradient(135deg,#0b1957,#1a3a8f)', color: '#fff', border: 'none', borderRadius: '9px', padding: '10px', fontSize: '13px', fontWeight: 700, cursor: loading ? 'default' : 'pointer', boxShadow: loading ? 'none' : '0 3px 10px rgba(11,25,87,.35)' }}>
-                {loading ? '⏳ Generating...' : '✨ Generate Message'}
-            </button>
+          <button
+            onClick={onGenerate}
+            disabled={loading}
+            className={`rounded-[9px] text-white transition-all
+                ${loading
+                      ? 'bg-[#9ca3af] dark:bg-gray-700'
+                      : 'bg-gradient-to-br from-[#0b1957] to-[#1a3a8f] dark:from-[#1e3a8a] dark:to-[#3b82f6] shadow-[0_3px_10px_rgba(11,25,87,.35)] dark:shadow-none'
+                    }
+            `}
+            style={{
+                border: 'none',
+                padding: '10px',
+                fontSize: '13px',
+                fontWeight: 700,
+                cursor: loading ? 'default' : 'pointer',
+                boxShadow: loading ? 'none' : '0 3px 10px rgba(11,25,87,.35)'
+            }}
+          >
+              {loading ? '⏳ Generating...' : '✨ Generate Message'}
+          </button>
         </div>
     );
 }
