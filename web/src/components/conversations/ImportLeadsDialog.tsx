@@ -270,12 +270,25 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
   useEffect(() => {
     if (!open) return;
     if (isEmailMode) {
-      // Email mode: load email broadcast groups
-      fetch(`${EMAIL_API}/groups?channel=${channel}`, {
+      // Email mode: load broadcast groups. Gmail/Outlook route through
+      // LAD-Email-Comms (single-object response shape: {groups: [...]}).
+      // Custom SMTP still uses the legacy WABA-Comms envelope
+      // {success, data: [...]}.
+      const isHosted = channel === 'gmail' || channel === 'outlook';
+      const url = isHosted
+        ? `/api/email-comms/groups?channel=${channel}`
+        : `${EMAIL_API}/groups?channel=${channel}`;
+      fetch(url, {
         headers: { 'Authorization': `Bearer ${safeStorage.getItem('token') || ''}` },
       })
         .then((r) => r.json())
-        .then((data) => { if (data.success) setGroups(data.data || []); })
+        .then((data) => {
+          if (isHosted) {
+            setGroups(data.groups || []);
+          } else if (data.success) {
+            setGroups(data.data || []);
+          }
+        })
         .catch(() => {});
     } else {
       // WhatsApp mode: load chat groups
@@ -630,7 +643,15 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
     try {
       // ── Email mode ─────────────────────────────────────────────────────────
       if (isEmailMode) {
-        const res = await fetch(`${EMAIL_API}/contacts`, {
+        // Gmail/Outlook → LAD-Email-Comms POST /contacts. That endpoint
+        // atomically bulk-upserts + assigns to a group if group_id is
+        // supplied, so we don't need the follow-up /groups/:id/contacts
+        // call. Custom SMTP still uses the legacy WABA envelope path.
+        const isHosted = channel === 'gmail' || channel === 'outlook';
+        const url = isHosted
+          ? `/api/email-comms/contacts`
+          : `${EMAIL_API}/contacts`;
+        const res = await fetch(url, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -647,9 +668,19 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
           }),
         });
         const data = await res.json();
-        if (data.success) {
-          // If group assignment requested and we have contact_ids, add them to the group
-          if (emailGroupId && data.data?.contact_ids?.length > 0) {
+
+        // Normalise the two response shapes:
+        //   * LAD-Email-Comms: {imported, duplicates, contact_ids,
+        //                       added_to_group}
+        //   * Legacy WABA:     {success, data: {imported, contact_ids,
+        //                       errors, skipped}}
+        const ok = isHosted ? res.ok : !!data.success;
+        const inner = isHosted ? data : (data.data ?? {});
+
+        if (ok) {
+          // For legacy provider, still need to add contacts to the group
+          // after import — LAD-Email-Comms already did it atomically.
+          if (!isHosted && emailGroupId && inner?.contact_ids?.length > 0) {
             try {
               await fetch(`${EMAIL_API}/groups/${emailGroupId}/contacts`, {
                 method: 'POST',
@@ -657,7 +688,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                   'Content-Type': 'application/json',
                   'Authorization': `Bearer ${safeStorage.getItem('token') || ''}`,
                 },
-                body: JSON.stringify({ contact_ids: data.data.contact_ids }),
+                body: JSON.stringify({ contact_ids: inner.contact_ids }),
               });
             } catch { /* non-fatal */ }
           }
@@ -667,10 +698,17 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
             setImportResult({
               success: true,
               total: validLeads.length,
-              imported: data.data.imported ?? validLeads.length,
+              imported: inner.imported ?? validLeads.length,
               conversations: 0,
-              errors: (data.data.errors || []).map((e: any) => ({ name: e.name || e.email || 'Contact', error: e.error })),
-              skipped: data.data.skipped ? [{ name: `${data.data.skipped} contact(s)`, reason: 'missing name or email' }] : [],
+              errors: (inner.errors || []).map((e: { name?: string; email?: string; error: string }) => ({
+                name: e.name || e.email || 'Contact',
+                error: e.error,
+              })),
+              skipped: (isHosted && inner.duplicates)
+                ? [{ name: `${inner.duplicates} contact(s)`, reason: 'already in address book' }]
+                : (inner.skipped
+                    ? [{ name: `${inner.skipped} contact(s)`, reason: 'missing name or email' }]
+                    : []),
               duplicates: [],
               conversationIds: [],
             });
@@ -679,7 +717,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
           if (!runInBackground) {
             setImportResult({
               success: false, total: validLeads.length, imported: 0, conversations: 0,
-              errors: [{ name: 'Import', error: data.error || data.detail || 'Unknown error' }],
+              errors: [{ name: 'Import', error: data.detail || data.error || 'Unknown error' }],
               skipped: [],
               duplicates: [],
             });
