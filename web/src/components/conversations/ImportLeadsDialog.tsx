@@ -204,6 +204,30 @@ function autoFixPhone(phone: string, countryCode: string): string {
   return countryCode + cleaned;
 }
 
+// Turn an API error body into a readable string. FastAPI validation errors
+// come back as `detail: [{ type, loc, msg, input, ctx }]` — rendering that
+// array/object directly as a React child throws "Objects are not valid as a
+// React child" (#31) and crashes the page. Flatten it to "field: message".
+function formatApiError(data: unknown): string {
+  const d = (data as { detail?: unknown; error?: unknown })?.detail
+    ?? (data as { error?: unknown })?.error;
+  if (Array.isArray(d)) {
+    return d
+      .map((e) => {
+        const it = e as { loc?: unknown[]; msg?: string };
+        const field = Array.isArray(it.loc)
+          ? it.loc.filter((x) => x !== 'body').join('.')
+          : '';
+        return field ? `${field}: ${it.msg ?? ''}` : (it.msg ?? '');
+      })
+      .filter(Boolean)
+      .join('; ');
+  }
+  if (typeof d === 'string') return d;
+  if (d && typeof d === 'object') return (d as { msg?: string }).msg || 'Request failed';
+  return 'Unknown error';
+}
+
 // ── Component ────────────────────────────────────────────────────
 
 export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channel, emailGroupId }: ImportLeadsDialogProps) {
@@ -632,7 +656,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        setScrapeError(data.error || data.detail || `Failed (${res.status})`);
+        setScrapeError(formatApiError(data) || `Failed (${res.status})`);
         return;
       }
 
@@ -759,7 +783,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
           if (!runInBackground) {
             setImportResult({
               success: false, total: validLeads.length, imported: 0, conversations: 0,
-              errors: [{ name: 'Import', error: data.detail || data.error || 'Unknown error' }],
+              errors: [{ name: 'Import', error: formatApiError(data) }],
               skipped: [],
               duplicates: [],
             });
