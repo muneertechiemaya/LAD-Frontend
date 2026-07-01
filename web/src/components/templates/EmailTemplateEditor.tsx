@@ -292,7 +292,13 @@ export default function EmailTemplateEditor({ mode, initialTemplate }: EmailTemp
     try {
       const url    = mode === 'create' ? '/api/campaigns/email-templates' : `/api/campaigns/email-templates/${template.id}`;
       const method = mode === 'create' ? 'POST' : 'PUT';
-      const isHtmlMode = editorMode === 'html' || editorMode === 'dragdrop';
+      // Preserve rich HTML whenever it exists — do NOT null body_html just
+      // because the "Simple editor" tab happens to be active at save time.
+      // Nulling it here silently destroyed the whole designed template
+      // (header banner, uploaded images, signature), which is why images kept
+      // "disappearing" and had to be re-uploaded for every broadcast. Only
+      // save as plain_text when there is genuinely no HTML body.
+      const hasRichHtml = (template.body_html || '').trim().length > 0;
 
       const res = await fetch(url, {
         method,
@@ -301,11 +307,11 @@ export default function EmailTemplateEditor({ mode, initialTemplate }: EmailTemp
         body: JSON.stringify({
           name:           template.name,
           subject:        template.subject,
-          body:           isHtmlMode
+          body:           hasRichHtml
                             ? (template.body || (template.body_html || '').replace(/<[^>]*>/g, '').trim())
                             : template.body,
-          body_html:      isHtmlMode ? (template.body_html || null) : null,
-          content_format: isHtmlMode ? 'html' : 'plain_text',
+          body_html:      hasRichHtml ? template.body_html : null,
+          content_format: hasRichHtml ? 'html' : 'plain_text',
           category:       template.category,
           description:    template.description,
           is_active:      template.is_active,
