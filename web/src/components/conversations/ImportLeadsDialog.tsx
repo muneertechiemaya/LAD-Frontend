@@ -228,6 +228,22 @@ function formatApiError(data: unknown): string {
   return 'Unknown error';
 }
 
+// Clean up common email artifacts so one messy row doesn't 422 the whole
+// import: unwrap "Name <a@b.com>", strip surrounding quotes/spaces and stray
+// leading/trailing dots/commas/semicolons (e.g. "a@b.com." → "a@b.com").
+function sanitizeEmail(raw: string): string {
+  let e = (raw || '').trim();
+  const angle = e.match(/<([^>]+)>/);
+  if (angle) e = angle[1];
+  e = e.replace(/^["'\s.,;:]+|["'\s.,;:]+$/g, '').trim();
+  return e.toLowerCase();
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function isValidEmail(e: string): boolean {
+  return EMAIL_RE.test(e);
+}
+
 // ── Component ────────────────────────────────────────────────────
 
 export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channel, emailGroupId }: ImportLeadsDialogProps) {
@@ -717,6 +733,22 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
         const url = isHosted
           ? `/api/email-comms/contacts`
           : `${EMAIL_API}/contacts`;
+        // Sanitize + validate emails client-side so one malformed row (e.g. a
+        // trailing period) can't 422 the entire batch. Fixable artifacts are
+        // cleaned; rows still invalid afterwards are dropped and reported.
+        const cleaned = validLeads
+          .map((l) => ({ l, email: sanitizeEmail(l.email) }))
+          .filter((c) => isValidEmail(c.email));
+        const skippedInvalid = validLeads.length - cleaned.length;
+        if (cleaned.length === 0) {
+          setImportResult({
+            success: false, total: validLeads.length, imported: 0, conversations: 0,
+            errors: [{ name: 'Import', error: 'No valid email addresses after cleaning — check the email column.' }],
+            skipped: [], duplicates: [],
+          });
+          setImporting(false);
+          return;
+        }
         const res = await fetch(url, {
           method: 'POST',
           headers: {
@@ -724,10 +756,10 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
             'Authorization': `Bearer ${safeStorage.getItem('token') || ''}`,
           },
           body: JSON.stringify({
-            contacts: validLeads.map((l) => ({
-              name: l.name.trim(),
-              email: l.email.trim(),
-              company: l.company.trim() || null,
+            contacts: cleaned.map((c) => ({
+              name: c.l.name.trim(),
+              email: c.email,
+              company: c.l.company.trim() || null,
             })),
             channel,
             ...(emailGroupId ? { group_id: emailGroupId } : {}),
@@ -770,11 +802,17 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                 name: e.name || e.email || 'Contact',
                 error: e.error,
               })),
-              skipped: (isHosted && inner.duplicates)
-                ? [{ name: `${inner.duplicates} contact(s)`, reason: 'already in address book' }]
-                : (inner.skipped
-                    ? [{ name: `${inner.skipped} contact(s)`, reason: 'missing name or email' }]
-                    : []),
+              skipped: [
+                ...(isHosted && inner.duplicates
+                  ? [{ name: `${inner.duplicates} contact(s)`, reason: 'already in address book' }]
+                  : []),
+                ...(!isHosted && inner.skipped
+                  ? [{ name: `${inner.skipped} contact(s)`, reason: 'missing name or email' }]
+                  : []),
+                ...(skippedInvalid > 0
+                  ? [{ name: `${skippedInvalid} contact(s)`, reason: 'invalid email address' }]
+                  : []),
+              ],
               duplicates: [],
               conversationIds: [],
             });

@@ -16,8 +16,9 @@
  * EmailBroadcastPanel — once this view ships, the broadcast-test debug route
  * and the panel can be removed.
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import DOMPurify from 'dompurify';
+import DragDropEmailEditor from '@/components/templates/DragDropEmailEditor';
 import { Loader2, Pencil, Inbox, AlertCircle, Users, X } from 'lucide-react';
 
 import {
@@ -341,6 +342,37 @@ function ComposeBroadcastDialog({
   const [groupId, setGroupId] = useState('');
   const [error, setError] = useState<string | null>(null);
 
+  // Saved templates → power the "Use template" picker. The drag-drop editor
+  // only reads htmlContent on mount, so we bump editorKey to remount it (and
+  // re-parse the blocks) whenever a template is loaded.
+  const [templates, setTemplates] = useState<{ id: string; name: string; subject?: string; body_html: string | null; body?: string }[]>([]);
+  const [templateId, setTemplateId] = useState('');
+  const [editorKey, setEditorKey] = useState(0);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/campaigns/email-templates?is_active=true', { credentials: 'include' });
+        if (!res.ok) return;
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : (data.templates ?? data.data ?? []);
+        if (!cancelled) setTemplates(list);
+      } catch { /* non-fatal — picker just stays empty */ }
+    })();
+    return () => { cancelled = true; };
+  }, [open]);
+
+  const applyTemplate = (id: string) => {
+    setTemplateId(id);
+    const tpl = templates.find((t) => t.id === id);
+    if (!tpl) return;
+    setBody(tpl.body_html ?? tpl.body ?? '');
+    if (!subject.trim() && tpl.subject) setSubject(tpl.subject);
+    setEditorKey((k) => k + 1); // force the editor to re-init from the new HTML
+  };
+
   const recipients = useMemo(() => parseRecipients(recipientsRaw), [recipientsRaw]);
 
   // Map account provider → group channel so the group picker only shows
@@ -377,6 +409,8 @@ function ComposeBroadcastDialog({
     setBody('');
     setRecipientsRaw('');
     setGroupId('');
+    setTemplateId('');
+    setEditorKey((k) => k + 1);
     setError(null);
   };
 
@@ -399,6 +433,7 @@ function ComposeBroadcastDialog({
         from_email_account_id: accountId,
         subject: subject.trim(),
         body_html: body,
+        ...(templateId ? { template_id: templateId } : {}),
         ...(mode === 'group' ? { group_id: groupId } : { recipients }),
       });
       reset();
@@ -416,7 +451,7 @@ function ComposeBroadcastDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) reset(); }}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>New broadcast</DialogTitle>
           <DialogDescription>
@@ -551,17 +586,41 @@ function ComposeBroadcastDialog({
             )}
           </div>
 
+          {/* Start from a saved template — loads its HTML into the editor below */}
           <div>
-            <label className="text-sm font-medium">Body (HTML)</label>
-            <Textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              rows={10}
-              placeholder={`<p>Hi {{first_name}},</p><p>...</p>`}
-            />
+            <label className="text-sm font-medium">Template</label>
+            <Select value={templateId} onValueChange={applyTemplate}>
+              <SelectTrigger>
+                <SelectValue placeholder={templates.length ? 'Start from a saved template (optional)' : 'No saved templates yet'} />
+              </SelectTrigger>
+              <SelectContent>
+                {templates.length === 0 ? (
+                  <div className="px-3 py-2 text-sm text-muted-foreground">
+                    Create templates under Conversations → Templates.
+                  </div>
+                ) : (
+                  templates.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Body</label>
+            <div className="mt-1 rounded-lg border border-input bg-muted/20 p-3">
+              <DragDropEmailEditor
+                key={editorKey}
+                htmlContent={body}
+                subject={subject}
+                onContentChange={setBody}
+              />
+            </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Use <code>{'{{first_name}}'}</code> or <code>{'{first_name}'}</code> to personalise.
-              Unknown placeholders are removed before sending.
+              Build the email with blocks (header, image, button, signature…). Use{' '}
+              <code>{'{{first_name}}'}</code> or <code>{'{first_name}'}</code> to personalise —
+              unknown placeholders are removed before sending.
             </p>
           </div>
 
