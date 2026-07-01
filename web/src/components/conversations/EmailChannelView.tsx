@@ -1901,7 +1901,7 @@ const EmailGroupWindow = memo(function EmailGroupWindow({ group, provider, onBac
   );
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-[#2d2d2d]">
+    <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-white dark:bg-[#2d2d2d]">
       <div className="h-14 px-4 flex items-center gap-3 border-b border-[#e0e0e0] dark:border-[#3c4043] flex-shrink-0">
         <button onClick={onBack} title="Back" aria-label="Back to email list"
           className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]">
@@ -1932,7 +1932,7 @@ const EmailGroupWindow = memo(function EmailGroupWindow({ group, provider, onBac
       {loading
         ? <div className="flex-1 flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-[#5f6368] dark:text-[#9aa0a6]" /></div>
         : (
-          <div className="flex-1 flex flex-col overflow-hidden p-4 gap-3">
+          <div className="flex-1 flex flex-col overflow-hidden min-h-0 p-4 gap-3">
             <div className="grid grid-cols-3 gap-3">
               {[
                 { label: 'Members', value: detail?.member_count ?? 0, bg: 'bg-blue-50 dark:bg-blue-900/20', color: 'text-blue-600' },
@@ -1949,8 +1949,8 @@ const EmailGroupWindow = memo(function EmailGroupWindow({ group, provider, onBac
               ))}
             </div>
 
-            <div className="flex-1 flex flex-col bg-white dark:bg-[#2d2d2d] rounded-xl border border-[#e0e0e0] dark:border-[#3c4043] overflow-hidden">
-              <div className="px-4 py-3 border-b border-[#e0e0e0] dark:border-[#3c4043] flex items-center justify-between gap-3">
+            <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-[#2d2d2d] rounded-xl border border-[#e0e0e0] dark:border-[#3c4043] overflow-hidden">
+              <div className="px-4 py-3 border-b border-[#e0e0e0] dark:border-[#3c4043] flex items-center justify-between gap-3 flex-shrink-0">
                 <span className="text-sm font-medium text-[#202124] dark:text-[#e8eaed]">Members ({visibleMembers.length})</span>
                 <div className="relative flex-1 max-w-xs">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#5f6368] dark:text-[#9aa0a6]" />
