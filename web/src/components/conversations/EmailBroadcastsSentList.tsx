@@ -626,6 +626,21 @@ function ComposeBroadcastDialog({
             </p>
           </div>
 
+          {(() => {
+            // Mirrors LAD-Email-Comms quota defaults — warn before the
+            // orchestrator has to pace/pause a too-big send.
+            const safeDaily: Record<string, number> = { google: 400, microsoft: 250, custom_smtp: 1000 };
+            const cap = selectedAccount ? (safeDaily[selectedAccount.provider] ?? 1000) : null;
+            return cap !== null && sendCount > cap ? (
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                {sendCount} recipients exceeds the safe daily volume for this account
+                (~{cap}/day). Sending is paced and may spread across days to protect your
+                sender reputation — for regular large sends, connect an email service
+                (Brevo / Amazon SES) via Custom SMTP.
+              </p>
+            ) : null;
+          })()}
+
           {error && <div className="text-sm text-destructive">{error}</div>}
         </div>
 
