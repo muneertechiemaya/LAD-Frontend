@@ -1109,17 +1109,27 @@ function AddToGroupModal({ groups, provider, contactIds, onDone, onClose }: {
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
 
+  // Hosted providers route through LAD-Email-Comms; custom SMTP still uses
+  // the legacy WABA-Comms email surface.
+  const isHosted = provider === 'gmail' || provider === 'outlook';
+
   const handleAdd = async () => {
     if (!selected) return;
     setAdding(true);
     setError('');
     try {
-      const res = await fetch(`${API}/groups/${selected}/contacts`, {
+      const url = isHosted
+        ? `/api/email-comms/groups/${selected}/contacts`
+        : `${API}/groups/${selected}/contacts`;
+      const res = await fetch(url, {
         method: 'POST',
         headers: authHeaders(),
         body: JSON.stringify({ contact_ids: contactIds }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        throw new Error(errBody.detail || errBody.error || `HTTP ${res.status}`);
+      }
       setDone(true);
       toast({
         title: 'Success',
@@ -1771,17 +1781,44 @@ const EmailGroupWindow = memo(function EmailGroupWindow({ group, provider, onBac
   const [deleting, setDeleting] = useState(false);
   const providerColor = PROVIDER_COLOR[provider];
 
+  // Hosted providers (Gmail / Outlook) route through LAD-Email-Comms;
+  // custom SMTP still uses the legacy WABA-Comms email surface.
+  const isHosted = provider === 'gmail' || provider === 'outlook';
+
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setLoadError(false);
     (async () => {
       try {
-        const res = await fetch(`${API}/groups/${group.id}`, { headers: authHeaders() });
+        const url = isHosted
+          ? `/api/email-comms/groups/${group.id}`
+          : `${API}/groups/${group.id}`;
+        const res = await fetch(url, { headers: authHeaders() });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         if (!cancelled) {
-          if (data.success) {
+          if (isHosted) {
+            // LAD-Email-Comms returns the group with `members: [{contact_id,
+            // email, contact_name, company, ...}]`. Map to the local
+            // EmailContact shape (which uses `id` for the contact PK).
+            const mapped: EmailGroupDetail = {
+              ...(data as EmailGroup),
+              members: (data.members ?? []).map((m: {
+                contact_id: string;
+                email: string;
+                contact_name: string | null;
+                company: string | null;
+              }) => ({
+                id: m.contact_id,
+                email: m.email,
+                contact_name: m.contact_name,
+                company: m.company,
+                channel: group.channel,
+              })),
+            };
+            setDetail(mapped);
+          } else if (data.success) {
             setDetail(data.data);
           } else {
             throw new Error(data.error ?? 'Unknown error');
@@ -1791,20 +1828,30 @@ const EmailGroupWindow = memo(function EmailGroupWindow({ group, provider, onBac
         console.error('Failed to load group details:', _err);
         if (!cancelled) {
           setLoadError(true);
-          setDetail({ ...group, members: MOCK_CONTACTS.slice(0, Math.min(group.member_count || 3, 5)) });
+          // Legacy fallback keeps the mock member preview so the UI doesn't
+          // look broken even when the backend is unreachable.
+          if (!isHosted) {
+            setDetail({ ...group, members: MOCK_CONTACTS.slice(0, Math.min(group.member_count || 3, 5)) });
+          } else {
+            setDetail({ ...group, members: [] });
+          }
         }
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
     return () => { cancelled = true; };
-  }, [group.id, group]);
+  }, [group.id, group, isHosted]);
 
   const handleRemoveMember = async (contactId: string) => {
     setRemovingId(contactId);
     try {
-      const res = await fetch(`${API}/groups/${group.id}/contacts/${contactId}`, { method: 'DELETE', headers: authHeaders() });
-      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      const url = isHosted
+        ? `/api/email-comms/groups/${group.id}/contacts/${contactId}`
+        : `${API}/groups/${group.id}/contacts/${contactId}`;
+      const res = await fetch(url, { method: 'DELETE', headers: authHeaders() });
+      // LAD-Email-Comms returns 204 on success; legacy returns 200 + body.
+      if (!res.ok && res.status !== 204) throw new Error(`HTTP error ${res.status}`);
       setRemovedIds(p => new Set([...p, contactId]));
       toast({
         title: 'Success',
@@ -1825,8 +1872,11 @@ const EmailGroupWindow = memo(function EmailGroupWindow({ group, provider, onBac
   const handleDeleteGroup = async () => {
     setDeleting(true);
     try {
-      const res = await fetch(`${API}/groups/${group.id}`, { method: 'DELETE', headers: authHeaders() });
-      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      const url = isHosted
+        ? `/api/email-comms/groups/${group.id}`
+        : `${API}/groups/${group.id}`;
+      const res = await fetch(url, { method: 'DELETE', headers: authHeaders() });
+      if (!res.ok && res.status !== 204) throw new Error(`HTTP error ${res.status}`);
       toast({
         title: 'Success',
         description: 'Group deleted successfully.',
@@ -1851,7 +1901,7 @@ const EmailGroupWindow = memo(function EmailGroupWindow({ group, provider, onBac
   );
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-[#2d2d2d]">
+    <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-white dark:bg-[#2d2d2d]">
       <div className="h-14 px-4 flex items-center gap-3 border-b border-[#e0e0e0] dark:border-[#3c4043] flex-shrink-0">
         <button onClick={onBack} title="Back" aria-label="Back to email list"
           className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]">
@@ -1882,7 +1932,7 @@ const EmailGroupWindow = memo(function EmailGroupWindow({ group, provider, onBac
       {loading
         ? <div className="flex-1 flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-[#5f6368] dark:text-[#9aa0a6]" /></div>
         : (
-          <div className="flex-1 flex flex-col overflow-hidden p-4 gap-3">
+          <div className="flex-1 flex flex-col overflow-hidden min-h-0 p-4 gap-3">
             <div className="grid grid-cols-3 gap-3">
               {[
                 { label: 'Members', value: detail?.member_count ?? 0, bg: 'bg-blue-50 dark:bg-blue-900/20', color: 'text-blue-600' },
@@ -1899,8 +1949,8 @@ const EmailGroupWindow = memo(function EmailGroupWindow({ group, provider, onBac
               ))}
             </div>
 
-            <div className="flex-1 flex flex-col bg-white dark:bg-[#2d2d2d] rounded-xl border border-[#e0e0e0] dark:border-[#3c4043] overflow-hidden">
-              <div className="px-4 py-3 border-b border-[#e0e0e0] dark:border-[#3c4043] flex items-center justify-between gap-3">
+            <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-[#2d2d2d] rounded-xl border border-[#e0e0e0] dark:border-[#3c4043] overflow-hidden">
+              <div className="px-4 py-3 border-b border-[#e0e0e0] dark:border-[#3c4043] flex items-center justify-between gap-3 flex-shrink-0">
                 <span className="text-sm font-medium text-[#202124] dark:text-[#e8eaed]">Members ({visibleMembers.length})</span>
                 <div className="relative flex-1 max-w-xs">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#5f6368] dark:text-[#9aa0a6]" />

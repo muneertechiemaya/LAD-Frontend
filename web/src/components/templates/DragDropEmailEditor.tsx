@@ -30,7 +30,7 @@ import {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type BlockType = 'h1' | 'h2' | 'text' | 'image' | 'logo' | 'button' | 'divider' | 'spacer' | 'footer' | 'signature';
+type BlockType = 'header' | 'h1' | 'h2' | 'text' | 'image' | 'logo' | 'button' | 'divider' | 'spacer' | 'footer' | 'signature';
 type Align = 'left' | 'center' | 'right';
 
 interface EmailBlock {
@@ -39,9 +39,19 @@ interface EmailBlock {
   props: Record<string, any>;
 }
 
+// ── Branded email-shell constants ─────────────────────────────────────────────
+// blocksToHtml wraps content in a full-width page background + a centred white
+// "card". CARD_PADDING is the card's inner padding; the header banner and
+// footer use matching NEGATIVE margins to bleed edge-to-edge within the card
+// (clipped by the card's overflow:hidden + border-radius). Keep these in sync.
+const CARD_PADDING = 32;               // px — card inner padding
+const PAGE_BG_DEFAULT = '#eef1f6';     // page background behind the card
+const CARD_MAX_WIDTH = 600;            // px — content width (parser fingerprint)
+
 // ── Default props per block type ──────────────────────────────────────────────
 
 const DEFAULT_PROPS: Record<BlockType, Record<string, any>> = {
+  header:    { src: '', alt: 'Header banner', href: '' },
   h1:        { content: 'Heading 1', align: 'left', color: '#111827' },
   h2:        { content: 'Heading 2', align: 'left', color: '#374151' },
   text:      { content: 'Your email content goes here. Write something compelling...', align: 'left', color: '#374151' },
@@ -75,6 +85,22 @@ const DEFAULT_PROPS: Record<BlockType, Record<string, any>> = {
   },
 };
 
+// ── Shared helpers ────────────────────────────────────────────────────────────
+
+/** Convert Google Drive share links to direct-embed URLs; returns the URL
+ *  unchanged if it isn't a Drive link. Shared by the image + signature editors. */
+function toDirectImageUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    if (u.hostname !== 'drive.google.com') return url;
+    const fileMatch = u.pathname.match(/\/file\/d\/([^/]+)/);
+    if (fileMatch) return `https://drive.google.com/uc?export=view&id=${fileMatch[1]}`;
+    const idParam = u.searchParams.get('id');
+    if (idParam) return `https://drive.google.com/uc?export=view&id=${idParam}`;
+  } catch { /* not a valid URL yet — leave as-is */ }
+  return url;
+}
+
 // ── HTML generator ────────────────────────────────────────────────────────────
 
 function blockToHtml(block: EmailBlock): string {
@@ -82,6 +108,15 @@ function blockToHtml(block: EmailBlock): string {
   const { align = 'left', color } = props;
 
   switch (type) {
+    case 'header': {
+      // Full-bleed banner image — negative margins counteract the card padding
+      // so the image spans edge-to-edge (clipped by the card's rounded corners).
+      if (!props.src) return `<!-- header block (no src) -->`;
+      const bleed = `margin:-${CARD_PADDING}px -${CARD_PADDING}px 20px -${CARD_PADDING}px;`;
+      const imgTag = `<img src="${props.src}" alt="${props.alt || ''}" style="width:100%;height:auto;display:block;border:0;" />`;
+      const inner = props.href ? `<a href="${props.href}" style="text-decoration:none;">${imgTag}</a>` : imgTag;
+      return `<div style="${bleed}line-height:0;">${inner}</div>`;
+    }
     case 'h1':
       return `<h1 style="text-align:${align};color:${color};font-size:32px;font-weight:700;margin:0 0 16px;line-height:1.2;">${props.content}</h1>`;
     case 'h2':
@@ -122,7 +157,10 @@ function blockToHtml(block: EmailBlock): string {
         s.youtube   ? `<a href="${s.youtube}"   style="${_aStyle}"><img src="https://cdn-icons-png.flaticon.com/32/1384/1384060.png" width="28" height="28" alt="YouTube"   style="${_iStyle}"/></a>` : '',
         s.twitter   ? `<a href="${s.twitter}"   style="${_aStyle}"><img src="https://cdn-icons-png.flaticon.com/32/733/733579.png"  width="28" height="28" alt="Twitter"   style="${_iStyle}"/></a>` : '',
       ].filter(Boolean).join('');
-      return `<div style="background:${props.bgColor || '#f3f4f6'};padding:24px 20px;text-align:center;margin-top:20px;">
+      // Full-bleed footer band — negative side/bottom margins reach the card
+      // edges (clipped by the card's rounded corners + overflow:hidden).
+      const footerBleed = `margin:20px -${CARD_PADDING}px -${CARD_PADDING}px -${CARD_PADDING}px;`;
+      return `<div style="background:${props.bgColor || '#f3f4f6'};padding:24px 20px;text-align:center;${footerBleed}">
   ${socialLinks ? `<div style="display:block;line-height:1;margin-bottom:14px;font-size:0;">${socialLinks}</div>` : ''}
   ${props.companyName ? `<p style="margin:0 0 4px;font-size:13px;font-weight:700;color:${props.textColor || '#374151'};">${props.companyName}</p>` : ''}
   ${props.address ? `<p style="margin:0 0 10px;font-size:12px;color:${props.textColor || '#6b7280'};">${props.address}</p>` : ''}
@@ -152,7 +190,12 @@ function blockToHtml(block: EmailBlock): string {
 export function blocksToHtml(blocks: EmailBlock[]): string {
   if (!blocks.length) return '';
   const inner = blocks.map(blockToHtml).join('\n');
-  return `<div style="max-width:600px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;padding:24px 20px;">\n${inner}\n</div>`;
+  // Centred white "card". Keeps the max-width:600px fingerprint that the parser
+  // (htmlToBlocks) keys off, so round-tripping still works. overflow:hidden +
+  // border-radius clip the full-bleed header/footer bands to rounded corners.
+  const card = `<div style="max-width:${CARD_MAX_WIDTH}px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(16,24,40,0.08);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;padding:${CARD_PADDING}px;">\n${inner}\n</div>`;
+  // Full-width page background behind the card (the "branded" backdrop).
+  return `<div style="background-color:${PAGE_BG_DEFAULT};margin:0;padding:32px 12px;width:100%;box-sizing:border-box;">\n${card}\n</div>`;
 }
 
 // ── HTML → Blocks parser (reverses blocksToHtml) ─────────────────────────────
@@ -226,6 +269,21 @@ function htmlToBlocks(html: string): EmailBlock[] | null {
             height: parseInt(cs.height) || 24,
           }});
           continue;
+        }
+
+        // Header banner: full-bleed image via negative margins (margin:-…).
+        // Must be checked BEFORE logo/image since it also contains an <img>.
+        if (styleStr.includes('margin:-')) {
+          const hAnchor = el.querySelector(':scope > a');
+          const hImg = (el.querySelector(':scope > img') || hAnchor?.querySelector('img')) as HTMLImageElement | null;
+          if (hImg) {
+            blocks.push({ id: uid(), type: 'header', props: {
+              src:  hImg.getAttribute('src') || '',
+              alt:  hImg.getAttribute('alt') || 'Header banner',
+              href: hAnchor?.getAttribute('href') || '',
+            }});
+            continue;
+          }
         }
 
         // Footer: padding:24px 20px + text-align:center fingerprint
@@ -357,6 +415,7 @@ function htmlToBlocks(html: string): EmailBlock[] | null {
 // ── Block palette definitions ─────────────────────────────────────────────────
 
 const PALETTE: { type: BlockType; label: string; icon: React.ReactNode; desc: string }[] = [
+  { type: 'header',    label: 'Header banner', icon: <ImageIcon className="w-4 h-4" />,   desc: 'Full-width top image' },
   { type: 'h1',        label: 'Heading 1',  icon: <Heading1 className="w-4 h-4" />,       desc: 'Large title' },
   { type: 'h2',        label: 'Heading 2',  icon: <Heading2 className="w-4 h-4" />,       desc: 'Subtitle' },
   { type: 'text',      label: 'Text',       icon: <AlignLeft className="w-4 h-4" />,      desc: 'Paragraph' },
@@ -560,11 +619,15 @@ function SignatureBlockEditor({ local, set, onCommit, inputCls, labelCls }: {
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
 
   const handleLogoUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !file.type.startsWith('image/')) return;
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { setUploadError('Please select an image file'); return; }
+    if (file.size > 5 * 1024 * 1024)    { setUploadError('Max file size is 5 MB'); return; }
     setUploading(true);
+    setUploadError('');
     try {
       const form = new FormData();
       form.append('file', file);
@@ -577,35 +640,58 @@ function SignatureBlockEditor({ local, set, onCommit, inputCls, labelCls }: {
         // Auto-commit so logo is saved without requiring the user to click ✓
         onCommit?.({ ...local, logoSrc: url });
       }
-    } catch { /* non-fatal */ }
-    finally { setUploading(false); if (fileRef.current) fileRef.current.value = ''; }
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
   };
 
   return (
     <>
-      {/* Logo */}
+      {/* Logo image — upload from device OR paste a URL / Google Drive link */}
       <div>
-        <label className={labelCls}>Logo</label>
+        <label className={labelCls}>Logo image</label>
         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
-        {local.logoSrc ? (
-          <div className="relative inline-block">
-            <img src={local.logoSrc} alt="Logo" className="max-h-14 object-contain rounded border border-gray-200 bg-white p-1" />
+        <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 mb-2 border-2 border-dashed border-blue-200 rounded-xl text-sm text-blue-600 bg-white hover:bg-blue-50 hover:border-blue-400 transition-all disabled:opacity-60">
+          {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+          {uploading ? 'Uploading…' : 'Upload from device'}
+        </button>
+
+        <div className="flex items-center gap-2 my-2">
+          <div className="flex-1 border-t border-gray-200" />
+          <span className="text-[11px] text-gray-400 font-medium">or paste URL / Google Drive link</span>
+          <div className="flex-1 border-t border-gray-200" />
+        </div>
+
+        <input type="text" placeholder="https://example.com/logo.png  or Google Drive share link"
+          value={local.logoSrc || ''}
+          onChange={(e) => set('logoSrc', toDirectImageUrl(e.target.value.trim()))}
+          className={inputCls} />
+
+        {uploadError && <p className="text-xs text-red-500 mt-1">{uploadError}</p>}
+
+        {local.logoSrc && (
+          <div className="relative inline-block mt-2">
+            <img src={local.logoSrc} alt="Logo" className="max-h-14 object-contain rounded border border-gray-200 bg-white p-1"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
             <button type="button" onClick={() => set('logoSrc', '')} className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white">
               <X className="w-3 h-3" />
             </button>
           </div>
-        ) : (
-          <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
-            className="flex items-center gap-2 px-3 py-2 border-2 border-dashed border-blue-200 rounded-xl text-xs text-blue-600 hover:bg-blue-50 transition-all">
-            {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-            Upload logo
-          </button>
         )}
+
         {local.logoSrc && (
           <div className="flex items-center gap-2 mt-2">
-            <input type="range" min={40} max={300} step={10} value={local.logoWidth ?? 120}
+            <label className="text-xs text-gray-500 whitespace-nowrap">Width</label>
+            <input type="range" min={40} max={400} step={10} value={local.logoWidth ?? 120}
               onChange={(e) => set('logoWidth', Number(e.target.value))} className="flex-1 accent-blue-600" />
-            <span className="text-xs text-gray-600 w-14 text-right">{local.logoWidth ?? 120}px wide</span>
+            <input type="number" min={40} max={400} value={local.logoWidth ?? 120}
+              onChange={(e) => set('logoWidth', Math.max(40, Math.min(400, Number(e.target.value) || 120)))}
+              className="w-16 text-xs border border-gray-200 rounded px-2 py-1 text-right" />
+            <span className="text-xs text-gray-500">px</span>
           </div>
         )}
       </div>
@@ -689,25 +775,6 @@ function ImageBlockEditor({
   const fileRef  = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
-
-  /** Convert Google Drive share links to direct-embed URLs.
-   *  Handles:
-   *   - https://drive.google.com/file/d/FILE_ID/view?...
-   *   - https://drive.google.com/open?id=FILE_ID
-   *  Returns the URL unchanged if it's not a Drive link. */
-  function toDirectImageUrl(url: string): string {
-    try {
-      const u = new URL(url);
-      if (u.hostname !== 'drive.google.com') return url;
-      // /file/d/FILE_ID/...
-      const fileMatch = u.pathname.match(/\/file\/d\/([^/]+)/);
-      if (fileMatch) return `https://drive.google.com/uc?export=view&id=${fileMatch[1]}`;
-      // ?id=FILE_ID
-      const idParam = u.searchParams.get('id');
-      if (idParam) return `https://drive.google.com/uc?export=view&id=${idParam}`;
-    } catch { /* not a valid URL yet — leave as-is */ }
-    return url;
-  }
 
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1147,6 +1214,19 @@ function BlockEditor({
         </div>
       )}
 
+      {/* Header banner — full-width top image + optional link */}
+      {block.type === 'header' && (
+        <>
+          <p className="text-xs text-gray-500 -mt-1">Spans the full width of the email, edge to edge at the top.</p>
+          <ImageBlockEditor local={local} set={set} onCommit={onUpdate} inputCls={inputCls} labelCls={labelCls} />
+          <div>
+            <label className={labelCls}>Link URL (optional)</label>
+            <input type="text" placeholder="https://yoursite.com" value={local.href || ''}
+              onChange={(e) => set('href', e.target.value)} className={inputCls} />
+          </div>
+        </>
+      )}
+
       {/* Image src + upload + alt + width */}
       {block.type === 'image' && (
         <ImageBlockEditor local={local} set={set} onCommit={onUpdate} inputCls={inputCls} labelCls={labelCls} />
@@ -1297,6 +1377,10 @@ function SortableBlock({
   const Preview = () => {
     const { props, type } = block;
     switch (type) {
+      case 'header':
+        return props.src
+          ? <img src={props.src} alt="banner" className="h-8 object-contain rounded" />
+          : <span className="text-sm text-amber-500 italic">⚠ No banner image set</span>;
       case 'h1':
         return <span className="text-base font-bold text-gray-800 truncate">{props.content}</span>;
       case 'h2':
