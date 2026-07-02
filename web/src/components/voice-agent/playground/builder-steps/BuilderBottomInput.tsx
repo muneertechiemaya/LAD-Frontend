@@ -5,19 +5,33 @@ export function BuilderBottomInput({
   onSend, 
   placeholder = "Type your response...",
   enableUpload = false,
-  onFilesSelected
+  onFilesSelected,
+  value,
+  onChange
 }: { 
   onSend?: (val?: string) => void;
   placeholder?: string;
   enableUpload?: boolean;
   onFilesSelected?: (files: FileList) => void;
+  value?: string;
+  onChange?: (val: string) => void;
 }) {
-  const [val, setVal] = useState("");
+  const [internalVal, setInternalVal] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const isControlled = value !== undefined;
+  const val = isControlled ? value : internalVal;
+  const setVal = (v: string) => {
+    if (isControlled) {
+      onChange?.(v);
+    } else {
+      setInternalVal(v);
+    }
+  };
 
   const handleSubmit = () => {
     if (onSend) onSend(val);
-    setVal("");
+    if (!isControlled) setInternalVal("");
   };
 
   return (

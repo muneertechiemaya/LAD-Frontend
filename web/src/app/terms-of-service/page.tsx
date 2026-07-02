@@ -11,7 +11,7 @@ export default function TermsOfServicePage() {
   return (
     <LegalPageLayout
       title="Terms of Service"
-      lastUpdated="May 29, 2026"
+      lastUpdated="June 2026"
       activePath="/terms-of-service"
       intro="These Terms of Service govern your access to and use of Mr LAD. Please read them carefully. By creating an account or using the Services, you agree to be bound by these terms."
     >
