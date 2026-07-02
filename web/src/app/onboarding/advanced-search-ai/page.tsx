@@ -1268,7 +1268,7 @@ export default function AdvancedSearchAIPage() {
                 // LinkedIn actions: prefer the saved checkpoint selection, else derive from
                 // the persisted steps (the workflow is the source of truth) so the action
                 // checkboxes re-check even for campaigns missing checkpoint_selections.
-                let liActions: string[] = Array.isArray(cs.linkedin_actions) ? [...cs.linkedin_actions] : [];
+                const liActions: string[] = Array.isArray(cs.linkedin_actions) ? [...cs.linkedin_actions] : [];
                 if (liActions.length === 0 && Array.isArray(camp?.steps)) {
                     const stepTypes = camp.steps.map((s: any) => s.type || s.step_type);
                     if (stepTypes.includes('linkedin_visit')) liActions.push('profile_view');
