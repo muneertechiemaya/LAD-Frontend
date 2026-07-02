@@ -26,7 +26,7 @@ export function AgentBuilderVideoOutput({
       videoRef.current.pause();
       setIsPlaying(false);
     } else {
-      videoRef.current.play().catch((err) => console.log("Play failed:", err));
+      videoRef.current.play().catch((err) => console.error("Play failed:", err));
       setIsPlaying(true);
     }
   };
@@ -41,14 +41,14 @@ export function AgentBuilderVideoOutput({
   const restartVideo = () => {
     if (!videoRef.current) return;
     videoRef.current.currentTime = 0;
-    videoRef.current.play().catch((err) => console.log("Play failed:", err));
+    videoRef.current.play().catch((err) => console.error("Play failed:", err));
     setIsPlaying(true);
   };
 
   const toggleFullscreen = () => {
     if (!videoRef.current) return;
     if (videoRef.current.requestFullscreen) {
-      videoRef.current.requestFullscreen().catch((err) => console.log("Fullscreen failed:", err));
+      videoRef.current.requestFullscreen().catch((err) => console.error("Fullscreen failed:", err));
     } else if ((videoRef.current as any).webkitRequestFullscreen) {
       (videoRef.current as any).webkitRequestFullscreen();
     } else if ((videoRef.current as any).msRequestFullscreen) {
