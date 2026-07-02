@@ -11,7 +11,7 @@ export default function CookiesPolicyPage() {
   return (
     <LegalPageLayout
       title="Cookies Policy"
-      lastUpdated="May 29, 2026"
+      lastUpdated="June 2026"
       activePath="/cookies-policy"
       intro="This Cookies Policy explains how Mr LAD uses cookies and similar technologies when you visit mrlads.com or use our Services, and the choices you have."
     >

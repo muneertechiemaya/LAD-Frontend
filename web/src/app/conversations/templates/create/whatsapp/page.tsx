@@ -387,7 +387,7 @@ export default function WhatsAppTemplateCreatePage() {
       {/* ── Sticky header bar — back only ── */}
       <div className="bg-white border-b border-[#E2E8F0] px-6 py-3 flex items-center gap-3 sticky top-0 z-20 shadow-sm">
         <button
-          onClick={() => router.push('/campaigns/templates')}
+          onClick={() => router.push('/conversations/templates')}
           className="flex items-center gap-1.5 text-sm text-[#64748B] hover:text-[#1E293B] font-medium transition-colors"
         >
           <ArrowLeft className="w-4 h-4" /> Back
