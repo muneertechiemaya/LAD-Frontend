@@ -26,6 +26,7 @@ export {
   getCampaignStats,
   createCampaign,
   updateCampaign,
+  updateCampaignSteps,
   deleteCampaign,
   startCampaign,
   pauseCampaign,
