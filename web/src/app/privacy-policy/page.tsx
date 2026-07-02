@@ -11,7 +11,7 @@ export default function PrivacyPolicyPage() {
   return (
     <LegalPageLayout
       title="Privacy Policy"
-      lastUpdated="May 29, 2026"
+      lastUpdated="June 2026"
       activePath="/privacy-policy"
       intro="This Privacy Policy explains how Mr LAD collects, uses, discloses, and safeguards your information when you visit mrlads.com or use our services. We are committed to protecting your privacy and handling your data transparently and responsibly."
     >

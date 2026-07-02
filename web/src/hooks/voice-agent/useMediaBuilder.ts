@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import { safeStorage } from "@lad/shared/storage";
 
 export interface ReferenceImage {
@@ -14,7 +14,14 @@ export type MediaBuilderStep =
   | "loading"
   | "builder-text"
   | "builder-mcq-few"
-  | "builder-image-output";
+  | "builder-image-output"
+  | "builder-video-confirm"
+  | "builder-video-output"
+  | "builder-script-confirm"
+  | "builder-workflow-choice"
+  | "builder-video-progress"
+  | "builder-keyframes-confirm"
+  | "gallery";
 
 export interface MediaUiPayload {
   step: MediaBuilderStep;
@@ -22,8 +29,13 @@ export interface MediaUiPayload {
   description?: string;
   options?: { id: string; label: string }[];
   images?: string[];
+  video?: string;
   phase?: string;
   enable_upload?: boolean;
+  blocks?: { label: string; value: string }[];
+  status?: string;
+  total_cost?: number;
+  cost_breakdown?: any[];
 }
 
 export function useMediaBuilder() {
@@ -34,6 +46,9 @@ export function useMediaBuilder() {
   const [isUploading, setIsUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string>("");
+  const [galleryImages, setGalleryImages] = useState<any[]>([]);
+  const [galleryVideos, setGalleryVideos] = useState<any[]>([]);
+  const [loadingGallery, setLoadingGallery] = useState(false);
 
   const holdAbortRef = useRef<AbortController | null>(null);
   const sessionIdRef = useRef<string>("");
@@ -183,8 +198,13 @@ export function useMediaBuilder() {
         description: data.description,
         options: data.options,
         images: data.images,
+        video: data.video,
         phase: data.phase,
         enable_upload: data.enable_upload,
+        blocks: data.blocks,
+        status: data.status,
+        total_cost: data.total_cost,
+        cost_breakdown: data.cost_breakdown,
       });
       setStep(data.step as MediaBuilderStep);
     } catch (err) {
@@ -193,6 +213,107 @@ export function useMediaBuilder() {
       setStep("welcome");
     }
   }, [sessionId, workerUrl, establishHold]);
+
+  const selectVideoGeneration = useCallback(async () => {
+    setStep("loading");
+    setError("");
+    try {
+      // Establish worker connection hold
+      await establishHold(sessionId);
+
+      const res = await fetch(`${workerUrl}/playground-media/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({
+          session_id: sessionId,
+          message: "[START_VIDEO_GEN]",
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Server returned status ${res.status}`);
+      }
+
+      const data = await res.json();
+      setUiPayload({
+        step: data.step,
+        question: data.question,
+        description: data.description,
+        options: data.options,
+        images: data.images,
+        video: data.video,
+        phase: data.phase,
+        enable_upload: data.enable_upload,
+        blocks: data.blocks,
+        status: data.status,
+        total_cost: data.total_cost,
+        cost_breakdown: data.cost_breakdown,
+      });
+      setStep(data.step as MediaBuilderStep);
+    } catch (err) {
+      const errorObj = err as Error;
+      setError(errorObj.message || "Failed to initialize Video Generation.");
+      setStep("welcome");
+    }
+  }, [sessionId, workerUrl, establishHold]);
+
+  // Polling effect for background video generation loop progress
+  useEffect(() => {
+    if (step !== "builder-video-progress" && !(step === "builder-keyframes-confirm" && uiPayload?.phase === "Storyboard Generation")) return;
+    
+    // Stop polling if the status is failed, completed, or cancelled
+    if (uiPayload?.status === "completed" || uiPayload?.status === "failed" || uiPayload?.status === "cancelled") {
+      return;
+    }
+
+    let active = true;
+    const intervalId = setInterval(async () => {
+      if (!active) return;
+      
+      try {
+        const res = await fetch(`${workerUrl}/playground-media/chat`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...getAuthHeaders(),
+          },
+          body: JSON.stringify({
+            session_id: sessionId,
+            message: "", // Send empty message to poll status
+          }),
+        });
+
+        if (res.ok && active) {
+          const data = await res.json();
+          setUiPayload({
+            step: data.step,
+            question: data.question,
+            description: data.description,
+            options: data.options,
+            images: data.images,
+            video: data.video,
+            phase: data.phase,
+            enable_upload: data.enable_upload,
+            blocks: data.blocks,
+            status: data.status,
+            total_cost: data.total_cost,
+            cost_breakdown: data.cost_breakdown,
+          });
+          setStep(data.step as MediaBuilderStep);
+        }
+      } catch (err) {
+        console.error("Error polling video progress:", err);
+      }
+    }, 5000);
+
+    return () => {
+      active = false;
+      clearInterval(intervalId);
+    };
+  }, [step, sessionId, workerUrl, uiPayload?.status, uiPayload?.phase]);
 
   const uploadReference = useCallback(async (file: File) => {
     if (references.length >= 5) {
@@ -265,8 +386,21 @@ export function useMediaBuilder() {
   const advanceStep = useCallback(async (userInput?: string | string[]) => {
     const isCurrentlyGenerating = step === "builder-text" && uiPayload?.phase === "Phase 2: Describe Image";
     const isCurrentlyOutputs = step === "builder-image-output";
+    const isDialogueScriptInput = step === "builder-text" && uiPayload?.phase === "Phase 6: Script Input";
 
-    if (isCurrentlyGenerating || isCurrentlyOutputs) {
+    if (isDialogueScriptInput) {
+      setStep("builder-video-progress");
+      setUiPayload(prev => prev ? {
+        ...prev,
+        step: "builder-video-progress",
+        question: "Adding Dialogues to Video...",
+        description: "Please wait while our managers sequence, generate, and overlay Cartesia voice actor dialogues onto the video.",
+        blocks: [
+          { label: "Analyzing script and video timeline...", value: "active" }
+        ],
+        status: "active"
+      } : prev);
+    } else if (isCurrentlyGenerating || isCurrentlyOutputs) {
       setGenerating(true);
     } else {
       setStep("loading");
@@ -313,8 +447,13 @@ export function useMediaBuilder() {
         description: data.description,
         options: data.options,
         images: data.images,
+        video: data.video,
         phase: data.phase,
         enable_upload: data.enable_upload,
+        blocks: data.blocks,
+        status: data.status,
+        total_cost: data.total_cost,
+        cost_breakdown: data.cost_breakdown,
       });
       setStep(data.step as MediaBuilderStep);
       
@@ -329,6 +468,255 @@ export function useMediaBuilder() {
     }
   }, [sessionId, step, uiPayload, workerUrl, references]);
 
+  const fetchGallery = useCallback(async () => {
+    setStep("gallery");
+    setLoadingGallery(true);
+    setError("");
+    try {
+      const res = await fetch(`${workerUrl}/playground-media/gallery`, {
+        method: "GET",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) {
+        throw new Error(`Failed to load gallery with status ${res.status}`);
+      }
+      const data = await res.json();
+      setGalleryImages(data.images || []);
+      setGalleryVideos(data.videos || []);
+    } catch (err) {
+      const errorObj = err as Error;
+      setError(errorObj.message || "Failed to retrieve media gallery.");
+    } finally {
+      setLoadingGallery(false);
+    }
+  }, [workerUrl]);
+
+  const generateImagesFromGallery = useCallback(async (urls: string[]) => {
+    setStep("loading");
+    setError("");
+    try {
+      await establishHold(sessionId);
+      
+      const res = await fetch(`${workerUrl}/playground-media/select-gallery-references`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({
+          session_id: sessionId,
+          urls: urls,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Server returned status ${res.status}`);
+      }
+
+      const data = await res.json();
+      setReferences(data.references || []);
+
+      const chatRes = await fetch(`${workerUrl}/playground-media/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({
+          session_id: sessionId,
+          message: "",
+        }),
+      });
+
+      if (!chatRes.ok) {
+        throw new Error(`Chat progression failed with status ${chatRes.status}`);
+      }
+
+      const chatData = await chatRes.json();
+      setUiPayload({
+        step: chatData.step,
+        question: chatData.question,
+        description: chatData.description,
+        options: chatData.options,
+        images: chatData.images,
+        video: chatData.video,
+        phase: chatData.phase,
+        enable_upload: chatData.enable_upload,
+        blocks: chatData.blocks,
+        status: chatData.status,
+        total_cost: chatData.total_cost,
+        cost_breakdown: chatData.cost_breakdown,
+      });
+      setStep(chatData.step as MediaBuilderStep);
+    } catch (err) {
+      const errorObj = err as Error;
+      setError(errorObj.message || "Failed to start generation from gallery.");
+      setStep("welcome");
+    }
+  }, [sessionId, workerUrl, establishHold]);
+
+  const animateImageFromGallery = useCallback(async (url: string) => {
+    setStep("loading");
+    setError("");
+    try {
+      await establishHold(sessionId);
+      
+      const res = await fetch(`${workerUrl}/playground-media/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({
+          session_id: sessionId,
+          message: `[ANIMATE_IMAGE] url=${url}`,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Server returned status ${res.status}`);
+      }
+
+      const data = await res.json();
+      setUiPayload({
+        step: data.step,
+        question: data.question,
+        description: data.description,
+        options: data.options,
+        images: data.images,
+        video: data.video,
+        phase: data.phase,
+        enable_upload: data.enable_upload,
+        blocks: data.blocks,
+        status: data.status,
+        total_cost: data.total_cost,
+        cost_breakdown: data.cost_breakdown,
+      });
+      setStep(data.step as MediaBuilderStep);
+    } catch (err) {
+      const errorObj = err as Error;
+      setError(errorObj.message || "Failed to animate gallery image.");
+      setStep("welcome");
+    }
+  }, [sessionId, workerUrl, establishHold]);
+
+  const extendVideoFromGallery = useCallback(async (url: string) => {
+    setStep("loading");
+    setError("");
+    try {
+      await establishHold(sessionId);
+      
+      const res = await fetch(`${workerUrl}/playground-media/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({
+          session_id: sessionId,
+          message: `[EXTEND_VIDEO] url=${url}`,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Server returned status ${res.status}`);
+      }
+
+      const data = await res.json();
+      setUiPayload({
+        step: data.step,
+        question: data.question,
+        description: data.description,
+        options: data.options,
+        images: data.images,
+        video: data.video,
+        phase: data.phase,
+        enable_upload: data.enable_upload,
+        blocks: data.blocks,
+        status: data.status,
+        total_cost: data.total_cost,
+        cost_breakdown: data.cost_breakdown,
+      });
+      setStep(data.step as MediaBuilderStep);
+    } catch (err) {
+      const errorObj = err as Error;
+      setError(errorObj.message || "Failed to extend gallery video.");
+      setStep("welcome");
+    }
+  }, [sessionId, workerUrl, establishHold]);
+
+  const addDialoguesFromGallery = useCallback(async (url: string) => {
+    setStep("loading");
+    setError("");
+    try {
+      await establishHold(sessionId);
+      
+      const res = await fetch(`${workerUrl}/playground-media/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({
+          session_id: sessionId,
+          message: `[ADD_DIALOGUES] url=${url}`,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Server returned status ${res.status}`);
+      }
+
+      const data = await res.json();
+      setUiPayload({
+        step: data.step,
+        question: data.question,
+        description: data.description,
+        options: data.options,
+        images: data.images,
+        video: data.video,
+        phase: data.phase,
+        enable_upload: data.enable_upload,
+        blocks: data.blocks,
+        status: data.status,
+        total_cost: data.total_cost,
+        cost_breakdown: data.cost_breakdown,
+      });
+      setStep(data.step as MediaBuilderStep);
+    } catch (err) {
+      const errorObj = err as Error;
+      setError(errorObj.message || "Failed to add dialogues to gallery video.");
+      setStep("welcome");
+    }
+  }, [sessionId, workerUrl, establishHold]);
+
+  const deleteAssets = useCallback(async (urls: string[]) => {
+    setLoadingGallery(true);
+    setError("");
+    try {
+      const res = await fetch(`${workerUrl}/playground-media/delete-assets`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({
+          urls: urls,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Failed to delete assets with status ${res.status}`);
+      }
+
+      await fetchGallery();
+    } catch (err) {
+      const errorObj = err as Error;
+      setError(errorObj.message || "Failed to delete assets.");
+      setLoadingGallery(false);
+    }
+  }, [workerUrl, fetchGallery]);
+
   return {
     step,
     setStep,
@@ -339,11 +727,21 @@ export function useMediaBuilder() {
     generating,
     error,
     setError,
+    galleryImages,
+    galleryVideos,
+    loadingGallery,
     startFlow,
     selectImageCreation,
+    selectVideoGeneration,
     uploadReference,
     removeReference,
     advanceStep,
     closeFlow,
+    fetchGallery,
+    generateImagesFromGallery,
+    animateImageFromGallery,
+    extendVideoFromGallery,
+    addDialoguesFromGallery,
+    deleteAssets,
   };
 }
