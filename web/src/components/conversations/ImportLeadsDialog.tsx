@@ -204,6 +204,46 @@ function autoFixPhone(phone: string, countryCode: string): string {
   return countryCode + cleaned;
 }
 
+// Turn an API error body into a readable string. FastAPI validation errors
+// come back as `detail: [{ type, loc, msg, input, ctx }]` — rendering that
+// array/object directly as a React child throws "Objects are not valid as a
+// React child" (#31) and crashes the page. Flatten it to "field: message".
+function formatApiError(data: unknown): string {
+  const d = (data as { detail?: unknown; error?: unknown })?.detail
+    ?? (data as { error?: unknown })?.error;
+  if (Array.isArray(d)) {
+    return d
+      .map((e) => {
+        const it = e as { loc?: unknown[]; msg?: string };
+        const field = Array.isArray(it.loc)
+          ? it.loc.filter((x) => x !== 'body').join('.')
+          : '';
+        return field ? `${field}: ${it.msg ?? ''}` : (it.msg ?? '');
+      })
+      .filter(Boolean)
+      .join('; ');
+  }
+  if (typeof d === 'string') return d;
+  if (d && typeof d === 'object') return (d as { msg?: string }).msg || 'Request failed';
+  return 'Unknown error';
+}
+
+// Clean up common email artifacts so one messy row doesn't 422 the whole
+// import: unwrap "Name <a@b.com>", strip surrounding quotes/spaces and stray
+// leading/trailing dots/commas/semicolons (e.g. "a@b.com." → "a@b.com").
+function sanitizeEmail(raw: string): string {
+  let e = (raw || '').trim();
+  const angle = e.match(/<([^>]+)>/);
+  if (angle) e = angle[1];
+  e = e.replace(/^["'\s.,;:]+|["'\s.,;:]+$/g, '').trim();
+  return e.toLowerCase();
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function isValidEmail(e: string): boolean {
+  return EMAIL_RE.test(e);
+}
+
 // ── Component ────────────────────────────────────────────────────
 
 export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channel, emailGroupId }: ImportLeadsDialogProps) {
@@ -226,6 +266,8 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const excelInputRef = useRef<HTMLInputElement>(null);
+  // Feedback for the Excel-upload parser (empty = no problem).
+  const [excelError, setExcelError] = useState<string>('');
   const [broadcastName, setBroadcastName] = useState('');
   const [showBroadcastPrompt, setShowBroadcastPrompt] = useState(false);
   const [showAddToGroupPrompt, setShowAddToGroupPrompt] = useState(false);
@@ -270,12 +312,25 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
   useEffect(() => {
     if (!open) return;
     if (isEmailMode) {
-      // Email mode: load email broadcast groups
-      fetch(`${EMAIL_API}/groups?channel=${channel}`, {
+      // Email mode: load broadcast groups. Gmail/Outlook route through
+      // LAD-Email-Comms (single-object response shape: {groups: [...]}).
+      // Custom SMTP still uses the legacy WABA-Comms envelope
+      // {success, data: [...]}.
+      const isHosted = channel === 'gmail' || channel === 'outlook';
+      const url = isHosted
+        ? `/api/email-comms/groups?channel=${channel}`
+        : `${EMAIL_API}/groups?channel=${channel}`;
+      fetch(url, {
         headers: { 'Authorization': `Bearer ${safeStorage.getItem('token') || ''}` },
       })
         .then((r) => r.json())
-        .then((data) => { if (data.success) setGroups(data.data || []); })
+        .then((data) => {
+          if (isHosted) {
+            setGroups(data.groups || []);
+          } else if (data.success) {
+            setGroups(data.data || []);
+          }
+        })
         .catch(() => {});
     } else {
       // WhatsApp mode: load chat groups
@@ -443,55 +498,95 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
         await workbook.xlsx.load(buffer);
         const worksheet = workbook.worksheets[0];
 
-        if (!worksheet || !worksheet.rowCount || worksheet.rowCount < 2) return;
+        setExcelError('');
+        if (!worksheet || !worksheet.rowCount || worksheet.rowCount < 2) {
+          setExcelError('That sheet has no data rows. Add contacts below the header row and re-upload.');
+          return;
+        }
 
-        // Parse header
-        const headerRow = worksheet.getRow(1);
-        const headers = headerRow.values
-          ?.map((h) => String(h || '').trim().toLowerCase().replace(/['"]/g, ''))
-          .filter((h) => h) || [];
+        // Normalise any cell value to a trimmed string. Excel auto-converts
+        // emails/URLs to hyperlinks, so exceljs returns objects like
+        // { text, hyperlink } (also richText / formula { result }) — a plain
+        // String() on those yields "[object Object]", which is why email
+        // uploads were silently dropped. Unwrap them here.
+        const cellText = (v: unknown): string => {
+          if (v == null) return '';
+          if (typeof v === 'object') {
+            const o = v as Record<string, unknown>;
+            const rt = Array.isArray(o.richText)
+              ? (o.richText as { text?: string }[]).map((r) => r.text ?? '').join('')
+              : undefined;
+            return String(o.text ?? rt ?? o.result ?? o.hyperlink ?? '').trim();
+          }
+          return String(v).trim();
+        };
+        const norm = (v: unknown) => cellText(v).toLowerCase().replace(/['"]/g, '');
 
-        const nameIdx = headers.findIndex((h) => h === 'name' || h === 'full name' || h === 'fullname');
-        const phoneIdx = headers.findIndex((h) => h === 'phone' || h === 'whatsapp' || h === 'mobile' || h === 'phone number');
-        const emailIdx = headers.findIndex((h) => h === 'email' || h === 'email address');
-        const companyIdx = headers.findIndex((h) => h === 'company' || h === 'organization' || h === 'org');
-        const linkedinIdx = headers.findIndex((h) => h === 'linkedin' || h === 'linkedin_url' || h === 'linkedin url');
-        const instagramIdx = headers.findIndex((h) => h === 'instagram' || h === 'instagram_url' || h === 'instagram url');
-        const sourceIdx = headers.findIndex((h) => h === 'source');
+        // Build header → 1-based column-number map (gap-safe; never compacted).
+        const col: Record<string, number> = {};
+        worksheet.getRow(1).eachCell({ includeEmpty: false }, (cell, colNumber) => {
+          const h = norm(cell.value);
+          if (h && !(h in col)) col[h] = colNumber;
+        });
+        const pick = (...names: string[]) => {
+          for (const n of names) if (col[n]) return col[n];
+          return 0;
+        };
+        const nameCol      = pick('name', 'full name', 'fullname', 'contact name');
+        const phoneCol     = pick('phone', 'whatsapp', 'mobile', 'phone number');
+        const emailCol     = pick('email', 'email address', 'e-mail');
+        const companyCol   = pick('company', 'organization', 'org');
+        const linkedinCol  = pick('linkedin', 'linkedin_url', 'linkedin url');
+        const instagramCol = pick('instagram', 'instagram_url', 'instagram url');
+        const sourceCol    = pick('source');
+
+        if (!nameCol) {
+          setExcelError('No "name" column found in the header row. Use Download Template to see the expected columns.');
+          return;
+        }
+
+        const readCell = (row: ReturnType<typeof worksheet.getRow>, c: number) =>
+          c ? cellText(row.getCell(c).value) : '';
 
         const parsedLeads: LeadEntry[] = [];
         for (let i = 2; i <= worksheet.rowCount; i++) {
           const row = worksheet.getRow(i);
-          const cells = row.values || [];
-          const name = nameIdx >= 0 ? String(cells[nameIdx + 1] || '').trim() : '';
+          const name = readCell(row, nameCol);
           if (!name) continue;
-
           parsedLeads.push({
             id: crypto.randomUUID(),
             name,
-            phone: phoneIdx >= 0 ? String(cells[phoneIdx + 1] || '').trim() : '',
-            email: emailIdx >= 0 ? String(cells[emailIdx + 1] || '').trim() : '',
-            company: companyIdx >= 0 ? String(cells[companyIdx + 1] || '').trim() : '',
-            linkedin_url: linkedinIdx >= 0 ? String(cells[linkedinIdx + 1] || '').trim() : '',
-            instagram_url: instagramIdx >= 0 ? String(cells[instagramIdx + 1] || '').trim() : '',
-            source: sourceIdx >= 0 ? String(cells[sourceIdx + 1] || '').trim() : 'excel_import',
+            phone: readCell(row, phoneCol),
+            email: readCell(row, emailCol),
+            company: readCell(row, companyCol),
+            linkedin_url: readCell(row, linkedinCol),
+            instagram_url: readCell(row, instagramCol),
+            source: readCell(row, sourceCol) || 'excel_import',
           });
         }
 
-        if (parsedLeads.length > 0) {
-          setLeads(parsedLeads);
-          setSelectedIds(new Set());
-          setActiveTab('single');
+        if (parsedLeads.length === 0) {
+          setExcelError('No rows with a name were found.');
+          return;
         }
+        // Email groups need an email per contact — surface it early rather
+        // than silently importing 0.
+        if (isEmailMode && !parsedLeads.some((l) => l.email.trim())) {
+          setExcelError('None of the rows have an email address — email groups need an "email" column.');
+        }
+        setLeads(parsedLeads);
+        setSelectedIds(new Set());
+        setActiveTab('single');
       } catch (err) {
         console.error('Failed to parse Excel file:', err);
+        setExcelError('Could not read that file. Make sure it is a valid .xlsx export.');
       }
     };
     reader.readAsArrayBuffer(file);
 
     // Reset input
     if (excelInputRef.current) excelInputRef.current.value = '';
-  }, []);
+  }, [isEmailMode]);
 
   // Download template
   const downloadTemplate = useCallback(async () => {
@@ -577,7 +672,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        setScrapeError(data.error || data.detail || `Failed (${res.status})`);
+        setScrapeError(formatApiError(data) || `Failed (${res.status})`);
         return;
       }
 
@@ -630,26 +725,60 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
     try {
       // ── Email mode ─────────────────────────────────────────────────────────
       if (isEmailMode) {
-        const res = await fetch(`${EMAIL_API}/contacts`, {
+        // Gmail/Outlook → LAD-Email-Comms POST /contacts. That endpoint
+        // atomically bulk-upserts + assigns to a group if group_id is
+        // supplied, so we don't need the follow-up /groups/:id/contacts
+        // call. Custom SMTP still uses the legacy WABA envelope path.
+        const isHosted = channel === 'gmail' || channel === 'outlook';
+        const url = isHosted
+          ? `/api/email-comms/contacts`
+          : `${EMAIL_API}/contacts`;
+        // Sanitize + validate emails client-side so one malformed row (e.g. a
+        // trailing period) can't 422 the entire batch. Fixable artifacts are
+        // cleaned; rows still invalid afterwards are dropped and reported.
+        const cleaned = validLeads
+          .map((l) => ({ l, email: sanitizeEmail(l.email) }))
+          .filter((c) => isValidEmail(c.email));
+        const skippedInvalid = validLeads.length - cleaned.length;
+        if (cleaned.length === 0) {
+          setImportResult({
+            success: false, total: validLeads.length, imported: 0, conversations: 0,
+            errors: [{ name: 'Import', error: 'No valid email addresses after cleaning — check the email column.' }],
+            skipped: [], duplicates: [],
+          });
+          setImporting(false);
+          return;
+        }
+        const res = await fetch(url, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${safeStorage.getItem('token') || ''}`,
           },
           body: JSON.stringify({
-            contacts: validLeads.map((l) => ({
-              name: l.name.trim(),
-              email: l.email.trim(),
-              company: l.company.trim() || null,
+            contacts: cleaned.map((c) => ({
+              name: c.l.name.trim(),
+              email: c.email,
+              company: c.l.company.trim() || null,
             })),
             channel,
             ...(emailGroupId ? { group_id: emailGroupId } : {}),
           }),
         });
         const data = await res.json();
-        if (data.success) {
-          // If group assignment requested and we have contact_ids, add them to the group
-          if (emailGroupId && data.data?.contact_ids?.length > 0) {
+
+        // Normalise the two response shapes:
+        //   * LAD-Email-Comms: {imported, duplicates, contact_ids,
+        //                       added_to_group}
+        //   * Legacy WABA:     {success, data: {imported, contact_ids,
+        //                       errors, skipped}}
+        const ok = isHosted ? res.ok : !!data.success;
+        const inner = isHosted ? data : (data.data ?? {});
+
+        if (ok) {
+          // For legacy provider, still need to add contacts to the group
+          // after import — LAD-Email-Comms already did it atomically.
+          if (!isHosted && emailGroupId && inner?.contact_ids?.length > 0) {
             try {
               await fetch(`${EMAIL_API}/groups/${emailGroupId}/contacts`, {
                 method: 'POST',
@@ -657,7 +786,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                   'Content-Type': 'application/json',
                   'Authorization': `Bearer ${safeStorage.getItem('token') || ''}`,
                 },
-                body: JSON.stringify({ contact_ids: data.data.contact_ids }),
+                body: JSON.stringify({ contact_ids: inner.contact_ids }),
               });
             } catch { /* non-fatal */ }
           }
@@ -667,10 +796,23 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
             setImportResult({
               success: true,
               total: validLeads.length,
-              imported: data.data.imported ?? validLeads.length,
+              imported: inner.imported ?? validLeads.length,
               conversations: 0,
-              errors: (data.data.errors || []).map((e: any) => ({ name: e.name || e.email || 'Contact', error: e.error })),
-              skipped: data.data.skipped ? [{ name: `${data.data.skipped} contact(s)`, reason: 'missing name or email' }] : [],
+              errors: (inner.errors || []).map((e: { name?: string; email?: string; error: string }) => ({
+                name: e.name || e.email || 'Contact',
+                error: e.error,
+              })),
+              skipped: [
+                ...(isHosted && inner.duplicates
+                  ? [{ name: `${inner.duplicates} contact(s)`, reason: 'already in address book' }]
+                  : []),
+                ...(!isHosted && inner.skipped
+                  ? [{ name: `${inner.skipped} contact(s)`, reason: 'missing name or email' }]
+                  : []),
+                ...(skippedInvalid > 0
+                  ? [{ name: `${skippedInvalid} contact(s)`, reason: 'invalid email address' }]
+                  : []),
+              ],
               duplicates: [],
               conversationIds: [],
             });
@@ -679,7 +821,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
           if (!runInBackground) {
             setImportResult({
               success: false, total: validLeads.length, imported: 0, conversations: 0,
-              errors: [{ name: 'Import', error: data.error || data.detail || 'Unknown error' }],
+              errors: [{ name: 'Import', error: formatApiError(data) }],
               skipped: [],
               duplicates: [],
             });
@@ -827,8 +969,17 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
               <Upload className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
               <p className="text-sm font-medium mb-1">Upload Excel file (.xlsx)</p>
               <p className="text-xs text-muted-foreground mb-4">
-                Required: <span className="font-medium">name</span>. Optional: phone, email, company, linkedin, instagram, source
+                {isEmailMode ? (
+                  <>Required: <span className="font-medium">name</span>, <span className="font-medium">email</span>. Optional: company, phone, source</>
+                ) : (
+                  <>Required: <span className="font-medium">name</span>. Optional: phone, email, company, linkedin, instagram, source</>
+                )}
               </p>
+              {excelError && (
+                <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg p-2.5 mb-4 text-left">
+                  {excelError}
+                </p>
+              )}
               <div className="flex gap-2 justify-center">
                 <Button
                   variant="outline"

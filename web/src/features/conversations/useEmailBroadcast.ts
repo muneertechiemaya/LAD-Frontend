@@ -70,7 +70,10 @@ export interface SendBroadcastRequest {
   body_html: string;
   body_text?: string | null;
   template_id?: string | null;
-  recipients: RecipientPayload[];
+  // Exactly one of the two: explicit list OR a saved group. Server-side
+  // model_validator rejects both-supplied and neither-supplied.
+  recipients?: RecipientPayload[];
+  group_id?: string;
 }
 
 export interface SendBroadcastResponse {
@@ -186,5 +189,210 @@ export function useSendBroadcast() {
       // Refresh the Sent folder so the new run shows up immediately.
       qc.invalidateQueries({ queryKey: ['email-comms', 'runs'] });
     },
+  });
+}
+
+// ── Phase 2 — Groups + contacts ──────────────────────────────────────────
+
+export type EmailChannel = 'gmail' | 'outlook';
+
+export interface EmailGroupSummary {
+  id: string;
+  name: string;
+  color: string;
+  description: string | null;
+  channel: EmailChannel;
+  member_count: number;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EmailGroupMember {
+  contact_id: string;
+  email: string;
+  contact_name: string | null;
+  company: string | null;
+  phone: string | null;
+  added_at: string;
+}
+
+export interface EmailGroupWithMembers extends EmailGroupSummary {
+  members: EmailGroupMember[];
+}
+
+export interface EmailContact {
+  id: string;
+  email: string;
+  contact_name: string | null;
+  company: string | null;
+  phone: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+const GROUP_KEYS = {
+  list: (channel?: EmailChannel) =>
+    ['email-comms', 'groups', channel ?? 'all'] as const,
+  one: (id: string) => ['email-comms', 'group', id] as const,
+  contacts: (search?: string, limit?: number, offset?: number) =>
+    ['email-comms', 'contacts', { search, limit, offset }] as const,
+};
+
+/** List broadcast groups, optionally filtered by channel. */
+export function useEmailGroups(channel?: EmailChannel) {
+  return useQuery({
+    queryKey: GROUP_KEYS.list(channel),
+    queryFn: () => {
+      const qs = channel ? `?channel=${channel}` : '';
+      return jsonFetch<{ groups: EmailGroupSummary[] }>(
+        `/api/email-comms/groups${qs}`,
+      );
+    },
+  });
+}
+
+/** One group with its full member list. */
+export function useEmailGroup(id: string | null) {
+  return useQuery({
+    enabled: !!id,
+    queryKey: id ? GROUP_KEYS.one(id) : ['email-comms', 'group', 'null'],
+    queryFn: () =>
+      jsonFetch<EmailGroupWithMembers>(
+        `/api/email-comms/groups/${encodeURIComponent(id as string)}`,
+      ),
+  });
+}
+
+/** Create a group. Invalidates the list on success. */
+export function useCreateEmailGroup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      name: string;
+      channel: EmailChannel;
+      color?: string;
+      description?: string | null;
+    }) =>
+      jsonFetch<EmailGroupSummary>('/api/email-comms/groups', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['email-comms', 'groups'] });
+    },
+  });
+}
+
+/** Rename / recolor / re-describe an existing group. */
+export function useUpdateEmailGroup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      ...body
+    }: {
+      id: string;
+      name?: string;
+      color?: string;
+      description?: string | null;
+    }) =>
+      jsonFetch<EmailGroupSummary>(
+        `/api/email-comms/groups/${encodeURIComponent(id)}`,
+        { method: 'PATCH', body: JSON.stringify(body) },
+      ),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ['email-comms', 'groups'] });
+      qc.invalidateQueries({ queryKey: GROUP_KEYS.one(vars.id) });
+    },
+  });
+}
+
+/** Soft-delete a group. 204 → bare fetch (jsonFetch would fail parsing an
+ *  empty body). */
+export function useDeleteEmailGroup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      fetch(`/api/email-comms/groups/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      }).then((r) => {
+        if (!r.ok && r.status !== 204) throw new Error(`HTTP ${r.status}`);
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['email-comms', 'groups'] });
+    },
+  });
+}
+
+/** Bulk-add contacts to a group. Server dedups via ON CONFLICT DO NOTHING;
+ *  response tells us how many were newly inserted vs already present. */
+export function useAddContactsToGroup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      groupId,
+      contactIds,
+    }: {
+      groupId: string;
+      contactIds: string[];
+    }) =>
+      jsonFetch<{ added: number; total_members: number }>(
+        `/api/email-comms/groups/${encodeURIComponent(groupId)}/contacts`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ contact_ids: contactIds }),
+        },
+      ),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ['email-comms', 'groups'] });
+      qc.invalidateQueries({ queryKey: GROUP_KEYS.one(vars.groupId) });
+    },
+  });
+}
+
+/** Remove a single contact from a group. */
+export function useRemoveContactFromGroup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      groupId,
+      contactId,
+    }: {
+      groupId: string;
+      contactId: string;
+    }) =>
+      fetch(
+        `/api/email-comms/groups/${encodeURIComponent(groupId)}/contacts/${encodeURIComponent(contactId)}`,
+        { method: 'DELETE', credentials: 'include' },
+      ).then((r) => {
+        if (!r.ok && r.status !== 204) throw new Error(`HTTP ${r.status}`);
+      }),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ['email-comms', 'groups'] });
+      qc.invalidateQueries({ queryKey: GROUP_KEYS.one(vars.groupId) });
+    },
+  });
+}
+
+/** Search/list contacts with email addresses — feeds the group-add picker. */
+export function useEmailContacts(
+  search: string = '',
+  limit: number = 100,
+  offset: number = 0,
+) {
+  return useQuery({
+    queryKey: GROUP_KEYS.contacts(search, limit, offset),
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (search) params.set('search', search);
+      params.set('limit', String(limit));
+      params.set('offset', String(offset));
+      return jsonFetch<{ contacts: EmailContact[]; next_offset: number | null }>(
+        `/api/email-comms/contacts?${params.toString()}`,
+      );
+    },
+    staleTime: 30_000,
   });
 }
