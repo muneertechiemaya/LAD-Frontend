@@ -31,15 +31,20 @@ export type Template = {
    *  subtitle + prefixed in the dropdown so mixed-channel lists stay legible.
    *  For email, `read` = unique opens (tracking pixel) and `delivered` =
    *  sent-but-not-opened. */
-  channel?: 'WhatsApp' | 'Gmail' | 'Outlook' | 'Email';
+  channel?: 'WhatsApp' | 'WhatsApp Personal' | 'Gmail' | 'Outlook' | 'Email';
+  /** False when the channel can't report reads/opens (personal WhatsApp has
+   *  no aggregated read receipts) — the Read column and read-rate pill render
+   *  "—" / "n/a" instead of a misleading 0%. Defaults to true. */
+  readTracked?: boolean;
 };
 
 // Channel chip colors — aligned with the app's channel branding.
 const CHANNEL_CHIP: Record<NonNullable<Template['channel']>, { bg: string; fg: string }> = {
-  WhatsApp: { bg: '#d1fae5', fg: '#059669' },  // emerald
-  Gmail:    { bg: '#fee2e2', fg: '#dc2626' },  // red
-  Outlook:  { bg: '#dbeafe', fg: '#2563eb' },  // blue
-  Email:    { bg: '#e2e8f0', fg: '#475569' },  // slate (custom SMTP / unknown)
+  'WhatsApp':          { bg: '#d1fae5', fg: '#059669' },  // emerald (WABA)
+  'WhatsApp Personal': { bg: '#ccfbf1', fg: '#0d9488' },  // teal (Baileys)
+  'Gmail':             { bg: '#fee2e2', fg: '#dc2626' },  // red
+  'Outlook':           { bg: '#dbeafe', fg: '#2563eb' },  // blue
+  'Email':             { bg: '#e2e8f0', fg: '#475569' },  // slate (custom SMTP / unknown)
 };
 
 export type BroadcastPerformanceProps = {
@@ -457,10 +462,17 @@ export function BroadcastPerformance({
             </td>
             <td
               className="lad-bp-col-num"
-              style={{ color: t.read > 0 ? C.read : C.ink }}
-              aria-label={`Read: ${nf.format(t.read)} messages`}
+              style={{ color: t.readTracked === false ? C.muted : t.read > 0 ? C.read : C.ink }}
+              aria-label={
+                t.readTracked === false
+                  ? 'Read tracking not available on this channel'
+                  : `Read: ${nf.format(t.read)} messages`
+              }
+              title={t.readTracked === false ? 'Personal WhatsApp does not report read receipts' : undefined}
             >
-              <span key={selectedId + '-read'} className="lad-bp-anim">{nf.format(t.read)}</span>
+              <span key={selectedId + '-read'} className="lad-bp-anim">
+                {t.readTracked === false ? '—' : nf.format(t.read)}
+              </span>
             </td>
             <td
               className="lad-bp-col-num"
@@ -476,16 +488,28 @@ export function BroadcastPerformance({
               <span key={selectedId + '-failed'} className="lad-bp-anim">{nf.format(t.failed)}</span>
             </td>
             <td className="lad-bp-col-rate">
-              <span
-                key={selectedId + '-rate'}
-                className="lad-bp-rate-pill lad-bp-anim"
-                style={{ background: band.bg, color: band.color }}
-                aria-label={`Read rate: ${pct1(readRate)} percent — ${band.label}`}
-                title={`${band.label} — ${pct1(readRate)}%`}
-              >
-                <span className="num">{pct1(readRate)}</span>
-                <span className="unit">%</span>
-              </span>
+              {t.readTracked === false ? (
+                <span
+                  key={selectedId + '-rate'}
+                  className="lad-bp-rate-pill lad-bp-anim"
+                  style={{ background: C.pendingSoft, color: C.muted }}
+                  aria-label="Read rate not available on this channel"
+                  title="Personal WhatsApp does not report read receipts"
+                >
+                  <span className="num">n/a</span>
+                </span>
+              ) : (
+                <span
+                  key={selectedId + '-rate'}
+                  className="lad-bp-rate-pill lad-bp-anim"
+                  style={{ background: band.bg, color: band.color }}
+                  aria-label={`Read rate: ${pct1(readRate)} percent — ${band.label}`}
+                  title={`${band.label} — ${pct1(readRate)}%`}
+                >
+                  <span className="num">{pct1(readRate)}</span>
+                  <span className="unit">%</span>
+                </span>
+              )}
             </td>
           </tr>
         </tbody>

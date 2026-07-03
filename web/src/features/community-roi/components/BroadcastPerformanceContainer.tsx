@@ -139,6 +139,31 @@ export function BroadcastPerformanceContainer({
       });
     };
 
+    // Personal WhatsApp (WAPA/Baileys) — same endpoint shape as WABA, routed
+    // by ?channel=personal. No read receipts on this channel (readTracked
+    // false → the widget renders "—" / "n/a" instead of a fake 0%).
+    const fetchPersonalWA = async (): Promise<TemplateWithTs[]> => {
+      const res = await fetch('/api/whatsapp-conversations/broadcasts/template-stats?channel=personal', { cache: 'no-store' });
+      if (!res.ok) return [];
+      const json = await res.json().catch(() => null);
+      if (!json?.success) return [];
+      const rows: ApiRow[] = json.templates ?? [];
+      return rows.map((r) => ({
+        id:          `wapa-${r.template_name}`,
+        name:        r.template_name,
+        recipients:  r.distinct_recipients,
+        lastSent:    shortRelative(r.last_sent_at),
+        sent:        r.total,
+        delivered:   r.delivered,     // accepted by WhatsApp
+        read:        0,
+        failed:      r.failed,
+        pending:     0,
+        channel:     'WhatsApp Personal' as const,
+        readTracked: false,
+        _ts:         r.last_sent_at,
+      }));
+    };
+
     // Email broadcasts (LAD-Email-Comms): recent runs + per-run open stats.
     // "Read" = unique opens (tracking pixel — an upper bound, mail-client
     // proxies prefetch), "Delivered" = sent-but-not-opened. Tenants without
@@ -192,22 +217,29 @@ export function BroadcastPerformanceContainer({
       });
     };
 
-    Promise.allSettled([fetchWhatsApp(), fetchEmail()]).then(([wa, email]) => {
-      if (cancelled) return;
-      // Only error out when BOTH channels failed — a tenant without one
-      // channel should still see the other's broadcasts.
-      if (wa.status === 'rejected' && email.status === 'rejected') {
-        setError((wa.reason as Error | undefined)?.message || 'Failed to load');
-        return;
-      }
-      const merged = [
-        ...(wa.status === 'fulfilled' ? wa.value : []),
-        ...(email.status === 'fulfilled' ? email.value : []),
-      ]
-        .sort((a, b) => (b._ts ?? '').localeCompare(a._ts ?? ''))
-        .map(({ _ts: _ignored, ...t }) => t);
-      setTemplates(merged);
-    });
+    Promise.allSettled([fetchWhatsApp(), fetchPersonalWA(), fetchEmail()]).then(
+      ([wa, wapa, email]) => {
+        if (cancelled) return;
+        // Only error out when ALL channels failed — a tenant without one
+        // channel should still see the others' broadcasts.
+        if (
+          wa.status === 'rejected' &&
+          wapa.status === 'rejected' &&
+          email.status === 'rejected'
+        ) {
+          setError((wa.reason as Error | undefined)?.message || 'Failed to load');
+          return;
+        }
+        const merged = [
+          ...(wa.status === 'fulfilled' ? wa.value : []),
+          ...(wapa.status === 'fulfilled' ? wapa.value : []),
+          ...(email.status === 'fulfilled' ? email.value : []),
+        ]
+          .sort((a, b) => (b._ts ?? '').localeCompare(a._ts ?? ''))
+          .map(({ _ts: _ignored, ...t }) => t);
+        setTemplates(merged);
+      },
+    );
     return () => { cancelled = true; };
   }, []);
 
