@@ -69,11 +69,31 @@ function mapMessageFromApi(raw: any): Message {
 
   const isOutgoing = role === 'assistant' || role === 'AI' || role === 'human_agent';
 
-  // Human-agent display name: prefer metadata, fall back to 'Agent'
+  // Agent-forward messages surface the customer as a sender label (like a group).
+  // NEW forwards carry the name in metadata with a clean body; OLD ones baked
+  // "📩 *New message from X*\n\nBody" into the content — parse those as a fallback.
+  let displayContent: string = raw.content || '';
+  let forwardSender: string | undefined =
+    (metadata.via === 'agent_forward' || metadata.sender_type === 'forward')
+      ? (metadata.sender_name || undefined)
+      : undefined;
+  if (!forwardSender) {
+    const fwd = displayContent.match(/^[^\n]*\*New message from ([^*\n]+)\*\s*\n+([\s\S]+)$/);
+    if (fwd) { forwardSender = fwd[1].trim(); displayContent = fwd[2].trim(); }
+  }
+
+  // Display name shown above a bubble:
+  //  • human-agent (outgoing takeover) → the agent's name
+  //  • incoming GROUP message          → the participant who sent it
+  //  • agent-forward                   → the customer the message is from
+  //  • 1:1 chats                        → undefined (no per-message label)
   const senderName: string | undefined =
     role === 'human_agent'
       ? (metadata.sender_name || metadata.agent_name || raw.sender_name || undefined)
-      : undefined;
+      : (forwardSender
+          || (metadata.is_group && !isOutgoing
+              ? (metadata.sender_name || metadata.sender_phone || undefined)
+              : undefined));
 
   const rawType = String(raw.type || '').toLowerCase();
   const inferredMediaTypeFromRawType =
@@ -84,7 +104,7 @@ function mapMessageFromApi(raw: any): Message {
   return {
     id: raw.id,
     conversationId: raw.conversation_id,
-    content: raw.content || '',
+    content: displayContent,
     timestamp: new Date(raw.created_at),
     isOutgoing,
     // DB default is 'received' for all messages; outbound ones get backfilled to 'sent'.
@@ -101,7 +121,7 @@ function mapMessageFromApi(raw: any): Message {
       id: isOutgoing ? (metadata.human_agent_id || 'agent') : raw.lead_id || 'user',
       name: isOutgoing
         ? (role === 'human_agent' ? (senderName || 'Agent') : 'AI Agent')
-        : 'Contact',
+        : (metadata.is_group ? (senderName || 'Member') : 'Contact'),
     },
     role,
     intent: raw.intent,
@@ -123,7 +143,22 @@ function mapMessageFromApi(raw: any): Message {
     mediaMimeType: metadata.mime_type || raw.mime_type || raw.content_type || raw.media_mime_type || undefined,
     mediaFilename: metadata.filename || raw.filename || raw.media_filename || undefined,
     mediaCaption: metadata.caption || raw.caption || undefined,
+    starred: Boolean(metadata.starred),
   };
+}
+
+// A conversation's "last activity" can live in either column: updated_at is
+// bumped on every message, but last_message_at historically was NOT (so it could
+// be stale). Use whichever is NEWER for both display and sort, so a freshly-active
+// chat is never ranked/shown as old (real bug 2026-06-20: a chat active "2 min"
+// ago sorted among 2-month chats because the sort keyed off the stale
+// last_message_at). Backend now keeps the two in lock-step; this is belt-and-
+// braces and self-heals before the backfill runs.
+function latestActivityDate(...candidates: Array<string | null | undefined>): Date {
+  const times = candidates
+    .map((c) => (c ? new Date(c).getTime() : NaN))
+    .filter((t) => !Number.isNaN(t));
+  return new Date(times.length ? Math.max(...times) : Date.now());
 }
 
 function mapConversationFromApi(raw: any): Conversation {
@@ -137,6 +172,7 @@ function mapConversationFromApi(raw: any): Conversation {
       name: raw.lead_name || raw.lead_phone || raw.phone || 'Unknown',
       phone: raw.lead_phone,
       email: raw.lead_email,
+      avatar: raw.lead_avatar || undefined,
     },
     messages: [], // Messages loaded separately
     lastMessage: raw.last_message_content
@@ -144,7 +180,7 @@ function mapConversationFromApi(raw: any): Conversation {
           id: `last-${raw.id}`,
           conversationId: raw.id,
           content: raw.last_message_content,
-          timestamp: new Date(raw.last_message_at || raw.updated_at),
+          timestamp: latestActivityDate(raw.last_message_at, raw.updated_at),
           isOutgoing: raw.last_message_role !== 'user',
           status: 'sent',
           sender: {
@@ -158,8 +194,10 @@ function mapConversationFromApi(raw: any): Conversation {
     owner: (raw.owner || 'AI') as ConversationOwner,
     conversationState: raw.context_status as ConversationState,
     messageCount: raw.message_count || 0,
+    is_favorite: Boolean(raw.is_favorite),
+    isFavorite: Boolean(raw.is_favorite),
     createdAt: new Date(raw.started_at || raw.created_at),
-    updatedAt: new Date(raw.updated_at || raw.last_message_at || raw.started_at),
+    updatedAt: latestActivityDate(raw.updated_at, raw.last_message_at, raw.started_at),
   };
 }
 

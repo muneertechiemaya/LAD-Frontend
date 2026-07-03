@@ -517,7 +517,7 @@ export function PersonalWaTemplateManager() {
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="px-4 py-3 border-b border-border shrink-0">
-        <h2 className="text-sm font-semibold">Personal WA Templates</h2>
+        <h2 className="text-sm font-semibold">WAPA Templates</h2>
         <p className="text-xs text-muted-foreground mt-0.5">
           Saved messages — no Meta approval required
         </p>

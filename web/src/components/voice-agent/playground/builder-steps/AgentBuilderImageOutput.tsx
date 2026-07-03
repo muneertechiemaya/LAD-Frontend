@@ -1,5 +1,5 @@
 import React from "react";
-import { X, Sparkles, Download, Maximize2, ChevronLeft, ChevronRight, Check, Loader2 } from "lucide-react";
+import { X, Sparkles, Download, Maximize2, ChevronLeft, ChevronRight, Check, Loader2, Video } from "lucide-react";
 import { BuilderBottomInput } from "./BuilderBottomInput";
 import ReactMarkdown from "react-markdown";
 
@@ -28,6 +28,7 @@ export function AgentBuilderImageOutput({
   title = "Generated Concepts",
   description = "",
   images = [],
+  video,
   onClose,
   onNext,
   phase,
@@ -41,6 +42,7 @@ export function AgentBuilderImageOutput({
   title?: string;
   description?: string;
   images?: string[];
+  video?: string;
   onClose?: () => void;
   onNext?: (val?: string) => void;
   phase?: string;
@@ -187,11 +189,25 @@ export function AgentBuilderImageOutput({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [previewImage, images]);
 
-  const handleDownload = (imgData: string, index: number) => {
-    const a = document.createElement("a");
-    a.href = imgData;
-    a.download = `generated-concept-${index + 1}.png`;
-    a.click();
+  const handleDownload = async (imgData: string, index: number) => {
+    try {
+      const response = await fetch(imgData);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = `generated-concept-${index + 1}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.warn("Direct blob download failed, falling back to navigation:", err);
+      const a = document.createElement("a");
+      a.href = imgData;
+      a.target = "_blank";
+      a.click();
+    }
   };
 
   return (
@@ -224,6 +240,23 @@ export function AgentBuilderImageOutput({
           {description && (
             <div className="text-xs text-slate-500 text-center mb-4 italic px-4 leading-relaxed font-medium">
               <ReactMarkdown>{description}</ReactMarkdown>
+            </div>
+          )}
+
+          {/* Animated Video Preview */}
+          {video && (
+            <div className="w-full max-w-sm mx-auto mb-6 rounded-2xl overflow-hidden border border-slate-100 shadow-[0_4px_20px_rgba(11,25,87,0.15)] bg-slate-950 aspect-video flex items-center justify-center relative group">
+              <video
+                src={video}
+                autoPlay
+                loop
+                muted
+                controls
+                className="w-full h-full object-contain"
+              />
+              <div className="absolute top-3 left-3 bg-[#0b1957]/80 text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider backdrop-blur-sm">
+                Veo 3.1 Animation
+              </div>
             </div>
           )}
 
@@ -296,6 +329,17 @@ export function AgentBuilderImageOutput({
                     
                     {/* Overlay controls with 50% opacity by default, 100% on hover */}
                     <div className="absolute bottom-3 right-3 z-10 flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onNext?.(`[ANIMATE_IMAGE] index=${idx}`);
+                        }}
+                        className="p-1.5 bg-black/60 text-white rounded-lg transition-all active:scale-95 opacity-50 hover:opacity-100 flex items-center justify-center cursor-pointer shadow"
+                        title="Animate concept with AI"
+                      >
+                        <Video className="size-3.5" />
+                      </button>
                       <button
                         type="button"
                         onClick={() => setPreviewImage(img)}
@@ -396,6 +440,17 @@ export function AgentBuilderImageOutput({
             />
             
             <div className="mt-4 flex gap-4" onClick={(e) => e.stopPropagation()}>
+              <button
+                type="button"
+                onClick={() => {
+                  setPreviewImage(null);
+                  onNext?.(`[ANIMATE_IMAGE] index=${currentPreviewIndex}`);
+                }}
+                className="px-4 py-2 bg-gradient-to-br from-[#0b1957] to-[#1e293b] hover:from-[#0b1957] hover:to-[#0b1957] text-white rounded-xl font-bold text-xs flex items-center gap-2 transition-all active:scale-95 shadow-lg cursor-pointer"
+              >
+                <Video className="size-4" />
+                Animate Concept
+              </button>
               <button
                 type="button"
                 onClick={() => {

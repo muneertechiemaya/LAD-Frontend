@@ -1674,7 +1674,7 @@ export function ChatSettings() {
                 <div className="flex items-center gap-2.5">
                   <span className="h-2 w-2 rounded-full bg-emerald-400 flex-shrink-0" />
                   <div>
-                    <p className="text-sm font-medium text-gray-800">Personal WhatsApp</p>
+                    <p className="text-sm font-medium text-gray-800">WAPA</p>
                     <p className="text-xs text-gray-500">Shows a &quot;typing…&quot; presence to the contact while replying</p>
                   </div>
                 </div>
