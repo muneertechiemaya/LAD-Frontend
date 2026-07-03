@@ -409,21 +409,21 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
       {/* ── Top bar ── */}
       <header className="flex-shrink-0 bg-white border-b border-gray-200 px-4 py-3 sm:px-5 sm:py-3.5 flex items-center justify-between gap-2.5 sm:gap-3 dark:bg-[#000c3b] dark:border-gray-800">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-          <button
+        <button
             type="button"
-            onClick={() => {
-              if (editorMode) {
-                setEditorMode(null);
-              } else if (onBack) {
-                onBack();
-              } else {
-                router.back();
-              }
-            }}
-            className="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#0b1957]/50 transition-colors cursor-pointer flex-shrink-0"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
+             onClick={() => {
+                  if (editorMode) {
+                    setEditorMode(null);
+                  } else if (onBack) {
+                    onBack();
+                  } else {
+                    router.back();
+                  }
+                }}
+          className="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#0b1957]/50 transition-colors cursor-pointer flex-shrink-0"
+        >
+          <ArrowLeft className="w-4 h-4" />
+        </button>
 
         <div className="flex flex-col min-w-0">
           <EditableName name={template.name} onChange={(v) => set('name', v)} />
