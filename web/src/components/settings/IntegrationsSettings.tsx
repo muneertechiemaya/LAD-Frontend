@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Settings2, Linkedin, Instagram, Smartphone, Bot, Clock, Lock, Server, Truck, X, Power } from 'lucide-react';
+import { Search, Settings2, Linkedin, Instagram, Smartphone, Bot, Clock, Lock, Server, Truck, X, Power, Loader2 } from 'lucide-react';
 import { useCreditsBalance } from '@lad/frontend-features/billing';
 import { Input } from '@/components/ui/input';
 import { GoogleAuthIntegration } from './GoogleAuthIntegration';

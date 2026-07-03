@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Badge } from '@/components/ui/badge';
 import { igGet as apiGet, igPost as apiPost, igPatch as apiPatch, igDelete as apiDelete } from './instagram-api';
 import { InstagramTenantOnboarding } from './InstagramTenantOnboarding';
 import {
