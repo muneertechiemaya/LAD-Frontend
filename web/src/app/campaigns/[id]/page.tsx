@@ -201,7 +201,7 @@ export default function CampaignDetailPage() {
             </Button>
             <Button
               variant="default"
-              onClick={() => router.push(`/campaigns/${campaignId}/edit`)}
+              onClick={() => router.push(`/onboarding/advanced-search-ai?campaignId=${campaignId}`)}
               disabled={saving}
             >
               Edit Workflow

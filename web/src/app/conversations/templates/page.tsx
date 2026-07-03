@@ -341,8 +341,8 @@ export default function TemplatesPage() {
 
   // ── Header create button: label + action adapt to active view ─
   const createButton = (() => {
-    if (activeTab === 'email') return { label: '+ Create Template', icon: null, onClick: () => router.push('/campaigns/templates/create') };
-    if (activeTab === 'whatsapp' && waMode === 'business') return { label: '+ Create WhatsApp Template', icon: <MessageSquare className="w-4 h-4" />, onClick: () => router.push('/campaigns/templates/create/whatsapp') };
+    if (activeTab === 'email') return { label: '+ Create Template', icon: null, onClick: () => router.push('/conversations/templates/create') };
+    if (activeTab === 'whatsapp' && waMode === 'business') return { label: '+ Create WhatsApp Template', icon: <MessageSquare className="w-4 h-4" />, onClick: () => router.push('/conversations/templates/create/whatsapp') };
     if (activeTab === 'whatsapp' && waMode === 'personal') return { label: '+ New Personal Template', icon: <MessageSquare className="w-4 h-4" />, onClick: () => { setWapaEditing(null); setWapaModalOpen(true); } };
     if (activeTab === 'linkedin') return { label: '+ New LinkedIn Template', icon: <Linkedin className="w-4 h-4" />, onClick: () => { setLiEditing(null); setLiModalOpen(true); } };
     return { label: '+ New Instagram Template', icon: <Instagram className="w-4 h-4" />, onClick: () => { setIgEditing(null); setIgModalOpen(true); } };
@@ -419,7 +419,7 @@ export default function TemplatesPage() {
                 title="No templates yet"
                 subtitle="Create your first email template to get started"
                 ctaLabel="Create Template"
-                onCta={() => router.push('/campaigns/templates/create')}
+                onCta={() => router.push('/conversations/templates/create')}
               />
             ) : (
               <div className={GRID}>
@@ -453,7 +453,7 @@ export default function TemplatesPage() {
                       <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full dark:!bg-transparent dark:!border-transparent dark:!px-0 dark:!py-0 dark:!rounded-none dark:!font-extrabold ${template.is_active ? 'bg-green-100 text-green-700 dark:!text-emerald-400' : 'bg-gray-100 text-gray-500 dark:!text-slate-300'}`}>
                         {template.is_active ? 'Active' : 'Inactive'}
                       </span>
-                      <Link href={`/campaigns/templates/edit/${template.id}`} className="flex items-center gap-1 text-xs font-semibold text-[#0b1957] dark:text-white hover:text-[#0a1540] dark:hover:text-[#7a8ba3] transition-colors">
+                      <Link href={`/conversations/templates/edit/${template.id}`} className="flex items-center gap-1 text-xs font-semibold text-[#0b1957] dark:text-white hover:text-[#0a1540] dark:hover:text-[#7a8ba3] transition-colors">
                         <Pencil className="w-3 h-3" /> Edit
                       </Link>
                     </div>
@@ -506,7 +506,7 @@ export default function TemplatesPage() {
                     title="No WhatsApp Business templates yet"
                     subtitle="Create a Meta-approved WhatsApp Business (WABA) template to get started"
                     ctaLabel="Create WhatsApp Template"
-                    onCta={() => router.push('/campaigns/templates/create/whatsapp')}
+                    onCta={() => router.push('/conversations/templates/create/whatsapp')}
                   />
                 ) : (
                   <>

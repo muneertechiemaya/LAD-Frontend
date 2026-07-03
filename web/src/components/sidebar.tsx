@@ -214,7 +214,7 @@ export function Sidebar() {
       requiredFeature: "conversations",
       children: [
         {
-          href: "/campaigns/templates",
+          href: "/conversations/templates",
           label: "Templates",
           icon: LayoutTemplate,
           details: "Create and manage message templates for conversations and broadcasts.",
@@ -383,10 +383,10 @@ export function Sidebar() {
           {(() => {
             // Build the set of every URL claimed as a "child" anywhere in the
             // nav tree so a top-level item never lights up when the current
-            // pathname is actually owned by another section.
-            // Example: Templates lives at /campaigns/templates but is now a
-            // child of Conversations — without this guard, Campaigns would
-            // greedily match /campaigns/* and double-highlight.
+            // pathname is actually owned by another section. Guards against a
+            // top-level item greedily prefix-matching a child route that lives
+            // under its URL space (e.g. a child at /parent/child/... should
+            // highlight the child, not the /parent top-level item).
             const ownedChildHrefs = new Set<string>(
               nav.flatMap(p => p.children?.map(c => c.href) ?? [])
             );

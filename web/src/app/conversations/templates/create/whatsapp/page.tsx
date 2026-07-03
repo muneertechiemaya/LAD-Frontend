@@ -41,7 +41,7 @@ const LANGUAGES = [
 ];
 
 const CATEGORIES: { value: Category; label: string; color: string }[] = [
-  { value: 'MARKETING',      label: 'Marketing',      color: 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-400 dark:border-purple-900/60' },
+  { value: 'MARKETING',      label: 'Marketing',      color: 'bg-purple-100 text-purple-700 border-purple-200  dark:bg-purple-950/40 dark:text-purple-400 dark:border-purple-900/60' },
   { value: 'UTILITY',        label: 'Utility',        color: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900/60'       },
   { value: 'AUTHENTICATION', label: 'Authentication', color: 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-400 dark:border-orange-900/60' },
 ];
@@ -63,7 +63,7 @@ function renderWAMarkdown(text: string): string {
     .replace(/\*([^*\n]+)\*/g, '<strong>$1</strong>')
     .replace(/_([^_\n]+)_/g,   '<em>$1</em>')
     .replace(/~([^~\n]+)~/g,   '<s>$1</s>')
-    .replace(/`([^`\n]+)`/g,   '<code class="font-mono text-xs bg-slate-100 dark:bg-slate-800 px-0.5 rounded">$1</code>');
+    .replace(/`([^`\n]+)`/g,   '<code class="font-mono text-xs bg-slate-100  dark:bg-slate-800 px-0.5 rounded">$1</code>');
 }
 
 function WAText({ text }: { text: string }) {
@@ -232,8 +232,7 @@ export default function WhatsAppTemplateCreatePage() {
     const s = ta.selectionStart, e = ta.selectionEnd;
     const sel = bodyText.slice(s, e);
     const next = bodyText.slice(0, s) + open + sel + close + bodyText.slice(e);
-    const setBodyTextLocal = setBodyText;
-    setBodyTextLocal(next);
+    setBodyText(next);
     requestAnimationFrame(() => {
       ta.focus();
       ta.setSelectionRange(s + open.length, s + open.length + sel.length);
@@ -246,8 +245,7 @@ export default function WhatsAppTemplateCreatePage() {
     const tag = `{{${nextNum}}}`;
     const pos = ta?.selectionStart ?? bodyText.length;
     const next = bodyText.slice(0, pos) + tag + bodyText.slice(pos);
-    const setBodyTextLocal = setBodyText;
-    setBodyTextLocal(next);
+    setBodyText(next);
     requestAnimationFrame(() => {
       if (ta) { ta.focus(); ta.setSelectionRange(pos + tag.length, pos + tag.length); }
     });
@@ -393,7 +391,7 @@ export default function WhatsAppTemplateCreatePage() {
       {/* ── Sticky header bar — back only ── */}
       <div className="bg-white border-b border-[#E2E8F0] dark:bg-[#000c3b] dark:border-gray-800 px-4 md:px-6 py-3 flex items-center gap-3 sticky top-0 z-20 shadow-sm">
         <button
-          onClick={() => router.push('/campaigns/templates')}
+          onClick={() => router.push('/conversations/templates')}
           className="flex items-center gap-1.5 text-sm text-[#64748B] hover:text-[#1E293B] dark:text-gray-400 dark:hover:text-white font-medium transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" /> Back
@@ -507,7 +505,7 @@ export default function WhatsAppTemplateCreatePage() {
                   <button
                     onClick={handleSubmit}
                     disabled={!canSubmit || submitting}
-                    className="hidden md:inline-flex items-center gap-2 px-5 py-2.5 bg-[#0b1957] dark:bg-gray-100 text-white dark:text-gray-900 rounded-xl font-semibold text-sm hover:bg-[#0a1540] dark:hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_4px_20px_rgba(11,25,87,0.3)] dark:shadow-none transition-all cursor-pointer"
+                    className="hidden md:inline-flex items-center gap-2 px-5 py-2.5 bg-[#0b1957] text-white rounded-xl font-semibold text-sm hover:bg-[#0a1540] disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_4px_20px_rgba(11,25,87,0.3)]  dark:hover:bg-white hover:shadow-[0_8px_30px_rgba(11,25,87,0.5)]  dark:text-gray-900 dark:bg-gray-100 dark:shadow-none transition-all cursor-pointer"
                   >
                     {submitting
                       ? <><Loader2 className="w-4 h-4 animate-spin" /> Submitting…</>

@@ -274,7 +274,7 @@ export default function CampaignsListPage() {
 
           <div className="flex gap-2 w-full sm:w-auto">
             <Button
-              onClick={() => router.push("/campaigns/templates/create")}
+              onClick={() => router.push("/conversations/templates/create")}
               className="bg-[#0b1957] text-white rounded-xl font-semibold px-3 py-1.5 shadow-[0_4px_20px_rgba(11,25,87,0.3)] flex-1 sm:w-auto hover:bg-[#0a1540] hover:shadow-[0_8px_30px_rgba(11,25,87,0.5)] hover:cursor-pointer"
             >
               <Plus className="w-4 h-4 mr-1" />

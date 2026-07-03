@@ -8,11 +8,11 @@ export default function CreateTemplatePage() {
   const [selected, setSelected] = useState<'manual' | 'ai' | null>(null);
 
   const handleManualCreate = () => {
-    router.push('/campaigns/templates/create/manual');
+    router.push('/conversations/templates/create/manual');
   };
 
   const handleAIGenerate = () => {
-    router.push('/campaigns/templates/create/ai');
+    router.push('/conversations/templates/create/ai');
   };
 
   return (
