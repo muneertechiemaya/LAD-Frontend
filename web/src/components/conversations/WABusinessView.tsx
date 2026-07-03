@@ -2950,7 +2950,7 @@ function WABASidebar({
     const totalCount = selectedGroups.reduce((acc, g) =>
       acc + (g.metadata?.wa_group && g.metadata.participant_count
         ? g.metadata.participant_count
-        : g.conversation_count), 0);
+        : (g.member_count ?? g.conversation_count ?? 0)), 0);
     setGroupTemplateSendTarget({ groupIds, count: totalCount });
     setIsTemplatePickerOpen(true);
   }, []);
@@ -3897,7 +3897,7 @@ function WABASidebar({
                               <div className="flex flex-col items-start overflow-hidden flex-1 min-w-0">
                                 <span className="text-sm font-semibold truncate w-full text-left">{group.name}</span>
                                 <span className="text-xs text-muted-foreground">
-                                  {group.conversation_count} member{group.conversation_count !== 1 ? 's' : ''}
+                                  {group.member_count ?? group.conversation_count ?? 0} member{(group.member_count ?? group.conversation_count ?? 0) !== 1 ? 's' : ''}
                                 </span>
                               </div>
                               {/* Hover action buttons */}
@@ -3907,7 +3907,7 @@ function WABASidebar({
                                     <TooltipTrigger asChild>
                                       <button
                                         onClick={() => {
-                                          handleGroupTemplateSend(group.id, group.conversation_count);
+                                          handleGroupTemplateSend(group.id, group.member_count ?? group.conversation_count ?? 0);
                                           setIsNewChatOpen(false);
                                           setNewChatSearch('');
                                           setSelectedNewChatIds(new Set());
