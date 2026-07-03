@@ -51,6 +51,10 @@ export interface ChatGroup {
   color: string;
   description: string | null;
   conversation_count: number;
+  /** Count of chat_group_members (contacts in the group) — the real send-recipient count.
+   *  conversation_count is 0 until members have an open conversation, so use member_count
+   *  for "members"/recipient displays and group template-send counts. */
+  member_count?: number;
   created_at: string | null;
   /** Present for groups synced from native WhatsApp groups via Baileys */
   metadata?: {
