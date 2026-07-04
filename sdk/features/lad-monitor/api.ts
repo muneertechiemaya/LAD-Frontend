@@ -16,6 +16,7 @@ import type {
   SahCostData,
   TaskHealth,
   LlmCostData,
+  MigrationStatusData,
 } from './types';
 
 const BASE = '/api/admin/monitor';
@@ -105,4 +106,9 @@ export async function getLlmCost(params?: { days?: number }): Promise<LlmCostDat
     `${BASE}/llm-cost${qs({ days: params?.days })}`
   );
   return res.data.data;
+}
+
+export async function getMigrationStatus(): Promise<MigrationStatusData> {
+  const res = await apiGet<{ success: boolean; data: MigrationStatusData }>(`${BASE}/migrations`);
+  return res.data;
 }
