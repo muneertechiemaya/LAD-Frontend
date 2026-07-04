@@ -8,12 +8,13 @@
  * channels reappear automatically when the tenant reconnects, because
  * visibility is derived from live status on every mount — nothing is deleted).
  *
- * Probes mirror IntegrationsSettings.refreshStatuses, but with one deliberate
- * difference: FAIL-OPEN semantics. There, a probe error just shows a "Connect"
- * card (harmless); here it would HIDE a tenant's settings (harmful). So only a
- * successful response that positively shows no active account yields
- * 'disconnected' — network errors, 4xx/5xx, and in-flight probes all stay
- * 'unknown', and callers treat 'unknown' as visible.
+ * Probes mirror IntegrationsSettings.refreshStatuses, but with different
+ * error semantics because here a wrong answer HIDES a tenant's settings:
+ *   - 2xx with no active account  → 'disconnected' (positively not connected)
+ *   - 404                         → 'disconnected' (route/service absent in
+ *     this environment — the channel is genuinely unusable here, not flaky)
+ *   - 5xx / network error / other → 'unknown' (transient — FAIL-OPEN, treated
+ *     as visible so an outage can never make settings vanish)
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -30,66 +31,73 @@ const INITIAL: Record<ChannelId, ChannelStatus> = {
   instagram: 'unknown',
 };
 
-/** Shared helper: fetch JSON, or null on any failure (fail-open). */
-async function tryJson(path: string, init?: RequestInit): Promise<any | null> {
+type ProbeResult =
+  | { kind: 'ok'; data: any }
+  | { kind: 'absent' }     // HTTP 404 — endpoint not available in this env
+  | { kind: 'error' };     // network failure or non-404 error status
+
+async function probe(path: string, init?: RequestInit): Promise<ProbeResult> {
   try {
     const res = await fetchWithTenant(path, init);
-    if (!res.ok) return null;
-    return await res.json();
+    if (res.status === 404) return { kind: 'absent' };
+    if (!res.ok) return { kind: 'error' };
+    return { kind: 'ok', data: await res.json() };
   } catch {
-    return null;
+    return { kind: 'error' };
   }
 }
 
+/** Map a probe outcome to a status given an "any active account?" predicate. */
+function toStatus(result: ProbeResult, hasActive: (data: any) => boolean): ChannelStatus {
+  if (result.kind === 'absent') return 'disconnected';
+  if (result.kind === 'error') return 'unknown';
+  return hasActive(result.data) ? 'connected' : 'disconnected';
+}
+
 async function probePersonalWhatsapp(): Promise<ChannelStatus> {
-  const data = await tryJson('/api/personal-whatsapp/accounts');
-  if (!data) return 'unknown';
-  const accounts = Array.isArray(data?.accounts) ? data.accounts : [];
-  return accounts.some((a: any) => a.status === 'connected') ? 'connected' : 'disconnected';
+  return toStatus(await probe('/api/personal-whatsapp/accounts'), (data) => {
+    const accounts = Array.isArray(data?.accounts) ? data.accounts : [];
+    return accounts.some((a: any) => a.status === 'connected');
+  });
 }
 
 async function probeWaba(): Promise<ChannelStatus> {
-  const data = await tryJson('/api/whatsapp-conversations/admin/whatsapp-accounts');
-  if (!data) return 'unknown';
-  const accounts = Array.isArray(data) ? data : (Array.isArray(data?.accounts) ? data.accounts : []);
-  return accounts.some((a: any) => a.status === 'active' || a.status === 'connected')
-    ? 'connected'
-    : 'disconnected';
+  return toStatus(await probe('/api/whatsapp-conversations/admin/whatsapp-accounts'), (data) => {
+    const accounts = Array.isArray(data) ? data : (Array.isArray(data?.accounts) ? data.accounts : []);
+    return accounts.some((a: any) => a.status === 'active' || a.status === 'connected');
+  });
 }
 
 async function probeLinkedin(): Promise<ChannelStatus> {
-  const data = await tryJson('/api/campaigns/linkedin/accounts');
-  if (!data) return 'unknown';
-  const accounts = Array.isArray(data) ? data : (Array.isArray(data?.accounts) ? data.accounts : []);
-  return accounts.some((a: any) => a.status === 'connected' || a.status === 'active')
-    ? 'connected'
-    : 'disconnected';
+  return toStatus(await probe('/api/campaigns/linkedin/accounts'), (data) => {
+    const accounts = Array.isArray(data) ? data : (Array.isArray(data?.accounts) ? data.accounts : []);
+    return accounts.some((a: any) => a.status === 'connected' || a.status === 'active');
+  });
 }
 
 /**
  * The "Gmail" prompts channel drives email-agent replies for whichever email
  * provider is connected, so it counts as connected when EITHER Google or
- * Microsoft is. Fail-open: if one probe fails and the other says disconnected,
- * we can't be sure → 'unknown'.
+ * Microsoft is. Unknown only when a transient failure leaves the answer
+ * genuinely ambiguous.
  */
 async function probeEmail(): Promise<ChannelStatus> {
   const [google, microsoft] = await Promise.all([
-    tryJson('/api/social-integration/email/google/status', { method: 'POST' }),
-    tryJson('/api/social-integration/email/microsoft/status', { method: 'POST' }),
+    probe('/api/social-integration/email/google/status', { method: 'POST' }),
+    probe('/api/social-integration/email/microsoft/status', { method: 'POST' }),
   ]);
-  if (google?.connected || microsoft?.connected) return 'connected';
-  if (google && microsoft) return 'disconnected';
-  return 'unknown';
+  const g = toStatus(google, (d) => !!d?.connected);
+  const m = toStatus(microsoft, (d) => !!d?.connected);
+  if (g === 'connected' || m === 'connected') return 'connected';
+  if (g === 'unknown' || m === 'unknown') return 'unknown';
+  return 'disconnected';
 }
 
 async function probeInstagram(): Promise<ChannelStatus> {
-  const data = await tryJson('/api/instagram-conversations/accounts');
-  if (!data) return 'unknown';
-  const accounts = Array.isArray(data?.accounts) ? data.accounts : [];
-  const connected = accounts.some(
-    (a: any) => (a.status ?? 'active') !== 'inactive' && !a.is_deleted,
-  );
-  return connected ? 'connected' : 'disconnected';
+  return toStatus(await probe('/api/instagram-conversations/accounts'), (data) => {
+    const accounts = Array.isArray(data?.accounts) ? data.accounts : [];
+    return accounts.some((a: any) => (a.status ?? 'active') !== 'inactive' && !a.is_deleted);
+  });
 }
 
 export function useConnectedChannels() {
@@ -108,13 +116,11 @@ export function useConnectedChannels() {
         probeEmail(),
         probeInstagram(),
       ]);
-      setStatuses({
-        waba,
-        personal_whatsapp: personal,
-        linkedin,
-        gmail,
-        instagram,
-      });
+      const next = { waba, personal_whatsapp: personal, linkedin, gmail, instagram };
+      // Visible in devtools so "why is this tab shown/hidden?" is answerable.
+      // 'unknown' = probe failed transiently → treated as visible (fail-open).
+      console.debug('[useConnectedChannels] statuses', next);
+      setStatuses(next);
       setLoaded(true);
     } finally {
       inFlight.current = false;
