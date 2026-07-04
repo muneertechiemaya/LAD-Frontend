@@ -26,7 +26,10 @@ import {
   Send,
   Sparkles,
   UserMinus,
+  EyeOff,
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useConnectedChannels, type ChannelId } from '@/hooks/useConnectedChannels';
 import KnowledgeBaseManager from './KnowledgeBaseManager';
 import dynamic from 'next/dynamic';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
@@ -387,6 +390,26 @@ export function ChatSettings() {
   const [loading, setLoading] = useState(true);
   const [activeChannel, setActiveChannel] = useState('waba');
   const [expandedPrompt, setExpandedPrompt] = useState<string | null>(null);
+
+  // ── Connection-aware visibility ─────────────────────────────────────────
+  // Only connected channels get their settings shown; a channel that is
+  // positively NOT connected is hidden (tabs, typing rows, LinkedIn cards).
+  // Nothing is deleted — reconnecting brings the settings back with their
+  // saved values, because visibility is derived from live status per mount.
+  // Fail-open: while probing (or if a probe errors) the channel stays visible.
+  const router = useRouter();
+  const { loaded: channelsLoaded, isVisible: isChannelVisible } = useConnectedChannels();
+  const visibleChannels = CHANNELS.filter((c) => isChannelVisible(c.id as ChannelId));
+  const hiddenChannels = CHANNELS.filter((c) => !isChannelVisible(c.id as ChannelId));
+  const visibleIds = visibleChannels.map((c) => c.id).join(',');
+  // If the active tab's channel just got hidden, snap to the first visible one.
+  useEffect(() => {
+    if (!channelsLoaded) return;
+    const ids = visibleIds ? visibleIds.split(',') : [];
+    if (ids.length > 0 && !ids.includes(activeChannel)) {
+      setActiveChannel(ids[0]);
+    }
+  }, [channelsLoaded, visibleIds, activeChannel]);
   const [editedTexts, setEditedTexts] = useState<Record<string, string>>({});
   const [savingPrompt, setSavingPrompt] = useState<string | null>(null);
   const [savingSettings, setSavingSettings] = useState(false);
@@ -933,10 +956,11 @@ export function ChatSettings() {
           </p>
         </div>
 
-        {/* Channel tabs */}
+        {/* Channel tabs — only connected channels; hidden ones collapse into
+            a "+N more" chip that jumps to the Integrations tab. */}
         <div className="border-b border-gray-100 overflow-x-auto hide-scrollbar">
-          <div className="flex gap-1 -mb-px px-6 min-w-max flex-nowrap">
-            {CHANNELS.map((ch) => (
+          <div className="flex items-center gap-1 -mb-px px-6 min-w-max flex-nowrap">
+            {visibleChannels.map((ch) => (
               <button
                 key={ch.id}
                 onClick={() => setActiveChannel(ch.id)}
@@ -950,10 +974,36 @@ export function ChatSettings() {
                 {ch.label}
               </button>
             ))}
+            {hiddenChannels.length > 0 && (
+              <button
+                onClick={() => router.push('/settings?tab=integrations')}
+                title={`Not connected: ${hiddenChannels.map((c) => c.label).join(', ')}. Connect to configure.`}
+                className="flex items-center gap-1 px-3 py-1 my-1.5 text-xs text-gray-400 border border-dashed border-gray-300 rounded-full hover:text-gray-600 hover:border-gray-400 transition-colors whitespace-nowrap"
+              >
+                <Plus className="h-3 w-3" />
+                {hiddenChannels.length} more
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Prompts list */}
+        {/* No channels connected at all — invite to connect instead of blank tabs */}
+        {channelsLoaded && visibleChannels.length === 0 && (
+          <div className="px-6 py-12 text-center text-gray-400">
+            <EyeOff className="h-8 w-8 mx-auto mb-2 opacity-40" />
+            <p className="text-sm text-gray-500">No channels connected</p>
+            <p className="text-xs mt-1 mb-4">Connect WhatsApp, LinkedIn, Gmail or Instagram to configure AI prompts</p>
+            <button
+              onClick={() => router.push('/settings?tab=integrations')}
+              className="text-sm font-medium text-blue-600 hover:text-blue-700"
+            >
+              Connect a channel →
+            </button>
+          </div>
+        )}
+
+        {/* Prompts list — hidden entirely when no channel is connected */}
+        {(!channelsLoaded || visibleChannels.length > 0) && (
         <div className="divide-y divide-gray-100">
           {filteredPrompts.length === 0 ? (
             <div className="px-6 py-12 text-center text-gray-400">
@@ -1049,8 +1099,10 @@ export function ChatSettings() {
             })
           )}
         </div>
+        )}
 
-        {/* Add new prompt */}
+        {/* Add new prompt — needs at least one connected channel */}
+        {(!channelsLoaded || visibleChannels.length > 0) && (
         <div className="px-6 py-3 border-t border-gray-100">
           {!showNewPrompt ? (
             <button
@@ -1078,7 +1130,7 @@ export function ChatSettings() {
                   onChange={(e) => setActiveChannel(e.target.value)}
                   className="flex-1 px-3 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 bg-white"
                 >
-                  {CHANNELS.map((ch) => (
+                  {visibleChannels.map((ch) => (
                     <option key={ch.id} value={ch.id}>{ch.label}</option>
                   ))}
                 </select>
@@ -1102,6 +1154,7 @@ export function ChatSettings() {
             </div>
           )}
         </div>
+        )}
       </div>
 
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
@@ -1670,6 +1723,9 @@ export function ChatSettings() {
       </div>
 
       {/* ── Section 3: Chat Behaviour ────────────────────────────── */}
+      {/* Both rows are WhatsApp-channel settings — hide the whole card when
+          neither WhatsApp flavour is connected. */}
+      {(isChannelVisible('personal_whatsapp') || isChannelVisible('waba')) && (
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
         <div className="p-6 border-b border-gray-100">
           <div className="flex items-center gap-2 mb-1">
@@ -1691,6 +1747,7 @@ export function ChatSettings() {
 
             <div className="space-y-3 border border-gray-100 rounded-lg divide-y divide-gray-100 overflow-hidden">
               {/* Personal WhatsApp row */}
+              {isChannelVisible('personal_whatsapp') && (
               <div className="flex items-center justify-between px-4 py-3">
                 <div className="flex items-center gap-2.5">
                   <span className="h-2 w-2 rounded-full bg-emerald-400 flex-shrink-0" />
@@ -1712,8 +1769,10 @@ export function ChatSettings() {
                   )}
                 </button>
               </div>
+              )}
 
               {/* WABA row */}
+              {isChannelVisible('waba') && (
               <div className="flex items-center justify-between px-4 py-3">
                 <div className="flex items-center gap-2.5">
                   <span className="h-2 w-2 rounded-full bg-green-500 flex-shrink-0" />
@@ -1735,6 +1794,7 @@ export function ChatSettings() {
                   )}
                 </button>
               </div>
+              )}
             </div>
           </div>
 
@@ -1750,6 +1810,7 @@ export function ChatSettings() {
           </div>
         </div>
       </div>
+      )}
 
       {/* ── Section 5: Campaign Settings ──────────────────────────── */}
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
@@ -2141,6 +2202,11 @@ export function ChatSettings() {
       </div>
 
       {/* ── Section 7: LinkedIn Automation ──────────────────────── */}
+      {/* Both LinkedIn cards (Automation + Follow-up Sequence) hide together
+          when LinkedIn isn't connected; saved values persist and the cards
+          reappear on reconnect. */}
+      {isChannelVisible('linkedin') && (
+      <>
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
         <div className="p-6 border-b border-gray-100">
           <div className="flex items-center gap-2 mb-1">
@@ -2424,6 +2490,29 @@ export function ChatSettings() {
           </div>
         </div>
       </div>
+      </>
+      )}
+
+      {/* ── Hidden channels hint ─────────────────────────────────── */}
+      {/* One quiet strip so hidden settings are discoverable — the settings
+          themselves are kept and reappear once the channel is reconnected. */}
+      {channelsLoaded && hiddenChannels.length > 0 && (
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm px-5 py-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <EyeOff className="h-4 w-4 text-gray-400 flex-shrink-0" />
+            <p className="text-sm text-gray-500">
+              {hiddenChannels.map((c) => c.label).join(', ')} settings are hidden because
+              {hiddenChannels.length === 1 ? " it isn't" : " they aren't"} connected. Your saved settings are kept.
+            </p>
+          </div>
+          <button
+            onClick={() => router.push('/settings?tab=integrations')}
+            className="text-sm font-medium text-blue-600 hover:text-blue-700 whitespace-nowrap"
+          >
+            Connect channels →
+          </button>
+        </div>
+      )}
 
       {/* Toast */}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
