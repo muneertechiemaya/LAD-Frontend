@@ -42,10 +42,12 @@ export {
   revealLeadPhone,
   revealLeadLinkedIn,
   retryConnection,
+  withdrawConnection,
   saveInboundLeads,
   getInboundLeads,
   cancelLeadBookingsForReNurturing,
 } from './api';
+export type { WithdrawConnectionResult } from './api';
 
 // ============================================================================
 // HOOKS
