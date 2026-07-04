@@ -25,6 +25,7 @@ import {
   X,
   Send,
   Sparkles,
+  UserMinus,
 } from 'lucide-react';
 import KnowledgeBaseManager from './KnowledgeBaseManager';
 import dynamic from 'next/dynamic';
@@ -444,10 +445,14 @@ export function ChatSettings() {
     auto_like_posts: boolean;
     auto_comment_posts: boolean;
     ai_agent_reply_delay_seconds: number;
+    auto_withdraw_pending_enabled: boolean;
+    auto_withdraw_pending_days: number;
   }>({
     auto_like_posts: false,
     auto_comment_posts: false,
     ai_agent_reply_delay_seconds: 0,
+    auto_withdraw_pending_enabled: false,
+    auto_withdraw_pending_days: 90,
   });
   const [savingLinkedinAutomation, setSavingLinkedinAutomation] = useState(false);
 
@@ -481,10 +486,13 @@ export function ChatSettings() {
         setFollowupConfig(f);
         if (liSettings?.success && liSettings.data) {
           const rawDelay = Number(liSettings.data.ai_agent_reply_delay_seconds);
+          const rawWithdrawDays = Number(liSettings.data.auto_withdraw_pending_days);
           setLinkedinAutomation({
             auto_like_posts:              !!liSettings.data.auto_like_posts,
             auto_comment_posts:           !!liSettings.data.auto_comment_posts,
             ai_agent_reply_delay_seconds: Number.isFinite(rawDelay) ? Math.max(0, Math.min(300, rawDelay)) : 0,
+            auto_withdraw_pending_enabled: !!liSettings.data.auto_withdraw_pending_enabled,
+            auto_withdraw_pending_days:   Number.isFinite(rawWithdrawDays) ? Math.max(30, rawWithdrawDays) : 90,
           });
         }
         if (liFollowup?.success && liFollowup.data) {
@@ -716,13 +724,26 @@ export function ChatSettings() {
 
   const handleSaveLinkedinAutomation = useCallback(async () => {
     setSavingLinkedinAutomation(true);
+    // Floor the withdraw window at 30 days (backend clamps too) so a stray small
+    // value can never retract fresh invitations. Reflect the clamp in the UI.
+    const cleanDays = Math.max(30, Math.floor(Number(linkedinAutomation.auto_withdraw_pending_days) || 90));
+    const payload = { ...linkedinAutomation, auto_withdraw_pending_days: cleanDays };
     try {
       const res = await fetch('/api/social-integration/linkedin/automation-settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(linkedinAutomation),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
+      if (data.success && data.data) {
+        setLinkedinAutomation((prev) => ({
+          ...prev,
+          auto_withdraw_pending_enabled: !!data.data.auto_withdraw_pending_enabled,
+          auto_withdraw_pending_days: Number.isFinite(Number(data.data.auto_withdraw_pending_days))
+            ? Math.max(30, Number(data.data.auto_withdraw_pending_days))
+            : cleanDays,
+        }));
+      }
       showToast(data.success ? 'LinkedIn automation settings saved' : 'Failed to save', data.success ? 'success' : 'error');
     } catch {
       showToast('Failed to save', 'error');
@@ -2211,6 +2232,58 @@ export function ChatSettings() {
                   className="w-20 px-2 py-1.5 border border-gray-200 rounded-md text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-200"
                 />
                 <span className="text-xs text-gray-500 w-8">sec</span>
+              </div>
+            </div>
+
+            {/* Auto-withdraw old pending connection requests */}
+            <div className="flex items-center justify-between px-4 py-3">
+              <div className="flex items-center gap-2.5">
+                <UserMinus className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-gray-800">Auto-withdraw old pending requests</p>
+                  <p className="text-xs text-gray-500">
+                    Withdraw connection requests that are still pending after the set number of days (minimum 30)
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className={`flex items-center gap-1.5 ${linkedinAutomation.auto_withdraw_pending_enabled ? '' : 'opacity-40'}`}>
+                  <span className="text-xs text-gray-500">older than</span>
+                  <input
+                    type="number"
+                    min={30}
+                    step={1}
+                    value={linkedinAutomation.auto_withdraw_pending_days}
+                    disabled={!linkedinAutomation.auto_withdraw_pending_enabled}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value, 10);
+                      setLinkedinAutomation((prev) => ({
+                        ...prev,
+                        auto_withdraw_pending_days: Number.isFinite(v) ? v : 0,
+                      }));
+                    }}
+                    onBlur={() =>
+                      setLinkedinAutomation((prev) => ({
+                        ...prev,
+                        auto_withdraw_pending_days: Math.max(30, Math.floor(Number(prev.auto_withdraw_pending_days) || 90)),
+                      }))
+                    }
+                    className="w-16 px-2 py-1.5 border border-gray-200 rounded-md text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:bg-gray-100"
+                  />
+                  <span className="text-xs text-gray-500">days</span>
+                </div>
+                <button
+                  onClick={() =>
+                    setLinkedinAutomation((prev) => ({ ...prev, auto_withdraw_pending_enabled: !prev.auto_withdraw_pending_enabled }))
+                  }
+                  title={linkedinAutomation.auto_withdraw_pending_enabled ? 'On — click to disable' : 'Off — click to enable'}
+                >
+                  {linkedinAutomation.auto_withdraw_pending_enabled ? (
+                    <ToggleRight className="h-6 w-6 text-blue-500" />
+                  ) : (
+                    <ToggleLeft className="h-6 w-6 text-gray-300" />
+                  )}
+                </button>
               </div>
             </div>
           </div>

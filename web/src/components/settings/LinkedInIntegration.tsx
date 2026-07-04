@@ -55,10 +55,6 @@ interface LinkedInAutomationSettings {
   auto_comment_posts: boolean;
   ai_agent_enabled: boolean;
   ai_agent_reply_delay_seconds: number;
-  // Auto-withdraw of stale pending connection requests (daily cron). Days is
-  // floored at 30 server-side so fresh invitations are never retracted.
-  auto_withdraw_pending_enabled: boolean;
-  auto_withdraw_pending_days: number;
 }
 type AuthMethod = 'credentials' | 'cookies';
 export const LinkedInIntegration: React.FC = () => {
@@ -98,22 +94,6 @@ export const LinkedInIntegration: React.FC = () => {
   const [automationSettings, setAutomationSettings] = useState<LinkedInAutomationSettings | null>(null);
   const [aiRepliesSaving, setAiRepliesSaving] = useState(false);
   const [aiToast, setAiToast] = useState<{ kind: 'ok' | 'err'; message: string } | null>(null);
-  // ── Auto-withdraw old pending requests (tenant-level) ──────────────────────
-  // Draft values edited in the "LinkedIn Automation" card and persisted via the
-  // "Save LinkedIn Settings" button (same automation-settings PUT as AI Replies).
-  const [withdrawEnabledDraft, setWithdrawEnabledDraft] = useState<boolean>(false);
-  const [withdrawDaysDraft, setWithdrawDaysDraft] = useState<number>(90);
-  const [savingWithdraw, setSavingWithdraw] = useState(false);
-  // Sync the draft when settings (re)load. fetchAutomationSettings is not in the
-  // 30s poll, so this can't clobber an in-progress edit.
-  useEffect(() => {
-    if (!automationSettings) return;
-    setWithdrawEnabledDraft(automationSettings.auto_withdraw_pending_enabled ?? false);
-    setWithdrawDaysDraft(automationSettings.auto_withdraw_pending_days ?? 90);
-  }, [
-    automationSettings?.auto_withdraw_pending_enabled,
-    automationSettings?.auto_withdraw_pending_days,
-  ]);
   // Auto-dismiss the AI Replies toast after a few seconds (mirrors Instagram).
   useEffect(() => {
     if (!aiToast) return;
@@ -407,46 +387,6 @@ export const LinkedInIntegration: React.FC = () => {
       });
     } finally {
       setAiRepliesSaving(false);
-    }
-  };
-  // Persist the auto-withdraw settings via the automation-settings PUT. Resends
-  // the other automation flags unchanged (the backend partial-merges, but this
-  // keeps parity with the AI-reply toggle path). Days is floored at 30 to match
-  // the server clamp so the UI can never request a shorter window.
-  const saveWithdrawSettings = async () => {
-    if (!automationSettings || savingWithdraw) return;
-    const days = Math.max(30, Math.floor(Number(withdrawDaysDraft) || 90));
-    setSavingWithdraw(true);
-    try {
-      const response = await fetch(
-        `${getApiBaseUrl()}/api/social-integration/linkedin/automation-settings`,
-        {
-          method: 'PUT',
-          headers: getAuthHeaders(),
-          body: JSON.stringify({
-            auto_like_posts: automationSettings.auto_like_posts,
-            auto_comment_posts: automationSettings.auto_comment_posts,
-            ai_agent_enabled: automationSettings.ai_agent_enabled,
-            ai_agent_reply_delay_seconds: automationSettings.ai_agent_reply_delay_seconds,
-            auto_withdraw_pending_enabled: withdrawEnabledDraft,
-            auto_withdraw_pending_days: days,
-          }),
-        }
-      );
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data?.success) {
-        throw new Error(data?.error || data?.message || 'Failed to save LinkedIn settings');
-      }
-      if (data.data) setAutomationSettings(data.data as LinkedInAutomationSettings);
-      setWithdrawDaysDraft(days);
-      setAiToast({ kind: 'ok', message: 'LinkedIn automation settings saved.' });
-    } catch (error) {
-      setAiToast({
-        kind: 'err',
-        message: error instanceof Error ? error.message : 'Could not save LinkedIn settings.',
-      });
-    } finally {
-      setSavingWithdraw(false);
     }
   };
   const handleConnect = async () => {
@@ -921,72 +861,6 @@ export const LinkedInIntegration: React.FC = () => {
           </div>
         )}
         <div className="space-y-4">
-          {/* ── LinkedIn Automation: auto-withdraw old pending requests ──────
-              Tenant-level. Shown once settings load (needs a connected account).
-              Persisted via the automation-settings PUT below. */}
-          {automationSettings && (
-            <div className="border-t border-gray-200 pt-4">
-              <h4 className="font-medium text-gray-900 mb-1">LinkedIn Automation</h4>
-              <p className="text-sm text-gray-500 mb-3">
-                Automatically clean up connection requests that have been pending too long.
-              </p>
-              <div className="rounded-lg border border-gray-200 p-3 sm:p-4 space-y-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-900">Auto-withdraw old pending requests</p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      Withdraws sent invitations that are still unanswered after the set number of days.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={withdrawEnabledDraft}
-                    onClick={() => setWithdrawEnabledDraft((v) => !v)}
-                    disabled={savingWithdraw}
-                    className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors disabled:opacity-60 ${
-                      withdrawEnabledDraft ? 'bg-blue-600' : 'bg-gray-300'
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        withdrawEnabledDraft ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
-                </div>
-                <div className={`flex items-center gap-2 ${withdrawEnabledDraft ? '' : 'opacity-50'}`}>
-                  <label htmlFor="withdrawDays" className="text-sm text-gray-700">
-                    older than
-                  </label>
-                  <input
-                    id="withdrawDays"
-                    type="number"
-                    min={30}
-                    step={1}
-                    value={withdrawDaysDraft}
-                    disabled={!withdrawEnabledDraft || savingWithdraw}
-                    onChange={(e) => setWithdrawDaysDraft(parseInt(e.target.value, 10) || 0)}
-                    onBlur={() => setWithdrawDaysDraft((d) => Math.max(30, Math.floor(Number(d) || 90)))}
-                    className="w-20 rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
-                  />
-                  <span className="text-sm text-gray-700">days</span>
-                  <span className="text-xs text-gray-400">(minimum 30)</span>
-                </div>
-                <div className="flex justify-end">
-                  <button
-                    type="button"
-                    onClick={saveWithdrawSettings}
-                    disabled={savingWithdraw}
-                    className="inline-flex items-center gap-2 rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-blue-300"
-                  >
-                    {savingWithdraw && <Loader2 className="h-4 w-4 animate-spin" />}
-                    {savingWithdraw ? 'Saving…' : 'Save LinkedIn Settings'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
           {/* <div className="border-t border-gray-200 pt-4">
             <h4 className="font-medium text-gray-900 mb-3">Features</h4>
             <ul className="space-y-2 text-sm text-gray-600">
