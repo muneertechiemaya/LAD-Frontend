@@ -412,7 +412,6 @@ export function ChatSettings() {
   }, [channelsLoaded, visibleIds, activeChannel]);
   const [editedTexts, setEditedTexts] = useState<Record<string, string>>({});
   const [savingPrompt, setSavingPrompt] = useState<string | null>(null);
-  const [savingSettings, setSavingSettings] = useState(false);
   const [savingKb, setSavingKb] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -726,15 +725,6 @@ export function ChatSettings() {
     showToast(allOk ? 'Chat behaviour saved' : 'Partially saved — check console', allOk ? 'success' : 'error');
     setSavingBehaviour(false);
   }, [chatSettings.typing_indicator, chatSettings.waba_typing_indicator, showToast]);
-
-  // ── Campaign Settings save ───────────────────────────────────
-
-  const handleSaveCampaign = useCallback(async () => {
-    setSavingSettings(true);
-    const ok = await updateChatSettings({ campaign_frequency: chatSettings.campaign_frequency });
-    showToast(ok ? 'Campaign settings saved' : 'Failed to save', ok ? 'success' : 'error');
-    setSavingSettings(false);
-  }, [chatSettings.campaign_frequency, showToast]);
 
   // ── Follow-up Timing save ────────────────────────────────────
 
@@ -1812,103 +1802,10 @@ export function ChatSettings() {
       </div>
       )}
 
-      {/* ── Section 5: Campaign Settings ──────────────────────────── */}
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-        <div className="p-6 border-b border-gray-100">
-          <div className="flex items-center gap-2 mb-1">
-            <Clock className="h-5 w-5 text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Campaign Settings</h2>
-          </div>
-          <p className="text-sm text-gray-500">
-            Configure automated campaign frequency and limits.
-          </p>
-        </div>
-        <div className="p-6 space-y-5">
-          {/* Enable toggle */}
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-800">Enable Automated Campaigns</p>
-              <p className="text-xs text-gray-500 mt-0.5">Send automated follow-up messages to leads</p>
-            </div>
-            <button
-              onClick={() =>
-                setChatSettings((prev) => ({
-                  ...prev,
-                  campaign_frequency: {
-                    ...prev.campaign_frequency,
-                    enabled: !prev.campaign_frequency.enabled,
-                  },
-                }))
-              }
-            >
-              {chatSettings.campaign_frequency.enabled ? (
-                <ToggleRight className="h-6 w-6 text-blue-500" />
-              ) : (
-                <ToggleLeft className="h-6 w-6 text-gray-300" />
-              )}
-            </button>
-          </div>
-
-          {/* Interval hours */}
-          <div>
-            <label className="block text-sm font-medium text-gray-800 mb-1">
-              Message Interval (hours)
-            </label>
-            <p className="text-xs text-gray-500 mb-2">Minimum time between automated messages to the same lead</p>
-            <input
-              type="number"
-              min={1}
-              max={168}
-              value={chatSettings.campaign_frequency.interval_hours}
-              onChange={(e) =>
-                setChatSettings((prev) => ({
-                  ...prev,
-                  campaign_frequency: {
-                    ...prev.campaign_frequency,
-                    interval_hours: parseInt(e.target.value) || 24,
-                  },
-                }))
-              }
-              className="w-32 px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
-            />
-          </div>
-
-          {/* Max daily messages */}
-          <div>
-            <label className="block text-sm font-medium text-gray-800 mb-1">
-              Max Daily Messages
-            </label>
-            <p className="text-xs text-gray-500 mb-2">Maximum number of automated messages sent per day across all leads</p>
-            <input
-              type="number"
-              min={1}
-              max={1000}
-              value={chatSettings.campaign_frequency.max_daily_messages}
-              onChange={(e) =>
-                setChatSettings((prev) => ({
-                  ...prev,
-                  campaign_frequency: {
-                    ...prev.campaign_frequency,
-                    max_daily_messages: parseInt(e.target.value) || 50,
-                  },
-                }))
-              }
-              className="w-32 px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
-            />
-          </div>
-
-          <div className="flex justify-end pt-2">
-            <button
-              onClick={handleSaveCampaign}
-              disabled={savingSettings}
-              className="flex items-center gap-1.5 px-5 py-2.5 text-sm font-semibold text-white bg-[#0B1957] rounded-xl hover:opacity-90 disabled:opacity-50 transition-all shadow-md active:scale-95"
-            >
-              {savingSettings ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Save Campaign Settings
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* NOTE: the old Section 5 "Campaign Settings" card (campaign_frequency:
+          enable/interval/max-daily) was removed 2026-07-05 — the values were
+          never consumed by any campaign path. The field remains in the
+          ChatSettings API type because the backend still stores/returns it. */}
 
       {/* ── Section 6: Post-Conversation Follow-up Timing ────────── */}
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
