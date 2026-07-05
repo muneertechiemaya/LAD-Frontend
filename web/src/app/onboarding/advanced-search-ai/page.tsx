@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { Sparkles, Gem, Upload, FileSpreadsheet, Download, CheckCircle2, Trash2, ChevronLeft, ChevronRight, X, MessageSquare, Users, Zap, Plus } from 'lucide-react';
 import { ProfileSummaryDialog } from '@/components/campaigns';
 import AgentVisualizer from '@/components/ui/AgentVisualizer';
 import { useOnboardingStore } from '@/store/onboardingStore';
+import { deriveConfig, applyConfig, type SyncStep } from '@/components/onboarding/workflow/configStepsSync';
 import WorkflowPreviewPanel from '@/components/onboarding/WorkflowPreviewPanel';
 import { MediaGenerationModal } from '@/components/voice-agent/MediaGenerationModal';
 import { useAuth } from '@/contexts/AuthContext';
@@ -559,7 +560,6 @@ export default function AdvancedSearchAIPage() {
     }, [messages]);
 
     const [cpIcpThreshold, setCpIcpThreshold] = useState('75');
-    const [cpActions, setCpActions] = useState<string[]>([]);
     const [cpConnMsg, setCpConnMsg] = useState('');
     const [cpFollowMsg, setCpFollowMsg] = useState('');
     const [cpEnableDailyWebPresence, setCpEnableDailyWebPresence] = useState(false);
@@ -567,85 +567,49 @@ export default function AdvancedSearchAIPage() {
     const [cpEnableAiPersonalization, setCpEnableAiPersonalization] = useState(false);
     const [cpEnableAiConnectionPersonalization, setCpEnableAiConnectionPersonalization] = useState(false);
     const [cpEnableAiFollowupPersonalization, setCpEnableAiFollowupPersonalization] = useState(false);
-    const [cpNextChannels, setCpNextChannels] = useState<string[]>([]); // email, whatsapp, voice_call
-    const [cpTriggerCondition, setCpTriggerCondition] = useState(''); // connection_accepted, message_replied, profile_visited
 
-    // Dynamically build workflow preview
+    // ── Config ⇄ Workflow: single source of truth ────────────────────────────
+    // The onboarding store's `workflowPreview` steps array is canonical. The
+    // structural config the guided checkpoints collect — LinkedIn actions,
+    // follow-up channels, trigger condition — is DERIVED from it here, and the
+    // setters below reconcile edits back into it. So the guided toggles and the
+    // Workflow Builder canvas stay in sync in BOTH directions in real time
+    // (this replaces the old one-way, destructive derive-and-overwrite effect,
+    // which also silently dropped LinkedIn actions and clobbered canvas edits).
+    const workflowPreview = useOnboardingStore(s => s.workflowPreview);
+    const _cpCfg = useMemo(() => deriveConfig(workflowPreview as unknown as SyncStep[]), [workflowPreview]);
+    const cpActions = _cpCfg.actions;                     // ['connect','message','profile_view'] subset
+    const cpNextChannels = _cpCfg.nextChannels;           // ['email','whatsapp','voice_call'] subset
+    const cpTriggerCondition = _cpCfg.triggerCondition;   // '' | 'connection_accepted' | …
+
+    const _applyCpCfg = useCallback((patch: Partial<{ actions: string[]; nextChannels: string[]; triggerCondition: string }>) => {
+        const cur = useOnboardingStore.getState().workflowPreview as unknown as SyncStep[];
+        setWorkflowPreview(applyConfig(cur, patch) as any);
+    }, [setWorkflowPreview]);
+
+    // These keep the exact React.Dispatch<SetStateAction<string[]>> shape the
+    // CheckpointFormInline props expect, so the guided toggles need no changes —
+    // they just reconcile the shared steps array instead of local state.
+    const setCpActions = useCallback((a: string[] | ((p: string[]) => string[])) => {
+        const cur = deriveConfig(useOnboardingStore.getState().workflowPreview as unknown as SyncStep[]).actions;
+        _applyCpCfg({ actions: typeof a === 'function' ? a(cur) : a });
+    }, [_applyCpCfg]);
+    const setCpNextChannels = useCallback((a: string[] | ((p: string[]) => string[])) => {
+        const cur = deriveConfig(useOnboardingStore.getState().workflowPreview as unknown as SyncStep[]).nextChannels;
+        _applyCpCfg({ nextChannels: typeof a === 'function' ? a(cur) : a });
+    }, [_applyCpCfg]);
+    const setCpTriggerCondition = useCallback((v: string) => {
+        _applyCpCfg({ triggerCondition: v });
+    }, [_applyCpCfg]);
+
+    // Seed a clean base (Lead Search only) when the shared steps array is empty,
+    // so a first-ever load starts sensibly. A non-empty array (edit-mode
+    // hydration or a persisted session) is left untouched.
     useEffect(() => {
-        const steps: any[] = [];
-        let order = 1;
-        // Start node
-        steps.push({
-            id: 'lead-gen',
-            type: 'lead_generation',
-            title: 'LinkedIn Lead Search',
-            description: 'Find target leads on LinkedIn',
-            channel: 'linkedin',
-            order_index: order++
-        });
-
-        if (cpActions.includes('connect')) {
-            steps.push({
-                id: 'connect',
-                type: 'linkedin_connect',
-                title: 'Send Connection Request',
-                description: 'Auto-connect with leads on LinkedIn',
-                channel: 'linkedin',
-                order_index: order++
-            });
-        }
-
-        if (cpActions.includes('message')) {
-            steps.push({
-                id: 'message',
-                type: 'linkedin_message',
-                title: 'Send Follow-up Message',
-                description: 'Message after connection accepted',
-                channel: 'linkedin',
-                order_index: order++
-            });
-        }
-
-        if (cpActions.includes('profile_view')) {
-            steps.push({
-                id: 'profile_view',
-                type: 'linkedin_visit',
-                title: 'View Profile',
-                description: 'Visit their LinkedIn profile',
-                channel: 'linkedin',
-                order_index: order++
-            });
-        }
-
-        if (cpNextChannels.length > 0 && cpTriggerCondition) {
-            const condLabels: Record<string, string> = {
-                connection_accepted: 'Wait for Connection Accepted',
-                message_replied: 'Wait for Message Reply',
-                profile_visited: 'Wait for Profile Visit'
-            };
-            steps.push({
-                id: 'condition',
-                type: 'wait_for_condition',
-                title: condLabels[cpTriggerCondition] || 'Wait for Condition',
-                description: 'Trigger condition',
-                channel: 'system',
-                order_index: order++
-            });
-
-            cpNextChannels.forEach((ch, idx) => {
-                steps.push({
-                    id: `ch-${ch}-${idx}`,
-                    type: ch === 'voice_call' ? 'voice_agent_call' : `${ch}_send`,
-                    title: ch === 'email' ? 'Send Follow-up Email' : ch === 'whatsapp' ? 'Send WhatsApp Message' : 'AI Voice Call',
-                    description: `Follow up via ${ch}`,
-                    channel: ch.split('_')[0],
-                    order_index: order++
-                });
-            });
-        }
-
-        setWorkflowPreview(steps);
-    }, [cpActions, cpNextChannels, cpTriggerCondition, setWorkflowPreview]);
+        const cur = useOnboardingStore.getState().workflowPreview as unknown as SyncStep[];
+        if (!cur || cur.length === 0) setWorkflowPreview(applyConfig([], {}) as any);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
     const [cpDays, setCpDays] = useState('30');
     const [cpChannelConfigStep, setCpChannelConfigStep] = useState(0); // Tracks which channel we're configuring (0-based)
     const [cpChannelDelays, setCpChannelDelays] = useState<Record<string, { days: string; hours: string }>>({}); // Delays per channel
@@ -6382,7 +6346,11 @@ function CheckpointFormInline({
     // Initialise from the `actions` prop so edit-mode hydration (the parent sets
     // cpActions from the saved campaign / its steps) pre-checks the LinkedIn action
     // boxes. In the create flow `actions` is [] at mount, so this is a no-op there.
-    const [liChannelActions, setLiChannelActions] = useState<string[]>(actions || []);
+    // Use the shared config actions (derived from the canonical workflowPreview
+    // by the parent) so LinkedIn action toggles round-trip to the Workflow canvas
+    // instead of living in an orphaned local copy that never synced back.
+    const liChannelActions = actions || [];
+    const setLiChannelActions = setActions;
     const [liFollowGenLoading, setLiFollowGenLoading] = useState(false);
 
     // AI Generate inline context panel state (one per message type)
