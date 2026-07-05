@@ -676,6 +676,11 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
             Template: <span className="font-semibold text-indigo-600">{displayName(selectedTemplate?.name ?? '')}</span>
           </p>
 
+          {/* Scrollable middle: template body, media header, parameter rows,
+              and live preview scroll together so long templates can't squeeze
+              the parameter dropdowns out of view. Header + footer stay pinned. */}
+          <div className="flex-1 min-h-0 overflow-y-auto -mr-2 pr-2">
+
           {/* Template body with highlighted placeholders */}
           <div className="mb-5 p-3 bg-slate-50 border border-slate-200 rounded-xl">
             <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wide mb-1">Template body</p>
@@ -723,7 +728,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
           )}
 
           {/* One row per {{N}} parameter */}
-          <div className="flex-1 min-h-0 overflow-y-auto space-y-3 mb-4">
+          <div className="space-y-3 mb-4">
             {Array.from({ length: paramCount }, (_, i) => {
               const paramNum = i + 1;
               const mapping  = paramMapping[i] ?? { field: 'name', customValue: '' };
@@ -827,7 +832,9 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
             </div>
           )}
 
-          <div className="flex gap-3 justify-end">
+          </div>{/* end scrollable middle */}
+
+          <div className="flex gap-3 justify-end pt-4">
             <button onClick={() => setStep('template')} className="px-4 py-2 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg font-medium transition flex items-center gap-1">
               <ChevronLeft className="w-4 h-4" /> Back
             </button>
