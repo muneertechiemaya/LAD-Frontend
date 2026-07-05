@@ -25,7 +25,11 @@ import {
   X,
   Send,
   Sparkles,
+  UserMinus,
+  EyeOff,
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useConnectedChannels, type ChannelId } from '@/hooks/useConnectedChannels';
 import KnowledgeBaseManager from './KnowledgeBaseManager';
 import dynamic from 'next/dynamic';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
@@ -208,17 +212,30 @@ async function fetchFollowupConfig(): Promise<FollowupTimingConfig> {
   }
 }
 
-async function updateFollowupConfig(config: FollowupTimingConfig): Promise<boolean> {
+async function updateFollowupConfig(
+  config: FollowupTimingConfig
+): Promise<{ ok: boolean; error?: string }> {
   try {
     const res = await fetchWithTenant(FOLLOWUP_CONFIG_API, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(config),
     });
-    const data = await res.json();
-    return data.success ?? false;
-  } catch {
-    return false;
+    const data = await res.json().catch(() => ({}));
+    if (data.success) return { ok: true };
+    // Surface the backend's reason — FastAPI validation errors arrive as
+    // `detail` (e.g. the H16 guard: an enabled stage past the 24h window
+    // with no template). A bare "Failed to save" hides the actionable part.
+    return {
+      ok: false,
+      error:
+        (typeof data.detail === 'string' && data.detail) ||
+        data.error ||
+        data.message ||
+        `Save failed (HTTP ${res.status})`,
+    };
+  } catch (e: any) {
+    return { ok: false, error: e?.message || 'Network error while saving' };
   }
 }
 
@@ -386,9 +403,28 @@ export function ChatSettings() {
   const [loading, setLoading] = useState(true);
   const [activeChannel, setActiveChannel] = useState('waba');
   const [expandedPrompt, setExpandedPrompt] = useState<string | null>(null);
+
+  // ── Connection-aware visibility ─────────────────────────────────────────
+  // Only connected channels get their settings shown; a channel that is
+  // positively NOT connected is hidden (tabs, typing rows, LinkedIn cards).
+  // Nothing is deleted — reconnecting brings the settings back with their
+  // saved values, because visibility is derived from live status per mount.
+  // Fail-open: while probing (or if a probe errors) the channel stays visible.
+  const router = useRouter();
+  const { loaded: channelsLoaded, isVisible: isChannelVisible } = useConnectedChannels();
+  const visibleChannels = CHANNELS.filter((c) => isChannelVisible(c.id as ChannelId));
+  const hiddenChannels = CHANNELS.filter((c) => !isChannelVisible(c.id as ChannelId));
+  const visibleIds = visibleChannels.map((c) => c.id).join(',');
+  // If the active tab's channel just got hidden, snap to the first visible one.
+  useEffect(() => {
+    if (!channelsLoaded) return;
+    const ids = visibleIds ? visibleIds.split(',') : [];
+    if (ids.length > 0 && !ids.includes(activeChannel)) {
+      setActiveChannel(ids[0]);
+    }
+  }, [channelsLoaded, visibleIds, activeChannel]);
   const [editedTexts, setEditedTexts] = useState<Record<string, string>>({});
   const [savingPrompt, setSavingPrompt] = useState<string | null>(null);
-  const [savingSettings, setSavingSettings] = useState(false);
   const [savingKb, setSavingKb] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -444,10 +480,14 @@ export function ChatSettings() {
     auto_like_posts: boolean;
     auto_comment_posts: boolean;
     ai_agent_reply_delay_seconds: number;
+    auto_withdraw_pending_enabled: boolean;
+    auto_withdraw_pending_days: number;
   }>({
     auto_like_posts: false,
     auto_comment_posts: false,
     ai_agent_reply_delay_seconds: 0,
+    auto_withdraw_pending_enabled: false,
+    auto_withdraw_pending_days: 90,
   });
   const [savingLinkedinAutomation, setSavingLinkedinAutomation] = useState(false);
 
@@ -481,10 +521,13 @@ export function ChatSettings() {
         setFollowupConfig(f);
         if (liSettings?.success && liSettings.data) {
           const rawDelay = Number(liSettings.data.ai_agent_reply_delay_seconds);
+          const rawWithdrawDays = Number(liSettings.data.auto_withdraw_pending_days);
           setLinkedinAutomation({
             auto_like_posts:              !!liSettings.data.auto_like_posts,
             auto_comment_posts:           !!liSettings.data.auto_comment_posts,
             ai_agent_reply_delay_seconds: Number.isFinite(rawDelay) ? Math.max(0, Math.min(300, rawDelay)) : 0,
+            auto_withdraw_pending_enabled: !!liSettings.data.auto_withdraw_pending_enabled,
+            auto_withdraw_pending_days:   Number.isFinite(rawWithdrawDays) ? Math.max(30, rawWithdrawDays) : 90,
           });
         }
         if (liFollowup?.success && liFollowup.data) {
@@ -696,33 +739,60 @@ export function ChatSettings() {
     setSavingBehaviour(false);
   }, [chatSettings.typing_indicator, chatSettings.waba_typing_indicator, showToast]);
 
-  // ── Campaign Settings save ───────────────────────────────────
-
-  const handleSaveCampaign = useCallback(async () => {
-    setSavingSettings(true);
-    const ok = await updateChatSettings({ campaign_frequency: chatSettings.campaign_frequency });
-    showToast(ok ? 'Campaign settings saved' : 'Failed to save', ok ? 'success' : 'error');
-    setSavingSettings(false);
-  }, [chatSettings.campaign_frequency, showToast]);
-
   // ── Follow-up Timing save ────────────────────────────────────
 
   const handleSaveFollowup = useCallback(async () => {
+    // Pre-check mirroring the backend H16 guard: an ENABLED stage that fires
+    // past Meta's 24h customer-service window MUST have an approved template
+    // (free-form text is rejected there, so the stage would never send).
+    // Catching it here gives a friendlier message than the API's 400.
+    const STAGE_LABELS: Record<string, string> = {
+      FIRST: '1st Follow-up', SECOND: '2nd Follow-up', THIRD: '3rd Follow-up', FOURTH: 'Final message',
+    };
+    const offending = (Object.keys(followupConfig.stages) as Array<keyof typeof followupConfig.stages>)
+      .filter((k) => {
+        const s = followupConfig.stages[k];
+        return s.enabled && (s.delay_hours ?? 0) > 24 && !(s.template_name || '').trim();
+      })
+      .map((k) => STAGE_LABELS[k] || k);
+    // NOTE: the backend enforces this per-stage regardless of the master
+    // enabled flag, so the pre-check must too.
+    if (offending.length > 0) {
+      showToast(
+        `${offending.join(', ')}: delays past 24h need an approved WhatsApp template — pick one or disable the stage`,
+        'error'
+      );
+      return;
+    }
+
     setSavingFollowup(true);
-    const ok = await updateFollowupConfig(followupConfig);
-    showToast(ok ? 'Follow-up timing saved' : 'Failed to save', ok ? 'success' : 'error');
+    const result = await updateFollowupConfig(followupConfig);
+    showToast(result.ok ? 'Follow-up timing saved' : (result.error || 'Failed to save'), result.ok ? 'success' : 'error');
     setSavingFollowup(false);
   }, [followupConfig, showToast]);
 
   const handleSaveLinkedinAutomation = useCallback(async () => {
     setSavingLinkedinAutomation(true);
+    // Floor the withdraw window at 30 days (backend clamps too) so a stray small
+    // value can never retract fresh invitations. Reflect the clamp in the UI.
+    const cleanDays = Math.max(30, Math.floor(Number(linkedinAutomation.auto_withdraw_pending_days) || 90));
+    const payload = { ...linkedinAutomation, auto_withdraw_pending_days: cleanDays };
     try {
       const res = await fetch('/api/social-integration/linkedin/automation-settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(linkedinAutomation),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
+      if (data.success && data.data) {
+        setLinkedinAutomation((prev) => ({
+          ...prev,
+          auto_withdraw_pending_enabled: !!data.data.auto_withdraw_pending_enabled,
+          auto_withdraw_pending_days: Number.isFinite(Number(data.data.auto_withdraw_pending_days))
+            ? Math.max(30, Number(data.data.auto_withdraw_pending_days))
+            : cleanDays,
+        }));
+      }
       showToast(data.success ? 'LinkedIn automation settings saved' : 'Failed to save', data.success ? 'success' : 'error');
     } catch {
       showToast('Failed to save', 'error');
@@ -912,10 +982,11 @@ export function ChatSettings() {
           </p>
         </div>
 
-        {/* Channel tabs */}
+        {/* Channel tabs — only connected channels; hidden ones collapse into
+            a "+N more" chip that jumps to the Integrations tab. */}
         <div className="border-b border-gray-100 overflow-x-auto hide-scrollbar">
-          <div className="flex gap-1 -mb-px px-6 min-w-max flex-nowrap">
-            {CHANNELS.map((ch) => (
+          <div className="flex items-center gap-1 -mb-px px-6 min-w-max flex-nowrap">
+            {visibleChannels.map((ch) => (
               <button
                 key={ch.id}
                 onClick={() => setActiveChannel(ch.id)}
@@ -929,10 +1000,36 @@ export function ChatSettings() {
                 {ch.label}
               </button>
             ))}
+            {hiddenChannels.length > 0 && (
+              <button
+                onClick={() => router.push('/settings?tab=integrations')}
+                title={`Not connected: ${hiddenChannels.map((c) => c.label).join(', ')}. Connect to configure.`}
+                className="flex items-center gap-1 px-3 py-1 my-1.5 text-xs text-gray-400 border border-dashed border-gray-300 rounded-full hover:text-gray-600 hover:border-gray-400 transition-colors whitespace-nowrap"
+              >
+                <Plus className="h-3 w-3" />
+                {hiddenChannels.length} more
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Prompts list */}
+        {/* No channels connected at all — invite to connect instead of blank tabs */}
+        {channelsLoaded && visibleChannels.length === 0 && (
+          <div className="px-6 py-12 text-center text-gray-400">
+            <EyeOff className="h-8 w-8 mx-auto mb-2 opacity-40" />
+            <p className="text-sm text-gray-500">No channels connected</p>
+            <p className="text-xs mt-1 mb-4">Connect WhatsApp, LinkedIn, Gmail or Instagram to configure AI prompts</p>
+            <button
+              onClick={() => router.push('/settings?tab=integrations')}
+              className="text-sm font-medium text-blue-600 hover:text-blue-700"
+            >
+              Connect a channel →
+            </button>
+          </div>
+        )}
+
+        {/* Prompts list — hidden entirely when no channel is connected */}
+        {(!channelsLoaded || visibleChannels.length > 0) && (
         <div className="divide-y divide-gray-100">
           {filteredPrompts.length === 0 ? (
             <div className="px-6 py-12 text-center text-gray-400">
@@ -1028,8 +1125,10 @@ export function ChatSettings() {
             })
           )}
         </div>
+        )}
 
-        {/* Add new prompt */}
+        {/* Add new prompt — needs at least one connected channel */}
+        {(!channelsLoaded || visibleChannels.length > 0) && (
         <div className="px-6 py-3 border-t border-gray-100">
           {!showNewPrompt ? (
             <button
@@ -1057,7 +1156,7 @@ export function ChatSettings() {
                   onChange={(e) => setActiveChannel(e.target.value)}
                   className="flex-1 px-3 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 bg-white"
                 >
-                  {CHANNELS.map((ch) => (
+                  {visibleChannels.map((ch) => (
                     <option key={ch.id} value={ch.id}>{ch.label}</option>
                   ))}
                 </select>
@@ -1081,6 +1180,7 @@ export function ChatSettings() {
             </div>
           )}
         </div>
+        )}
       </div>
 
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
@@ -1649,6 +1749,10 @@ export function ChatSettings() {
       </div>
 
       {/* ── Section 3: Chat Behaviour ────────────────────────────── */}
+      {/* Channel-specific settings follow the ACTIVE System Prompts tab: the
+          typing rows are WhatsApp settings, so this card only shows while a
+          WhatsApp tab is selected — and only the selected flavour's row. */}
+      {(activeChannel === 'personal_whatsapp' || activeChannel === 'waba') && (
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
         <div className="p-6 border-b border-gray-100">
           <div className="flex items-center gap-2 mb-1">
@@ -1665,11 +1769,11 @@ export function ChatSettings() {
             <p className="text-sm font-medium text-gray-800 mb-1">Typing Indicator</p>
             <p className="text-xs text-gray-500 mb-3">
               Show &quot;typing…&quot; to the contact while the AI is composing a reply.
-              Configure separately for each channel.
             </p>
 
             <div className="space-y-3 border border-gray-100 rounded-lg divide-y divide-gray-100 overflow-hidden">
               {/* Personal WhatsApp row */}
+              {activeChannel === 'personal_whatsapp' && (
               <div className="flex items-center justify-between px-4 py-3">
                 <div className="flex items-center gap-2.5">
                   <span className="h-2 w-2 rounded-full bg-emerald-400 flex-shrink-0" />
@@ -1691,8 +1795,10 @@ export function ChatSettings() {
                   )}
                 </button>
               </div>
+              )}
 
               {/* WABA row */}
+              {activeChannel === 'waba' && (
               <div className="flex items-center justify-between px-4 py-3">
                 <div className="flex items-center gap-2.5">
                   <span className="h-2 w-2 rounded-full bg-green-500 flex-shrink-0" />
@@ -1714,6 +1820,7 @@ export function ChatSettings() {
                   )}
                 </button>
               </div>
+              )}
             </div>
           </div>
 
@@ -1729,124 +1836,42 @@ export function ChatSettings() {
           </div>
         </div>
       </div>
+      )}
 
-      {/* ── Section 5: Campaign Settings ──────────────────────────── */}
+      {/* NOTE: the old Section 5 "Campaign Settings" card (campaign_frequency:
+          enable/interval/max-daily) was removed 2026-07-05 — the values were
+          never consumed by any campaign path. The field remains in the
+          ChatSettings API type because the backend still stores/returns it. */}
+
+      {/* ── Section 6: WhatsApp Post-Conversation Follow-up Timing ── */}
+      {/* WhatsApp-only: the config lives in the whatsapp-conversations service
+          (FOLLOWUP_CONFIG_API) and the stages/booking reminders send via
+          WhatsApp templates. Titled + badged accordingly (users assumed it
+          applied to every channel) and shown only while a WhatsApp tab is
+          selected. LinkedIn has its own follow-up card; other channels none. */}
+      {(activeChannel === 'waba' || activeChannel === 'personal_whatsapp') && (
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
         <div className="p-6 border-b border-gray-100">
           <div className="flex items-center gap-2 mb-1">
-            <Clock className="h-5 w-5 text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Campaign Settings</h2>
+            <Bell className="h-5 w-5 text-green-600" />
+            <h2 className="text-lg font-semibold text-gray-900">WhatsApp Follow-ups</h2>
+            <span className="flex items-center gap-1.5 ml-1 px-2 py-0.5 text-[11px] font-medium text-green-700 bg-green-50 border border-green-200 rounded-full">
+              <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+              WhatsApp only
+            </span>
           </div>
           <p className="text-sm text-gray-500">
-            Configure automated campaign frequency and limits.
-          </p>
-        </div>
-        <div className="p-6 space-y-5">
-          {/* Enable toggle */}
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-800">Enable Automated Campaigns</p>
-              <p className="text-xs text-gray-500 mt-0.5">Send automated follow-up messages to leads</p>
-            </div>
-            <button
-              onClick={() =>
-                setChatSettings((prev) => ({
-                  ...prev,
-                  campaign_frequency: {
-                    ...prev.campaign_frequency,
-                    enabled: !prev.campaign_frequency.enabled,
-                  },
-                }))
-              }
-            >
-              {chatSettings.campaign_frequency.enabled ? (
-                <ToggleRight className="h-6 w-6 text-blue-500" />
-              ) : (
-                <ToggleLeft className="h-6 w-6 text-gray-300" />
-              )}
-            </button>
-          </div>
-
-          {/* Interval hours */}
-          <div>
-            <label className="block text-sm font-medium text-gray-800 mb-1">
-              Message Interval (hours)
-            </label>
-            <p className="text-xs text-gray-500 mb-2">Minimum time between automated messages to the same lead</p>
-            <input
-              type="number"
-              min={1}
-              max={168}
-              value={chatSettings.campaign_frequency.interval_hours}
-              onChange={(e) =>
-                setChatSettings((prev) => ({
-                  ...prev,
-                  campaign_frequency: {
-                    ...prev.campaign_frequency,
-                    interval_hours: parseInt(e.target.value) || 24,
-                  },
-                }))
-              }
-              className="w-32 px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
-            />
-          </div>
-
-          {/* Max daily messages */}
-          <div>
-            <label className="block text-sm font-medium text-gray-800 mb-1">
-              Max Daily Messages
-            </label>
-            <p className="text-xs text-gray-500 mb-2">Maximum number of automated messages sent per day across all leads</p>
-            <input
-              type="number"
-              min={1}
-              max={1000}
-              value={chatSettings.campaign_frequency.max_daily_messages}
-              onChange={(e) =>
-                setChatSettings((prev) => ({
-                  ...prev,
-                  campaign_frequency: {
-                    ...prev.campaign_frequency,
-                    max_daily_messages: parseInt(e.target.value) || 50,
-                  },
-                }))
-              }
-              className="w-32 px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
-            />
-          </div>
-
-          <div className="flex justify-end pt-2">
-            <button
-              onClick={handleSaveCampaign}
-              disabled={savingSettings}
-              className="flex items-center gap-1.5 px-5 py-2.5 text-sm font-semibold text-white bg-[#0B1957] rounded-xl hover:opacity-90 disabled:opacity-50 transition-all shadow-md active:scale-95"
-            >
-              {savingSettings ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Save Campaign Settings
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Section 6: Post-Conversation Follow-up Timing ────────── */}
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-        <div className="p-6 border-b border-gray-100">
-          <div className="flex items-center gap-2 mb-1">
-            <Bell className="h-5 w-5 text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Post-Conversation Follow-ups</h2>
-          </div>
-          <p className="text-sm text-gray-500">
-            Configure when automated follow-up messages are sent after a conversation ends.
-            Each stage fires once at the scheduled delay.
+            Configure when automated follow-up messages are sent after a WhatsApp conversation ends.
+            Each stage fires once at the scheduled delay. Booking reminders below also send via WhatsApp.
           </p>
         </div>
         <div className="p-6 space-y-5">
           {/* Master enable */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-800">Enable Post-Conversation Follow-ups</p>
+              <p className="text-sm font-medium text-gray-800">Enable WhatsApp Follow-ups</p>
               <p className="text-xs text-gray-500 mt-0.5">
-                Automatically send follow-up messages when a customer stops responding
+                Automatically send follow-up messages when a customer stops responding on WhatsApp
               </p>
             </div>
             <button
@@ -2026,9 +2051,7 @@ export function ChatSettings() {
                           ),
                         }))
                       }
-                      className={`w-full pl-3 pr-10 py-2 text-sm border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all appearance-none ${
-                        !reminder.template_name ? 'border-red-300' : 'border-gray-200'
-                      }`}
+                      className="w-full pl-3 pr-10 py-2 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all appearance-none"
                       style={{
                         backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
                         backgroundPosition: 'right 0.5rem center',
@@ -2036,10 +2059,13 @@ export function ChatSettings() {
                         backgroundSize: '1.5em 1.5em'
                       }}
                     >
+                      {/* Empty value = AI-generated: the WABA service composes the
+                          reminder at send time (free-form inside the 24h window,
+                          generic approved-template fallback outside it). */}
                       <option value="">
                         {loadingTemplates
                           ? 'Loading templates…'
-                          : '— Pick a template (required) —'}
+                          : '— AI-generated (default) —'}
                       </option>
                       {approvedTemplates.map((t) => (
                         <option key={`${t.name}-${t.language}`} value={t.name}>
@@ -2091,7 +2117,9 @@ export function ChatSettings() {
             </button>
 
             <p className="text-xs text-gray-500">
-              All reminders need an APPROVED WhatsApp template — Meta blocks free-text replies outside the 24-hour conversation window.
+              AI-generated reminders send as personalised free-text while the customer&apos;s 24-hour
+              conversation window is open, and fall back to your approved follow-up template when it
+              isn&apos;t. Pick an approved template instead for guaranteed delivery regardless of the window.
               {followupConfig.booking_reminders.length >= 10 && (
                 <span className="block mt-1 text-amber-600">Maximum 10 reminders per booking.</span>
               )}
@@ -2118,13 +2146,23 @@ export function ChatSettings() {
           </div>
         </div>
       </div>
+      )}
 
       {/* ── Section 7: LinkedIn Automation ──────────────────────── */}
+      {/* Both LinkedIn cards (Automation + Follow-up Sequence) follow the
+          active System Prompts tab — shown only while LinkedIn is selected.
+          Saved values persist regardless of visibility. */}
+      {activeChannel === 'linkedin' && (
+      <>
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
         <div className="p-6 border-b border-gray-100">
           <div className="flex items-center gap-2 mb-1">
             <Linkedin className="h-5 w-5 text-blue-600" />
             <h2 className="text-lg font-semibold text-gray-900">LinkedIn Automation</h2>
+            <span className="flex items-center gap-1.5 ml-1 px-2 py-0.5 text-[11px] font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-full">
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
+              LinkedIn only
+            </span>
           </div>
           <p className="text-sm text-gray-500">
             Automatically engage with the post used to personalise each connection request or follow-up message.
@@ -2213,6 +2251,58 @@ export function ChatSettings() {
                 <span className="text-xs text-gray-500 w-8">sec</span>
               </div>
             </div>
+
+            {/* Auto-withdraw old pending connection requests */}
+            <div className="flex items-center justify-between px-4 py-3">
+              <div className="flex items-center gap-2.5">
+                <UserMinus className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-gray-800">Auto-withdraw old pending requests</p>
+                  <p className="text-xs text-gray-500">
+                    Withdraw connection requests that are still pending after the set number of days (minimum 30)
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className={`flex items-center gap-1.5 ${linkedinAutomation.auto_withdraw_pending_enabled ? '' : 'opacity-40'}`}>
+                  <span className="text-xs text-gray-500">older than</span>
+                  <input
+                    type="number"
+                    min={30}
+                    step={1}
+                    value={linkedinAutomation.auto_withdraw_pending_days}
+                    disabled={!linkedinAutomation.auto_withdraw_pending_enabled}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value, 10);
+                      setLinkedinAutomation((prev) => ({
+                        ...prev,
+                        auto_withdraw_pending_days: Number.isFinite(v) ? v : 0,
+                      }));
+                    }}
+                    onBlur={() =>
+                      setLinkedinAutomation((prev) => ({
+                        ...prev,
+                        auto_withdraw_pending_days: Math.max(30, Math.floor(Number(prev.auto_withdraw_pending_days) || 90)),
+                      }))
+                    }
+                    className="w-16 px-2 py-1.5 border border-gray-200 rounded-md text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:bg-gray-100"
+                  />
+                  <span className="text-xs text-gray-500">days</span>
+                </div>
+                <button
+                  onClick={() =>
+                    setLinkedinAutomation((prev) => ({ ...prev, auto_withdraw_pending_enabled: !prev.auto_withdraw_pending_enabled }))
+                  }
+                  title={linkedinAutomation.auto_withdraw_pending_enabled ? 'On — click to disable' : 'Off — click to enable'}
+                >
+                  {linkedinAutomation.auto_withdraw_pending_enabled ? (
+                    <ToggleRight className="h-6 w-6 text-blue-500" />
+                  ) : (
+                    <ToggleLeft className="h-6 w-6 text-gray-300" />
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
 
           <div className="flex justify-end pt-2">
@@ -2236,6 +2326,10 @@ export function ChatSettings() {
               <Clock className="h-5 w-5 text-amber-600" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900">LinkedIn Follow-up Sequence</h3>
+            <span className="flex items-center gap-1.5 ml-1 px-2 py-0.5 text-[11px] font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-full">
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
+              LinkedIn only
+            </span>
           </div>
           <p className="text-sm text-gray-500">
             After a connection request is accepted, the AI agent schedules this sequence of messages towards booking a meeting. Each message uses your LinkedIn chat-agent prompt (above), is auto-cancelled when the lead replies, and is dynamically rescheduled when the lead asks for a specific future time.
@@ -2351,6 +2445,29 @@ export function ChatSettings() {
           </div>
         </div>
       </div>
+      </>
+      )}
+
+      {/* ── Hidden channels hint ─────────────────────────────────── */}
+      {/* One quiet strip so hidden settings are discoverable — the settings
+          themselves are kept and reappear once the channel is reconnected. */}
+      {channelsLoaded && hiddenChannels.length > 0 && (
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm px-5 py-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <EyeOff className="h-4 w-4 text-gray-400 flex-shrink-0" />
+            <p className="text-sm text-gray-500">
+              {hiddenChannels.map((c) => c.label).join(', ')} settings are hidden because
+              {hiddenChannels.length === 1 ? " it isn't" : " they aren't"} connected. Your saved settings are kept.
+            </p>
+          </div>
+          <button
+            onClick={() => router.push('/settings?tab=integrations')}
+            className="text-sm font-medium text-blue-600 hover:text-blue-700 whitespace-nowrap"
+          >
+            Connect channels →
+          </button>
+        </div>
+      )}
 
       {/* Toast */}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
