@@ -385,6 +385,156 @@ function Toast({ message, type, onClose }: { message: string; type: 'success' | 
   );
 }
 
+// ── Email agent card (Gmail/Outlook tab) ─────────────────────────
+// The email counterpart of the WABA/LinkedIn chat agents: the inbound poller
+// (LAD-Email-Comms) answers new emails using this prompt via the shared AI
+// stack (LAD-WABA-Comms). Prompt lives in the prompts table (channel='email',
+// name='default'); the on/off flag in chat_settings.metadata.email_agent_enabled.
+
+function EmailAgentCard({ showToast }: { showToast: (msg: string, type: 'success' | 'error') => void }) {
+  const [enabled, setEnabled] = useState(false);
+  const [promptText, setPromptText] = useState('');
+  const [promptExists, setPromptExists] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [settingsRes, promptsRes] = await Promise.all([
+          fetchWithTenant(SETTINGS_API),
+          fetchWithTenant(PROMPTS_API),
+        ]);
+        if (cancelled) return;
+        if (settingsRes.ok) {
+          const s = await settingsRes.json();
+          setEnabled(Boolean(s?.email_agent_enabled ?? s?.data?.email_agent_enabled));
+        }
+        if (promptsRes.ok) {
+          const p = await promptsRes.json();
+          const list: Array<{ name: string; channel?: string; prompt_text?: string; is_active?: boolean }> =
+            p?.data ?? p?.prompts ?? [];
+          const emailPrompt = list.find((x) => x.channel === 'email' && x.name === 'default');
+          if (emailPrompt) {
+            setPromptText(emailPrompt.prompt_text || '');
+            setPromptExists(true);
+          }
+        }
+      } catch { /* card renders with defaults */ }
+      finally { if (!cancelled) setLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleToggle = async (next: boolean) => {
+    setEnabled(next);
+    try {
+      const res = await fetchWithTenant(`${SETTINGS_API}?channel=waba`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email_agent_enabled: next }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      showToast(next ? 'Email agent enabled' : 'Email agent disabled', 'success');
+    } catch {
+      setEnabled(!next);
+      showToast('Failed to update email agent toggle', 'error');
+    }
+  };
+
+  const handleSavePrompt = async () => {
+    if (!promptText.trim()) { showToast('Write a system prompt first', 'error'); return; }
+    setSaving(true);
+    try {
+      const res = promptExists
+        ? await fetchWithTenant(`${PROMPTS_API}/default?channel=email`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt_text: promptText, channel: 'email' }),
+          })
+        : await fetchWithTenant(PROMPTS_API, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: 'default', prompt_text: promptText, channel: 'email' }),
+          });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setPromptExists(true);
+      showToast('Email agent prompt saved', 'success');
+    } catch {
+      showToast('Failed to save email agent prompt', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+      <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900">Email agent (Gmail &amp; Outlook)</h3>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Automatically replies to new emails in your connected inboxes using the prompt
+            below — same AI brain as your WhatsApp agent. Replies stay in the original thread.
+          </p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={enabled}
+          onClick={() => handleToggle(!enabled)}
+          disabled={loading}
+          className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
+            enabled ? 'bg-red-500' : 'bg-gray-300'
+          } ${loading ? 'opacity-50' : ''}`}
+        >
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+              enabled ? 'translate-x-6' : 'translate-x-1'
+            }`}
+          />
+        </button>
+      </div>
+
+      <div className="px-5 py-4 space-y-3">
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          Reading inboxes needs the new read permission — accounts connected before the email
+          agent existed must be <span className="font-medium">disconnected and reconnected once</span>{' '}
+          in Settings → Integrations. The agent only answers mail received after it&apos;s enabled.
+        </p>
+        <div>
+          <label className="text-xs font-medium text-gray-700">System prompt</label>
+          <textarea
+            value={promptText}
+            onChange={(e) => setPromptText(e.target.value)}
+            rows={8}
+            disabled={loading}
+            placeholder={
+              'You are the assistant for <business>. Answer questions about our services, ' +
+              'pricing and availability using the knowledge base. Be concise and professional. ' +
+              'If the sender asks for anything you are unsure about, say a team member will follow up.'
+            }
+            className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-red-400 disabled:bg-gray-50"
+          />
+          <p className="mt-1 text-[11px] text-gray-500">
+            The knowledge base and tone from your chat settings are added automatically.
+          </p>
+        </div>
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={handleSavePrompt}
+            disabled={saving || loading}
+            className="px-4 py-2 rounded-lg bg-red-500 text-white text-sm font-medium hover:bg-red-600 disabled:opacity-50"
+          >
+            {saving ? 'Saving…' : 'Save prompt'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Component ───────────────────────────────────────────────
 
 export function ChatSettings() {
@@ -2447,6 +2597,9 @@ export function ChatSettings() {
       </div>
       </>
       )}
+
+      {/* ── Email agent (Gmail/Outlook tab) ──────────────────────── */}
+      {activeChannel === 'gmail' && <EmailAgentCard showToast={showToast} />}
 
       {/* ── Hidden channels hint ─────────────────────────────────── */}
       {/* One quiet strip so hidden settings are discoverable — the settings
