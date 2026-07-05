@@ -1807,25 +1807,35 @@ export function ChatSettings() {
           never consumed by any campaign path. The field remains in the
           ChatSettings API type because the backend still stores/returns it. */}
 
-      {/* ── Section 6: Post-Conversation Follow-up Timing ────────── */}
+      {/* ── Section 6: WhatsApp Post-Conversation Follow-up Timing ── */}
+      {/* WhatsApp-only: the config lives in the whatsapp-conversations service
+          (FOLLOWUP_CONFIG_API) and the stages/booking reminders send via
+          WhatsApp templates. Titled + badged accordingly (users assumed it
+          applied to every channel) and hidden when no WhatsApp is connected.
+          LinkedIn has its own follow-up card below; other channels have none. */}
+      {(isChannelVisible('waba') || isChannelVisible('personal_whatsapp')) && (
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
         <div className="p-6 border-b border-gray-100">
           <div className="flex items-center gap-2 mb-1">
-            <Bell className="h-5 w-5 text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Post-Conversation Follow-ups</h2>
+            <Bell className="h-5 w-5 text-green-600" />
+            <h2 className="text-lg font-semibold text-gray-900">WhatsApp Follow-ups</h2>
+            <span className="flex items-center gap-1.5 ml-1 px-2 py-0.5 text-[11px] font-medium text-green-700 bg-green-50 border border-green-200 rounded-full">
+              <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+              WhatsApp only
+            </span>
           </div>
           <p className="text-sm text-gray-500">
-            Configure when automated follow-up messages are sent after a conversation ends.
-            Each stage fires once at the scheduled delay.
+            Configure when automated follow-up messages are sent after a WhatsApp conversation ends.
+            Each stage fires once at the scheduled delay. Booking reminders below also send via WhatsApp.
           </p>
         </div>
         <div className="p-6 space-y-5">
           {/* Master enable */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-800">Enable Post-Conversation Follow-ups</p>
+              <p className="text-sm font-medium text-gray-800">Enable WhatsApp Follow-ups</p>
               <p className="text-xs text-gray-500 mt-0.5">
-                Automatically send follow-up messages when a customer stops responding
+                Automatically send follow-up messages when a customer stops responding on WhatsApp
               </p>
             </div>
             <button
@@ -2097,6 +2107,7 @@ export function ChatSettings() {
           </div>
         </div>
       </div>
+      )}
 
       {/* ── Section 7: LinkedIn Automation ──────────────────────── */}
       {/* Both LinkedIn cards (Automation + Follow-up Sequence) hide together
@@ -2109,6 +2120,10 @@ export function ChatSettings() {
           <div className="flex items-center gap-2 mb-1">
             <Linkedin className="h-5 w-5 text-blue-600" />
             <h2 className="text-lg font-semibold text-gray-900">LinkedIn Automation</h2>
+            <span className="flex items-center gap-1.5 ml-1 px-2 py-0.5 text-[11px] font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-full">
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
+              LinkedIn only
+            </span>
           </div>
           <p className="text-sm text-gray-500">
             Automatically engage with the post used to personalise each connection request or follow-up message.
@@ -2272,6 +2287,10 @@ export function ChatSettings() {
               <Clock className="h-5 w-5 text-amber-600" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900">LinkedIn Follow-up Sequence</h3>
+            <span className="flex items-center gap-1.5 ml-1 px-2 py-0.5 text-[11px] font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-full">
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
+              LinkedIn only
+            </span>
           </div>
           <p className="text-sm text-gray-500">
             After a connection request is accepted, the AI agent schedules this sequence of messages towards booking a meeting. Each message uses your LinkedIn chat-agent prompt (above), is auto-cancelled when the lead replies, and is dynamically rescheduled when the lead asks for a specific future time.
