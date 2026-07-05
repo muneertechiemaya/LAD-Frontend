@@ -12,6 +12,9 @@ interface ScheduledRow {
   status: string;
   group_count: number;
   message_preview: string;
+  recurrence?: string | null;       // 'daily' | 'weekly' | 'monthly' | null (one-shot)
+  recurrence_day?: number | null;   // weekly 0-6 (Sun=0) | monthly 1-31
+  recurrence_time?: string | null;  // 'HH:MM'
 }
 
 interface ScheduledBroadcastsModalProps {
@@ -85,6 +88,15 @@ export function ScheduledBroadcastsModal({ open, onClose, channel }: ScheduledBr
                       <span className="text-[11px] text-muted-foreground">
                         · {r.group_count} group{r.group_count === 1 ? '' : 's'}
                       </span>
+                      {r.recurrence && (
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">
+                          🔁 {r.recurrence === 'daily'
+                            ? 'Daily'
+                            : r.recurrence === 'weekly'
+                              ? `Weekly · ${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][r.recurrence_day ?? 0]}`
+                              : `Monthly · day ${r.recurrence_day ?? 1}`}
+                        </span>
+                      )}
                       {r.status === 'sending' && <span className="text-[10px] text-amber-600">sending…</span>}
                     </div>
                     <p className="text-[13px] text-muted-foreground truncate mt-0.5">{r.message_preview || '—'}</p>
