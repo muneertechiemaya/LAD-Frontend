@@ -212,17 +212,30 @@ async function fetchFollowupConfig(): Promise<FollowupTimingConfig> {
   }
 }
 
-async function updateFollowupConfig(config: FollowupTimingConfig): Promise<boolean> {
+async function updateFollowupConfig(
+  config: FollowupTimingConfig
+): Promise<{ ok: boolean; error?: string }> {
   try {
     const res = await fetchWithTenant(FOLLOWUP_CONFIG_API, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(config),
     });
-    const data = await res.json();
-    return data.success ?? false;
-  } catch {
-    return false;
+    const data = await res.json().catch(() => ({}));
+    if (data.success) return { ok: true };
+    // Surface the backend's reason — FastAPI validation errors arrive as
+    // `detail` (e.g. the H16 guard: an enabled stage past the 24h window
+    // with no template). A bare "Failed to save" hides the actionable part.
+    return {
+      ok: false,
+      error:
+        (typeof data.detail === 'string' && data.detail) ||
+        data.error ||
+        data.message ||
+        `Save failed (HTTP ${res.status})`,
+    };
+  } catch (e: any) {
+    return { ok: false, error: e?.message || 'Network error while saving' };
   }
 }
 
@@ -729,9 +742,32 @@ export function ChatSettings() {
   // ── Follow-up Timing save ────────────────────────────────────
 
   const handleSaveFollowup = useCallback(async () => {
+    // Pre-check mirroring the backend H16 guard: an ENABLED stage that fires
+    // past Meta's 24h customer-service window MUST have an approved template
+    // (free-form text is rejected there, so the stage would never send).
+    // Catching it here gives a friendlier message than the API's 400.
+    const STAGE_LABELS: Record<string, string> = {
+      FIRST: '1st Follow-up', SECOND: '2nd Follow-up', THIRD: '3rd Follow-up', FOURTH: 'Final message',
+    };
+    const offending = (Object.keys(followupConfig.stages) as Array<keyof typeof followupConfig.stages>)
+      .filter((k) => {
+        const s = followupConfig.stages[k];
+        return s.enabled && (s.delay_hours ?? 0) > 24 && !(s.template_name || '').trim();
+      })
+      .map((k) => STAGE_LABELS[k] || k);
+    // NOTE: the backend enforces this per-stage regardless of the master
+    // enabled flag, so the pre-check must too.
+    if (offending.length > 0) {
+      showToast(
+        `${offending.join(', ')}: delays past 24h need an approved WhatsApp template — pick one or disable the stage`,
+        'error'
+      );
+      return;
+    }
+
     setSavingFollowup(true);
-    const ok = await updateFollowupConfig(followupConfig);
-    showToast(ok ? 'Follow-up timing saved' : 'Failed to save', ok ? 'success' : 'error');
+    const result = await updateFollowupConfig(followupConfig);
+    showToast(result.ok ? 'Follow-up timing saved' : (result.error || 'Failed to save'), result.ok ? 'success' : 'error');
     setSavingFollowup(false);
   }, [followupConfig, showToast]);
 
