@@ -2051,9 +2051,7 @@ export function ChatSettings() {
                           ),
                         }))
                       }
-                      className={`w-full pl-3 pr-10 py-2 text-sm border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all appearance-none ${
-                        !reminder.template_name ? 'border-red-300' : 'border-gray-200'
-                      }`}
+                      className="w-full pl-3 pr-10 py-2 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all appearance-none"
                       style={{
                         backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
                         backgroundPosition: 'right 0.5rem center',
@@ -2061,10 +2059,13 @@ export function ChatSettings() {
                         backgroundSize: '1.5em 1.5em'
                       }}
                     >
+                      {/* Empty value = AI-generated: the WABA service composes the
+                          reminder at send time (free-form inside the 24h window,
+                          generic approved-template fallback outside it). */}
                       <option value="">
                         {loadingTemplates
                           ? 'Loading templates…'
-                          : '— Pick a template (required) —'}
+                          : '— AI-generated (default) —'}
                       </option>
                       {approvedTemplates.map((t) => (
                         <option key={`${t.name}-${t.language}`} value={t.name}>
@@ -2116,7 +2117,9 @@ export function ChatSettings() {
             </button>
 
             <p className="text-xs text-gray-500">
-              All reminders need an APPROVED WhatsApp template — Meta blocks free-text replies outside the 24-hour conversation window.
+              AI-generated reminders send as personalised free-text while the customer&apos;s 24-hour
+              conversation window is open, and fall back to your approved follow-up template when it
+              isn&apos;t. Pick an approved template instead for guaranteed delivery regardless of the window.
               {followupConfig.booking_reminders.length >= 10 && (
                 <span className="block mt-1 text-amber-600">Maximum 10 reminders per booking.</span>
               )}
