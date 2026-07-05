@@ -1713,9 +1713,10 @@ export function ChatSettings() {
       </div>
 
       {/* ── Section 3: Chat Behaviour ────────────────────────────── */}
-      {/* Both rows are WhatsApp-channel settings — hide the whole card when
-          neither WhatsApp flavour is connected. */}
-      {(isChannelVisible('personal_whatsapp') || isChannelVisible('waba')) && (
+      {/* Channel-specific settings follow the ACTIVE System Prompts tab: the
+          typing rows are WhatsApp settings, so this card only shows while a
+          WhatsApp tab is selected — and only the selected flavour's row. */}
+      {(activeChannel === 'personal_whatsapp' || activeChannel === 'waba') && (
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
         <div className="p-6 border-b border-gray-100">
           <div className="flex items-center gap-2 mb-1">
@@ -1732,12 +1733,11 @@ export function ChatSettings() {
             <p className="text-sm font-medium text-gray-800 mb-1">Typing Indicator</p>
             <p className="text-xs text-gray-500 mb-3">
               Show &quot;typing…&quot; to the contact while the AI is composing a reply.
-              Configure separately for each channel.
             </p>
 
             <div className="space-y-3 border border-gray-100 rounded-lg divide-y divide-gray-100 overflow-hidden">
               {/* Personal WhatsApp row */}
-              {isChannelVisible('personal_whatsapp') && (
+              {activeChannel === 'personal_whatsapp' && (
               <div className="flex items-center justify-between px-4 py-3">
                 <div className="flex items-center gap-2.5">
                   <span className="h-2 w-2 rounded-full bg-emerald-400 flex-shrink-0" />
@@ -1762,7 +1762,7 @@ export function ChatSettings() {
               )}
 
               {/* WABA row */}
-              {isChannelVisible('waba') && (
+              {activeChannel === 'waba' && (
               <div className="flex items-center justify-between px-4 py-3">
                 <div className="flex items-center gap-2.5">
                   <span className="h-2 w-2 rounded-full bg-green-500 flex-shrink-0" />
@@ -1811,9 +1811,9 @@ export function ChatSettings() {
       {/* WhatsApp-only: the config lives in the whatsapp-conversations service
           (FOLLOWUP_CONFIG_API) and the stages/booking reminders send via
           WhatsApp templates. Titled + badged accordingly (users assumed it
-          applied to every channel) and hidden when no WhatsApp is connected.
-          LinkedIn has its own follow-up card below; other channels have none. */}
-      {(isChannelVisible('waba') || isChannelVisible('personal_whatsapp')) && (
+          applied to every channel) and shown only while a WhatsApp tab is
+          selected. LinkedIn has its own follow-up card; other channels none. */}
+      {(activeChannel === 'waba' || activeChannel === 'personal_whatsapp') && (
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
         <div className="p-6 border-b border-gray-100">
           <div className="flex items-center gap-2 mb-1">
@@ -2110,10 +2110,10 @@ export function ChatSettings() {
       )}
 
       {/* ── Section 7: LinkedIn Automation ──────────────────────── */}
-      {/* Both LinkedIn cards (Automation + Follow-up Sequence) hide together
-          when LinkedIn isn't connected; saved values persist and the cards
-          reappear on reconnect. */}
-      {isChannelVisible('linkedin') && (
+      {/* Both LinkedIn cards (Automation + Follow-up Sequence) follow the
+          active System Prompts tab — shown only while LinkedIn is selected.
+          Saved values persist regardless of visibility. */}
+      {activeChannel === 'linkedin' && (
       <>
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
         <div className="p-6 border-b border-gray-100">
