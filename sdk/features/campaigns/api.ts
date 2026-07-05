@@ -548,6 +548,40 @@ export async function retryConnection(
   return response.data;
 }
 
+/**
+ * Withdraw a still-PENDING LinkedIn connection request for a single lead.
+ * Used by the Live Activity Feed "Withdraw" button, alongside "Retry".
+ *
+ * `campaignLeadId` matches the id the feed already uses for a row (the core
+ * lead id from campaign_analytics.lead_id, which the backend also accepts as
+ * campaign_leads.id). `campaignId` is passed through for precise scoping.
+ *
+ * Backend guarantees it only ever retracts a pending sent invite — an accepted
+ * connection is never in the pending list, so it can't be touched. When nothing
+ * is pending it returns `{ withdrawn: false, reason: 'no_pending_invite' }`
+ * rather than erroring.
+ */
+export interface WithdrawConnectionResult {
+  success: boolean;
+  withdrawn: boolean;
+  reason?: string | null;
+  invitationId?: string | null;
+  alreadyGone?: boolean;
+  status?: string | null;
+  error?: string | null;
+}
+
+export async function withdrawConnection(
+  campaignLeadId: string,
+  campaignId?: string
+): Promise<WithdrawConnectionResult> {
+  const response = await apiClient.post<WithdrawConnectionResult>(
+    `/api/social-integration/linkedin/connection-request/${campaignLeadId}/withdraw`,
+    campaignId ? { campaignId } : {}
+  );
+  return response.data;
+}
+
 // ====================
 // Inbound Leads Functions
 // ====================
