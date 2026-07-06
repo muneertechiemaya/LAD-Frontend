@@ -1345,10 +1345,11 @@ export function ChatSettings() {
             <h2 className="text-lg font-semibold text-gray-900">Shareable Assets</h2>
           </div>
           <p className="text-sm text-gray-500">
-            Files (price list, brochure, menu…) the AI agent can attach automatically
-            in WhatsApp when the customer asks. The system listens for the trigger
-            keywords in the AI&apos;s reply, downloads the file from the URL, and sends
-            it as a real attachment — so customers never see a raw link.
+            Files (price list, brochure, menu…) the AI agents can attach automatically
+            when the customer asks — on WhatsApp, LinkedIn, and email. The system
+            listens for the trigger keywords in the AI&apos;s reply, downloads the file
+            from the URL, and sends it as a real attachment — so customers never see
+            a raw link.
           </p>
         </div>
         <div className="p-6 space-y-4">
@@ -1609,8 +1610,9 @@ export function ChatSettings() {
             <h2 className="text-lg font-semibold text-gray-900">Company Website Context</h2>
           </div>
           <p className="text-sm text-gray-500">
-            Let the AI answer WhatsApp questions using content from your website or blog pages.
-            URLs are scraped once when you save and the text is cached — no live requests on each reply.
+            Let the AI answer customer questions using content from your website or blog pages —
+            on WhatsApp, LinkedIn, and email. URLs are scraped once when you save and the text is
+            cached — no live requests on each reply.
           </p>
         </div>
         <div className="p-6 space-y-5">
@@ -1619,7 +1621,7 @@ export function ChatSettings() {
             <div>
               <p className="text-sm font-medium text-gray-800">Enable Website Context</p>
               <p className="text-xs text-gray-500 mt-0.5">
-                When ON, scraped website content is included in every WhatsApp AI reply
+                When ON, scraped website content is included in AI replies on every channel
               </p>
             </div>
             <button
