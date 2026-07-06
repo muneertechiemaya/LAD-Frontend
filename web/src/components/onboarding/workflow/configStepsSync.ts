@@ -3,12 +3,16 @@
  * Builder canvas.
  *
  * The `workflowPreview` steps array is the SINGLE SOURCE OF TRUTH. The guided
- * config's structural selections — LinkedIn actions (connect / message /
- * profile_view), follow-up channels (email / whatsapp / voice_call) and the
+ * config's structural selections — the channels (linkedin / email / whatsapp /
+ * voice_call), the LinkedIn actions (connect / message / profile_view) and the
  * trigger condition — are DERIVED from it (`deriveConfig`), and editing a
  * toggle reconciles back into it (`applyConfig`). Because both the toggles and
  * the canvas mutate the same array, add/remove in either surface reflects in
  * the other in real time.
+ *
+ * LinkedIn is a first-class channel here: it is "selected" whenever the workflow
+ * carries a LinkedIn outreach step, and its per-action detail lives in
+ * `actions`. The other channels map 1:1 to a single step type.
  *
  * Channel account/template selections (email from-address, WA account, voice
  * agent, …) are campaign-level, not per-step, so they stay in their own state
@@ -35,8 +39,8 @@ export interface SyncStep {
 }
 
 export interface DerivedConfig {
-  actions: string[];        // subset of ['profile_view','connect','message']
-  nextChannels: string[];   // subset of ['email','whatsapp','voice_call']
+  actions: string[];        // subset of ['profile_view','connect','message'] (LinkedIn actions)
+  nextChannels: string[];   // subset of ['linkedin','email','whatsapp','voice_call']
   triggerCondition: string; // '' | 'connection_accepted' | 'message_replied' | 'profile_visited' | …
 }
 
@@ -80,6 +84,11 @@ export function deriveConfig(steps: SyncStep[] | null | undefined): DerivedConfi
     else if (CHANNEL_BY_TYPE[s.type]) nextChannels.push(CHANNEL_BY_TYPE[s.type]);
     else if (s.type === 'wait_for_condition') triggerCondition = s.condition || '';
   }
+  // LinkedIn is a first-class channel in the guided config (selecting it reveals
+  // the LinkedIn action toggles). It's "selected" whenever the workflow carries
+  // any LinkedIn outreach step; surface it at the FRONT so it reads as the
+  // primary channel (matching CHANNEL_PRIORITY = ['linkedin', …]).
+  if (actions.length > 0) nextChannels.unshift('linkedin');
   return { actions, nextChannels, triggerCondition };
 }
 
@@ -127,9 +136,16 @@ export function buildStepsFromConfig(cfg: DerivedConfig, existing: SyncStep[] = 
   // Lead search is always the entry step (preserve an existing one if present).
   out.push(take('lead_generation'));
 
-  if (cfg.actions.includes('connect')) out.push(take('linkedin_connect'));
-  if (cfg.actions.includes('message')) out.push(take('linkedin_message'));
-  if (cfg.actions.includes('profile_view')) out.push(take('linkedin_visit'));
+  // LinkedIn outreach steps materialise only when the LinkedIn channel is
+  // selected. If it's selected with no explicit action, default to a profile
+  // visit (mirrors the launch builder's `liChannelActions.length === 0` default).
+  const liSelected = cfg.nextChannels.includes('linkedin');
+  const liActions = !liSelected ? [] : (cfg.actions.length > 0 ? cfg.actions : ['profile_view']);
+  // Emit in execution order (visit → connect → message) so the canvas matches
+  // how the launch builder actually runs the sequence.
+  if (liActions.includes('profile_view')) out.push(take('linkedin_visit'));
+  if (liActions.includes('connect')) out.push(take('linkedin_connect'));
+  if (liActions.includes('message')) out.push(take('linkedin_message'));
 
   if (cfg.triggerCondition) {
     const cond = take('wait_for_condition');
@@ -139,6 +155,7 @@ export function buildStepsFromConfig(cfg: DerivedConfig, existing: SyncStep[] = 
   }
 
   for (const ch of cfg.nextChannels) {
+    if (ch === 'linkedin') continue; // handled via the LinkedIn actions above
     const type = TYPE_BY_CHANNEL[ch];
     if (type) out.push(take(type));
   }

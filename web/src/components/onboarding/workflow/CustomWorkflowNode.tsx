@@ -85,6 +85,12 @@ export function CustomWorkflowNode({ data, id, selected }: NodeProps) {
         <Handle type="source" position={Position.Bottom} id="bottom"
           style={{ width: 8, height: 8, background: '#d1d5db', border: '2px solid #fff', bottom: -4 }} />
       )}
+      {/* Side connection points on the circle's left/right edges — used by the
+          horizontal "snake" layout. Invisible; edges simply attach here. */}
+      <Handle type="target" position={Position.Left}  id="l-t" style={{ left: `calc(50% - ${nodeSize / 2}px)`, top: nodeSize / 2, width: 6, height: 6, opacity: 0, border: 'none', background: 'transparent' }} />
+      <Handle type="source" position={Position.Left}  id="l-s" style={{ left: `calc(50% - ${nodeSize / 2}px)`, top: nodeSize / 2, width: 6, height: 6, opacity: 0, border: 'none', background: 'transparent' }} />
+      <Handle type="target" position={Position.Right} id="r-t" style={{ right: `calc(50% - ${nodeSize / 2}px)`, top: nodeSize / 2, width: 6, height: 6, opacity: 0, border: 'none', background: 'transparent' }} />
+      <Handle type="source" position={Position.Right} id="r-s" style={{ right: `calc(50% - ${nodeSize / 2}px)`, top: nodeSize / 2, width: 6, height: 6, opacity: 0, border: 'none', background: 'transparent' }} />
 
       {/* Hover action buttons */}
       {(canEdit || canDelete) && (
