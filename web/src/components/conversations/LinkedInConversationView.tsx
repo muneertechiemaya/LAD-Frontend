@@ -13,9 +13,17 @@
  *   active   → automated follow-up sent     → chat enabled
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Send, RefreshCw, Loader2, MessageSquare, Linkedin, Clock, CheckCircle, Zap, Lock, ChevronLeft, Search } from 'lucide-react';
+import { Send, RefreshCw, Loader2, MessageSquare, Linkedin, Clock, CheckCircle, Zap, Lock, ChevronLeft, Search, MoreVertical, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter,
+  AlertDialogTitle, AlertDialogDescription, AlertDialogCancel,
+} from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
 import { LinkedInFollowupComposer } from './LinkedInFollowupComposer';
@@ -367,7 +375,11 @@ export function LinkedInConversationView({
   const [sending, setSending]             = useState(false);
   const [error, setError]                 = useState<string | null>(null);
   const [msgError, setMsgError]           = useState<string | null>(null);
+  // Delete-conversation confirm flow: the conversation pending deletion (null = closed).
+  const [deleteTarget, setDeleteTarget]   = useState<LinkedInConversation | null>(null);
+  const [deleting, setDeleting]           = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
 
@@ -391,6 +403,46 @@ export function LinkedInConversationView({
   }, []);
 
   useEffect(() => { loadConversations(); }, [loadConversations]);
+
+  // ── Delete an entire conversation thread ───────────────────────────────────
+  // Removes the thread on LinkedIn (Unipile) AND soft-deletes our local record
+  // via DELETE /api/linkedin-conversations/conversations/:id (:id = Unipile chat
+  // id = LinkedInConversation.id). Routed through the shared conversations proxy
+  // with ?channel=linkedin.
+  const handleDeleteConversation = useCallback(async () => {
+    if (!deleteTarget) return;
+    const conv = deleteTarget;
+    setDeleting(true);
+    try {
+      const res = await fetchWithTenant(
+        li(`${API_BASE}/conversations/${conv.id}`),
+        { method: 'DELETE' }
+      );
+      const json = await res.json().catch(() => ({} as any));
+      if (!res.ok || json?.success === false) {
+        throw new Error(json?.message || json?.error || 'Failed to delete conversation');
+      }
+      toast({
+        title: 'Conversation deleted',
+        description: `${conv.contact?.name || 'The thread'} was removed from LinkedIn and your inbox.`,
+      });
+      setDeleteTarget(null);
+      // Close the open thread if it was the one we just deleted.
+      if (selectedId === conv.id) {
+        setSelectedId(null);
+        setMessages([]);
+      }
+      await loadConversations();
+    } catch (e: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Could not delete conversation',
+        description: e?.message || 'Please try again.',
+      });
+    } finally {
+      setDeleting(false);
+    }
+  }, [deleteTarget, selectedId, loadConversations, toast]);
 
   // ── Load messages for selected conversation ────────────────────────────────
   const loadMessages = useCallback(async (convId: string) => {
@@ -730,6 +782,29 @@ export function LinkedInConversationView({
                   </a>
                 )}
               </div>
+
+              {/* Conversation actions (delete thread) */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0 text-slate-500"
+                    title="Conversation options"
+                  >
+                    <MoreVertical className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => setDeleteTarget(selectedConv)}
+                    className="text-red-600 focus:text-red-600 focus:bg-red-50 cursor-pointer"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete conversation
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             {/* Disabled banner (shown for pending/accepted) */}
@@ -871,6 +946,33 @@ export function LinkedInConversationView({
           />
         )}
       </div>
+
+      {/* Delete-conversation confirmation */}
+      <AlertDialog
+        open={!!deleteTarget}
+        onOpenChange={(o) => { if (!o && !deleting) setDeleteTarget(null); }}
+      >
+        <AlertDialogContent className="sm:max-w-md sm:w-full">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this conversation?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes the entire thread with{' '}
+              <span className="font-medium text-foreground">{deleteTarget?.contact?.name || 'this lead'}</span>{' '}
+              on LinkedIn and removes it from your inbox. This can’t be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <Button variant="destructive" disabled={deleting} onClick={handleDeleteConversation}>
+              {deleting ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Deleting…</>
+              ) : (
+                <><Trash2 className="h-4 w-4 mr-2" /> Delete conversation</>
+              )}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
