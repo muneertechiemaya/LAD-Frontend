@@ -4383,8 +4383,10 @@ export default function AdvancedSearchAIPage() {
                                                         )}
                                                     </div>
                                                     <div className="adv-lead-title">
-                                                        {lead.headline || lead.current_company || (lead.profile_url ? 'LinkedIn User' : lead.phone ? 'Phone Contact' : lead.email ? 'Email Contact' : 'Contact')}
+                                                        {lead.headline || (lead.profile_url ? 'LinkedIn User' : lead.phone ? 'Phone Contact' : lead.email ? 'Email Contact' : 'Contact')}
                                                     </div>
+                                                    {/* Company name under the name/title */}
+                                                    {lead.current_company && <div className="adv-lead-company">{lead.current_company}</div>}
                                                     {lead.location && <div className="adv-lead-location">📍 {lead.location}</div>}
                                                     {lead.inferred_nationality && (
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '3px' }}>
@@ -4539,8 +4541,10 @@ export default function AdvancedSearchAIPage() {
                                                                 )}
                                                             </div>
                                                             <div className="adv-lead-title" style={{ color: '#9ca3af' }}>
-                                                                {lead.headline || lead.current_company || (lead.profile_url ? 'LinkedIn User' : 'Contact')}
+                                                                {lead.headline || (lead.profile_url ? 'LinkedIn User' : 'Contact')}
                                                             </div>
+                                                            {/* Company name under the name/title */}
+                                                            {lead.current_company && <div className="adv-lead-company" style={{ color: '#9ca3af' }}>{lead.current_company}</div>}
                                                             {lead.location && <div className="adv-lead-location" style={{ color: '#9ca3af' }}>📍 {lead.location}</div>}
                                                             {lead.icp_reasoning && (
                                                                 <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px', lineHeight: '1.4', fontStyle: 'italic' }}>
@@ -9170,6 +9174,7 @@ const css = `
             .adv-lead-name {font-size:14px; font-weight:700; color:#111827; display:flex; align-items:center; gap:4px; }
             .adv-verified {background:#10b981; color:#fff; border-radius:50%; width:16px; height:16px; display:inline-flex; align-items:center; justify-content:center; font-size:9px; font-weight:800; }
             .adv-lead-title {font-size:12px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+            .adv-lead-company {font-size:12px; font-weight:600; color:#374151; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
             .adv-lead-platform {margin - top:4px; display:flex; gap:4px; }
             .adv-lead-action {width:36px; height:36px; border-radius:50%; border:1.5px solid #e5e7eb; background:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; transition:all .15s; }
             .adv-lead-action:hover:not(:disabled) {border-color:#0b1957; background:#f2f6fa; }
@@ -9566,6 +9571,7 @@ const css = `
             .dark .adv-lead-card:hover { background: #253456; }
             .dark .adv-lead-name { color: #ffffff; }
             .dark .adv-lead-title { color: #7a8ba3; }
+            .dark .adv-lead-company { color: #b8c4d6; }
             .dark .adv-lead-action { background: #1A2A43; border-color: #000724; color: #ffffff; }
             .dark .adv-lead-action:hover:not(:disabled) { border-color: #000724; background: #253456; }
             .dark .adv-lead-avatar-img { border-color: #000724; }
