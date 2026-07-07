@@ -31,7 +31,10 @@ import {
 interface LinkedInTemplate {
   id: string;
   name: string;
-  message_text: string;
+  // The API (/api/campaigns/linkedin-message-templates) returns the body in the
+  // `content` column. A connection-only template can legitimately have a null
+  // content, so callers must guard before using it.
+  content: string | null;
   category?: string | null;
 }
 
@@ -215,10 +218,10 @@ export function LinkedInChatToolbar({
                 <DropdownMenuItem
                   key={t.id}
                   className="text-xs flex flex-col items-start gap-0.5 py-1.5"
-                  onClick={() => onInsertTemplate(t.message_text)}
+                  onClick={() => onInsertTemplate(t.content || '')}
                 >
                   <span className="font-medium text-slate-800 truncate w-full">{t.name}</span>
-                  <span className="text-[10px] text-slate-500 truncate w-full">{t.message_text}</span>
+                  <span className="text-[10px] text-slate-500 truncate w-full">{t.content || ''}</span>
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
