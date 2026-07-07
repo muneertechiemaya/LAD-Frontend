@@ -152,6 +152,16 @@ const nextConfig = {
     ];
   },
 
+  // ⚠️ TEMPORARY — not permanent.
+  // While this is true, `next build` skips type-checking entirely, which is how
+  // two missing-export runtime crashes shipped to users in one day (proxyGet
+  // from '@/lib/api'; community-roi's useDataImport). It stays true only because
+  // develop currently carries ~363 pre-existing type errors — flipping it now
+  // would fail every Docker / Cloud Run build.
+  // A report-only `tsc --noEmit` CI gate now surfaces these on every PR
+  // (.github/workflows/ci.yml → type-check job). PHASE 2: once that baseline is
+  // burned down to 0, DELETE this block and make the CI gate blocking so
+  // `next build` enforces types too.
   typescript: {
     ignoreBuildErrors: true,
   },
