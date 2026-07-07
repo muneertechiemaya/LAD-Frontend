@@ -25,7 +25,35 @@ export interface LinkedInMessageTemplate {
 }
 
 /**
- * Request to create new template
+ * Coarse media category for a template attachment.
+ */
+export type TemplateMediaType = 'image' | 'video' | 'audio' | 'document';
+
+/**
+ * Media attachment stored on a template (lives in metadata.media_* on the backend).
+ */
+export interface TemplateMedia {
+  media_url: string;
+  media_type?: TemplateMediaType | string | null;
+  media_filename?: string | null;
+}
+
+/**
+ * Result of a template media upload (see uploadTemplateMedia).
+ */
+export interface TemplateMediaUploadResult {
+  success: boolean;
+  url: string;
+  path: string;
+  filename: string;
+  media_type: TemplateMediaType | string;
+  mime_type: string;
+}
+
+/**
+ * Request to create new template.
+ * Media fields are flat here (media_url/media_type/media_filename); the backend
+ * folds them into the template's metadata JSONB.
  */
 export interface CreateTemplateRequest {
   name: string;
@@ -36,10 +64,14 @@ export interface CreateTemplateRequest {
   tags?: string[];
   is_default?: boolean;
   is_active?: boolean;
+  media_url?: string | null;
+  media_type?: TemplateMediaType | string | null;
+  media_filename?: string | null;
 }
 
 /**
- * Request to update template
+ * Request to update template.
+ * Set media_url to null to clear an existing attachment.
  */
 export interface UpdateTemplateRequest {
   name?: string;
@@ -50,6 +82,9 @@ export interface UpdateTemplateRequest {
   tags?: string[];
   is_default?: boolean;
   is_active?: boolean;
+  media_url?: string | null;
+  media_type?: TemplateMediaType | string | null;
+  media_filename?: string | null;
 }
 
 /**
