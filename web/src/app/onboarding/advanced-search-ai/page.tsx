@@ -1422,6 +1422,10 @@ export default function AdvancedSearchAIPage() {
                     forceRefresh ? null : (typeof data.data_age_days === 'number' ? data.data_age_days : null)
                 );
 
+                // Tracks whether we actually produced usable summary text — drives
+                // the AI-preview fallback below.
+                let summaryText = '';
+
                 // ── 1. Build rich text summary ─────────────────────────────────
                 if (data.profile_summary) {
                     const ps = data.profile_summary as any;
@@ -1455,13 +1459,14 @@ export default function AdvancedSearchAIPage() {
                         if (names) parts.push(`\n🌐 Languages: ${names}`);
                     }
                     const richSummary = parts.join('\n').trim();
-                    if (richSummary) setProfileSummary(richSummary);
+                    if (richSummary) { setProfileSummary(richSummary); summaryText = richSummary; }
                 } else if (data.company_profile) {
-                    setProfileSummary(
+                    const companyText = (
                         data.company_profile.overview ||
                         data.company_profile.description ||
-                        `${lead.current_company || 'Company'} — ${data.company_profile.industry || ''} ${data.company_profile.company_size_range ? `· ${data.company_profile.company_size_range} employees` : ''}`.trim()
-                    );
+                        `${lead.current_company || 'Company'} — ${data.company_profile.industry || ''} ${data.company_profile.company_size_range ? `· ${data.company_profile.company_size_range} employees` : ''}`
+                    ).trim();
+                    if (companyText) { setProfileSummary(companyText); summaryText = companyText; }
                 }
 
                 // ── 2. Web presence ────────────────────────────────────────────
@@ -1471,7 +1476,10 @@ export default function AdvancedSearchAIPage() {
                 if (data.recent_posts?.length) setProfileRecentPosts(data.recent_posts);
 
                 // ── 4. Fallback ────────────────────────────────────────────────
-                if (!data.profile_summary && !data.company_profile) {
+                // Run the AI preview whenever no usable summary text was produced —
+                // including a thin LinkedIn profile object (name/headline only, no
+                // about/experience), which previously rendered blank AND skipped this.
+                if (!summaryText) {
                     const fallback = await campaignCreation.fetchLeadSummaryPreview({
                         profileData: { name: lead.name, title: lead.headline || '', company: lead.current_company || '', linkedin_url: lead.profile_url || '' }
                     });
