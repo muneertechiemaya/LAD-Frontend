@@ -86,6 +86,13 @@ export default function CreateLinkedInTemplateModal({
     if (fileInputRef.current) fileInputRef.current.value = '';
     if (!file) return;
 
+    // Guard client-side so an oversize file gets a clear message instead of
+    // being truncated by the middleware body cap.
+    if (file.size > 25 * 1024 * 1024) {
+      setErrors((prev) => ({ ...prev, media: 'File too large. Max 25MB.' }));
+      return;
+    }
+
     setUploadingMedia(true);
     try {
       const result = await uploadLinkedInTemplateMedia(file);
