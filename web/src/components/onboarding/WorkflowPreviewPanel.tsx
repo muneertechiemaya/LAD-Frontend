@@ -78,8 +78,8 @@ function FlowInner({
 
   useEffect(() => {
     const t = setTimeout(() => {
-      fitView({ padding: 0.15, duration: 500, minZoom: 0.2, maxZoom: 0.85 });
-    }, 300);
+      fitView({ padding: 0.14, duration: 400, minZoom: 0.4, maxZoom: 1 });
+    }, 250);
     return () => clearTimeout(t);
   }, [workflowPreview, fitView]);
 
@@ -107,10 +107,10 @@ function FlowInner({
         nodesConnectable={false}
         elementsSelectable={true}
         fitView
-        fitViewOptions={{ padding: 0.15, minZoom: 0.2, maxZoom: 0.85 }}
+        fitViewOptions={{ padding: 0.14, minZoom: 0.4, maxZoom: 1 }}
         minZoom={0.1}
         maxZoom={2}
-        defaultViewport={{ x: 0, y: 0, zoom: 0.6 }}
+        defaultViewport={{ x: 0, y: 0, zoom: 0.9 }}
         attributionPosition="bottom-left"
         proOptions={{ hideAttribution: true }}
         style={{ background: '#fafafa' }}
