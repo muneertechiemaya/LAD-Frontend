@@ -144,6 +144,26 @@ const SETTINGS_API = '/api/whatsapp-conversations/chat-settings';
 const FOLLOWUP_CONFIG_API = '/api/whatsapp-conversations/followup-config';
 const SHAREABLE_ASSETS_API = '/api/whatsapp-conversations/chat-settings/shareable-assets';
 const APPROVED_TEMPLATES_API = '/api/whatsapp-conversations/followup-settings/templates';
+const GENERATE_PROMPT_API = '/api/ai-playground/generate-prompt';
+
+interface MissingField { key: string; label: string; placeholder?: string; severity?: 'required' | 'optional'; }
+interface GenerateResult {
+  success: boolean;
+  prompt_text: string | null;
+  missing_fields?: MissingField[];
+  error?: string;
+  supported?: string[];
+}
+
+/** Generate a channel system prompt from the tenant's ICP/business knowledge (review-before-save). */
+async function generatePrompt(channel: string, providedFields: Record<string, string> = {}): Promise<GenerateResult> {
+  const res = await fetchWithTenant(GENERATE_PROMPT_API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ channel, provided_fields: providedFields }),
+  });
+  return res.json();
+}
 
 async function fetchApprovedTemplates(): Promise<WhatsAppApprovedTemplate[]> {
   try {
@@ -599,6 +619,14 @@ export function ChatSettings() {
   const [newPromptText, setNewPromptText] = useState('');
   const [creatingPrompt, setCreatingPrompt] = useState(false);
 
+  // AI prompt generation
+  const [generatingPrompt, setGeneratingPrompt] = useState<string | null>(null); // prompt.name or '__new__'
+  const [missingFieldsModal, setMissingFieldsModal] = useState<{
+    promptName: string | null;
+    fields: MissingField[];
+    values: Record<string, string>;
+  } | null>(null);
+
   // Web scraping state
   const [newWebUrl, setNewWebUrl] = useState('');
   const [webScrapingSaving, setWebScrapingSaving] = useState(false);
@@ -794,6 +822,48 @@ export function ChatSettings() {
     }
     setCreatingPrompt(false);
   }, [newPromptName, newPromptText, activeChannel, showToast]);
+
+  // ── AI prompt generation ─────────────────────────────────────
+  const runGenerate = useCallback(
+    async (promptName: string | null, providedFields: Record<string, string> = {}) => {
+      const busyKey = promptName ?? '__new__';
+      setGeneratingPrompt(busyKey);
+      try {
+        const out = await generatePrompt(activeChannel, providedFields);
+        if (out?.error === 'unsupported_channel') {
+          showToast('Prompt generation is available for LinkedIn only right now', 'error');
+          return;
+        }
+        const requiredMissing = (out?.missing_fields || []).filter((f) => f.severity !== 'optional');
+        if (out?.success && !out.prompt_text && requiredMissing.length) {
+          // Need a few facts that aren't on file yet — open the collect-info form.
+          setMissingFieldsModal({ promptName, fields: out.missing_fields || [], values: providedFields });
+          return;
+        }
+        if (out?.success && out.prompt_text) {
+          setMissingFieldsModal(null);
+          if (promptName) {
+            // Existing card → stage as an unsaved edit for review, then user clicks Save Changes.
+            setEditedTexts((prev) => ({ ...prev, [promptName]: out.prompt_text as string }));
+            setExpandedPrompt(promptName);
+          } else {
+            // No prompt for this channel yet → prefill the "Add New Prompt" form.
+            setShowNewPrompt(true);
+            setNewPromptName('SYSTEM_PROMPT');
+            setNewPromptText(out.prompt_text);
+          }
+          showToast('Draft generated — review it, then Save Changes', 'success');
+        } else {
+          showToast('Failed to generate prompt', 'error');
+        }
+      } catch {
+        showToast('Failed to generate prompt', 'error');
+      } finally {
+        setGeneratingPrompt(null);
+      }
+    },
+    [activeChannel, showToast]
+  );
 
   // ── Knowledge Base save ──────────────────────────────────────
 
@@ -1186,6 +1256,16 @@ export function ChatSettings() {
               <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-40" />
               <p className="text-sm">No prompts for {CHANNELS.find((c) => c.id === activeChannel)?.label}</p>
               <p className="text-xs mt-1">Create one to get started</p>
+              {activeChannel === 'linkedin' && (
+                <button
+                  onClick={() => runGenerate(null)}
+                  disabled={generatingPrompt === '__new__'}
+                  className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 border border-blue-200 rounded-md hover:bg-blue-50 disabled:opacity-40"
+                >
+                  {generatingPrompt === '__new__' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                  Generate with AI
+                </button>
+              )}
             </div>
           ) : (
             filteredPrompts.map((prompt) => {
@@ -1255,18 +1335,35 @@ export function ChatSettings() {
                             ? `Last updated: ${new Date(prompt.updated_at).toLocaleDateString()}`
                             : ''}
                         </span>
-                        <button
-                          onClick={() => handleSavePrompt(prompt.name)}
-                          disabled={!hasEdit || savingPrompt === prompt.name}
-                          className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                        >
-                          {savingPrompt === prompt.name ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <Save className="h-3 w-3" />
+                        <div className="flex items-center gap-2">
+                          {activeChannel === 'linkedin' && (
+                            <button
+                              onClick={() => runGenerate(prompt.name)}
+                              disabled={generatingPrompt === prompt.name}
+                              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 border border-blue-200 rounded-md hover:bg-blue-50 disabled:opacity-40 transition-colors"
+                              title="Generate a prompt from your business profile & ICP"
+                            >
+                              {generatingPrompt === prompt.name ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Sparkles className="h-3 w-3" />
+                              )}
+                              Generate with AI
+                            </button>
                           )}
-                          Save Changes
-                        </button>
+                          <button
+                            onClick={() => handleSavePrompt(prompt.name)}
+                            disabled={!hasEdit || savingPrompt === prompt.name}
+                            className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                          >
+                            {savingPrompt === prompt.name ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Save className="h-3 w-3" />
+                            )}
+                            Save Changes
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -2626,6 +2723,66 @@ export function ChatSettings() {
 
       {/* Toast */}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+
+      {/* Missing-fields modal — collects the few facts needed to generate the prompt */}
+      {missingFieldsModal && (
+        <>
+          <div className="fixed inset-0 z-[100] bg-black/30" onClick={() => setMissingFieldsModal(null)} />
+          <div className="fixed left-1/2 top-1/2 z-[110] w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white p-5 shadow-2xl">
+            <div className="flex items-start justify-between mb-1">
+              <h3 className="text-sm font-semibold text-gray-900">A few details to tailor the prompt</h3>
+              <button onClick={() => setMissingFieldsModal(null)} className="text-gray-400 hover:text-gray-600">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mb-4">
+              These aren&apos;t on file yet. We&apos;ll remember them for next time.
+            </p>
+            <div className="space-y-3">
+              {missingFieldsModal.fields.map((f) => (
+                <div key={f.key}>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    {f.label}
+                    {f.severity !== 'optional' && <span className="text-red-500"> *</span>}
+                  </label>
+                  <input
+                    type="text"
+                    value={missingFieldsModal.values[f.key] || ''}
+                    placeholder={f.placeholder || ''}
+                    onChange={(e) =>
+                      setMissingFieldsModal((prev) =>
+                        prev ? { ...prev, values: { ...prev.values, [f.key]: e.target.value } } : prev
+                      )
+                    }
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center justify-end gap-2 mt-5">
+              <button
+                onClick={() => setMissingFieldsModal(null)}
+                className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => runGenerate(missingFieldsModal.promptName, missingFieldsModal.values)}
+                disabled={
+                  generatingPrompt !== null ||
+                  missingFieldsModal.fields.some(
+                    (f) => f.severity !== 'optional' && !(missingFieldsModal.values[f.key] || '').trim()
+                  )
+                }
+                className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {generatingPrompt !== null ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                Generate
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* AI Playground side panel — opens over current page */}
       {playgroundOpen && (
