@@ -211,6 +211,25 @@ function relativeTime(isoString: string): string {
   }
 }
 
+// Exact, absolute date + time for message bubbles (e.g. "Jul 7, 2026, 3:42 PM").
+// Used instead of relative "Xm ago" so the precise send time is always visible.
+function exactDateTime(isoString: string): string {
+  if (!isoString) return '';
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleString(undefined, {
+      year:   'numeric',
+      month:  'short',
+      day:    'numeric',
+      hour:   'numeric',
+      minute: '2-digit',
+    });
+  } catch {
+    return '';
+  }
+}
+
 // ─── Conversation list item ───────────────────────────────────────────────────
 
 function ConvListItem({
@@ -315,7 +334,7 @@ function MessageBubble({ msg }: { msg: LinkedInMessage }) {
       >
         <p className="whitespace-pre-wrap break-words">{msg.content}</p>
         <p className={cn('text-[10px] mt-1 text-right', isOut ? 'text-blue-200' : 'text-slate-400')}>
-          {relativeTime(msg.created_at)}
+          {exactDateTime(msg.created_at)}
         </p>
       </div>
     </div>
