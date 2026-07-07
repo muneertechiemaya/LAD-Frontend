@@ -888,7 +888,12 @@ export function LinkedInConversationView({
               contextPanelOpen={contextPanelOpen}
               onToggleContextPanel={() => setContextPanelOpen(o => !o)}
               onInsertTemplate={(text) => {
-                setMessageText(prev => prev ? `${prev}\n${text}` : text);
+                // Coerce to a string so the input's value never becomes undefined
+                // (a null/empty template body would otherwise crash the next
+                // `messageText.trim()` render with "reading 'trim' of undefined").
+                const insert = text ?? '';
+                if (!insert) return;
+                setMessageText(prev => prev ? `${prev}\n${insert}` : insert);
               }}
               chatEnabled={chatEnabled}
             />

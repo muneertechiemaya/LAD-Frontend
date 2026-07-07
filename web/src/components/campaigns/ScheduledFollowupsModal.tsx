@@ -8,10 +8,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/app-toaster';
 import { proxyGet, proxyPost, proxyDelete } from '@/lib/api';
+import TemplateSelector from '@/components/campaigns/linkedin-templates/TemplateSelector';
+import type { LinkedInMessageTemplate } from '@lad/frontend-features/campaigns';
 import {
   CalendarClock, Clock, Loader2, Plus, Trash2, Linkedin, Search,
-  CheckCircle2, ChevronUp, CalendarPlus,
+  CheckCircle2, ChevronUp, CalendarPlus, FileText, Film, Music,
 } from 'lucide-react';
+
+interface SelectedMedia {
+  url: string;
+  type?: string | null;
+  filename?: string | null;
+}
 
 type FollowupStatus = 'pending' | 'sent' | 'failed' | 'cancelled';
 
@@ -98,8 +106,19 @@ export default function ScheduledFollowupsModal({ campaignId, open, onClose }: P
   const [schedulerFor, setSchedulerFor] = useState<string | null>(null);
   const [customHours, setCustomHours] = useState('');
   const [customWhen, setCustomWhen] = useState('');
+  // Optional predefined template + media applied to follow-ups scheduled here.
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [selectedMedia, setSelectedMedia] = useState<SelectedMedia | null>(null);
   // Per-action loading keys: `sched:<leadId>` and `rm:<followupId>`.
   const [busy, setBusy] = useState<Set<string>>(new Set());
+
+  const handleTemplateSelect = (tpl: LinkedInMessageTemplate | null) => {
+    setSelectedTemplateId(tpl?.id ?? null);
+    const meta = (tpl?.metadata ?? {}) as Record<string, any>;
+    setSelectedMedia(tpl && meta.media_url
+      ? { url: meta.media_url, type: meta.media_type ?? null, filename: meta.media_filename ?? null }
+      : null);
+  };
 
   const setBusyKey = (key: string, on: boolean) =>
     setBusy((prev) => {
@@ -132,6 +151,8 @@ export default function ScheduledFollowupsModal({ campaignId, open, onClose }: P
       setSearch('');
       setCustomHours('');
       setCustomWhen('');
+      setSelectedTemplateId(null);
+      setSelectedMedia(null);
     }
   }, [open, load]);
 
@@ -161,7 +182,13 @@ export default function ScheduledFollowupsModal({ campaignId, open, onClose }: P
       try {
         await proxyPost<{ success: boolean; id?: string; error?: string }>(
           `/api/campaigns/${campaignId}/leads/${lead.campaignLeadId}/scheduled-followups`,
-          body
+          {
+            ...body,
+            // Carry the chosen predefined template + media so the cron sends that
+            // template body + attachment at dispatch time.
+            ...(selectedTemplateId ? { templateId: selectedTemplateId } : {}),
+            ...(selectedMedia ? { mediaUrl: selectedMedia.url, mediaType: selectedMedia.type || undefined } : {}),
+          }
         );
         push({ variant: 'success', title: 'Follow-up scheduled', description: `${lead.name} · ${label}` });
         setSchedulerFor(null);
@@ -172,7 +199,7 @@ export default function ScheduledFollowupsModal({ campaignId, open, onClose }: P
         setBusyKey(key, false);
       }
     },
-    [campaignId, load, push]
+    [campaignId, load, push, selectedTemplateId, selectedMedia]
   );
 
   const remove = useCallback(
@@ -247,6 +274,36 @@ export default function ScheduledFollowupsModal({ campaignId, open, onClose }: P
           <span className="text-xs font-semibold text-slate-500 dark:text-[#7a8ba3] whitespace-nowrap">
             {leads.length} lead{leads.length === 1 ? '' : 's'} · {totalPending} scheduled
           </span>
+        </div>
+
+        {/* Optional template + media applied to follow-ups scheduled below */}
+        <div className="px-4 sm:px-8 py-3 border-b border-gray-100 dark:border-[#262831] shrink-0 space-y-2">
+          <TemplateSelector
+            selectedTemplateId={selectedTemplateId || undefined}
+            onTemplateSelect={handleTemplateSelect}
+            onManageClick={() => window.open('/conversations/templates', '_blank')}
+          />
+          {selectedMedia && (
+            <div className="flex items-center gap-2 p-2 rounded-md border border-slate-200 dark:border-[#262831] bg-white dark:bg-[#1a2a43]">
+              {selectedMedia.type === 'image' ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={selectedMedia.url} alt={selectedMedia.filename || 'attachment'} className="h-10 w-10 rounded object-cover border" />
+              ) : (
+                <div className="h-10 w-10 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500">
+                  {selectedMedia.type === 'video' ? <Film className="h-4 w-4" />
+                    : selectedMedia.type === 'audio' ? <Music className="h-4 w-4" />
+                    : <FileText className="h-4 w-4" />}
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] font-medium text-slate-700 dark:text-slate-200 truncate">{selectedMedia.filename || 'Attachment'}</p>
+                <p className="text-[10px] text-slate-500 capitalize">{selectedMedia.type || 'file'} · attached to scheduled follow-ups</p>
+              </div>
+            </div>
+          )}
+          <p className="text-[11px] text-slate-400 dark:text-[#7a8ba3]">
+            Optional — pick a saved template to send its message{selectedMedia ? ' + attachment' : ''} instead of an AI-generated follow-up.
+          </p>
         </div>
 
         {/* Body */}

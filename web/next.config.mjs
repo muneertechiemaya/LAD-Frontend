@@ -11,6 +11,14 @@ const nextConfig = {
   // ✅ REQUIRED when importing ../sdk
   experimental: {
     externalDir: true,
+    // Raise the middleware/proxy request-body cap (Next default 10MB) so large
+    // multipart uploads survive the middleware layer. Media uploads (e.g.
+    // LinkedIn template videos) are capped at 25MB by the backend; 30MB leaves
+    // headroom for multipart boundary overhead. Without this, bodies >10MB are
+    // truncated and the upload proxy's `req.formData()` throws → "Internal error".
+    // NB: must live under `experimental` (top-level is ignored); the modern key
+    // is `proxyClientMaxBodySize` (replaces the deprecated middlewareClientMaxBodySize).
+    proxyClientMaxBodySize: '30mb',
   },
 
   // ✅ REQUIRED for monorepo standalone output.

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -18,13 +18,18 @@ import { useToast } from '@/components/ui/app-toaster';
 import {
   useCreateLinkedInMessageTemplate,
   useUpdateLinkedInMessageTemplate,
+  uploadLinkedInTemplateMedia,
   LINKEDIN_CONNECTION_MESSAGE_MAX_LENGTH,
 } from '@lad/frontend-features/campaigns';
 import type {
   LinkedInMessageTemplate,
   CreateLinkedInTemplateRequest,
+  LinkedInTemplateMediaType,
 } from '@lad/frontend-features/campaigns';
-import { Loader2, Save, AlertCircle, Linkedin } from 'lucide-react';
+import { Loader2, Save, AlertCircle, Linkedin, Paperclip, X, FileText, Film, Music } from 'lucide-react';
+
+const MEDIA_ACCEPT =
+  'image/*,video/*,audio/*,.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
 interface CreateLinkedInTemplateModalProps {
   open: boolean;
@@ -52,6 +57,13 @@ export default function CreateLinkedInTemplateModal({
   const [isDefault, setIsDefault] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Media attachment (image / video / audio-voice-note / document).
+  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  const [mediaType, setMediaType] = useState<LinkedInTemplateMediaType | string | null>(null);
+  const [mediaFilename, setMediaFilename] = useState<string | null>(null);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   // Hydrate form when opening (create = blank, edit = existing values)
   useEffect(() => {
     if (!open) return;
@@ -61,8 +73,46 @@ export default function CreateLinkedInTemplateModal({
     setFollowupMessage(editing?.followup_message ?? '');
     setCategory(editing?.category ?? 'sales');
     setIsDefault(editing?.is_default ?? false);
+    const meta = (editing?.metadata ?? {}) as Record<string, any>;
+    setMediaUrl(meta.media_url ?? null);
+    setMediaType(meta.media_type ?? null);
+    setMediaFilename(meta.media_filename ?? null);
     setErrors({});
   }, [open, editing]);
+
+  const handleMediaSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    // Allow re-selecting the same file next time.
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (!file) return;
+
+    // Guard client-side so an oversize file gets a clear message instead of
+    // being truncated by the middleware body cap.
+    if (file.size > 25 * 1024 * 1024) {
+      setErrors((prev) => ({ ...prev, media: 'File too large. Max 25MB.' }));
+      return;
+    }
+
+    setUploadingMedia(true);
+    try {
+      const result = await uploadLinkedInTemplateMedia(file);
+      setMediaUrl(result.url);
+      setMediaType(result.media_type);
+      setMediaFilename(result.filename);
+      setErrors((prev) => { const { media, ...rest } = prev; return rest; });
+    } catch (err: any) {
+      setErrors((prev) => ({ ...prev, media: err?.message || 'Upload failed. Please try again.' }));
+      push({ variant: 'error', title: 'Upload Failed', description: err?.message || 'Could not upload the file.' });
+    } finally {
+      setUploadingMedia(false);
+    }
+  };
+
+  const clearMedia = () => {
+    setMediaUrl(null);
+    setMediaType(null);
+    setMediaFilename(null);
+  };
 
   const saving = createMutation.isPending || updateMutation.isPending;
 
@@ -89,6 +139,11 @@ export default function CreateLinkedInTemplateModal({
       category,
       is_default: isDefault,
       is_active: true,
+      // Media (flat fields — backend folds them into metadata). On edit, an
+      // explicit null clears a previously-attached file.
+      media_url: mediaUrl ?? (editing ? null : undefined),
+      media_type: mediaUrl ? mediaType : null,
+      media_filename: mediaUrl ? mediaFilename : null,
     };
 
     try {
@@ -199,6 +254,58 @@ export default function CreateLinkedInTemplateModal({
             <code className="px-1 py-0.5 rounded bg-muted">{'{{title}}'}</code> for personalization.
           </p>
 
+          {/* Media attachment (image / video / voice note / document) */}
+          <div className="space-y-1.5">
+            <Label>Attachment (optional)</Label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={MEDIA_ACCEPT}
+              onChange={handleMediaSelect}
+              className="hidden"
+            />
+            {mediaUrl ? (
+              <div className="flex items-center gap-3 p-2 border rounded-md">
+                {mediaType === 'image' ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={mediaUrl} alt={mediaFilename || 'attachment'} className="h-14 w-14 rounded object-cover border" />
+                ) : (
+                  <div className="h-14 w-14 rounded bg-muted flex items-center justify-center text-muted-foreground">
+                    {mediaType === 'video' ? <Film className="h-6 w-6" />
+                      : mediaType === 'audio' ? <Music className="h-6 w-6" />
+                      : <FileText className="h-6 w-6" />}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{mediaFilename || 'Attachment'}</p>
+                  <p className="text-xs text-muted-foreground capitalize">{mediaType || 'file'}</p>
+                </div>
+                <Button type="button" variant="ghost" size="sm" onClick={clearMedia} title="Remove attachment">
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingMedia}
+                className="w-full justify-start text-muted-foreground"
+              >
+                {uploadingMedia ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Paperclip className="mr-2 h-4 w-4" />}
+                {uploadingMedia ? 'Uploading…' : 'Attach image, video, voice note, or document'}
+              </Button>
+            )}
+            <p className="text-[11px] text-muted-foreground">
+              Sent alongside the connection request / follow-up. Max 25MB.
+            </p>
+            {errors.media && (
+              <p className="text-xs text-red-600 flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" /> {errors.media}
+              </p>
+            )}
+          </div>
+
           {errors.messages && (
             <p className="text-xs text-red-600 flex items-center gap-1">
               <AlertCircle className="h-3 w-3" /> {errors.messages}
@@ -234,7 +341,7 @@ export default function CreateLinkedInTemplateModal({
           <Button
             type="button"
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || uploadingMedia}
             className="px-8 bg-[#0B1957] hover:bg-[#0B1957]/90 text-white rounded-xl"
           >
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
