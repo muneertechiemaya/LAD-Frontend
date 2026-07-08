@@ -840,6 +840,7 @@ export default function AdvancedSearchAIPage() {
     const mb = useMediaBuilder();
     const [brandDnaRequestedChanges, setBrandDnaRequestedChanges] = useState(false);
     const [isHydrated, setIsHydrated] = useState(false);
+    const lastRestoredSessionIdRef = useRef<string>("");
 
     // Save states to localStorage to prevent page refresh loss
     useEffect(() => {
@@ -899,10 +900,11 @@ export default function AdvancedSearchAIPage() {
         }
     }, []);
 
-    // Overwrite mediaMessages if backend returns history (during GCS re-hydration / load)
+    // Overwrite mediaMessages if backend returns history (during GCS re-hydration / load or dropdown switch)
     useEffect(() => {
-        if (mb.uiPayload?.history) {
-            console.warn("[SessionHydrate] Restoring messages list from session history payload");
+        if (mb.uiPayload?.history && mb.sessionId && lastRestoredSessionIdRef.current !== mb.sessionId) {
+            console.warn("[SessionHydrate] Restoring messages list from session history payload for:", mb.sessionId);
+            lastRestoredSessionIdRef.current = mb.sessionId;
             const restoredHistory = mb.uiPayload.history.map((m: any) => {
                 let mappedPayload = m.payload;
                 if (m.payload) {
@@ -926,7 +928,7 @@ export default function AdvancedSearchAIPage() {
             });
             setMediaMessages(restoredHistory);
         }
-    }, [mb.uiPayload?.history]);
+    }, [mb.uiPayload?.history, mb.sessionId]);
 
     const hasOptionsOpen = mediaMode && (
         mb.step === "welcome" || 
