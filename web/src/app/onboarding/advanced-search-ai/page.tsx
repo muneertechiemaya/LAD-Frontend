@@ -4546,6 +4546,9 @@ export default function AdvancedSearchAIPage() {
                         isUploading={mb.isUploading}
                         error={mb.error}
                         onBack={() => mb.undoStep()}
+                        feedbackText={input}
+                        setFeedbackText={setInput}
+                        isSplitScreen={true}
                     />
                 );
             default:
