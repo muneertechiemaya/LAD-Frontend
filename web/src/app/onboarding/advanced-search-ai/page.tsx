@@ -586,9 +586,16 @@ export default function AdvancedSearchAIPage() {
     const cpNextChannels = _cpCfg.nextChannels;           // ['email','whatsapp','voice_call'] subset
     const cpTriggerCondition = _cpCfg.triggerCondition;   // '' | 'connection_accepted' | …
 
+    // The lead-search node is the campaign's lead SOURCE, only relevant when leads
+    // are discovered via LinkedIn search. For direct-contact / inbound-import
+    // campaigns (leads provided directly) it must be omitted from the canvas so it
+    // matches what actually launches. Kept in a ref (updated each render below,
+    // once inboundMode/pendingContact are in scope) so the reconcile callbacks read
+    // the latest value without a stale closure or a temporal-dead-zone reference.
+    const includeLeadSourceRef = useRef(true);
     const _applyCpCfg = useCallback((patch: Partial<{ actions: string[]; nextChannels: string[]; triggerCondition: string }>) => {
         const cur = useOnboardingStore.getState().workflowPreview as unknown as SyncStep[];
-        setWorkflowPreview(applyConfig(cur, patch) as any);
+        setWorkflowPreview(applyConfig(cur, patch, { includeLeadSource: includeLeadSourceRef.current }) as any);
     }, [setWorkflowPreview]);
 
     // These keep the exact React.Dispatch<SetStateAction<string[]>> shape the
@@ -611,7 +618,7 @@ export default function AdvancedSearchAIPage() {
     // hydration or a persisted session) is left untouched.
     useEffect(() => {
         const cur = useOnboardingStore.getState().workflowPreview as unknown as SyncStep[];
-        if (!cur || cur.length === 0) setWorkflowPreview(applyConfig([], {}) as any);
+        if (!cur || cur.length === 0) setWorkflowPreview(applyConfig([], {}, { includeLeadSource: includeLeadSourceRef.current }) as any);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
     const [cpDays, setCpDays] = useState('30');
@@ -748,6 +755,11 @@ export default function AdvancedSearchAIPage() {
 
     // Inbound CSV upload state
     const [inboundMode, setInboundMode] = useState(false);
+    // Keep the lead-source gate current (read by the reconcile callbacks above via
+    // includeLeadSourceRef). Direct-contact (a pending contact with no LinkedIn
+    // URL) and inbound-import campaigns provide leads directly, so they omit the
+    // LinkedIn lead-search node — matching the launch builder.
+    includeLeadSourceRef.current = !inboundMode && !(pendingContact && !pendingContact.linkedin_url);
     const [inboundLeads, setInboundLeads] = useState<ParsedInboundLead[]>([]);
     const [inboundLeadIds, setInboundLeadIds] = useState<string[]>([]); // Real UUIDs from leads table (CSV/image)
     const [directContactLeadIds, setDirectContactLeadIds] = useState<string[]>([]); // Real UUIDs for chat-entered direct contacts
@@ -1324,6 +1336,7 @@ export default function AdvancedSearchAIPage() {
                     setWorkflowPreview(applyConfig(
                         useOnboardingStore.getState().workflowPreview as unknown as SyncStep[],
                         { actions: liActions, nextChannels: hydChannels, triggerCondition: cs.trigger_condition ?? cfg.trigger_condition ?? '' },
+                        { includeLeadSource: includeLeadSourceRef.current },
                     ) as any);
                 }
                 if (cs.campaign_days != null) setCpDays(String(cs.campaign_days));
