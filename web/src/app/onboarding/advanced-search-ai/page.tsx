@@ -1556,6 +1556,27 @@ export default function AdvancedSearchAIPage() {
         setSummaryError(null);
     };
 
+    // Recompute per-channel counts for the "Leads Ready" summary card from the current lead set
+    const computeInboundCounts = (list: ParsedInboundLead[]) => ({
+        total: list.length,
+        linkedin: list.filter(l => l.linkedinProfile).length,
+        email: list.filter(l => l.email).length,
+        whatsapp: list.filter(l => l.whatsapp).length,
+        phone: list.filter(l => l.phone).length,
+        website: list.filter(l => l.website).length,
+    });
+
+    // Keep the in-chat "Leads Ready" summary card(s) in sync after a lead is edited or removed —
+    // the counts are baked into the message at import time and won't update on their own.
+    const syncInboundSummary = (list: ParsedInboundLead[]) => {
+        const counts = computeInboundCounts(list);
+        setMessages(p => p.map(m =>
+            m.inboundAction === 'summary' && m.inboundSummary
+                ? { ...m, inboundSummary: counts }
+                : m
+        ));
+    };
+
     // Edit inbound lead handlers
     const openEditLead = (index: number) => {
         setEditingLeadIndex(index);
@@ -1582,6 +1603,7 @@ export default function AdvancedSearchAIPage() {
             const updatedLeads = [...inboundLeads];
             updatedLeads[editingLeadIndex] = editFormData;
             setInboundLeads(updatedLeads);
+            syncInboundSummary(updatedLeads);
 
             // Save to database via API
             const response = await fetch('/api/campaigns/leads/import/update', {
@@ -1654,6 +1676,7 @@ export default function AdvancedSearchAIPage() {
             // Remove from inbound leads state
             const updatedLeads = inboundLeads.filter((_, i) => i !== index);
             setInboundLeads(updatedLeads);
+            syncInboundSummary(updatedLeads);
 
             // Update the leads panel display
             const updatedPanelLeads: LeadProfile[] = updatedLeads.map((l, i) => ({
@@ -1856,14 +1879,7 @@ export default function AdvancedSearchAIPage() {
         setInboundMode(true);
         setShowContactPicker(false);
 
-        const counts = {
-            total: asInbound.length,
-            linkedin: asInbound.filter(l => l.linkedinProfile).length,
-            email: asInbound.filter(l => l.email).length,
-            whatsapp: asInbound.filter(l => l.whatsapp).length,
-            phone: asInbound.filter(l => l.phone).length,
-            website: asInbound.filter(l => l.website).length,
-        };
+        const counts = computeInboundCounts(asInbound);
 
         const sourceName = CP_SOURCES.find(s => s.key === cpSourceKey)?.label || 'Contacts';
         setMessages(p => [...p,
@@ -1929,14 +1945,7 @@ export default function AdvancedSearchAIPage() {
             setInboundLeads(parsed);
             setInboundMode(true);
 
-            const counts = {
-                total: parsed.length,
-                linkedin: parsed.filter(l => l.linkedinProfile).length,
-                email: parsed.filter(l => l.email).length,
-                whatsapp: parsed.filter(l => l.whatsapp).length,
-                phone: parsed.filter(l => l.phone).length,
-                website: parsed.filter(l => l.website).length,
-            };
+            const counts = computeInboundCounts(parsed);
 
             // Convert inbound leads to LeadProfile format for the panel
             const panelLeads: LeadProfile[] = parsed.map((l, i) => ({
