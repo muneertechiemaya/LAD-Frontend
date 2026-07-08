@@ -13,7 +13,7 @@
  *   active   → automated follow-up sent     → chat enabled
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Send, RefreshCw, Loader2, MessageSquare, Linkedin, Clock, CheckCircle, Zap, Lock, ChevronLeft, Search, MoreVertical, Trash2 } from 'lucide-react';
+import { Send, RefreshCw, Loader2, MessageSquare, Linkedin, Clock, CheckCircle, Zap, Lock, ChevronLeft, Search, MoreVertical, Trash2, X, Film, Music, FileText, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -29,6 +29,7 @@ import { fetchWithTenant } from '@/lib/fetch-with-tenant';
 import { LinkedInFollowupComposer } from './LinkedInFollowupComposer';
 import { LinkedInContextPanel } from './LinkedInContextPanel';
 import { LinkedInChatToolbar } from './LinkedInChatToolbar';
+import type { InsertTemplatePayload } from './LinkedInChatToolbar';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -39,6 +40,16 @@ interface LinkedInContact {
   name: string;
   avatar?: string | null;
   headline?: string | null;
+  // Surfaced by the backend merge so the chat-toolbar template insert can
+  // substitute {{company}} client-side (backend fills it as a backstop).
+  company?: string | null;
+}
+
+/** A template attachment staged in the composer before send. */
+interface PendingMedia {
+  url: string;
+  type?: string | null;
+  filename?: string | null;
 }
 
 interface LinkedInConversation {
@@ -71,6 +82,45 @@ const API_BASE = '/api/whatsapp-conversations';
 // Add ?channel=linkedin to any URL
 function li(url: string) {
   return `${url}${url.includes('?') ? '&' : '?'}channel=linkedin`;
+}
+
+/**
+ * Substitute {{var}} placeholders in a template body with the open
+ * conversation's lead data, so inserting a template shows the FINAL text (not a
+ * literal `{{first_name}}`). Only the vars we can resolve from the contact are
+ * filled; anything else is left intact for the backend's substitution backstop
+ * to fill on send (so we never guess and never clobber a value the server knows).
+ */
+function substituteLeadVars(text: string, contact?: LinkedInContact | null): string {
+  if (!text || !contact) return text;
+  const full = (contact.name || '').trim();
+  const first = full.split(/\s+/)[0] || '';
+  const last = full.split(/\s+/).slice(1).join(' ') || '';
+  const title = (contact.headline || '').trim();
+  const company = (contact.company || '').trim();
+
+  const sub = (src: string, key: string, value: string): string =>
+    value ? src.replace(new RegExp(`\\{\\{?\\s*${key}\\s*\\}\\}?`, 'gi'), value) : src;
+
+  let out = text;
+  out = sub(out, 'first_name', first);
+  out = sub(out, 'last_name', last);
+  out = sub(out, 'name', full);
+  out = sub(out, 'title', title);
+  out = sub(out, 'headline', title);
+  out = sub(out, 'company(?:_name)?', company);
+  return out;
+}
+
+/** Icon for a staged attachment chip, chosen from the media type / filename. */
+function MediaChipIcon({ type, filename }: { type?: string | null; url?: string; filename?: string | null }) {
+  const t = (type || '').toLowerCase();
+  const ext = (filename || '').split('.').pop()?.toLowerCase() || '';
+  const isImage = t.startsWith('image') || ['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext);
+  const isVideo = t.startsWith('video') || ['mp4', 'mov', 'webm', 'm4v'].includes(ext);
+  const isAudio = t.startsWith('audio') || ['mp3', 'm4a', 'wav', 'ogg', 'oga'].includes(ext);
+  const Icon = isImage ? ImageIcon : isVideo ? Film : isAudio ? Music : FileText;
+  return <Icon className="w-4 h-4 flex-shrink-0 text-blue-600" />;
 }
 
 // ─── Status badge config ──────────────────────────────────────────────────────
@@ -389,6 +439,8 @@ export function LinkedInConversationView({
     return window.innerWidth >= 1280;
   });
   const [messageText, setMessageText]     = useState('');
+  // Attachment staged from a template insert, shown as a removable composer chip.
+  const [pendingMedia, setPendingMedia]   = useState<PendingMedia | null>(null);
   const [loadingConvs, setLoadingConvs]   = useState(true);
   const [loadingMsgs, setLoadingMsgs]     = useState(false);
   const [sending, setSending]             = useState(false);
@@ -487,6 +539,9 @@ export function LinkedInConversationView({
   }, []);
 
   useEffect(() => {
+    // Drop any staged attachment when switching threads so it can't ride into
+    // the wrong conversation.
+    setPendingMedia(null);
     if (selectedId) {
       loadMessages(selectedId);
     } else {
@@ -501,18 +556,22 @@ export function LinkedInConversationView({
 
   // ── Send message ────────────────────────────────────────────────────────────
   const handleSend = useCallback(async () => {
-    if (!selectedId || !messageText.trim() || sending) return;
+    // A media-only send (attachment, no text) is valid.
+    if (!selectedId || (!messageText.trim() && !pendingMedia) || sending) return;
     const selectedConv = conversations.find(c => c.id === selectedId);
     if (!selectedConv?.chat_enabled) return;
 
     const text = messageText.trim();
+    const media = pendingMedia;
     setMessageText('');
+    setPendingMedia(null);
     setSending(true);
 
     const tempMsg: LinkedInMessage = {
       id:         `temp-${Date.now()}`,
       role:       'assistant',
-      content:    text,
+      // Show something for a media-only optimistic bubble so it isn't blank.
+      content:    text || `📎 ${media?.filename || 'Attachment'}`,
       created_at: new Date().toISOString(),
       is_sender:  true,
     };
@@ -523,13 +582,18 @@ export function LinkedInConversationView({
       // CONTACTED in campaign_analytics on a successful send. That marker
       // cancels the workflow scheduler's automated follow-up so the lead
       // never gets a duplicate auto-message after the user has already
-      // engaged in chat manually.
+      // engaged in chat manually. Media (from a template) rides along as
+      // media_url/type/filename — the backend re-downloads the bytes and
+      // sends a real LinkedIn attachment.
       const res  = await fetchWithTenant(li(`${API_BASE}/conversations/${selectedId}/messages`), {
         method: 'POST',
         body:   JSON.stringify({
           content: text,
           campaign_id: selectedConv.campaign_id || undefined,
           lead_id:     selectedConv.lead_id     || undefined,
+          media_url:      media?.url      || undefined,
+          media_type:     media?.type     || undefined,
+          media_filename: media?.filename || undefined,
         }),
       });
       const json = await res.json();
@@ -540,17 +604,24 @@ export function LinkedInConversationView({
         setConversations(prev =>
           prev.map(c =>
             c.id === selectedId
-              ? { ...c, last_message: text, last_message_time: new Date().toISOString() }
+              ? { ...c, last_message: text || `📎 ${media?.filename || 'Attachment'}`, last_message_time: new Date().toISOString() }
               : c
           )
         );
+      } else {
+        // Non-success response — drop the optimistic bubble and restore the draft.
+        setMessages(prev => prev.filter(m => m.id !== tempMsg.id));
+        setMessageText(text);
+        if (media) setPendingMedia(media);
       }
     } catch {
       setMessages(prev => prev.filter(m => m.id !== tempMsg.id));
+      setMessageText(text);
+      if (media) setPendingMedia(media);
     } finally {
       setSending(false);
     }
-  }, [selectedId, messageText, sending, conversations]);
+  }, [selectedId, messageText, pendingMedia, sending, conversations]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -887,13 +958,24 @@ export function LinkedInConversationView({
             <LinkedInChatToolbar
               contextPanelOpen={contextPanelOpen}
               onToggleContextPanel={() => setContextPanelOpen(o => !o)}
-              onInsertTemplate={(text) => {
-                // Coerce to a string so the input's value never becomes undefined
-                // (a null/empty template body would otherwise crash the next
-                // `messageText.trim()` render with "reading 'trim' of undefined").
-                const insert = text ?? '';
-                if (!insert) return;
-                setMessageText(prev => prev ? `${prev}\n${insert}` : insert);
+              onInsertTemplate={(payload: InsertTemplatePayload) => {
+                // Substitute {{first_name}} / {{company}} / {{title}} with the
+                // open lead's data so the composer shows the FINAL text (the
+                // literal-placeholder bug). Unresolved vars stay for the backend
+                // backstop. Coerce to string so the input value is never
+                // undefined (would crash the next `messageText.trim()` render).
+                const resolved = substituteLeadVars(payload.text ?? '', selectedConv?.contact);
+                if (resolved) {
+                  setMessageText(prev => prev ? `${prev}\n${resolved}` : resolved);
+                }
+                // Stage the template's attachment as a removable composer chip.
+                if (payload.mediaUrl) {
+                  setPendingMedia({
+                    url: payload.mediaUrl,
+                    type: payload.mediaType ?? null,
+                    filename: payload.mediaFilename ?? null,
+                  });
+                }
               }}
               chatEnabled={chatEnabled}
             />
@@ -911,6 +993,24 @@ export function LinkedInConversationView({
                       ? 'Chat unlocks after connection is accepted and follow-up is sent'
                       : 'Chat unlocks after the automated follow-up is sent'}
                   </span>
+                </div>
+              )}
+              {/* Staged attachment from a template — removable before send */}
+              {pendingMedia && (
+                <div className="mb-2 inline-flex items-center gap-2 max-w-full rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5">
+                  <MediaChipIcon type={pendingMedia.type} url={pendingMedia.url} filename={pendingMedia.filename} />
+                  <span className="text-xs text-slate-700 truncate max-w-[220px]">
+                    {pendingMedia.filename || 'Attachment'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPendingMedia(null)}
+                    className="flex-shrink-0 text-slate-400 hover:text-slate-700"
+                    title="Remove attachment"
+                    aria-label="Remove attachment"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               )}
               <div className="flex items-end gap-2">
@@ -939,7 +1039,7 @@ export function LinkedInConversationView({
                       : 'bg-slate-200 text-slate-400 cursor-not-allowed',
                   )}
                   onClick={chatEnabled ? handleSend : undefined}
-                  disabled={!chatEnabled || !messageText.trim() || sending}
+                  disabled={!chatEnabled || (!messageText.trim() && !pendingMedia) || sending}
                 >
                   {sending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
