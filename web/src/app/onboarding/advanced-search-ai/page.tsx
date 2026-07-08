@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Gem, Upload, FileSpreadsheet, Download, CheckCircle2, Trash2, ChevronLeft, ChevronRight, X, MessageSquare, Users, Zap, Plus, Image as ImageIcon, Video, Loader2, Mic } from 'lucide-react';
+import { Sparkles, Gem, Upload, FileSpreadsheet, Download, CheckCircle2, Trash2, ChevronLeft, ChevronRight, X, MessageSquare, Users, Zap, Plus, Image as ImageIcon, Video, Loader2, Mic, Globe, Newspaper, UserPlus, Check } from 'lucide-react';
 import { ProfileSummaryDialog } from '@/components/campaigns';
 import AgentVisualizer from '@/components/ui/AgentVisualizer';
 import { useOnboardingStore } from '@/store/onboardingStore';
+import { deriveConfig, applyConfig, type SyncStep } from '@/components/onboarding/workflow/configStepsSync';
 import WorkflowPreviewPanel from '@/components/onboarding/WorkflowPreviewPanel';
 import { MediaGenerationModal } from '@/components/voice-agent/MediaGenerationModal';
 import { useMediaBuilder } from "@/hooks/voice-agent/useMediaBuilder";
@@ -35,6 +36,7 @@ import {
     computeCompleteness,
     type BusinessProfile,
 } from '@lad/frontend-features/ai-icp-assistant';
+import { getCampaign, updateCampaign, updateCampaignSteps, startCampaign } from '@lad/frontend-features/campaigns';
 
 /* ═══════════════════════════════════════════════
    TYPES
@@ -498,11 +500,17 @@ export default function AdvancedSearchAIPage() {
     const campaignCreation = useCampaignCreation();
     const { fetchLeadSummaryPreview, saveProspectFeedback, generateProspectSummary } = campaignCreation;
     const voiceAgent = useVoiceAgent(false);
+    // Connected email senders — loaded on mount so "Let Agent Deal" can detect the
+    // email channel synchronously (the child also calls this; React Query dedupes).
+    const { data: connectedSendersParent = [] } = useConnectedEmailSenders();
     const billing = useBilling(false);
 
     // Unified single-screen mode - always show chat interface
     // const [screen, setScreen] = useState<'landing' | 'chat'>('landing');
     const [messages, setMessages] = useState<ChatMsg[]>([]);
+    // Edit mode: set when "Edit Workflow" routes here with ?campaignId=<id>.
+    const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
+    const editHydratedRef = useRef(false);
     const [input, setInput] = useState('');
     const [busy, setBusy] = useState(false);
     const [typedPlaceholder, setTypedPlaceholder] = useState('');
@@ -550,6 +558,7 @@ export default function AdvancedSearchAIPage() {
     // Checkpoint form state (inline in chat)
     const [pendingContact, setPendingContact] = useState<any>(null); // detected contact from phone/email outreach
     const [cpStep, setCpStep] = useState(-1); // -1 = not started, 0-6 = steps
+    const [agentDealLoading, setAgentDealLoading] = useState(false); // "Let Agent Deal" one-click build
     const [isMobile, setIsMobile] = useState(false);
     const [chatBlocked, setChatBlocked] = useState(false);
 
@@ -570,7 +579,6 @@ export default function AdvancedSearchAIPage() {
     }, [messages]);
 
     const [cpIcpThreshold, setCpIcpThreshold] = useState('75');
-    const [cpActions, setCpActions] = useState<string[]>([]);
     const [cpConnMsg, setCpConnMsg] = useState('');
     const [cpFollowMsg, setCpFollowMsg] = useState('');
     const [cpEnableDailyWebPresence, setCpEnableDailyWebPresence] = useState(false);
@@ -578,85 +586,49 @@ export default function AdvancedSearchAIPage() {
     const [cpEnableAiPersonalization, setCpEnableAiPersonalization] = useState(false);
     const [cpEnableAiConnectionPersonalization, setCpEnableAiConnectionPersonalization] = useState(false);
     const [cpEnableAiFollowupPersonalization, setCpEnableAiFollowupPersonalization] = useState(false);
-    const [cpNextChannels, setCpNextChannels] = useState<string[]>([]); // email, whatsapp, voice_call
-    const [cpTriggerCondition, setCpTriggerCondition] = useState(''); // connection_accepted, message_replied, profile_visited
 
-    // Dynamically build workflow preview
+    // ── Config ⇄ Workflow: single source of truth ────────────────────────────
+    // The onboarding store's `workflowPreview` steps array is canonical. The
+    // structural config the guided checkpoints collect — LinkedIn actions,
+    // follow-up channels, trigger condition — is DERIVED from it here, and the
+    // setters below reconcile edits back into it. So the guided toggles and the
+    // Workflow Builder canvas stay in sync in BOTH directions in real time
+    // (this replaces the old one-way, destructive derive-and-overwrite effect,
+    // which also silently dropped LinkedIn actions and clobbered canvas edits).
+    const workflowPreview = useOnboardingStore(s => s.workflowPreview);
+    const _cpCfg = useMemo(() => deriveConfig(workflowPreview as unknown as SyncStep[]), [workflowPreview]);
+    const cpActions = _cpCfg.actions;                     // ['connect','message','profile_view'] subset
+    const cpNextChannels = _cpCfg.nextChannels;           // ['email','whatsapp','voice_call'] subset
+    const cpTriggerCondition = _cpCfg.triggerCondition;   // '' | 'connection_accepted' | …
+
+    const _applyCpCfg = useCallback((patch: Partial<{ actions: string[]; nextChannels: string[]; triggerCondition: string }>) => {
+        const cur = useOnboardingStore.getState().workflowPreview as unknown as SyncStep[];
+        setWorkflowPreview(applyConfig(cur, patch) as any);
+    }, [setWorkflowPreview]);
+
+    // These keep the exact React.Dispatch<SetStateAction<string[]>> shape the
+    // CheckpointFormInline props expect, so the guided toggles need no changes —
+    // they just reconcile the shared steps array instead of local state.
+    const setCpActions = useCallback((a: string[] | ((p: string[]) => string[])) => {
+        const cur = deriveConfig(useOnboardingStore.getState().workflowPreview as unknown as SyncStep[]).actions;
+        _applyCpCfg({ actions: typeof a === 'function' ? a(cur) : a });
+    }, [_applyCpCfg]);
+    const setCpNextChannels = useCallback((a: string[] | ((p: string[]) => string[])) => {
+        const cur = deriveConfig(useOnboardingStore.getState().workflowPreview as unknown as SyncStep[]).nextChannels;
+        _applyCpCfg({ nextChannels: typeof a === 'function' ? a(cur) : a });
+    }, [_applyCpCfg]);
+    const setCpTriggerCondition = useCallback((v: string) => {
+        _applyCpCfg({ triggerCondition: v });
+    }, [_applyCpCfg]);
+
+    // Seed a clean base (Lead Search only) when the shared steps array is empty,
+    // so a first-ever load starts sensibly. A non-empty array (edit-mode
+    // hydration or a persisted session) is left untouched.
     useEffect(() => {
-        const steps: any[] = [];
-        let order = 1;
-        // Start node
-        steps.push({
-            id: 'lead-gen',
-            type: 'lead_generation',
-            title: 'LinkedIn Lead Search',
-            description: 'Find target leads on LinkedIn',
-            channel: 'linkedin',
-            order_index: order++
-        });
-
-        if (cpActions.includes('connect')) {
-            steps.push({
-                id: 'connect',
-                type: 'linkedin_connect',
-                title: 'Send Connection Request',
-                description: 'Auto-connect with leads on LinkedIn',
-                channel: 'linkedin',
-                order_index: order++
-            });
-        }
-
-        if (cpActions.includes('message')) {
-            steps.push({
-                id: 'message',
-                type: 'linkedin_message',
-                title: 'Send Follow-up Message',
-                description: 'Message after connection accepted',
-                channel: 'linkedin',
-                order_index: order++
-            });
-        }
-
-        if (cpActions.includes('profile_view')) {
-            steps.push({
-                id: 'profile_view',
-                type: 'linkedin_visit',
-                title: 'View Profile',
-                description: 'Visit their LinkedIn profile',
-                channel: 'linkedin',
-                order_index: order++
-            });
-        }
-
-        if (cpNextChannels.length > 0 && cpTriggerCondition) {
-            const condLabels: Record<string, string> = {
-                connection_accepted: 'Wait for Connection Accepted',
-                message_replied: 'Wait for Message Reply',
-                profile_visited: 'Wait for Profile Visit'
-            };
-            steps.push({
-                id: 'condition',
-                type: 'wait_for_condition',
-                title: condLabels[cpTriggerCondition] || 'Wait for Condition',
-                description: 'Trigger condition',
-                channel: 'system',
-                order_index: order++
-            });
-
-            cpNextChannels.forEach((ch, idx) => {
-                steps.push({
-                    id: `ch-${ch}-${idx}`,
-                    type: ch === 'voice_call' ? 'voice_agent_call' : `${ch}_send`,
-                    title: ch === 'email' ? 'Send Follow-up Email' : ch === 'whatsapp' ? 'Send WhatsApp Message' : 'AI Voice Call',
-                    description: `Follow up via ${ch}`,
-                    channel: ch.split('_')[0],
-                    order_index: order++
-                });
-            });
-        }
-
-        setWorkflowPreview(steps);
-    }, [cpActions, cpNextChannels, cpTriggerCondition, setWorkflowPreview]);
+        const cur = useOnboardingStore.getState().workflowPreview as unknown as SyncStep[];
+        if (!cur || cur.length === 0) setWorkflowPreview(applyConfig([], {}) as any);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
     const [cpDays, setCpDays] = useState('30');
     const [cpChannelConfigStep, setCpChannelConfigStep] = useState(0); // Tracks which channel we're configuring (0-based)
     const [cpChannelDelays, setCpChannelDelays] = useState<Record<string, { days: string; hours: string }>>({}); // Delays per channel
@@ -679,6 +651,77 @@ export default function AdvancedSearchAIPage() {
     const [cpEmailGenLoading, setCpEmailGenLoading] = useState(false);
     const [cpEmailFromAddress, setCpEmailFromAddress] = useState(''); // selected sender email
     const [cpEmailProvider, setCpEmailProvider] = useState('');       // 'google' | 'microsoft'
+
+    // ── "Let Agent Deal" ──────────────────────────────────────────────────────
+    // One click builds the full outreach sequence across EVERY channel the tenant
+    // has connected, with market-standard delays, then opens the config panel at
+    // the channels step. LinkedIn is always the primary channel (the lead source);
+    // Email / WhatsApp / Voice are appended only when connected. Message templates
+    // for email/WhatsApp remain the user's choice (the inline panels ask for them);
+    // LinkedIn + follow-up copy is generated per-lead at send time via the AI
+    // personalization flags we enable here.
+    const letAgentDeal = async () => {
+        setAgentDealLoading(true);
+        try {
+            // Detect connected channels. Email senders are already loaded (hook);
+            // voice agents + WhatsApp accounts are fetched here (both return arrays).
+            let voiceAgents: any[] = [];
+            let waAccts: any[] = [];
+            const [vRes, wRes] = await Promise.allSettled([
+                voiceAgent.fetchAgents(),
+                fetch('/api/social-integration/whatsapp/accounts', { credentials: 'include' }).then(r => r.json()),
+            ]);
+            if (vRes.status === 'fulfilled' && Array.isArray(vRes.value)) voiceAgents = vRes.value;
+            if (wRes.status === 'fulfilled' && wRes.value?.success && Array.isArray(wRes.value.accounts)) waAccts = wRes.value.accounts;
+
+            const hasEmail = (connectedSendersParent as any[]).length > 0;
+            const hasWhatsApp = waAccts.length > 0;
+            const hasVoice = voiceAgents.length > 0;
+
+            // Channel sequence — LinkedIn primary, then each connected follow-up in
+            // market-standard order (LinkedIn → Email → WhatsApp → Voice).
+            const channels = ['linkedin'];
+            if (hasEmail) channels.push('email');
+            if (hasWhatsApp) channels.push('whatsapp');
+            if (hasVoice) channels.push('voice_call');
+
+            // Market-standard cadence (delay BEFORE each channel's step).
+            setCpChannelDelays({
+                linkedin: { days: '0', hours: '0' },   // starts immediately
+                email: { days: '2', hours: '0' },      // 2 days after the LinkedIn touch
+                whatsapp: { days: '2', hours: '0' },   // 2 days after email
+                voice_call: { days: '3', hours: '0' }, // 3 days after WhatsApp
+            });
+
+            // Structural build. Order matters: channels first (so 'linkedin' is
+            // present), then LinkedIn actions materialise, then the trigger.
+            setCpNextChannels(channels);
+            setCpActions(['profile_view', 'connect', 'message']);
+            setCpTriggerCondition('connection_accepted');
+
+            // Daily + per-lead AI personalization — the agent tailors each message.
+            setCpEnableDailyWebPresence(true);
+            setCpEnableDailyPosts(true);              // fetch each lead's recent LinkedIn posts
+            setCpEnableAiPersonalization(true);
+            setCpEnableAiConnectionPersonalization(true);
+            setCpEnableAiFollowupPersonalization(true);
+
+            // Pre-fill the first connected email account + voice agent (WhatsApp
+            // account auto-selects inside the config panel when the channel mounts).
+            if (hasEmail) {
+                setCpEmailFromAddress((connectedSendersParent as any[])[0].email);
+                setCpEmailProvider((connectedSendersParent as any[])[0].provider || '');
+            }
+            if (hasVoice) setCpSelectedAgentId(voiceAgents[0].agent_id || voiceAgents[0].id || '');
+
+            // Open the config panel at the channels step so the built pipeline is
+            // visible and the user can pick templates + launch.
+            setCpStep(1);
+        } finally {
+            setAgentDealLoading(false);
+        }
+    };
+
     // WhatsApp config (populated when whatsapp channel selected)
     const [cpWaBody, setCpWaBody] = useState('');
     const [cpWaFromNumber, setCpWaFromNumber] = useState('');
@@ -1345,6 +1388,82 @@ export default function AdvancedSearchAIPage() {
     useEffect(() => { if (cpStep >= 0) endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [cpStep]);
     useEffect(() => { if (tgStep >= 0) endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [tgStep]);
 
+    // ── Edit mode: hydrate the setup flow from an existing campaign ──────────────
+    // "Edit Workflow" routes here with ?campaignId=<id>. The setup flow already
+    // persists the chat (config.conversation_history) and the config-step
+    // selections (config.checkpoint_selections), so we reload them and open the
+    // checkpoint form pre-filled. Saving then updates THIS campaign (gated in
+    // CheckpointFormInline via editingCampaignId). The normal create flow (no
+    // campaignId) is untouched. Read-once via the ref guard.
+    useEffect(() => {
+        if (editHydratedRef.current) return;
+        const cid = typeof window !== 'undefined'
+            ? new URLSearchParams(window.location.search).get('campaignId')
+            : null;
+        if (!cid) return;
+        editHydratedRef.current = true;
+        (async () => {
+            try {
+                const camp: any = await getCampaign(cid);
+                const cfg = camp?.config || {};
+                const cs = cfg.checkpoint_selections || {};
+                // Restore the chat thread.
+                const hist = Array.isArray(cfg.conversation_history) ? cfg.conversation_history : [];
+                if (hist.length) {
+                    setMessages(hist.map((m: any, i: number) => ({
+                        id: `hist-${i}`,
+                        role: m.role === 'user' ? 'user' : 'assistant',
+                        text: m.text || '',
+                        ts: m.ts || Date.now(),
+                    })) as ChatMsg[]);
+                }
+                // Restore the config-step selections (connection/follow-up messages, actions, etc.).
+                if (cs.icp_threshold != null) setCpIcpThreshold(String(cs.icp_threshold));
+                // LinkedIn actions: prefer the saved checkpoint selection, else derive from
+                // the persisted steps (the workflow is the source of truth) so the action
+                // checkboxes re-check even for campaigns missing checkpoint_selections.
+                let liActions: string[] = Array.isArray(cs.linkedin_actions) ? [...cs.linkedin_actions] : [];
+                if (liActions.length === 0 && Array.isArray(camp?.steps)) {
+                    const stepTypes = camp.steps.map((s: any) => s.type || s.step_type);
+                    if (stepTypes.includes('linkedin_visit')) liActions.push('profile_view');
+                    if (stepTypes.includes('linkedin_connect')) liActions.push('connect');
+                    if (stepTypes.includes('linkedin_message')) liActions.push('message');
+                }
+                setCpConnMsg(cs.connection_message ?? cfg.connection_message ?? '');
+                setCpFollowMsg(cs.followup_message ?? cfg.followup_message ?? '');
+                // Reconcile the whole structural config (LinkedIn actions + channels
+                // + trigger) into the canonical steps in ONE shot, so the
+                // linkedin↔actions coupling is order-independent: LinkedIn actions
+                // only materialise when 'linkedin' is a selected channel, so include
+                // it whenever we restored any LinkedIn action.
+                {
+                    const curCfg = deriveConfig(useOnboardingStore.getState().workflowPreview as unknown as SyncStep[]);
+                    const hydChannels = Array.isArray(cs.next_channels) ? [...cs.next_channels] : [...curCfg.nextChannels];
+                    if (liActions.length && !hydChannels.includes('linkedin')) hydChannels.unshift('linkedin');
+                    setWorkflowPreview(applyConfig(
+                        useOnboardingStore.getState().workflowPreview as unknown as SyncStep[],
+                        { actions: liActions, nextChannels: hydChannels, triggerCondition: cs.trigger_condition ?? cfg.trigger_condition ?? '' },
+                    ) as any);
+                }
+                if (cs.campaign_days != null) setCpDays(String(cs.campaign_days));
+                setCpName(cs.campaign_name ?? camp?.name ?? '');
+                if (typeof cs.enable_daily_web_presence === 'boolean') setCpEnableDailyWebPresence(cs.enable_daily_web_presence);
+                if (typeof cs.enable_daily_posts === 'boolean') setCpEnableDailyPosts(cs.enable_daily_posts);
+                if (typeof cs.enable_ai_personalization === 'boolean') setCpEnableAiPersonalization(cs.enable_ai_personalization);
+                if (typeof cs.enable_ai_connection_personalization === 'boolean') setCpEnableAiConnectionPersonalization(cs.enable_ai_connection_personalization);
+                if (typeof cs.enable_ai_followup_personalization === 'boolean') setCpEnableAiFollowupPersonalization(cs.enable_ai_followup_personalization);
+                setEditingCampaignId(cid);
+                // Open the checkpoint/config form, pre-filled, so the user edits steps + messages.
+                setCpStep(0);
+            } catch (e) {
+                editHydratedRef.current = false; // allow a retry on next mount
+                // eslint-disable-next-line no-console
+                console.error('[EditWorkflow] Failed to load campaign for editing', e);
+            }
+        })();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     // Sync credit balance from billing hook
     useEffect(() => {
         if (billing.wallet?.availableBalance !== undefined) {
@@ -1422,6 +1541,10 @@ export default function AdvancedSearchAIPage() {
                     forceRefresh ? null : (typeof data.data_age_days === 'number' ? data.data_age_days : null)
                 );
 
+                // Tracks whether we actually produced usable summary text — drives
+                // the AI-preview fallback below.
+                let summaryText = '';
+
                 // ── 1. Build rich text summary ─────────────────────────────────
                 if (data.profile_summary) {
                     const ps = data.profile_summary as any;
@@ -1455,13 +1578,14 @@ export default function AdvancedSearchAIPage() {
                         if (names) parts.push(`\n🌐 Languages: ${names}`);
                     }
                     const richSummary = parts.join('\n').trim();
-                    if (richSummary) setProfileSummary(richSummary);
+                    if (richSummary) { setProfileSummary(richSummary); summaryText = richSummary; }
                 } else if (data.company_profile) {
-                    setProfileSummary(
+                    const companyText = (
                         data.company_profile.overview ||
                         data.company_profile.description ||
-                        `${lead.current_company || 'Company'} — ${data.company_profile.industry || ''} ${data.company_profile.company_size_range ? `· ${data.company_profile.company_size_range} employees` : ''}`.trim()
-                    );
+                        `${lead.current_company || 'Company'} — ${data.company_profile.industry || ''} ${data.company_profile.company_size_range ? `· ${data.company_profile.company_size_range} employees` : ''}`
+                    ).trim();
+                    if (companyText) { setProfileSummary(companyText); summaryText = companyText; }
                 }
 
                 // ── 2. Web presence ────────────────────────────────────────────
@@ -1471,7 +1595,10 @@ export default function AdvancedSearchAIPage() {
                 if (data.recent_posts?.length) setProfileRecentPosts(data.recent_posts);
 
                 // ── 4. Fallback ────────────────────────────────────────────────
-                if (!data.profile_summary && !data.company_profile) {
+                // Run the AI preview whenever no usable summary text was produced —
+                // including a thin LinkedIn profile object (name/headline only, no
+                // about/experience), which previously rendered blank AND skipped this.
+                if (!summaryText) {
                     const fallback = await campaignCreation.fetchLeadSummaryPreview({
                         profileData: { name: lead.name, title: lead.headline || '', company: lead.current_company || '', linkedin_url: lead.profile_url || '' }
                     });
@@ -4442,7 +4569,7 @@ export default function AdvancedSearchAIPage() {
                                                 : 'Qualifying...'
                                         }
                                         : m;
-                                    return <Bubble key={m.id} msg={displayMsg} onOpt={onOptClick} onShowPanel={setShowPanel} onStartCheckpoints={() => setCpStep(0)} onStartTargeting={() => { setTgStep(0); setChatBlocked(false); }} hasPanel={!!showPanel} leadsCount={leads.length} filteredLeadsCount={filteredLeads.length} onUploadClick={() => fileInputRef.current?.click()} useSalesNav={useSalesNav} isMobile={isMobile} />;
+                                    return <Bubble key={m.id} msg={displayMsg} onOpt={onOptClick} onShowPanel={setShowPanel} onStartCheckpoints={() => setCpStep(0)} onLetAgentDeal={letAgentDeal} agentDealLoading={agentDealLoading} onStartTargeting={() => { setTgStep(0); setChatBlocked(false); }} hasPanel={!!showPanel} leadsCount={leads.length} filteredLeadsCount={filteredLeads.length} onUploadClick={() => fileInputRef.current?.click()} useSalesNav={useSalesNav} isMobile={isMobile} />;
                                 })
                             )}
                             {/* Import leads prompt — shown when conversation is about existing client relationships */}
@@ -4498,6 +4625,9 @@ export default function AdvancedSearchAIPage() {
                         {cpStep >= 0 && (
                             <div className="adv-msgs-inner">
                                 <CheckpointFormInline
+                                    editingCampaignId={editingCampaignId}
+                                    onLetAgentDeal={letAgentDeal}
+                                    agentDealLoading={agentDealLoading}
                                     step={cpStep}
                                     setStep={setCpStep}
                                     icpThreshold={cpIcpThreshold}
@@ -5025,8 +5155,10 @@ export default function AdvancedSearchAIPage() {
                                                         )}
                                                     </div>
                                                     <div className="adv-lead-title">
-                                                        {lead.headline || lead.current_company || (lead.profile_url ? 'LinkedIn User' : lead.phone ? 'Phone Contact' : lead.email ? 'Email Contact' : 'Contact')}
+                                                        {lead.headline || (lead.profile_url ? 'LinkedIn User' : lead.phone ? 'Phone Contact' : lead.email ? 'Email Contact' : 'Contact')}
                                                     </div>
+                                                    {/* Company name under the name/title */}
+                                                    {lead.current_company && <div className="adv-lead-company">{lead.current_company}</div>}
                                                     {lead.location && <div className="adv-lead-location">📍 {lead.location}</div>}
                                                     {lead.inferred_nationality && (
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '3px' }}>
@@ -5181,8 +5313,10 @@ export default function AdvancedSearchAIPage() {
                                                                 )}
                                                             </div>
                                                             <div className="adv-lead-title" style={{ color: '#9ca3af' }}>
-                                                                {lead.headline || lead.current_company || (lead.profile_url ? 'LinkedIn User' : 'Contact')}
+                                                                {lead.headline || (lead.profile_url ? 'LinkedIn User' : 'Contact')}
                                                             </div>
+                                                            {/* Company name under the name/title */}
+                                                            {lead.current_company && <div className="adv-lead-company" style={{ color: '#9ca3af' }}>{lead.current_company}</div>}
                                                             {lead.location && <div className="adv-lead-location" style={{ color: '#9ca3af' }}>📍 {lead.location}</div>}
                                                             {lead.icp_reasoning && (
                                                                 <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px', lineHeight: '1.4', fontStyle: 'italic' }}>
@@ -6375,7 +6509,7 @@ export default function AdvancedSearchAIPage() {
    ═══════════════════════════════════════════════ */
 import { useSelector } from 'react-redux';
 
-function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onStartTargeting, hasPanel, leadsCount, filteredLeadsCount, onUploadClick, useSalesNav, isMobile }: { msg: ChatMsg; onOpt: (v: string) => void; onShowPanel: (panel: 'leads' | 'workflow') => void; onStartCheckpoints: () => void; onStartTargeting: () => void; hasPanel: boolean; leadsCount: number; filteredLeadsCount?: number; onUploadClick?: () => void; useSalesNav?: boolean; isMobile?: boolean }) {
+function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, agentDealLoading, onStartTargeting, hasPanel, leadsCount, filteredLeadsCount, onUploadClick, useSalesNav, isMobile }: { msg: ChatMsg; onOpt: (v: string) => void; onShowPanel: (panel: 'leads' | 'workflow') => void; onStartCheckpoints: () => void; onLetAgentDeal?: () => void; agentDealLoading?: boolean; onStartTargeting: () => void; hasPanel: boolean; leadsCount: number; filteredLeadsCount?: number; onUploadClick?: () => void; useSalesNav?: boolean; isMobile?: boolean }) {
     const user = useSelector((state: any) => state.auth?.user);
     const displayName = user?.name || "User";
     const userInitial = displayName.charAt(0).toUpperCase();
@@ -6619,18 +6753,33 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onStartTargeting,
 
                 {/* ── Modern action buttons (Example 1 style) ── */}
                 {msg.targeting && (
-
-                    <div className="adv-action-btns" style={{ display: "flex", gap: "8px", flexWrap: "nowrap", borderTop: "1px solid #e5e7eb", paddingTop: "12px", justifyContent: "space-between" }}>
-                        <button className="adv-act-btn adv-act-btn-refine" style={{
-                            padding: "8px 12px", background: "#fff", border: "1px solid #e5e7eb", borderRadius: "20px", fontSize: "12px", fontWeight: 600, color: "#374151"
-                        }} onClick={() => onOpt('Refine my targeting criteria')}>Refine</button>
-                        <button className="adv-act-btn adv-act-btn-journey" style={{
-                            padding: "9px 16px", background: "#0b1957", border: "none", borderRadius: "20px", fontSize: "12.5px", fontWeight: 700, color: "#fff",
-                            boxShadow: "0 2px 8px rgba(23,37,96,0.35)", display: "flex", alignItems: "center", gap: "6px", letterSpacing: "0.01em"
-                        }} onClick={onStartCheckpoints}>
-                            Create Outreach Journey
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
-                        </button>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "10px", borderTop: "1px solid #e5e7eb", paddingTop: "12px" }}>
+                        {/* ⚡ Hero action — let the agent build the whole multi-channel campaign */}
+                        {onLetAgentDeal && (
+                            <button type="button" onClick={onLetAgentDeal} disabled={agentDealLoading} style={{
+                                width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
+                                padding: "12px 16px", borderRadius: "12px", border: "none",
+                                cursor: agentDealLoading ? "default" : "pointer",
+                                background: "linear-gradient(135deg, #0b1957 0%, #3730a3 100%)", color: "#fff",
+                                boxShadow: "0 4px 14px rgba(11,25,87,0.22)", opacity: agentDealLoading ? 0.75 : 1,
+                                fontSize: "13.5px", fontWeight: 700, letterSpacing: "0.01em", transition: "opacity 0.2s",
+                            }}>
+                                <span style={{ fontSize: "16px", lineHeight: 1 }}>{agentDealLoading ? "⏳" : "⚡"}</span>
+                                {agentDealLoading ? "Building your campaign…" : "Let Agent Deal — auto-build every connected channel"}
+                            </button>
+                        )}
+                        <div className="adv-action-btns" style={{ display: "flex", gap: "8px", flexWrap: "nowrap", justifyContent: "space-between" }}>
+                            <button className="adv-act-btn adv-act-btn-refine" style={{
+                                padding: "8px 12px", background: "#fff", border: "1px solid #e5e7eb", borderRadius: "20px", fontSize: "12px", fontWeight: 600, color: "#374151"
+                            }} onClick={() => onOpt('Refine my targeting criteria')}>Refine</button>
+                            <button className="adv-act-btn adv-act-btn-journey" style={{
+                                padding: "9px 16px", background: "#fff", border: "1px solid #0b1957", borderRadius: "20px", fontSize: "12.5px", fontWeight: 700, color: "#0b1957",
+                                display: "flex", alignItems: "center", gap: "6px", letterSpacing: "0.01em"
+                            }} onClick={onStartCheckpoints}>
+                                Configure manually
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                            </button>
+                        </div>
                     </div>
                 )}
 
@@ -6912,6 +7061,62 @@ const CP_QUESTIONS = [
     { id: 'name', question: 'Give your campaign a name', type: 'input' },
 ];
 
+// ── AI Personalisation toggle primitives ─────────────────────────────────────
+// Shared, accessible switch + row so every personalisation option is pixel-identical.
+// Two accents encode meaning: `indigo` = live-data inputs, `violet` = AI generation.
+const AI_PERSO_ACCENTS: Record<'indigo' | 'violet', { on: string; tint: string; border: string; chip: string }> = {
+    indigo: { on: '#4338ca', tint: '#eef2ff', border: '#c7d2fe', chip: '#e0e7ff' },
+    violet: { on: '#7c3aed', tint: '#f5f3ff', border: '#ddd6fe', chip: '#ede9fe' },
+};
+
+function AiPersoToggle({ checked, onChange, accent = 'indigo', size = 'sm', disabled = false }: {
+    checked: boolean; onChange: (v: boolean) => void; accent?: 'indigo' | 'violet'; size?: 'sm' | 'lg'; disabled?: boolean;
+}) {
+    const a = AI_PERSO_ACCENTS[accent];
+    const W = size === 'lg' ? 40 : 34, H = size === 'lg' ? 22 : 20, TH = H - 4;
+    return (
+        <button type="button" role="switch" aria-checked={checked} disabled={disabled}
+            onClick={(e) => { e.stopPropagation(); if (!disabled) onChange(!checked); }}
+            style={{
+                width: W, height: H, borderRadius: 99, border: 'none', padding: 0, flexShrink: 0,
+                background: checked ? a.on : '#cbd5e1', position: 'relative',
+                cursor: disabled ? 'not-allowed' : 'pointer', transition: 'background .2s',
+                boxShadow: checked ? `0 0 0 3px ${a.on}22` : 'none',
+            }}>
+            <span style={{
+                position: 'absolute', top: 2, left: checked ? W - TH - 2 : 2, width: TH, height: TH,
+                borderRadius: '50%', background: '#fff', transition: 'left .2s', boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
+            }} />
+        </button>
+    );
+}
+
+function AiPersoRow({ icon, title, desc, checked, onChange, accent = 'indigo', disabled = false }: {
+    icon: React.ReactNode; title: string; desc: string; checked: boolean; onChange: (v: boolean) => void;
+    accent?: 'indigo' | 'violet'; disabled?: boolean;
+}) {
+    const a = AI_PERSO_ACCENTS[accent];
+    return (
+        <div role="button" aria-pressed={checked} onClick={() => { if (!disabled) onChange(!checked); }}
+            style={{
+                display: 'flex', alignItems: 'center', gap: 11, padding: '10px 12px',
+                background: checked ? a.tint : '#fff', border: `1px solid ${checked ? a.border : '#e5e7eb'}`,
+                borderRadius: 10, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.55 : 1,
+                transition: 'background .15s, border-color .15s',
+            }}>
+            <div style={{
+                width: 30, height: 30, borderRadius: 8, flexShrink: 0, display: 'grid', placeItems: 'center',
+                background: checked ? a.chip : '#f3f4f6', color: checked ? a.on : '#94a3b8', transition: 'background .15s, color .15s',
+            }}>{icon}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{title}</div>
+                <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 1, lineHeight: 1.35 }}>{desc}</div>
+            </div>
+            <AiPersoToggle checked={checked} onChange={onChange} accent={accent} disabled={disabled} />
+        </div>
+    );
+}
+
 function CheckpointFormInline({
     step, setStep, icpThreshold, setIcpThreshold, actions, setActions, connMsg, setConnMsg, followMsg, setFollowMsg,
     nextChannels, setNextChannels, triggerCondition, setTriggerCondition,
@@ -6934,6 +7139,8 @@ function CheckpointFormInline({
     enableAiPersonalization, setEnableAiPersonalization,
     enableAiConnectionPersonalization, setEnableAiConnectionPersonalization,
     enableAiFollowupPersonalization, setEnableAiFollowupPersonalization,
+    editingCampaignId,
+    onLetAgentDeal, agentDealLoading,
 }: {
     step: number; setStep: (s: number) => void;
     icpThreshold: string; setIcpThreshold: (v: string) => void;
@@ -6979,6 +7186,8 @@ function CheckpointFormInline({
     enableAiPersonalization: boolean; setEnableAiPersonalization: (v: boolean) => void;
     enableAiConnectionPersonalization: boolean; setEnableAiConnectionPersonalization: (v: boolean) => void;
     enableAiFollowupPersonalization: boolean; setEnableAiFollowupPersonalization: (v: boolean) => void;
+    editingCampaignId?: string | null;
+    onLetAgentDeal: () => void; agentDealLoading: boolean;
 }) {
     const totalSteps = CP_QUESTIONS.length;
 
@@ -7113,7 +7322,14 @@ function CheckpointFormInline({
 
     // LinkedIn follow-up config (when linkedin selected as next channel in step 3)
     // Multi-select: 'profile_view' | 'connect' | 'message'
-    const [liChannelActions, setLiChannelActions] = useState<string[]>([]);
+    // Initialise from the `actions` prop so edit-mode hydration (the parent sets
+    // cpActions from the saved campaign / its steps) pre-checks the LinkedIn action
+    // boxes. In the create flow `actions` is [] at mount, so this is a no-op there.
+    // Use the shared config actions (derived from the canonical workflowPreview
+    // by the parent) so LinkedIn action toggles round-trip to the Workflow canvas
+    // instead of living in an orphaned local copy that never synced back.
+    const liChannelActions = actions || [];
+    const setLiChannelActions = setActions;
     const [liFollowGenLoading, setLiFollowGenLoading] = useState(false);
 
     // AI Generate inline context panel state (one per message type)
@@ -7781,9 +7997,36 @@ function CheckpointFormInline({
                     ...actionSteps,
                 ],
             };
-            const data = await campaignCreation.createCampaign(payload);
-            if (data?.success) { window.location.href = '/campaigns'; }
-            else { alert('Failed to launch campaign: ' + (data?.error || 'Unknown error')); setLaunching(false); }
+            if (editingCampaignId) {
+                // Edit mode: update THIS campaign in place. PATCH /:id updates the
+                // campaign row (name/config) but does NOT persist steps, so the steps
+                // are saved separately via updateCampaignSteps (POST /:id/steps,
+                // destructive replace) — otherwise the edited workflow silently doesn't
+                // save and the campaign shows "No actions". Status + leads are left
+                // untouched so the running/draft state and existing leads are preserved.
+                await updateCampaign(editingCampaignId, { name: payload.name, config: payload.config });
+                // The steps endpoint passes steps straight to CampaignStepModel.bulkCreate,
+                // which reads step.type + step.order (NOT order_index). The create path maps
+                // these first; mirror that here so step_type/step_order aren't NULL → 500.
+                const stepsForSave = (payload.steps || []).map((s: any, i: number) => ({
+                    ...s,
+                    type: s.step_type || s.type,
+                    order: s.step_order ?? s.order ?? s.order_index ?? i,
+                    title: s.title || s.type,
+                }));
+                await updateCampaignSteps(editingCampaignId, stepsForSave);
+                // Re-run the campaign so the edited steps actually execute. Saving alone
+                // only persists — the engine runs steps via processCampaign, which the
+                // create flow kicks off on launch. startCampaign (POST /:id/start) sets
+                // the campaign running and runs processCampaign against the NEW steps; it
+                // respects per-lead progress, so nobody already contacted is re-messaged.
+                await startCampaign(editingCampaignId);
+                window.location.href = '/campaigns';
+            } else {
+                const data = await campaignCreation.createCampaign(payload);
+                if (data?.success) { window.location.href = '/campaigns'; }
+                else { alert('Failed to launch campaign: ' + (data?.error || 'Unknown error')); setLaunching(false); }
+            }
         } catch (err: any) { console.error('Campaign creation error', err); alert('Error: ' + err.message); setLaunching(false); }
     };
 
@@ -7890,6 +8133,37 @@ function CheckpointFormInline({
                     {/* Step 1: Campaign Channels */}
                     {step === 1 && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {/* "Let Agent Deal" — one-click auto-build across connected channels */}
+                            {!isDirectContact && (
+                                <div style={{ marginBottom: '2px' }}>
+                                    <button
+                                        type="button"
+                                        onClick={onLetAgentDeal}
+                                        disabled={agentDealLoading}
+                                        style={{
+                                            width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
+                                            padding: '14px 16px', borderRadius: '12px', border: 'none',
+                                            cursor: agentDealLoading ? 'default' : 'pointer',
+                                            background: 'linear-gradient(135deg, #0b1957 0%, #3730a3 100%)',
+                                            color: '#fff', boxShadow: '0 4px 14px rgba(11,25,87,0.22)',
+                                            opacity: agentDealLoading ? 0.75 : 1, transition: 'opacity 0.2s',
+                                        }}>
+                                        <div style={{ fontSize: '22px', lineHeight: 1 }}>{agentDealLoading ? '⏳' : '⚡'}</div>
+                                        <div style={{ flex: 1, textAlign: 'left' }}>
+                                            <div style={{ fontWeight: 700, fontSize: '15px' }}>
+                                                {agentDealLoading ? 'Building your campaign…' : 'Let Agent Deal'}
+                                            </div>
+                                            <div style={{ fontSize: '12px', opacity: 0.85, marginTop: '2px' }}>
+                                                Auto-build the full sequence across your connected channels, with recommended delays
+                                            </div>
+                                        </div>
+                                        {!agentDealLoading && <div style={{ fontSize: '18px' }}>→</div>}
+                                    </button>
+                                    <div style={{ textAlign: 'center', fontSize: '11px', color: '#9ca3af', margin: '8px 0 2px' }}>
+                                        — or configure manually —
+                                    </div>
+                                </div>
+                            )}
                             {/* Context badge for direct contacts */}
                             {isDirectContact && (
                                 <div style={{ padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', fontSize: '12px', color: '#166534', fontWeight: 500, marginBottom: '4px' }}>
@@ -7942,15 +8216,6 @@ function CheckpointFormInline({
                                     </div>
                                 </div>
                             ))}
-                            {!isDirectContact && (
-                                <div onClick={() => { setNextChannels([]); setStep(step + 1); }} style={optStyle(nextChannels.length === 0)}>
-                                    <div style={numBadge(4, nextChannels.length === 0)}>{nextChannels.length === 0 ? '✓' : 4}</div>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 600 }}>Skip</div>
-                                        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>No additional channels — LinkedIn only</div>
-                                    </div>
-                                </div>
-                            )}
 
 
                             {/* Email Config (inline when email selected) */}
@@ -8783,176 +9048,82 @@ function CheckpointFormInline({
                                     </div>
 
                                     {/* ── 🤖 AI Daily Personalisation ───────────── */}
-                                    <div style={{ marginTop: '14px', borderTop: '1px solid #bfdbfe', paddingTop: '12px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: enableDailyWebPresence || enableDailyPosts || enableAiPersonalization ? '10px' : '0', cursor: 'pointer' }}
-                                            onClick={() => {
-                                                // If any toggle is on, turn all off; otherwise show the panel
-                                                if (enableDailyWebPresence || enableDailyPosts || enableAiPersonalization) {
-                                                    setEnableDailyWebPresence(false);
-                                                    setEnableDailyPosts(false);
-                                                    setEnableAiPersonalization(false);
-                                                } else {
-                                                    setEnableDailyWebPresence(true);
-                                                    setEnableDailyPosts(true);
-                                                    setEnableAiPersonalization(true);
-                                                }
-                                            }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                                                <span style={{ fontSize: '13px' }}>🤖</span>
-                                                <span style={{ fontSize: '13px', fontWeight: 700, color: '#4338ca' }}>AI Daily Personalisation</span>
-                                                <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: 400 }}>— unique messages per lead, powered by live data</span>
-                                            </div>
-                                            <div style={{
-                                                width: '36px', height: '20px', borderRadius: '99px', flexShrink: 0,
-                                                background: (enableDailyWebPresence || enableDailyPosts || enableAiPersonalization) ? '#0b1957' : '#d1d5db',
-                                                position: 'relative', transition: 'background 0.2s',
-                                            }}>
-                                                <div style={{
-                                                    position: 'absolute', top: '2px',
-                                                    left: (enableDailyWebPresence || enableDailyPosts || enableAiPersonalization) ? '18px' : '2px',
-                                                    width: '16px', height: '16px', borderRadius: '50%', background: '#fff',
-                                                    transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                                                }} />
-                                            </div>
-                                        </div>
-
-                                        {(enableDailyWebPresence || enableDailyPosts || enableAiPersonalization) && (
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                                {/* Toggle: Web Presence */}
-                                                <div style={{
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                                    padding: '9px 12px', background: enableDailyWebPresence ? '#e8ecfa' : '#f9fafb',
-                                                    border: `1px solid ${enableDailyWebPresence ? '#c2d6eb' : '#e5e7eb'}`, borderRadius: '8px', cursor: 'pointer',
-                                                }} onClick={() => setEnableDailyWebPresence(!enableDailyWebPresence)}>
-                                                    <div>
-                                                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>🌐 Refresh web presence daily</div>
-                                                        <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>Re-runs Google search for articles, news & social profiles per lead</div>
-                                                    </div>
-                                                    <div style={{
-                                                        width: '32px', height: '18px', borderRadius: '99px', flexShrink: 0,
-                                                        background: enableDailyWebPresence ? '#0b1957' : '#d1d5db', position: 'relative', transition: 'background 0.2s',
+                                    {(() => {
+                                        const anyOn = enableDailyWebPresence || enableDailyPosts || enableAiPersonalization;
+                                        const noSource = !enableDailyWebPresence && !enableDailyPosts;
+                                        const toggleAll = () => {
+                                            const next = !anyOn;
+                                            setEnableDailyWebPresence(next);
+                                            setEnableDailyPosts(next);
+                                            setEnableAiPersonalization(next);
+                                        };
+                                        return (
+                                            <div style={{ marginTop: '16px' }}>
+                                                {/* Master header — one tap toggles the whole feature */}
+                                                <div role="button" aria-pressed={anyOn} onClick={toggleAll}
+                                                    style={{
+                                                        display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', cursor: 'pointer',
+                                                        borderRadius: anyOn ? '14px 14px 0 0' : 14,
+                                                        background: anyOn ? 'linear-gradient(135deg,#eef2ff 0%,#f5f3ff 100%)' : '#f8fafc',
+                                                        border: `1px solid ${anyOn ? '#c7d2fe' : '#e5e7eb'}`,
+                                                        borderBottom: anyOn ? '1px solid transparent' : '1px solid #e5e7eb',
+                                                        transition: 'background .2s',
                                                     }}>
-                                                        <div style={{
-                                                            position: 'absolute', top: '2px',
-                                                            left: enableDailyWebPresence ? '16px' : '2px',
-                                                            width: '14px', height: '14px', borderRadius: '50%', background: '#fff',
-                                                            transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                                                        }} />
+                                                    <div style={{
+                                                        width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: 'grid', placeItems: 'center',
+                                                        background: anyOn ? 'linear-gradient(135deg,#4338ca,#7c3aed)' : '#eef2ff',
+                                                        boxShadow: anyOn ? '0 2px 8px rgba(67,56,202,0.30)' : 'none', transition: 'background .2s',
+                                                    }}>
+                                                        <img src={anyOn ? '/logo-white.svg' : '/logo.svg'} alt="LAD" style={{ width: 20, height: 20, display: 'block' }} />
                                                     </div>
+                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                        <div style={{ fontSize: 13.5, fontWeight: 700, color: '#4338ca' }}>AI Daily Personalisation</div>
+                                                        <div style={{ fontSize: 11.5, color: '#6b7280', marginTop: 1 }}>Unique messages per lead, powered by live data</div>
+                                                    </div>
+                                                    <AiPersoToggle checked={anyOn} onChange={toggleAll} accent="indigo" size="lg" />
                                                 </div>
 
-                                                {/* Toggle: LinkedIn Posts */}
-                                                <div style={{
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                                    padding: '9px 12px', background: enableDailyPosts ? '#e8ecfa' : '#f9fafb',
-                                                    border: `1px solid ${enableDailyPosts ? '#c2d6eb' : '#e5e7eb'}`, borderRadius: '8px', cursor: 'pointer',
-                                                }} onClick={() => setEnableDailyPosts(!enableDailyPosts)}>
-                                                    <div>
-                                                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>📝 Fetch live LinkedIn posts</div>
-                                                        <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>Pulls the lead&apos;s recent LinkedIn posts before each send</div>
-                                                    </div>
+                                                {anyOn && (
                                                     <div style={{
-                                                        width: '32px', height: '18px', borderRadius: '99px', flexShrink: 0,
-                                                        background: enableDailyPosts ? '#0b1957' : '#d1d5db', position: 'relative', transition: 'background 0.2s',
+                                                        border: '1px solid #c7d2fe', borderTop: 'none', borderRadius: '0 0 14px 14px',
+                                                        background: '#fcfcff', padding: 13, display: 'flex', flexDirection: 'column', gap: 16,
                                                     }}>
-                                                        <div style={{
-                                                            position: 'absolute', top: '2px',
-                                                            left: enableDailyPosts ? '16px' : '2px',
-                                                            width: '14px', height: '14px', borderRadius: '50%', background: '#fff',
-                                                            transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                                                        }} />
-                                                    </div>
-                                                </div>
-
-                                                {/* Toggle: AI Generate unique message */}
-                                                <div style={{
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                                    padding: '9px 12px', background: enableAiPersonalization ? '#f5f3ff' : '#f9fafb',
-                                                    border: `1px solid ${enableAiPersonalization ? '#ddd6fe' : '#e5e7eb'}`, borderRadius: '8px', cursor: 'pointer',
-                                                    opacity: (!enableDailyWebPresence && !enableDailyPosts) ? 0.5 : 1,
-                                                    pointerEvents: (!enableDailyWebPresence && !enableDailyPosts) ? 'none' : 'auto',
-                                                }} onClick={() => setEnableAiPersonalization(!enableAiPersonalization)}>
-                                                    <div>
-                                                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>✨ AI-generate unique message per lead</div>
-                                                        <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>AI creates a personalised connect + follow-up using live web & post data{(!enableDailyWebPresence && !enableDailyPosts) ? ' — enable web presence or posts first' : ''}</div>
-                                                    </div>
-                                                    <div style={{
-                                                        width: '32px', height: '18px', borderRadius: '99px', flexShrink: 0,
-                                                        background: enableAiPersonalization ? '#7c3aed' : '#d1d5db', position: 'relative', transition: 'background 0.2s',
-                                                    }}>
-                                                        <div style={{
-                                                            position: 'absolute', top: '2px',
-                                                            left: enableAiPersonalization ? '16px' : '2px',
-                                                            width: '14px', height: '14px', borderRadius: '50%', background: '#fff',
-                                                            transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                                                        }} />
-                                                    </div>
-                                                </div>
-
-                                                {(enableDailyWebPresence || enableDailyPosts) && enableAiPersonalization && (
-                                                    <div style={{ fontSize: '11px', color: '#7c3aed', background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '7px', padding: '7px 10px', lineHeight: 1.5 }}>
-                                                        ✅ Each lead will receive a <strong>unique AI-generated message</strong> based on their live web presence & LinkedIn posts. Your static template message is used as a fallback.
-                                                    </div>
-                                                )}
-
-                                                {(enableDailyWebPresence || enableDailyPosts) && enableAiPersonalization && (
-                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e5e7eb' }}>
-                                                        <div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280' }}>Granular AI Message Control:</div>
-
-                                                        {/* Toggle: AI Generate Connection Message */}
-                                                        <div style={{
-                                                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                                            padding: '9px 12px', background: enableAiConnectionPersonalization ? '#f5f3ff' : '#f9fafb',
-                                                            border: `1px solid ${enableAiConnectionPersonalization ? '#ddd6fe' : '#e5e7eb'}`, borderRadius: '8px', cursor: 'pointer',
-                                                        }} onClick={() => setEnableAiConnectionPersonalization(!enableAiConnectionPersonalization)}>
-                                                            <div>
-                                                                <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>🔗 AI-generate connection request</div>
-                                                                <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>Create personalized connection messages</div>
-                                                            </div>
-                                                            <div style={{
-                                                                width: '32px', height: '18px', borderRadius: '99px', flexShrink: 0,
-                                                                background: enableAiConnectionPersonalization ? '#7c3aed' : '#d1d5db', position: 'relative', transition: 'background 0.2s',
-                                                            }}>
-                                                                <div style={{
-                                                                    position: 'absolute', top: '2px',
-                                                                    left: enableAiConnectionPersonalization ? '16px' : '2px',
-                                                                    width: '14px', height: '14px', borderRadius: '50%', background: '#fff',
-                                                                    transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                                                                }} />
-                                                            </div>
+                                                        {/* Group 1 — live data the agent gathers per lead */}
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                                            <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: '#4338ca' }}>Live data sources</div>
+                                                            <AiPersoRow icon={<Globe size={16} />} title="Refresh web presence daily" desc="Re-runs Google search for articles, news & social profiles per lead" checked={enableDailyWebPresence} onChange={setEnableDailyWebPresence} accent="indigo" />
+                                                            <AiPersoRow icon={<Newspaper size={16} />} title="Fetch live LinkedIn posts" desc="Pulls the lead's recent LinkedIn posts before each send" checked={enableDailyPosts} onChange={setEnableDailyPosts} accent="indigo" />
                                                         </div>
 
-                                                        {/* Toggle: AI Generate Followup Message */}
-                                                        <div style={{
-                                                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                                            padding: '9px 12px', background: enableAiFollowupPersonalization ? '#f5f3ff' : '#f9fafb',
-                                                            border: `1px solid ${enableAiFollowupPersonalization ? '#ddd6fe' : '#e5e7eb'}`, borderRadius: '8px', cursor: 'pointer',
-                                                        }} onClick={() => setEnableAiFollowupPersonalization(!enableAiFollowupPersonalization)}>
-                                                            <div>
-                                                                <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>💬 AI-generate follow-up message</div>
-                                                                <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>Create personalized follow-up messages</div>
-                                                            </div>
-                                                            <div style={{
-                                                                width: '32px', height: '18px', borderRadius: '99px', flexShrink: 0,
-                                                                background: enableAiFollowupPersonalization ? '#7c3aed' : '#d1d5db', position: 'relative', transition: 'background 0.2s',
-                                                            }}>
-                                                                <div style={{
-                                                                    position: 'absolute', top: '2px',
-                                                                    left: enableAiFollowupPersonalization ? '16px' : '2px',
-                                                                    width: '14px', height: '14px', borderRadius: '50%', background: '#fff',
-                                                                    transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                                                                }} />
-                                                            </div>
-                                                        </div>
+                                                        {/* Group 2 — how the agent writes each message */}
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                                            <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: '#7c3aed' }}>AI message generation</div>
+                                                            <AiPersoRow icon={<Sparkles size={16} />} title="AI-generate unique message per lead"
+                                                                desc={noSource ? 'Enable a live data source above first' : 'AI writes a personalised connect + follow-up from live web & post data'}
+                                                                checked={enableAiPersonalization} onChange={setEnableAiPersonalization} accent="violet" disabled={noSource} />
 
-                                                        <div style={{ fontSize: '11px', color: '#7c3aed', background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '7px', padding: '7px 10px', lineHeight: 1.5 }}>
-                                                            💡 <strong>Tip:</strong> Choose which message(s) should be AI-generated. Unchecked messages will use your static template.
+                                                            {enableAiPersonalization && !noSource && (
+                                                                <>
+                                                                    <div style={{ display: 'flex', gap: 8, fontSize: 11.5, color: '#6d28d9', background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: 9, padding: '9px 11px', lineHeight: 1.5 }}>
+                                                                        <Check size={15} style={{ flexShrink: 0, marginTop: 1 }} />
+                                                                        <span>Each lead gets a <strong>unique AI-generated message</strong> from their live web presence &amp; LinkedIn posts. Your static template is the fallback.</span>
+                                                                    </div>
+
+                                                                    {/* Nested granular control — clearly a child of the toggle above */}
+                                                                    <div style={{ marginLeft: 8, paddingLeft: 14, borderLeft: '2px solid #ddd6fe', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                                                        <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#7c3aed' }}>Which messages?</div>
+                                                                        <AiPersoRow icon={<UserPlus size={16} />} title="Connection request" desc="Personalised connect note per lead" checked={enableAiConnectionPersonalization} onChange={setEnableAiConnectionPersonalization} accent="violet" />
+                                                                        <AiPersoRow icon={<MessageSquare size={16} />} title="Follow-up message" desc="Personalised follow-up per lead" checked={enableAiFollowupPersonalization} onChange={setEnableAiFollowupPersonalization} accent="violet" />
+                                                                        <div style={{ fontSize: 11, color: '#9ca3af', paddingLeft: 2 }}>Unchecked messages use your static template.</div>
+                                                                    </div>
+                                                                </>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 )}
                                             </div>
-                                        )}
-                                    </div>
+                                        );
+                                    })()}
                                 </div>
                             )}
                         </div>
@@ -10153,6 +10324,7 @@ const css = `
             .adv-lead-name {font-size:14px; font-weight:700; color:#111827; display:flex; align-items:center; gap:4px; }
             .adv-verified {background:#10b981; color:#fff; border-radius:50%; width:16px; height:16px; display:inline-flex; align-items:center; justify-content:center; font-size:9px; font-weight:800; }
             .adv-lead-title {font-size:12px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+            .adv-lead-company {font-size:12px; font-weight:600; color:#374151; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
             .adv-lead-platform {margin - top:4px; display:flex; gap:4px; }
             .adv-lead-action {width:36px; height:36px; border-radius:50%; border:1.5px solid #e5e7eb; background:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; transition:all .15s; }
             .adv-lead-action:hover:not(:disabled) {border-color:#0b1957; background:#f2f6fa; }
@@ -10549,6 +10721,7 @@ const css = `
             .dark .adv-lead-card:hover { background: #253456; }
             .dark .adv-lead-name { color: #ffffff; }
             .dark .adv-lead-title { color: #7a8ba3; }
+            .dark .adv-lead-company { color: #b8c4d6; }
             .dark .adv-lead-action { background: #1A2A43; border-color: #000724; color: #ffffff; }
             .dark .adv-lead-action:hover:not(:disabled) { border-color: #000724; background: #253456; }
             .dark .adv-lead-avatar-img { border-color: #000724; }

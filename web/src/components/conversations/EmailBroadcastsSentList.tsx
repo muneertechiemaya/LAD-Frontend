@@ -16,17 +16,22 @@
  * EmailBroadcastPanel — once this view ships, the broadcast-test debug route
  * and the panel can be removed.
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import DOMPurify from 'dompurify';
+import DragDropEmailEditor from '@/components/templates/DragDropEmailEditor';
 import { Loader2, Pencil, Inbox, AlertCircle, Users, X } from 'lucide-react';
 
 import {
+  BroadcastRunStats,
   BroadcastRunSummary,
   ConnectedAccount,
+  EmailChannel,
   useBroadcastRecipients,
   useBroadcastRun,
   useBroadcastRuns,
+  useBroadcastStats,
   useConnectedEmailAccounts,
+  useEmailGroups,
   useSendBroadcast,
 } from '@/features/conversations/useEmailBroadcast';
 
@@ -327,18 +332,87 @@ function ComposeBroadcastDialog({
     [accounts],
   );
 
+  // Recipient source — 'manual' (paste-a-list) or 'group' (pick a saved group).
+  // The backend enforces exactly-one; the UI mirrors that with a tab-style
+  // toggle so it's clear which one will be sent.
+  const [mode, setMode] = useState<'manual' | 'group'>('manual');
+
   const [accountId, setAccountId] = useState('');
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [recipientsRaw, setRecipientsRaw] = useState('');
+  const [groupId, setGroupId] = useState('');
   const [error, setError] = useState<string | null>(null);
+
+  // Saved templates → power the "Use template" picker. The drag-drop editor
+  // only reads htmlContent on mount, so we bump editorKey to remount it (and
+  // re-parse the blocks) whenever a template is loaded.
+  const [templates, setTemplates] = useState<{ id: string; name: string; subject?: string; body_html: string | null; body?: string }[]>([]);
+  const [templateId, setTemplateId] = useState('');
+  const [editorKey, setEditorKey] = useState(0);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/campaigns/email-templates?is_active=true', { credentials: 'include' });
+        if (!res.ok) return;
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : (data.templates ?? data.data ?? []);
+        if (!cancelled) setTemplates(list);
+      } catch { /* non-fatal — picker just stays empty */ }
+    })();
+    return () => { cancelled = true; };
+  }, [open]);
+
+  const applyTemplate = (id: string) => {
+    setTemplateId(id);
+    const tpl = templates.find((t) => t.id === id);
+    if (!tpl) return;
+    setBody(tpl.body_html ?? tpl.body ?? '');
+    if (!subject.trim() && tpl.subject) setSubject(tpl.subject);
+    setEditorKey((k) => k + 1); // force the editor to re-init from the new HTML
+  };
+
   const recipients = useMemo(() => parseRecipients(recipientsRaw), [recipientsRaw]);
 
+  // Map account provider → group channel so the group picker only shows
+  // groups usable with the currently-selected From account.
+  const selectedAccount = useMemo(
+    () => activeAccounts.find((a) => a.id === accountId) ?? null,
+    [accountId, activeAccounts],
+  );
+  const channelForGroups: EmailChannel | undefined =
+    selectedAccount?.provider === 'google'
+      ? 'gmail'
+      : selectedAccount?.provider === 'microsoft'
+        ? 'outlook'
+        : undefined;
+  const groupsQuery = useEmailGroups(channelForGroups);
+  const groupsList = groupsQuery.data?.groups ?? [];
+  const selectedGroup = useMemo(
+    () => groupsList.find((g) => g.id === groupId) ?? null,
+    [groupId, groupsList],
+  );
+
+  // When the account (and therefore channel) changes, clear the group
+  // selection so we don't send to a group meant for a different channel.
+  useMemo(() => {
+    if (groupId && !groupsList.some((g) => g.id === groupId)) {
+      setGroupId('');
+    }
+  }, [groupId, groupsList]);
+
   const reset = () => {
+    setMode('manual');
     setAccountId('');
     setSubject('');
     setBody('');
     setRecipientsRaw('');
+    setGroupId('');
+    setTemplateId('');
+    setEditorKey((k) => k + 1);
     setError(null);
   };
 
@@ -347,15 +421,22 @@ function ComposeBroadcastDialog({
     if (!accountId) return setError('Pick a sender account.');
     if (!subject.trim()) return setError('Subject is required.');
     if (!body.trim()) return setError('Body cannot be empty.');
-    if (recipients.length === 0)
+    if (mode === 'manual' && recipients.length === 0)
       return setError('Add at least one recipient.');
+    if (mode === 'group' && !groupId)
+      return setError('Pick a group to send to.');
+    if (mode === 'group' && selectedGroup && selectedGroup.member_count === 0)
+      return setError(
+        `Group "${selectedGroup.name}" has no members. Add contacts before sending.`,
+      );
 
     try {
       await send.mutateAsync({
         from_email_account_id: accountId,
         subject: subject.trim(),
         body_html: body,
-        recipients,
+        ...(templateId ? { template_id: templateId } : {}),
+        ...(mode === 'group' ? { group_id: groupId } : { recipients }),
       });
       reset();
       onOpenChange(false);
@@ -364,9 +445,15 @@ function ComposeBroadcastDialog({
     }
   };
 
+  // How many recipients will actually go? Used to drive the send-button label.
+  const sendCount =
+    mode === 'group'
+      ? (selectedGroup?.member_count ?? 0)
+      : recipients.length;
+
   return (
     <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) reset(); }}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>New broadcast</DialogTitle>
           <DialogDescription>
@@ -402,31 +489,157 @@ function ComposeBroadcastDialog({
             <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Welcome to Mr LAD" />
           </div>
 
+          {/* Recipients — tab toggle between manual list and saved group */}
           <div>
-            <label className="text-sm font-medium">
-              Recipients <span className="text-muted-foreground">({recipients.length} parsed)</span>
-            </label>
-            <Textarea
-              value={recipientsRaw}
-              onChange={(e) => setRecipientsRaw(e.target.value)}
-              rows={3}
-              placeholder={`alice@example.com, "Bob Smith" <bob@example.com>\nor one per line`}
-            />
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-sm font-medium">Recipients</label>
+              <div
+                role="tablist"
+                aria-label="Recipient source"
+                className="inline-flex items-center rounded-md border border-input p-0.5 text-xs"
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === 'manual'}
+                  onClick={() => setMode('manual')}
+                  className={`px-2 py-1 rounded ${
+                    mode === 'manual'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-accent'
+                  }`}
+                >
+                  Manual list
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === 'group'}
+                  onClick={() => setMode('group')}
+                  className={`px-2 py-1 rounded ${
+                    mode === 'group'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-accent'
+                  }`}
+                >
+                  From group
+                </button>
+              </div>
+            </div>
+
+            {mode === 'manual' ? (
+              <>
+                <Textarea
+                  value={recipientsRaw}
+                  onChange={(e) => setRecipientsRaw(e.target.value)}
+                  rows={3}
+                  placeholder={`alice@example.com, "Bob Smith" <bob@example.com>\nor one per line`}
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {recipients.length} parsed. Names in{' '}
+                  <code>{'"Name" <email>'}</code> format are picked up too.
+                </p>
+              </>
+            ) : (
+              <>
+                <Select value={groupId} onValueChange={setGroupId}>
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={
+                        !accountId
+                          ? 'Pick a sender account first'
+                          : groupsQuery.isLoading
+                            ? 'Loading groups…'
+                            : groupsList.length === 0
+                              ? 'No groups for this channel yet'
+                              : 'Pick a group'
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {groupsList.length === 0 ? (
+                      <div className="px-3 py-2 text-sm text-muted-foreground">
+                        Create a group in the sidebar first, then add contacts to it.
+                      </div>
+                    ) : (
+                      groupsList.map((g) => (
+                        <SelectItem key={g.id} value={g.id}>
+                          {g.name}
+                          <span className="text-muted-foreground">
+                            {' '}
+                            · {g.member_count} member
+                            {g.member_count === 1 ? '' : 's'}
+                          </span>
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+                {selectedGroup && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Sending to{' '}
+                    <span className="font-medium">{selectedGroup.name}</span>{' '}
+                    ({selectedGroup.member_count} recipient
+                    {selectedGroup.member_count === 1 ? '' : 's'}). Add or
+                    remove members from the sidebar.
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Start from a saved template — loads its HTML into the editor below */}
+          <div>
+            <label className="text-sm font-medium">Template</label>
+            <Select value={templateId} onValueChange={applyTemplate}>
+              <SelectTrigger>
+                <SelectValue placeholder={templates.length ? 'Start from a saved template (optional)' : 'No saved templates yet'} />
+              </SelectTrigger>
+              <SelectContent>
+                {templates.length === 0 ? (
+                  <div className="px-3 py-2 text-sm text-muted-foreground">
+                    Create templates under Conversations → Templates.
+                  </div>
+                ) : (
+                  templates.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
           </div>
 
           <div>
-            <label className="text-sm font-medium">Body (HTML)</label>
-            <Textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              rows={10}
-              placeholder={`<p>Hi {{first_name}},</p><p>...</p>`}
-            />
+            <label className="text-sm font-medium">Body</label>
+            <div className="mt-1 rounded-lg border border-input bg-muted/20 p-3">
+              <DragDropEmailEditor
+                key={editorKey}
+                htmlContent={body}
+                subject={subject}
+                onContentChange={setBody}
+              />
+            </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Use <code>{'{{first_name}}'}</code> or <code>{'{first_name}'}</code> to personalise.
-              Unknown placeholders are removed before sending.
+              Build the email with blocks (header, image, button, signature…). Use{' '}
+              <code>{'{{first_name}}'}</code> or <code>{'{first_name}'}</code> to personalise —
+              unknown placeholders are removed before sending.
             </p>
           </div>
+
+          {(() => {
+            // Mirrors LAD-Email-Comms quota defaults — warn before the
+            // orchestrator has to pace/pause a too-big send.
+            const safeDaily: Record<string, number> = { google: 400, microsoft: 250, custom_smtp: 1000 };
+            const cap = selectedAccount ? (safeDaily[selectedAccount.provider] ?? 1000) : null;
+            return cap !== null && sendCount > cap ? (
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                {sendCount} recipients exceeds the safe daily volume for this account
+                (~{cap}/day). Sending is paced and may spread across days to protect your
+                sender reputation — for regular large sends, connect an email service
+                (Brevo / Amazon SES) via Custom SMTP.
+              </p>
+            ) : null;
+          })()}
 
           {error && <div className="text-sm text-destructive">{error}</div>}
         </div>
@@ -436,7 +649,7 @@ function ComposeBroadcastDialog({
             Cancel
           </Button>
           <Button onClick={handleSend} disabled={send.isPending}>
-            {send.isPending ? 'Queuing…' : `Send to ${recipients.length}`}
+            {send.isPending ? 'Queuing…' : `Send to ${sendCount}`}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -445,6 +658,124 @@ function ComposeBroadcastDialog({
 }
 
 // ── Detail dialog (click a row to open the rendered email) ─────────────────
+
+/** "2h 14m" / "34m" / "45s" from seconds. */
+function formatDuration(seconds: number | null): string {
+  if (seconds == null || !Number.isFinite(seconds) || seconds < 0) return '—';
+  const s = Math.round(seconds);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 48) return `${h}h ${m % 60}m`;
+  return `${Math.floor(h / 24)}d ${h % 24}h`;
+}
+
+const pct = (v: number) => `${Math.round(v * 1000) / 10}%`;
+
+function BroadcastPerformancePanel({ stats }: { stats: BroadcastRunStats }) {
+  const cards: Array<{ label: string; value: string; sub?: string }> = [
+    { label: 'Delivered', value: `${stats.sent_count}/${stats.recipient_count}`, sub: pct(stats.delivery_rate) },
+    { label: 'Failed', value: String(stats.failed_count) },
+    {
+      label: 'Opened',
+      value: `${stats.unique_opens}`,
+      sub: `${pct(stats.open_rate)} · ${stats.total_opens} total opens`,
+    },
+    { label: 'Not opened', value: String(stats.not_opened_count) },
+    {
+      label: 'Clicked',
+      value: String(stats.unique_clickers),
+      sub: `${pct(stats.click_rate)} · ${stats.total_clicks} total clicks`,
+    },
+    { label: 'Repeat openers', value: String(stats.repeat_openers_count), sub: 'opened 2+ times' },
+    { label: 'Avg time to open', value: formatDuration(stats.avg_seconds_to_first_open) },
+    { label: 'Median time to open', value: formatDuration(stats.median_seconds_to_first_open) },
+  ];
+
+  return (
+    <div className="mb-6">
+      <div className="text-xs font-semibold uppercase tracking-wide text-[#5f6368] dark:text-[#9aa0a6] mb-2">
+        Performance
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+        {cards.map(({ label, value, sub }) => (
+          <div
+            key={label}
+            className="p-3 rounded-lg border border-[#e0e0e0] dark:border-[#3c4043] bg-[#fafafa] dark:bg-white/5"
+          >
+            <p className="text-[11px] text-[#5f6368] dark:text-[#9aa0a6]">{label}</p>
+            <p className="text-lg font-semibold text-[#202124] dark:text-[#e8eaed] leading-tight">{value}</p>
+            {sub && <p className="text-[11px] text-[#5f6368] dark:text-[#9aa0a6]">{sub}</p>}
+          </div>
+        ))}
+      </div>
+
+      {stats.proxy_opens > 0 && (
+        <p className="text-[11px] text-[#5f6368] dark:text-[#9aa0a6] mb-3">
+          {stats.proxy_opens} open{stats.proxy_opens === 1 ? '' : 's'} came from mail-client
+          privacy proxies (Apple/Gmail prefetch) — treat open counts as an upper bound.
+        </p>
+      )}
+
+      {stats.repeat_openers.length > 0 && (
+        <details className="mb-2 rounded-lg border border-[#e0e0e0] dark:border-[#3c4043]">
+          <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-[#202124] dark:text-[#e8eaed]">
+            Repeat openers ({stats.repeat_openers_count}) — most engaged first
+          </summary>
+          <div className="px-3 pb-2 divide-y divide-[#f0f0f0] dark:divide-white/5">
+            {stats.repeat_openers.map((o) => (
+              <div key={o.email} className="py-1.5 flex items-center justify-between gap-3 text-sm">
+                <div className="min-w-0">
+                  <span className="text-[#202124] dark:text-[#e8eaed] truncate">{o.name || o.email}</span>
+                  {o.name && <span className="ml-2 text-xs text-[#5f6368] dark:text-[#9aa0a6]">{o.email}</span>}
+                </div>
+                <span className="flex-shrink-0 text-xs text-[#5f6368] dark:text-[#9aa0a6]">
+                  {o.opens}× · last {relativeTime(o.last_open_at)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+
+      {stats.top_links.length > 0 && (
+        <details className="mb-2 rounded-lg border border-[#e0e0e0] dark:border-[#3c4043]">
+          <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-[#202124] dark:text-[#e8eaed]">
+            Top links ({stats.top_links.length})
+          </summary>
+          <div className="px-3 pb-2 divide-y divide-[#f0f0f0] dark:divide-white/5">
+            {stats.top_links.map((l) => (
+              <div key={l.url} className="py-1.5 flex items-center justify-between gap-3 text-sm">
+                <span className="truncate text-[#202124] dark:text-[#e8eaed]" title={l.url}>{l.url}</span>
+                <span className="flex-shrink-0 text-xs text-[#5f6368] dark:text-[#9aa0a6]">
+                  {l.clicks} click{l.clicks === 1 ? '' : 's'} · {l.unique_clickers} unique
+                </span>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+
+      {stats.failures_by_code.length > 0 && (
+        <details className="rounded-lg border border-red-200 dark:border-red-900">
+          <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-red-700 dark:text-red-300">
+            Failures by cause
+          </summary>
+          <div className="px-3 pb-2 divide-y divide-red-100 dark:divide-red-900/40">
+            {stats.failures_by_code.map((f) => (
+              <div key={f.error_code} className="py-1.5 flex items-center justify-between text-sm">
+                <span className="text-[#202124] dark:text-[#e8eaed]">{f.error_code}</span>
+                <span className="text-xs text-[#5f6368] dark:text-[#9aa0a6]">{f.count}</span>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+    </div>
+  );
+}
 
 function BroadcastDetailDialog({
   runId,
@@ -460,6 +791,8 @@ function BroadcastDetailDialog({
   const { data, isLoading, error } = useBroadcastRun(runId);
   // Recipients fetched eagerly while the dialog is open — feeds the "To" list.
   const recipients = useBroadcastRecipients(runId, open);
+  // Engagement stats — refreshes every 30s while the dialog is open.
+  const stats = useBroadcastStats(runId, open);
 
   const sanitizedHtml = useMemo(() => {
     if (!data?.body_html) return '';
@@ -570,6 +903,15 @@ function BroadcastDetailDialog({
                   <div>{data.error_message}</div>
                 </div>
               )}
+
+              {/* ── Performance ─────────────────────────────────────────── */}
+              {stats.data && (
+                <BroadcastPerformancePanel stats={stats.data} />
+              )}
+
+              <div className="text-xs font-semibold uppercase tracking-wide text-[#5f6368] dark:text-[#9aa0a6] mb-2">
+                Message
+              </div>
               <div
                 className="prose prose-sm dark:prose-invert max-w-none text-[#202124] dark:text-[#e8eaed]"
                 dangerouslySetInnerHTML={{ __html: sanitizedHtml }}

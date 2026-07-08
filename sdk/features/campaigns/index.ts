@@ -26,6 +26,7 @@ export {
   getCampaignStats,
   createCampaign,
   updateCampaign,
+  updateCampaignSteps,
   deleteCampaign,
   startCampaign,
   pauseCampaign,
@@ -41,10 +42,12 @@ export {
   revealLeadPhone,
   revealLeadLinkedIn,
   retryConnection,
+  withdrawConnection,
   saveInboundLeads,
   getInboundLeads,
   cancelLeadBookingsForReNurturing,
 } from './api';
+export type { WithdrawConnectionResult } from './api';
 
 // ============================================================================
 // HOOKS
@@ -93,6 +96,9 @@ export {
   type TemplateFilters as LinkedInTemplateFilters,
   type PersonalizedTemplate as PersonalizedLinkedInTemplate,
   type TemplateCategory as LinkedInTemplateCategory,
+  type TemplateMedia as LinkedInTemplateMedia,
+  type TemplateMediaType as LinkedInTemplateMediaType,
+  type TemplateMediaUploadResult as LinkedInTemplateMediaUploadResult,
   TEMPLATE_CATEGORIES as LINKEDIN_TEMPLATE_CATEGORIES,
   MESSAGE_VARIABLES as LINKEDIN_MESSAGE_VARIABLES,
   CONNECTION_MESSAGE_MAX_LENGTH as LINKEDIN_CONNECTION_MESSAGE_MAX_LENGTH,
@@ -116,6 +122,7 @@ export {
   createMessageTemplate as createLinkedInMessageTemplate,
   updateMessageTemplate as updateLinkedInMessageTemplate,
   deleteMessageTemplate as deleteLinkedInMessageTemplate,
+  uploadTemplateMedia as uploadLinkedInTemplateMedia,
   saveTemplatesToLocalStorage as saveLinkedInTemplatesToLocalStorage,
   loadTemplatesFromLocalStorage as loadLinkedInTemplatesFromLocalStorage,
   clearTemplatesFromLocalStorage as clearLinkedInTemplatesFromLocalStorage,

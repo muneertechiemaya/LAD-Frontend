@@ -11,6 +11,14 @@ const nextConfig = {
   // ✅ REQUIRED when importing ../sdk
   experimental: {
     externalDir: true,
+    // Raise the middleware/proxy request-body cap (Next default 10MB) so large
+    // multipart uploads survive the middleware layer. Media uploads (e.g.
+    // LinkedIn template videos) are capped at 25MB by the backend; 30MB leaves
+    // headroom for multipart boundary overhead. Without this, bodies >10MB are
+    // truncated and the upload proxy's `req.formData()` throws → "Internal error".
+    // NB: must live under `experimental` (top-level is ignored); the modern key
+    // is `proxyClientMaxBodySize` (replaces the deprecated middlewareClientMaxBodySize).
+    proxyClientMaxBodySize: '30mb',
   },
 
   // ✅ REQUIRED for monorepo standalone output.
@@ -84,6 +92,24 @@ const nextConfig = {
     ];
   },
 
+  // Templates moved from /campaigns/templates → /conversations/templates
+  // (now nested under Conversations in the sidebar). Redirect old bookmarks
+  // and deep links so they don't 404.
+  async redirects() {
+    return [
+      {
+        source: '/campaigns/templates',
+        destination: '/conversations/templates',
+        permanent: false,
+      },
+      {
+        source: '/campaigns/templates/:path*',
+        destination: '/conversations/templates/:path*',
+        permanent: false,
+      },
+    ];
+  },
+
   async headers() {
     return [
       {
@@ -140,6 +166,16 @@ const nextConfig = {
     ];
   },
 
+  // ⚠️ TEMPORARY — not permanent.
+  // While this is true, `next build` skips type-checking entirely, which is how
+  // two missing-export runtime crashes shipped to users in one day (proxyGet
+  // from '@/lib/api'; community-roi's useDataImport). It stays true only because
+  // develop currently carries ~363 pre-existing type errors — flipping it now
+  // would fail every Docker / Cloud Run build.
+  // A report-only `tsc --noEmit` CI gate now surfaces these on every PR
+  // (.github/workflows/ci.yml → type-check job). PHASE 2: once that baseline is
+  // burned down to 0, DELETE this block and make the CI gate blocking so
+  // `next build` enforces types too.
   typescript: {
     ignoreBuildErrors: true,
   },

@@ -27,6 +27,19 @@ export type Template = {
   read: number;
   failed: number;
   pending: number;
+  /** Which channel this broadcast went out on. Rendered as a chip in the
+   *  subtitle + prefixed in the dropdown so mixed-channel lists stay legible.
+   *  For email, `read` = unique opens (tracking pixel) and `delivered` =
+   *  sent-but-not-opened. */
+  channel?: 'WhatsApp' | 'Gmail' | 'Outlook' | 'Email';
+};
+
+// Channel chip colors — aligned with the app's channel branding.
+const CHANNEL_CHIP: Record<NonNullable<Template['channel']>, { bg: string; fg: string }> = {
+  WhatsApp: { bg: '#d1fae5', fg: '#059669' },  // emerald
+  Gmail:    { bg: '#fee2e2', fg: '#dc2626' },  // red
+  Outlook:  { bg: '#dbeafe', fg: '#2563eb' },  // blue
+  Email:    { bg: '#e2e8f0', fg: '#475569' },  // slate (custom SMTP / unknown)
 };
 
 export type BroadcastPerformanceProps = {
@@ -400,7 +413,9 @@ export function BroadcastPerformance({
                     title={t.name}
                   >
                     {templates.map(opt => (
-                      <option key={opt.id} value={opt.id}>{opt.name}</option>
+                      <option key={opt.id} value={opt.id}>
+                        {opt.channel ? `${opt.channel} · ${opt.name}` : opt.name}
+                      </option>
                     ))}
                   </select>
                   <span className="chev"><Chevron /></span>
@@ -413,6 +428,24 @@ export function BroadcastPerformance({
                   <span className="lad-bp-mono" style={{ color: C.ink2 }}>
                     {t.lastSent}
                   </span>
+                  {t.channel && (
+                    <span
+                      aria-label={`Channel: ${t.channel}`}
+                      style={{
+                        marginLeft: 8,
+                        padding: '2px 8px',
+                        borderRadius: 999,
+                        fontSize: 10,
+                        fontWeight: 600,
+                        letterSpacing: '0.02em',
+                        background: CHANNEL_CHIP[t.channel].bg,
+                        color: CHANNEL_CHIP[t.channel].fg,
+                        verticalAlign: 'middle',
+                      }}
+                    >
+                      {t.channel}
+                    </span>
+                  )}
                 </div>
               </div>
             </td>
