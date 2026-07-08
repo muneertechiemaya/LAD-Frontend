@@ -4533,27 +4533,6 @@ export default function AdvancedSearchAIPage() {
                     />
                 );
             case "builder-keyframes-confirm":
-                if (mb.uiPayload?.status === "active" || mb.uiPayload?.phase === "Storyboard Generation" || !mb.uiPayload?.images || mb.uiPayload.images.length === 0) {
-                    return (
-                        <AgentBuilderVideoProgress
-                            title={mb.uiPayload?.question}
-                            description={mb.uiPayload?.description}
-                            blocks={mb.uiPayload?.blocks || []}
-                            phase={mb.uiPayload?.phase}
-                            videoUrl={mb.uiPayload?.video}
-                            status={mb.uiPayload?.status}
-                            progress={mb.uiPayload?.progress}
-                            onBack={() => mb.undoStep()}
-                            onNext={(val) => {
-                                if (val === "[SHOW_GALLERY]") {
-                                    mb.fetchGallery();
-                                } else {
-                                    submitMediaInput(val, val);
-                                }
-                            }}
-                        />
-                    );
-                }
                 return (
                     <AgentBuilderKeyframesConfirm
                         title={mb.uiPayload?.question}
