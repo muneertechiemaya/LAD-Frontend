@@ -898,15 +898,27 @@ export default function AdvancedSearchAIPage() {
     useEffect(() => {
         if (mb.uiPayload?.history) {
             console.warn("[SessionHydrate] Restoring messages list from session history payload");
-            const restoredHistory = mb.uiPayload.history.map((m: any) => ({
-                id: m.id || `msg-${Math.random()}`,
-                role: m.role,
-                text: m.text,
-                description: m.description,
-                step: m.step,
-                payload: m.payload,
-                timestamp: new Date(m.timestamp || Date.now())
-            }));
+            const restoredHistory = mb.uiPayload.history.map((m: any) => {
+                let mappedPayload = m.payload;
+                if (m.payload) {
+                    mappedPayload = {
+                        ...m.payload,
+                        step: m.payload.step || m.payload.step_type,
+                        question: m.payload.question || m.payload.title,
+                        description: m.payload.description,
+                        phase: m.payload.phase
+                    };
+                }
+                return {
+                    id: m.id || `msg-${Math.random()}`,
+                    role: m.role,
+                    text: m.text,
+                    description: m.description,
+                    step: m.step,
+                    payload: mappedPayload,
+                    timestamp: new Date(m.timestamp || Date.now())
+                };
+            });
             setMediaMessages(restoredHistory);
         }
     }, [mb.uiPayload?.history]);
@@ -2308,11 +2320,16 @@ export default function AdvancedSearchAIPage() {
         if (mb.step !== "loading" && !mb.generating && mb.uiPayload) {
             setMediaMessages(prev => {
                 // Check if this step already exists in history (for undo truncation)
-                const existingIndex = prev.findIndex(m => 
-                    m.step === mb.step && 
-                    m.payload?.phase === mb.uiPayload?.phase && 
-                    m.payload?.question === mb.uiPayload?.question
-                );
+                const existingIndex = prev.findIndex(m => {
+                    const isStepTypeMatch = m.step === mb.step;
+                    const mPhase = m.payload?.phase || m.payload?.phase_label;
+                    const uiPhase = mb.uiPayload?.phase;
+                    const isPhaseMatch = mPhase === uiPhase;
+                    const mQuestion = m.payload?.question || m.payload?.title || m.text;
+                    const uiQuestion = mb.uiPayload?.question || mb.uiPayload?.title;
+                    const isQuestionMatch = mQuestion === uiQuestion;
+                    return isStepTypeMatch && isPhaseMatch && isQuestionMatch;
+                });
 
                 if (existingIndex !== -1) {
                     return prev.slice(0, existingIndex + 1);
@@ -2320,10 +2337,18 @@ export default function AdvancedSearchAIPage() {
 
                 // Avoid duplicate additions of the current active step, but update its payload with the latest data
                 const lastMsg = prev[prev.length - 1];
-                if (lastMsg && 
-                    lastMsg.step === mb.step && 
-                    lastMsg.payload?.phase === mb.uiPayload?.phase && 
-                    lastMsg.payload?.question === mb.uiPayload?.question) {
+                const isLastMsgMatch = lastMsg && (() => {
+                    const isStepTypeMatch = lastMsg.step === mb.step;
+                    const mPhase = lastMsg.payload?.phase || lastMsg.payload?.phase_label;
+                    const uiPhase = mb.uiPayload?.phase;
+                    const isPhaseMatch = mPhase === uiPhase;
+                    const mQuestion = lastMsg.payload?.question || lastMsg.payload?.title || lastMsg.text;
+                    const uiQuestion = mb.uiPayload?.question || mb.uiPayload?.title;
+                    const isQuestionMatch = mQuestion === uiQuestion;
+                    return isStepTypeMatch && isPhaseMatch && isQuestionMatch;
+                })();
+
+                if (isLastMsgMatch) {
                     return prev.map((m, idx) => idx === prev.length - 1 ? {
                         ...m,
                         text: mb.uiPayload?.question || m.text,
