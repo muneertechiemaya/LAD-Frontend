@@ -33,6 +33,8 @@ export function AgentBuilderVideoProgress({
   const [retryCounts, setRetryCounts] = React.useState<Record<string, number>>({});
   const [cooldowns, setCooldowns] = React.useState<Record<string, number>>({});
 
+  const isExtraction = phase?.toLowerCase().includes("dna") || phase?.toLowerCase().includes("extraction") || phase?.toLowerCase().includes("business");
+
   React.useEffect(() => {
     const timer = setInterval(() => {
       setCooldowns((prev) => {
@@ -131,13 +133,14 @@ export function AgentBuilderVideoProgress({
       }
       cleanLabel = cleanLabel.replace(pctRegex, "").replace(/\s+/g, " ").trim();
     }
-    return { ...block, label: cleanLabel };
+    const blockValue = status === "completed" ? "completed" : block.value;
+    return { ...block, label: cleanLabel, value: blockValue };
   });
 
   const total = cleanBlocks.length || 4;
   const totalWeight = cleanBlocks.reduce((acc, b) => acc + getWeight(b.value), 0);
   const allCompleted = cleanBlocks.length > 0 && cleanBlocks.every((b) => b.value === "completed");
-  const progressPercent = extractedProgress !== undefined ? extractedProgress : (allCompleted ? 100 : Math.min(99, Math.round((totalWeight / total) * 100)));
+  const progressPercent = status === "completed" ? 100 : (extractedProgress !== undefined ? extractedProgress : (allCompleted ? 100 : Math.min(99, Math.round((totalWeight / total) * 100))));
 
   const handleDownload = async () => {
     if (!videoUrl) return;
@@ -363,14 +366,14 @@ export function AgentBuilderVideoProgress({
             <div className="flex items-center gap-2 mb-1">
               <Loader2 className="size-3 text-slate-500 animate-spin" />
               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest animate-pulse">
-                Processing Generation Loop...
+                {isExtraction ? "Extracting Brand Guidelines..." : "Processing Generation Loop..."}
               </span>
             </div>
             <button
               onClick={() => onNext?.("[CANCEL_VIDEO_GEN]")}
               className="w-full max-w-[280px] py-2 bg-white border border-red-200 hover:bg-red-50 text-red-600 font-bold text-[11px] rounded-xl transition-all active:scale-95 cursor-pointer text-center flex items-center justify-center gap-1 shadow-sm"
             >
-              Stop & Keep Video
+              {isExtraction ? "Stop Extraction" : "Stop & Keep Video"}
             </button>
           </>
         ) : (

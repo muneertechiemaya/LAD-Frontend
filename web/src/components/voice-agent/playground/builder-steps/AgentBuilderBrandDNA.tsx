@@ -40,12 +40,16 @@ export function AgentBuilderBrandDNA({
   onNext,
   phase,
   onBack,
+  hideButtons = false,
+  fullBleed = false,
 }: {
   brandDna?: BrandDnaData;
   onClose?: () => void;
   onNext: (val: string) => void;
   phase?: string;
   onBack?: () => void;
+  hideButtons?: boolean;
+  fullBleed?: boolean;
 }) {
   const [copiedColor, setCopiedColor] = useState<string | null>(null);
   const [zoomedAsset, setZoomedAsset] = useState<BrandAsset | null>(null);
@@ -106,7 +110,12 @@ export function AgentBuilderBrandDNA({
 
   if (!brandDna) {
     return (
-      <div className="relative flex flex-col items-center justify-center w-[448px] max-w-full h-[600px] bg-white rounded-3xl border border-slate-200 shadow-xl p-8">
+      <div className={cn(
+        "relative flex flex-col items-center justify-center p-8",
+        fullBleed 
+          ? "w-full h-full bg-transparent" 
+          : "w-[448px] max-w-full h-[88%] max-h-[660px] min-h-[460px] bg-white rounded-3xl border border-slate-200 shadow-xl"
+      )}>
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0b1957]" />
         <p className="mt-4 text-sm font-semibold text-slate-500">Loading Brand DNA Profile...</p>
       </div>
@@ -130,34 +139,32 @@ export function AgentBuilderBrandDNA({
   }
 
   return (
-    <div className="relative flex flex-col items-center w-[448px] max-w-full h-[600px] bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+    <div className={cn(
+      "relative flex flex-col items-center overflow-hidden transition-all duration-300",
+      fullBleed 
+        ? "w-full h-full bg-transparent" 
+        : "w-[448px] max-w-full h-[88%] max-h-[660px] min-h-[460px] bg-white rounded-3xl border border-slate-200 shadow-xl animate-in fade-in zoom-in-95"
+    )}>
       
       {/* Header */}
-      <div className="w-full flex flex-shrink-0 items-center justify-between p-4 border-b border-slate-100 bg-white/80 z-10">
-        <div className="flex items-center gap-2 pl-10">
-          <Sparkles className="size-4 text-emerald-500" />
-          <span className="text-[11px] font-bold text-[#0b1957] uppercase tracking-wider">
-            {phase || "Phase 0.5: Brand DNA"}
-          </span>
+      {!fullBleed && (
+        <div className="w-full flex flex-shrink-0 items-center justify-between p-4 border-b border-slate-100 bg-white/80 z-10">
+          <div className="flex items-center gap-2 pl-4">
+            <Sparkles className="size-4 text-emerald-500" />
+            <span className="text-[11px] font-bold text-[#0b1957] uppercase tracking-wider">
+              {"Extracted Brand DNA"}
+            </span>
+          </div>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="p-1.5 bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-all active:scale-95 border border-slate-100"
+            >
+              <X className="size-4" />
+            </button>
+          )}
         </div>
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="p-1.5 bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-all active:scale-95 border border-slate-100"
-          >
-            <X className="size-4" />
-          </button>
-        )}
-      </div>
-
-      {/* Back Arrow */}
-      <button
-        onClick={onBack || (() => onNext("Go back"))}
-        className="absolute top-4 left-4 z-50 p-1.5 bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 transition-all active:scale-95 border border-slate-100"
-        aria-label="Go back"
-      >
-        <ArrowLeft className="size-4" />
-      </button>
+      )}
 
       {/* Main Content Area */}
       <div className="flex-1 w-full overflow-y-auto scrollbar-none pt-6 px-6 pb-20 space-y-6">
@@ -450,22 +457,24 @@ export function AgentBuilderBrandDNA({
       </div>
 
       {/* Bottom Sticky Action Panel */}
-      <div className="absolute bottom-0 left-0 right-0 w-full flex-shrink-0 flex justify-between pb-5 px-6 pt-3 bg-gradient-to-t from-white via-white/95 to-transparent z-20 gap-3">
-        <button
-          type="button"
-          onClick={() => onNext("Request Changes")}
-          className="flex-1 py-3 rounded-full font-bold border border-slate-300 bg-white hover:bg-slate-50 text-[#0b1957] shadow-sm active:scale-95 transition-all text-center cursor-pointer"
-        >
-          Request Changes
-        </button>
-        <button
-          type="button"
-          onClick={() => onNext("Select this & start")}
-          className="flex-1 py-3 rounded-full font-bold shadow-lg bg-gradient-to-br from-[#0b1957] to-[#1e293b] text-white hover:shadow-xl hover:shadow-[#0b1957]/10 active:scale-95 transition-all text-center cursor-pointer"
-        >
-          Select this & start
-        </button>
-      </div>
+      {!hideButtons && (
+        <div className="absolute bottom-0 left-0 right-0 w-full flex-shrink-0 flex justify-between pb-5 px-6 pt-3 bg-gradient-to-t from-white via-white/95 to-transparent z-20 gap-3">
+          <button
+            type="button"
+            onClick={() => onNext("Request Changes")}
+            className="flex-1 py-3 rounded-full font-bold border border-slate-300 bg-white hover:bg-slate-50 text-[#0b1957] shadow-sm active:scale-95 transition-all text-center cursor-pointer"
+          >
+            Request Changes
+          </button>
+          <button
+            type="button"
+            onClick={() => onNext("Select this & start")}
+            className="flex-1 py-3 rounded-full font-bold shadow-lg bg-gradient-to-br from-[#0b1957] to-[#1e293b] text-white hover:shadow-xl hover:shadow-[#0b1957]/10 active:scale-95 transition-all text-center cursor-pointer"
+          >
+            Select this & start
+          </button>
+        </div>
+      )}
 
       {/* Asset Zoom Overlay modal */}
       <AnimatePresence>

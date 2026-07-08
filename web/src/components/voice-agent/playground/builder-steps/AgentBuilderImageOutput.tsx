@@ -1,4 +1,5 @@
 import React from "react";
+import { createPortal } from "react-dom";
 import { X, Sparkles, Download, Maximize2, ChevronLeft, ChevronRight, Check, Loader2, Video, ArrowLeft } from "lucide-react";
 import { BuilderBottomInput } from "./BuilderBottomInput";
 import ReactMarkdown from "react-markdown";
@@ -39,6 +40,7 @@ export function AgentBuilderImageOutput({
   isUploading = false,
   error = "",
   onBack,
+  hideHeader = false,
 }: {
   title?: string;
   description?: string;
@@ -54,8 +56,13 @@ export function AgentBuilderImageOutput({
   isUploading?: boolean;
   error?: string;
   onBack?: () => void;
+  hideHeader?: boolean;
 }) {
   const [previewImage, setPreviewImage] = React.useState<string | null>(null);
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
   const [activeIndex, setActiveIndex] = React.useState(0);
   const carouselRef = React.useRef<HTMLDivElement>(null);
   const [selectedPaths, setSelectedPaths] = React.useState<{ [idx: number]: string }>({});
@@ -213,50 +220,59 @@ export function AgentBuilderImageOutput({
   };
 
   return (
-    <div className="relative flex flex-col items-center w-[512px] max-w-full h-[650px] bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-300 outline-none focus:outline-none focus:ring-0">
+    <div className={hideHeader 
+      ? "relative flex flex-col items-center w-full min-h-0 bg-transparent overflow-visible outline-none focus:outline-none focus:ring-0" 
+      : "relative flex flex-col items-center w-[512px] max-w-full h-[650px] bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-300 outline-none focus:outline-none focus:ring-0"
+    }>
       
       {/* Header */}
-      <div className="w-full flex shrink-0 items-center justify-between p-4 border-b border-slate-100 bg-white/80 z-10">
-        <div className="flex items-center gap-2">
-          {onBack && (
+      {!hideHeader && (
+        <div className="w-full flex shrink-0 items-center justify-between p-4 border-b border-slate-100 bg-white/80 z-10">
+          <div className="flex items-center gap-2">
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="mr-1 p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-all active:scale-95 border border-transparent hover:border-slate-100"
+                aria-label="Go back"
+              >
+                <ArrowLeft className="size-4" />
+              </button>
+            )}
+            <Sparkles className="size-4 text-emerald-500 animate-pulse" />
+            <span className="text-[11px] font-bold text-[#0b1957] uppercase tracking-wider">
+              {phase || "Media Generation"}
+            </span>
+          </div>
+          {onClose && (
             <button
-              onClick={onBack}
-              className="mr-1 p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-all active:scale-95 border border-transparent hover:border-slate-100"
-              aria-label="Go back"
+              onClick={onClose}
+              className="p-1.5 bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-all active:scale-95 border border-slate-100"
             >
-              <ArrowLeft className="size-4" />
+              <X className="size-4" />
             </button>
           )}
-          <Sparkles className="size-4 text-emerald-500 animate-pulse" />
-          <span className="text-[11px] font-bold text-[#0b1957] uppercase tracking-wider">
-            {phase || "Media Generation"}
-          </span>
         </div>
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="p-1.5 bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-all active:scale-95 border border-slate-100"
-          >
-            <X className="size-4" />
-          </button>
-        )}
-      </div>
+      )}
 
       {/* Main Grid View */}
-      <div className="relative flex-1 min-h-0 w-full flex flex-col pt-4">
-        <div className="flex-grow overflow-y-auto scrollbar-none px-6 pb-12">
-          <h2 className="text-lg font-bold text-[#0b1957] text-center leading-snug mb-2">
-            {title}
-          </h2>
-          {description && (
-            <div className="text-xs text-slate-500 text-center mb-4 italic px-4 leading-relaxed font-medium">
-              <ReactMarkdown>{description}</ReactMarkdown>
-            </div>
+      <div className={hideHeader ? "relative w-full flex flex-col pt-2" : "relative flex-1 min-h-0 w-full flex flex-col pt-4"}>
+        <div className={hideHeader ? "w-full flex flex-col pb-2" : "flex-grow overflow-y-auto scrollbar-none px-6 pb-12"}>
+          {!hideHeader && (
+            <>
+              <h2 className="text-lg font-bold text-[#0b1957] text-center leading-snug mb-2">
+                {title}
+              </h2>
+              {description && (
+                <div className="text-xs text-slate-500 text-center mb-4 italic px-4 leading-relaxed font-medium">
+                  <ReactMarkdown>{description}</ReactMarkdown>
+                </div>
+              )}
+            </>
           )}
 
           {/* Animated Video Preview */}
           {video && (
-            <div className="w-full max-w-sm mx-auto mb-6 rounded-2xl overflow-hidden border border-slate-100 shadow-[0_4px_20px_rgba(11,25,87,0.15)] bg-slate-950 aspect-video flex items-center justify-center relative group">
+            <div className={`w-full mx-auto mb-6 rounded-2xl overflow-hidden border border-slate-100 shadow-[0_4px_20px_rgba(11,25,87,0.15)] bg-slate-950 aspect-video flex items-center justify-center relative group ${hideHeader ? 'max-w-[480px]' : 'max-w-sm'}`}>
               <video
                 src={video}
                 autoPlay
@@ -272,7 +288,7 @@ export function AgentBuilderImageOutput({
           )}
 
           {/* Carousel Wrapper */}
-          <div className="relative w-full max-w-sm mx-auto flex items-center">
+          <div className={`relative w-full mx-auto flex items-center ${hideHeader ? 'max-w-[580px]' : 'max-w-sm'}`}>
             {/* Previous Carousel Button */}
             {images.length > 1 && (
               <button
@@ -390,99 +406,102 @@ export function AgentBuilderImageOutput({
         {/* Fade overlay at the bottom of the scrollable area */}
         <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-white via-white/80 to-transparent pointer-events-none z-10" />
       </div>
-
       {/* Full screen preview lightbox */}
-      {previewImage && (() => {
-        const currentPreviewIndex = images.indexOf(previewImage);
-        return (
-          <div 
-            className="absolute inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-4 animate-in fade-in duration-200"
-            onClick={() => setPreviewImage(null)}
-          >
-            <button
-              type="button"
+      {previewImage && mounted && createPortal(
+        (() => {
+          const currentPreviewIndex = images.indexOf(previewImage);
+          return (
+            <div 
+              className="fixed inset-0 bg-black/90 flex flex-col items-center justify-center p-4 animate-in fade-in duration-200"
+              style={{ zIndex: 99999 }}
               onClick={() => setPreviewImage(null)}
-              className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all active:scale-95 z-55"
             >
-              <X className="size-5" />
-            </button>
-
-            {images.length > 1 && (
-              <>
-                {/* Previous Lightbox Button */}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (currentPreviewIndex > 0) {
-                      setPreviewImage(images[currentPreviewIndex - 1]);
-                    }
-                  }}
-                  disabled={currentPreviewIndex <= 0}
-                  className="absolute left-6 top-1/2 -translate-y-1/2 z-55 p-3 bg-white/10 hover:bg-white/20 text-white disabled:opacity-20 hover:disabled:bg-white/10 rounded-full transition-all active:scale-95 opacity-50 hover:opacity-100 flex items-center justify-center cursor-pointer shadow-lg"
-                  title="Previous concept"
-                >
-                  <ChevronLeft className="size-6" />
-                </button>
-
-                {/* Next Lightbox Button */}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (currentPreviewIndex < images.length - 1) {
-                      setPreviewImage(images[currentPreviewIndex + 1]);
-                    }
-                  }}
-                  disabled={currentPreviewIndex >= images.length - 1}
-                  className="absolute right-6 top-1/2 -translate-y-1/2 z-55 p-3 bg-white/10 hover:bg-white/20 text-white disabled:opacity-20 hover:disabled:bg-white/10 rounded-full transition-all active:scale-95 opacity-50 hover:opacity-100 flex items-center justify-center cursor-pointer shadow-lg"
-                  title="Next concept"
-                >
-                  <ChevronRight className="size-6" />
-                </button>
-              </>
-            )}
-            
-            <img
-              src={previewImage}
-              alt="Fullscreen concept preview"
-              className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            />
-            
-            <div className="mt-4 flex gap-4" onClick={(e) => e.stopPropagation()}>
-              <button
-                type="button"
-                onClick={() => {
-                  setPreviewImage(null);
-                  onNext?.(`[ANIMATE_IMAGE] index=${currentPreviewIndex}`);
-                }}
-                className="px-4 py-2 bg-gradient-to-br from-[#0b1957] to-[#1e293b] hover:from-[#0b1957] hover:to-[#0b1957] text-white rounded-xl font-bold text-xs flex items-center gap-2 transition-all active:scale-95 shadow-lg cursor-pointer"
-              >
-                <Video className="size-4" />
-                Animate Concept
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  handleDownload(previewImage, currentPreviewIndex >= 0 ? currentPreviewIndex : 0);
-                }}
-                className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-900 rounded-xl font-bold text-xs flex items-center gap-2 transition-all active:scale-95 shadow-lg"
-              >
-                <Download className="size-4" />
-                Download Image
-              </button>
               <button
                 type="button"
                 onClick={() => setPreviewImage(null)}
-                className="px-4 py-2 bg-white/15 hover:bg-white/25 text-white rounded-xl font-bold text-xs transition-all active:scale-95"
+                className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all active:scale-95 z-55"
               >
-                Close
+                <X className="size-5" />
               </button>
+
+              {images.length > 1 && (
+                <>
+                  {/* Previous Lightbox Button */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (currentPreviewIndex > 0) {
+                        setPreviewImage(images[currentPreviewIndex - 1]);
+                      }
+                    }}
+                    disabled={currentPreviewIndex <= 0}
+                    className="absolute left-6 top-1/2 -translate-y-1/2 z-55 p-3 bg-white/10 hover:bg-white/20 text-white disabled:opacity-20 hover:disabled:bg-white/10 rounded-full transition-all active:scale-95 opacity-50 hover:opacity-100 flex items-center justify-center cursor-pointer shadow-lg"
+                    title="Previous concept"
+                  >
+                    <ChevronLeft className="size-6" />
+                  </button>
+
+                  {/* Next Lightbox Button */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (currentPreviewIndex < images.length - 1) {
+                        setPreviewImage(images[currentPreviewIndex + 1]);
+                      }
+                    }}
+                    disabled={currentPreviewIndex >= images.length - 1}
+                    className="absolute right-6 top-1/2 -translate-y-1/2 z-55 p-3 bg-white/10 hover:bg-white/20 text-white disabled:opacity-20 hover:disabled:bg-white/10 rounded-full transition-all active:scale-95 opacity-50 hover:opacity-100 flex items-center justify-center cursor-pointer shadow-lg"
+                    title="Next concept"
+                  >
+                    <ChevronRight className="size-6" />
+                  </button>
+                </>
+              )}
+              
+              <img
+                src={previewImage}
+                alt="Fullscreen concept preview"
+                className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              />
+              
+              <div className="mt-4 flex gap-4" onClick={(e) => e.stopPropagation()}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPreviewImage(null);
+                    onNext?.(`[ANIMATE_IMAGE] index=${currentPreviewIndex}`);
+                  }}
+                  className="px-4 py-2 bg-gradient-to-br from-[#0b1957] to-[#1e293b] hover:from-[#0b1957] hover:to-[#0b1957] text-white rounded-xl font-bold text-xs flex items-center gap-2 transition-all active:scale-95 shadow-lg cursor-pointer"
+                >
+                  <Video className="size-4" />
+                  Animate Concept
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleDownload(previewImage, currentPreviewIndex >= 0 ? currentPreviewIndex : 0);
+                  }}
+                  className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-900 rounded-xl font-bold text-xs flex items-center gap-2 transition-all active:scale-95 shadow-lg"
+                >
+                  <Download className="size-4" />
+                  Download Image
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewImage(null)}
+                  className="px-4 py-2 bg-white/15 hover:bg-white/25 text-white rounded-xl font-bold text-xs transition-all active:scale-95"
+                >
+                  Close
+                </button>
+              </div>
             </div>
-          </div>
-        );
-      })()}
+          );
+        })(),
+        document.body
+      )}
 
       {/* Generating/Loading Overlay if in revision */}
       {generating && (
@@ -496,7 +515,7 @@ export function AgentBuilderImageOutput({
       )}
 
       {/* Uploaded References Thumbnails Area */}
-      {(references.length > 0 || isUploading) && (
+      {!hideHeader && (references.length > 0 || isUploading) && (
         <div className="w-full flex flex-col px-8 mb-2 z-30 space-y-1 animate-in fade-in duration-200">
           <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
             References ({references.length}/5)
@@ -530,19 +549,21 @@ export function AgentBuilderImageOutput({
       )}
 
       {/* Refinement input bar */}
-      <div className="w-full flex flex-col mt-auto pb-6 pt-2 bg-gradient-to-t from-white via-white to-transparent relative z-20 border-t border-slate-50">
-        {references.length > 0 && (
-          <div className="text-[10px] text-slate-500 font-medium italic text-center px-6 mb-2 animate-in fade-in duration-200">
-            user has attached {references.length} references with this request.
-          </div>
-        )}
-        <BuilderBottomInput
-          onSend={(val) => onNext?.(val)}
-          placeholder="Describe changes you want..."
-          enableUpload={true}
-          onFilesSelected={handleFilesSelected}
-        />
-      </div>
+      {!hideHeader && (
+        <div className="w-full flex flex-col mt-auto pb-6 pt-2 bg-gradient-to-t from-white via-white to-transparent relative z-20 border-t border-slate-50">
+          {references.length > 0 && (
+            <div className="text-[10px] text-slate-500 font-medium italic text-center px-6 mb-2 animate-in fade-in duration-200">
+              user has attached {references.length} references with this request.
+            </div>
+          )}
+          <BuilderBottomInput
+            onSend={(val) => onNext?.(val)}
+            placeholder="Describe changes you want..."
+            enableUpload={true}
+            onFilesSelected={handleFilesSelected}
+          />
+        </div>
+      )}
     </div>
   );
 }
