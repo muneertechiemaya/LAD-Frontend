@@ -10040,6 +10040,7 @@ function MediaStepWidget({
                 </div>
             );
         case "builder-video-progress":
+            if (isActive) return null;
             return (
                 <div className="mt-2 w-[448px] max-w-full bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-md">
                     <AgentBuilderVideoProgress
