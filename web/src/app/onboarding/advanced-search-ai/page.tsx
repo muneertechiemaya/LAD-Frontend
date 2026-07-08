@@ -942,7 +942,8 @@ export default function AdvancedSearchAIPage() {
 
     const isSplitScreenStep = mediaMode && (
         mb.step === "builder-brand-dna" ||
-        mb.step === "builder-video-progress"
+        mb.step === "builder-video-progress" ||
+        mb.step === "builder-keyframes-confirm"
     );
 
     const [mediaPlaceholder, setMediaPlaceholder] = useState('Ask Mr LAD / type response...');
@@ -4528,6 +4529,43 @@ export default function AdvancedSearchAIPage() {
                         videoUrl={mb.uiPayload?.video}
                         onNext={(val) => submitMediaInput("Proceed", val)}
                         phase={mb.uiPayload?.phase}
+                        onBack={() => mb.undoStep()}
+                    />
+                );
+            case "builder-keyframes-confirm":
+                if (mb.uiPayload?.status === "active" || mb.uiPayload?.phase === "Storyboard Generation" || !mb.uiPayload?.images || mb.uiPayload.images.length === 0) {
+                    return (
+                        <AgentBuilderVideoProgress
+                            title={mb.uiPayload?.question}
+                            description={mb.uiPayload?.description}
+                            blocks={mb.uiPayload?.blocks || []}
+                            phase={mb.uiPayload?.phase}
+                            videoUrl={mb.uiPayload?.video}
+                            status={mb.uiPayload?.status}
+                            progress={mb.uiPayload?.progress}
+                            onBack={() => mb.undoStep()}
+                            onNext={(val) => {
+                                if (val === "[SHOW_GALLERY]") {
+                                    mb.fetchGallery();
+                                } else {
+                                    submitMediaInput(val, val);
+                                }
+                            }}
+                        />
+                    );
+                }
+                return (
+                    <AgentBuilderKeyframesConfirm
+                        title={mb.uiPayload?.question}
+                        description={mb.uiPayload?.description}
+                        keyframes={mb.uiPayload?.images || []}
+                        onNext={(val) => submitMediaInput(val || "", val)}
+                        phase={mb.uiPayload?.phase}
+                        references={mb.references}
+                        onUpload={mb.uploadReference}
+                        onRemove={mb.removeReference}
+                        isUploading={mb.isUploading}
+                        error={mb.error}
                         onBack={() => mb.undoStep()}
                     />
                 );
