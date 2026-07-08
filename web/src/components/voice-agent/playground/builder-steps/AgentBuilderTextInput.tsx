@@ -122,7 +122,7 @@ export function AgentBuilderTextInput({
         </div>
       )}
 
-      <div className="w-full flex flex-col mt-auto pb-4 pt-2 bg-gradient-to-t from-white via-white to-transparent relative z-20">
+      <div className="w-full flex flex-col mt-auto pb-6 pt-2 bg-gradient-to-t from-white via-white to-transparent relative z-20">
          {showSkip && (
             <div className="w-full flex justify-end px-6 -mb-1 z-10">
               <button 
