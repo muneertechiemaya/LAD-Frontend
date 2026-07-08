@@ -851,7 +851,8 @@ export default function AdvancedSearchAIPage() {
     );
 
     const isSplitScreenStep = mediaMode && (
-        mb.step === "builder-brand-dna"
+        mb.step === "builder-brand-dna" ||
+        mb.step === "builder-video-progress"
     );
 
     const [mediaPlaceholder, setMediaPlaceholder] = useState('Ask Mr LAD / type response...');
