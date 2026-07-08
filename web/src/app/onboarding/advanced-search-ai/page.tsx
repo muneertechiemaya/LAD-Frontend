@@ -10133,7 +10133,7 @@ function SessionSelector({ mb }: { mb: any }) {
                 style={{ background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: '6px' }}
             >
                 <History className="size-4" />
-                Sessions ({mb.pastSessions?.length || 0})
+                History
             </button>
 
             {isOpen && (
