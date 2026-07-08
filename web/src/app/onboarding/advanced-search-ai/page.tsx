@@ -4591,10 +4591,10 @@ export default function AdvancedSearchAIPage() {
                                     setMediaMessages([]);
                                     lastRestoredSessionIdRef.current = "";
                                 }}
-                                className="adv-media-header-exit cursor-pointer"
+                                className="adv-media-header-exit-btn cursor-pointer"
                             >
-                                <X className="size-4" />
-                                Exit Media Gen
+                                <X className="size-4" style={{ flexShrink: 0 }} />
+                                <span>Exit Media Gen</span>
                             </button>
                         </div>
                     </div>
@@ -4672,20 +4672,11 @@ export default function AdvancedSearchAIPage() {
                                             submitMediaInput={submitMediaInput}
                                         />
                                     ))}
-                                    {/* Inline Loader Bubble — rendered dynamically below messages, avoiding history flickering */}
+                                    {/* Inline Loader — rendered dynamically below messages, perfectly centered in the left chat/split container */}
                                     {(mb.step === "loading" || mb.generating) && (
-                                        <MediaBubble
-                                            msg={{
-                                                id: "generating-loader",
-                                                role: "ai",
-                                                text: mb.generating ? "Generating Concepts..." : "Waking up Mr. LADs...",
-                                                loading: true,
-                                                timestamp: new Date()
-                                            }}
-                                            isActive={true}
-                                            mb={mb}
-                                            submitMediaInput={submitMediaInput}
-                                        />
+                                        <div className="w-full flex justify-center py-12 fadeUp">
+                                            <ThinkingIndicator generating={mb.generating} />
+                                        </div>
                                     )}
                                 </>
                             ) : (
@@ -11113,8 +11104,10 @@ const css = `
                 font-size: 15px;
                 font-weight: 600;
                 color: #0b1957;
-                text-align: center;
-                flex-grow: 1;
+                position: absolute;
+                left: 50%;
+                transform: translateX(-50%);
+                pointer-events: none;
             }
             .dark .adv-media-header-title {
                 color: #60a5fa;
@@ -11136,6 +11129,47 @@ const css = `
                 background: #fee2e2;
             }
             .dark .adv-media-header-exit {
+                background: rgba(239,68,68,0.1);
+                border-color: #ef4444;
+            }
+            .adv-media-header-exit-btn {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 0px;
+                padding: 7px;
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                border: 1.5px solid #ef4444;
+                background: #fef2f2;
+                color: #ef4444;
+                font-size: 12px;
+                font-weight: 600;
+                overflow: hidden;
+                white-space: nowrap;
+                transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-radius 0.25s, padding 0.25s, gap 0.25s;
+                cursor: pointer;
+            }
+            .adv-media-header-exit-btn span {
+                opacity: 0;
+                max-width: 0;
+                transition: opacity 0.15s ease, max-width 0.25s ease;
+                display: inline-block;
+            }
+            .adv-media-header-exit-btn:hover {
+                width: 125px;
+                border-radius: 20px;
+                padding: 7px 14px;
+                gap: 6px;
+                background: #fee2e2;
+                justify-content: flex-start;
+            }
+            .adv-media-header-exit-btn:hover span {
+                opacity: 1;
+                max-width: 100px;
+            }
+            .dark .adv-media-header-exit-btn {
                 background: rgba(239,68,68,0.1);
                 border-color: #ef4444;
             }
