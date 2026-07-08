@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Gem, Upload, FileSpreadsheet, Download, CheckCircle2, Trash2, ChevronLeft, ChevronRight, X, MessageSquare, Users, Zap, Plus, Image as ImageIcon, Video, Loader2, Mic, Globe, Newspaper, UserPlus, Check } from 'lucide-react';
+import { Sparkles, Gem, Upload, FileSpreadsheet, Download, CheckCircle2, Trash2, ChevronLeft, ChevronRight, X, MessageSquare, Users, Zap, Plus, Image as ImageIcon, Video, Loader2, Mic, Globe, Newspaper, UserPlus, Check, History } from 'lucide-react';
 import { ProfileSummaryDialog } from '@/components/campaigns';
 import AgentVisualizer from '@/components/ui/AgentVisualizer';
 import { useOnboardingStore } from '@/store/onboardingStore';
@@ -839,6 +839,77 @@ export default function AdvancedSearchAIPage() {
     const [mediaMessages, setMediaMessages] = useState<Array<MediaChatMsg>>([]);
     const mb = useMediaBuilder();
     const [brandDnaRequestedChanges, setBrandDnaRequestedChanges] = useState(false);
+
+    // Save states to localStorage to prevent page refresh loss
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        if (mediaMode && mb.sessionId) {
+            localStorage.setItem('mrlad_media_mode', 'true');
+            localStorage.setItem('mrlad_active_media_session_id', mb.sessionId);
+            localStorage.setItem('mrlad_media_messages', JSON.stringify(mediaMessages));
+            localStorage.setItem('mrlad_chat_messages', JSON.stringify(messages));
+            localStorage.setItem('mrlad_cp_step', String(cpStep));
+        } else {
+            if (!mediaMode) {
+                localStorage.removeItem('mrlad_media_mode');
+                localStorage.removeItem('mrlad_active_media_session_id');
+                localStorage.removeItem('mrlad_media_messages');
+                localStorage.removeItem('mrlad_chat_messages');
+                localStorage.removeItem('mrlad_cp_step');
+            }
+        }
+    }, [mediaMode, mb.sessionId, mediaMessages, messages, cpStep]);
+
+    // Hydrate state from localStorage on mount and validate session
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        
+        const cachedMediaMode = localStorage.getItem('mrlad_media_mode') === 'true';
+        const cachedSessionId = localStorage.getItem('mrlad_active_media_session_id');
+        const cachedMediaMessages = localStorage.getItem('mrlad_media_messages');
+        const cachedChatMessages = localStorage.getItem('mrlad_chat_messages');
+        const cachedCpStep = localStorage.getItem('mrlad_cp_step');
+
+        if (cachedMediaMode && cachedSessionId) {
+            console.warn(`[SessionHydrate] Re-hydrating cached session: ${cachedSessionId}`);
+            mb.loadSession(cachedSessionId).then(() => {
+                setMediaMode(true);
+                if (cachedMediaMessages) {
+                    try { setMediaMessages(JSON.parse(cachedMediaMessages)); } catch (e) { console.error(e); }
+                }
+                if (cachedChatMessages) {
+                    try { setMessages(JSON.parse(cachedChatMessages)); } catch (e) { console.error(e); }
+                }
+                if (cachedCpStep) {
+                    setCpStep(Number(cachedCpStep));
+                }
+            }).catch((err) => {
+                console.error("[SessionHydrate] Cached session validation failed, discarding cache", err);
+                localStorage.removeItem('mrlad_media_mode');
+                localStorage.removeItem('mrlad_active_media_session_id');
+                localStorage.removeItem('mrlad_media_messages');
+                localStorage.removeItem('mrlad_chat_messages');
+                localStorage.removeItem('mrlad_cp_step');
+            });
+        }
+    }, []);
+
+    // Overwrite mediaMessages if backend returns history (during GCS re-hydration / load)
+    useEffect(() => {
+        if (mb.uiPayload?.history) {
+            console.warn("[SessionHydrate] Restoring messages list from session history payload");
+            const restoredHistory = mb.uiPayload.history.map((m: any) => ({
+                id: m.id || `msg-${Math.random()}`,
+                role: m.role,
+                text: m.text,
+                description: m.description,
+                step: m.step,
+                payload: m.payload,
+                timestamp: new Date(m.timestamp || Date.now())
+            }));
+            setMediaMessages(restoredHistory);
+        }
+    }, [mb.uiPayload?.history]);
 
     const hasOptionsOpen = mediaMode && (
         mb.step === "welcome" || 
@@ -4457,17 +4528,21 @@ export default function AdvancedSearchAIPage() {
                             {mb.uiPayload?.phase || (mb.step === "welcome" ? "AI Media Studio" : "Waking up Mr. LADs...")}
                         </div>
 
-                        <button
-                            onClick={() => {
-                                mb.closeFlow();
-                                setMediaMode(false);
-                                setMediaMessages([]);
-                            }}
-                            className="adv-media-header-exit cursor-pointer"
-                        >
-                            <X className="size-4" />
-                            Exit Media Gen
-                        </button>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <SessionSelector mb={mb} />
+                            
+                            <button
+                                onClick={() => {
+                                    mb.closeFlow();
+                                    setMediaMode(false);
+                                    setMediaMessages([]);
+                                }}
+                                className="adv-media-header-exit cursor-pointer"
+                            >
+                                <X className="size-4" />
+                                Exit Media Gen
+                            </button>
+                        </div>
                     </div>
                     <div className="adv-media-header-fade" />
                 </>
@@ -9972,6 +10047,107 @@ function MediaStepWidget({
         default:
             return null;
     }
+}
+
+function SessionSelector({ mb }: { mb: any }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (isOpen) {
+            mb.fetchPastSessions();
+        }
+    }, [isOpen, mb]);
+
+    // Close on click outside
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    return (
+        <div ref={dropdownRef} style={{ position: 'relative' }}>
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="adv-media-header-exit cursor-pointer"
+                style={{ background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+                <History className="size-4" />
+                History ({mb.pastSessions?.length || 0})
+            </button>
+
+            {isOpen && (
+                <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    right: 0,
+                    marginTop: '8px',
+                    width: '320px',
+                    maxHeight: '400px',
+                    background: '#fff',
+                    borderRadius: '12px',
+                    border: '1px solid #e5e7eb',
+                    boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+                    zIndex: 1000,
+                    overflowY: 'auto',
+                    padding: '8px 0'
+                }}>
+                    <div style={{ padding: '8px 16px', borderBottom: '1px solid #f3f4f6', fontWeight: 'bold', fontSize: '11px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Saved Generations
+                    </div>
+                    {mb.loadingSessions ? (
+                        <div style={{ padding: '16px', textAlign: 'center', fontSize: '13px', color: '#9ca3af' }}>
+                            Loading sessions...
+                        </div>
+                    ) : mb.pastSessions?.length === 0 ? (
+                        <div style={{ padding: '16px', textAlign: 'center', fontSize: '13px', color: '#9ca3af' }}>
+                            No saved sessions found.
+                        </div>
+                    ) : (
+                        mb.pastSessions.map((s: any) => {
+                            const isCurrent = s.session_id === mb.sessionId;
+                            return (
+                                <button
+                                    key={s.session_id}
+                                    onClick={() => {
+                                        mb.loadSession(s.session_id);
+                                        setIsOpen(false);
+                                    }}
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px 16px',
+                                        textAlign: 'left',
+                                        background: isCurrent ? '#f1f5f9' : 'transparent',
+                                        border: 'none',
+                                        display: 'block',
+                                        cursor: 'pointer',
+                                        transition: 'background 0.2s',
+                                    }}
+                                    className="hover:bg-slate-50"
+                                >
+                                    <div style={{ fontWeight: 'bold', fontSize: '13px', color: isCurrent ? '#0f172a' : '#334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px' }}>{s.title}</span>
+                                        {isCurrent && <span style={{ fontSize: '10px', background: '#3b82f6', color: '#fff', padding: '1px 5px', borderRadius: '4px' }}>Active</span>}
+                                    </div>
+                                    <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {s.description || 'No description available.'}
+                                    </div>
+                                    <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '4px' }}>
+                                        {s.updated_at ? new Date(s.updated_at).toLocaleString() : 'Date unknown'}
+                                    </div>
+                                </button>
+                            );
+                        })
+                    )}
+                </div>
+            )}
+        </div>
+    );
 }
 
 function MediaBubble({ 

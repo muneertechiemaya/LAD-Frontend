@@ -39,6 +39,7 @@ export interface MediaUiPayload {
   cost_breakdown?: any[];
   brand_dna?: any;
   progress?: number;
+  history?: any[];
 }
 
 export function useMediaBuilder() {
@@ -53,6 +54,8 @@ export function useMediaBuilder() {
   const [galleryVideos, setGalleryVideos] = useState<any[]>([]);
   const [loadingGallery, setLoadingGallery] = useState(false);
   const [isGalleryFullHistory, setIsGalleryFullHistory] = useState<boolean>(false);
+  const [pastSessions, setPastSessions] = useState<any[]>([]);
+  const [loadingSessions, setLoadingSessions] = useState<boolean>(false);
 
   const holdAbortRef = useRef<AbortController | null>(null);
   const mageHoldAbortRef = useRef<AbortController | null>(null);
@@ -260,6 +263,58 @@ export function useMediaBuilder() {
     setIsUploading(false);
   }, []);
 
+  const fetchPastSessions = useCallback(async () => {
+    setLoadingSessions(true);
+    try {
+      const res = await fetch(`${workerUrl}/playground-media/sessions`, {
+        method: "GET",
+        headers: getAuthHeaders(),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPastSessions(data.sessions || []);
+      }
+    } catch (e) {
+      console.error("Failed to fetch past sessions:", e);
+    } finally {
+      setLoadingSessions(false);
+    }
+  }, [workerUrl]);
+
+  const loadSession = useCallback(async (targetSessionId: string) => {
+    setStep("loading");
+    setError("");
+    setSessionId(targetSessionId);
+    sessionIdRef.current = targetSessionId;
+    try {
+      await establishHold(targetSessionId);
+      
+      const res = await fetch(`${workerUrl}/playground-media/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({
+          session_id: targetSessionId,
+          message: "",
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Server returned status ${res.status}`);
+      }
+
+      const data = await res.json();
+      setUiPayload(data);
+      setStep(data.step as MediaBuilderStep);
+    } catch (err) {
+      const errorObj = err as Error;
+      setError(errorObj.message || "Failed to load session.");
+      setStep("welcome");
+    }
+  }, [workerUrl, establishHold]);
+
   const selectImageCreation = useCallback(async () => {
     setStep("loading");
     setError("");
@@ -284,21 +339,7 @@ export function useMediaBuilder() {
       }
 
       const data = await res.json();
-      setUiPayload({
-        step: data.step,
-        question: data.question,
-        description: data.description,
-        options: data.options,
-        images: data.images,
-        video: data.video,
-        phase: data.phase,
-        enable_upload: data.enable_upload,
-        blocks: data.blocks,
-        status: data.status,
-        total_cost: data.total_cost,
-        cost_breakdown: data.cost_breakdown,
-        brand_dna: data.brand_dna,
-      });
+      setUiPayload(data);
       setStep(data.step as MediaBuilderStep);
     } catch (err) {
       const errorObj = err as Error;
@@ -331,21 +372,7 @@ export function useMediaBuilder() {
       }
 
       const data = await res.json();
-      setUiPayload({
-        step: data.step,
-        question: data.question,
-        description: data.description,
-        options: data.options,
-        images: data.images,
-        video: data.video,
-        phase: data.phase,
-        enable_upload: data.enable_upload,
-        blocks: data.blocks,
-        status: data.status,
-        total_cost: data.total_cost,
-        cost_breakdown: data.cost_breakdown,
-        brand_dna: data.brand_dna,
-      });
+      setUiPayload(data);
       setStep(data.step as MediaBuilderStep);
     } catch (err) {
       const errorObj = err as Error;
@@ -382,22 +409,7 @@ export function useMediaBuilder() {
 
         if (res.ok && active) {
           const data = await res.json();
-          setUiPayload({
-            step: data.step,
-            question: data.question,
-            description: data.description,
-            options: data.options,
-            images: data.images,
-            video: data.video,
-            phase: data.phase,
-            enable_upload: data.enable_upload,
-            blocks: data.blocks,
-            status: data.status,
-            total_cost: data.total_cost,
-            cost_breakdown: data.cost_breakdown,
-            brand_dna: data.brand_dna,
-            progress: data.progress,
-          });
+          setUiPayload(data);
           setStep(data.step as MediaBuilderStep);
         }
       } catch (err) {
@@ -569,21 +581,7 @@ export function useMediaBuilder() {
       }
 
       const data = await res.json();
-      setUiPayload({
-        step: data.step,
-        question: data.question,
-        description: data.description,
-        options: data.options,
-        images: data.images,
-        video: data.video,
-        phase: data.phase,
-        enable_upload: data.enable_upload,
-        blocks: data.blocks,
-        status: data.status,
-        total_cost: data.total_cost,
-        cost_breakdown: data.cost_breakdown,
-        brand_dna: data.brand_dna,
-      });
+      setUiPayload(data);
       setStep(data.step as MediaBuilderStep);
       
       // Clear references display once we transition past the reference guidance step
@@ -666,20 +664,7 @@ export function useMediaBuilder() {
       }
 
       const chatData = await chatRes.json();
-      setUiPayload({
-        step: chatData.step,
-        question: chatData.question,
-        description: chatData.description,
-        options: chatData.options,
-        images: chatData.images,
-        video: chatData.video,
-        phase: chatData.phase,
-        enable_upload: chatData.enable_upload,
-        blocks: chatData.blocks,
-        status: chatData.status,
-        total_cost: chatData.total_cost,
-        cost_breakdown: chatData.cost_breakdown,
-      });
+      setUiPayload(chatData);
       setStep(chatData.step as MediaBuilderStep);
     } catch (err) {
       const errorObj = err as Error;
@@ -711,20 +696,7 @@ export function useMediaBuilder() {
       }
 
       const data = await res.json();
-      setUiPayload({
-        step: data.step,
-        question: data.question,
-        description: data.description,
-        options: data.options,
-        images: data.images,
-        video: data.video,
-        phase: data.phase,
-        enable_upload: data.enable_upload,
-        blocks: data.blocks,
-        status: data.status,
-        total_cost: data.total_cost,
-        cost_breakdown: data.cost_breakdown,
-      });
+      setUiPayload(data);
       setStep(data.step as MediaBuilderStep);
     } catch (err) {
       const errorObj = err as Error;
@@ -756,20 +728,7 @@ export function useMediaBuilder() {
       }
 
       const data = await res.json();
-      setUiPayload({
-        step: data.step,
-        question: data.question,
-        description: data.description,
-        options: data.options,
-        images: data.images,
-        video: data.video,
-        phase: data.phase,
-        enable_upload: data.enable_upload,
-        blocks: data.blocks,
-        status: data.status,
-        total_cost: data.total_cost,
-        cost_breakdown: data.cost_breakdown,
-      });
+      setUiPayload(data);
       setStep(data.step as MediaBuilderStep);
     } catch (err) {
       const errorObj = err as Error;
@@ -801,20 +760,7 @@ export function useMediaBuilder() {
       }
 
       const data = await res.json();
-      setUiPayload({
-        step: data.step,
-        question: data.question,
-        description: data.description,
-        options: data.options,
-        images: data.images,
-        video: data.video,
-        phase: data.phase,
-        enable_upload: data.enable_upload,
-        blocks: data.blocks,
-        status: data.status,
-        total_cost: data.total_cost,
-        cost_breakdown: data.cost_breakdown,
-      });
+      setUiPayload(data);
       setStep(data.step as MediaBuilderStep);
     } catch (err) {
       const errorObj = err as Error;
@@ -873,21 +819,7 @@ export function useMediaBuilder() {
       }
 
       const data = await res.json();
-      setUiPayload({
-        step: data.step,
-        question: data.question,
-        description: data.description,
-        options: data.options,
-        images: data.images,
-        video: data.video,
-        phase: data.phase,
-        enable_upload: data.enable_upload,
-        blocks: data.blocks,
-        status: data.status,
-        total_cost: data.total_cost,
-        cost_breakdown: data.cost_breakdown,
-        brand_dna: data.brand_dna,
-      });
+      setUiPayload(data);
       setStep(data.step as MediaBuilderStep);
     } catch (err) {
       const errorObj = err as Error;
@@ -904,7 +836,9 @@ export function useMediaBuilder() {
     step,
     setStep,
     sessionId,
+    setSessionId,
     uiPayload,
+    setUiPayload,
     references,
     isUploading,
     generating,
@@ -914,6 +848,8 @@ export function useMediaBuilder() {
     galleryVideos,
     loadingGallery,
     isGalleryFullHistory,
+    pastSessions,
+    loadingSessions,
     startFlow,
     selectImageCreation,
     selectVideoGeneration,
@@ -928,5 +864,7 @@ export function useMediaBuilder() {
     addDialoguesFromGallery,
     deleteAssets,
     undoStep,
+    fetchPastSessions,
+    loadSession,
   };
 }
