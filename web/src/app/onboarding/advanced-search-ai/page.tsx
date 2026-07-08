@@ -2031,6 +2031,7 @@ export default function AdvancedSearchAIPage() {
         if (mb.step === "welcome") {
             setMediaMode(false);
             setMediaMessages([]);
+            lastRestoredSessionIdRef.current = "";
         } else {
             mb.undoStep();
         }
@@ -4588,6 +4589,7 @@ export default function AdvancedSearchAIPage() {
                                     mb.closeFlow();
                                     setMediaMode(false);
                                     setMediaMessages([]);
+                                    lastRestoredSessionIdRef.current = "";
                                 }}
                                 className="adv-media-header-exit cursor-pointer"
                             >
