@@ -119,8 +119,9 @@ export default function CreateLinkedInTemplateModal({
   const validate = (): boolean => {
     const e: Record<string, string> = {};
     if (!name.trim()) e.name = 'Template name is required';
-    if (!connectionMessage.trim() && !followupMessage.trim()) {
-      e.messages = 'Provide at least a connection or a follow-up message';
+    // A media-only template is valid — the attachment rides the follow-up DM.
+    if (!connectionMessage.trim() && !followupMessage.trim() && !mediaUrl) {
+      e.messages = 'Provide a connection message, a follow-up message, or an attachment';
     }
     if (connectionMessage.length > LINKEDIN_CONNECTION_MESSAGE_MAX_LENGTH) {
       e.connection = `Connection message must be ${LINKEDIN_CONNECTION_MESSAGE_MAX_LENGTH} characters or less`;
@@ -297,7 +298,8 @@ export default function CreateLinkedInTemplateModal({
               </Button>
             )}
             <p className="text-[11px] text-muted-foreground">
-              Sent alongside the connection request / follow-up. Max 25MB.
+              Sent with the follow-up message — the connection invite is text-only,
+              so a media-only template needs a follow-up leg to deliver. Max 25MB.
             </p>
             {errors.media && (
               <p className="text-xs text-red-600 flex items-center gap-1">
