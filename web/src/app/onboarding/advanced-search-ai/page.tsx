@@ -839,10 +839,11 @@ export default function AdvancedSearchAIPage() {
     const [mediaMessages, setMediaMessages] = useState<Array<MediaChatMsg>>([]);
     const mb = useMediaBuilder();
     const [brandDnaRequestedChanges, setBrandDnaRequestedChanges] = useState(false);
+    const [isHydrated, setIsHydrated] = useState(false);
 
     // Save states to localStorage to prevent page refresh loss
     useEffect(() => {
-        if (typeof window === 'undefined') return;
+        if (!isHydrated || typeof window === 'undefined') return;
         if (mediaMode && mb.sessionId) {
             localStorage.setItem('mrlad_media_mode', 'true');
             localStorage.setItem('mrlad_active_media_session_id', mb.sessionId);
@@ -858,7 +859,7 @@ export default function AdvancedSearchAIPage() {
                 localStorage.removeItem('mrlad_cp_step');
             }
         }
-    }, [mediaMode, mb.sessionId, mediaMessages, messages, cpStep]);
+    }, [mediaMode, mb.sessionId, mediaMessages, messages, cpStep, isHydrated]);
 
     // Hydrate state from localStorage on mount and validate session
     useEffect(() => {
@@ -883,6 +884,7 @@ export default function AdvancedSearchAIPage() {
                 if (cachedCpStep) {
                     setCpStep(Number(cachedCpStep));
                 }
+                setIsHydrated(true);
             }).catch((err) => {
                 console.error("[SessionHydrate] Cached session validation failed, discarding cache", err);
                 localStorage.removeItem('mrlad_media_mode');
@@ -890,7 +892,10 @@ export default function AdvancedSearchAIPage() {
                 localStorage.removeItem('mrlad_media_messages');
                 localStorage.removeItem('mrlad_chat_messages');
                 localStorage.removeItem('mrlad_cp_step');
+                setIsHydrated(true);
             });
+        } else {
+            setIsHydrated(true);
         }
     }, []);
 
@@ -10077,12 +10082,13 @@ function MediaStepWidget({
 function SessionSelector({ mb }: { mb: any }) {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const { fetchPastSessions } = mb;
 
     useEffect(() => {
         if (isOpen) {
-            mb.fetchPastSessions();
+            fetchPastSessions();
         }
-    }, [isOpen, mb]);
+    }, [isOpen, fetchPastSessions]);
 
     // Close on click outside
     useEffect(() => {
@@ -10103,7 +10109,7 @@ function SessionSelector({ mb }: { mb: any }) {
                 style={{ background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: '6px' }}
             >
                 <History className="size-4" />
-                History ({mb.pastSessions?.length || 0})
+                Sessions ({mb.pastSessions?.length || 0})
             </button>
 
             {isOpen && (
@@ -10123,7 +10129,7 @@ function SessionSelector({ mb }: { mb: any }) {
                     padding: '8px 0'
                 }}>
                     <div style={{ padding: '8px 16px', borderBottom: '1px solid #f3f4f6', fontWeight: 'bold', fontSize: '11px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                        Saved Generations
+                        Saved Sessions
                     </div>
                     {mb.loadingSessions ? (
                         <div style={{ padding: '16px', textAlign: 'center', fontSize: '13px', color: '#9ca3af' }}>
