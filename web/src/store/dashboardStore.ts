@@ -199,7 +199,9 @@ export const useDashboardStore = create<DashboardState>()(
       // v3: hard-reset to DEFAULT_LAYOUT so existing users get the new
       //     conversation-analytics widgets (Enquiries & Bookings funnel +
       //     Re-engage by Topic) at their intended slot under the stat cards.
-      version: 3,
+      // v4: hard-reset to DEFAULT_LAYOUT so existing users get the new
+      //     Lead Journey widget (accepted / responded / SAH) under the stats.
+      version: 4,
       migrate: (persistedState: Record<string, unknown>) => {
         if (!persistedState) return persistedState;
         return { ...persistedState, layout: DEFAULT_LAYOUT };

@@ -46,6 +46,7 @@ import { CalendarWidget } from './widgets/CalendarWidget';
 import { BroadcastPerformanceWidget } from './widgets/BroadcastPerformanceWidget';
 import { ConversationFunnelWidget } from './widgets/ConversationFunnelWidget';
 import { ReengageTopicsWidget } from './widgets/ReengageTopicsWidget';
+import { LeadJourneyWidget } from './widgets/LeadJourneyWidget';
 // Utilities
 import { cn } from '@/lib/utils';
 import {
@@ -483,6 +484,8 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({ className, onLoadi
         return <ConversationFunnelWidget id={widgetId} />;
       case 'reengage-topics':
         return <ReengageTopicsWidget id={widgetId} />;
+      case 'lead-journey':
+        return <LeadJourneyWidget id={widgetId} />;
       default:
         return <div className="widget-card h-full flex items-center justify-center text-muted-foreground">Unknown widget</div>;
     }
