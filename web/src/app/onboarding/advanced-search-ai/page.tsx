@@ -4662,19 +4662,20 @@ export default function AdvancedSearchAIPage() {
                 <>
                     <div className="adv-media-header">
                         <button 
-                            className="adv-media-header-back" 
+                            className="adv-media-header-back-btn" 
                             onClick={handleMediaBack} 
                             style={{ display: mb.step === "welcome" ? "none" : "flex" }}
-                            title="Go Back"
+                            title="Undo last message"
                         >
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+                            <span>Undo last message</span>
                         </button>
                         
                         <div className="adv-media-header-title">
                             {mb.uiPayload?.phase || (mb.step === "welcome" ? "AI Media Studio" : "Waking up Mr. LADs...")}
                         </div>
 
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginLeft: 'auto' }}>
                             <SessionSelector mb={mb} />
                             
                             <button
@@ -4756,15 +4757,20 @@ export default function AdvancedSearchAIPage() {
                         <div className="adv-msgs-inner">
                             {mediaMode ? (
                                 <>
-                                    {mediaMessages.map((m, idx) => (
-                                        <MediaBubble 
-                                            key={m.id} 
-                                            msg={m} 
-                                            isActive={idx === mediaMessages.length - 1} 
-                                            mb={mb}
-                                            submitMediaInput={submitMediaInput}
-                                        />
-                                    ))}
+                                    {(() => {
+                                        const lastUserMsgIdx = mediaMessages.map(msg => msg.role).lastIndexOf('user');
+                                        return mediaMessages.map((m, idx) => (
+                                            <MediaBubble 
+                                                key={m.id} 
+                                                msg={m} 
+                                                isActive={idx === mediaMessages.length - 1} 
+                                                isLastUser={idx === lastUserMsgIdx}
+                                                handleMediaBack={handleMediaBack}
+                                                mb={mb}
+                                                submitMediaInput={submitMediaInput}
+                                            />
+                                        ));
+                                    })()}
                                     {/* Inline Loader — rendered dynamically below messages, perfectly centered in the left chat/split container */}
                                     {(mb.step === "loading" || mb.generating) && (
                                         <div className="w-full flex justify-center py-12 fadeUp">
@@ -10304,16 +10310,43 @@ function SessionSelector({ mb }: { mb: any }) {
 function MediaBubble({ 
     msg, 
     isActive, 
+    isLastUser,
+    handleMediaBack,
     mb, 
     submitMediaInput 
 }: { 
     msg: any; 
     isActive: boolean; 
+    isLastUser?: boolean;
+    handleMediaBack?: () => void;
     mb: any; 
     submitMediaInput: (text: string, valueToSend?: string | string[]) => void; 
 }) {
     if (msg.role === 'user') return (
         <div className="adv-bubble adv-bubble-user fadeUp" style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
+            {isLastUser && handleMediaBack && (
+                <button
+                    onClick={handleMediaBack}
+                    title="Undo last message / Revert"
+                    className="adv-bubble-undo-btn"
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: 'none',
+                        background: 'none',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        borderRadius: '4px',
+                        order: 0,
+                        marginRight: '4px',
+                        transition: 'all 0.15s',
+                        alignSelf: 'center',
+                    }}
+                >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+                </button>
+            )}
             <div className="adv-user-msg" style={{ margin: 0, order: 1 }}>
                 <div>{msg.text}</div>
                 {msg.references && msg.references.length > 0 && (
@@ -11284,6 +11317,69 @@ const css = `
             .dark .adv-media-header-exit-btn {
                 background: rgba(239,68,68,0.1);
                 border-color: #ef4444;
+            }
+            .adv-media-header-back-btn {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 0px;
+                padding: 7px;
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                border: 1.5px solid #cbd5e1;
+                background: #ffffff;
+                color: #475569;
+                font-size: 11px;
+                font-weight: 600;
+                overflow: hidden;
+                white-space: nowrap;
+                transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-radius 0.25s, padding 0.25s, gap 0.25s;
+                cursor: pointer;
+            }
+            .adv-media-header-back-btn span {
+                opacity: 0;
+                max-width: 0;
+                transition: opacity 0.15s ease, max-width 0.25s ease;
+                display: inline-block;
+            }
+            .adv-media-header-back-btn:hover {
+                width: 155px;
+                border-radius: 20px;
+                padding: 7px 12px;
+                gap: 6px;
+                background: #f1f5f9;
+                border-color: #64748b;
+                color: #1e293b;
+                justify-content: flex-start;
+            }
+            .adv-media-header-back-btn:hover span {
+                opacity: 1;
+                max-width: 110px;
+            }
+            .dark .adv-media-header-back-btn {
+                background: #1a2a43;
+                border-color: #253456;
+                color: #cbd5e1;
+            }
+            .dark .adv-media-header-back-btn:hover {
+                background: #253456;
+                border-color: #475569;
+                color: #f8fafc;
+            }
+
+            .adv-bubble-undo-btn {
+                color: #94a3b8;
+                border-radius: 4px;
+                transition: all 0.15s;
+            }
+            .adv-bubble-undo-btn:hover {
+                color: #ef4444 !important;
+                background: #fef2f2 !important;
+                transform: scale(1.1);
+            }
+            .dark .adv-bubble-undo-btn:hover {
+                background: rgba(239, 68, 68, 0.15) !important;
             }
             /* transparency fade overlay */
             .adv-media-header-fade {
