@@ -512,6 +512,9 @@ export default function AdvancedSearchAIPage() {
     const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
     const editHydratedRef = useRef(false);
     const [input, setInput] = useState('');
+    const [isRecording, setIsRecording] = useState(false);
+    const [recognitionInstance, setRecognitionInstance] = useState<any>(null);
+    const [beautifying, setBeautifying] = useState(false);
     const [busy, setBusy] = useState(false);
     const [typedPlaceholder, setTypedPlaceholder] = useState('');
     useEffect(() => {
@@ -4552,8 +4555,92 @@ export default function AdvancedSearchAIPage() {
                         isSplitScreen={true}
                     />
                 );
-            default:
-                return null;
+    };
+
+    const toggleRecording = async () => {
+        if (beautifying) return;
+
+        if (isRecording) {
+            if (recognitionInstance) {
+                try {
+                    recognitionInstance.stop();
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+            setIsRecording(false);
+            setBeautifying(true);
+
+            const rawText = input.trim();
+            if (!rawText) {
+                setBeautifying(false);
+                return;
+            }
+
+            try {
+                const workerUrl = process.env.NEXT_PUBLIC_PLAYGROUND_WORKER_URL || "http://localhost:8080";
+                const res = await fetch(`${workerUrl}/playground-media/beautify-transcription`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ text: rawText })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data && data.beautified_text) {
+                        setInput(data.beautified_text);
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to beautify transcription:", err);
+            } finally {
+                setBeautifying(false);
+            }
+        } else {
+            const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert("Speech recognition is not supported in this browser. Please use Chrome, Safari, or Edge.");
+                return;
+            }
+
+            try {
+                await navigator.mediaDevices.getUserMedia({ audio: true });
+            } catch (err) {
+                console.error("Microphone access denied:", err);
+                alert("Microphone access is required for voice interaction.");
+                return;
+            }
+
+            const rec = new SpeechRecognition();
+            rec.continuous = true;
+            rec.interimResults = true;
+            rec.lang = 'en-US';
+
+            rec.onresult = (event: any) => {
+                let finalTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    finalTranscript += event.results[i][0].transcript;
+                }
+                if (finalTranscript) {
+                    setInput(finalTranscript);
+                }
+            };
+
+            rec.onerror = (event: any) => {
+                console.error("Speech recognition error:", event.error);
+                if (event.error !== 'aborted') {
+                    setIsRecording(false);
+                }
+            };
+
+            rec.onend = () => {
+                setIsRecording(false);
+            };
+
+            rec.start();
+            setIsRecording(true);
+            setRecognitionInstance(rec);
         }
     };
 
@@ -4928,20 +5015,30 @@ export default function AdvancedSearchAIPage() {
                                     {/* Premium Search or Mic Button based on mediaMode */}
                                     {mediaMode ? (
                                         <button
-                                            className="adv-premium-btn"
-                                            title="Talk to Mr. LADs — voice interaction"
+                                            className={`adv-premium-btn ${isRecording ? 'recording-pulse' : ''}`}
+                                            onClick={toggleRecording}
+                                            disabled={beautifying}
+                                            title={beautifying ? "Beautifying..." : isRecording ? "Stop voice transcription" : "Talk to Mr. LADs — voice interaction"}
                                             style={{
                                                 display: 'flex', alignItems: 'center', gap: '4px',
-                                                padding: '3px 8px', borderRadius: '12px', border: 'none',
-                                                cursor: 'default', fontSize: '11px', fontWeight: 600,
+                                                padding: '3px 8px', borderRadius: '12px',
+                                                border: isRecording ? '1.5px solid #ef4444' : 'none',
+                                                cursor: beautifying ? 'not-allowed' : 'pointer',
+                                                fontSize: '11px', fontWeight: 600,
                                                 transition: 'all 0.15s',
-                                                background: '#f1f5f9',
-                                                color: '#64748b',
+                                                background: beautifying ? '#e2e8f0' : isRecording ? '#fef2f2' : '#f1f5f9',
+                                                color: beautifying ? '#94a3b8' : isRecording ? '#ef4444' : '#64748b',
                                                 boxShadow: 'none',
                                             }}
                                         >
-                                            <Mic className="size-3" style={{ strokeWidth: 2.5 }} />
-                                            Talk to Mr. LADs
+                                            {beautifying ? (
+                                                <Loader2 className="size-3 animate-spin" />
+                                            ) : isRecording ? (
+                                                <span className="size-1.5 rounded-full bg-red-500 mr-0.5" style={{ display: 'inline-block', width: '6px', height: '6px', backgroundColor: '#ef4444', borderRadius: '50%' }} />
+                                            ) : (
+                                                <Mic className="size-3" style={{ strokeWidth: 2.5 }} />
+                                            )}
+                                            {beautifying ? "Beautifying..." : isRecording ? "Stop & Beautify" : "Talk to Mr. LADs"}
                                         </button>
                                     ) : (
                                         <button
@@ -10329,6 +10426,14 @@ const css = `
             @keyframes slideInRight {from {opacity:0; transform:translateX(100%); } to {opacity:1; transform:translateX(0); } }
             @keyframes spin {to {transform: rotate(360deg); } }
             @keyframes pulse {0 %, 100 % { opacity: .4 } 50% {opacity:1 } }
+            @keyframes recPulse {
+                0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+                70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+                100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+            }
+            .recording-pulse {
+                animation: recPulse 1.5s infinite;
+            }
             .fadeUp {animation: fadeUp .35s ease both; }
 
             /* ── LANDING ── */
