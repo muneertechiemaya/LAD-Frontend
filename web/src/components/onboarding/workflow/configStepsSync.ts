@@ -127,19 +127,40 @@ function makeStep(kind: string, existing?: SyncStep): SyncStep {
  * Canonical order: lead_generation → LinkedIn actions (connect, message,
  * profile_view) → wait_for_condition (if trigger) → follow-up channels.
  */
-export function buildStepsFromConfig(cfg: DerivedConfig, existing: SyncStep[] = []): SyncStep[] {
+export function buildStepsFromConfig(
+  cfg: DerivedConfig,
+  existing: SyncStep[] = [],
+  opts: { includeLeadSource?: boolean } = {},
+): SyncStep[] {
   const byType = new Map<string, SyncStep>();
   for (const s of existing) if (!byType.has(s.type)) byType.set(s.type, s);
   const take = (type: string) => makeStep(type, byType.get(type));
 
+  const liSelected = cfg.nextChannels.includes('linkedin');
+
   const out: SyncStep[] = [];
-  // Lead search is always the entry step (preserve an existing one if present).
-  out.push(take('lead_generation'));
+  // The lead-search node is the campaign's lead SOURCE, not an outreach channel.
+  // It's included by default (this page discovers leads via LinkedIn search), but
+  // OMITTED for direct-contact / inbound-import campaigns where leads are provided
+  // directly (initial_leads) — mirroring the launch builder, which gates the same
+  // node on `!isDirectContact && !inboundMode`. Without this the canvas showed a
+  // "LinkedIn Lead Search" node those campaigns never actually run.
+  if (opts.includeLeadSource !== false) {
+    const leadGen = take('lead_generation');
+    // When LinkedIn isn't a selected OUTREACH channel, don't title the source
+    // node as if it were a LinkedIn action — it reads as "why is LinkedIn here
+    // when I picked Email + Voice". Relabel it neutrally (leads are still sourced
+    // via LinkedIn search — see the description).
+    if (!liSelected) {
+      leadGen.title = 'Find Leads';
+      leadGen.description = 'Discover target leads via LinkedIn search';
+    }
+    out.push(leadGen);
+  }
 
   // LinkedIn outreach steps materialise only when the LinkedIn channel is
   // selected. If it's selected with no explicit action, default to a profile
   // visit (mirrors the launch builder's `liChannelActions.length === 0` default).
-  const liSelected = cfg.nextChannels.includes('linkedin');
   const liActions = !liSelected ? [] : (cfg.actions.length > 0 ? cfg.actions : ['profile_view']);
   // Emit in execution order (visit → connect → message) so the canvas matches
   // how the launch builder actually runs the sequence.
@@ -164,9 +185,13 @@ export function buildStepsFromConfig(cfg: DerivedConfig, existing: SyncStep[] = 
 }
 
 /** Merge a partial structural change and rebuild the steps. */
-export function applyConfig(steps: SyncStep[], patch: Partial<DerivedConfig>): SyncStep[] {
+export function applyConfig(
+  steps: SyncStep[],
+  patch: Partial<DerivedConfig>,
+  opts: { includeLeadSource?: boolean } = {},
+): SyncStep[] {
   const merged = { ...deriveConfig(steps), ...patch };
-  return buildStepsFromConfig(merged, steps);
+  return buildStepsFromConfig(merged, steps, opts);
 }
 
 export const _internal = { LI_ACTION_BY_TYPE, CHANNEL_BY_TYPE, TYPE_BY_CHANNEL, COND_LABELS };
