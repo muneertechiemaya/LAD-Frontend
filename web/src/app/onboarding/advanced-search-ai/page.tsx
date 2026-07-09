@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { Sparkles, Gem, Upload, FileSpreadsheet, Download, CheckCircle2, Trash2, ChevronLeft, ChevronRight, X, MessageSquare, Users, Zap, Plus, Image as ImageIcon, Video, Loader2, Mic, Globe, Newspaper, UserPlus, Check, History } from 'lucide-react';
@@ -4555,6 +4556,9 @@ export default function AdvancedSearchAIPage() {
                         isSplitScreen={true}
                     />
                 );
+            default:
+                return null;
+        }
     };
 
     const toggleRecording = async () => {
@@ -6725,7 +6729,6 @@ export default function AdvancedSearchAIPage() {
 /* ═══════════════════════════════════════════════
    CHAT BUBBLE
    ═══════════════════════════════════════════════ */
-import { useSelector } from 'react-redux';
 
 function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, agentDealLoading, onStartTargeting, hasPanel, leadsCount, filteredLeadsCount, onUploadClick, useSalesNav, isMobile }: { msg: ChatMsg; onOpt: (v: string) => void; onShowPanel: (panel: 'leads' | 'workflow') => void; onStartCheckpoints: () => void; onLetAgentDeal?: () => void; agentDealLoading?: boolean; onStartTargeting: () => void; hasPanel: boolean; leadsCount: number; filteredLeadsCount?: number; onUploadClick?: () => void; useSalesNav?: boolean; isMobile?: boolean }) {
     const user = useSelector((state: any) => state.auth?.user);
