@@ -4582,11 +4582,13 @@ export default function AdvancedSearchAIPage() {
             }
 
             try {
+                const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
                 const workerUrl = process.env.NEXT_PUBLIC_PLAYGROUND_WORKER_URL || "http://localhost:8080";
                 const res = await fetch(`${workerUrl}/playground-media/beautify-transcription`, {
                     method: "POST",
                     headers: {
-                        "Content-Type": "application/json"
+                        "Content-Type": "application/json",
+                        ...(token && { Authorization: `Bearer ${token}` })
                     },
                     body: JSON.stringify({ text: rawText })
                 });
@@ -5038,11 +5040,13 @@ export default function AdvancedSearchAIPage() {
                                             {beautifying ? (
                                                 <Loader2 className="size-3 animate-spin" />
                                             ) : isRecording ? (
-                                                <span className="size-1.5 rounded-full bg-red-500 mr-0.5" style={{ display: 'inline-block', width: '6px', height: '6px', backgroundColor: '#ef4444', borderRadius: '50%' }} />
+                                                <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: '3px', color: '#ef4444', flexShrink: 0 }}>
+                                                    <rect x="4" y="4" width="16" height="16" rx="2" />
+                                                </svg>
                                             ) : (
                                                 <Mic className="size-3" style={{ strokeWidth: 2.5 }} />
                                             )}
-                                            {beautifying ? "Beautifying..." : isRecording ? "Stop & Beautify" : "Talk to Mr. LADs"}
+                                            {beautifying ? "Beautifying..." : isRecording ? "Stop" : "Talk to Mr. LADs"}
                                         </button>
                                     ) : (
                                         <button
