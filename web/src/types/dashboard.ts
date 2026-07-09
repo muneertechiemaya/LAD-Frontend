@@ -12,7 +12,8 @@ export type WidgetType =
   | 'quick-actions'
   | 'broadcast-performance'
   | 'conversation-funnel'
-  | 'reengage-topics';
+  | 'reengage-topics'
+  | 'lead-journey';
 export type WidgetCategory =
   | 'analytics'
   | 'voice-agent'
@@ -202,6 +203,17 @@ export const WIDGET_CATALOG: Record<WidgetType, WidgetConfig> = {
     minSize: { w: 4, h: 3 },
     maxSize: { w: 12, h: 6 },
   },
+  'lead-journey': {
+    id: 'lead-journey',
+    type: 'lead-journey',
+    title: 'Lead Journey',
+    description: 'Leads who accepted the connection, replied to the agent, or booked a meeting (SAH) across all your campaigns',
+    category: 'analytics',
+    icon: 'Users',
+    defaultSize: { w: 6, h: 4 },
+    minSize: { w: 4, h: 3 },
+    maxSize: { w: 12, h: 8 },
+  },
 };
 // Widget categories for the library
 export const WIDGET_CATEGORIES: { id: WidgetCategory; label: string; icon: string }[] = [
@@ -217,7 +229,8 @@ export const DEFAULT_LAYOUT: WidgetLayoutItem[] = [
   { i: 'calls-today-1', x: 0, y: 0, w: 4, h: 2, minW: 3, minH: 2 },
   { i: 'answer-rate-1', x: 4, y: 0, w: 4, h: 2, minW: 3, minH: 2 },
   { i: 'calls-monthly-1', x: 8, y: 0, w: 4, h: 2, minW: 3, minH: 2 },
-  { i: 'conversation-funnel-1', x: 0, y: 2, w: 6, h: 4, minW: 4, minH: 3 },
+  { i: 'lead-journey-1', x: 0, y: 2, w: 6, h: 4, minW: 4, minH: 3 },
+  { i: 'conversation-funnel-1', x: 6, y: 2, w: 6, h: 4, minW: 4, minH: 3 },
   { i: 'reengage-topics-1', x: 6, y: 2, w: 6, h: 4, minW: 4, minH: 3 },
   { i: 'broadcast-performance-1', x: 0, y: 6, w: 12, h: 3, minW: 6, minH: 3 },
   { i: 'calls-chart-1', x: 0, y: 5, w: 6, h: 4, minW: 4, minH: 3 },
