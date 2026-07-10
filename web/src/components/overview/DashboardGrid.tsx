@@ -32,7 +32,7 @@ import {
 } from '@dnd-kit/sortable';
 
 import { useDashboardStore } from '@/store/dashboardStore';
-import { getWidgetTypeFromId, WidgetLayoutItem } from '@/types/dashboard';
+import { getWidgetTypeFromId, WidgetLayoutItem, WidgetType } from '@/types/dashboard';
 
 // Widget components
 import { StatWidget } from './widgets/StatWidget';
@@ -47,8 +47,51 @@ import { BroadcastPerformanceWidget } from './widgets/BroadcastPerformanceWidget
 import { ConversationFunnelWidget } from './widgets/ConversationFunnelWidget';
 import { ReengageTopicsWidget } from './widgets/ReengageTopicsWidget';
 import { LeadJourneyWidget } from './widgets/LeadJourneyWidget';
+import { LinkedInFunnelWidget } from './widgets/LinkedInFunnelWidget';
+import { EmailActivityWidget } from './widgets/EmailActivityWidget';
+import { InstagramActivityWidget } from './widgets/InstagramActivityWidget';
+import { CombinedFunnelWidget } from './widgets/CombinedFunnelWidget';
+import { useConnectedChannels, type ChannelId, type ChannelStatus } from '@/hooks/useConnectedChannels';
 // Utilities
 import { cn } from '@/lib/utils';
+
+// ── Channel gating ───────────────────────────────────────────────────────────
+// Which channel a widget's metrics belong to. Widgets NOT listed here are
+// channel-agnostic (credits, calendar, ai-insights, quick-actions, the
+// cross-channel funnel) and always show. A gated widget is hidden only when its
+// channel is positively disconnected — 'unknown'/loading stays visible
+// (fail-open), so a transient probe failure never blanks the dashboard.
+type ChannelGate = 'voice' | 'whatsapp' | 'linkedin' | 'email' | 'instagram';
+const WIDGET_CHANNEL: Partial<Record<WidgetType, ChannelGate>> = {
+  'calls-today': 'voice',
+  'answer-rate': 'voice',
+  'calls-monthly': 'voice',
+  'calls-chart': 'voice',
+  'voice-agents': 'voice',
+  'latest-calls': 'voice',
+  'broadcast-performance': 'whatsapp',
+  'reengage-topics': 'whatsapp',
+  'lead-journey': 'linkedin',
+  'linkedin-funnel': 'linkedin',
+  'email-activity': 'email',
+  'instagram-activity': 'instagram',
+};
+function gateConnected(statuses: Record<ChannelId, ChannelStatus>, gate: ChannelGate): boolean {
+  const notDisc = (id: ChannelId) => statuses[id] !== 'disconnected';
+  switch (gate) {
+    case 'whatsapp': return notDisc('waba') || notDisc('personal_whatsapp');
+    case 'email':    return notDisc('gmail');
+    case 'voice':    return notDisc('voice');
+    case 'linkedin': return notDisc('linkedin');
+    case 'instagram':return notDisc('instagram');
+    default:         return true;
+  }
+}
+function widgetVisibleForChannels(type: WidgetType | null, statuses: Record<ChannelId, ChannelStatus>): boolean {
+  if (!type) return true;
+  const gate = WIDGET_CHANNEL[type];
+  return gate ? gateConnected(statuses, gate) : true;
+}
 import {
   useDashboardCalls,
   useWalletStats,
@@ -97,6 +140,12 @@ const DAYS_RANGE = 30;
 
 export const DashboardGrid: React.FC<DashboardGridProps> = ({ className, onLoadingChange }) => {
   const { layout, setLayout, isEditMode } = useDashboardStore();
+  // Channel-aware gating: hide widgets whose channel isn't connected. In edit
+  // mode we show everything so users can still manage/reorder gated widgets.
+  const { statuses } = useConnectedChannels();
+  const visibleLayout = isEditMode
+    ? layout
+    : layout.filter((item) => widgetVisibleForChannels(getWidgetTypeFromId(item.i), statuses));
   const [activeId, setActiveId] = React.useState<string | null>(null);
   const isMobile = useIsMobile();
 
@@ -486,6 +535,14 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({ className, onLoadi
         return <ReengageTopicsWidget id={widgetId} />;
       case 'lead-journey':
         return <LeadJourneyWidget id={widgetId} />;
+      case 'linkedin-funnel':
+        return <LinkedInFunnelWidget id={widgetId} />;
+      case 'email-activity':
+        return <EmailActivityWidget id={widgetId} />;
+      case 'instagram-activity':
+        return <InstagramActivityWidget id={widgetId} />;
+      case 'combined-funnel':
+        return <CombinedFunnelWidget id={widgetId} />;
       default:
         return <div className="widget-card h-full flex items-center justify-center text-muted-foreground">Unknown widget</div>;
     }
@@ -519,7 +576,7 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({ className, onLoadi
     return getGridStyle(item);
   };
 
-  const sortableItems = layout.map(item => item.i);
+  const sortableItems = visibleLayout.map(item => item.i);
 
   return (
     <div className={cn('dashboard-grid', className)}>
@@ -531,7 +588,7 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({ className, onLoadi
       >
         <SortableContext items={sortableItems} strategy={rectSortingStrategy}>
           <div className="grid grid-cols-12 gap-3 md:gap-6 auto-rows-min">
-            {layout.map((item) => (
+            {visibleLayout.map((item) => (
               <div
                 key={item.i}
                 style={getResponsiveGridStyle(item)}
