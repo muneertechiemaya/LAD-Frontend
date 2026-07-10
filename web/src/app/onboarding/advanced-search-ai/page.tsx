@@ -554,6 +554,10 @@ export default function AdvancedSearchAIPage() {
     const [leads, setLeads] = useState<LeadProfile[]>([]);
     const [filteredLeads, setFilteredLeads] = useState<LeadProfile[]>([]);   // below ICP threshold
     const [showFilteredLeads, setShowFilteredLeads] = useState(false);        // toggle "Show all"
+    // Per-lead selection: which prospects the user has checked to enroll into the
+    // campaign. The list now spans the full ICP range (0–100); the user picks the
+    // exact prospects rather than relying on a score cutoff. Keyed by lead.id.
+    const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
     const [showPanel, setShowPanel] = useState<false | 'leads' | 'workflow'>(false);
     const setWorkflowPreview = useOnboardingStore(s => s.setWorkflowPreview);
     // Activity tracking for SearchingThinker
@@ -1313,6 +1317,39 @@ export default function AdvancedSearchAIPage() {
         }
     };
 
+    // ── Lead selection (checkbox) helpers ───────────────────────────────────
+    // The checkbox is the authoritative include signal: only checked leads are
+    // enrolled into the campaign at launch (see CheckpointFormInline.launchCampaign).
+    const toggleLeadSelection = (leadId: string) => {
+        setSelectedLeadIds(prev => {
+            const next = new Set(prev);
+            if (next.has(leadId)) next.delete(leadId); else next.add(leadId);
+            return next;
+        });
+    };
+    const selectAllLeads = () => {
+        setSelectedLeadIds(new Set(leads.map(l => l.id)));
+    };
+    const clearLeadSelection = () => {
+        setSelectedLeadIds(new Set());
+    };
+    // Seed default selection (leads scoring >= 50 pre-checked) for a fresh result
+    // set, replacing any prior selection. Used when a new search populates `leads`.
+    const seedDefaultSelection = (list: LeadProfile[]) => {
+        setSelectedLeadIds(new Set(
+            list.filter(l => (l.icp_score ?? 0) >= 50).map(l => l.id)
+        ));
+    };
+    // Merge default selection for newly appended leads ("Get More") without
+    // disturbing the user's existing manual checks/unchecks.
+    const mergeDefaultSelection = (appended: LeadProfile[]) => {
+        setSelectedLeadIds(prev => {
+            const next = new Set(prev);
+            appended.forEach(l => { if ((l.icp_score ?? 0) >= 50) next.add(l.id); });
+            return next;
+        });
+    };
+
     // Build a natural-language enrichment string from the Targeting card form values
     // and any bad-feedback comments — sent to the backend LLM to generate sharper keywords.
     const buildSearchEnrichment = (): string | undefined => {
@@ -1341,6 +1378,13 @@ export default function AdvancedSearchAIPage() {
             const updated = { ...prev, [leadId]: 'bad' as const };
             try { localStorage.setItem('lad_lead_feedback', JSON.stringify(updated)); } catch { }
             return updated;
+        });
+        // A rejected lead must not remain selected for enrollment.
+        setSelectedLeadIds(prev => {
+            if (!prev.has(leadId)) return prev;
+            const next = new Set(prev);
+            next.delete(leadId);
+            return next;
         });
         if (comment.trim()) {
             setLeadFeedbackComments(prev => {
@@ -3203,6 +3247,7 @@ export default function AdvancedSearchAIPage() {
                                         enriched_profile: item.enriched_profile || undefined,
                                     }));
                                     setLeads(prospectLeads);
+                                    seedDefaultSelection(prospectLeads);
                                     setShowPanel('leads');
                                     // Track seen IDs for "get more" dedup
                                     setSeenProspectIds(prospectLeads.map(l => l.profile_url || l.id));
@@ -3319,6 +3364,7 @@ export default function AdvancedSearchAIPage() {
                                 enriched_profile: item.enriched_profile || undefined,
                             }));
                             setLeads(prospectLeads);
+                            seedDefaultSelection(prospectLeads);
                             setShowPanel('leads');
                             setSeenProspectIds(prospectLeads.map(l => l.profile_url || l.id));
                             setNoMoreLeads(!d.hasMore);
@@ -3560,6 +3606,9 @@ export default function AdvancedSearchAIPage() {
                     icp_description: icpDesc,
                     search_enrichment: buildSearchEnrichment(),
                     useSalesNav,
+                    // Return the full ICP range (0–100) so the user can pick prospects
+                    // via checkboxes rather than being capped at the backend's default 50.
+                    icp_min_score: 0,
                 });
 
                 // Extract and set activities from response
@@ -3623,6 +3672,7 @@ export default function AdvancedSearchAIPage() {
                             };
                         });
                         setLeads(realLeads);
+                        seedDefaultSelection(realLeads);
                         searchTotal = d.total || realLeads.length;
                         setLastModuleUsed(d.module_used || 'advanced_search');
 
@@ -4102,6 +4152,7 @@ export default function AdvancedSearchAIPage() {
                         enriched_profile: item.enriched_profile || undefined,
                     }));
                     setLeads(prev => [...prev, ...moreLeads]);
+                    mergeDefaultSelection(moreLeads);
                     setSeenProspectIds(prev => [...prev, ...moreLeads.map(l => l.profile_url || l.id)]);
                     if (!d.hasMore) setNoMoreLeads(true);
                 } else {
@@ -4153,6 +4204,8 @@ export default function AdvancedSearchAIPage() {
                 filters: searchCursor ? { cursor: searchCursor } : {},
                 start: searchCursor ? 0 : leads.length,
                 useSalesNav,
+                // Keep pagination consistent with the full-range initial list.
+                icp_min_score: 0,
             };
 
             setIsSearching(true);
@@ -4191,6 +4244,7 @@ export default function AdvancedSearchAIPage() {
                     };
                 });
                 setLeads(prev => [...prev, ...moreLeads]);
+                mergeDefaultSelection(moreLeads);
                 setSearchCursor(d.cursor || null);
                 if (d.total) setTotalResults(d.total);
             } else {
@@ -4933,6 +4987,7 @@ export default function AdvancedSearchAIPage() {
                                     targeting={targeting}
                                     leads={leads}
                                     leadFeedback={leadFeedback}
+                                    selectedLeadIds={selectedLeadIds}
                                     searchSessions={searchSessions}
                                     chatMessages={messages}
                                     pendingContact={pendingContact}
@@ -5278,6 +5333,35 @@ export default function AdvancedSearchAIPage() {
                                     }
                                 </p>
 
+                                {/* Selection bar — pick which prospects to enroll into the campaign */}
+                                {!inboundMode && leads.length > 0 && (
+                                    <div style={{
+                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                        gap: '8px', margin: '4px 0 10px', padding: '8px 12px',
+                                        background: '#f1f5ff', border: '1px solid #dbe4ff', borderRadius: '10px',
+                                    }}>
+                                        <span style={{ fontSize: '12px', fontWeight: 600, color: '#0b1957' }}>
+                                            {selectedLeadIds.size} of {leads.length} selected
+                                        </span>
+                                        <div style={{ display: 'flex', gap: '6px' }}>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); selectAllLeads(); }}
+                                                style={{ fontSize: '12px', fontWeight: 600, color: '#172560', background: '#fff', border: '1px solid #c7d2fe', borderRadius: '8px', padding: '4px 10px', cursor: 'pointer' }}
+                                            >
+                                                Select all
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); clearLeadSelection(); }}
+                                                style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '4px 10px', cursor: 'pointer' }}
+                                            >
+                                                Clear
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Inbound leads (CSV upload) */}
                                 {inboundMode && inboundLeads.length > 0 && (
                                     <div className="adv-leads-list">
@@ -5456,6 +5540,14 @@ export default function AdvancedSearchAIPage() {
                                                     ) : null}
                                                 </div>
                                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        title={selectedLeadIds.has(lead.id) ? 'Selected for campaign — click to remove' : 'Add to campaign'}
+                                                        checked={selectedLeadIds.has(lead.id)}
+                                                        onChange={(e) => { e.stopPropagation(); toggleLeadSelection(lead.id); }}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#172560' }}
+                                                    />
                                                     <button
                                                         className="adv-lead-action"
                                                         title="Generate Summary"
@@ -7376,7 +7468,7 @@ function CheckpointFormInline({
     step, setStep, icpThreshold, setIcpThreshold, actions, setActions, connMsg, setConnMsg, followMsg, setFollowMsg,
     nextChannels, setNextChannels, triggerCondition, setTriggerCondition,
     days, setDays, channelConfigStep, setChannelConfigStep, channelDelays, setChannelDelays, name, setName, genLoading, setGenLoading, launching, setLaunching, targeting, leads,
-    leadFeedback, searchSessions, chatMessages,
+    leadFeedback, selectedLeadIds, searchSessions, chatMessages,
     voiceAgents, setVoiceAgents, voiceNumbers, setVoiceNumbers,
     selectedAgentId, setSelectedAgentId, selectedVoiceId, setSelectedVoiceId,
     selectedFromNumber, setSelectedFromNumber,
@@ -7413,6 +7505,7 @@ function CheckpointFormInline({
     targeting: LeadTargeting | null;
     leads: LeadProfile[];
     leadFeedback: Record<string, 'good' | 'bad'>;
+    selectedLeadIds: Set<string>;
     searchSessions: { query: string; targeting: LeadTargeting | null; icp_description: string; timestamp: string }[];
     chatMessages: ChatMsg[];
     voiceAgents: any[]; setVoiceAgents: (v: any[]) => void;
@@ -8145,14 +8238,14 @@ function CheckpointFormInline({
                 _source: source,
             });
 
-            // For direct contacts (phone/email only): include ALL leads (not just thumbs-up)
-            // For LinkedIn search campaigns: include all leads except explicitly thumbs-down'd ones.
-            // Previously required explicit thumbs-up (=== 'good') which meant zero leads if user
-            // never clicked thumbs-up — leads were lost. Now we only exclude rejected leads.
-            // IMPORTANT: Filter by ICP threshold selected by user (only LinkedIn search leads, not direct/inbound)
+            // For LinkedIn search campaigns: enroll exactly the leads the user CHECKED.
+            // The per-lead checkbox is the authoritative include signal — the user picks
+            // prospects across the full ICP range (0–100) rather than relying on a score
+            // cutoff. Thumbs-down already auto-unchecks a lead, so the feedback guard is a
+            // redundant safety net.
             const goodMatchLeads = leads
+                .filter(l => selectedLeadIds.has(l.id))
                 .filter(l => leadFeedback[l.id] !== 'bad')
-                .filter(l => (l.icp_score ?? 0) >= icpMin)  // Apply ICP threshold filter
                 .map(l => mapLead(l, 'user_good_match'));
 
             const directContactLeads = isDirectContact
