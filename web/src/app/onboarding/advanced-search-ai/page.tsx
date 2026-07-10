@@ -2028,13 +2028,15 @@ export default function AdvancedSearchAIPage() {
     }, [mb]);
 
     const submitMediaInput = useCallback((text: string, valueToSend?: string | string[], customReferences?: { path: string, thumbnail: string }[]) => {
+        const finalRefs = customReferences || (mb.references && mb.references.length > 0 ? [...mb.references] : undefined);
+        const displayText = text || (finalRefs && finalRefs.length > 0 ? `Uploaded ${finalRefs.length} reference${finalRefs.length > 1 ? 's' : ''}` : "");
         setMediaMessages(prev => [
             ...prev.filter(m => !m.loading),
             {
                 id: `user-${Date.now()}`,
                 role: "user",
-                text: text,
-                references: customReferences || (mb.references && mb.references.length > 0 ? [...mb.references] : undefined),
+                text: displayText,
+                references: finalRefs,
                 timestamp: new Date()
             }
         ]);
@@ -4009,7 +4011,7 @@ export default function AdvancedSearchAIPage() {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             if (mediaMode) {
-                if (input.trim()) {
+                if (input.trim() || (mb.references && mb.references.length > 0)) {
                     submitMediaInput(input.trim());
                     setInput('');
                     if (taRef.current) taRef.current.style.height = 'auto';
@@ -5100,11 +5102,11 @@ export default function AdvancedSearchAIPage() {
                                     )}
                                     <button 
                                         className="adv-send-circle adv-send-sm" 
-                                        disabled={mediaMode ? (!input.trim() || mb.generating || mb.step === 'loading' || (mb.step === 'builder-brand-dna' && !brandDnaRequestedChanges)) : (!input.trim() || busy || (creditBalance !== null && creditBalance <= 0 && msgCount >= 10))} 
-                                        onClick={mediaMode ? () => { if (input.trim()) { submitMediaInput(input.trim()); setInput(''); if (taRef.current) taRef.current.style.height = 'auto'; } } : onChatSend}
+                                        disabled={mediaMode ? ((!input.trim() && (!mb.references || mb.references.length === 0)) || mb.generating || mb.step === 'loading' || (mb.step === 'builder-brand-dna' && !brandDnaRequestedChanges)) : (!input.trim() || busy || (creditBalance !== null && creditBalance <= 0 && msgCount >= 10))} 
+                                        onClick={mediaMode ? () => { if (input.trim() || (mb.references && mb.references.length > 0)) { submitMediaInput(input.trim()); setInput(''); if (taRef.current) taRef.current.style.height = 'auto'; } } : onChatSend}
                                         style={{ 
-                                            background: (mediaMode ? (!input.trim() || mb.generating || mb.step === 'loading' || (mb.step === 'builder-brand-dna' && !brandDnaRequestedChanges)) : (!input.trim() || busy || (creditBalance !== null && creditBalance <= 0 && msgCount >= 10))) ? '#e5e7eb' : '#172560', 
-                                            boxShadow: (mediaMode ? (!input.trim() || mb.generating) : (!input.trim() || busy)) ? 'none' : '0 2px 8px rgba(23,37,96,.3)' 
+                                            background: (mediaMode ? ((!input.trim() && (!mb.references || mb.references.length === 0)) || mb.generating || mb.step === 'loading' || (mb.step === 'builder-brand-dna' && !brandDnaRequestedChanges)) : (!input.trim() || busy || (creditBalance !== null && creditBalance <= 0 && msgCount >= 10))) ? '#e5e7eb' : '#172560', 
+                                            boxShadow: (mediaMode ? ((!input.trim() && (!mb.references || mb.references.length === 0)) || mb.generating) : (!input.trim() || busy)) ? 'none' : '0 2px 8px rgba(23,37,96,.3)' 
                                         }}
                                     >
                                         {mediaMode && mb.generating ? <div className="adv-spinner" /> : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>}

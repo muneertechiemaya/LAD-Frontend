@@ -556,6 +556,9 @@ export function useMediaBuilder() {
     }
 
     if (references.length > 0) {
+      if (!messageToSend || !messageToSend.trim()) {
+        messageToSend = "Attached reference images:";
+      }
       if (step === "builder-image-output") {
         messageToSend += ` from the generated image user selected the attachements for improvemnts`;
       } else {
