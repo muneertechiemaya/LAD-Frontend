@@ -1453,11 +1453,26 @@ export default function AdvancedSearchAIPage() {
                     const curCfg = deriveConfig(useOnboardingStore.getState().workflowPreview as unknown as SyncStep[]);
                     const hydChannels = Array.isArray(cs.next_channels) ? [...cs.next_channels] : [...curCfg.nextChannels];
                     if (liActions.length && !hydChannels.includes('linkedin')) hydChannels.unshift('linkedin');
-                    setWorkflowPreview(applyConfig(
+                    const hydrated = applyConfig(
                         useOnboardingStore.getState().workflowPreview as unknown as SyncStep[],
                         { actions: liActions, nextChannels: hydChannels, triggerCondition: cs.trigger_condition ?? cfg.trigger_condition ?? '' },
                         { includeLeadSource: includeLeadSourceRef.current },
-                    ) as any);
+                    ) as any[];
+                    // Restore the AI Media node (preserved type — survives later
+                    // toggle reconciles). Source: checkpoint_selections.media_step,
+                    // else a persisted media_generation step row.
+                    const ms = cs.media_step
+                        || (camp?.steps || []).find((s: any) => (s.type || s.step_type) === 'media_generation')?.config;
+                    if (ms && !hydrated.some((s: any) => s.type === 'media_generation')) {
+                        hydrated.push({
+                            id: 'media-gen', type: 'media_generation', title: 'AI Media', channel: 'media',
+                            description: 'Generate brand media to attach to outreach',
+                            mediaUrl: ms.media_url || '', mediaType: ms.media_type || '',
+                            mediaFilename: ms.media_filename || '', mimeType: ms.mime_type || '',
+                            mediaPrompt: ms.prompt || '',
+                        });
+                    }
+                    setWorkflowPreview(hydrated as any);
                 }
                 if (cs.campaign_days != null) setCpDays(String(cs.campaign_days));
                 setCpName(cs.campaign_name ?? camp?.name ?? '');
@@ -7843,6 +7858,33 @@ function CheckpointFormInline({
                     if (ch === 'voice_call') actionSteps.push({ type: 'voice_agent_call', title: 'AI Voice Call', channel: 'voice', order_index: orderIdx++, config: { agent_id: selectedAgentId || undefined, voice_id: selectedVoiceId || undefined, from_number: selectedFromNumber || undefined, ...chDelayConfig } });
                 }
             }
+
+            // ── AI Media step (media_generation) ──────────────────────────────
+            // The canvas node carries the accepted asset (permanent GCS quadruple,
+            // set via StepEditor → import-generated). Emit it as a real first step
+            // and stamp the asset onto every downstream send step that can carry
+            // media (LinkedIn message / WhatsApp / Email). The backend executor
+            // for media_generation is a fast no-op — sends read their own config.
+            const wfMediaNode = (useOnboardingStore.getState().workflowPreview || [])
+                .find((s: any) => s.type === 'media_generation') as any;
+            if (wfMediaNode?.mediaUrl) {
+                const mediaCfg = {
+                    media_url: wfMediaNode.mediaUrl,
+                    media_type: wfMediaNode.mediaType || 'image',
+                    media_filename: wfMediaNode.mediaFilename || undefined,
+                    mime_type: wfMediaNode.mimeType || undefined,
+                };
+                const MEDIA_CAPABLE = ['linkedin_message', 'whatsapp_send', 'email_send'];
+                for (const s of actionSteps) {
+                    if (MEDIA_CAPABLE.includes(s.type)) s.config = { ...s.config, ...mediaCfg };
+                }
+                actionSteps.unshift({
+                    type: 'media_generation', title: wfMediaNode.title || 'AI Media', channel: 'media',
+                    order_index: 0, config: { ...mediaCfg, prompt: wfMediaNode.mediaPrompt || undefined },
+                });
+                actionSteps.forEach((s, i) => { s.order_index = i + 1; });
+            }
+
             const t = targeting || { keywords: [], industries: [], locations: [], job_titles: [], profile_language: [] };
             const icpMin = parseInt(icpThreshold) || 0;
             // Build lead feedback summary for campaign config
@@ -7870,6 +7912,14 @@ function CheckpointFormInline({
                 ai_value_prop: aiMsgValueProp || '',
                 ai_tone: aiMsgTone || 'professional',
                 ai_goal: aiMsgGoal || 'get_meeting',
+                // AI Media node (edit-mode round-trip: hydration re-creates the canvas node)
+                media_step: wfMediaNode ? {
+                    media_url: wfMediaNode.mediaUrl || '',
+                    media_type: wfMediaNode.mediaType || '',
+                    media_filename: wfMediaNode.mediaFilename || '',
+                    mime_type: wfMediaNode.mimeType || '',
+                    prompt: wfMediaNode.mediaPrompt || '',
+                } : null,
             };
 
             // Get original ICP input (first user message in chat)

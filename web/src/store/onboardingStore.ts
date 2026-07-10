@@ -180,7 +180,7 @@ export interface WorkflowPreviewStep {
   title: string;
   description?: string;
   icon?: string;
-  channel?: 'linkedin' | 'email' | 'whatsapp' | 'voice' | 'instagram';
+  channel?: 'linkedin' | 'email' | 'whatsapp' | 'voice' | 'instagram' | 'media' | 'system';
   // Additional fields for step configuration
   message?: string;
   subject?: string;
@@ -189,6 +189,14 @@ export interface WorkflowPreviewStep {
   delayDays?: number;
   delayHours?: number;
   leadLimit?: number; // Number of leads to generate per day
+  // AI Media step (media_generation) — set when the user accepts a generated
+  // asset in the StepEditor; consumed by downstream send steps at launch.
+  // Persisted workflowPreview may predate these fields — all optional.
+  mediaPrompt?: string;
+  mediaUrl?: string;      // permanent GCS URL (post import-generated)
+  mediaType?: string;     // 'image' | 'video' | 'document'
+  mediaFilename?: string; // real extension — MIME normalization depends on it
+  mimeType?: string;
 }
 export interface AIMessage {
   role: 'ai' | 'user';

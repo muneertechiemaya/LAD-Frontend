@@ -62,6 +62,14 @@ const TYPE_BY_CHANNEL: Record<string, string> = {
   voice_call: 'voice_agent_call',
 };
 
+/**
+ * Step types that are NOT modeled by the guided-config toggles but must SURVIVE
+ * a rebuild. buildStepsFromConfig re-derives the array from the toggle config,
+ * so any type it doesn't know is silently dropped the moment a toggle changes —
+ * preserved types are re-inserted at (approximately) their original position.
+ */
+const PRESERVED_TYPES = new Set(['media_generation']);
+
 const COND_LABELS: Record<string, string> = {
   connection_accepted: 'Wait for Connection Accepted',
   message_replied: 'Wait for Message Reply',
@@ -112,6 +120,8 @@ function makeStep(kind: string, existing?: SyncStep): SyncStep {
       return { id: 'ch-whatsapp', type: 'whatsapp_send', title: 'Send WhatsApp Message', description: 'Follow up via whatsapp', channel: 'whatsapp' };
     case 'voice_agent_call':
       return { id: 'ch-voice_call', type: 'voice_agent_call', title: 'AI Voice Call', description: 'Follow up via voice_call', channel: 'voice' };
+    case 'media_generation':
+      return { id: 'media-gen', type: 'media_generation', title: 'AI Media', description: 'Generate brand media to attach to outreach', channel: 'media' };
     default:
       return { id: `${kind}-${Math.random().toString(36).slice(2, 8)}`, type: kind, title: kind };
   }
@@ -181,6 +191,13 @@ export function buildStepsFromConfig(
     if (type) out.push(take(type));
   }
 
+  // Re-insert preserved (toggle-agnostic) steps — e.g. the AI Media node — at
+  // their original position, clamped to the rebuilt array. Without this they
+  // would vanish from the canvas on the next guided-toggle change.
+  existing.forEach((s, i) => {
+    if (PRESERVED_TYPES.has(s.type)) out.splice(Math.min(i, out.length), 0, s);
+  });
+
   return out;
 }
 
@@ -194,4 +211,4 @@ export function applyConfig(
   return buildStepsFromConfig(merged, steps, opts);
 }
 
-export const _internal = { LI_ACTION_BY_TYPE, CHANNEL_BY_TYPE, TYPE_BY_CHANNEL, COND_LABELS };
+export const _internal = { LI_ACTION_BY_TYPE, CHANNEL_BY_TYPE, TYPE_BY_CHANNEL, COND_LABELS, PRESERVED_TYPES };

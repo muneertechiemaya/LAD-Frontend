@@ -1,6 +1,6 @@
 'use client';
 import React, { useMemo, useState, useEffect } from 'react';
-import { Workflow, Play, GitBranch, Zap, ArrowRightLeft, ArrowUpDown, Plus, X, ChevronRight, ChevronLeft, Linkedin, Mail, MessageCircle, Phone, UserPlus, Send, Eye } from 'lucide-react';
+import { Workflow, Play, GitBranch, Zap, ArrowRightLeft, ArrowUpDown, Plus, X, ChevronRight, ChevronLeft, Linkedin, Mail, MessageCircle, Phone, UserPlus, Send, Eye, Wand2 } from 'lucide-react';
 import { useOnboardingStore, WorkflowPreviewStep } from '@/store/onboardingStore';
 import { StepType } from '@/types/campaign';
 import ReactFlow, {
@@ -39,6 +39,7 @@ const PLATFORMS: any[] = [
   { id: 'email',    label: 'Email',    icon: <Mail className="w-4 h-4" />,     color: '#ea4335', desc: 'Direct mailing' },
   { id: 'whatsapp', label: 'WhatsApp', icon: <MessageCircle className="w-4 h-4" />, color: '#25d366', desc: 'Instant messaging' },
   { id: 'voice',    label: 'Voice',    icon: <Phone className="w-4 h-4" />,    color: '#8b5cf6', desc: 'AI Phone calls' },
+  { id: 'media',    label: 'AI Media', icon: <Wand2 className="w-4 h-4" />,    color: '#d946ef', desc: 'Generate brand media' },
 ];
 
 const PLATFORM_ACTIONS: Record<string, any[]> = {
@@ -55,6 +56,9 @@ const PLATFORM_ACTIONS: Record<string, any[]> = {
   ],
   voice: [
     { type: 'voice_agent_call', title: 'AI Call', icon: <Phone className="w-4 h-4" />, desc: 'AI voice interaction' },
+  ],
+  media: [
+    { type: 'media_generation', title: 'Generate Media', icon: <Wand2 className="w-4 h-4" />, desc: 'Brand image/video for outreach' },
   ],
 };
 
@@ -214,10 +218,11 @@ export default function WorkflowPreviewPanel({
           <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
             {workflowPreview.map((step) => {
               const color = step.type.includes('linkedin') || step.type === 'lead_generation' ? '#0a66c2'
-                : step.type.includes('email') ? '#ea4335'
-                  : step.type.includes('whatsapp') ? '#25d366'
-                    : step.type.includes('voice') ? '#8b5cf6'
-                      : step.type === 'delay' ? '#6b7280' : '#6366f1';
+                : step.type === 'media_generation' ? '#d946ef'
+                  : step.type.includes('email') ? '#ea4335'
+                    : step.type.includes('whatsapp') ? '#25d366'
+                      : step.type.includes('voice') ? '#8b5cf6'
+                        : step.type === 'delay' ? '#6b7280' : '#6366f1';
               return (
                 <div key={step.id} style={{
                   display: 'flex', alignItems: 'center', gap: 5,
