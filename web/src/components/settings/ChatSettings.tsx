@@ -1414,6 +1414,18 @@ export function ChatSettings() {
                 onChange={(e) => setNewPromptText(e.target.value)}
                 className="w-full h-32 px-3 py-2 text-sm font-mono border border-gray-200 rounded-md resize-y focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
               />
+              {/* LinkedIn-only: draft a fresh prompt from the business profile & ICP into the fields above */}
+              {activeChannel === 'linkedin' && (
+                <button
+                  onClick={() => runGenerate(null)}
+                  disabled={generatingPrompt === '__new__'}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 border border-blue-200 rounded-md hover:bg-blue-50 disabled:opacity-40"
+                  title="Generate a prompt from your business profile & ICP"
+                >
+                  {generatingPrompt === '__new__' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                  Generate with AI
+                </button>
+              )}
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleCreatePrompt}
