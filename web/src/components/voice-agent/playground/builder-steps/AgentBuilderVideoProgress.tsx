@@ -412,15 +412,17 @@ export function AgentBuilderVideoProgress({
             )}
             
             <div className="w-full flex items-center justify-center gap-2">
-              <button
-                type="button"
-                onClick={() => onNext?.("[SHOW_GALLERY]")}
-                className="flex-1 py-2.5 border border-slate-200 hover:bg-slate-50 text-[#0b1957] font-bold text-[11px] rounded-xl transition-all active:scale-95 cursor-pointer text-center flex items-center justify-center gap-1 shadow-sm"
-              >
-                <ArrowLeft className="size-3.5" />
-                Back to Gallery
-              </button>
-              {status !== "completed" && (
+              {!isExtraction && (
+                <button
+                  type="button"
+                  onClick={() => onNext?.("[SHOW_GALLERY]")}
+                  className="flex-1 py-2.5 border border-slate-200 hover:bg-slate-50 text-[#0b1957] font-bold text-[11px] rounded-xl transition-all active:scale-95 cursor-pointer text-center flex items-center justify-center gap-1 shadow-sm"
+                >
+                  <ArrowLeft className="size-3.5" />
+                  Back to Gallery
+                </button>
+              )}
+              {!isExtraction && status !== "completed" && (
                 <button
                   type="button"
                   onClick={() => onNext?.("Back to script approval")}

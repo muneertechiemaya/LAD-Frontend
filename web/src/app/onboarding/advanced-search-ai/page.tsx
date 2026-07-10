@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Gem, Upload, FileSpreadsheet, Download, CheckCircle2, Trash2, ChevronLeft, ChevronRight, X, MessageSquare, Users, Zap, Plus, Image as ImageIcon, Video, Loader2, Mic, Globe, Newspaper, UserPlus, Check } from 'lucide-react';
+import { Sparkles, Gem, Upload, FileSpreadsheet, Download, CheckCircle2, Trash2, ChevronLeft, ChevronRight, X, MessageSquare, Users, Zap, Plus, Image as ImageIcon, Video, Loader2, Mic, Globe, Newspaper, UserPlus, Check, History } from 'lucide-react';
 import { ProfileSummaryDialog } from '@/components/campaigns';
 import AgentVisualizer from '@/components/ui/AgentVisualizer';
 import { useOnboardingStore } from '@/store/onboardingStore';
@@ -512,6 +513,9 @@ export default function AdvancedSearchAIPage() {
     const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
     const editHydratedRef = useRef(false);
     const [input, setInput] = useState('');
+    const [isRecording, setIsRecording] = useState(false);
+    const [recognitionInstance, setRecognitionInstance] = useState<any>(null);
+    const [beautifying, setBeautifying] = useState(false);
     const [busy, setBusy] = useState(false);
     const [typedPlaceholder, setTypedPlaceholder] = useState('');
     useEffect(() => {
@@ -851,6 +855,96 @@ export default function AdvancedSearchAIPage() {
     const [mediaMessages, setMediaMessages] = useState<Array<MediaChatMsg>>([]);
     const mb = useMediaBuilder();
     const [brandDnaRequestedChanges, setBrandDnaRequestedChanges] = useState(false);
+    const [isHydrated, setIsHydrated] = useState(false);
+    const lastRestoredSessionIdRef = useRef<string>("");
+
+    // Save states to localStorage to prevent page refresh loss
+    useEffect(() => {
+        if (!isHydrated || typeof window === 'undefined') return;
+        if (mediaMode && mb.sessionId) {
+            localStorage.setItem('mrlad_media_mode', 'true');
+            localStorage.setItem('mrlad_active_media_session_id', mb.sessionId);
+            localStorage.setItem('mrlad_media_messages', JSON.stringify(mediaMessages));
+            localStorage.setItem('mrlad_chat_messages', JSON.stringify(messages));
+            localStorage.setItem('mrlad_cp_step', String(cpStep));
+        } else {
+            if (!mediaMode) {
+                localStorage.removeItem('mrlad_media_mode');
+                localStorage.removeItem('mrlad_active_media_session_id');
+                localStorage.removeItem('mrlad_media_messages');
+                localStorage.removeItem('mrlad_chat_messages');
+                localStorage.removeItem('mrlad_cp_step');
+            }
+        }
+    }, [mediaMode, mb.sessionId, mediaMessages, messages, cpStep, isHydrated]);
+
+    // Hydrate state from localStorage on mount and validate session
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        
+        const cachedMediaMode = localStorage.getItem('mrlad_media_mode') === 'true';
+        const cachedSessionId = localStorage.getItem('mrlad_active_media_session_id');
+        const cachedMediaMessages = localStorage.getItem('mrlad_media_messages');
+        const cachedChatMessages = localStorage.getItem('mrlad_chat_messages');
+        const cachedCpStep = localStorage.getItem('mrlad_cp_step');
+
+        if (cachedMediaMode && cachedSessionId) {
+            console.warn(`[SessionHydrate] Re-hydrating cached session: ${cachedSessionId}`);
+            mb.loadSession(cachedSessionId).then(() => {
+                setMediaMode(true);
+                if (cachedMediaMessages) {
+                    try { setMediaMessages(JSON.parse(cachedMediaMessages)); } catch (e) { console.error(e); }
+                }
+                if (cachedChatMessages) {
+                    try { setMessages(JSON.parse(cachedChatMessages)); } catch (e) { console.error(e); }
+                }
+                if (cachedCpStep) {
+                    setCpStep(Number(cachedCpStep));
+                }
+                setIsHydrated(true);
+            }).catch((err) => {
+                console.error("[SessionHydrate] Cached session validation failed, discarding cache", err);
+                localStorage.removeItem('mrlad_media_mode');
+                localStorage.removeItem('mrlad_active_media_session_id');
+                localStorage.removeItem('mrlad_media_messages');
+                localStorage.removeItem('mrlad_chat_messages');
+                localStorage.removeItem('mrlad_cp_step');
+                setIsHydrated(true);
+            });
+        } else {
+            setIsHydrated(true);
+        }
+    }, []);
+
+    // Overwrite mediaMessages if backend returns history (during GCS re-hydration / load or dropdown switch)
+    useEffect(() => {
+        if (mb.uiPayload?.history && mb.sessionId && lastRestoredSessionIdRef.current !== mb.sessionId) {
+            console.warn("[SessionHydrate] Restoring messages list from session history payload for:", mb.sessionId);
+            lastRestoredSessionIdRef.current = mb.sessionId;
+            const restoredHistory = mb.uiPayload.history.map((m: any) => {
+                let mappedPayload = m.payload;
+                if (m.payload) {
+                    mappedPayload = {
+                        ...m.payload,
+                        step: m.payload.step || m.payload.step_type,
+                        question: m.payload.question || m.payload.title,
+                        description: m.payload.description,
+                        phase: m.payload.phase
+                    };
+                }
+                return {
+                    id: m.id || `msg-${Math.random()}`,
+                    role: m.role,
+                    text: m.text,
+                    description: m.description,
+                    step: m.step,
+                    payload: mappedPayload,
+                    timestamp: new Date(m.timestamp || Date.now())
+                };
+            });
+            setMediaMessages(restoredHistory);
+        }
+    }, [mb.uiPayload?.history, mb.sessionId]);
 
     const hasOptionsOpen = mediaMode && (
         mb.step === "welcome" || 
@@ -864,7 +958,8 @@ export default function AdvancedSearchAIPage() {
 
     const isSplitScreenStep = mediaMode && (
         mb.step === "builder-brand-dna" ||
-        mb.step === "builder-video-progress"
+        mb.step === "builder-video-progress" ||
+        mb.step === "builder-keyframes-confirm"
     );
 
     const [mediaPlaceholder, setMediaPlaceholder] = useState('Ask Mr LAD / type response...');
@@ -1933,13 +2028,15 @@ export default function AdvancedSearchAIPage() {
     }, [mb]);
 
     const submitMediaInput = useCallback((text: string, valueToSend?: string | string[], customReferences?: { path: string, thumbnail: string }[]) => {
+        const finalRefs = customReferences || (mb.references && mb.references.length > 0 ? [...mb.references] : undefined);
+        const displayText = text || (finalRefs && finalRefs.length > 0 ? `Uploaded ${finalRefs.length} reference${finalRefs.length > 1 ? 's' : ''}` : "");
         setMediaMessages(prev => [
             ...prev.filter(m => !m.loading),
             {
                 id: `user-${Date.now()}`,
                 role: "user",
-                text: text,
-                references: customReferences || (mb.references && mb.references.length > 0 ? [...mb.references] : undefined),
+                text: displayText,
+                references: finalRefs,
                 timestamp: new Date()
             }
         ]);
@@ -1976,6 +2073,7 @@ export default function AdvancedSearchAIPage() {
         if (mb.step === "welcome") {
             setMediaMode(false);
             setMediaMessages([]);
+            lastRestoredSessionIdRef.current = "";
         } else {
             mb.undoStep();
         }
@@ -2224,19 +2322,19 @@ export default function AdvancedSearchAIPage() {
             return (
                 <div className="adv-options-extension fadeUp">
                     <div className="text-[11px] font-bold text-[#0b1957]/50 uppercase tracking-wider mb-2">Choose Script / Workflow</div>
-                    <div className="flex flex-col gap-2 max-h-40 overflow-y-auto scrollbar-thin">
+                    <div className="flex flex-wrap gap-2 justify-start items-center max-h-40 overflow-y-auto scrollbar-thin">
                         {mb.uiPayload?.options?.map((opt) => (
                             <button
                                 key={opt.id}
                                 onClick={() => submitMediaInput(opt.label, opt.label)}
-                                className="bg-white border border-slate-200 hover:border-[#0b1957] rounded-lg p-2.5 text-left text-xs font-semibold text-[#0b1957] hover:bg-slate-50 transition-all cursor-pointer"
+                                className="bg-white border border-slate-200 hover:border-[#0b1957] rounded-lg px-4 py-2 text-left text-xs font-semibold text-[#0b1957] hover:bg-slate-50 transition-all cursor-pointer"
                             >
                                 {opt.label}
                             </button>
                         ))}
                         <button
                             onClick={() => mb.undoStep()}
-                            className="border border-dashed border-slate-300 rounded-lg p-2 text-center text-xs font-bold text-slate-400 hover:bg-slate-50 transition-all cursor-pointer"
+                            className="border border-dashed border-slate-300 rounded-lg px-4 py-2 text-center text-xs font-bold text-slate-400 hover:bg-slate-50 transition-all cursor-pointer"
                         >
                             Go Back
                         </button>
@@ -2273,11 +2371,16 @@ export default function AdvancedSearchAIPage() {
         if (mb.step !== "loading" && !mb.generating && mb.uiPayload) {
             setMediaMessages(prev => {
                 // Check if this step already exists in history (for undo truncation)
-                const existingIndex = prev.findIndex(m => 
-                    m.step === mb.step && 
-                    m.payload?.phase === mb.uiPayload?.phase && 
-                    m.payload?.question === mb.uiPayload?.question
-                );
+                const existingIndex = prev.findIndex(m => {
+                    const isStepTypeMatch = m.step === mb.step;
+                    const mPhase = m.payload?.phase || m.payload?.phase_label;
+                    const uiPhase = mb.uiPayload?.phase;
+                    const isPhaseMatch = mPhase === uiPhase;
+                    const mQuestion = m.payload?.question || m.payload?.title || m.text;
+                    const uiQuestion = mb.uiPayload?.question || mb.uiPayload?.title;
+                    const isQuestionMatch = mQuestion === uiQuestion;
+                    return isStepTypeMatch && isPhaseMatch && isQuestionMatch;
+                });
 
                 if (existingIndex !== -1) {
                     return prev.slice(0, existingIndex + 1);
@@ -2285,10 +2388,18 @@ export default function AdvancedSearchAIPage() {
 
                 // Avoid duplicate additions of the current active step, but update its payload with the latest data
                 const lastMsg = prev[prev.length - 1];
-                if (lastMsg && 
-                    lastMsg.step === mb.step && 
-                    lastMsg.payload?.phase === mb.uiPayload?.phase && 
-                    lastMsg.payload?.question === mb.uiPayload?.question) {
+                const isLastMsgMatch = lastMsg && (() => {
+                    const isStepTypeMatch = lastMsg.step === mb.step;
+                    const mPhase = lastMsg.payload?.phase || lastMsg.payload?.phase_label;
+                    const uiPhase = mb.uiPayload?.phase;
+                    const isPhaseMatch = mPhase === uiPhase;
+                    const mQuestion = lastMsg.payload?.question || lastMsg.payload?.title || lastMsg.text;
+                    const uiQuestion = mb.uiPayload?.question || mb.uiPayload?.title;
+                    const isQuestionMatch = mQuestion === uiQuestion;
+                    return isStepTypeMatch && isPhaseMatch && isQuestionMatch;
+                })();
+
+                if (isLastMsgMatch) {
                     return prev.map((m, idx) => idx === prev.length - 1 ? {
                         ...m,
                         text: mb.uiPayload?.question || m.text,
@@ -3900,7 +4011,7 @@ export default function AdvancedSearchAIPage() {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             if (mediaMode) {
-                if (input.trim()) {
+                if (input.trim() || (mb.references && mb.references.length > 0)) {
                     submitMediaInput(input.trim());
                     setInput('');
                     if (taRef.current) taRef.current.style.height = 'auto';
@@ -4450,8 +4561,116 @@ export default function AdvancedSearchAIPage() {
                         onBack={() => mb.undoStep()}
                     />
                 );
+            case "builder-keyframes-confirm":
+                return (
+                    <AgentBuilderKeyframesConfirm
+                        title={mb.uiPayload?.question}
+                        description={mb.uiPayload?.description}
+                        keyframes={mb.uiPayload?.images || []}
+                        onNext={(val) => submitMediaInput(val || "", val)}
+                        phase={mb.uiPayload?.phase}
+                        references={mb.references}
+                        onUpload={mb.uploadReference}
+                        onRemove={mb.removeReference}
+                        isUploading={mb.isUploading}
+                        error={mb.error}
+                        onBack={() => mb.undoStep()}
+                        feedbackText={input}
+                        setFeedbackText={setInput}
+                        isSplitScreen={true}
+                    />
+                );
             default:
                 return null;
+        }
+    };
+
+    const toggleRecording = async () => {
+        if (beautifying) return;
+
+        if (isRecording) {
+            if (recognitionInstance) {
+                try {
+                    recognitionInstance.stop();
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+            setIsRecording(false);
+            setBeautifying(true);
+
+            const rawText = input.trim();
+            if (!rawText) {
+                setBeautifying(false);
+                return;
+            }
+
+            try {
+                const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
+                const workerUrl = process.env.NEXT_PUBLIC_PLAYGROUND_WORKER_URL || "http://localhost:8080";
+                const res = await fetch(`${workerUrl}/playground-media/beautify-transcription`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        ...(token && { Authorization: `Bearer ${token}` })
+                    },
+                    body: JSON.stringify({ text: rawText })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data && data.beautified_text) {
+                        setInput(data.beautified_text);
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to beautify transcription:", err);
+            } finally {
+                setBeautifying(false);
+            }
+        } else {
+            const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert("Speech recognition is not supported in this browser. Please use Chrome, Safari, or Edge.");
+                return;
+            }
+
+            try {
+                await navigator.mediaDevices.getUserMedia({ audio: true });
+            } catch (err) {
+                console.error("Microphone access denied:", err);
+                alert("Microphone access is required for voice interaction.");
+                return;
+            }
+
+            const rec = new SpeechRecognition();
+            rec.continuous = true;
+            rec.interimResults = true;
+            rec.lang = 'en-US';
+
+            rec.onresult = (event: any) => {
+                let finalTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    finalTranscript += event.results[i][0].transcript;
+                }
+                if (finalTranscript) {
+                    setInput(finalTranscript);
+                }
+            };
+
+            rec.onerror = (event: any) => {
+                console.error("Speech recognition error:", event.error);
+                if (event.error !== 'aborted') {
+                    setIsRecording(false);
+                }
+            };
+
+            rec.onend = () => {
+                setIsRecording(false);
+            };
+
+            rec.start();
+            setIsRecording(true);
+            setRecognitionInstance(rec);
         }
     };
 
@@ -4467,29 +4686,35 @@ export default function AdvancedSearchAIPage() {
                 <>
                     <div className="adv-media-header">
                         <button 
-                            className="adv-media-header-back" 
+                            className="adv-media-header-back-btn" 
                             onClick={handleMediaBack} 
                             style={{ display: mb.step === "welcome" ? "none" : "flex" }}
-                            title="Go Back"
+                            title="Undo last message"
                         >
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+                            <span>Undo last message</span>
                         </button>
                         
                         <div className="adv-media-header-title">
                             {mb.uiPayload?.phase || (mb.step === "welcome" ? "AI Media Studio" : "Waking up Mr. LADs...")}
                         </div>
 
-                        <button
-                            onClick={() => {
-                                mb.closeFlow();
-                                setMediaMode(false);
-                                setMediaMessages([]);
-                            }}
-                            className="adv-media-header-exit cursor-pointer"
-                        >
-                            <X className="size-4" />
-                            Exit Media Gen
-                        </button>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginLeft: 'auto' }}>
+                            <SessionSelector mb={mb} />
+                            
+                            <button
+                                onClick={() => {
+                                    mb.closeFlow();
+                                    setMediaMode(false);
+                                    setMediaMessages([]);
+                                    lastRestoredSessionIdRef.current = "";
+                                }}
+                                className="adv-media-header-exit-btn cursor-pointer"
+                            >
+                                <X className="size-4" style={{ flexShrink: 0 }} />
+                                <span>Exit Media Gen</span>
+                            </button>
+                        </div>
                     </div>
                     <div className="adv-media-header-fade" />
                 </>
@@ -4556,29 +4781,25 @@ export default function AdvancedSearchAIPage() {
                         <div className="adv-msgs-inner">
                             {mediaMode ? (
                                 <>
-                                    {mediaMessages.map((m, idx) => (
-                                        <MediaBubble 
-                                            key={m.id} 
-                                            msg={m} 
-                                            isActive={idx === mediaMessages.length - 1} 
-                                            mb={mb}
-                                            submitMediaInput={submitMediaInput}
-                                        />
-                                    ))}
-                                    {/* Inline Loader Bubble — rendered dynamically below messages, avoiding history flickering */}
+                                    {(() => {
+                                        const lastUserMsgIdx = mediaMessages.map(msg => msg.role).lastIndexOf('user');
+                                        return mediaMessages.map((m, idx) => (
+                                            <MediaBubble 
+                                                key={m.id} 
+                                                msg={m} 
+                                                isActive={idx === mediaMessages.length - 1} 
+                                                isLastUser={idx === lastUserMsgIdx}
+                                                handleMediaBack={handleMediaBack}
+                                                mb={mb}
+                                                submitMediaInput={submitMediaInput}
+                                            />
+                                        ));
+                                    })()}
+                                    {/* Inline Loader — rendered dynamically below messages, perfectly centered in the left chat/split container */}
                                     {(mb.step === "loading" || mb.generating) && (
-                                        <MediaBubble
-                                            msg={{
-                                                id: "generating-loader",
-                                                role: "ai",
-                                                text: mb.generating ? "Generating Concepts..." : "Waking up Mr. LADs...",
-                                                loading: true,
-                                                timestamp: new Date()
-                                            }}
-                                            isActive={true}
-                                            mb={mb}
-                                            submitMediaInput={submitMediaInput}
-                                        />
+                                        <div className="w-full flex justify-center py-12 fadeUp">
+                                            <ThinkingIndicator generating={mb.generating} />
+                                        </div>
                                     )}
                                 </>
                             ) : (
@@ -4830,20 +5051,32 @@ export default function AdvancedSearchAIPage() {
                                     {/* Premium Search or Mic Button based on mediaMode */}
                                     {mediaMode ? (
                                         <button
-                                            className="adv-premium-btn"
-                                            title="Talk to Mr. LADs — voice interaction"
+                                            className={`adv-premium-btn ${isRecording ? 'recording-pulse' : ''}`}
+                                            onClick={toggleRecording}
+                                            disabled={beautifying}
+                                            title={beautifying ? "Beautifying..." : isRecording ? "Stop voice transcription" : "Talk to Mr. LADs — voice interaction"}
                                             style={{
                                                 display: 'flex', alignItems: 'center', gap: '4px',
-                                                padding: '3px 8px', borderRadius: '12px', border: 'none',
-                                                cursor: 'default', fontSize: '11px', fontWeight: 600,
+                                                padding: '3px 8px', borderRadius: '12px',
+                                                border: isRecording ? '1.5px solid #ef4444' : 'none',
+                                                cursor: beautifying ? 'not-allowed' : 'pointer',
+                                                fontSize: '11px', fontWeight: 600,
                                                 transition: 'all 0.15s',
-                                                background: '#f1f5f9',
-                                                color: '#64748b',
+                                                background: beautifying ? '#e2e8f0' : isRecording ? '#fef2f2' : '#f1f5f9',
+                                                color: beautifying ? '#94a3b8' : isRecording ? '#ef4444' : '#64748b',
                                                 boxShadow: 'none',
                                             }}
                                         >
-                                            <Mic className="size-3" style={{ strokeWidth: 2.5 }} />
-                                            Talk to Mr. LADs
+                                            {beautifying ? (
+                                                <Loader2 className="size-3 animate-spin" />
+                                            ) : isRecording ? (
+                                                <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: '3px', color: '#ef4444', flexShrink: 0 }}>
+                                                    <rect x="4" y="4" width="16" height="16" rx="2" />
+                                                </svg>
+                                            ) : (
+                                                <Mic className="size-3" style={{ strokeWidth: 2.5 }} />
+                                            )}
+                                            {beautifying ? "Beautifying..." : isRecording ? "Stop" : "Talk to Mr. LADs"}
                                         </button>
                                     ) : (
                                         <button
@@ -4869,11 +5102,11 @@ export default function AdvancedSearchAIPage() {
                                     )}
                                     <button 
                                         className="adv-send-circle adv-send-sm" 
-                                        disabled={mediaMode ? (!input.trim() || mb.generating || mb.step === 'loading' || (mb.step === 'builder-brand-dna' && !brandDnaRequestedChanges)) : (!input.trim() || busy || (creditBalance !== null && creditBalance <= 0 && msgCount >= 10))} 
-                                        onClick={mediaMode ? () => { if (input.trim()) { submitMediaInput(input.trim()); setInput(''); if (taRef.current) taRef.current.style.height = 'auto'; } } : onChatSend}
+                                        disabled={mediaMode ? ((!input.trim() && (!mb.references || mb.references.length === 0)) || mb.generating || mb.step === 'loading' || (mb.step === 'builder-brand-dna' && !brandDnaRequestedChanges)) : (!input.trim() || busy || (creditBalance !== null && creditBalance <= 0 && msgCount >= 10))} 
+                                        onClick={mediaMode ? () => { if (input.trim() || (mb.references && mb.references.length > 0)) { submitMediaInput(input.trim()); setInput(''); if (taRef.current) taRef.current.style.height = 'auto'; } } : onChatSend}
                                         style={{ 
-                                            background: (mediaMode ? (!input.trim() || mb.generating || mb.step === 'loading' || (mb.step === 'builder-brand-dna' && !brandDnaRequestedChanges)) : (!input.trim() || busy || (creditBalance !== null && creditBalance <= 0 && msgCount >= 10))) ? '#e5e7eb' : '#172560', 
-                                            boxShadow: (mediaMode ? (!input.trim() || mb.generating) : (!input.trim() || busy)) ? 'none' : '0 2px 8px rgba(23,37,96,.3)' 
+                                            background: (mediaMode ? ((!input.trim() && (!mb.references || mb.references.length === 0)) || mb.generating || mb.step === 'loading' || (mb.step === 'builder-brand-dna' && !brandDnaRequestedChanges)) : (!input.trim() || busy || (creditBalance !== null && creditBalance <= 0 && msgCount >= 10))) ? '#e5e7eb' : '#172560', 
+                                            boxShadow: (mediaMode ? ((!input.trim() && (!mb.references || mb.references.length === 0)) || mb.generating) : (!input.trim() || busy)) ? 'none' : '0 2px 8px rgba(23,37,96,.3)' 
                                         }}
                                     >
                                         {mediaMode && mb.generating ? <div className="adv-spinner" /> : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>}
@@ -6530,7 +6763,6 @@ export default function AdvancedSearchAIPage() {
 /* ═══════════════════════════════════════════════
    CHAT BUBBLE
    ═══════════════════════════════════════════════ */
-import { useSelector } from 'react-redux';
 
 function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, agentDealLoading, onStartTargeting, hasPanel, leadsCount, filteredLeadsCount, onUploadClick, useSalesNav, isMobile }: { msg: ChatMsg; onOpt: (v: string) => void; onShowPanel: (panel: 'leads' | 'workflow') => void; onStartCheckpoints: () => void; onLetAgentDeal?: () => void; agentDealLoading?: boolean; onStartTargeting: () => void; hasPanel: boolean; leadsCount: number; filteredLeadsCount?: number; onUploadClick?: () => void; useSalesNav?: boolean; isMobile?: boolean }) {
     const user = useSelector((state: any) => state.auth?.user);
@@ -9933,6 +10165,7 @@ function MediaStepWidget({
                 </div>
             );
         case "builder-video-progress":
+            if (isActive) return null;
             return (
                 <div className="mt-2 w-[448px] max-w-full bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-md">
                     <AgentBuilderVideoProgress
@@ -9996,19 +10229,148 @@ function MediaStepWidget({
     }
 }
 
+function SessionSelector({ mb }: { mb: any }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+    const { fetchPastSessions } = mb;
+
+    useEffect(() => {
+        if (isOpen) {
+            fetchPastSessions();
+        }
+    }, [isOpen, fetchPastSessions]);
+
+    // Close on click outside
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    return (
+        <div ref={dropdownRef} style={{ position: 'relative' }}>
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="adv-media-header-exit cursor-pointer"
+                style={{ background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+                <History className="size-4" />
+                Saved Sessions
+            </button>
+
+            {isOpen && (
+                <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    right: 0,
+                    marginTop: '8px',
+                    width: '320px',
+                    maxHeight: '400px',
+                    background: '#fff',
+                    borderRadius: '12px',
+                    border: '1px solid #e5e7eb',
+                    boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+                    zIndex: 1000,
+                    overflowY: 'auto',
+                    padding: '8px 0'
+                }}>
+                    <div style={{ padding: '8px 16px', borderBottom: '1px solid #f3f4f6', fontWeight: 'bold', fontSize: '11px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Saved Sessions
+                    </div>
+                    {mb.loadingSessions ? (
+                        <div style={{ padding: '16px', textAlign: 'center', fontSize: '13px', color: '#9ca3af' }}>
+                            Loading sessions...
+                        </div>
+                    ) : mb.pastSessions?.length === 0 ? (
+                        <div style={{ padding: '16px', textAlign: 'center', fontSize: '13px', color: '#9ca3af' }}>
+                            No saved sessions found.
+                        </div>
+                    ) : (
+                        mb.pastSessions.map((s: any) => {
+                            const isCurrent = s.session_id === mb.sessionId;
+                            return (
+                                <button
+                                    key={s.session_id}
+                                    onClick={() => {
+                                        mb.loadSession(s.session_id);
+                                        setIsOpen(false);
+                                    }}
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px 16px',
+                                        textAlign: 'left',
+                                        background: isCurrent ? '#f1f5f9' : 'transparent',
+                                        border: 'none',
+                                        display: 'block',
+                                        cursor: 'pointer',
+                                        transition: 'background 0.2s',
+                                    }}
+                                    className="hover:bg-slate-50"
+                                >
+                                    <div style={{ fontWeight: 'bold', fontSize: '13px', color: isCurrent ? '#0f172a' : '#334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px' }}>{s.title}</span>
+                                        {isCurrent && <span style={{ fontSize: '10px', background: '#3b82f6', color: '#fff', padding: '1px 5px', borderRadius: '4px' }}>Active</span>}
+                                    </div>
+                                    <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {s.description || 'No description available.'}
+                                    </div>
+                                    <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '4px' }}>
+                                        {s.updated_at ? new Date(s.updated_at).toLocaleString() : 'Date unknown'}
+                                    </div>
+                                </button>
+                            );
+                        })
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
 function MediaBubble({ 
     msg, 
     isActive, 
+    isLastUser,
+    handleMediaBack,
     mb, 
     submitMediaInput 
 }: { 
     msg: any; 
     isActive: boolean; 
+    isLastUser?: boolean;
+    handleMediaBack?: () => void;
     mb: any; 
     submitMediaInput: (text: string, valueToSend?: string | string[]) => void; 
 }) {
     if (msg.role === 'user') return (
         <div className="adv-bubble adv-bubble-user fadeUp" style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
+            {isLastUser && handleMediaBack && (
+                <button
+                    onClick={handleMediaBack}
+                    title="Undo last message / Revert"
+                    className="adv-bubble-undo-btn"
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: 'none',
+                        background: 'none',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        borderRadius: '4px',
+                        order: 0,
+                        marginRight: '4px',
+                        transition: 'all 0.15s',
+                        alignSelf: 'center',
+                    }}
+                >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+                </button>
+            )}
             <div className="adv-user-msg" style={{ margin: 0, order: 1 }}>
                 <div>{msg.text}</div>
                 {msg.references && msg.references.length > 0 && (
@@ -10128,6 +10490,14 @@ const css = `
             @keyframes slideInRight {from {opacity:0; transform:translateX(100%); } to {opacity:1; transform:translateX(0); } }
             @keyframes spin {to {transform: rotate(360deg); } }
             @keyframes pulse {0 %, 100 % { opacity: .4 } 50% {opacity:1 } }
+            @keyframes recPulse {
+                0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+                70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+                100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+            }
+            .recording-pulse {
+                animation: recPulse 1.5s infinite;
+            }
             .fadeUp {animation: fadeUp .35s ease both; }
 
             /* ── LANDING ── */
@@ -10903,8 +11273,10 @@ const css = `
                 font-size: 15px;
                 font-weight: 600;
                 color: #0b1957;
-                text-align: center;
-                flex-grow: 1;
+                position: absolute;
+                left: 50%;
+                transform: translateX(-50%);
+                pointer-events: none;
             }
             .dark .adv-media-header-title {
                 color: #60a5fa;
@@ -10928,6 +11300,110 @@ const css = `
             .dark .adv-media-header-exit {
                 background: rgba(239,68,68,0.1);
                 border-color: #ef4444;
+            }
+            .adv-media-header-exit-btn {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 0px;
+                padding: 7px;
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                border: 1.5px solid #ef4444;
+                background: #fef2f2;
+                color: #ef4444;
+                font-size: 12px;
+                font-weight: 600;
+                overflow: hidden;
+                white-space: nowrap;
+                transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-radius 0.25s, padding 0.25s, gap 0.25s;
+                cursor: pointer;
+            }
+            .adv-media-header-exit-btn span {
+                opacity: 0;
+                max-width: 0;
+                transition: opacity 0.15s ease, max-width 0.25s ease;
+                display: inline-block;
+            }
+            .adv-media-header-exit-btn:hover {
+                width: 125px;
+                border-radius: 20px;
+                padding: 7px 14px;
+                gap: 6px;
+                background: #fee2e2;
+                justify-content: flex-start;
+            }
+            .adv-media-header-exit-btn:hover span {
+                opacity: 1;
+                max-width: 100px;
+            }
+            .dark .adv-media-header-exit-btn {
+                background: rgba(239,68,68,0.1);
+                border-color: #ef4444;
+            }
+            .adv-media-header-back-btn {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 0px;
+                padding: 7px;
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                border: 1.5px solid #cbd5e1;
+                background: #ffffff;
+                color: #475569;
+                font-size: 11px;
+                font-weight: 600;
+                overflow: hidden;
+                white-space: nowrap;
+                transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-radius 0.25s, padding 0.25s, gap 0.25s;
+                cursor: pointer;
+            }
+            .adv-media-header-back-btn span {
+                opacity: 0;
+                max-width: 0;
+                transition: opacity 0.15s ease, max-width 0.25s ease;
+                display: inline-block;
+            }
+            .adv-media-header-back-btn:hover {
+                width: 155px;
+                border-radius: 20px;
+                padding: 7px 12px;
+                gap: 6px;
+                background: #f1f5f9;
+                border-color: #64748b;
+                color: #1e293b;
+                justify-content: flex-start;
+            }
+            .adv-media-header-back-btn:hover span {
+                opacity: 1;
+                max-width: 110px;
+            }
+            .dark .adv-media-header-back-btn {
+                background: #1a2a43;
+                border-color: #253456;
+                color: #cbd5e1;
+            }
+            .dark .adv-media-header-back-btn:hover {
+                background: #253456;
+                border-color: #475569;
+                color: #f8fafc;
+            }
+
+            .adv-bubble-undo-btn {
+                color: #94a3b8;
+                border-radius: 4px;
+                transition: all 0.15s;
+            }
+            .adv-bubble-undo-btn:hover {
+                color: #ef4444 !important;
+                background: #fef2f2 !important;
+                transform: scale(1.1);
+            }
+            .dark .adv-bubble-undo-btn:hover {
+                background: rgba(239, 68, 68, 0.15) !important;
             }
             /* transparency fade overlay */
             .adv-media-header-fade {
