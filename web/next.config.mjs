@@ -74,6 +74,8 @@ const nextConfig = {
   async rewrites() {
     const backendUrl =
       process.env.NEXT_PUBLIC_BACKEND_URL || '';
+    const playgroundWorkerUrl =
+      process.env.NEXT_PUBLIC_PLAYGROUND_WORKER_URL || 'http://localhost:8080';
     return [
       {
         source: '/api/social-integration/email/google/callback',
@@ -82,6 +84,10 @@ const nextConfig = {
       {
         source: '/api/social-integration/email/microsoft/callback',
         destination: `${backendUrl}/api/social-integration/email/microsoft/callback`,
+      },
+      {
+        source: '/playground-media/media/:path*',
+        destination: `${playgroundWorkerUrl}/playground-media/media/:path*`,
       },
     ];
   },

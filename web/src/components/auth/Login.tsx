@@ -41,6 +41,12 @@ const Login: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    // Start downloading the (heavy) post-login page while the user types, so
+    // router.push after auth doesn't pay the full chunk-load on click.
+    router.prefetch(redirectUrl);
+  }, [router, redirectUrl]);
+
+  useEffect(() => {
     if (error) {
       setFormErrors((prev) => ({ ...prev, submit: error }));
     }
@@ -70,15 +76,26 @@ const Login: React.FC = () => {
     if (Object.keys(errors).length > 0) return setFormErrors(errors);
     dispatch(loginStart());
     try {
-      await authService.login(formData);
-      const user = await authService.getCurrentUser();
+      // The login response already carries the user (id/name/role/tenant/
+      // capabilities) — navigate on it immediately instead of blocking on a
+      // second /api/auth/me round trip that re-fetches the same data.
+      const loginResp = await authService.login(formData);
+      const user = (loginResp?.user || {}) as any;
       dispatch(loginSuccess(user));
       // AuthContext otherwise stays null until a full page refresh, leaving the
       // sidebar empty (nav items + display name) on the first post-login render.
-      refreshUser(user as any);
+      refreshUser(user);
       // Honour redirect_url param (e.g. /tenant/onboard/new for super-admin)
       // Fall back to default dashboard for all other users
       router.push(redirectUrl);
+      // Backfill the richer /me payload (tenants[] for the switcher,
+      // tenantFeatures[] for feature gates) WITHOUT blocking navigation.
+      authService.getCurrentUser()
+        .then((fullUser) => {
+          dispatch(loginSuccess(fullUser));
+          refreshUser(fullUser as any);
+        })
+        .catch(() => { /* non-blocking enrichment; AuthContext self-heals on next mount */ });
     } catch (err: any) {
       console.error('[Login] Login failed:', err);
       dispatch(loginFailure(err.message));

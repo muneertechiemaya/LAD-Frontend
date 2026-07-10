@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, Sparkles, AlertCircle, Film, Check, Trash2, ArrowRight, Maximize2, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, Sparkles, AlertCircle, Film, Check, Trash2, ArrowRight, Maximize2, ChevronLeft, ChevronRight, ArrowLeft } from "lucide-react";
 import { BuilderBottomInput } from "./BuilderBottomInput";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +15,10 @@ export function AgentBuilderKeyframesConfirm({
   onRemove,
   isUploading = false,
   error = "",
+  onBack,
+  feedbackText,
+  setFeedbackText,
+  isSplitScreen = false,
 }: {
   title?: string;
   description?: string;
@@ -27,10 +31,17 @@ export function AgentBuilderKeyframesConfirm({
   onRemove?: (path: string) => void;
   isUploading?: boolean;
   error?: string;
+  onBack?: () => void;
+  feedbackText?: string;
+  setFeedbackText?: (val: string) => void;
+  isSplitScreen?: boolean;
 }) {
   const [selectedFrame, setSelectedFrame] = useState<number | null>(null);
-  const [feedbackText, setFeedbackText] = useState("");
+  const [localFeedbackText, setLocalFeedbackText] = useState("");
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+
+  const currentFeedbackText = feedbackText !== undefined ? feedbackText : localFeedbackText;
+  const currentSetFeedbackText = setFeedbackText !== undefined ? setFeedbackText : setLocalFeedbackText;
 
   const handleFilesSelected = (files: FileList) => {
     if (onUpload) {
@@ -46,21 +57,21 @@ export function AgentBuilderKeyframesConfirm({
     } else if (actionType === "cancel") {
       onNext?.("cancel storyboard");
     } else if (actionType === "change" && selectedFrame !== null) {
-      onNext?.(`change frame ${selectedFrame}: ${feedbackText}`);
-      setFeedbackText("");
+      onNext?.(`change frame ${selectedFrame}: ${currentFeedbackText}`);
+      currentSetFeedbackText("");
       setSelectedFrame(null);
     } else if (actionType === "discard" && selectedFrame !== null) {
-      onNext?.(`discard after frame ${selectedFrame}: ${feedbackText}`);
-      setFeedbackText("");
+      onNext?.(`discard after frame ${selectedFrame}: ${currentFeedbackText}`);
+      currentSetFeedbackText("");
       setSelectedFrame(null);
     } else if (actionType === "regenerate") {
-      onNext?.(`regenerate storyboard: ${feedbackText}`);
-      setFeedbackText("");
+      onNext?.(`regenerate storyboard: ${currentFeedbackText}`);
+      currentSetFeedbackText("");
       setSelectedFrame(null);
     }
   };
 
-  const isInstructionEmpty = !feedbackText.trim();
+  const isInstructionEmpty = !currentFeedbackText.trim();
   const isGenerating = phase === "Storyboard Generation";
 
   return (
@@ -68,6 +79,15 @@ export function AgentBuilderKeyframesConfirm({
       {/* Header */}
       <div className="w-full flex shrink-0 items-center justify-between p-4 border-b border-slate-100 bg-white/80 z-10">
         <div className="flex items-center gap-2 pl-4">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="mr-1 p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-all active:scale-95 border border-transparent hover:border-slate-100"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="size-4" />
+            </button>
+          )}
           <Film className="size-4 text-slate-700 animate-pulse" />
           <span className="text-[11px] font-bold text-[#0b1957] uppercase tracking-wider">
             {phase || "Storyboard Review"}
@@ -180,26 +200,36 @@ export function AgentBuilderKeyframesConfirm({
       </div>
 
       {/* Action Buttons Panel */}
-      <div className="w-full flex-shrink-0 flex flex-col gap-2 px-6 pt-2 pb-1 border-t border-slate-50 bg-white">
+      <div className="w-full flex-shrink-0 flex flex-col gap-2 px-6 pt-2 pb-2.5 border-t border-slate-50 bg-white">
         {selectedFrame !== null ? (
           <div className="flex gap-2">
-            <button
-              type="button"
-              disabled={isInstructionEmpty}
-              onClick={() => handleAction("change")}
-              className="flex-1 py-2 bg-gradient-to-br from-[#0b1957] to-[#1e293b] hover:from-[#0b1957] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-[10px] rounded-xl transition-all active:scale-95 shadow-sm hover:shadow"
+            <div 
+              title={isInstructionEmpty ? "First type the change request in the input box" : undefined}
+              className="flex-1 flex"
             >
-              Request Frame Changes
-            </button>
-            <button
-              type="button"
-              disabled={isInstructionEmpty}
-              onClick={() => handleAction("discard")}
-              className="flex-1 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-[10px] rounded-xl transition-all active:scale-95 shadow-sm hover:shadow flex items-center justify-center gap-1"
+              <button
+                type="button"
+                disabled={isInstructionEmpty}
+                onClick={() => handleAction("change")}
+                className="w-full py-2 bg-gradient-to-br from-[#0b1957] to-[#1e293b] hover:from-[#0b1957] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-[10px] rounded-xl transition-all active:scale-95 shadow-sm hover:shadow"
+              >
+                Request Frame Changes
+              </button>
+            </div>
+            <div 
+              title={isInstructionEmpty ? "First type the change request in the input box" : undefined}
+              className="flex-1 flex"
             >
-              <Trash2 className="size-3" />
-              Discard After This
-            </button>
+              <button
+                type="button"
+                disabled={isInstructionEmpty}
+                onClick={() => handleAction("discard")}
+                className="w-full py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-[10px] rounded-xl transition-all active:scale-95 shadow-sm hover:shadow flex items-center justify-center gap-1"
+              >
+                <Trash2 className="size-3" />
+                Discard After This
+              </button>
+            </div>
           </div>
         ) : (
           <div className="flex flex-col gap-1.5 w-full">
@@ -213,14 +243,19 @@ export function AgentBuilderKeyframesConfirm({
               Confirm Storyboard & Generate Video
             </button>
             <div className="flex gap-2 w-full">
-              <button
-                type="button"
-                disabled={isInstructionEmpty || isGenerating}
-                onClick={() => handleAction("regenerate")}
-                className="flex-1 py-1.5 border border-slate-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-slate-600 font-bold text-[10px] rounded-xl transition-all"
+              <div 
+                title={isInstructionEmpty ? "First type the change request in the input box" : undefined}
+                className="flex-1 flex"
               >
-                Regenerate Storyboard
-              </button>
+                <button
+                  type="button"
+                  disabled={isInstructionEmpty || isGenerating}
+                  onClick={() => handleAction("regenerate")}
+                  className="w-full py-1.5 border border-slate-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-slate-600 font-bold text-[10px] rounded-xl transition-all"
+                >
+                  Regenerate Storyboard
+                </button>
+              </div>
               <button
                 type="button"
                 disabled={isGenerating}
@@ -232,38 +267,44 @@ export function AgentBuilderKeyframesConfirm({
             </div>
           </div>
         )}
-      </div>
-
-      {/* Dynamic input bar for instructions */}
-      <div className="w-full flex flex-col pb-4 pt-2 bg-white relative z-20 border-t border-slate-50 shrink-0">
-        <BuilderBottomInput
-          value={feedbackText}
-          onChange={setFeedbackText}
-          onSend={(val) => {
-            if (selectedFrame !== null) {
-              onNext?.(`change frame ${selectedFrame}: ${val || ""}`);
-              setSelectedFrame(null);
-              setFeedbackText("");
-            } else {
-              onNext?.(`regenerate storyboard: ${val || ""}`);
-              setFeedbackText("");
-            }
-          }}
-          placeholder={
-            selectedFrame !== null
-              ? `*Mandatory*: Describe changes for Frame ${selectedFrame + 1}...`
-              : "Feedback instructions to regenerate storyboard..."
-          }
-          enableUpload={true}
-          onFilesSelected={handleFilesSelected}
-        />
         {selectedFrame !== null && isInstructionEmpty && (
-          <div className="flex items-center gap-1 px-6 mt-1 text-[9px] text-amber-600 font-bold justify-center">
+          <div className="flex items-center gap-1 mt-1.5 text-[9px] text-amber-600 font-bold justify-center select-none">
             <AlertCircle className="size-3 shrink-0" />
-            <span>Type change instructions below to enable action buttons.</span>
+            <span>
+              {isSplitScreen
+                ? "First type the request in the input box to enable action buttons."
+                : "Type change instructions below to enable action buttons."}
+            </span>
           </div>
         )}
       </div>
+
+      {/* Dynamic input bar for instructions */}
+      {!isSplitScreen && (
+        <div className="w-full flex flex-col pb-4 pt-2 bg-white relative z-20 border-t border-slate-50 shrink-0">
+          <BuilderBottomInput
+            value={currentFeedbackText}
+            onChange={currentSetFeedbackText}
+            onSend={(val) => {
+              if (selectedFrame !== null) {
+                onNext?.(`change frame ${selectedFrame}: ${val || ""}`);
+                setSelectedFrame(null);
+                currentSetFeedbackText("");
+              } else {
+                onNext?.(`regenerate storyboard: ${val || ""}`);
+                currentSetFeedbackText("");
+              }
+            }}
+            placeholder={
+              selectedFrame !== null
+                ? `*Mandatory*: Describe changes for Frame ${selectedFrame + 1}...`
+                : "Feedback instructions to regenerate storyboard..."
+            }
+            enableUpload={true}
+            onFilesSelected={handleFilesSelected}
+          />
+        </div>
+      )}
 
       {/* Expanded Lightbox Modal Overlay */}
       {expandedIdx !== null && (

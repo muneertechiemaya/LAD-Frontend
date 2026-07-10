@@ -8,6 +8,7 @@ interface WorkflowChoiceProps {
   onClose?: () => void;
   onNext?: (val?: string) => void;
   phase?: string;
+  onBack?: () => void;
 }
 
 export function AgentBuilderWorkflowChoice({
@@ -17,6 +18,7 @@ export function AgentBuilderWorkflowChoice({
   onClose,
   onNext,
   phase,
+  onBack,
 }: WorkflowChoiceProps) {
   
   // Custom metadata for each workflow option card
@@ -56,6 +58,15 @@ export function AgentBuilderWorkflowChoice({
       {/* Header */}
       <div className="w-full flex shrink-0 items-center justify-between p-4 border-b border-slate-100 bg-white/80 z-10">
         <div className="flex items-center gap-2 pl-4">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="mr-1 p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-all active:scale-95 border border-transparent hover:border-slate-100"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="size-4" />
+            </button>
+          )}
           <Sparkles className="size-4 text-[#0b1957]" />
           <span className="text-[11px] font-bold text-[#0b1957] uppercase tracking-wider">
             {phase || "Workflow Selection"}
@@ -121,14 +132,14 @@ export function AgentBuilderWorkflowChoice({
       {/* Bottom Footer Actions */}
       <div className="w-full border-t border-slate-50 bg-white p-4 shrink-0 flex items-center justify-center">
         <button
-          onClick={() => {
+          onClick={onBack || (() => {
             const backObj = options.find(opt => {
               const label = typeof opt === "string" ? opt : opt.label;
               return label.toLowerCase().includes("back");
             });
             const backOpt = backObj ? (typeof backObj === "string" ? backObj : backObj.label) : "Back to script";
             handleSelect(backOpt);
-          }}
+          })}
           className="text-xs font-bold text-slate-400 hover:text-primary transition-colors flex items-center gap-1 cursor-pointer active:scale-95"
         >
           <ArrowLeft className="size-3.5" />
