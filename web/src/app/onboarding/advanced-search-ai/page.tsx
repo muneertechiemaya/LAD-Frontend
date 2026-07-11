@@ -1641,6 +1641,16 @@ export default function AdvancedSearchAIPage() {
         }
     }, [billing.wallet, billing.error]);
 
+    // Auto-unlock search results when the tenant has any credit balance. Unlocking is a
+    // pure client-side flag flip (locked = CSS blur only — no data withheld, no charge).
+    // The leads.some(locked) guard prevents re-render loops and also covers late-arriving
+    // "Get More Leads" pages, which are constructed with locked: idx >= 5.
+    useEffect(() => {
+        if (creditBalance !== null && creditBalance >= 1 && leads.some(l => l.locked)) {
+            setLeads(prev => prev.map(l => ({ ...l, locked: false })));
+        }
+    }, [creditBalance, leads]);
+
     // Sync voice agent hook data → cpVoiceAgents/cpVoiceNumbers state
     // so CheckpointFormInline receives them as pre-populated props
     useEffect(() => {
@@ -5003,6 +5013,8 @@ export default function AdvancedSearchAIPage() {
                                     leads={leads}
                                     leadFeedback={leadFeedback}
                                     selectedLeadIds={selectedLeadIds}
+                                    creditBalance={creditBalance}
+                                    onOpenRecharge={() => setShowRechargeModal(true)}
                                     searchSessions={searchSessions}
                                     chatMessages={messages}
                                     pendingContact={pendingContact}
@@ -7483,7 +7495,7 @@ function CheckpointFormInline({
     step, setStep, icpThreshold, setIcpThreshold, actions, setActions, connMsg, setConnMsg, followMsg, setFollowMsg,
     nextChannels, setNextChannels, triggerCondition, setTriggerCondition,
     days, setDays, channelConfigStep, setChannelConfigStep, channelDelays, setChannelDelays, name, setName, genLoading, setGenLoading, launching, setLaunching, targeting, leads,
-    leadFeedback, selectedLeadIds, searchSessions, chatMessages,
+    leadFeedback, selectedLeadIds, creditBalance, onOpenRecharge, searchSessions, chatMessages,
     voiceAgents, setVoiceAgents, voiceNumbers, setVoiceNumbers,
     selectedAgentId, setSelectedAgentId, selectedVoiceId, setSelectedVoiceId,
     selectedFromNumber, setSelectedFromNumber,
@@ -7521,6 +7533,8 @@ function CheckpointFormInline({
     leads: LeadProfile[];
     leadFeedback: Record<string, 'good' | 'bad'>;
     selectedLeadIds: Set<string>;
+    creditBalance: number | null;
+    onOpenRecharge: () => void;
     searchSessions: { query: string; targeting: LeadTargeting | null; icp_description: string; timestamp: string }[];
     chatMessages: ChatMsg[];
     voiceAgents: any[]; setVoiceAgents: (v: any[]) => void;
@@ -7899,6 +7913,13 @@ function CheckpointFormInline({
     const LINKEDIN_DAILY_LIMIT = 40; // safe daily connection request limit
     const LINKEDIN_WEEKLY_LIMIT = 190; // safe weekly limit
 
+    // Minimum credit ESTIMATE per enrolled lead, matching the default personalized-connect
+    // flow (featureCreditConfig: personalized connect = 5 flat). Real billing is PER-ACTION
+    // at execution time — launch itself charges 0; connect=1, personalized connect=5,
+    // template msg=5, enrichment=2, phone=10 — so this gate is a deliberate minimum
+    // estimate, NOT the actual charge.
+    const CREDIT_COST_PER_LEAD = 5;
+
     // Compute qualified leads count based on ICP threshold
     const qualifiedLeadCount = leads.filter(l => (l.icp_score ?? 0) >= (parseInt(icpThreshold) || 0)).length;
 
@@ -7916,6 +7937,14 @@ function CheckpointFormInline({
     // across the campaign duration and made subsequent scheduled runs fetch only 1 lead/day.)
     const safeLeadsPerDay = Math.min(LINKEDIN_DAILY_LIMIT, Math.max(1, qualifiedLeadCount));
     const exceedsLinkedInLimits = qualifiedLeadCount > LINKEDIN_DAILY_LIMIT;
+
+    // Credit gate for launch. Enrolled = CHECKED leads minus thumbs-down — mirrors
+    // launchCampaign's goodMatchLeads filter, not raw selectedLeadIds.size.
+    // creditBalance === null (billing fetch failed) fails OPEN — never block launch
+    // on a billing-fetch error.
+    const enrolledCount = leads.filter(l => selectedLeadIds.has(l.id)).filter(l => leadFeedback[l.id] !== 'bad').length;
+    const requiredCredits = enrolledCount * CREDIT_COST_PER_LEAD;
+    const creditsOk = creditBalance == null || creditBalance >= requiredCredits;
 
     const toggleAction = (a: string) => {
         const newActions = actions.includes(a) ? actions.filter(x => x !== a) : [...actions, a];
@@ -9611,6 +9640,28 @@ function CheckpointFormInline({
                                     transition: 'all 0.15s',
                                 }}>✨ Suggest</button>
                             </div>
+                            {!creditsOk && (
+                                <div style={{
+                                    padding: '10px 14px', borderRadius: '10px', fontSize: '12px', lineHeight: 1.5,
+                                    background: '#fef3c7', border: '1px solid #f59e0b', color: '#92400e',
+                                    display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-start',
+                                }}>
+                                    <div>
+                                        <strong>Not enough credits:</strong> You need {requiredCredits} credits to launch this
+                                        campaign ({enrolledCount} leads × {CREDIT_COST_PER_LEAD}). You have {creditBalance}.
+                                    </div>
+                                    <button onClick={onOpenRecharge} style={{
+                                        padding: '6px 14px', borderRadius: '8px', border: 'none',
+                                        background: '#0b1957', color: '#fff', fontSize: '12px', fontWeight: 700,
+                                        cursor: 'pointer', transition: 'all 0.15s',
+                                    }}>Add credits</button>
+                                </div>
+                            )}
+                            {creditsOk && creditBalance !== null && enrolledCount > 0 && (
+                                <div style={{ fontSize: '12px', color: '#9ca3af' }}>
+                                    ≈{requiredCredits} credits will be used as this campaign runs
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
@@ -9652,13 +9703,13 @@ function CheckpointFormInline({
                                     </button>
                                 ) : (
                                     <button
-                                        disabled={!canNext() || launching}
+                                        disabled={!canNext() || launching || !creditsOk}
                                         onClick={launchCampaign}
                                         style={{
                                             padding: '8px 20px', borderRadius: '10px', border: 'none',
-                                            background: canNext() && !launching ? '#10b981' : '#e5e7eb',
-                                            color: canNext() && !launching ? '#fff' : '#9ca3af',
-                                            fontSize: '13px', fontWeight: 700, cursor: canNext() && !launching ? 'pointer' : 'default',
+                                            background: canNext() && !launching && creditsOk ? '#10b981' : '#e5e7eb',
+                                            color: canNext() && !launching && creditsOk ? '#fff' : '#9ca3af',
+                                            fontSize: '13px', fontWeight: 700, cursor: canNext() && !launching && creditsOk ? 'pointer' : 'default',
                                             display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.15s',
                                         }}
                                     >
