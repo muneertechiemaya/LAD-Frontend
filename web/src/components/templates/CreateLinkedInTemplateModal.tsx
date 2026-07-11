@@ -36,6 +36,13 @@ interface CreateLinkedInTemplateModalProps {
   onClose: () => void;
   /** When provided, the modal edits this template instead of creating a new one */
   editing?: LinkedInMessageTemplate | null;
+  /**
+   * Optional callback fired with the freshly-created template (the create
+   * mutation's result) right before the modal closes. Lets a caller auto-select
+   * the new template (e.g. the per-touch follow-up template picker). Not called
+   * on edit. Backward-compatible — existing callers omit it.
+   */
+  onCreated?: (tpl: LinkedInMessageTemplate) => void;
 }
 
 const CATEGORIES = ['sales', 'recruiting', 'networking', 'partnership', 'custom'] as const;
@@ -44,6 +51,7 @@ export default function CreateLinkedInTemplateModal({
   open,
   onClose,
   editing,
+  onCreated,
 }: CreateLinkedInTemplateModalProps) {
   const { push } = useToast();
   const createMutation = useCreateLinkedInMessageTemplate();
@@ -152,8 +160,12 @@ export default function CreateLinkedInTemplateModal({
         await updateMutation.mutateAsync({ id: editing.id, data: payload });
         push({ variant: 'success', title: 'Template Updated', description: `"${name}" has been updated.` });
       } else {
-        await createMutation.mutateAsync(payload);
+        const created = await createMutation.mutateAsync(payload);
         push({ variant: 'success', title: 'Template Saved', description: `"${name}" has been created.` });
+        // Hand the new template back so a caller can auto-select it. The create
+        // hook has already invalidated the templates list + cleared the local
+        // cache, so any dependent dropdown refetches on its own.
+        if (created) onCreated?.(created);
       }
       onClose();
     } catch (err: any) {

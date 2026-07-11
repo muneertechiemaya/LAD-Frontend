@@ -31,6 +31,9 @@ import {
 import { useRouter } from 'next/navigation';
 import { useConnectedChannels, type ChannelId } from '@/hooks/useConnectedChannels';
 import KnowledgeBaseManager from './KnowledgeBaseManager';
+import CreateLinkedInTemplateModal from '@/components/templates/CreateLinkedInTemplateModal';
+import { useLinkedInMessageTemplates } from '@lad/frontend-features/campaigns';
+import type { LinkedInMessageTemplate } from '@lad/frontend-features/campaigns';
 import dynamic from 'next/dynamic';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
 
@@ -670,16 +673,26 @@ export function ChatSettings() {
   const [savingLinkedinAutomation, setSavingLinkedinAutomation] = useState(false);
 
   // LinkedIn follow-up sequence settings (tenant-level cadence for the
-  // 4-touch post-acceptance sequence — see LinkedInAutoFollowupService).
+  // post-acceptance sequence — see LinkedInAutoFollowupService).
+  //
+  // Each touch = { hours, template_id }. A null template_id means "AI-generated"
+  // (the historical behaviour); a template id means "send that LinkedIn
+  // template's body + media" — parity with the WhatsApp follow-up section.
   const DEFAULT_LI_FOLLOWUP_HOURS = [24, 72, 168, 336];
+  type LiFollowupTouch = { hours: number; template_id: string | null };
   const [linkedinFollowup, setLinkedinFollowup] = useState<{
     enabled: boolean;
-    schedule_hours: number[];
+    touches: LiFollowupTouch[];
   }>({
     enabled: true,
-    schedule_hours: DEFAULT_LI_FOLLOWUP_HOURS,
+    touches: DEFAULT_LI_FOLLOWUP_HOURS.map((h) => ({ hours: h, template_id: null })),
   });
   const [savingLinkedinFollowup, setSavingLinkedinFollowup] = useState(false);
+  // The touch row whose template dropdown is mid-"create new template" flow.
+  const [pendingTemplateTouchIdx, setPendingTemplateTouchIdx] = useState<number | null>(null);
+  // Tenant's LinkedIn templates for the per-touch dropdown. Auto-refreshes after
+  // a create (the create hook invalidates the list + clears the local cache).
+  const { data: liTemplates } = useLinkedInMessageTemplates({ is_active: true });
 
   // Load data on mount
   useEffect(() => {
@@ -709,11 +722,24 @@ export function ChatSettings() {
           });
         }
         if (liFollowup?.success && liFollowup.data) {
+          // Prefer the per-touch model; fall back to legacy plain hours (mapped to
+          // AI-generated touches), then to the default cadence.
+          let touches: LiFollowupTouch[] = [];
+          if (Array.isArray(liFollowup.data.touches) && liFollowup.data.touches.length > 0) {
+            touches = liFollowup.data.touches
+              .map((t: any) => ({ hours: Number(t?.hours) || 0, template_id: t?.template_id || null }))
+              .filter((t: LiFollowupTouch) => t.hours > 0);
+          } else if (Array.isArray(liFollowup.data.schedule_hours) && liFollowup.data.schedule_hours.length > 0) {
+            touches = liFollowup.data.schedule_hours
+              .map((v: any) => ({ hours: Number(v) || 0, template_id: null }))
+              .filter((t: LiFollowupTouch) => t.hours > 0);
+          }
+          if (touches.length === 0) {
+            touches = DEFAULT_LI_FOLLOWUP_HOURS.map((h) => ({ hours: h, template_id: null }));
+          }
           setLinkedinFollowup({
             enabled: liFollowup.data.enabled !== false,
-            schedule_hours: Array.isArray(liFollowup.data.schedule_hours) && liFollowup.data.schedule_hours.length > 0
-              ? liFollowup.data.schedule_hours.map((v: any) => Number(v) || 0).filter((v: number) => v > 0)
-              : DEFAULT_LI_FOLLOWUP_HOURS,
+            touches,
           });
         }
         setShareableAssets(Array.isArray(assets) ? assets : []);
@@ -1024,10 +1050,10 @@ export function ChatSettings() {
   const handleSaveLinkedinFollowup = useCallback(async () => {
     // Clamp + validate cadence before sending — backend re-validates but a
     // fast frontend check gives the user immediate feedback.
-    const cleanHours = (linkedinFollowup.schedule_hours || [])
-      .map((v) => Number(v))
-      .filter((v) => Number.isFinite(v) && v > 0 && v <= 24 * 365);
-    if (cleanHours.length === 0) {
+    const cleanTouches = (linkedinFollowup.touches || [])
+      .map((t) => ({ hours: Number(t.hours), template_id: t.template_id || null }))
+      .filter((t) => Number.isFinite(t.hours) && t.hours > 0 && t.hours <= 24 * 365);
+    if (cleanTouches.length === 0) {
       showToast('Add at least one positive hour value to the cadence', 'error');
       return;
     }
@@ -1038,14 +1064,19 @@ export function ChatSettings() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           enabled: linkedinFollowup.enabled,
-          schedule_hours: cleanHours,
+          touches: cleanTouches,
         }),
       });
       const data = await res.json();
       if (data.success && data.data) {
+        const touches: LiFollowupTouch[] = Array.isArray(data.data.touches) && data.data.touches.length > 0
+          ? data.data.touches
+              .map((t: any) => ({ hours: Number(t?.hours) || 0, template_id: t?.template_id || null }))
+              .filter((t: LiFollowupTouch) => t.hours > 0)
+          : cleanTouches;
         setLinkedinFollowup({
           enabled: data.data.enabled !== false,
-          schedule_hours: Array.isArray(data.data.schedule_hours) ? data.data.schedule_hours : cleanHours,
+          touches,
         });
       }
       showToast(data.success ? 'LinkedIn follow-up settings saved' : 'Failed to save', data.success ? 'success' : 'error');
@@ -2593,7 +2624,7 @@ export function ChatSettings() {
             </span>
           </div>
           <p className="text-sm text-gray-500">
-            After a connection request is accepted, the AI agent schedules this sequence of messages towards booking a meeting. Each message uses your LinkedIn chat-agent prompt (above), is auto-cancelled when the lead replies, and is dynamically rescheduled when the lead asks for a specific future time.
+            After a connection request is accepted, the AI agent schedules this sequence of messages towards booking a meeting. Each touch is AI-generated from your LinkedIn chat-agent prompt (above) by default, or you can pin a saved LinkedIn template (body + media) to a specific touch. Every message is auto-cancelled when the lead replies, and is dynamically rescheduled when the lead asks for a specific future time.
           </p>
         </div>
         <div className="p-6 space-y-5">
@@ -2622,13 +2653,17 @@ export function ChatSettings() {
           <div className="border border-gray-100 rounded-lg p-4">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <p className="text-sm font-medium text-gray-800">Cadence (hours from acceptance)</p>
+                <p className="text-sm font-medium text-gray-800">Cadence &amp; message per touch</p>
                 <p className="text-xs text-gray-500">
                   One entry = one follow-up. Default: 24, 72, 168, 336 (≈ +1d, +3d, +7d, +14d).
+                  Each touch is AI-generated by default, or you can pick a saved LinkedIn template.
                 </p>
               </div>
               <button
-                onClick={() => setLinkedinFollowup((prev) => ({ ...prev, schedule_hours: DEFAULT_LI_FOLLOWUP_HOURS }))}
+                onClick={() => setLinkedinFollowup((prev) => ({
+                  ...prev,
+                  touches: DEFAULT_LI_FOLLOWUP_HOURS.map((h) => ({ hours: h, template_id: null })),
+                }))}
                 className="text-xs text-amber-600 hover:underline"
                 disabled={!linkedinFollowup.enabled}
                 title="Reset to default cadence"
@@ -2638,61 +2673,132 @@ export function ChatSettings() {
             </div>
 
             <div className="space-y-2">
-              {linkedinFollowup.schedule_hours.map((hours, idx) => (
-                <div key={idx} className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-gray-500 w-16">
-                    Touch {idx + 1}
-                  </span>
-                  <input
-                    type="number"
-                    min={1}
-                    max={24 * 365}
-                    value={hours}
-                    disabled={!linkedinFollowup.enabled}
-                    onChange={(e) => {
-                      const v = parseInt(e.target.value, 10);
-                      setLinkedinFollowup((prev) => {
-                        const next = [...prev.schedule_hours];
-                        next[idx] = Number.isFinite(v) ? v : 0;
-                        return { ...prev, schedule_hours: next };
-                      });
-                    }}
-                    className="w-24 px-2 py-1 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-200 disabled:bg-gray-50 disabled:text-gray-400"
-                  />
-                  <span className="text-xs text-gray-400">
-                    hours (≈ {(hours / 24).toFixed(hours % 24 === 0 ? 0 : 1)}d)
-                  </span>
-                  <button
-                    onClick={() =>
-                      setLinkedinFollowup((prev) => ({
-                        ...prev,
-                        schedule_hours: prev.schedule_hours.filter((_, i) => i !== idx),
-                      }))
-                    }
-                    disabled={!linkedinFollowup.enabled || linkedinFollowup.schedule_hours.length <= 1}
-                    className="text-gray-300 hover:text-red-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                    title="Remove this touch"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
+              {linkedinFollowup.touches.map((touch, idx) => {
+                // A selected template that is no longer in the active list (deleted
+                // or deactivated) still needs an option so the select shows it.
+                const templates = liTemplates || [];
+                const selectedMissing = !!touch.template_id
+                  && !templates.some((t) => t.id === touch.template_id);
+                return (
+                  <div key={idx} className="rounded-lg border border-gray-100 p-3 space-y-2 bg-gray-50/40">
+                    {/* Timing row */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-gray-500 w-16">
+                        Touch {idx + 1}
+                      </span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={24 * 365}
+                        value={touch.hours}
+                        disabled={!linkedinFollowup.enabled}
+                        onChange={(e) => {
+                          const v = parseInt(e.target.value, 10);
+                          setLinkedinFollowup((prev) => {
+                            const next = [...prev.touches];
+                            next[idx] = { ...next[idx], hours: Number.isFinite(v) ? v : 0 };
+                            return { ...prev, touches: next };
+                          });
+                        }}
+                        className="w-24 px-2 py-1 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-200 disabled:bg-gray-50 disabled:text-gray-400"
+                      />
+                      <span className="text-xs text-gray-400">
+                        hours (≈ {(touch.hours / 24).toFixed(touch.hours % 24 === 0 ? 0 : 1)}d)
+                      </span>
+                      <button
+                        onClick={() =>
+                          setLinkedinFollowup((prev) => ({
+                            ...prev,
+                            touches: prev.touches.filter((_, i) => i !== idx),
+                          }))
+                        }
+                        disabled={!linkedinFollowup.enabled || linkedinFollowup.touches.length <= 1}
+                        className="ml-auto text-gray-300 hover:text-red-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        title="Remove this touch"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    {/* Template row (parity with the WhatsApp follow-up section) */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-gray-500 w-16">Message</span>
+                      <select
+                        value={touch.template_id ?? ''}
+                        disabled={!linkedinFollowup.enabled}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === '__create__') {
+                            // Open the create modal; leave template_id untouched until saved.
+                            setPendingTemplateTouchIdx(idx);
+                            return;
+                          }
+                          setLinkedinFollowup((prev) => {
+                            const next = [...prev.touches];
+                            next[idx] = { ...next[idx], template_id: val || null };
+                            return { ...prev, touches: next };
+                          });
+                        }}
+                        className="flex-1 pl-3 pr-10 py-2 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-amber-200 disabled:opacity-40 disabled:bg-gray-50 transition-all appearance-none"
+                        style={{
+                          backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+                          backgroundPosition: 'right 0.5rem center',
+                          backgroundRepeat: 'no-repeat',
+                          backgroundSize: '1.5em 1.5em',
+                        }}
+                        title="AI-generated by default, or send a saved LinkedIn template (body + media) for this touch"
+                      >
+                        <option value="">AI-generated (default)</option>
+                        {templates.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.name}{t.is_default ? ' (Default)' : ''}
+                          </option>
+                        ))}
+                        {selectedMissing && (
+                          <option value={touch.template_id as string}>
+                            (selected template unavailable)
+                          </option>
+                        )}
+                        <option value="__create__">➕ Create new template…</option>
+                      </select>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             <button
               onClick={() =>
-                setLinkedinFollowup((prev) => ({
-                  ...prev,
-                  schedule_hours: [...prev.schedule_hours, prev.schedule_hours[prev.schedule_hours.length - 1] * 2 || 24],
-                }))
+                setLinkedinFollowup((prev) => {
+                  const last = prev.touches[prev.touches.length - 1];
+                  const nextHours = (last ? last.hours * 2 : 24) || 24;
+                  return { ...prev, touches: [...prev.touches, { hours: nextHours, template_id: null }] };
+                })
               }
-              disabled={!linkedinFollowup.enabled || linkedinFollowup.schedule_hours.length >= 10}
+              disabled={!linkedinFollowup.enabled || linkedinFollowup.touches.length >= 10}
               className="mt-3 flex items-center gap-1 text-xs text-amber-600 hover:underline disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Plus className="h-3 w-3" />
               Add another touch
             </button>
           </div>
+
+          {/* Create-new-template modal (opened by the per-touch dropdown). Auto-
+              selects the new template for the touch that requested it. */}
+          <CreateLinkedInTemplateModal
+            open={pendingTemplateTouchIdx !== null}
+            onClose={() => setPendingTemplateTouchIdx(null)}
+            onCreated={(tpl: LinkedInMessageTemplate) => {
+              const idx = pendingTemplateTouchIdx;
+              if (idx === null) return;
+              setLinkedinFollowup((prev) => {
+                const next = [...prev.touches];
+                if (next[idx]) next[idx] = { ...next[idx], template_id: tpl.id };
+                return { ...prev, touches: next };
+              });
+              setPendingTemplateTouchIdx(null);
+            }}
+          />
 
           <div className="flex justify-end pt-2">
             <button
