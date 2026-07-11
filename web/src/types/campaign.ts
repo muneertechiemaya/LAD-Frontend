@@ -19,9 +19,10 @@ export type StepType =
   | 'instagram_comment_reply'
   | 'instagram_story_view'
   | 'lead_generation'
-  | 'delay' 
-  | 'condition' 
-  | 'start' 
+  | 'media_generation'
+  | 'delay'
+  | 'condition'
+  | 'start'
   | 'end';
 export type ConditionType = 
   | 'connected'           // LinkedIn: if connected
