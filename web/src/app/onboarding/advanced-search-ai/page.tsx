@@ -7596,6 +7596,25 @@ function CheckpointFormInline({
         const newActions = actions.includes(a) ? actions.filter(x => x !== a) : [...actions, a];
         setActions(newActions);
     };
+    // ── AI Media (media_generation) — guided-config card ─────────────────────
+    // Not a send channel: it's a toggle-able node on the shared workflowPreview.
+    // PRESERVED_TYPES in configStepsSync keeps it alive through channel-toggle
+    // reconciles; the asset itself is attached via the node's StepEditor.
+    const wfPreviewSteps = useOnboardingStore(s => s.workflowPreview);
+    const mediaStepSelected = (wfPreviewSteps || []).some((s: any) => s.type === 'media_generation');
+    const toggleMediaStep = () => {
+        const store = useOnboardingStore.getState();
+        const cur = store.workflowPreview || [];
+        if (cur.some((s: any) => s.type === 'media_generation')) {
+            store.setWorkflowPreview(cur.filter((s: any) => s.type !== 'media_generation') as any);
+        } else {
+            store.setWorkflowPreview([...cur, {
+                id: 'media-gen', type: 'media_generation' as any, title: 'AI Media', channel: 'media' as any,
+                description: 'Generate brand media to attach to outreach',
+            }] as any);
+        }
+    };
+
     const toggleNextChannel = (ch: string) => {
         if (ch === 'skip') { setNextChannels([]); setTriggerCondition(''); return; }
         setNextChannels((p: string[]) => {
@@ -8289,6 +8308,29 @@ function CheckpointFormInline({
                                     </div>
                                 </div>
                             ))}
+
+                            {/* AI Media — adds a media_generation node to the workflow (not a send channel).
+                                The generated asset attaches to the selected channels' messages at launch. */}
+                            <div onClick={toggleMediaStep} style={{
+                                ...optStyle(mediaStepSelected),
+                                ...(mediaStepSelected ? { background: '#fdf4ff', borderColor: '#d946ef' } : {}),
+                            }}>
+                                <div style={{
+                                    ...numBadge(0, mediaStepSelected),
+                                    ...(mediaStepSelected ? { background: '#d946ef', borderColor: '#d946ef' } : {}),
+                                }}>{mediaStepSelected ? '✓' : '✨'}</div>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontWeight: 600 }}>✨ AI Media Generation</div>
+                                    <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>
+                                        Generate brand images/videos and attach them to your outreach messages
+                                    </div>
+                                </div>
+                                {mediaStepSelected && (
+                                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#a21caf', whiteSpace: 'nowrap' }}>
+                                        configure in Workflow tab
+                                    </div>
+                                )}
+                            </div>
 
 
                             {/* Email Config (inline when email selected) */}
