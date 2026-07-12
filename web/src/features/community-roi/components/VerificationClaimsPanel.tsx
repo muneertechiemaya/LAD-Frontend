@@ -14,8 +14,9 @@
  *   POST /api/community-roi/1to1-claims/:id/approve
  *   POST /api/community-roi/1to1-claims/:id/reject
  *
- * Self-hides until the first claim exists, so tenants not using verification never
- * see an empty panel.
+ * Always rendered (like an inbox): shows the status tabs and a "no claims" empty
+ * state even at zero, so admins can discover the queue and see it fill up as
+ * members reply to the verification message.
  */
 'use client';
 
@@ -63,7 +64,6 @@ export function VerificationClaimsPanel() {
   const [error, setError] = useState<string | null>(null);
   const [acting, setActing] = useState<Record<string, boolean>>({});
   const [note, setNote] = useState<string | null>(null);
-  const [loadedOnce, setLoadedOnce] = useState(false);
 
   const fetchData = (status: StatusFilter) => {
     setLoading(true);
@@ -78,7 +78,6 @@ export function VerificationClaimsPanel() {
       .catch((e) => setError(e?.message || 'Failed to load claims'))
       .finally(() => {
         setLoading(false);
-        setLoadedOnce(true);
       });
   };
 
@@ -121,11 +120,6 @@ export function VerificationClaimsPanel() {
       setActing((s) => ({ ...s, [claim.id]: false }));
     }
   };
-
-  const total = (counts.pending || 0) + (counts.approved || 0) + (counts.rejected || 0);
-
-  // Self-hide until at least one claim exists in any status.
-  if (loadedOnce && total === 0 && !loading && !error) return null;
 
   return (
     <Card className="rounded-[1.5rem] border-slate-100 shadow-sm">
