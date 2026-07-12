@@ -8055,11 +8055,34 @@ function CheckpointFormInline({
     };
 
     const suggestName = () => {
-        const titlePart = targeting?.job_titles?.length ? targeting.job_titles[0] + 's' : 'Leads';
-        const locPart = targeting?.locations?.length ? ` in ${targeting.locations[0].split(',')[0]}` : '';
-        const indPart = targeting?.industries?.length && !locPart ? ` (${targeting.industries[0]})` : '';
+        const t = targeting;
         const datePart = new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-        setName(`${titlePart}${locPart}${indPart} - ${datePart}`);
+        // Simple pluralize: append "s" unless the word already ends in one.
+        const pluralize = (s: string) => (s.endsWith('s') ? s : `${s}s`);
+        // " +N" suffix when the targeting has more than one value for a facet.
+        const more = (arr?: string[]) => (arr && arr.length > 1 ? ` +${arr.length - 1}` : '');
+
+        // Title/role: first job title (pluralized), else first keyword, else "Leads".
+        let titlePart = 'Leads';
+        if (t?.job_titles?.length) {
+            titlePart = pluralize(t.job_titles[0].trim()) + more(t.job_titles);
+        } else if (t?.keywords?.length) {
+            titlePart = t.keywords[0].trim();
+        }
+
+        // Industry: always included when present (previously dropped whenever a location existed).
+        const indPart = t?.industries?.length
+            ? ` — ${t.industries[0].trim()}${more(t.industries)}`
+            : '';
+
+        // Location: city (part before the comma) of the first location.
+        const locPart = t?.locations?.length
+            ? ` in ${t.locations[0].split(',')[0].trim()}${more(t.locations)}`
+            : '';
+
+        // title + industry + location is the headline; date is a subtle suffix for uniqueness.
+        const composed = `${titlePart}${indPart}${locPart} · ${datePart}`.replace(/\s{2,}/g, ' ').trim();
+        setName(composed || `Leads · ${datePart}`);
     };
 
     // AI-generate a LinkedIn message for the given type
