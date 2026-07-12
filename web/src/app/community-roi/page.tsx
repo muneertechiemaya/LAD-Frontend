@@ -30,6 +30,7 @@ import SimpleAnalyticsCards from '@/features/community-roi/components/SimpleAnal
 import RelationshipHeatmap, { RelationshipHeatmapWithRecommendations } from '@/features/community-roi/components/RelationshipHeatmap'
 import { BroadcastPerformanceContainer } from '@/features/community-roi/components/BroadcastPerformanceContainer'
 import { AuditLogPanel } from '@/features/community-roi/components/AuditLogPanel'
+import { VerificationClaimsPanel } from '@/features/community-roi/components/VerificationClaimsPanel'
 import MemberProfileView from './components/MemberProfileView'
 import LeaderboardPanel from './components/LeaderboardPanel'
 import { NetworkGrowthGraph } from './components/NetworkGrowthGraph'
@@ -332,6 +333,9 @@ export default function CommunityROIDashboard() {
               <div>
                 <RelationshipHeatmapWithRecommendations />
               </div>
+
+              {/* 1-2-1 Verification Claims — admin review queue (self-hides when empty) */}
+              <VerificationClaimsPanel />
 
               {/* Broadcast Performance — per-template delivery & read-rate */}
               <BroadcastPerformanceContainer />

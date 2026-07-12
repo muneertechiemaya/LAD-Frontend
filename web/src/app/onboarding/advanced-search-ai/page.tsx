@@ -554,6 +554,10 @@ export default function AdvancedSearchAIPage() {
     const [leads, setLeads] = useState<LeadProfile[]>([]);
     const [filteredLeads, setFilteredLeads] = useState<LeadProfile[]>([]);   // below ICP threshold
     const [showFilteredLeads, setShowFilteredLeads] = useState(false);        // toggle "Show all"
+    // Per-lead selection: which prospects the user has checked to enroll into the
+    // campaign. The list now spans the full ICP range (0–100); the user picks the
+    // exact prospects rather than relying on a score cutoff. Keyed by lead.id.
+    const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
     const [showPanel, setShowPanel] = useState<false | 'leads' | 'workflow'>(false);
     const setWorkflowPreview = useOnboardingStore(s => s.setWorkflowPreview);
     // Activity tracking for SearchingThinker
@@ -1313,6 +1317,39 @@ export default function AdvancedSearchAIPage() {
         }
     };
 
+    // ── Lead selection (checkbox) helpers ───────────────────────────────────
+    // The checkbox is the authoritative include signal: only checked leads are
+    // enrolled into the campaign at launch (see CheckpointFormInline.launchCampaign).
+    const toggleLeadSelection = (leadId: string) => {
+        setSelectedLeadIds(prev => {
+            const next = new Set(prev);
+            if (next.has(leadId)) next.delete(leadId); else next.add(leadId);
+            return next;
+        });
+    };
+    const selectAllLeads = () => {
+        setSelectedLeadIds(new Set(leads.map(l => l.id)));
+    };
+    const clearLeadSelection = () => {
+        setSelectedLeadIds(new Set());
+    };
+    // Seed default selection (leads scoring >= 50 pre-checked) for a fresh result
+    // set, replacing any prior selection. Used when a new search populates `leads`.
+    const seedDefaultSelection = (list: LeadProfile[]) => {
+        setSelectedLeadIds(new Set(
+            list.filter(l => (l.icp_score ?? 0) >= 50).map(l => l.id)
+        ));
+    };
+    // Merge default selection for newly appended leads ("Get More") without
+    // disturbing the user's existing manual checks/unchecks.
+    const mergeDefaultSelection = (appended: LeadProfile[]) => {
+        setSelectedLeadIds(prev => {
+            const next = new Set(prev);
+            appended.forEach(l => { if ((l.icp_score ?? 0) >= 50) next.add(l.id); });
+            return next;
+        });
+    };
+
     // Build a natural-language enrichment string from the Targeting card form values
     // and any bad-feedback comments — sent to the backend LLM to generate sharper keywords.
     const buildSearchEnrichment = (): string | undefined => {
@@ -1341,6 +1378,13 @@ export default function AdvancedSearchAIPage() {
             const updated = { ...prev, [leadId]: 'bad' as const };
             try { localStorage.setItem('lad_lead_feedback', JSON.stringify(updated)); } catch { }
             return updated;
+        });
+        // A rejected lead must not remain selected for enrollment.
+        setSelectedLeadIds(prev => {
+            if (!prev.has(leadId)) return prev;
+            const next = new Set(prev);
+            next.delete(leadId);
+            return next;
         });
         if (comment.trim()) {
             setLeadFeedbackComments(prev => {
@@ -1548,11 +1592,26 @@ export default function AdvancedSearchAIPage() {
                     const curCfg = deriveConfig(useOnboardingStore.getState().workflowPreview as unknown as SyncStep[]);
                     const hydChannels = Array.isArray(cs.next_channels) ? [...cs.next_channels] : [...curCfg.nextChannels];
                     if (liActions.length && !hydChannels.includes('linkedin')) hydChannels.unshift('linkedin');
-                    setWorkflowPreview(applyConfig(
+                    const hydrated = applyConfig(
                         useOnboardingStore.getState().workflowPreview as unknown as SyncStep[],
                         { actions: liActions, nextChannels: hydChannels, triggerCondition: cs.trigger_condition ?? cfg.trigger_condition ?? '' },
                         { includeLeadSource: includeLeadSourceRef.current },
-                    ) as any);
+                    ) as any[];
+                    // Restore the AI Media node (preserved type — survives later
+                    // toggle reconciles). Source: checkpoint_selections.media_step,
+                    // else a persisted media_generation step row.
+                    const ms = cs.media_step
+                        || (camp?.steps || []).find((s: any) => (s.type || s.step_type) === 'media_generation')?.config;
+                    if (ms && !hydrated.some((s: any) => s.type === 'media_generation')) {
+                        hydrated.push({
+                            id: 'media-gen', type: 'media_generation', title: 'AI Media', channel: 'media',
+                            description: 'Generate brand media to attach to outreach',
+                            mediaUrl: ms.media_url || '', mediaType: ms.media_type || '',
+                            mediaFilename: ms.media_filename || '', mimeType: ms.mime_type || '',
+                            mediaPrompt: ms.prompt || '',
+                        });
+                    }
+                    setWorkflowPreview(hydrated as any);
                 }
                 if (cs.campaign_days != null) setCpDays(String(cs.campaign_days));
                 setCpName(cs.campaign_name ?? camp?.name ?? '');
@@ -1581,6 +1640,16 @@ export default function AdvancedSearchAIPage() {
             setCreditBalance(0);
         }
     }, [billing.wallet, billing.error]);
+
+    // Auto-unlock search results when the tenant has any credit balance. Unlocking is a
+    // pure client-side flag flip (locked = CSS blur only — no data withheld, no charge).
+    // The leads.some(locked) guard prevents re-render loops and also covers late-arriving
+    // "Get More Leads" pages, which are constructed with locked: idx >= 5.
+    useEffect(() => {
+        if (creditBalance !== null && creditBalance >= 1 && leads.some(l => l.locked)) {
+            setLeads(prev => prev.map(l => ({ ...l, locked: false })));
+        }
+    }, [creditBalance, leads]);
 
     // Sync voice agent hook data → cpVoiceAgents/cpVoiceNumbers state
     // so CheckpointFormInline receives them as pre-populated props
@@ -3203,6 +3272,7 @@ export default function AdvancedSearchAIPage() {
                                         enriched_profile: item.enriched_profile || undefined,
                                     }));
                                     setLeads(prospectLeads);
+                                    seedDefaultSelection(prospectLeads);
                                     setShowPanel('leads');
                                     // Track seen IDs for "get more" dedup
                                     setSeenProspectIds(prospectLeads.map(l => l.profile_url || l.id));
@@ -3319,6 +3389,7 @@ export default function AdvancedSearchAIPage() {
                                 enriched_profile: item.enriched_profile || undefined,
                             }));
                             setLeads(prospectLeads);
+                            seedDefaultSelection(prospectLeads);
                             setShowPanel('leads');
                             setSeenProspectIds(prospectLeads.map(l => l.profile_url || l.id));
                             setNoMoreLeads(!d.hasMore);
@@ -3560,6 +3631,9 @@ export default function AdvancedSearchAIPage() {
                     icp_description: icpDesc,
                     search_enrichment: buildSearchEnrichment(),
                     useSalesNav,
+                    // Return the full ICP range (0–100) so the user can pick prospects
+                    // via checkboxes rather than being capped at the backend's default 50.
+                    icp_min_score: 0,
                 });
 
                 // Extract and set activities from response
@@ -3623,6 +3697,7 @@ export default function AdvancedSearchAIPage() {
                             };
                         });
                         setLeads(realLeads);
+                        seedDefaultSelection(realLeads);
                         searchTotal = d.total || realLeads.length;
                         setLastModuleUsed(d.module_used || 'advanced_search');
 
@@ -4102,6 +4177,7 @@ export default function AdvancedSearchAIPage() {
                         enriched_profile: item.enriched_profile || undefined,
                     }));
                     setLeads(prev => [...prev, ...moreLeads]);
+                    mergeDefaultSelection(moreLeads);
                     setSeenProspectIds(prev => [...prev, ...moreLeads.map(l => l.profile_url || l.id)]);
                     if (!d.hasMore) setNoMoreLeads(true);
                 } else {
@@ -4153,6 +4229,8 @@ export default function AdvancedSearchAIPage() {
                 filters: searchCursor ? { cursor: searchCursor } : {},
                 start: searchCursor ? 0 : leads.length,
                 useSalesNav,
+                // Keep pagination consistent with the full-range initial list.
+                icp_min_score: 0,
             };
 
             setIsSearching(true);
@@ -4191,6 +4269,7 @@ export default function AdvancedSearchAIPage() {
                     };
                 });
                 setLeads(prev => [...prev, ...moreLeads]);
+                mergeDefaultSelection(moreLeads);
                 setSearchCursor(d.cursor || null);
                 if (d.total) setTotalResults(d.total);
             } else {
@@ -4933,6 +5012,9 @@ export default function AdvancedSearchAIPage() {
                                     targeting={targeting}
                                     leads={leads}
                                     leadFeedback={leadFeedback}
+                                    selectedLeadIds={selectedLeadIds}
+                                    creditBalance={creditBalance}
+                                    onOpenRecharge={() => setShowRechargeModal(true)}
                                     searchSessions={searchSessions}
                                     chatMessages={messages}
                                     pendingContact={pendingContact}
@@ -5278,6 +5360,35 @@ export default function AdvancedSearchAIPage() {
                                     }
                                 </p>
 
+                                {/* Selection bar — pick which prospects to enroll into the campaign */}
+                                {!inboundMode && leads.length > 0 && (
+                                    <div style={{
+                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                        gap: '8px', margin: '4px 0 10px', padding: '8px 12px',
+                                        background: '#f1f5ff', border: '1px solid #dbe4ff', borderRadius: '10px',
+                                    }}>
+                                        <span style={{ fontSize: '12px', fontWeight: 600, color: '#0b1957' }}>
+                                            {selectedLeadIds.size} of {leads.length} selected
+                                        </span>
+                                        <div style={{ display: 'flex', gap: '6px' }}>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); selectAllLeads(); }}
+                                                style={{ fontSize: '12px', fontWeight: 600, color: '#172560', background: '#fff', border: '1px solid #c7d2fe', borderRadius: '8px', padding: '4px 10px', cursor: 'pointer' }}
+                                            >
+                                                Select all
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); clearLeadSelection(); }}
+                                                style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '4px 10px', cursor: 'pointer' }}
+                                            >
+                                                Clear
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Inbound leads (CSV upload) */}
                                 {inboundMode && inboundLeads.length > 0 && (
                                     <div className="adv-leads-list">
@@ -5456,6 +5567,14 @@ export default function AdvancedSearchAIPage() {
                                                     ) : null}
                                                 </div>
                                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        title={selectedLeadIds.has(lead.id) ? 'Selected for campaign — click to remove' : 'Add to campaign'}
+                                                        checked={selectedLeadIds.has(lead.id)}
+                                                        onChange={(e) => { e.stopPropagation(); toggleLeadSelection(lead.id); }}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#172560' }}
+                                                    />
                                                     <button
                                                         className="adv-lead-action"
                                                         title="Generate Summary"
@@ -7376,7 +7495,7 @@ function CheckpointFormInline({
     step, setStep, icpThreshold, setIcpThreshold, actions, setActions, connMsg, setConnMsg, followMsg, setFollowMsg,
     nextChannels, setNextChannels, triggerCondition, setTriggerCondition,
     days, setDays, channelConfigStep, setChannelConfigStep, channelDelays, setChannelDelays, name, setName, genLoading, setGenLoading, launching, setLaunching, targeting, leads,
-    leadFeedback, searchSessions, chatMessages,
+    leadFeedback, selectedLeadIds, creditBalance, onOpenRecharge, searchSessions, chatMessages,
     voiceAgents, setVoiceAgents, voiceNumbers, setVoiceNumbers,
     selectedAgentId, setSelectedAgentId, selectedVoiceId, setSelectedVoiceId,
     selectedFromNumber, setSelectedFromNumber,
@@ -7413,6 +7532,9 @@ function CheckpointFormInline({
     targeting: LeadTargeting | null;
     leads: LeadProfile[];
     leadFeedback: Record<string, 'good' | 'bad'>;
+    selectedLeadIds: Set<string>;
+    creditBalance: number | null;
+    onOpenRecharge: () => void;
     searchSessions: { query: string; targeting: LeadTargeting | null; icp_description: string; timestamp: string }[];
     chatMessages: ChatMsg[];
     voiceAgents: any[]; setVoiceAgents: (v: any[]) => void;
@@ -7791,6 +7913,13 @@ function CheckpointFormInline({
     const LINKEDIN_DAILY_LIMIT = 40; // safe daily connection request limit
     const LINKEDIN_WEEKLY_LIMIT = 190; // safe weekly limit
 
+    // Minimum credit ESTIMATE per enrolled lead, matching the default personalized-connect
+    // flow (featureCreditConfig: personalized connect = 5 flat). Real billing is PER-ACTION
+    // at execution time — launch itself charges 0; connect=1, personalized connect=5,
+    // template msg=5, enrichment=2, phone=10 — so this gate is a deliberate minimum
+    // estimate, NOT the actual charge.
+    const CREDIT_COST_PER_LEAD = 5;
+
     // Compute qualified leads count based on ICP threshold
     const qualifiedLeadCount = leads.filter(l => (l.icp_score ?? 0) >= (parseInt(icpThreshold) || 0)).length;
 
@@ -7808,6 +7937,14 @@ function CheckpointFormInline({
     // across the campaign duration and made subsequent scheduled runs fetch only 1 lead/day.)
     const safeLeadsPerDay = Math.min(LINKEDIN_DAILY_LIMIT, Math.max(1, qualifiedLeadCount));
     const exceedsLinkedInLimits = qualifiedLeadCount > LINKEDIN_DAILY_LIMIT;
+
+    // Credit gate for launch. Enrolled = CHECKED leads minus thumbs-down — mirrors
+    // launchCampaign's goodMatchLeads filter, not raw selectedLeadIds.size.
+    // creditBalance === null (billing fetch failed) fails OPEN — never block launch
+    // on a billing-fetch error.
+    const enrolledCount = leads.filter(l => selectedLeadIds.has(l.id)).filter(l => leadFeedback[l.id] !== 'bad').length;
+    const requiredCredits = enrolledCount * CREDIT_COST_PER_LEAD;
+    const creditsOk = creditBalance == null || creditBalance >= requiredCredits;
 
     const toggleAction = (a: string) => {
         const newActions = actions.includes(a) ? actions.filter(x => x !== a) : [...actions, a];
@@ -8075,6 +8212,33 @@ function CheckpointFormInline({
                     if (ch === 'voice_call') actionSteps.push({ type: 'voice_agent_call', title: 'AI Voice Call', channel: 'voice', order_index: orderIdx++, config: { agent_id: selectedAgentId || undefined, voice_id: selectedVoiceId || undefined, from_number: selectedFromNumber || undefined, ...chDelayConfig } });
                 }
             }
+
+            // ── AI Media step (media_generation) ──────────────────────────────
+            // The canvas node carries the accepted asset (permanent GCS quadruple,
+            // set via StepEditor → import-generated). Emit it as a real first step
+            // and stamp the asset onto every downstream send step that can carry
+            // media (LinkedIn message / WhatsApp / Email). The backend executor
+            // for media_generation is a fast no-op — sends read their own config.
+            const wfMediaNode = (useOnboardingStore.getState().workflowPreview || [])
+                .find((s: any) => s.type === 'media_generation') as any;
+            if (wfMediaNode?.mediaUrl) {
+                const mediaCfg = {
+                    media_url: wfMediaNode.mediaUrl,
+                    media_type: wfMediaNode.mediaType || 'image',
+                    media_filename: wfMediaNode.mediaFilename || undefined,
+                    mime_type: wfMediaNode.mimeType || undefined,
+                };
+                const MEDIA_CAPABLE = ['linkedin_message', 'whatsapp_send', 'email_send'];
+                for (const s of actionSteps) {
+                    if (MEDIA_CAPABLE.includes(s.type)) s.config = { ...s.config, ...mediaCfg };
+                }
+                actionSteps.unshift({
+                    type: 'media_generation', title: wfMediaNode.title || 'AI Media', channel: 'media',
+                    order_index: 0, config: { ...mediaCfg, prompt: wfMediaNode.mediaPrompt || undefined },
+                });
+                actionSteps.forEach((s, i) => { s.order_index = i + 1; });
+            }
+
             const t = targeting || { keywords: [], industries: [], locations: [], job_titles: [], profile_language: [] };
             const icpMin = parseInt(icpThreshold) || 0;
             // Build lead feedback summary for campaign config
@@ -8102,6 +8266,14 @@ function CheckpointFormInline({
                 ai_value_prop: aiMsgValueProp || '',
                 ai_tone: aiMsgTone || 'professional',
                 ai_goal: aiMsgGoal || 'get_meeting',
+                // AI Media node (edit-mode round-trip: hydration re-creates the canvas node)
+                media_step: wfMediaNode ? {
+                    media_url: wfMediaNode.mediaUrl || '',
+                    media_type: wfMediaNode.mediaType || '',
+                    media_filename: wfMediaNode.mediaFilename || '',
+                    mime_type: wfMediaNode.mimeType || '',
+                    prompt: wfMediaNode.mediaPrompt || '',
+                } : null,
             };
 
             // Get original ICP input (first user message in chat)
@@ -8145,14 +8317,14 @@ function CheckpointFormInline({
                 _source: source,
             });
 
-            // For direct contacts (phone/email only): include ALL leads (not just thumbs-up)
-            // For LinkedIn search campaigns: include all leads except explicitly thumbs-down'd ones.
-            // Previously required explicit thumbs-up (=== 'good') which meant zero leads if user
-            // never clicked thumbs-up — leads were lost. Now we only exclude rejected leads.
-            // IMPORTANT: Filter by ICP threshold selected by user (only LinkedIn search leads, not direct/inbound)
+            // For LinkedIn search campaigns: enroll exactly the leads the user CHECKED.
+            // The per-lead checkbox is the authoritative include signal — the user picks
+            // prospects across the full ICP range (0–100) rather than relying on a score
+            // cutoff. Thumbs-down already auto-unchecks a lead, so the feedback guard is a
+            // redundant safety net.
             const goodMatchLeads = leads
+                .filter(l => selectedLeadIds.has(l.id))
                 .filter(l => leadFeedback[l.id] !== 'bad')
-                .filter(l => (l.icp_score ?? 0) >= icpMin)  // Apply ICP threshold filter
                 .map(l => mapLead(l, 'user_good_match'));
 
             const directContactLeads = isDirectContact
@@ -9468,6 +9640,28 @@ function CheckpointFormInline({
                                     transition: 'all 0.15s',
                                 }}>✨ Suggest</button>
                             </div>
+                            {!creditsOk && (
+                                <div style={{
+                                    padding: '10px 14px', borderRadius: '10px', fontSize: '12px', lineHeight: 1.5,
+                                    background: '#fef3c7', border: '1px solid #f59e0b', color: '#92400e',
+                                    display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-start',
+                                }}>
+                                    <div>
+                                        <strong>Not enough credits:</strong> You need {requiredCredits} credits to launch this
+                                        campaign ({enrolledCount} leads × {CREDIT_COST_PER_LEAD}). You have {creditBalance}.
+                                    </div>
+                                    <button onClick={onOpenRecharge} style={{
+                                        padding: '6px 14px', borderRadius: '8px', border: 'none',
+                                        background: '#0b1957', color: '#fff', fontSize: '12px', fontWeight: 700,
+                                        cursor: 'pointer', transition: 'all 0.15s',
+                                    }}>Add credits</button>
+                                </div>
+                            )}
+                            {creditsOk && creditBalance !== null && enrolledCount > 0 && (
+                                <div style={{ fontSize: '12px', color: '#9ca3af' }}>
+                                    ≈{requiredCredits} credits will be used as this campaign runs
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
@@ -9509,13 +9703,13 @@ function CheckpointFormInline({
                                     </button>
                                 ) : (
                                     <button
-                                        disabled={!canNext() || launching}
+                                        disabled={!canNext() || launching || !creditsOk}
                                         onClick={launchCampaign}
                                         style={{
                                             padding: '8px 20px', borderRadius: '10px', border: 'none',
-                                            background: canNext() && !launching ? '#10b981' : '#e5e7eb',
-                                            color: canNext() && !launching ? '#fff' : '#9ca3af',
-                                            fontSize: '13px', fontWeight: 700, cursor: canNext() && !launching ? 'pointer' : 'default',
+                                            background: canNext() && !launching && creditsOk ? '#10b981' : '#e5e7eb',
+                                            color: canNext() && !launching && creditsOk ? '#fff' : '#9ca3af',
+                                            fontSize: '13px', fontWeight: 700, cursor: canNext() && !launching && creditsOk ? 'pointer' : 'default',
                                             display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.15s',
                                         }}
                                     >
