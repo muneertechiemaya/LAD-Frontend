@@ -26,6 +26,18 @@ export interface BusinessProfile {
   valueProposition?: string;
   productsServices?: string;
   targetCustomers?: string;
+  // Tenant's own contact details — shared by the agent when a prospect asks
+  // how to reach them, and baked into the generated LinkedIn prompt. Optional.
+  contactEmail?: string;
+  contactPhone?: string;
+  // Agent identity + CTA link — the sender the LinkedIn agent speaks as, and the
+  // booking link it offers. Feed the prompt generator directly (persona is
+  // otherwise only collected in the mid-generation modal). Optional here so they
+  // don't affect completeness; the generator still requires a persona at
+  // generation time when absent.
+  personaName?: string;
+  personaTitle?: string;
+  bookingLink?: string;
 
   // ICP half — collected by the wizard's ICP chat step
   companyDescription?: string;
@@ -57,6 +69,15 @@ export const BUSINESS_PROFILE_OPTIONAL_FIELDS: ReadonlySet<keyof BusinessProfile
   'website',
   'sampleConversation',
   'competitors',
+  // Contact details are optional — the agent can hand off to the team when they
+  // are absent — so they don't count against the completeness denominator.
+  'contactEmail',
+  'contactPhone',
+  // Persona + booking link feed the generator but are collected at generation
+  // time when absent, so they don't count against completeness either.
+  'personaName',
+  'personaTitle',
+  'bookingLink',
 ]);
 
 /** Fields collected by the wizard's Company step (form). */
@@ -67,6 +88,11 @@ export const BUSINESS_PROFILE_COMPANY_HALF: ReadonlyArray<keyof BusinessProfile>
   'valueProposition',
   'productsServices',
   'targetCustomers',
+  'personaName',
+  'personaTitle',
+  'bookingLink',
+  'contactEmail',
+  'contactPhone',
 ];
 
 /** Fields collected by the wizard's ICP chat step. */
