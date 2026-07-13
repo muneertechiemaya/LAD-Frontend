@@ -26,6 +26,10 @@ export interface BusinessProfile {
   valueProposition?: string;
   productsServices?: string;
   targetCustomers?: string;
+  // Tenant's own contact details — shared by the agent when a prospect asks
+  // how to reach them, and baked into the generated LinkedIn prompt. Optional.
+  contactEmail?: string;
+  contactPhone?: string;
 
   // ICP half — collected by the wizard's ICP chat step
   companyDescription?: string;
@@ -57,6 +61,10 @@ export const BUSINESS_PROFILE_OPTIONAL_FIELDS: ReadonlySet<keyof BusinessProfile
   'website',
   'sampleConversation',
   'competitors',
+  // Contact details are optional — the agent can hand off to the team when they
+  // are absent — so they don't count against the completeness denominator.
+  'contactEmail',
+  'contactPhone',
 ]);
 
 /** Fields collected by the wizard's Company step (form). */
@@ -67,6 +75,8 @@ export const BUSINESS_PROFILE_COMPANY_HALF: ReadonlyArray<keyof BusinessProfile>
   'valueProposition',
   'productsServices',
   'targetCustomers',
+  'contactEmail',
+  'contactPhone',
 ];
 
 /** Fields collected by the wizard's ICP chat step. */

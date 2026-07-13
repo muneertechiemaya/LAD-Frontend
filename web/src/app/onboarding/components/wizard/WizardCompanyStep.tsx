@@ -139,6 +139,24 @@ export default function WizardCompanyStep({ onBack, onContinue }: WizardCompanyS
             className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-[#262831] bg-white dark:bg-[#000724] text-[13px] text-[#172560] dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B1957]/30 resize-none"
           />
         </Field>
+        <Field label="Contact email" hint="Optional. Shared by the agent when a prospect asks how to reach you.">
+          <input
+            type="email"
+            value={form.contactEmail || ''}
+            onChange={(e) => setField('contactEmail', e.target.value)}
+            placeholder="you@company.com"
+            className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-[#262831] bg-white dark:bg-[#000724] text-[13px] text-[#172560] dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B1957]/30"
+          />
+        </Field>
+        <Field label="Contact phone" hint="Optional. Shared by the agent when a prospect asks how to reach you.">
+          <input
+            type="tel"
+            value={form.contactPhone || ''}
+            onChange={(e) => setField('contactPhone', e.target.value)}
+            placeholder="+971 50 123 4567"
+            className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-[#262831] bg-white dark:bg-[#000724] text-[13px] text-[#172560] dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B1957]/30"
+          />
+        </Field>
       </div>
 
       {error && (
