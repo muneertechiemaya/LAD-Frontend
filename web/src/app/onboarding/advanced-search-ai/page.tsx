@@ -4,6 +4,7 @@ import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
@@ -11048,6 +11049,221 @@ function ThinkingIndicator({ generating }: { generating: boolean }) {
     );
 }
 
+function AgentBuilderTrendOptions({
+    title,
+    description,
+    options,
+    onNext,
+    generating
+}: {
+    title?: string;
+    description?: string;
+    options: any[];
+    onNext?: (selected: string[]) => void;
+    generating?: boolean;
+}) {
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+
+    const toggleSelect = (id: string, isSkip: boolean) => {
+        if (isSkip) {
+            if (onNext) onNext(["Start Directly (Skip Trends)"]);
+            return;
+        }
+
+        setSelectedIds(prev => {
+            if (prev.includes(id)) {
+                return prev.filter(x => x !== id);
+            } else {
+                return [...prev, id];
+            }
+        });
+    };
+
+    const toggleSection = (optId: string, sectionTitle: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        const key = `${optId}-${sectionTitle}`;
+        setExpandedSections(prev => ({
+            ...prev,
+            [key]: !prev[key]
+        }));
+    };
+
+    const parseSections = (markdownText: string) => {
+        const lines = markdownText.split("\n");
+        const optTitle = lines[0]?.trim() || "Option";
+        
+        const remainingText = lines.slice(1).join("\n").trim();
+        const parts = remainingText.split(/(?=### )/);
+        const sections: { title: string; content: string }[] = [];
+        parts.forEach(part => {
+            const trimmed = part.trim();
+            if (!trimmed) return;
+            if (trimmed.startsWith("### ")) {
+                const partLines = trimmed.split("\n");
+                const titleLine = partLines[0];
+                const secTitle = titleLine.replace("### ", "").trim();
+                const content = partLines.slice(1).join("\n").trim();
+                sections.push({ title: secTitle, content });
+            } else {
+                sections.push({ title: "", content: trimmed });
+            }
+        });
+        return { title: optTitle, sections };
+    };
+
+    const skipOption = options.find(o => {
+        const text = o.label || o.text || "";
+        const firstLine = text.split("\n")[0]?.toLowerCase() || "";
+        return firstLine.includes("skip") || firstLine.includes("start directly");
+    });
+    const mainOptions = options.filter(o => o !== skipOption);
+
+    const handleSubmit = () => {
+        if (onNext && selectedIds.length > 0) {
+            const selectedOptions = options.filter(o => selectedIds.includes(o.id));
+            const selectedTitles = selectedOptions.map(o => {
+                const text = o.label || o.text || "";
+                return (text.split("\n")[0] || "").trim();
+            });
+            onNext(selectedTitles);
+        }
+    };
+
+    return (
+        <div className="w-full max-w-[620px] bg-slate-50/50 border border-slate-200/60 rounded-3xl p-5 shadow-sm mt-3 flex flex-col gap-4">
+            <div className="flex flex-wrap gap-2.5 items-start justify-start w-full">
+                {mainOptions.map((opt) => {
+                    const isSelected = selectedIds.includes(opt.id);
+                    const text = opt.label || opt.text || "";
+                    const { title: optTitle, sections } = parseSections(text);
+                    
+                    if (!isSelected) {
+                        return (
+                            <button
+                                key={opt.id}
+                                onClick={() => toggleSelect(opt.id, false)}
+                                className="bg-white border border-slate-200 hover:border-[#0b1957]/50 max-w-[240px] truncate max-h-[36px] text-left rounded-2xl px-4 py-2.5 text-xs font-semibold text-[#0b1957] transition-all duration-300 ease-in-out cursor-pointer shadow-sm hover:-translate-y-[1px]"
+                                title={optTitle}
+                            >
+                                <span className="font-bold truncate text-[12px]">{optTitle}</span>
+                            </button>
+                        );
+                    }
+
+                    return (
+                        <div 
+                            key={opt.id} 
+                            className="bg-white border border-[#0b1957] bg-blue-50/20 w-full rounded-2xl p-4 shadow-sm text-left flex flex-col gap-3"
+                        >
+                            <div 
+                                onClick={() => toggleSelect(opt.id, false)}
+                                className="flex items-center justify-between gap-2 border-b border-slate-100/80 pb-2.5 cursor-pointer hover:opacity-80 transition-opacity"
+                                title="Click to deselect"
+                            >
+                                <span className="font-bold text-[12px] text-[#0b1957]">{optTitle}</span>
+                                <span className="text-[10px] bg-[#0b1957] text-white px-2.5 py-0.5 rounded-full select-none flex items-center gap-1 font-bold">
+                                    <Check className="size-2.5" /> Selected
+                                </span>
+                            </div>
+
+                            <div className="flex flex-col gap-3 w-full">
+                                {sections.map((sec, idx) => {
+                                    const isThemeHook = sec.title.toLowerCase().includes("theme") || sec.title.toLowerCase().includes("hook") || !sec.title;
+                                    const secKey = `${opt.id}-${sec.title}`;
+                                    const isSecExpanded = expandedSections[secKey] || false;
+
+                                    if (isThemeHook) {
+                                        return (
+                                            <div key={idx} className="flex flex-col gap-1 w-full text-xs text-slate-700">
+                                                {sec.title && <h4 className="text-[11px] font-bold text-[#0b1957]">{sec.title}</h4>}
+                                                <div className="text-[11px] text-slate-600 leading-relaxed font-medium markdown-content">
+                                                    <ReactMarkdown
+                                                        components={{
+                                                            h3: ({ ...props }) => <h3 className="text-xs font-bold text-[#0b1957] mt-2 mb-1" {...props} />,
+                                                            p: ({ ...props }) => <p className="text-[11px] text-slate-600 leading-relaxed mb-2" {...props} />,
+                                                            ul: ({ ...props }) => <ul className="list-disc pl-4 mb-2 space-y-1" {...props} />,
+                                                            li: ({ ...props }) => <li className="text-[11px] text-slate-600 leading-relaxed" {...props} />,
+                                                        }}
+                                                    >
+                                                        {sec.content}
+                                                    </ReactMarkdown>
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+
+                                    return (
+                                        <div key={idx} className="w-full border-t border-slate-100/60 pt-2 flex flex-col gap-1.5">
+                                            <div 
+                                                onClick={(e) => toggleSection(opt.id, sec.title, e)}
+                                                className="flex items-center gap-1.5 cursor-pointer text-[#0b1957] hover:text-[#0b1957]/80 select-none w-fit"
+                                            >
+                                                <motion.span 
+                                                    animate={{ rotate: isSecExpanded ? 90 : 0 }}
+                                                    transition={{ duration: 0.15 }}
+                                                    className="flex items-center"
+                                                >
+                                                    <ChevronRight className="size-3 text-[#0b1957]/70" />
+                                                </motion.span>
+                                                <span className="text-[11px] font-bold tracking-wide">{sec.title}</span>
+                                            </div>
+                                            <AnimatePresence initial={false}>
+                                                {isSecExpanded && (
+                                                    <motion.div
+                                                        initial={{ height: 0, opacity: 0 }}
+                                                        animate={{ height: "auto", opacity: 1 }}
+                                                        exit={{ height: 0, opacity: 0 }}
+                                                        transition={{ duration: 0.2, ease: "easeInOut" }}
+                                                        className="overflow-hidden w-full text-[11px] text-slate-600 leading-relaxed font-medium pl-4 markdown-content"
+                                                    >
+                                                        <ReactMarkdown
+                                                            components={{
+                                                                h3: ({ ...props }) => <h3 className="text-xs font-bold text-[#0b1957] mt-2 mb-1" {...props} />,
+                                                                p: ({ ...props }) => <p className="text-[11px] text-slate-600 leading-relaxed mb-2" {...props} />,
+                                                                ul: ({ ...props }) => <ul className="list-disc pl-4 mb-2 space-y-1" {...props} />,
+                                                                li: ({ ...props }) => <li className="text-[11px] text-slate-600 leading-relaxed" {...props} />,
+                                                            }}
+                                                        >
+                                                            {sec.content}
+                                                        </ReactMarkdown>
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center gap-3 border-t border-slate-100 pt-4 mt-1">
+                {onNext && (
+                    <button
+                        onClick={handleSubmit}
+                        disabled={selectedIds.length === 0 || generating}
+                        className="w-full sm:w-auto px-6 bg-[#0b1957] text-white py-2.5 rounded-xl text-xs font-bold transition-all shadow-md hover:shadow-lg disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none cursor-pointer flex items-center justify-center gap-2"
+                    >
+                        {generating && <Loader2 className="size-3.5 animate-spin" />}
+                        Proceed with {selectedIds.length} Selection{selectedIds.length > 1 ? 's' : ''}
+                    </button>
+                )}
+
+                {skipOption && onNext && (
+                    <button
+                        onClick={() => toggleSelect(skipOption.id, true)}
+                        className="w-full sm:w-auto text-center border border-dashed border-slate-300 hover:border-slate-400 rounded-xl px-5 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50 transition-all cursor-pointer"
+                    >
+                        {(skipOption.label || skipOption.text || "").split("\n")[0] || "Start Directly (Skip Trends)"}
+                    </button>
+                )}
+            </div>
+        </div>
+    );
+}
+
 function MediaStepWidget({ 
     msg, 
     isActive, 
@@ -11152,6 +11368,18 @@ function MediaStepWidget({
                         hideButtons={true}
                     />
                 </div>
+            );
+        case "builder-trend-options":
+            return (
+                <AgentBuilderTrendOptions
+                    title={isActive ? mb.uiPayload?.title || mb.uiPayload?.question : msg.payload?.title || msg.payload?.question}
+                    description={isActive ? mb.uiPayload?.description : msg.payload?.description}
+                    options={isActive ? mb.uiPayload?.options || [] : msg.payload?.options || []}
+                    onNext={isActive ? (selectedLabels) => {
+                        submitMediaInput(selectedLabels.join(" | "), selectedLabels.join(" | "));
+                    } : undefined}
+                    generating={isActive ? mb.generating : false}
+                />
             );
         case "gallery":
             return (
