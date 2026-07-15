@@ -96,10 +96,13 @@ export {
   type TemplateFilters as LinkedInTemplateFilters,
   type PersonalizedTemplate as PersonalizedLinkedInTemplate,
   type TemplateCategory as LinkedInTemplateCategory,
+  type TemplateType as LinkedInTemplateType,
   type TemplateMedia as LinkedInTemplateMedia,
   type TemplateMediaType as LinkedInTemplateMediaType,
   type TemplateMediaUploadResult as LinkedInTemplateMediaUploadResult,
   TEMPLATE_CATEGORIES as LINKEDIN_TEMPLATE_CATEGORIES,
+  TEMPLATE_TYPES as LINKEDIN_TEMPLATE_TYPES,
+  templateTypeLabel as linkedinTemplateTypeLabel,
   MESSAGE_VARIABLES as LINKEDIN_MESSAGE_VARIABLES,
   CONNECTION_MESSAGE_MAX_LENGTH as LINKEDIN_CONNECTION_MESSAGE_MAX_LENGTH,
   // Hooks
