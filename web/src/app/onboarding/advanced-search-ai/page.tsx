@@ -7,7 +7,7 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Gem, Upload, FileSpreadsheet, Download, CheckCircle2, Pencil, Trash2, ChevronDown, ChevronLeft, ChevronRight, X, MessageSquare, Users, Zap, Plus, Image as ImageIcon, Video, Loader2, Mic, Globe, Newspaper, UserPlus, Check, History } from 'lucide-react';
+import { Sparkles, Gem, Upload, FileSpreadsheet, Download, CheckCircle2, Pencil, Trash2, ChevronDown, ChevronLeft, ChevronRight, X, MessageSquare, Users, Zap, Plus, Image as ImageIcon, Video, Loader2, Mic, Globe, Newspaper, UserPlus, Check, History, Volume2, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ProfileSummaryDialog } from '@/components/campaigns';
 import AgentVisualizer from '@/components/ui/AgentVisualizer';
@@ -2518,7 +2518,7 @@ export default function AdvancedSearchAIPage() {
         if (!mediaMode || !mediaInputWrapRef.current) return;
 
         const observer = new ResizeObserver((entries) => {
-            for (let entry of entries) {
+            for (const entry of entries) {
                 setMediaInputWrapHeight(entry.target.clientHeight);
             }
         });

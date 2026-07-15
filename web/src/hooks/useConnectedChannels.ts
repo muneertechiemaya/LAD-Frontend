@@ -129,6 +129,7 @@ export function useConnectedChannels() {
       const next = { waba, personal_whatsapp: personal, linkedin, gmail, instagram, voice };
       // Visible in devtools so "why is this tab shown/hidden?" is answerable.
       // 'unknown' = probe failed transiently → treated as visible (fail-open).
+      // eslint-disable-next-line no-console -- intentional diagnostic (see comment above)
       console.debug('[useConnectedChannels] statuses', next);
       setStatuses(next);
       setLoaded(true);
