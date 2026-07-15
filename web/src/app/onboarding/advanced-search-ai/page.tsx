@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Gem, Upload, FileSpreadsheet, Download, CheckCircle2, Trash2, ChevronLeft, ChevronRight, X, MessageSquare, Users, Zap, Plus, Image as ImageIcon, Video, Loader2, Mic, Globe, Newspaper, UserPlus, Check } from 'lucide-react';
+import { Sparkles, Gem, Upload, FileSpreadsheet, Download, CheckCircle2, Trash2, ChevronLeft, ChevronRight, ChevronDown, X, MessageSquare, Users, Zap, Plus, Image as ImageIcon, Video, Loader2, Mic, Globe, Newspaper, UserPlus, Check, Pencil, Mail, Phone as PhoneIcon, MapPin } from 'lucide-react';
 import { ProfileSummaryDialog } from '@/components/campaigns';
 import AgentVisualizer from '@/components/ui/AgentVisualizer';
 import { useOnboardingStore } from '@/store/onboardingStore';
@@ -100,6 +100,13 @@ interface ParsedInboundLead {
     phone: string;
     website: string;
     notes: string;
+    // Role/title target(s) — e.g. a "Target Contacts" or "Job Title" column. May hold
+    // several titles ("COO; HR Director"); the backend router splits + fans these out.
+    title: string;
+    // Optional location/geo (city/country/region) to geo-target the title discovery.
+    location: string;
+    // LinkedIn profile photo (DP) for discovered people.
+    profilePicture: string;
 }
 
 interface ChatMsg {
@@ -377,6 +384,18 @@ function parseRows(rows: string[][], resolve: (leads: ParsedInboundLead[]) => vo
             phone: h.findIndex(x => x.toLowerCase().includes('phone')),
             website: h.findIndex(x => x.toLowerCase().includes('website')),
             notes: h.findIndex(x => x.toLowerCase().includes('notes')),
+            // Role/title target(s): "Target Contacts", "Job Title", "Title", "Role", "Designation", "Position".
+            title: h.findIndex(x => {
+                const s = x.toLowerCase();
+                return s.includes('title') || s.includes('target') || s.includes('role')
+                    || s.includes('designation') || s.includes('position');
+            }),
+            // Location/geo: "Location", "City", "Country", "Region", "Geo".
+            location: h.findIndex(x => {
+                const s = x.toLowerCase();
+                return s.includes('location') || s.includes('city') || s.includes('country')
+                    || s.includes('region') || s.includes('geo');
+            }),
         };
         const leads = rows.slice(1).map(r => ({
             firstName: (ci.firstName >= 0 ? r[ci.firstName] : '') || '',
@@ -388,6 +407,9 @@ function parseRows(rows: string[][], resolve: (leads: ParsedInboundLead[]) => vo
             phone: fixPhone((ci.phone >= 0 ? r[ci.phone] : '') || ''),
             website: (ci.website >= 0 ? r[ci.website] : '') || '',
             notes: (ci.notes >= 0 ? r[ci.notes] : '') || '',
+            title: (ci.title >= 0 ? r[ci.title] : '') || '',
+            location: (ci.location >= 0 ? r[ci.location] : '') || '',
+            profilePicture: '',
         })).filter(l => {
             const isExample = l.companyName.toLowerCase().includes('delete this') || l.notes.toLowerCase().includes('delete this') || l.email.toLowerCase().includes('example.com');
             const hasData = (l.companyName && l.companyName.trim().length > 1) || (l.email && l.email.includes('@')) || (l.linkedinProfile && l.linkedinProfile.includes('linkedin.com'));
@@ -550,6 +572,10 @@ export default function AdvancedSearchAIPage() {
     const [leads, setLeads] = useState<LeadProfile[]>([]);
     const [filteredLeads, setFilteredLeads] = useState<LeadProfile[]>([]);   // below ICP threshold
     const [showFilteredLeads, setShowFilteredLeads] = useState(false);        // toggle "Show all"
+    // Per-lead selection: which prospects the user has checked to enroll into the
+    // campaign. The list now spans the full ICP range (0–100); the user picks the
+    // exact prospects rather than relying on a score cutoff. Keyed by lead.id.
+    const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
     const [showPanel, setShowPanel] = useState<false | 'leads' | 'workflow'>(false);
     const setWorkflowPreview = useOnboardingStore(s => s.setWorkflowPreview);
     // Activity tracking for SearchingThinker
@@ -756,6 +782,8 @@ export default function AdvancedSearchAIPage() {
     const [pendingSearchConfirmation, setPendingSearchConfirmation] = useState<{ intent: LeadTargeting; originalQuery: string } | null>(null);
     // Pending location request: stores intent+query for ABM searches missing a location, awaiting user input
     const [pendingLocationRequest, setPendingLocationRequest] = useState<{ intent: LeadTargeting; originalQuery: string; abmType: string; personName?: string; companyName?: string } | null>(null);
+    // Import paused awaiting an in-chat location answer (role-based sheet with no location column)
+    const [pendingImportLocation, setPendingImportLocation] = useState<{ parsed: ParsedInboundLead[] } | null>(null);
 
     // Generic prospect search (company-type intent queries)
     // ── lastSearchType: distinguishes LinkedIn search from generic prospect search ──
@@ -1218,6 +1246,39 @@ export default function AdvancedSearchAIPage() {
         }
     };
 
+    // ── Lead selection (checkbox) helpers ───────────────────────────────────
+    // The checkbox is the authoritative include signal: only checked leads are
+    // enrolled into the campaign at launch (see CheckpointFormInline.launchCampaign).
+    const toggleLeadSelection = (leadId: string) => {
+        setSelectedLeadIds(prev => {
+            const next = new Set(prev);
+            if (next.has(leadId)) next.delete(leadId); else next.add(leadId);
+            return next;
+        });
+    };
+    const selectAllLeads = () => {
+        setSelectedLeadIds(new Set(leads.map(l => l.id)));
+    };
+    const clearLeadSelection = () => {
+        setSelectedLeadIds(new Set());
+    };
+    // Seed default selection (leads scoring >= 50 pre-checked) for a fresh result
+    // set, replacing any prior selection. Used when a new search populates `leads`.
+    const seedDefaultSelection = (list: LeadProfile[]) => {
+        setSelectedLeadIds(new Set(
+            list.filter(l => (l.icp_score ?? 0) >= 50).map(l => l.id)
+        ));
+    };
+    // Merge default selection for newly appended leads ("Get More") without
+    // disturbing the user's existing manual checks/unchecks.
+    const mergeDefaultSelection = (appended: LeadProfile[]) => {
+        setSelectedLeadIds(prev => {
+            const next = new Set(prev);
+            appended.forEach(l => { if ((l.icp_score ?? 0) >= 50) next.add(l.id); });
+            return next;
+        });
+    };
+
     // Build a natural-language enrichment string from the Targeting card form values
     // and any bad-feedback comments — sent to the backend LLM to generate sharper keywords.
     const buildSearchEnrichment = (): string | undefined => {
@@ -1246,6 +1307,13 @@ export default function AdvancedSearchAIPage() {
             const updated = { ...prev, [leadId]: 'bad' as const };
             try { localStorage.setItem('lad_lead_feedback', JSON.stringify(updated)); } catch { }
             return updated;
+        });
+        // A rejected lead must not remain selected for enrollment.
+        setSelectedLeadIds(prev => {
+            if (!prev.has(leadId)) return prev;
+            const next = new Set(prev);
+            next.delete(leadId);
+            return next;
         });
         if (comment.trim()) {
             setLeadFeedbackComments(prev => {
@@ -1316,6 +1384,9 @@ export default function AdvancedSearchAIPage() {
     // Delete confirmation state
     const [deleteConfirmation, setDeleteConfirmation] = useState<{ index: number; name: string } | null>(null);
     const [deletingLead, setDeletingLead] = useState(false);
+
+    // Which imported-lead card is expanded to show the full profile summary
+    const [expandedInboundIdx, setExpandedInboundIdx] = useState<number | null>(null);
 
     // ── Restore persisted targeting_filters from localStorage (saved up to 7 days) ─
     useEffect(() => {
@@ -2414,6 +2485,9 @@ export default function AdvancedSearchAIPage() {
             phone: c.phone || '',
             website: c.website || '',
             notes: c.notes || '',
+            title: c.title || c.job_title || c.headline || '',
+            location: c.location || '',
+            profilePicture: c.profile_picture || c.photo || '',
         }));
 
         setInboundLeads(asInbound);
@@ -2432,6 +2506,229 @@ export default function AdvancedSearchAIPage() {
         setTimeout(() => setCpStep(0), 300);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [cpContacts, cpSelected, cpSourceKey]);
+
+    /* ── Finish an inbound import: save (+ role discovery) → enrich → summary ──
+       Split out of handleInboundFile so the import can PAUSE on an in-chat location
+       question (role-based sheets with no location column) and resume here with the
+       user's answer. Pass existingProcessingId to reuse an already-shown loading
+       bubble (the caller then owns the busy flag); omit it to run standalone. */
+    const finishInboundImport = useCallback(async (parsed: ParsedInboundLead[], finalLocation: string, existingProcessingId?: string) => {
+        const processingId = existingProcessingId || `l-${Date.now()}`;
+        if (!existingProcessingId) {
+            setMessages(p => [...p, { id: processingId, role: 'ai', text: '', ts: new Date(), loading: true }]);
+            setBusy(true);
+        }
+        try {
+            const counts = computeInboundCounts(parsed);
+            const inboundTargeting: LeadTargeting = {
+                job_titles: [], industries: [],
+                locations: finalLocation ? [finalLocation] : [],
+                keywords: [`${counts.total} Inbound Leads`],
+            };
+            setTargeting(inboundTargeting);
+
+            // ── SAVE LEADS TO DATABASE ──
+            // Convert to save format and persist to campaign_leads table
+            const leadsForSave = parsed.map(l => ({
+                first_name: l.firstName,
+                last_name: l.lastName,
+                email: l.email,
+                phone: l.phone || l.whatsapp,
+                company: l.companyName,
+                linkedin_url: l.linkedinProfile,
+                website: l.website,
+                notes: l.notes,
+                // Role/title target(s) — the backend router splits multi-role cells and
+                // fans out one lead per title, then discovers people for each role.
+                title: l.title,
+            }));
+
+            try {
+                const saveResponse = await fetch('/api/campaigns/leads/import/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        leads: leadsForSave,
+                        location: finalLocation || undefined,
+                        detectedChannels: {
+                            email: counts.email > 0,
+                            whatsapp: counts.whatsapp > 0,
+                            phone: counts.phone > 0,
+                            linkedin: counts.linkedin > 0,
+                            website: counts.website > 0,
+                        },
+                    }),
+                });
+
+                if (saveResponse.ok) {
+                    const saveData = await saveResponse.json();
+                    // Store real lead UUIDs so campaign creation can link to leads table
+                    if (saveData.leadIds && saveData.leadIds.length > 0) {
+                        setInboundLeadIds(saveData.leadIds);
+
+                        // If the backend fanned out a company+title row into multiple DISCOVERED
+                        // people, show them right away from the save response (the created leads
+                        // carry the real names + LinkedIn URLs) — no need to wait for enrichment.
+                        const savedLeads: any[] = Array.isArray(saveData.leads) ? saveData.leads : [];
+                        if (savedLeads.length > parsed.length) {
+                            const rebuiltInbound: ParsedInboundLead[] = savedLeads.map((r) => {
+                                const nm = (r.name || '').trim();
+                                return {
+                                    firstName: r.first_name || nm.split(/\s+/)[0] || '',
+                                    lastName: r.last_name || nm.split(/\s+/).slice(1).join(' ') || '',
+                                    companyName: r.company || '',
+                                    linkedinProfile: r.linkedin_url || '',
+                                    email: '', whatsapp: '', phone: '', website: '', notes: '',
+                                    title: r.headline || r.title || r.target_title || '',
+                                    location: r.location || '',
+                                    profilePicture: r.profile_picture || '',
+                                };
+                            });
+                            setInboundLeads(rebuiltInbound);
+                            const rebuiltPanel: LeadProfile[] = savedLeads.map((r, i) => {
+                                const nm = (r.name || '').trim();
+                                return {
+                                    id: r.id || `inbound-${i}`,
+                                    name: nm || `Lead ${i + 1}`,
+                                    first_name: r.first_name || '',
+                                    last_name: r.last_name || '',
+                                    headline: r.headline || r.title || r.target_title || (r.company ? `at ${r.company}` : ''),
+                                    location: r.location || '',
+                                    current_company: r.company || '',
+                                    profile_url: r.linkedin_url || '',
+                                    profile_picture: r.profile_picture || '',
+                                    industry: '',
+                                    network_distance: '',
+                                    locked: false,
+                                };
+                            });
+                            setLeads(rebuiltPanel);
+                            // Keep ids aligned 1:1 with the rebuilt list (checkboxes map by index).
+                            setInboundLeadIds(savedLeads.map((r) => r.id).filter(Boolean));
+                            // Default-select every discovered person (user can uncheck any).
+                            setSelectedLeadIds(new Set(savedLeads.map((r) => r.id).filter(Boolean)));
+                            counts.total = savedLeads.length;
+                            counts.linkedin = savedLeads.filter((r) => r.linkedin_url).length;
+                        }
+
+                        // ── FULL INBOUND ENRICHMENT (Google + Gemini + Unipile) ──
+                        try {
+                            const enrichRes = await fetch('/api/campaigns/leads/enrich-inbound', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    leadIds: saveData.leadIds,
+                                    icpProfile: businessProfile || null,
+                                }),
+                            });
+                            if (enrichRes.ok) {
+                                const enrichData = await enrichRes.json();
+                                if (enrichData.success && enrichData.results?.length > 0) {
+                                    const results = enrichData.results as any[];
+                                    // When the backend fanned out a company+title row into multiple
+                                    // DISCOVERED people, the saved leads no longer map 1:1 to the
+                                    // uploaded rows — rebuild the panel from the discovered people so
+                                    // they actually show (instead of the single "Unknown/Ripple" row).
+                                    const fannedOut = results.length > parsed.length;
+                                    if (fannedOut) {
+                                        const rebuiltInbound: ParsedInboundLead[] = results.map((r) => {
+                                            const nm = (r.name || '').trim();
+                                            return {
+                                                firstName: nm.split(/\s+/)[0] || '',
+                                                lastName: nm.split(/\s+/).slice(1).join(' ') || '',
+                                                companyName: r.company || '',
+                                                linkedinProfile: r.linkedin_url || '',
+                                                email: r.email || '',
+                                                whatsapp: '',
+                                                phone: r.phone || '',
+                                                website: '',
+                                                notes: r.background_summary || '',
+                                                title: r.job_title || '',
+                                                location: '',
+                                                profilePicture: r.profile_picture || '',
+                                            };
+                                        });
+                                        setInboundLeads(rebuiltInbound);
+                                        setInboundLeadIds(results.map((r) => r.leadId));
+                                        // Default-select every discovered person (user can uncheck any).
+                                        setSelectedLeadIds(new Set(results.map((r) => r.leadId).filter(Boolean)));
+                                        const rebuiltPanel: LeadProfile[] = results.map((r, i) => {
+                                            const nm = (r.name || '').trim();
+                                            return {
+                                                id: `inbound-${i}`,
+                                                name: nm || `Lead ${i + 1}`,
+                                                first_name: nm.split(/\s+/)[0] || '',
+                                                last_name: nm.split(/\s+/).slice(1).join(' ') || '',
+                                                headline: r.job_title || (r.company ? `at ${r.company}` : ''),
+                                                location: '',
+                                                current_company: r.company || '',
+                                                profile_url: r.linkedin_url || '',
+                                                profile_picture: '',
+                                                industry: r.industry || '',
+                                                network_distance: '',
+                                                locked: false,
+                                            };
+                                        });
+                                        setLeads(rebuiltPanel);
+                                        counts.total = results.length;
+                                        counts.linkedin = results.filter((r) => r.linkedin_url).length;
+                                    } else {
+                                        // 1:1 imports — merge enrichment into the uploaded rows (keeps
+                                        // any email/phone the sheet provided).
+                                        const enrichedIds: string[] = saveData.leadIds;
+                                        const enrichMap: Record<string, any> = {};
+                                        results.forEach((r) => { enrichMap[r.leadId] = r; });
+                                        setInboundLeads(prev => prev.map((lead, idx) => {
+                                            const lid = enrichedIds[idx];
+                                            const enriched = lid ? enrichMap[lid] : null;
+                                            if (!enriched) return lead;
+                                            return {
+                                                ...lead,
+                                                linkedinProfile: lead.linkedinProfile || enriched.linkedin_url || lead.linkedinProfile,
+                                                notes: enriched.background_summary
+                                                    ? `${enriched.background_summary}${lead.notes ? '\n' + lead.notes : ''}`
+                                                    : lead.notes,
+                                            };
+                                        }));
+                                        const newLinkedIn = results.filter((r) => r.linkedin_url && !parsed[enrichedIds.indexOf(r.leadId)]?.linkedinProfile).length;
+                                        if (newLinkedIn > 0) counts.linkedin = (counts.linkedin || 0) + newLinkedIn;
+                                    }
+                                }
+                            }
+                        } catch (enrichErr) {
+                            console.warn('[Lead Import] Inbound enrichment error:', enrichErr);
+                        }
+                    }
+                } else {
+                    console.warn('Failed to save leads to database');
+                }
+            } catch (saveErr) {
+                console.warn('Error saving leads:', saveErr);
+            }
+
+            let summaryText = `**${counts.total} lead${counts.total !== 1 ? 's' : ''} successfully imported.**\n\n**Contact data detected:**\n`;
+            if (counts.linkedin > 0) summaryText += `\n• LinkedIn: ${counts.linkedin} profile${counts.linkedin !== 1 ? 's' : ''}`;
+            if (counts.email > 0) summaryText += `\n• Email: ${counts.email} address${counts.email !== 1 ? 'es' : ''}`;
+            if (counts.whatsapp > 0) summaryText += `\n• WhatsApp: ${counts.whatsapp} number${counts.whatsapp !== 1 ? 's' : ''}`;
+            if (counts.phone > 0) summaryText += `\n• Phone: ${counts.phone} number${counts.phone !== 1 ? 's' : ''}`;
+            if (counts.website > 0) summaryText += `\n• Website: ${counts.website} URL${counts.website !== 1 ? 's' : ''}`;
+            if (finalLocation) summaryText += `\n\n📍 Search location: **${finalLocation}**`;
+            summaryText += `\n\nBuilding profiles in the background — searching Google and LinkedIn for additional context on each lead.\n\nWhen ready, click **"Create Outreach Journey"** below to configure your campaign.`;
+
+            setMessages(p => p.filter(m => m.id !== processingId).concat({
+                id: `a-${Date.now()}`, role: 'ai', text: summaryText, ts: new Date(),
+                targeting: inboundTargeting, inboundAction: 'summary', inboundSummary: counts,
+            }));
+            setTimeout(() => setShowPanel('leads'), 500);
+        } catch (err: any) {
+            setMessages(p => p.filter(m => m.id !== processingId).concat({
+                id: `a-${Date.now()}`, role: 'ai', text: `⚠️ **Error importing leads:** ${err.message}`, ts: new Date(),
+            }));
+        } finally {
+            if (!existingProcessingId) setBusy(false);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [businessProfile]);
 
     /* ── Core send logic ── */
     /* ── Inbound file handler ── */
@@ -2477,6 +2774,9 @@ export default function AdvancedSearchAIPage() {
                     phone: lead.phone || '',
                     website: lead.website || '',
                     notes: lead.notes || '',
+                    title: lead.title || lead.job_title || '',
+                    location: lead.location || '',
+                    profilePicture: lead.profile_picture || '',
                 }));
             } else {
                 // Use local CSV parsing for spreadsheet files
@@ -2512,109 +2812,32 @@ export default function AdvancedSearchAIPage() {
             };
             setTargeting(inboundTargeting);
 
-            // ── SAVE LEADS TO DATABASE ──
-            // Convert to save format and persist to campaign_leads table
-            const leadsForSave = parsed.map(l => ({
-                first_name: l.firstName,
-                last_name: l.lastName,
-                email: l.email,
-                phone: l.phone || l.whatsapp,
-                company: l.companyName,
-                linkedin_url: l.linkedinProfile,
-                website: l.website,
-                notes: l.notes,
-            }));
-
-            try {
-                const saveResponse = await fetch('/api/campaigns/leads/import/save', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        leads: leadsForSave,
-                        detectedChannels: {
-                            email: counts.email > 0,
-                            whatsapp: counts.whatsapp > 0,
-                            phone: counts.phone > 0,
-                            linkedin: counts.linkedin > 0,
-                            website: counts.website > 0,
-                        },
-                    }),
-                });
-
-                if (saveResponse.ok) {
-                    const saveData = await saveResponse.json();
-                    // Store real lead UUIDs so campaign creation can link to leads table
-                    if (saveData.leadIds && saveData.leadIds.length > 0) {
-                        setInboundLeadIds(saveData.leadIds);
-
-                        // ── FULL INBOUND ENRICHMENT (Google + Gemini + Unipile) ──
-                        try {
-                            const enrichRes = await fetch('/api/campaigns/leads/enrich-inbound', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    leadIds: saveData.leadIds,
-                                    icpProfile: businessProfile || null,
-                                }),
-                            });
-                            if (enrichRes.ok) {
-                                const enrichData = await enrichRes.json();
-                                if (enrichData.success && enrichData.results?.length > 0) {
-                                    const enrichedIds: string[] = saveData.leadIds;
-                                    // Build maps: leadId → enriched data
-                                    const enrichMap: Record<string, { linkedin_url?: string; background_summary?: string; job_title?: string; industry?: string; icp_score?: number; tier?: string }> = {};
-                                    enrichData.results.forEach((r: any) => {
-                                        enrichMap[r.leadId] = r;
-                                    });
-                                    // Update inboundLeads state
-                                    setInboundLeads(prev => prev.map((lead, idx) => {
-                                        const lid = enrichedIds[idx];
-                                        const enriched = lid ? enrichMap[lid] : null;
-                                        if (!enriched) return lead;
-                                        return {
-                                            ...lead,
-                                            linkedinProfile: lead.linkedinProfile || enriched.linkedin_url || lead.linkedinProfile,
-                                            notes: enriched.background_summary
-                                                ? `${enriched.background_summary}${lead.notes ? '\n' + lead.notes : ''}`
-                                                : lead.notes,
-                                        };
-                                    }));
-                                    // Update counts
-                                    const newLinkedIn = enrichData.results.filter((r: any) => r.linkedin_url && !parsed[enrichedIds.indexOf(r.leadId)]?.linkedinProfile).length;
-                                    if (newLinkedIn > 0) counts.linkedin = (counts.linkedin || 0) + newLinkedIn;
-                                }
-                            }
-                        } catch (enrichErr) {
-                            console.warn('[Lead Import] Inbound enrichment error:', enrichErr);
-                        }
-                    }
-                } else {
-                    console.warn('Failed to save leads to database');
-                }
-            } catch (saveErr) {
-                console.warn('Error saving leads:', saveErr);
+            // ── LOCATION GATE ──
+            // Role-based rows (company + title, no person name) search LinkedIn globally
+            // unless we narrow by location. If the sheet has no location column, ask in
+            // the chat — with a quick option to search worldwide — and resume the import
+            // in doSend → finishInboundImport with the user's answer.
+            const sheetLocation = parsed.find(l => l.location && l.location.trim())?.location?.trim() || '';
+            const hasTitleRows = parsed.some(l => (l.title && l.title.trim()) && !l.firstName && !l.lastName && (l.companyName && l.companyName.trim()));
+            if (!sheetLocation && hasTitleRows) {
+                setPendingImportLocation({ parsed });
+                setMessages(p => p.filter(m => m.id !== processingId).concat({
+                    id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
+                    text: `📋 Your file has **role-based targets** (company + job titles) rather than named people — I'll search LinkedIn to find the right person for each role.\n\n📍 **Which location should I focus the search on?**\n\nType a city, country or region (e.g. **Dubai**, **UAE**, **MEA**) — or search worldwide.`,
+                    options: [{ label: '🌍 Search worldwide', value: 'worldwide' }],
+                }));
+                return; // finally{} clears busy; the reply resumes the import
             }
 
-            let summaryText = `**${counts.total} lead${counts.total !== 1 ? 's' : ''} successfully imported.**\n\n**Contact data detected:**\n`;
-            if (counts.linkedin > 0) summaryText += `\n• LinkedIn: ${counts.linkedin} profile${counts.linkedin !== 1 ? 's' : ''}`;
-            if (counts.email > 0) summaryText += `\n• Email: ${counts.email} address${counts.email !== 1 ? 'es' : ''}`;
-            if (counts.whatsapp > 0) summaryText += `\n• WhatsApp: ${counts.whatsapp} number${counts.whatsapp !== 1 ? 's' : ''}`;
-            if (counts.phone > 0) summaryText += `\n• Phone: ${counts.phone} number${counts.phone !== 1 ? 's' : ''}`;
-            if (counts.website > 0) summaryText += `\n• Website: ${counts.website} URL${counts.website !== 1 ? 's' : ''}`;
-            summaryText += `\n\nBuilding profiles in the background — searching Google and LinkedIn for additional context on each lead.\n\nWhen ready, click **"Create Outreach Journey"** below to configure your campaign.`;
-
-            setMessages(p => p.filter(m => m.id !== processingId).concat({
-                id: `a-${Date.now()}`, role: 'ai', text: summaryText, ts: new Date(),
-                targeting: inboundTargeting, inboundAction: 'summary', inboundSummary: counts,
-            }));
-            setTimeout(() => setShowPanel('leads'), 500);
+            await finishInboundImport(parsed, sheetLocation, processingId);
         } catch (err: any) {
             setMessages(p => p.filter(m => m.id !== processingId).concat({
                 id: `a-${Date.now()}`, role: 'ai', text: `⚠️ **Error parsing file:** ${err.message}\n\nTry uploading:\n• Images with business card or contact information\n• CSV/Excel files with structured lead data`,
                 ts: new Date(), inboundAction: 'upload',
             }));
         } finally { setBusy(false); }
-    }, []);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [finishInboundImport]);
 
     const doSend = useCallback(async (text: string, opts?: { targetingOverride?: LeadTargeting }) => {
         if (!text.trim() || busy) return;
@@ -2629,6 +2852,21 @@ export default function AdvancedSearchAIPage() {
         setMessages(p => [...p, { id: uid, role: 'user', text, ts: new Date() }, { id: lid, role: 'ai', text: '', ts: new Date(), loading: true }]);
         setBusy(true);
         setMsgCount(c => c + 1);
+
+        // ── PRIORITY -2: Import location answer ──
+        // If we asked which location to use for an imported role-based sheet
+        // (company + job titles), treat this reply as the answer and resume the
+        // import: save → discover people per role → enrich. Must run before every
+        // other intent handler so short replies like "Dubai" aren't misrouted.
+        if (pendingImportLocation) {
+            const reply = text.trim();
+            const isGlobal = /^(🌍\s*)?(worldwide|search worldwide|global(ly)?|everywhere|anywhere|skip|no)$/i.test(reply);
+            const parsedLeads = pendingImportLocation.parsed;
+            setPendingImportLocation(null);
+            await finishInboundImport(parsedLeads, isGlobal ? '' : reply, lid);
+            setBusy(false);
+            return;
+        }
 
         // ── PRIORITY -1a: Existing client / relationship-building intent ──
         const isRelationshipIntent = /existing client|strengthen.*relation|strengthen.*client|client relation|re.engage.*client|re-engage.*client/i.test(text);
@@ -3092,6 +3330,7 @@ export default function AdvancedSearchAIPage() {
                                         enriched_profile: item.enriched_profile || undefined,
                                     }));
                                     setLeads(prospectLeads);
+                                    seedDefaultSelection(prospectLeads);
                                     setShowPanel('leads');
                                     // Track seen IDs for "get more" dedup
                                     setSeenProspectIds(prospectLeads.map(l => l.profile_url || l.id));
@@ -3208,6 +3447,7 @@ export default function AdvancedSearchAIPage() {
                                 enriched_profile: item.enriched_profile || undefined,
                             }));
                             setLeads(prospectLeads);
+                            seedDefaultSelection(prospectLeads);
                             setShowPanel('leads');
                             setSeenProspectIds(prospectLeads.map(l => l.profile_url || l.id));
                             setNoMoreLeads(!d.hasMore);
@@ -3449,6 +3689,9 @@ export default function AdvancedSearchAIPage() {
                     icp_description: icpDesc,
                     search_enrichment: buildSearchEnrichment(),
                     useSalesNav,
+                    // Return the full ICP range (0–100) so the user can pick prospects
+                    // via checkboxes rather than being capped at the backend's default 50.
+                    icp_min_score: 0,
                 });
 
                 // Extract and set activities from response
@@ -3512,6 +3755,7 @@ export default function AdvancedSearchAIPage() {
                             };
                         });
                         setLeads(realLeads);
+                        seedDefaultSelection(realLeads);
                         searchTotal = d.total || realLeads.length;
                         setLastModuleUsed(d.module_used || 'advanced_search');
 
@@ -3697,7 +3941,7 @@ export default function AdvancedSearchAIPage() {
                 id: `a-${Date.now()}`, role: 'ai', text: '⚠️ Something went wrong. Please try again.', ts: new Date(),
             }));
         } finally { setBusy(false); }
-    }, [busy, messages, convId, targeting, pendingIntent, pendingSearchConfirmation, pendingLocationRequest, webSearchEnabled]);
+    }, [busy, messages, convId, targeting, pendingIntent, pendingSearchConfirmation, pendingLocationRequest, pendingImportLocation, finishInboundImport, webSearchEnabled]);
 
     const onChatSend = useCallback(() => {
         if (!input.trim() || busy) return;
@@ -3991,6 +4235,7 @@ export default function AdvancedSearchAIPage() {
                         enriched_profile: item.enriched_profile || undefined,
                     }));
                     setLeads(prev => [...prev, ...moreLeads]);
+                    mergeDefaultSelection(moreLeads);
                     setSeenProspectIds(prev => [...prev, ...moreLeads.map(l => l.profile_url || l.id)]);
                     if (!d.hasMore) setNoMoreLeads(true);
                 } else {
@@ -4042,6 +4287,8 @@ export default function AdvancedSearchAIPage() {
                 filters: searchCursor ? { cursor: searchCursor } : {},
                 start: searchCursor ? 0 : leads.length,
                 useSalesNav,
+                // Keep pagination consistent with the full-range initial list.
+                icp_min_score: 0,
             };
 
             setIsSearching(true);
@@ -4080,6 +4327,7 @@ export default function AdvancedSearchAIPage() {
                     };
                 });
                 setLeads(prev => [...prev, ...moreLeads]);
+                mergeDefaultSelection(moreLeads);
                 setSearchCursor(d.cursor || null);
                 if (d.total) setTotalResults(d.total);
             } else {
@@ -4712,6 +4960,7 @@ export default function AdvancedSearchAIPage() {
                                     targeting={targeting}
                                     leads={leads}
                                     leadFeedback={leadFeedback}
+                                    selectedLeadIds={selectedLeadIds}
                                     searchSessions={searchSessions}
                                     chatMessages={messages}
                                     pendingContact={pendingContact}
@@ -5045,103 +5294,133 @@ export default function AdvancedSearchAIPage() {
                                     }
                                 </p>
 
+                                {/* Selection bar — pick which prospects to enroll into the campaign */}
+                                {!inboundMode && leads.length > 0 && (
+                                    <div style={{
+                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                        gap: '8px', margin: '4px 0 10px', padding: '8px 12px',
+                                        background: '#f1f5ff', border: '1px solid #dbe4ff', borderRadius: '10px',
+                                    }}>
+                                        <span style={{ fontSize: '12px', fontWeight: 600, color: '#0b1957' }}>
+                                            {selectedLeadIds.size} of {leads.length} selected
+                                        </span>
+                                        <div style={{ display: 'flex', gap: '6px' }}>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); selectAllLeads(); }}
+                                                style={{ fontSize: '12px', fontWeight: 600, color: '#172560', background: '#fff', border: '1px solid #c7d2fe', borderRadius: '8px', padding: '4px 10px', cursor: 'pointer' }}
+                                            >
+                                                Select all
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); clearLeadSelection(); }}
+                                                style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '4px 10px', cursor: 'pointer' }}
+                                            >
+                                                Clear
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Inbound leads (CSV upload) */}
                                 {inboundMode && inboundLeads.length > 0 && (
                                     <div className="adv-leads-list">
-                                        {inboundLeads.map((lead, i) => (
-                                            <div key={i} className="adv-lead-card">
-                                                <div className="adv-lead-avatar" style={{ background: avatarColor(`${lead.firstName} ${lead.lastName}`) }}>
-                                                    {initials(`${lead.firstName} ${lead.lastName}`) || '?'}
-                                                </div>
-                                                <div className="adv-lead-info">
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                        <span className="adv-lead-name">{[lead.firstName, lead.lastName].filter(Boolean).join(' ') || 'Unknown'}</span>
-                                                        <span className="adv-verified">✓</span>
+                                        {inboundLeads.map((lead, i) => {
+                                            const fullName = [lead.firstName, lead.lastName].filter(Boolean).join(' ') || 'Unknown';
+                                            const isExpanded = expandedInboundIdx === i;
+                                            return (
+                                                <div key={i} className="adv-lead-card" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 0 }}>
+                                                    {/* ── Collapsed row ── */}
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%' }}>
+                                                        {inboundLeadIds[i] && (
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selectedLeadIds.has(inboundLeadIds[i])}
+                                                                onChange={(e) => { e.stopPropagation(); toggleLeadSelection(inboundLeadIds[i]); }}
+                                                                title={selectedLeadIds.has(inboundLeadIds[i]) ? 'Selected for campaign — uncheck to remove' : 'Add to campaign'}
+                                                                style={{ width: '17px', height: '17px', accentColor: '#4f46e5', cursor: 'pointer', flexShrink: 0 }}
+                                                            />
+                                                        )}
+                                                        <div className="adv-lead-avatar" style={{ background: lead.profilePicture ? 'transparent' : avatarColor(fullName), overflow: 'hidden', flexShrink: 0 }}>
+                                                            {lead.profilePicture
+                                                                ? <img src={lead.profilePicture} alt={fullName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} referrerPolicy="no-referrer" />
+                                                                : (initials(fullName) || '?')}
+                                                        </div>
+                                                        <div
+                                                            onClick={() => setExpandedInboundIdx(isExpanded ? null : i)}
+                                                            style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}
+                                                            title={isExpanded ? 'Hide profile summary' : 'Show profile summary'}
+                                                        >
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                <span className="adv-lead-name" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fullName}</span>
+                                                                <span className="adv-verified" style={{ flexShrink: 0 }}>✓</span>
+                                                                {lead.linkedinProfile && (
+                                                                    <a href={lead.linkedinProfile} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+                                                                        title="Open LinkedIn profile" style={{ display: 'inline-flex', flexShrink: 0 }}>
+                                                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="#0a66c2"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" /></svg>
+                                                                    </a>
+                                                                )}
+                                                                <ChevronDown size={14} color="#9ca3af" style={{ flexShrink: 0, transition: 'transform 0.2s', transform: isExpanded ? 'rotate(180deg)' : 'none' }} />
+                                                            </div>
+                                                            <div style={{ fontSize: '12px', color: '#374151', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                                {lead.companyName || 'No company'}
+                                                                {lead.location ? <span style={{ color: '#9ca3af', fontWeight: 500 }}> · {lead.location}</span> : null}
+                                                            </div>
+                                                            {!isExpanded && lead.title && lead.title !== lead.companyName && (
+                                                                <div style={{ fontSize: '11.5px', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={lead.title}>{lead.title}</div>
+                                                            )}
+                                                        </div>
+                                                        <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                                                            <button onClick={(e) => { e.stopPropagation(); openEditLead(i); }} title="Edit lead"
+                                                                style={{ width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: '1px solid transparent', borderRadius: '8px', cursor: 'pointer', color: '#6b7280', transition: 'all 0.15s' }}
+                                                                onMouseEnter={(e) => { e.currentTarget.style.background = '#f3f4f6'; e.currentTarget.style.color = '#111827'; }}
+                                                                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#6b7280'; }}>
+                                                                <Pencil size={14} />
+                                                            </button>
+                                                            <button onClick={(e) => { e.stopPropagation(); openDeleteConfirmation(i); }} title="Remove lead"
+                                                                style={{ width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: '1px solid transparent', borderRadius: '8px', cursor: 'pointer', color: '#9ca3af', transition: 'all 0.15s' }}
+                                                                onMouseEnter={(e) => { e.currentTarget.style.background = '#fee2e2'; e.currentTarget.style.color = '#dc2626'; }}
+                                                                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#9ca3af'; }}>
+                                                                <Trash2 size={14} />
+                                                            </button>
+                                                        </div>
                                                     </div>
-                                                    <div className="adv-lead-title">{lead.companyName || 'No company'}</div>
-                                                    {lead.email && <div style={{ fontSize: '12px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden', whiteSpace: 'nowrap' }}><span style={{ flexShrink: 0 }}>✉️</span><span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{lead.email}</span></div>}
-                                                    {lead.phone && <div style={{ fontSize: '12px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden', whiteSpace: 'nowrap' }}><span style={{ flexShrink: 0 }}>📞</span><span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{lead.phone}</span></div>}
-                                                    {lead.linkedinProfile && (
-                                                        <div style={{ fontSize: '12px', color: '#0a66c2' }}>
-                                                            <a href={lead.linkedinProfile} target="_blank" rel="noopener noreferrer"
-                                                                style={{ color: '#0a66c2', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="#0a66c2"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" /></svg>
-                                                                LinkedIn Profile
-                                                            </a>
-                                                        </div>
-                                                    )}
-                                                    {lead.notes && lead.notes.length > 0 && (
-                                                        <div style={{
-                                                            fontSize: '11px',
-                                                            color: '#374151',
-                                                            marginTop: '6px',
-                                                            padding: '8px 10px',
-                                                            background: 'linear-gradient(135deg, #f0f4ff 0%, #f8fafc 100%)',
-                                                            borderRadius: '8px',
-                                                            border: '1px solid #c7d7f5',
-                                                            lineHeight: '1.6',
-                                                            maxWidth: '300px',
-                                                        }}>
-                                                            <span style={{ color: '#172560', fontWeight: 700, fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
-                                                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#172560" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-                                                                AI Research Summary
-                                                            </span>
-                                                            {lead.notes.length > 200 ? lead.notes.substring(0, 200) + '…' : lead.notes}
+
+                                                    {/* ── Expanded profile summary ── */}
+                                                    {isExpanded && (
+                                                        <div style={{ marginTop: '10px', paddingTop: '10px', paddingLeft: inboundLeadIds[i] ? '27px' : 0, borderTop: '1px solid #f3f4f6', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                            {lead.title && (
+                                                                <div style={{ fontSize: '12px', color: '#374151', lineHeight: 1.5 }}>
+                                                                    <span style={{ fontSize: '10px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: '2px' }}>Headline</span>
+                                                                    {lead.title}
+                                                                </div>
+                                                            )}
+                                                            {lead.notes && lead.notes.length > 0 && (
+                                                                <div style={{ fontSize: '11.5px', color: '#374151', padding: '8px 10px', background: 'linear-gradient(135deg, #f0f4ff 0%, #f8fafc 100%)', borderRadius: '8px', border: '1px solid #c7d7f5', lineHeight: 1.6 }}>
+                                                                    <span style={{ color: '#172560', fontWeight: 700, fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
+                                                                        <Sparkles size={10} /> AI Research Summary
+                                                                    </span>
+                                                                    {lead.notes}
+                                                                </div>
+                                                            )}
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                                {lead.email && <div style={{ fontSize: '12px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '6px' }}><Mail size={12} style={{ flexShrink: 0 }} /><span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{lead.email}</span></div>}
+                                                                {lead.phone && <div style={{ fontSize: '12px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '6px' }}><PhoneIcon size={12} style={{ flexShrink: 0 }} /><span>{lead.phone}</span></div>}
+                                                                {lead.location && <div style={{ fontSize: '12px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '6px' }}><MapPin size={12} style={{ flexShrink: 0 }} /><span>{lead.location}</span></div>}
+                                                            </div>
+                                                            {lead.linkedinProfile && (
+                                                                <a href={lead.linkedinProfile} target="_blank" rel="noopener noreferrer"
+                                                                    style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: '#0a66c2', textDecoration: 'none', padding: '5px 10px', border: '1px solid #bfdbfe', borderRadius: '8px', background: '#eff6ff' }}>
+                                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="#0a66c2"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" /></svg>
+                                                                    View LinkedIn Profile
+                                                                </a>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </div>
-                                                <div style={{ display: 'flex', gap: '8px' }}>
-                                                    <button
-                                                        onClick={() => openEditLead(i)}
-                                                        style={{
-                                                            padding: '6px 12px',
-                                                            background: '#f3f4f6',
-                                                            border: '1px solid #e5e7eb',
-                                                            borderRadius: '6px',
-                                                            cursor: 'pointer',
-                                                            fontSize: '12px',
-                                                            fontWeight: '500',
-                                                            color: '#4b5563',
-                                                            transition: 'all 0.2s',
-                                                        }}
-                                                        onMouseEnter={(e) => {
-                                                            e.currentTarget.style.background = '#e5e7eb';
-                                                            e.currentTarget.style.borderColor = '#d1d5db';
-                                                        }}
-                                                        onMouseLeave={(e) => {
-                                                            e.currentTarget.style.background = '#f3f4f6';
-                                                            e.currentTarget.style.borderColor = '#e5e7eb';
-                                                        }}
-                                                    >
-                                                        ✏️ Edit
-                                                    </button>
-                                                    <button
-                                                        onClick={() => openDeleteConfirmation(i)}
-                                                        style={{
-                                                            padding: '6px 12px',
-                                                            background: '#fee2e2',
-                                                            border: '1px solid #fecaca',
-                                                            borderRadius: '6px',
-                                                            cursor: 'pointer',
-                                                            fontSize: '12px',
-                                                            fontWeight: '500',
-                                                            color: '#dc2626',
-                                                            transition: 'all 0.2s',
-                                                        }}
-                                                        onMouseEnter={(e) => {
-                                                            e.currentTarget.style.background = '#fecaca';
-                                                            e.currentTarget.style.borderColor = '#fca5a5';
-                                                        }}
-                                                        onMouseLeave={(e) => {
-                                                            e.currentTarget.style.background = '#fee2e2';
-                                                            e.currentTarget.style.borderColor = '#fecaca';
-                                                        }}
-                                                    >
-                                                        🗑️ Delete
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 )}
 
@@ -5223,6 +5502,14 @@ export default function AdvancedSearchAIPage() {
                                                     ) : null}
                                                 </div>
                                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        title={selectedLeadIds.has(lead.id) ? 'Selected for campaign — click to remove' : 'Add to campaign'}
+                                                        checked={selectedLeadIds.has(lead.id)}
+                                                        onChange={(e) => { e.stopPropagation(); toggleLeadSelection(lead.id); }}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#172560' }}
+                                                    />
                                                     <button
                                                         className="adv-lead-action"
                                                         title="Generate Summary"
@@ -6837,12 +7124,16 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                             {msg.inboundSummary.phone > 0 && <span style={{ fontSize: '11px', background: '#fff', color: '#9a3412', padding: '4px 10px', borderRadius: '12px', fontWeight: 600, border: '1px solid #fed7aa' }}>📞 Phone ({msg.inboundSummary.phone})</span>}
                             {msg.inboundSummary.website > 0 && <span style={{ fontSize: '11px', background: '#fff', color: '#6b21a8', padding: '4px 10px', borderRadius: '12px', fontWeight: 600, border: '1px solid #e9d5ff' }}>🌐 Website ({msg.inboundSummary.website})</span>}
                         </div>
-                        <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
-                            <button style={{
-                                width: '100%', padding: "10px 14px", background: "#172560", border: "none", borderRadius: "10px", fontSize: "13px", fontWeight: 700, color: "#fff", cursor: 'pointer', boxShadow: '0 4px 12px rgba(23,37,96,0.2)',
-                                display: 'block'
-                            }} onClick={onStartCheckpoints}>Create Outreach Journey</button>
-                        </div>
+                        {/* Only show this CTA when the auto/manual action buttons aren't already
+                            rendered (msg.targeting) — otherwise it duplicates "Configure manually". */}
+                        {!msg.targeting && (
+                            <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+                                <button style={{
+                                    width: '100%', padding: "10px 14px", background: "#172560", border: "none", borderRadius: "10px", fontSize: "13px", fontWeight: 700, color: "#fff", cursor: 'pointer', boxShadow: '0 4px 12px rgba(23,37,96,0.2)',
+                                    display: 'block'
+                                }} onClick={onStartCheckpoints}>Create Outreach Journey</button>
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -7144,7 +7435,7 @@ function CheckpointFormInline({
     step, setStep, icpThreshold, setIcpThreshold, actions, setActions, connMsg, setConnMsg, followMsg, setFollowMsg,
     nextChannels, setNextChannels, triggerCondition, setTriggerCondition,
     days, setDays, channelConfigStep, setChannelConfigStep, channelDelays, setChannelDelays, name, setName, genLoading, setGenLoading, launching, setLaunching, targeting, leads,
-    leadFeedback, searchSessions, chatMessages,
+    leadFeedback, selectedLeadIds, searchSessions, chatMessages,
     voiceAgents, setVoiceAgents, voiceNumbers, setVoiceNumbers,
     selectedAgentId, setSelectedAgentId, selectedVoiceId, setSelectedVoiceId,
     selectedFromNumber, setSelectedFromNumber,
@@ -7181,6 +7472,7 @@ function CheckpointFormInline({
     targeting: LeadTargeting | null;
     leads: LeadProfile[];
     leadFeedback: Record<string, 'good' | 'bad'>;
+    selectedLeadIds: Set<string>;
     searchSessions: { query: string; targeting: LeadTargeting | null; icp_description: string; timestamp: string }[];
     chatMessages: ChatMsg[];
     voiceAgents: any[]; setVoiceAgents: (v: any[]) => void;
@@ -7560,7 +7852,17 @@ function CheckpointFormInline({
     const LINKEDIN_WEEKLY_LIMIT = 190; // safe weekly limit
 
     // Compute qualified leads count based on ICP threshold
-    const qualifiedLeadCount = leads.filter(l => (l.icp_score ?? 0) >= (parseInt(icpThreshold) || 0)).length;
+    // Inbound imports: the user can uncheck leads in the panel — every config number
+    // (duration copy, leads/day, totals) must reflect the SELECTED count, not the
+    // full import.
+    const inboundSelectedCount = inboundMode
+        ? (selectedLeadIds.size > 0
+            ? (inboundLeadIds.filter(id => selectedLeadIds.has(id)).length || inboundLeadIds.length || inboundLeads.length)
+            : (inboundLeadIds.length || inboundLeads.length))
+        : null;
+    const qualifiedLeadCount = inboundSelectedCount != null && inboundSelectedCount > 0
+        ? inboundSelectedCount
+        : leads.filter(l => (l.icp_score ?? 0) >= (parseInt(icpThreshold) || 0)).length;
 
     // Compute LinkedIn capacity based on campaign duration
     const campaignDays = parseInt(days) || 30;
@@ -7686,10 +7988,34 @@ function CheckpointFormInline({
     };
 
     const suggestName = () => {
+        const datePart = new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+
+        // Inbound imports: targeting.job_titles is empty, so the generic path yields
+        // a meaningless "Leads in X". Derive from the SELECTED imported leads instead
+        // (companies + location) — the same spirit as the outbound targeting-based name.
+        if (inboundMode && inboundLeads.length > 0) {
+            const selected = inboundLeads.filter((_, idx) => {
+                if (selectedLeadIds.size === 0) return true;
+                const id = inboundLeadIds[idx];
+                return !id || selectedLeadIds.has(id);
+            });
+            const pool = selected.length > 0 ? selected : inboundLeads;
+            const companies = [...new Set(pool.map(l => (l.companyName || '').trim()).filter(Boolean))];
+            const companyPart = companies.length === 0
+                ? 'Imported Leads'
+                : companies.length === 1
+                    ? companies[0]
+                    : companies.length === 2
+                        ? `${companies[0]} & ${companies[1]}`
+                        : `${companies[0]} +${companies.length - 1} more`;
+            const locPart = targeting?.locations?.length ? ` (${targeting.locations[0].split(',')[0]})` : '';
+            setName(`${companyPart} Outreach${locPart} - ${datePart}`);
+            return;
+        }
+
         const titlePart = targeting?.job_titles?.length ? targeting.job_titles[0] + 's' : 'Leads';
         const locPart = targeting?.locations?.length ? ` in ${targeting.locations[0].split(',')[0]}` : '';
         const indPart = targeting?.industries?.length && !locPart ? ` (${targeting.industries[0]})` : '';
-        const datePart = new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
         setName(`${titlePart}${locPart}${indPart} - ${datePart}`);
     };
 
@@ -7913,38 +8239,48 @@ function CheckpointFormInline({
                 _source: source,
             });
 
-            // For direct contacts (phone/email only): include ALL leads (not just thumbs-up)
-            // For LinkedIn search campaigns: include all leads except explicitly thumbs-down'd ones.
-            // Previously required explicit thumbs-up (=== 'good') which meant zero leads if user
-            // never clicked thumbs-up — leads were lost. Now we only exclude rejected leads.
-            // IMPORTANT: Filter by ICP threshold selected by user (only LinkedIn search leads, not direct/inbound)
+            // For LinkedIn search campaigns: enroll exactly the leads the user CHECKED.
+            // The per-lead checkbox is the authoritative include signal — the user picks
+            // prospects across the full ICP range (0–100) rather than relying on a score
+            // cutoff. Thumbs-down already auto-unchecks a lead, so the feedback guard is a
+            // redundant safety net.
             const goodMatchLeads = leads
+                .filter(l => selectedLeadIds.has(l.id))
                 .filter(l => leadFeedback[l.id] !== 'bad')
-                .filter(l => (l.icp_score ?? 0) >= icpMin)  // Apply ICP threshold filter
                 .map(l => mapLead(l, 'user_good_match'));
 
             const directContactLeads = isDirectContact
                 ? leads.map(l => mapLead(l, 'direct_contact'))
                 : [];
 
-            // Inbound leads from CSV/image upload
+            // Inbound leads from CSV/image upload.
+            // Respect the panel checkboxes: inboundLeads[i] aligns 1:1 with
+            // inboundLeadIds[i], so unchecked people are excluded here too (they'd
+            // otherwise sneak into the campaign via initial_leads).
             const inboundContactLeads = inboundMode && inboundLeads.length > 0
-                ? inboundLeads.map((il, idx) => mapLead({
-                    id: `inbound-${idx}`,
-                    name: `${il.firstName} ${il.lastName}`.trim() || `Lead ${idx + 1}`,
-                    first_name: il.firstName,
-                    last_name: il.lastName,
-                    headline: il.companyName ? `at ${il.companyName}` : '',
-                    location: '',
-                    current_company: il.companyName,
-                    profile_url: il.linkedinProfile,
-                    profile_picture: '',
-                    industry: '',
-                    network_distance: '',
-                    // Crucial: pass phone and email so they are stored in lead_data
-                    phone: il.phone || il.whatsapp || '',
-                    email: il.email || '',
-                } as any, 'inbound_lead'))
+                ? inboundLeads
+                    .map((il, idx) => ({ il, idx }))
+                    .filter(({ idx }) => {
+                        if (selectedLeadIds.size === 0) return true;
+                        const id = inboundLeadIds[idx];
+                        return !id || selectedLeadIds.has(id);
+                    })
+                    .map(({ il, idx }) => mapLead({
+                        id: `inbound-${idx}`,
+                        name: `${il.firstName} ${il.lastName}`.trim() || `Lead ${idx + 1}`,
+                        first_name: il.firstName,
+                        last_name: il.lastName,
+                        headline: il.companyName ? `at ${il.companyName}` : '',
+                        location: '',
+                        current_company: il.companyName,
+                        profile_url: il.linkedinProfile,
+                        profile_picture: '',
+                        industry: '',
+                        network_distance: '',
+                        // Crucial: pass phone and email so they are stored in lead_data
+                        phone: il.phone || il.whatsapp || '',
+                        email: il.email || '',
+                    } as any, 'inbound_lead'))
                 : [];
 
             const payload = {
@@ -7961,7 +8297,13 @@ function CheckpointFormInline({
                 // Pass real DB UUIDs so CampaignModel links leads via lead_id (with snapshot + phone)
                 // Covers both CSV/image imports (inboundLeadIds) and chat-entered direct contacts (directContactLeadIds)
                 inbound_lead_ids: (() => {
-                    const ids = [...inboundLeadIds, ...directContactLeadIds];
+                    let ids = [...inboundLeadIds, ...directContactLeadIds];
+                    // Respect checkbox selection for imported/discovered people: if the user
+                    // unchecked some, enrol only the selected ones.
+                    if (inboundMode && selectedLeadIds.size > 0) {
+                        const filtered = ids.filter(id => selectedLeadIds.has(id));
+                        if (filtered.length > 0) ids = filtered;
+                    }
                     return ids.length > 0 ? ids : undefined;
                 })(),
                 config: {
@@ -9183,21 +9525,36 @@ function CheckpointFormInline({
                     {/* Step 3: Duration */}
                     {step === 3 && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {['7', '14', '30', '60', '90'].map((d, i) => {
-                                const dNum = parseInt(d);
-                                const wd = Math.floor(dNum * 5 / 7);
+                            {[
+                                { d: '1', label: 'Once' },
+                                { d: '7', label: '7 days' },
+                                { d: '14', label: '14 days' },
+                                { d: '30', label: '30 days' },
+                                { d: '60', label: '60 days' },
+                            ].map((o, i) => {
+                                const dNum = parseInt(o.d);
+                                const isOnce = dNum <= 1;
+                                const wd = Math.max(1, Math.floor(dNum * 5 / 7));
                                 const perDay = Math.min(LINKEDIN_DAILY_LIMIT, Math.max(1, qualifiedLeadCount));
                                 const totalOverDuration = perDay * wd;
                                 const capped = qualifiedLeadCount > LINKEDIN_DAILY_LIMIT;
+                                const leadWord = `lead${qualifiedLeadCount !== 1 ? 's' : ''}`;
+                                const desc = isOnce
+                                    ? (inboundMode
+                                        ? `One-time send to your ${qualifiedLeadCount} selected ${leadWord} — no drip schedule`
+                                        : `Single-day run — targets up to ${perDay} leads once`)
+                                    : (inboundMode
+                                        ? `Reaches your ${qualifiedLeadCount} selected ${leadWord} over ${wd} working day${wd !== 1 ? 's' : ''}`
+                                        : capped
+                                            ? `Targets ${perDay}/day (capped from ${qualifiedLeadCount}; LinkedIn safe limit), ~${totalOverDuration} new leads over ${wd} working days`
+                                            : `Targets ${perDay} new leads/day via pagination, ~${totalOverDuration} leads over ${wd} working days`);
                                 return (
-                                    <div key={d} onClick={() => setDays(d)} style={optStyle(days === d)}>
-                                        <div style={numBadge(i + 1, days === d)}>{days === d ? '✓' : i + 1}</div>
+                                    <div key={o.d} onClick={() => setDays(o.d)} style={optStyle(days === o.d)}>
+                                        <div style={numBadge(i + 1, days === o.d)}>{days === o.d ? '✓' : i + 1}</div>
                                         <div style={{ flex: 1 }}>
-                                            <div style={{ fontWeight: 600 }}>{d} days</div>
-                                            <div style={{ fontSize: '11px', color: capped ? '#b45309' : '#6b7280', marginTop: '2px' }}>
-                                                {capped
-                                                    ? `Targets ${perDay}/day (capped from ${qualifiedLeadCount}; LinkedIn safe limit), ~${totalOverDuration} new leads over ${wd} working days`
-                                                    : `Targets ${perDay} new leads/day via pagination, ~${totalOverDuration} leads over ${wd} working days`}
+                                            <div style={{ fontWeight: 600 }}>{o.label}</div>
+                                            <div style={{ fontSize: '11px', color: capped && !inboundMode ? '#b45309' : '#6b7280', marginTop: '2px' }}>
+                                                {desc}
                                             </div>
                                         </div>
                                     </div>
