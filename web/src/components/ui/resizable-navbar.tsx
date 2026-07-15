@@ -143,7 +143,7 @@ export const NavItems = ({ items, className, onItemClick, activePath }: NavItems
               onClick={onItemClick}
               className={cn(
                 "relative px-4 py-2 text-neutral-600 dark:text-gray-400 block",
-                isActive && "font-bold text-[#0b1957] dark:text-white"
+                isActive && "font-bold text-[#0b1957] dark:text-[#2563eb]"
               )}
             >
               {hovered === idx && (
