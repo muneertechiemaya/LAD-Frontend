@@ -4225,11 +4225,11 @@ export default function AdvancedSearchAIPage() {
                                                         </div>
                                                     )}
                                                     {lead.notes && (
-                                                      <div className="mt-4 border border-gray-800 rounded-lg overflow-hidden bg-transparent">
+                                                      <div className="mt-4 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden bg-transparent">
                                                           {/* Header */}
                                                           <button
                                                             onClick={() => toggleSummary(i)}
-                                                            className="w-full flex items-center justify-between p-3 text-gray-400 hover:bg-gray-800/50 transition-colors"
+                                                            className="w-full flex items-center justify-between p-3 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors"
                                                           >
                                                               <div className="flex items-center gap-2 text-[10px] font-mono tracking-widest uppercase">
                                                                   <Sparkles className="w-3 h-3 text-indigo-400" />
@@ -4240,7 +4240,7 @@ export default function AdvancedSearchAIPage() {
 
                                                           {/* Content */}
                                                           {openSummaries.has(i) && (
-                                                            <div className="p-4 pt-0 text-sm text-gray-300 leading-relaxed border-t border-gray-800 bg-gray-900/30">
+                                                            <div className="p-4 pt-0 text-sm text-gray-600 dark:text-gray-300 leading-relaxed border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/30">
                                                                 {lead.notes}
                                                             </div>
                                                           )}
