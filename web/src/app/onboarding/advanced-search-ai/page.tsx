@@ -784,7 +784,12 @@ export default function AdvancedSearchAIPage() {
         geographicFocus: '', valueProposition: '', competitors: '', campaignTone: '',
     });
     const [bpHydrated, setBpHydrated] = useState(false);
-    const [isOpen, setIsOpen] = useState(false);
+    const [openSummaries, setOpenSummaries] = useState<Set<number>>(new Set());
+    const toggleSummary = (idx: number) => setOpenSummaries((prev) => {
+        const next = new Set(prev);
+        if (next.has(idx)) next.delete(idx); else next.add(idx);
+        return next;
+    });
     // Hydrate local state once when the hook's initial load completes.
     // We keep `businessProfile` as a local Record<string, string> because the
     // chat continues to mutate it through many setBusinessProfile calls — the
@@ -4223,19 +4228,18 @@ export default function AdvancedSearchAIPage() {
                                                       <div className="mt-4 border border-gray-800 rounded-lg overflow-hidden bg-transparent">
                                                           {/* Header */}
                                                           <button
-                                                            onClick={() => setIsOpen(!isOpen)}
+                                                            onClick={() => toggleSummary(i)}
                                                             className="w-full flex items-center justify-between p-3 text-gray-400 hover:bg-gray-800/50 transition-colors"
                                                           >
                                                               <div className="flex items-center gap-2 text-[10px] font-mono tracking-widest uppercase">
-                                                                  {/* Replace your previous SVG with a sparkle icon */}
                                                                   <Sparkles className="w-3 h-3 text-indigo-400" />
-                                                                  AI Research Sumary
+                                                                  AI Research Summary
                                                               </div>
-                                                              <ChevronDown className={`w-3 h-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                                                              <ChevronDown className={`w-3 h-3 transition-transform ${openSummaries.has(i) ? 'rotate-180' : ''}`} />
                                                           </button>
 
                                                           {/* Content */}
-                                                          {isOpen && (
+                                                          {openSummaries.has(i) && (
                                                             <div className="p-4 pt-0 text-sm text-gray-300 leading-relaxed border-t border-gray-800 bg-gray-900/30">
                                                                 {lead.notes}
                                                             </div>
