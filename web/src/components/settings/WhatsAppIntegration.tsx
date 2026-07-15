@@ -19,6 +19,7 @@ import {
   ChevronUp,
   UserCheck,
   Bot,
+  Check
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -35,6 +36,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTenant } from '@/contexts/TenantContext';
 
 // ── Types ────────────────────────────────────────────────────────
@@ -520,39 +522,39 @@ export const WhatsAppIntegration: React.FC = () => {
 
   const StatusIcon = () => {
     switch (status) {
-      case 'connected': return <CheckCircle className="h-5 w-5 text-green-500" />;
+      case 'connected': return <CheckCircle className="h-5 w-5 text-green-500 dark:text-green-400" />;
       case 'qr_scanning':
       case 'pairing':
-      case 'connecting': return <RefreshCw className="h-5 w-5 text-blue-500 animate-spin" />;
-      case 'error': return <AlertCircle className="h-5 w-5 text-red-500" />;
-      default: return <WifiOff className="h-5 w-5 text-gray-400" />;
+      case 'connecting': return <RefreshCw className="h-5 w-5 text-blue-500 dark:text-indigo-400 animate-spin" />;
+      case 'error': return <AlertCircle className="h-5 w-5 text-red-500 dark:text-red-400" />;
+      default: return <WifiOff className="h-5 w-5 text-slate-400 dark:text-slate-500" />;
     }
   };
 
   // ── UI ──────────────────────────────────────────────────────
 
   return (
-    <Card>
+    <Card className="rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#000724]">
       <CardHeader>
         <div className="flex gap-3 items-center">
-          <div className="p-2 bg-green-100 rounded-lg">
-            <MessageSquare className="h-6 w-6 text-green-600" />
+          <div className="p-2 bg-green-50 dark:bg-green-950/30 rounded-lg">
+            <MessageSquare className="h-6 w-6 text-green-600 dark:text-green-400" />
           </div>
           <div>
-            <CardTitle>WhatsApp Integration</CardTitle>
-            <CardDescription>Connect your personal WhatsApp via QR code</CardDescription>
+            <CardTitle className="text-slate-800 dark:text-white">WhatsApp Integration</CardTitle>
+            <CardDescription className="text-slate-400 dark:text-slate-300">Connect your personal WhatsApp via QR code</CardDescription>
           </div>
         </div>
       </CardHeader>
 
       <CardContent className="space-y-4">
         {/* Connection Status */}
-        <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-          <div className="flex gap-3 items-center">
-            <Smartphone className="h-5 w-5 text-gray-500" />
+        <div className="flex justify-between items-center p-4 bg-slate-50 dark:bg-[#060e29] border border-slate-200 dark:border-slate-800/60 rounded-xl shadow-sm">
+          <div className="flex gap-4 items-center">
+            <Smartphone className="h-5 w-5 text-slate-500 dark:text-slate-300" />
             <div>
-              <p className="text-sm font-medium text-gray-800">Connection Status</p>
-              <p className="text-xs text-gray-500">{statusLabel()}</p>
+              <p className="text-sm font-semibold text-[#0b1957] dark:text-white">Connection Status</p>
+              <p className="text-xs text-slate-500 dark:text-slate-300 mt-0.5">{statusLabel()}</p>
             </div>
           </div>
           <StatusIcon />
@@ -560,16 +562,16 @@ export const WhatsAppIntegration: React.FC = () => {
 
         {/* Connected Account Info */}
         {status === 'connected' && account && (
-          <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+          <div className="p-4 bg-green-50/60 border border-green-200 dark:bg-green-950/20 dark:border-green-900/40 rounded-xl transition-all">
             <div className="flex items-center gap-2 mb-2">
-              <Wifi className="h-4 w-4 text-green-600" />
-              <span className="text-sm font-medium text-green-800">Account Connected</span>
+              <Wifi className="h-4 w-4 text-green-600 dark:text-green-400" />
+              <span className="text-sm font-semibold text-green-800 dark:text-green-300">Account Connected</span>
             </div>
             {account.phone_number && (
-              <p className="text-xs text-green-700">Phone: {account.phone_number}</p>
+              <p className="text-xs font-medium text-slate-600 dark:text-slate-300">Phone: <span className="font-bold text-slate-800 dark:text-white">+{account.phone_number}</span></p>
             )}
             {account.connected_at && (
-              <p className="text-xs text-green-600 mt-1">
+              <p className="text-xs text-slate-500 dark:text-slate-300 mt-1">
                 Since: {new Date(account.connected_at).toLocaleString()}
               </p>
             )}
@@ -578,7 +580,7 @@ export const WhatsAppIntegration: React.FC = () => {
 
         {/* Error Message */}
         {error && (
-          <div className="flex items-center gap-2 text-xs p-3 bg-red-50 border border-red-200 rounded-lg text-red-700">
+          <div className="flex items-center gap-2 text-xs p-3 bg-red-50 border border-red-200 dark:bg-red-950/20 dark:border-red-900/50 rounded-xl text-red-700 dark:text-red-400">
             <AlertCircle className="h-4 w-4 flex-shrink-0" />
             {error}
           </div>
@@ -635,19 +637,19 @@ export const WhatsAppIntegration: React.FC = () => {
 
         {/* QR Code Display (QR method) */}
         {qrImage && status === 'qr_scanning' && (
-          <div className="border-2 border-dashed border-gray-300 p-5 rounded-lg text-center">
+          <div className="border-2 border-dashed border-slate-200 dark:border-slate-800 p-5 rounded-xl text-center bg-slate-50/50 dark:bg-[#060e29]/40">
             <div className="flex justify-between items-center mb-3">
-              <span className="text-sm font-medium text-gray-700">Scan with WhatsApp</span>
-              <span className={`text-sm font-mono ${timer < 60 ? 'text-red-500 font-bold' : 'text-gray-500'}`}>
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Scan with WhatsApp</span>
+              <span className={`text-sm font-mono ${timer < 60 ? 'text-red-500 font-bold dark:text-red-400' : 'text-slate-500 dark:text-slate-300'}`}>
                 {formatTime(timer)}
               </span>
             </div>
-            <img
-              src={qrImage}
+            <div className="bg-white p-3 rounded-xl inline-block shadow-sm">
+            <img src={qrImage}
               alt="WhatsApp QR Code"
-              className="mx-auto w-64 h-64 rounded-lg"
-            />
-            <p className="text-xs text-gray-400 mt-3">
+              className="w-56 h-56 rounded-lg mx-auto" />
+            </div>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-3">
               Open WhatsApp &gt; Settings &gt; Linked Devices &gt; Link a Device
             </p>
           </div>
@@ -682,7 +684,7 @@ export const WhatsAppIntegration: React.FC = () => {
               status === 'pairing' ||
               (linkMethod === 'phone' && phoneInput.replace(/\D/g, '').length < 8)
             }
-            className="w-full"
+            className="w-full h-11 bg-[#0b1957] dark:bg-primary text-white dark:text-primary-foreground font-semibold rounded-xl transition-all active:scale-[0.98] cursor-pointer shadow-md shadow-[#0b1957]/10"
           >
             {loading ? (
               <Loader2 className="animate-spin mr-2 h-4 w-4" />
@@ -702,7 +704,7 @@ export const WhatsAppIntegration: React.FC = () => {
             variant="destructive"
             onClick={handleLogout}
             disabled={loading}
-            className="w-full"
+            className="w-full h-11 font-semibold rounded-xl transition-all active:scale-[0.98] cursor-pointer"
           >
             {loading ? (
               <Loader2 className="animate-spin mr-2 h-4 w-4" />
@@ -714,13 +716,13 @@ export const WhatsAppIntegration: React.FC = () => {
         )}
 
         {/* Auto-Assign Settings */}
-        <div className="border-t pt-4 mt-2">
+        <div className="border-t border-slate-100 dark:border-slate-800/80 pt-4 mt-2">
           <div className="flex items-start justify-between gap-4">
             <div className="flex gap-3 items-start">
-              <Users className="h-5 w-5 text-gray-500 mt-0.5" />
+              <Users className="h-5 w-5 text-slate-500 dark:text-slate-300 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-gray-800">Auto-assign contacts</p>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <p className="text-sm font-semibold text-slate-800 dark:text-white">Auto-assign contacts</p>
+                <p className="text-xs text-slate-500 dark:text-slate-300 mt-0.5 leading-relaxed">
                   Saved contacts are assigned to Human Agent. Unsaved numbers go to AI Agent.
                 </p>
               </div>
@@ -732,26 +734,26 @@ export const WhatsAppIntegration: React.FC = () => {
             />
           </div>
           {autoAssign.enabled && (
-            <div className="mt-3 ml-8 space-y-1.5">
+            <div className="mt-3 ml-8 space-y-2 bg-slate-50/50 dark:bg-[#060e29]/40 p-3 rounded-xl border border-slate-100 dark:border-slate-800/40">
               <div className="flex items-center gap-2 text-xs">
-                <span className="w-2 h-2 rounded-full bg-blue-500" />
-                <span className="text-gray-600">Saved contacts → <span className="font-medium text-gray-800">Human Agent</span></span>
+                <span className="w-2 h-2 rounded-full bg-blue-500 dark:bg-indigo-400" />
+                <span className="text-slate-600 dark:text-slate-300">Saved contacts → <span className="font-semibold text-slate-800 dark:text-white">Human Agent</span></span>
               </div>
               <div className="flex items-center gap-2 text-xs">
-                <span className="w-2 h-2 rounded-full bg-green-500" />
-                <span className="text-gray-600">Unsaved numbers → <span className="font-medium text-gray-800">AI Agent</span></span>
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span className="text-slate-600 dark:text-slate-300">Unsaved numbers → <span className="font-semibold text-slate-800 dark:text-white">AI Agent</span></span>
               </div>
             </div>
           )}
         </div>
 
         {/* Assign All Chats to Team Member */}
-        <div className="border-t pt-4 mt-2">
+        <div className="border-t border-slate-100 dark:border-slate-800/80 pt-4 mt-2">
           <div className="flex gap-3 items-start mb-3">
-            <UserCheck className="h-5 w-5 text-gray-500 mt-0.5" />
+            <UserCheck className="h-5 w-5 text-slate-500 dark:text-slate-300 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-gray-800">Assign chats to team member</p>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <p className="text-sm font-semibold text-slate-800 dark:text-white">Assign chats to team member</p>
+              <p className="text-xs text-slate-500 dark:text-slate-300 mt-0.5 leading-relaxed">
                 Bulk-assign conversations so a team member receives forwarded messages.
               </p>
             </div>
@@ -760,65 +762,111 @@ export const WhatsAppIntegration: React.FC = () => {
           {/* Team member selector */}
           <div className="ml-8 space-y-3">
             <div className="flex gap-2 items-center">
-              <select
-                className="flex-1 h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                value={bulkAssignUserId}
-                onChange={(e) => setBulkAssignUserId(e.target.value)}
+              <Select
+                      value={bulkAssignUserId || undefined}
+                      onValueChange={(val: string) => setBulkAssignUserId(val)}
+                      disabled={teamMembersLoading}
+                  >
+                    <SelectTrigger
+                className="flex-1 h-9 px-3 text-sm border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#000724] text-[#172560] dark:text-white rounded-md focus:ring-1 focus:ring-indigo-500/30"
                 onFocus={() => { if (teamMembers.length === 0) loadTeamMembers(); }}
-                disabled={teamMembersLoading}
-              >
-                <option value="ai_agent">🤖 AI Agent (release assignment)</option>
-                {teamMembersLoading && <option value="" disabled>Loading team members…</option>}
+                    >
+                      <SelectValue placeholder="Select assignment..." />
+                    </SelectTrigger>
+
+                    <SelectContent className="bg-white dark:bg-[#000724] border border-slate-200 dark:border-slate-800/80 rounded-xl p-1 shadow-xl min-w-[200px]">
+                      {/* AI Agent Option */}
+                      <SelectItem
+                          value="ai_agent"
+                          className="text-sm text-[#172560] dark:text-white focus:bg-[#22C55E] focus:text-white data-[state=checked]:bg-[#22C55E] data-[state=checked]:text-white dark:focus:bg-[#22C55E] dark:focus:text-[#000724] dark:data-[state=checked]:bg-[#22C55E] dark:data-[state=checked]:text-[#000724] cursor-pointer rounded-lg relative flex items-center justify-between w-full py-2 pl-3 pr-9 [&>span]:w-full [&>span:has(svg)]:hidden *:[data-slot=select-item-indicator]:hidden"
+                      >
+                        <span className="flex items-center gap-2">🤖 AI Agent (release assignment)</span>
+                        {bulkAssignUserId === "ai_agent" && (
+                            <Check className="w-4 h-4 text-white dark:text-[#000724] absolute right-3 top-1/2 -translate-y-1/2 z-50 stroke-[3]" />
+                        )}
+                      </SelectItem>
+
+                {teamMembersLoading && (
+                          <SelectItem value="loading_state" disabled className="text-sm text-slate-400 dark:text-slate-300 py-2 pl-3">
+                            Loading team members…
+                          </SelectItem>
+                      )}
+
                 {!teamMembersLoading && teamMembers.length === 0 && (
-                  <option value="" disabled>No team members found</option>
-                )}
-                {teamMembers.map((m) => (
-                  <option key={m.user_id} value={m.user_id}>
-                    {m.name}{m.active_count > 0 ? ` (${m.active_count} active)` : ''}
-                  </option>
-                ))}
-              </select>
+                  <SelectItem value="empty_state" disabled className="text-sm text-slate-400 dark:text-slate-300 py-2 pl-3">
+                            No team members found
+                          </SelectItem>
+                      )}
+
+                      {/* Render Map Items Group Loop */}
+                      {!teamMembersLoading && teamMembers.map((m) => {
+                        const isSelected = bulkAssignUserId === m.user_id;
+                        return (
+                            <SelectItem
+                                key={m.user_id}
+                                value={m.user_id}
+                                className="text-sm text-[#172560] dark:text-white focus:bg-[#22C55E] focus:text-white data-[state=checked]:bg-[#22C55E] data-[state=checked]:text-white dark:focus:bg-[#22C55E] dark:focus:text-[#000724] dark:data-[state=checked]:bg-[#22C55E] dark:data-[state=checked]:text-[#000724] cursor-pointer rounded-lg relative flex items-center justify-between w-full py-2 pl-3 pr-9 mt-0.5 [&>span]:w-full [&>span:has(svg)]:hidden *:[data-slot=select-item-indicator]:hidden"
+                            >
+                <span className="flex items-center justify-between w-full">
+                  <span>{m.name}</span>
+                  {m.active_count > 0 && (
+                      <span className="opacity-80 text-xs font-normal ml-1">({m.active_count} active)</span>
+                  )}
+                </span>
+                              {isSelected && (
+                                  <Check className="w-4 h-4 text-white dark:text-[#000724] absolute right-3 top-1/2 -translate-y-1/2 z-50 stroke-[3]" />
+                              )}
+                            </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+
               <Button
                 variant="outline"
                 size="sm"
-                className="h-9 px-2"
+                className="h-9 px-2 border-slate-200 dark:border-slate-800"
                 onClick={loadTeamMembers}
                 disabled={teamMembersLoading}
                 title="Refresh team members"
               >
-                <RefreshCw className={`h-3.5 w-3.5 ${teamMembersLoading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`h-3.5 w-3.5 text-slate-600 dark:text-slate-300 ${teamMembersLoading ? 'animate-spin' : ''}`} />
               </Button>
             </div>
 
-            {/* Filter: all vs unassigned */}
-            <div className="flex gap-4 text-xs text-gray-600">
-              <label className="flex items-center gap-1.5 cursor-pointer">
+            {/* Radio Filter Matrix Actions */}
+            <div className="flex gap-4 text-xs font-medium text-slate-600 dark:text-slate-300 pt-1">
+              <label className="flex items-center gap-2 cursor-pointer group">
                 <input
                   type="radio"
                   name="bulkAssignFilter"
                   value="unassigned"
                   checked={bulkAssignFilter === 'unassigned'}
                   onChange={() => setBulkAssignFilter('unassigned')}
-                  className="cursor-pointer"
-                />
+                  className="cursor-pointer h-3.5 w-3.5 accent-[#0b1957] dark:accent-primary"
+                  />
+                  <span className="group-hover:text-[#0b1957] dark:group-hover:text-white transition-colors">
                 {bulkAssignUserId === 'ai_agent' ? 'Assigned chats only' : 'Unassigned chats only'}
+                </span>
               </label>
-              <label className="flex items-center gap-1.5 cursor-pointer">
+              <label className="flex items-center gap-2 cursor-pointer group">
                 <input
                   type="radio"
                   name="bulkAssignFilter"
                   value="all"
                   checked={bulkAssignFilter === 'all'}
                   onChange={() => setBulkAssignFilter('all')}
-                  className="cursor-pointer"
-                />
+                  className="cursor-pointer h-3.5 w-3.5 accent-[#0b1957] dark:accent-primary"
+                  />
+                  <span className="group-hover:text-[#0b1957] dark:group-hover:text-white transition-colors">
                 All active chats
+                </span>
               </label>
             </div>
 
             {/* Result feedback */}
             {bulkAssignResult && (
-              <div className="flex items-center gap-2 text-xs p-2.5 bg-green-50 border border-green-200 rounded-lg text-green-700">
+              <div className="flex items-center gap-2 text-xs p-3 bg-green-50 border border-green-200 dark:bg-green-950/20 dark:border-green-900/40 rounded-xl text-green-800 dark:text-green-400">
                 <CheckCircle className="h-4 w-4 flex-shrink-0" />
                 {bulkAssignUserId === 'ai_agent'
                   ? `Released ${bulkAssignResult.assigned} of ${bulkAssignResult.total} conversations back to AI Agent.`
@@ -828,7 +876,7 @@ export const WhatsAppIntegration: React.FC = () => {
 
             <Button
               size="sm"
-              className={`w-full ${bulkAssignUserId === 'ai_agent' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}`}
+              className={`w-full h-10 font-bold rounded-xl active:scale-[0.99] transition-all cursor-pointer ${bulkAssignUserId === 'ai_agent' ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-none' : 'bg-[#0b1957] hover:bg-[#0b1957]/90 dark:bg-primary dark:hover:bg-primary/90 text-white dark:text-primary-foreground'}`}
               disabled={!bulkAssignUserId || teamMembersLoading}
               onClick={() => {
                 setBulkAssignResult(null);
@@ -855,10 +903,10 @@ export const WhatsAppIntegration: React.FC = () => {
 
         {/* Synced Contacts List */}
         {status === 'connected' && (
-          <div className="border-t pt-4 mt-2">
+          <div className="border-t border-slate-100 dark:border-slate-800/80 pt-4 mt-2">
             <button
               type="button"
-              className="flex items-center justify-between w-full text-left"
+              className="flex items-center justify-between w-full text-left focus:outline-none cursor-pointer group"
               onClick={() => {
                 if (!contactsExpanded && contacts.length === 0) {
                   loadContacts();
@@ -867,33 +915,33 @@ export const WhatsAppIntegration: React.FC = () => {
               }}
             >
               <div className="flex gap-3 items-center">
-                <Users className="h-5 w-5 text-gray-500" />
+                <Users className="h-5 w-5 text-slate-500 dark:text-slate-300" />
                 <div>
-                  <p className="text-sm font-medium text-gray-800">
+                  <p className="text-sm font-semibold text-slate-800 dark:text-white group-hover:text-[#0b1957] dark:group-hover:text-primary transition-colors">
                     Synced Contacts
                     {contacts.length > 0 && (
-                      <span className="ml-2 text-xs font-normal text-gray-500">
+                      <span className="ml-2 text-xs font-normal text-slate-400 dark:text-slate-300">
                         ({contactsTotal} total)
                       </span>
                     )}
                   </p>
-                  <p className="text-xs text-gray-500 mt-0.5">
+                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
                     Contacts from your connected WhatsApp account
                   </p>
                 </div>
               </div>
               {contactsExpanded ? (
-                <ChevronUp className="h-4 w-4 text-gray-400" />
+                <ChevronUp className="h-4 w-4 text-slate-400 dark:text-slate-500" />
               ) : (
-                <ChevronDown className="h-4 w-4 text-gray-400" />
+                <ChevronDown className="h-4 w-4 text-slate-400 dark:text-slate-500" />
               )}
             </button>
 
             {contactsExpanded && (
-              <div className="mt-3 space-y-3">
-                {/* Search */}
+              <div className="mt-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                {/* Contact Searching Node Input */}
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500" />
                   <Input
                     placeholder="Search name or number..."
                     value={contactsSearch}
@@ -905,49 +953,49 @@ export const WhatsAppIntegration: React.FC = () => {
                         loadContacts(1, val);
                       }, 400);
                     }}
-                    className="pl-9 h-9 text-sm"
+                    className="pl-9 h-9 text-sm bg-white dark:bg-[#000724] border-slate-200 dark:border-slate-800 rounded-lg"
                   />
                 </div>
 
                 {/* Contacts list */}
                 {contactsLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-                    <span className="ml-2 text-sm text-gray-500">Loading contacts...</span>
+                  <div className="flex items-center justify-center py-10">
+                    <Loader2 className="h-5 w-5 animate-spin text-[#0b1957] dark:text-primary" />
+                    <span className="ml-2 text-sm text-slate-500 dark:text-slate-300">Loading contacts...</span>
                   </div>
                 ) : contacts.length === 0 ? (
-                  <div className="text-center py-8 text-sm text-gray-400">
+                  <div className="text-center py-10 text-sm text-slate-400 dark:text-slate-500 bg-slate-50/50 dark:bg-[#060e29]/20 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
                     No contacts synced yet. Contacts will appear after WhatsApp syncs your address book.
                   </div>
                 ) : (
                   <>
-                    <ScrollArea className="h-[360px]">
-                      <div className="space-y-0.5">
+                    <ScrollArea className="h-[360px] pr-2">
+                      <div className="space-y-1">
                         {contacts.map((contact) => (
                             <div
                               key={contact.phone}
-                              className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-50 transition-colors"
+                              className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-[#060e29]/60 border border-transparent dark:hover:border-slate-800/30 transition-all"
                             >
-                              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800/80 flex items-center justify-center">
                                 {contact.is_saved ? (
-                                  <span className="text-sm font-medium text-gray-600">
+                                  <span className="text-sm font-semibold text-[#0b1957] dark:text-primary">
                                     {(contact.name || '?').charAt(0).toUpperCase()}
                                   </span>
                                 ) : (
-                                  <User className="h-5 w-5 text-gray-400" />
+                                  <User className="h-5 w-5 text-slate-400 dark:text-slate-500" />
                                 )}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-gray-800 truncate">
+                                <p className="text-sm font-semibold text-slate-800 dark:text-white truncate">
                                   {contact.name || contact.phone}
                                 </p>
                                 {contact.name && (
-                                  <p className="text-xs text-gray-500 truncate">+{contact.phone}</p>
+                                  <p className="text-xs text-slate-400 dark:text-slate-300 font-medium truncate mt-0.5">+{contact.phone}</p>
                                 )}
                               </div>
                               <Badge
                                 variant={contact.is_saved ? 'default' : 'secondary'}
-                                className="text-[10px] px-1.5 py-0"
+                                className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${contact.is_saved ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-800/60 dark:text-slate-300'}`}
                               >
                                 {contact.is_saved ? 'Saved' : 'Unsaved'}
                               </Badge>
@@ -958,15 +1006,15 @@ export const WhatsAppIntegration: React.FC = () => {
 
                     {/* Pagination */}
                     {contactsTotal > 100 && (
-                      <div className="flex items-center justify-between pt-2 text-xs text-gray-500">
+                      <div className="flex items-center justify-between pt-2 text-xs font-medium text-slate-500 dark:text-slate-300 border-t border-slate-100 dark:border-slate-800/40">
                         <span>
                           Showing {(contactsPage - 1) * 100 + 1}–{Math.min(contactsPage * 100, contactsTotal)} of {contactsTotal}
                         </span>
-                        <div className="flex gap-2">
+                        <div className="flex gap-1.5">
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-7 px-2 text-xs"
+                            className="h-7 px-2.5 text-xs rounded-md border-slate-200 dark:border-slate-800 cursor-pointer"
                             disabled={contactsPage <= 1 || contactsLoading}
                             onClick={() => loadContacts(contactsPage - 1, contactsSearch)}
                           >
@@ -975,7 +1023,7 @@ export const WhatsAppIntegration: React.FC = () => {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-7 px-2 text-xs"
+                            className="h-7 px-2.5 text-xs rounded-md border-slate-200 dark:border-slate-800 cursor-pointer"
                             disabled={contactsPage * 100 >= contactsTotal || contactsLoading}
                             onClick={() => loadContacts(contactsPage + 1, contactsSearch)}
                           >
@@ -991,7 +1039,7 @@ export const WhatsAppIntegration: React.FC = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="w-full"
+                  className="w-full h-9 rounded-xl text-xs font-semibold border-slate-200 dark:border-slate-800 cursor-pointer"
                   disabled={contactsLoading}
                   onClick={() => loadContacts(1, contactsSearch)}
                 >
@@ -1006,19 +1054,18 @@ export const WhatsAppIntegration: React.FC = () => {
 
       {/* Confirmation Dialog */}
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <DialogContent>
+        <DialogContent className="bg-white dark:bg-[#000724] border border-slate-200 dark:border-slate-800 max-w-md rounded-2xl">
           <DialogHeader>
-            <DialogTitle>Enable auto-assign for saved contacts?</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-slate-900 dark:text-white font-bold">Enable auto-assign for saved contacts?</DialogTitle>
+            <DialogDescription className="text-slate-500 dark:text-slate-300 leading-relaxed text-sm pt-1">
               When enabled, new conversations from your saved WhatsApp contacts will be automatically assigned to a Human Agent. Messages from unsaved numbers will continue to be handled by the AI Agent.
             </DialogDescription>
           </DialogHeader>
-          <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800">
+          <div className="rounded-xl bg-amber-50/60 border border-amber-200 dark:bg-amber-950/20 dark:border-amber-900/40 p-3.5 text-xs text-amber-800 dark:text-amber-400 font-medium leading-relaxed">
             This means the AI will not respond to messages from your saved contacts. A human agent must handle those conversations manually.
           </div>
-          <DialogFooter className="gap-2 sm:gap-0">
-
-            <Button onClick={confirmAutoAssign} disabled={autoAssignSaving}>
+          <DialogFooter className="gap-2 pt-2">
+            <Button onClick={confirmAutoAssign} disabled={autoAssignSaving} className="bg-[#0b1957] dark:bg-primary hover:bg-[#0b1957]/90 dark:hover:bg-primary/90 text-white dark:text-primary-foreground font-semibold rounded-xl h-10 px-4 cursor-pointer">
               {autoAssignSaving && <Loader2 className="animate-spin mr-2 h-4 w-4" />}
               Yes, enable auto-assign
             </Button>
@@ -1028,14 +1075,14 @@ export const WhatsAppIntegration: React.FC = () => {
 
       {/* Bulk Assign Confirmation Dialog */}
       <Dialog open={showBulkAssignDialog} onOpenChange={setShowBulkAssignDialog}>
-        <DialogContent>
+        <DialogContent className="bg-white dark:bg-[#000724] border border-slate-200 dark:border-slate-800 max-w-md rounded-2xl">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="text-slate-900 dark:text-white font-bold">
               {bulkAssignUserId === 'ai_agent'
                 ? `Release ${bulkAssignFilter === 'all' ? 'all active' : 'assigned'} chats to AI Agent?`
                 : `Assign ${bulkAssignFilter === 'all' ? 'all active' : 'unassigned'} chats?`}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-slate-500 dark:text-slate-300 leading-relaxed text-sm pt-1">
               {bulkAssignUserId === 'ai_agent'
                 ? bulkAssignFilter === 'all'
                   ? 'All active conversations will have their team member assignment removed. The AI Agent will resume responding to these chats.'
@@ -1049,17 +1096,16 @@ export const WhatsAppIntegration: React.FC = () => {
                   })()}
             </DialogDescription>
           </DialogHeader>
-          <div className={`rounded-lg p-3 text-xs ${bulkAssignUserId === 'ai_agent' ? 'bg-emerald-50 border border-emerald-200 text-emerald-800' : 'bg-blue-50 border border-blue-200 text-blue-800'}`}>
+          <div className={`rounded-xl p-3.5 text-xs font-medium leading-relaxed border ${bulkAssignUserId === 'ai_agent' ? 'bg-emerald-50/60 border-emerald-200 text-emerald-800 dark:bg-emerald-950/20 dark:border-emerald-900/40 dark:text-emerald-400' : 'bg-blue-50/60 border-blue-200 text-blue-800 dark:bg-indigo-950/20 dark:border-indigo-900/40 dark:text-indigo-400'}`}>
             {bulkAssignUserId === 'ai_agent'
               ? 'The AI Agent will automatically start handling messages in the released conversations.'
               : 'Assigned team members will receive a copy of incoming messages on their own WhatsApp so they can reply directly.'}
           </div>
-          <DialogFooter className="gap-2 sm:gap-0">
-
+          <DialogFooter className="gap-2 pt-2">
             <Button
               onClick={handleBulkAssign}
               disabled={bulkAssigning}
-              className={bulkAssignUserId === 'ai_agent' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+              className={`font-semibold rounded-xl h-10 px-4 cursor-pointer transition-all ${bulkAssignUserId === 'ai_agent' ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-none' : 'bg-[#0b1957] hover:bg-[#0b1957]/90 dark:bg-primary dark:hover:bg-primary/90 text-white dark:text-primary-foreground'}`}
             >
               {bulkAssigning && <Loader2 className="animate-spin mr-2 h-4 w-4" />}
               {bulkAssignUserId === 'ai_agent' ? 'Yes, release to AI Agent' : 'Yes, assign chats'}

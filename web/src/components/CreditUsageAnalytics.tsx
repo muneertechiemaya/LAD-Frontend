@@ -68,19 +68,19 @@ export const CreditUsageAnalytics: React.FC<CreditUsageAnalyticsProps> = ({
   };
   const getFeatureColor = (icon: string) => {
     switch (icon) {
-      case 'phone':     return 'bg-blue-100 text-blue-600';
-      case 'search':    return 'bg-orange-100 text-orange-600';
-      case 'linkedin':  return 'bg-green-100 text-green-600';
-      case 'brain':     return 'bg-purple-100 text-purple-600';
-      case 'zap':       return 'bg-yellow-100 text-yellow-600';
-      default:          return 'bg-muted text-muted-foreground';
+      case 'phone':     return 'bg-blue-100 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400';
+      case 'search':    return 'bg-orange-100 text-orange-600 dark:bg-orange-950/40 dark:text-orange-400';
+      case 'linkedin':  return 'bg-green-100 text-green-600 dark:bg-green-950/40 dark:text-green-400';
+      case 'brain':     return 'bg-purple-100 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400';
+      case 'zap':       return 'bg-yellow-100 text-yellow-600 dark:bg-yellow-950/40 dark:text-yellow-400';
+      default:          return 'bg-muted text-muted-foreground dark:bg-blue-950/30 dark:text-slate-300';
     }
   };
   if (loading) {
     return (
-      <div className="bg-card text-card-foreground rounded-xl shadow-md p-8 border border-border">
+      <div className="bg-card text-card-foreground rounded-xl shadow-md p-8 border border-border dark:bg-[#030a21]/60 dark:border-blue-950/40">
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary dark:border-blue-500"></div>
         </div>
       </div>
     );
@@ -93,8 +93,8 @@ export const CreditUsageAnalytics: React.FC<CreditUsageAnalyticsProps> = ({
       {/* Header with Time Range Selector */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-1">
-          <h2 className="text-2xl font-bold text-foreground">Credit Usage Analytics</h2>
-          <p className="text-muted-foreground">Track your credit consumption across features</p>
+          <h2 className="text-2xl font-bold text-foreground dark:text-white">Credit Usage Analytics</h2>
+          <p className="text-muted-foreground dark:text-slate-300">Track your credit consumption across features</p>
         </div>
         <div className="flex gap-3 justify-between md:justify-end">
           {['7d', '30d', '90d'].map((range) => (
@@ -120,52 +120,52 @@ export const CreditUsageAnalytics: React.FC<CreditUsageAnalyticsProps> = ({
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Total Credits Used */}
-        <div className="bg-card text-card-foreground rounded-xl shadow-md p-6 border-l-4 border-primary border border-border">
+        <div className="bg-card text-card-foreground rounded-xl shadow-md p-6 border border-border border-l-4 border-l-primary dark:bg-[#030a21]/60 dark:border-blue-950/40 dark:border-l-blue-500">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-muted-foreground text-sm font-medium">Total Credits Used</span>
-            <BarChart3 className="h-5 w-5 text-primary" />
+            <span className="text-muted-foreground dark:text-slate-300 text-sm font-medium">Total Credits Used</span>
+            <BarChart3 className="h-5 w-5 text-primary dark:text-blue-500" />
           </div>
-          <div className="text-3xl font-bold text-foreground">
+          <div className="text-3xl font-bold text-foreground dark:text-white">
             {analytics.totalCreditsUsed.toLocaleString()}
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs text-muted-foreground dark:text-gray-500 mt-1">
             in the last {selectedRange === '7d' ? '7' : selectedRange === '30d' ? '30' : '90'} days
           </p>
         </div>
         {/* Monthly Trend */}
-        <div className="bg-card text-card-foreground rounded-xl shadow-md p-6 border-l-4 border-green-600 border border-border">
+        <div className="bg-card text-card-foreground rounded-xl shadow-md p-6 border border-border border-l-4 border-l-green-600 dark:bg-[#030a21]/60 dark:border-blue-950/40 dark:border-l-green-500">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-muted-foreground text-sm font-medium">Monthly Trend</span>
-            <TrendingUp className="h-5 w-5 text-green-600" />
+            <span className="text-muted-foreground dark:text-slate-300 text-sm font-medium">Monthly Trend</span>
+            <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-500" />
           </div>
           <div className="flex items-baseline">
-            <span className="text-3xl font-bold text-foreground">
+            <span className="text-3xl font-bold text-foreground dark:text-white">
               {analytics.monthlyTrend.percentageChange > 0 ? '+' : ''}
               {analytics.monthlyTrend.percentageChange.toFixed(1)}%
             </span>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs text-muted-foreground dark:text-gray-500 mt-1">
             vs last month ({analytics.monthlyTrend.lastMonth.toLocaleString()} credits)
           </p>
         </div>
         {/* Top Feature */}
-        <div className="bg-card text-card-foreground rounded-xl shadow-md p-6 border-l-4 border-purple-600 border border-border">
+        <div className="bg-card text-card-foreground rounded-xl shadow-md p-6 border border-border border-l-4 border-l-purple-600 dark:bg-[#030a21]/60 dark:border-blue-950/40 dark:border-l-purple-500">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-muted-foreground text-sm font-medium">Most Used Feature</span>
-            <Calendar className="h-5 w-5 text-purple-600" />
+            <span className="text-muted-foreground dark:text-slate-300 text-sm font-medium">Most Used Feature</span>
+            <Calendar className="h-5 w-5 text-purple-600 dark:text-purple-500" />
           </div>
-          <div className="text-xl font-bold text-foreground">
+          <div className="text-xl font-bold text-foreground dark:text-white">
             {analytics.topFeatures[0]?.featureName || 'N/A'}
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs text-muted-foreground dark:text-gray-500 mt-1">
             {analytics.topFeatures[0]?.totalCredits.toLocaleString()} credits (
             {analytics.topFeatures[0]?.percentage.toFixed(1)}%)
           </p>
         </div>
       </div>
       {/* Feature Breakdown */}
-      <div className="bg-card text-card-foreground rounded-xl shadow-md p-6 border border-border">
-        <h3 className="text-lg font-semibold text-foreground mb-4">Usage by Feature</h3>
+      <div className="bg-card text-card-foreground rounded-xl shadow-md p-6 border border-border dark:bg-[#030a21]/60 dark:border-blue-950/40">
+        <h3 className="text-lg font-semibold text-foreground dark:text-white mb-4">Usage by Feature</h3>
         <div className="space-y-4">
           {analytics.topFeatures.map((feature, index) => (
             <div key={index}>
@@ -175,22 +175,22 @@ export const CreditUsageAnalytics: React.FC<CreditUsageAnalyticsProps> = ({
                     {getFeatureIcon(feature.icon)}
                   </div>
                   <div>
-                    <div className="font-medium text-foreground">{feature.featureName}</div>
-                    <div className="text-sm text-muted-foreground">
+                    <div className="font-medium text-foreground dark:text-white">{feature.featureName}</div>
+                    <div className="text-sm text-muted-foreground dark:text-slate-300">
                       {feature.usageCount.toLocaleString()} uses
                     </div>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="font-semibold text-foreground">
+                  <div className="font-semibold text-foreground dark:text-white">
                     {feature.totalCredits.toLocaleString()} credits
                   </div>
-                  <div className="text-sm text-muted-foreground">{feature.percentage.toFixed(1)}%</div>
+                  <div className="text-sm text-muted-foreground dark:text-slate-300">{feature.percentage.toFixed(1)}%</div>
                 </div>
               </div>
-              <div className="w-full bg-muted rounded-full h-2">
+              <div className="w-full bg-muted dark:bg-[#061033]/70 rounded-full h-2">
                 <div
-                  className="bg-primary h-2 rounded-full transition-all duration-500"
+                  className="bg-primary dark:bg-blue-500 h-2 rounded-full transition-all duration-500"
                   style={{ width: `${feature.percentage}%` }}
                 ></div>
               </div>
@@ -199,8 +199,8 @@ export const CreditUsageAnalytics: React.FC<CreditUsageAnalyticsProps> = ({
         </div>
       </div>
       {/* Daily Usage Chart */}
-      <div className="bg-card text-card-foreground rounded-xl shadow-md p-6 border border-border">
-        <h3 className="text-lg font-semibold text-foreground mb-4">Daily Usage</h3>
+      <div className="bg-card text-card-foreground rounded-xl shadow-md p-6 border border-border dark:bg-[#030a21]/60 dark:border-blue-950/40">
+        <h3 className="text-lg font-semibold text-foreground dark:text-white mb-4">Daily Usage</h3>
         <div className="grid grid-cols-7 gap-2">
           {analytics.dailyUsage.slice(-7).map((day, index) => {
             const maxCredits = Math.max(...analytics.dailyUsage.map(d => d.credits));
@@ -209,22 +209,22 @@ export const CreditUsageAnalytics: React.FC<CreditUsageAnalyticsProps> = ({
               <div key={index} className="text-center">
                 <div className="h-32 flex items-end justify-center mb-2">
                   <div
-                    className="w-full bg-primary rounded-t-lg transition-all duration-500 hover:bg-primary/80 cursor-pointer relative group"
+                    className="w-full bg-primary dark:bg-blue-500 rounded-t-lg transition-all duration-500 hover:bg-primary/80 dark:hover:bg-blue-400 cursor-pointer relative group"
                     style={{ height: `${heightPercent}%` }}
                   >
-                    <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-foreground text-background text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                    <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-foreground dark:bg-white text-background dark:text-[#000724] text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
                       {day.credits} credits
                     </div>
                   </div>
                 </div>
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-muted-foreground dark:text-slate-300">
                   {new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' })}
                 </div>
               </div>
             );
           })}
         </div>
-        <p className="text-xs text-muted-foreground mt-4 text-center">
+        <p className="text-xs text-muted-foreground dark:text-slate-300 mt-4 text-center">
           Hover over bars to see exact credit usage
         </p>
       </div>
