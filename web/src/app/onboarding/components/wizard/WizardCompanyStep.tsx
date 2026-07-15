@@ -139,6 +139,51 @@ export default function WizardCompanyStep({ onBack, onContinue }: WizardCompanyS
             className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-[#262831] bg-white dark:bg-[#000724] text-[13px] text-[#172560] dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B1957]/30 resize-none"
           />
         </Field>
+        <Field label="Agent speaks as" hint="The name the LinkedIn agent messages prospects as.">
+          <input
+            type="text"
+            value={form.personaName || ''}
+            onChange={(e) => setField('personaName', e.target.value)}
+            placeholder="e.g. Sneha"
+            className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-[#262831] bg-white dark:bg-[#000724] text-[13px] text-[#172560] dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B1957]/30"
+          />
+        </Field>
+        <Field label="Your title / role" hint="How you introduce yourself.">
+          <input
+            type="text"
+            value={form.personaTitle || ''}
+            onChange={(e) => setField('personaTitle', e.target.value)}
+            placeholder="e.g. Founder"
+            className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-[#262831] bg-white dark:bg-[#000724] text-[13px] text-[#172560] dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B1957]/30"
+          />
+        </Field>
+        <Field label="Booking / calendar link" hint="Optional. Offered when a prospect is ready for a call.">
+          <input
+            type="url"
+            value={form.bookingLink || ''}
+            onChange={(e) => setField('bookingLink', e.target.value)}
+            placeholder="https://cal.com/you/intro"
+            className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-[#262831] bg-white dark:bg-[#000724] text-[13px] text-[#172560] dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B1957]/30"
+          />
+        </Field>
+        <Field label="Contact email" hint="Optional. Shared by the agent when a prospect asks how to reach you.">
+          <input
+            type="email"
+            value={form.contactEmail || ''}
+            onChange={(e) => setField('contactEmail', e.target.value)}
+            placeholder="you@company.com"
+            className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-[#262831] bg-white dark:bg-[#000724] text-[13px] text-[#172560] dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B1957]/30"
+          />
+        </Field>
+        <Field label="Contact phone" hint="Optional. Shared by the agent when a prospect asks how to reach you.">
+          <input
+            type="tel"
+            value={form.contactPhone || ''}
+            onChange={(e) => setField('contactPhone', e.target.value)}
+            placeholder="+971 50 123 4567"
+            className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-[#262831] bg-white dark:bg-[#000724] text-[13px] text-[#172560] dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B1957]/30"
+          />
+        </Field>
       </div>
 
       {error && (

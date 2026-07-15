@@ -20,6 +20,7 @@ interface ChildDef {
   name: string;
   sub: string;
   color: string;
+  darkColor?: string; // Enhanced placeholder token to allow native overrides in dark mode environments
   badge: string;
   big?: boolean;
   label?: { conf: number; note: string };
@@ -52,6 +53,7 @@ export default function WarmPathPanel({ wp, prospect, open, onToggle }: WarmPath
       name: wp.top_connection.name,
       sub: wp.top_connection.headline.split(',')[0],
       color: T.primary,
+      darkColor: '#3b82f6', // Tailored dynamic light blue for pristine legibility on deep navy canvas options
       badge: wp.top_connection.name.split(' ').map((w) => w[0]).join(''),
       big: true,
       label: { conf: wp.top_connection.confidence, note: `ex-${wp.shared_employer?.company || 'colleagues'}` },
@@ -68,6 +70,7 @@ export default function WarmPathPanel({ wp, prospect, open, onToggle }: WarmPath
         name: m.name,
         sub: m.title,
         color: T.linkedin,
+        darkColor: '#60a5fa', // Shifts mutual connection nodes up to beautiful clear sky tokens in dark mode
         badge: m.name.split(' ').map((w) => w[0]).join(''),
         linkType: 'mutual',
       });
@@ -79,6 +82,7 @@ export default function WarmPathPanel({ wp, prospect, open, onToggle }: WarmPath
         name: wp.customer_reference.via,
         sub: 'Mr LAD customer',
         color: T.success,
+        darkColor: '#4ade80', // Radiant toxic/lime-tinted emerald for verified accounts
         badge: 'SH',
         linkType: 'customer',
       });
@@ -90,6 +94,7 @@ export default function WarmPathPanel({ wp, prospect, open, onToggle }: WarmPath
         name: wp.shared_employer.company,
         sub: wp.shared_employer.overlap,
         color: '#0369a1',
+        darkColor: '#38bdf8', // Pure sea-blue highlights to maintain brand visibility
         badge: 'CG',
         linkType: 'employer',
       });
@@ -120,7 +125,7 @@ export default function WarmPathPanel({ wp, prospect, open, onToggle }: WarmPath
     return (
       <LadCard>
         <LadCardHeader title="Warm Path" subtitle="Routes from your network to this prospect" />
-        <div className="grid place-items-center h-32 text-[12.5px] text-slate-500 dark:text-[#7a8ba3]">
+        <div className="grid place-items-center h-32 text-[12.5px] text-slate-500 dark:text-slate-300">
           <div className="text-center">
             <RouteOff className="w-5 h-5 mx-auto mb-2 opacity-50" />
             No paths found yet.
@@ -192,15 +197,14 @@ export default function WarmPathPanel({ wp, prospect, open, onToggle }: WarmPath
             {open && Object.keys(positions).length > 0 && (
               <button
                 onClick={() => setPositions({})}
-                className="h-7 px-2.5 rounded-full text-[11.5px] font-medium text-slate-600 dark:text-[#7a8ba3] hover:bg-slate-100 dark:hover:bg-[#1a2a43] inline-flex items-center gap-1"
+                className="h-7 px-2.5 rounded-full text-[11.5px] font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#1a2a43] inline-flex items-center gap-1"
               >
                 <RotateCcw className="w-3.5 h-3.5" /> Reset
               </button>
             )}
             <button
               onClick={onToggle}
-              className="h-7 px-2.5 rounded-full text-[11.5px] font-semibold inline-flex items-center gap-1"
-              style={{ color: T.primary, background: T.badgeBg }}
+              className="inline-flex items-center justify-center gap-1 whitespace-nowrap text-[11.5px] transition-all disabled:pointer-events-none disabled:opacity-50 active:scale-95 select-none h-7 px-2.5 rounded-full font-semibold shadow-sm bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-blue-600 dark:text-white dark:hover:bg-blue-700 outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
             >
               {open ? 'Collapse' : 'Open graph'}
               {open ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -211,8 +215,7 @@ export default function WarmPathPanel({ wp, prospect, open, onToggle }: WarmPath
       {!open ? (
         <button
           onClick={onToggle}
-          className="w-full text-left rounded-2xl ring-1 ring-slate-200 dark:ring-[#262831] hover:ring-[#0B1957]/40 transition p-4 flex items-center gap-4"
-          style={{ background: 'linear-gradient(90deg, #f1f3fb 0%, #ffffff 100%)' }}
+          className="w-full text-left rounded-2xl ring-1 ring-slate-200 dark:ring-[#262831] hover:ring-[#0B1957]/40 dark:hover:ring-[#3b4b7a] transition p-4 flex items-center gap-4 bg-gradient-to-r from-[#f1f3fb] to-white dark:from-[#0b142e] dark:to-[#040a1f]"
         >
           <div className="shrink-0 w-10 h-10 rounded-xl grid place-items-center" style={{ background: T.badgeBg }}>
             <Route className="w-5 h-5" style={{ color: T.primary }} />
@@ -232,7 +235,7 @@ export default function WarmPathPanel({ wp, prospect, open, onToggle }: WarmPath
                 · {Math.round(wp.top_connection.confidence * 100)}%
               </span>
             </p>
-            <div className="mt-1 flex items-center gap-3 text-[11.5px] text-slate-600 dark:text-[#7a8ba3]">
+            <div className="mt-1 flex items-center gap-3 text-[11.5px] text-slate-600 dark:text-slate-300">
               {wp.mutual_connections?.length > 0 && (
                 <span className="inline-flex items-center gap-1">
                   <UsersRound className="w-3 h-3" /> {wp.mutual_connections.length} mutuals
@@ -250,16 +253,10 @@ export default function WarmPathPanel({ wp, prospect, open, onToggle }: WarmPath
               )}
             </div>
           </div>
-          <span
-            className="text-[11.5px] font-semibold inline-flex items-center gap-1"
-            style={{ color: T.primary }}
-          >
-            Open graph <ChevronDown className="w-3.5 h-3.5" />
-          </span>
         </button>
       ) : (
         <div className="relative">
-          <div className="absolute top-1 right-1 z-10 text-[10.5px] text-slate-500 dark:text-[#7a8ba3] bg-white/80 dark:bg-[#000724]/80 backdrop-blur px-2 py-0.5 rounded-full ring-1 ring-slate-200/70 dark:ring-[#262831] inline-flex items-center gap-1">
+          <div className="absolute top-1 right-1 z-10 text-[10.5px] text-slate-500 dark:text-slate-300 bg-white/80 dark:bg-[#000724]/80 backdrop-blur px-2 py-0.5 rounded-full ring-1 ring-slate-200/70 dark:ring-[#262831] inline-flex items-center gap-1">
             <Move className="w-3 h-3" /> drag nodes · click {prospect.full_name.split(' ')[0]} to{' '}
             {kidsExpanded ? 'collapse' : 'expand'}
           </div>
@@ -312,7 +309,8 @@ export default function WarmPathPanel({ wp, prospect, open, onToggle }: WarmPath
                           x={(p.x + CENTER.x) / 2}
                           y={(p.y + CENTER.y) / 2 - 6}
                           textAnchor="middle"
-                          style={{ fontSize: 11, fontWeight: 600, fill: T.primary, pointerEvents: 'none' }}
+                          className="fill-[#0B1957] dark:fill-[#60a5fa]"
+                          style={{ fontSize: 11, fontWeight: 600, pointerEvents: 'none' }}
                         >
                           {Math.round(def.label.conf * 100)}%
                         </text>
@@ -342,6 +340,7 @@ export default function WarmPathPanel({ wp, prospect, open, onToggle }: WarmPath
                     name={def.name}
                     sub={def.sub}
                     color={def.color}
+                    darkColor={def.darkColor}
                     badge={def.badge}
                     big={!!def.big}
                     draggable
@@ -370,7 +369,7 @@ export default function WarmPathPanel({ wp, prospect, open, onToggle }: WarmPath
               onClick={() => setKidsExpanded((v) => !v)}
             />
           </svg>
-          <div className="px-1 pt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-500 dark:text-[#7a8ba3]">
+          <div className="px-1 pt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-500 dark:text-slate-300">
             <Legend color={T.primary} label="Strong route" />
             <Legend color={T.linkedin} label="Mutual" dashed />
             <Legend color={T.success} label="Customer reference" dashed />
@@ -408,6 +407,7 @@ interface GraphNodeProps {
   name: string;
   sub?: string;
   color: string;
+  darkColor?: string;
   big?: boolean;
   isProspect?: boolean;
   badge: string;
@@ -425,12 +425,15 @@ interface GraphNodeProps {
 }
 
 function GraphNode({
-  x, y, name, sub, color, big = false, isProspect = false, badge,
-  draggable, clickable, collapsed, isHover,
-  onPointerDown, onPointerMove, onPointerUp, onPointerCancel, onPointerEnter, onPointerLeave, onClick,
+ x, y, name, sub, color, darkColor, big = false, isProspect = false, badge,
+ draggable, clickable, collapsed, isHover,
+ onPointerDown, onPointerMove, onPointerUp, onPointerCancel, onPointerEnter, onPointerLeave, onClick,
 }: GraphNodeProps) {
   const r = big ? 26 : 18;
   const cursor = draggable ? 'grab' : clickable ? 'pointer' : 'default';
+
+  const isWhiteNode = isProspect || badge === 'AM';
+
   return (
     <g
       transform={`translate(${x} ${y})`}
@@ -448,23 +451,23 @@ function GraphNode({
     >
       <circle r={r + 14} fill="transparent" />
       <circle r={r + 4} fill="white" className="dark:fill-[#000724]" />
-      <circle r={r} fill={color} opacity={isHover ? 0.22 : 0.12} style={{ transition: 'opacity 150ms' }} />
+      <circle r={r} fill={color} className="dark:!fill-[var(--node-color)]" style={{ transition: 'opacity 150ms', ['--node-color' as any]: darkColor || color}}  opacity={isHover ? 0.22 : 0.12}/>
       <circle
         r={r}
         fill="white"
         className="dark:fill-[#0e1a3a]"
         stroke={color}
         strokeWidth={isProspect ? 2.5 : isHover ? 2 : 1.5}
-        style={{ transition: 'stroke-width 150ms' }}
+        style={{ transition: 'stroke-width 150ms', stroke: typeof window !== 'undefined' && document.documentElement.classList.contains('dark') ? (darkColor || color) : color}}
       />
       <text
         textAnchor="middle"
         y={4}
+        className={`font-bold ${isWhiteNode ? 'fill-[#0B1957] dark:fill-white text-[#0B1957] dark:text-white' : 'fill-current'}`}
         style={{
           fontSize: big ? 13 : 10,
-          fontWeight: 700,
           pointerEvents: 'none',
-          fill: color,
+          fill: isWhiteNode ? undefined : (typeof window !== 'undefined' && document.documentElement.classList.contains('dark') ? (darkColor || color) : color),
           fontFamily: '"Space Grotesk", system-ui',
         }}
       >

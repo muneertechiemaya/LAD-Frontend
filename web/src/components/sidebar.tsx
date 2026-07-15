@@ -352,7 +352,7 @@ export function Sidebar() {
       {/* Mobile Drawer */}
       <div
         className={cn(
-          "md:hidden fixed inset-y-0 left-0 w-[70%] bg-sidebar/95 backdrop-blur-2xl border-r border-sidebar-border shadow-2xl z-[70] flex flex-col",
+          "md:hidden fixed inset-y-0 left-0 w-[50%] bg-sidebar/95 backdrop-blur-2xl border-r border-sidebar-border shadow-2xl z-[70] flex flex-col",
           "transition-transform duration-300 ease-out",
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full",
         )}
@@ -495,7 +495,7 @@ export function Sidebar() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 px-3 py-2 border-t border-sidebar-border/30">
+          <div className="flex items-center gap-3 px-2 py-2 border-t border-sidebar-border/30">
             {isHydrated && user?.avatar ? (
               <img
                 src={user.avatar}
@@ -556,7 +556,7 @@ export function Sidebar() {
           "hidden md:flex flex-col shrink-0 h-screen border-r border-sidebar-border shadow-2xl",
           "bg-white dark:bg-[#000724]",
           "transition-all duration-500 ease-[cubic-bezier(.4,0,.2,1)]",
-          "overflow-hidden fixed left-0 top-0 z-50",
+          "overflow-hidden fixed left-0 top-0 z-[5000]",
           isExpanded ? "w-64" : "w-16",
         )}
         onMouseEnter={() => setIsHovered(true)}

@@ -22,12 +22,14 @@ import DragDropEmailEditor from '@/components/templates/DragDropEmailEditor';
 import { Loader2, Pencil, Inbox, AlertCircle, Users, X } from 'lucide-react';
 
 import {
+  BroadcastRunStats,
   BroadcastRunSummary,
   ConnectedAccount,
   EmailChannel,
   useBroadcastRecipients,
   useBroadcastRun,
   useBroadcastRuns,
+  useBroadcastStats,
   useConnectedEmailAccounts,
   useEmailGroups,
   useSendBroadcast,
@@ -624,6 +626,21 @@ function ComposeBroadcastDialog({
             </p>
           </div>
 
+          {(() => {
+            // Mirrors LAD-Email-Comms quota defaults — warn before the
+            // orchestrator has to pace/pause a too-big send.
+            const safeDaily: Record<string, number> = { google: 400, microsoft: 250, custom_smtp: 1000 };
+            const cap = selectedAccount ? (safeDaily[selectedAccount.provider] ?? 1000) : null;
+            return cap !== null && sendCount > cap ? (
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                {sendCount} recipients exceeds the safe daily volume for this account
+                (~{cap}/day). Sending is paced and may spread across days to protect your
+                sender reputation — for regular large sends, connect an email service
+                (Brevo / Amazon SES) via Custom SMTP.
+              </p>
+            ) : null;
+          })()}
+
           {error && <div className="text-sm text-destructive">{error}</div>}
         </div>
 
@@ -642,6 +659,124 @@ function ComposeBroadcastDialog({
 
 // ── Detail dialog (click a row to open the rendered email) ─────────────────
 
+/** "2h 14m" / "34m" / "45s" from seconds. */
+function formatDuration(seconds: number | null): string {
+  if (seconds == null || !Number.isFinite(seconds) || seconds < 0) return '—';
+  const s = Math.round(seconds);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 48) return `${h}h ${m % 60}m`;
+  return `${Math.floor(h / 24)}d ${h % 24}h`;
+}
+
+const pct = (v: number) => `${Math.round(v * 1000) / 10}%`;
+
+function BroadcastPerformancePanel({ stats }: { stats: BroadcastRunStats }) {
+  const cards: Array<{ label: string; value: string; sub?: string }> = [
+    { label: 'Delivered', value: `${stats.sent_count}/${stats.recipient_count}`, sub: pct(stats.delivery_rate) },
+    { label: 'Failed', value: String(stats.failed_count) },
+    {
+      label: 'Opened',
+      value: `${stats.unique_opens}`,
+      sub: `${pct(stats.open_rate)} · ${stats.total_opens} total opens`,
+    },
+    { label: 'Not opened', value: String(stats.not_opened_count) },
+    {
+      label: 'Clicked',
+      value: String(stats.unique_clickers),
+      sub: `${pct(stats.click_rate)} · ${stats.total_clicks} total clicks`,
+    },
+    { label: 'Repeat openers', value: String(stats.repeat_openers_count), sub: 'opened 2+ times' },
+    { label: 'Avg time to open', value: formatDuration(stats.avg_seconds_to_first_open) },
+    { label: 'Median time to open', value: formatDuration(stats.median_seconds_to_first_open) },
+  ];
+
+  return (
+    <div className="mb-6">
+      <div className="text-xs font-semibold uppercase tracking-wide text-[#5f6368] dark:text-[#9aa0a6] mb-2">
+        Performance
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+        {cards.map(({ label, value, sub }) => (
+          <div
+            key={label}
+            className="p-3 rounded-lg border border-[#e0e0e0] dark:border-[#3c4043] bg-[#fafafa] dark:bg-white/5"
+          >
+            <p className="text-[11px] text-[#5f6368] dark:text-[#9aa0a6]">{label}</p>
+            <p className="text-lg font-semibold text-[#202124] dark:text-[#e8eaed] leading-tight">{value}</p>
+            {sub && <p className="text-[11px] text-[#5f6368] dark:text-[#9aa0a6]">{sub}</p>}
+          </div>
+        ))}
+      </div>
+
+      {stats.proxy_opens > 0 && (
+        <p className="text-[11px] text-[#5f6368] dark:text-[#9aa0a6] mb-3">
+          {stats.proxy_opens} open{stats.proxy_opens === 1 ? '' : 's'} came from mail-client
+          privacy proxies (Apple/Gmail prefetch) — treat open counts as an upper bound.
+        </p>
+      )}
+
+      {stats.repeat_openers.length > 0 && (
+        <details className="mb-2 rounded-lg border border-[#e0e0e0] dark:border-[#3c4043]">
+          <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-[#202124] dark:text-[#e8eaed]">
+            Repeat openers ({stats.repeat_openers_count}) — most engaged first
+          </summary>
+          <div className="px-3 pb-2 divide-y divide-[#f0f0f0] dark:divide-white/5">
+            {stats.repeat_openers.map((o) => (
+              <div key={o.email} className="py-1.5 flex items-center justify-between gap-3 text-sm">
+                <div className="min-w-0">
+                  <span className="text-[#202124] dark:text-[#e8eaed] truncate">{o.name || o.email}</span>
+                  {o.name && <span className="ml-2 text-xs text-[#5f6368] dark:text-[#9aa0a6]">{o.email}</span>}
+                </div>
+                <span className="flex-shrink-0 text-xs text-[#5f6368] dark:text-[#9aa0a6]">
+                  {o.opens}× · last {relativeTime(o.last_open_at)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+
+      {stats.top_links.length > 0 && (
+        <details className="mb-2 rounded-lg border border-[#e0e0e0] dark:border-[#3c4043]">
+          <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-[#202124] dark:text-[#e8eaed]">
+            Top links ({stats.top_links.length})
+          </summary>
+          <div className="px-3 pb-2 divide-y divide-[#f0f0f0] dark:divide-white/5">
+            {stats.top_links.map((l) => (
+              <div key={l.url} className="py-1.5 flex items-center justify-between gap-3 text-sm">
+                <span className="truncate text-[#202124] dark:text-[#e8eaed]" title={l.url}>{l.url}</span>
+                <span className="flex-shrink-0 text-xs text-[#5f6368] dark:text-[#9aa0a6]">
+                  {l.clicks} click{l.clicks === 1 ? '' : 's'} · {l.unique_clickers} unique
+                </span>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+
+      {stats.failures_by_code.length > 0 && (
+        <details className="rounded-lg border border-red-200 dark:border-red-900">
+          <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-red-700 dark:text-red-300">
+            Failures by cause
+          </summary>
+          <div className="px-3 pb-2 divide-y divide-red-100 dark:divide-red-900/40">
+            {stats.failures_by_code.map((f) => (
+              <div key={f.error_code} className="py-1.5 flex items-center justify-between text-sm">
+                <span className="text-[#202124] dark:text-[#e8eaed]">{f.error_code}</span>
+                <span className="text-xs text-[#5f6368] dark:text-[#9aa0a6]">{f.count}</span>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+    </div>
+  );
+}
+
 function BroadcastDetailDialog({
   runId,
   open,
@@ -656,6 +791,8 @@ function BroadcastDetailDialog({
   const { data, isLoading, error } = useBroadcastRun(runId);
   // Recipients fetched eagerly while the dialog is open — feeds the "To" list.
   const recipients = useBroadcastRecipients(runId, open);
+  // Engagement stats — refreshes every 30s while the dialog is open.
+  const stats = useBroadcastStats(runId, open);
 
   const sanitizedHtml = useMemo(() => {
     if (!data?.body_html) return '';
@@ -766,6 +903,15 @@ function BroadcastDetailDialog({
                   <div>{data.error_message}</div>
                 </div>
               )}
+
+              {/* ── Performance ─────────────────────────────────────────── */}
+              {stats.data && (
+                <BroadcastPerformancePanel stats={stats.data} />
+              )}
+
+              <div className="text-xs font-semibold uppercase tracking-wide text-[#5f6368] dark:text-[#9aa0a6] mb-2">
+                Message
+              </div>
               <div
                 className="prose prose-sm dark:prose-invert max-w-none text-[#202124] dark:text-[#e8eaed]"
                 dangerouslySetInnerHTML={{ __html: sanitizedHtml }}

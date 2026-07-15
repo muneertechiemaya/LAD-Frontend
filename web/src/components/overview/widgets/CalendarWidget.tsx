@@ -205,7 +205,9 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ id }) => {
                     <span className={cn(
                       'text-xs font-medium',
                       isTodayDate && 'text-primary',
-                      isSelected && 'text-accent-foreground'
+                      isSelected
+                            ? 'text-red-600 dark:text-red-400 font-extrabold text-sm'
+                            : 'text-slate-900 dark:text-slate-100'
                     )}>
                       {format(day, 'd')}
                     </span>

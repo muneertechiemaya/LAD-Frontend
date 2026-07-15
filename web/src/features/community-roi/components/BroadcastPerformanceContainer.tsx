@@ -52,6 +52,22 @@ interface ApiRow {
   last_sent_at: string | null;
 }
 
+/** One run out of GET /api/email-comms/broadcast/runs (BroadcastRunSummary). */
+interface EmailRun {
+  id: string;
+  from_email: string;
+  subject: string;
+  recipient_count: number;
+  sent_count: number;
+  failed_count: number;
+  unsubscribed_skipped_count: number;
+  created_at: string;
+}
+
+/** Template + raw timestamp, so WhatsApp and email rows sort by recency
+ *  before the display string is all that's left. */
+type TemplateWithTs = Template & { _ts: string | null };
+
 function shortRelative(iso: string | null): string {
   if (!iso) return '—';
   try {
@@ -88,39 +104,110 @@ export function BroadcastPerformanceContainer({
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/whatsapp-conversations/broadcasts/template-stats', { cache: 'no-store' })
-      .then(r => r.json())
-      .then(json => {
-        if (cancelled) return;
-        if (!json?.success) throw new Error('non-success response');
-        const rows: ApiRow[] = json.templates ?? [];
-        const mapped: Template[] = rows.map((r) => {
-          // The UI's "Sent" column means "total dispatched" — map from
-          // r.total, NOT r.sent (which is messages currently stuck in
-          // 'sent' status awaiting a delivery ack). Use r.sent as the
-          // delivery bar's pending segment instead.
-          //
-          // Sanity-clamp pending so it can't exceed total - terminal-states,
-          // in case the DB has stale rows where a delivery webhook was
-          // missed (status would still read 'sent' even though the user
-          // already saw it).
-          const terminal = r.delivered + r.read + r.failed;
-          const pending  = Math.max(0, Math.min(r.sent, r.total - terminal));
-          return {
-            id:         r.template_name,
-            name:       r.template_name,
-            recipients: r.distinct_recipients,
-            lastSent:   shortRelative(r.last_sent_at),
-            sent:       r.total,            // total dispatched (what user expects)
-            delivered:  r.delivered,
-            read:       r.read,
-            failed:     r.failed,
-            pending,                         // still awaiting Meta's delivery ack
-          };
-        });
-        setTemplates(mapped);
-      })
-      .catch(e => { if (!cancelled) setError(e?.message || 'Failed to load'); });
+
+    // WhatsApp template stats (existing source).
+    const fetchWhatsApp = async (): Promise<TemplateWithTs[]> => {
+      const res = await fetch('/api/whatsapp-conversations/broadcasts/template-stats', { cache: 'no-store' });
+      const json = await res.json();
+      if (!json?.success) throw new Error('non-success response');
+      const rows: ApiRow[] = json.templates ?? [];
+      return rows.map((r) => {
+        // The UI's "Sent" column means "total dispatched" — map from
+        // r.total, NOT r.sent (which is messages currently stuck in
+        // 'sent' status awaiting a delivery ack). Use r.sent as the
+        // delivery bar's pending segment instead.
+        //
+        // Sanity-clamp pending so it can't exceed total - terminal-states,
+        // in case the DB has stale rows where a delivery webhook was
+        // missed (status would still read 'sent' even though the user
+        // already saw it).
+        const terminal = r.delivered + r.read + r.failed;
+        const pending  = Math.max(0, Math.min(r.sent, r.total - terminal));
+        return {
+          id:         r.template_name,
+          name:       r.template_name,
+          recipients: r.distinct_recipients,
+          lastSent:   shortRelative(r.last_sent_at),
+          sent:       r.total,            // total dispatched (what user expects)
+          delivered:  r.delivered,
+          read:       r.read,
+          failed:     r.failed,
+          pending,                         // still awaiting Meta's delivery ack
+          channel:    'WhatsApp' as const,
+          _ts:        r.last_sent_at,
+        };
+      });
+    };
+
+    // Email broadcasts (LAD-Email-Comms): recent runs + per-run open stats.
+    // "Read" = unique opens (tracking pixel — an upper bound, mail-client
+    // proxies prefetch), "Delivered" = sent-but-not-opened. Tenants without
+    // the email feature just contribute [] here.
+    const fetchEmail = async (): Promise<TemplateWithTs[]> => {
+      const res = await fetch('/api/email-comms/broadcast/runs?limit=6', { cache: 'no-store' });
+      if (!res.ok) return [];
+      const json = await res.json().catch(() => null);
+      const runs: EmailRun[] = json?.runs ?? [];
+      if (runs.length === 0) return [];
+
+      // Sender-address → provider so the chip says Gmail/Outlook. Best-effort.
+      const providerByEmail: Record<string, string> = {};
+      try {
+        const a = await fetch('/api/email-comms/accounts', { cache: 'no-store' }).then((r) => r.json());
+        for (const acc of a?.accounts ?? []) {
+          if (acc?.email) providerByEmail[String(acc.email).toLowerCase()] = acc.provider;
+        }
+      } catch { /* chip falls back to 'Email' */ }
+
+      // Open counts per run — parallel, individually best-effort.
+      const stats = await Promise.all(
+        runs.map((r) =>
+          fetch(`/api/email-comms/broadcast/runs/${encodeURIComponent(r.id)}/stats`, { cache: 'no-store' })
+            .then((s) => (s.ok ? s.json() : null))
+            .catch(() => null),
+        ),
+      );
+
+      return runs.map((r, i) => {
+        const opened   = Number(stats[i]?.unique_opens ?? 0);
+        const skipped  = r.unsubscribed_skipped_count ?? 0;
+        const provider = providerByEmail[(r.from_email || '').toLowerCase()];
+        const channel: Template['channel'] =
+          provider === 'google' ? 'Gmail'
+          : provider === 'microsoft' ? 'Outlook'
+          : 'Email';
+        return {
+          id:         `email-${r.id}`,
+          name:       r.subject || '(no subject)',
+          recipients: r.recipient_count,
+          lastSent:   shortRelative(r.created_at),
+          sent:       r.sent_count,
+          read:       opened,
+          delivered:  Math.max(r.sent_count - opened, 0),   // sent, not (yet) opened
+          failed:     r.failed_count,
+          pending:    Math.max(r.recipient_count - r.sent_count - r.failed_count - skipped, 0),
+          channel,
+          _ts:        r.created_at,
+        };
+      });
+    };
+
+    Promise.allSettled([fetchWhatsApp(), fetchEmail()]).then(([wa, email]) => {
+      if (cancelled) return;
+      // Only error out when BOTH channels failed — a tenant without one
+      // channel should still see the other's broadcasts.
+      if (wa.status === 'rejected' && email.status === 'rejected') {
+        setError((wa.reason as Error | undefined)?.message || 'Failed to load');
+        return;
+      }
+      const merged = [
+        ...(wa.status === 'fulfilled' ? wa.value : []),
+        ...(email.status === 'fulfilled' ? email.value : []),
+      ]
+        .sort((a, b) => (b._ts ?? '').localeCompare(a._ts ?? ''))
+        .map(({ _ts: _ignored, ...t }) => t);
+      setTemplates(merged);
+    });
     return () => { cancelled = true; };
   }, []);
 

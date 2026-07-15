@@ -53,7 +53,7 @@ export default function StatsCards({ counts, selected, onSelect }: StatsCardsPro
                   </div>
                 </div>
                 <div className="flex-1 flex flex-col justify-end">
-                  <p className="text-[10px] sm:text-[12.5px] text-slate-500 dark:text-[#7a8ba3] mb-1">{c.title}</p>
+                  <p className="text-[10px] sm:text-[12.5px] text-slate-500 dark:text-slate-300 mb-1">{c.title}</p>
                   <h5
                     className="text-2xl font-bold text-slate-800 dark:text-white tabular-nums"
                     style={{ fontFamily: '"Space Grotesk", system-ui' }}

@@ -152,6 +152,55 @@ export function useBroadcastRun(id: string | null) {
   });
 }
 
+// ── Performance stats (GET /runs/:id/stats) ──────────────────────────────
+
+export interface BroadcastRunStats {
+  run_id: string;
+  status: string;
+  recipient_count: number;
+  sent_count: number;
+  failed_count: number;
+  unsubscribed_skipped_count: number;
+  delivery_rate: number;
+  total_opens: number;
+  unique_opens: number;
+  open_rate: number;
+  not_opened_count: number;
+  proxy_opens: number;
+  first_open_at: string | null;
+  last_open_at: string | null;
+  avg_seconds_to_first_open: number | null;
+  median_seconds_to_first_open: number | null;
+  repeat_openers_count: number;
+  repeat_openers: Array<{
+    email: string;
+    name: string | null;
+    opens: number;
+    first_open_at: string | null;
+    last_open_at: string | null;
+  }>;
+  total_clicks: number;
+  unique_clickers: number;
+  click_rate: number;
+  top_links: Array<{ url: string; clicks: number; unique_clickers: number }>;
+  opens_by_day: Array<{ day: string; opens: number; unique_opens: number }>;
+  failures_by_code: Array<{ error_code: string; count: number }>;
+}
+
+/** Engagement stats for one broadcast. Enabled while the detail dialog is
+ *  open; refreshes every 30s (opens/clicks trickle in for days). */
+export function useBroadcastStats(id: string | null, enabled: boolean) {
+  return useQuery({
+    enabled: !!id && enabled,
+    queryKey: id ? ['email-comms', 'stats', id] : ['email-comms', 'stats', 'null'],
+    queryFn: () =>
+      jsonFetch<BroadcastRunStats>(
+        `/api/email-comms/broadcast/runs/${encodeURIComponent(id as string)}/stats`,
+      ),
+    refetchInterval: 30_000,
+  });
+}
+
 /** Lazy-fetch recipients for one broadcast — used for the Sent-row hover
  *  tooltip. `enabled` is the gate (we pass true only when the tooltip opens).
  *  Returns the same shape as GET /runs/:id/recipients. */
