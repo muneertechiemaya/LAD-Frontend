@@ -30,7 +30,7 @@ export default function ViewPills({ view, onChange }: ViewPillsProps) {
   return (
     <div className="mb-3 flex items-center justify-between flex-wrap gap-2">
       <div className="flex items-center gap-2">
-        <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-500 dark:text-[#7a8ba3]">
+        <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-300">
           View
         </span>
         <div className="flex items-center gap-1 rounded-full p-0.5 border border-slate-200 dark:border-[#262831] bg-white dark:bg-[#000724]">
@@ -44,7 +44,7 @@ export default function ViewPills({ view, onChange }: ViewPillsProps) {
                 className={`h-7 px-2.5 rounded-full text-[11.5px] font-medium inline-flex items-center gap-1 ${
                   active
                     ? 'text-white'
-                    : 'text-slate-600 dark:text-[#7a8ba3] hover:bg-slate-100 dark:hover:bg-[#1a2a43]'
+                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#1a2a43]'
                 }`}
                 style={active ? { background: '#0B1957' } : undefined}
               >
@@ -54,7 +54,7 @@ export default function ViewPills({ view, onChange }: ViewPillsProps) {
           })}
         </div>
       </div>
-      <p className="text-[12px] text-slate-500 dark:text-[#7a8ba3]">
+      <p className="text-[12px] text-slate-500 dark:text-slate-300">
         Click any row to open the contact&apos;s profile
       </p>
     </div>

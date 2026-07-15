@@ -42,7 +42,7 @@ export default function TopBar({
                 {c.href ? (
                   <a
                     href={c.href}
-                    className="text-slate-500 dark:text-[#7a8ba3] hover:text-[#0B1957] dark:hover:text-white"
+                    className="text-slate-500 dark:text-slate-300 hover:text-[#0B1957] dark:hover:text-white"
                   >
                     {c.label}
                   </a>
@@ -55,12 +55,12 @@ export default function TopBar({
           </nav>
         </div>
         <div className="flex items-center gap-2">
-          <div className="hidden md:flex items-center gap-1.5 text-[12px] text-slate-500 dark:text-[#7a8ba3]">
+          <div className="hidden md:flex items-center gap-1.5 text-[12px] text-slate-500 dark:text-slate-300">
             <Building2 className="w-3.5 h-3.5" />
             <span>{tenant}</span>
           </div>
           <button
-            className="w-8 h-8 grid place-items-center rounded-md hover:bg-slate-100 dark:hover:bg-[#1a2a43] text-slate-600 dark:text-[#7a8ba3]"
+            className="w-8 h-8 grid place-items-center rounded-md hover:bg-slate-100 dark:hover:bg-[#1a2a43] text-slate-600 dark:text-slate-300"
             aria-label="Notifications"
           >
             <Bell className="w-4 h-4" />
