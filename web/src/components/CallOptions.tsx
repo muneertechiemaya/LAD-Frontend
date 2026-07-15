@@ -798,8 +798,8 @@ export function CallOptions(props: CallOptionsProps) {
         </div>
         {/* New UI row: Download template + Choose file */}
         <div className="flex gap-3 mb-3">
-          <Button variant="outline" onClick={downloadTemplate} className="flex items-center gap-2">
-            <Download className="w-4 h-4" /> Download Template
+          <Button variant="outline" onClick={downloadTemplate} className="flex items-center gap-2 dark:hover:text-white dark:text-slate-200">
+            <Download className="w-4 h-4 text-current" /> Download Template
           </Button>
           {/* File chooser */}
           <label className="flex-1">
@@ -955,14 +955,14 @@ export function CallOptions(props: CallOptionsProps) {
         <div className="flex gap-3">
           <Button
             variant={!useCsv ? "default" : "outline"}
-            className="flex-1 h-12 rounded-[10px]"
+            className="flex-1 h-12 rounded-[10px] transition-colors dark:border-[#262831] dark:text-white dark:hover:bg-[#1a2a43] dark:hover:text-white"
             onClick={() => onUseCsvChange(false)}
           >
             Single Call
           </Button>
           <Button
             variant={useCsv ? "default" : "outline"}
-            className="flex-1 h-12 rounded-[10px]"
+            className="flex-1 h-12 rounded-[10px] transition-colors dark:border-[#262831] dark:text-white dark:hover:bg-[#1a2a43] dark:hover:text-white"
             onClick={() => onUseCsvChange(true)}
           >
             Bulk List

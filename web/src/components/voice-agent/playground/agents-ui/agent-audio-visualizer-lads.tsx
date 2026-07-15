@@ -1,6 +1,6 @@
 'use client';
 
-import { forwardRef, useId, type ComponentProps, type ReactNode } from 'react';
+import { forwardRef, useId, useState, useEffect, type ComponentProps, type ReactNode } from 'react';
 import { cva } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 import type { AgentState, TrackReferenceOrPlaceholder } from '@livekit/components-react';
@@ -157,7 +157,7 @@ export const AgentAudioVisualizerLads = forwardRef<
     state      = 'connecting',
     audioTrack,
     size       = 'lg',
-    color      = '#0b1958',
+    color,
     className,
     children,
     ...props
@@ -173,10 +173,12 @@ export const AgentAudioVisualizerLads = forwardRef<
   const wave1 = buildWavePath(liquid.t,               liquid.amp,       liquid.level);
   const wave2 = buildWavePath(liquid.t * 0.69 - 1.5,  liquid.amp * 1.4, liquid.level + 0.04);
 
+  const fillColor = color || 'currentColor';
+
   return (
     <div
       ref={ref}
-      className={cn(AgentAudioVisualizerLadsVariants({ size }), className)}
+      className={cn(AgentAudioVisualizerLadsVariants({ size }),"text-[#0b1957] dark:text-white transition-colors duration-300", className)}
       data-lk-agent-state={state}
       {...props}
     >
@@ -206,7 +208,7 @@ export const AgentAudioVisualizerLads = forwardRef<
         <g opacity={1 - crossfade}>
           {/* Solid logo body (no holes — dots animated separately on top) */}
           <path
-            fill={color}
+            fill={fillColor}
             transform="translate(144.48,-148.655) scale(1.88)"
             d={LOGO_PATH_SOLID}
           />
@@ -218,7 +220,7 @@ export const AgentAudioVisualizerLads = forwardRef<
             return (
               <rect
                 key={i}
-                fill={color}
+                fill={fillColor}
                 opacity={opacity}
                 x={cx - LADS_DOT_W / 2 + dx}
                 y={LADS_DOT_BY - clampedH / 2 + dy}
@@ -236,9 +238,9 @@ export const AgentAudioVisualizerLads = forwardRef<
           {/* Ghost outline so the brand shape reads while liquid is draining/filling */}
           <path
             fillRule="evenodd"
-            fill={color}
+            fill={fillColor}
             fillOpacity={0.06}
-            stroke={color}
+            stroke={fillColor}
             strokeWidth={1.4}
             strokeOpacity={0.22}
             transform="translate(144.48,-148.655) scale(1.88)"
@@ -246,8 +248,8 @@ export const AgentAudioVisualizerLads = forwardRef<
           />
           {/* Liquid waves masked to logo outline */}
           <g clipPath={`url(#${clipId})`}>
-            <path d={wave2} fill={color} opacity={0.24} />
-            <path d={wave1} fill={color} opacity={0.86} />
+            <path d={wave2} fill={fillColor} opacity={0.24} />
+            <path d={wave1} fill={fillColor} opacity={0.86} />
           </g>
         </g>
       </svg>
