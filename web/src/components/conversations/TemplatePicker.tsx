@@ -71,8 +71,6 @@ interface TemplatePickerProps {
   channel?: 'personal' | 'waba';
   /** Force batch settings to always be shown (e.g. group sends where count may be 0). */
   isBulkSend?: boolean;
-  /** Hide the batch / delivery-schedule UI (e.g. group broadcasts that throttle server-side). */
-  hideBatchSettings?: boolean;
 }
 
 const TEMPLATES_API = '/api/whatsapp-conversations/conversations/templates';
@@ -105,7 +103,6 @@ export function TemplatePicker({
   sendProgress = null,
   channel = 'waba',
   isBulkSend = false,
-  hideBatchSettings = false,
 }: TemplatePickerProps) {
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([]);
   const [loading, setLoading] = useState(false);
@@ -325,14 +322,16 @@ export function TemplatePicker({
             </DialogTitle>
             
             {channel === 'waba' && (
+            <div className="mr-8"> {/* Added explicitly to push the button left, away from the hidden close 'X' */}
               <Button
                 variant="outline"
                 size="sm"
-                className="h-9 text-xs px-3 rounded-lg border-orange-200 text-orange-700 hover:bg-orange-50 transition-all"
+                className="h-9 text-xs px-3 rounded-lg border-orange-200 text-orange-700 hover:bg-orange-100 hover:text-orange-800 transition-all"
                 onClick={() => setShowCreateModal(true)}
               >
                 <Plus className="w-3.5 h-3.5 mr-1.5" /> New template
               </Button>
+            </div>
             )}
           </div>
         </DialogHeader>
@@ -555,7 +554,7 @@ export function TemplatePicker({
                 </div>
 
                 {/* Batch Settings */}
-                {channel === 'personal' && (isBulkSend || selectedCount > 1) && !hideBatchSettings && (
+                {channel === 'personal' && (isBulkSend || selectedCount > 1) && (
                   <div className="space-y-3 pt-4 border-t border-gray-100">
                     <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Delivery Schedule</h4>
                     <div className="bg-amber-50/50 border border-amber-100 rounded-2xl p-6 space-y-4">
