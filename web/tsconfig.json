@@ -17,7 +17,7 @@
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,
-    "ignoreDeprecations": "6.0",
+    "ignoreDeprecations": "5.0",
     "baseUrl": ".",
     "plugins": [
       {
@@ -59,6 +59,8 @@
     "../sdk/**/*.tsx"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "**/*.backup",
+    "**/*.backup/**"
   ]
 }

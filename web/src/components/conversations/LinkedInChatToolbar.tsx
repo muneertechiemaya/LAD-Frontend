@@ -31,15 +31,38 @@ import {
 interface LinkedInTemplate {
   id: string;
   name: string;
-  message_text: string;
+  // The API (/api/campaigns/linkedin-message-templates) returns the body in the
+  // `content` column. A connection-only template can legitimately have a null
+  // content, so callers must guard before using it.
+  content: string | null;
   category?: string | null;
+  // Media (image / video / voice note / document) lives in the template's
+  // metadata JSONB. A media-only template can have null content but still carry
+  // an attachment, so it must ride along with the inserted text.
+  metadata?: {
+    media_url?: string | null;
+    media_type?: string | null;
+    media_filename?: string | null;
+  } | null;
+}
+
+/**
+ * Payload handed to the composer when a template is inserted: the body text plus
+ * any attachment carried on the template, so a media template visibly stages its
+ * video/image before sending (fixes templates that dropped their media).
+ */
+export interface InsertTemplatePayload {
+  text: string;
+  mediaUrl?: string | null;
+  mediaType?: string | null;
+  mediaFilename?: string | null;
 }
 
 interface Props {
   contextPanelOpen: boolean;
   onToggleContextPanel: () => void;
-  /** Insert template text into the chat input */
-  onInsertTemplate: (text: string) => void;
+  /** Insert a template (text + optional media) into the chat composer */
+  onInsertTemplate: (payload: InsertTemplatePayload) => void;
   /** Disabled when chat is locked (pending / accepted-awaiting-followup) */
   chatEnabled: boolean;
 }
@@ -211,16 +234,30 @@ export function LinkedInChatToolbar({
                   No templates configured
                 </DropdownMenuItem>
               )}
-              {templates.map(t => (
-                <DropdownMenuItem
-                  key={t.id}
-                  className="text-xs flex flex-col items-start gap-0.5 py-1.5"
-                  onClick={() => onInsertTemplate(t.message_text)}
-                >
-                  <span className="font-medium text-slate-800 truncate w-full">{t.name}</span>
-                  <span className="text-[10px] text-slate-500 truncate w-full">{t.message_text}</span>
-                </DropdownMenuItem>
-              ))}
+              {templates.map(t => {
+                const media = t.metadata || {};
+                const hasMedia = !!media.media_url;
+                return (
+                  <DropdownMenuItem
+                    key={t.id}
+                    className="text-xs flex flex-col items-start gap-0.5 py-1.5"
+                    onClick={() => onInsertTemplate({
+                      text: t.content || '',
+                      mediaUrl: media.media_url ?? null,
+                      mediaType: media.media_type ?? null,
+                      mediaFilename: media.media_filename ?? null,
+                    })}
+                  >
+                    <span className="font-medium text-slate-800 truncate w-full flex items-center gap-1">
+                      {hasMedia && <Paperclip className="w-3 h-3 flex-shrink-0 text-slate-400" />}
+                      <span className="truncate">{t.name}</span>
+                    </span>
+                    <span className="text-[10px] text-slate-500 truncate w-full">
+                      {t.content || (hasMedia ? (media.media_filename || 'Attachment') : '')}
+                    </span>
+                  </DropdownMenuItem>
+                );
+              })}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

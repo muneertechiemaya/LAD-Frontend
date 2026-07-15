@@ -12,14 +12,22 @@ export type WidgetType =
   | 'quick-actions'
   | 'broadcast-performance'
   | 'conversation-funnel'
-  | 'reengage-topics';
+  | 'reengage-topics'
+  | 'lead-journey'
+  | 'linkedin-funnel'
+  | 'email-activity'
+  | 'instagram-activity'
+  | 'combined-funnel';
 export type WidgetCategory =
   | 'analytics'
   | 'voice-agent'
   | 'credits'
   | 'calendar'
   | 'ai-insights'
-  | 'whatsapp';
+  | 'whatsapp'
+  | 'linkedin'
+  | 'email'
+  | 'instagram';
 export interface WidgetConfig {
   id: string;
   type: WidgetType;
@@ -202,6 +210,61 @@ export const WIDGET_CATALOG: Record<WidgetType, WidgetConfig> = {
     minSize: { w: 4, h: 3 },
     maxSize: { w: 12, h: 6 },
   },
+  'lead-journey': {
+    id: 'lead-journey',
+    type: 'lead-journey',
+    title: 'Lead Journey',
+    description: 'Leads who accepted the connection, replied to the agent, or booked a meeting (SAH) across all your campaigns',
+    category: 'analytics',
+    icon: 'Users',
+    defaultSize: { w: 6, h: 4 },
+    minSize: { w: 4, h: 3 },
+    maxSize: { w: 12, h: 8 },
+  },
+  'linkedin-funnel': {
+    id: 'linkedin-funnel',
+    type: 'linkedin-funnel',
+    title: 'LinkedIn Funnel',
+    description: 'Outbound LinkedIn funnel — sent, accepted, replied, accept/reply rates and weekly connection-limit usage',
+    category: 'linkedin',
+    icon: 'TrendingUp',
+    defaultSize: { w: 6, h: 4 },
+    minSize: { w: 4, h: 3 },
+    maxSize: { w: 12, h: 6 },
+  },
+  'email-activity': {
+    id: 'email-activity',
+    type: 'email-activity',
+    title: 'Email Activity',
+    description: 'Connected senders, broadcast send / fail totals and your most recent email broadcasts',
+    category: 'email',
+    icon: 'Mail',
+    defaultSize: { w: 6, h: 4 },
+    minSize: { w: 4, h: 3 },
+    maxSize: { w: 12, h: 6 },
+  },
+  'instagram-activity': {
+    id: 'instagram-activity',
+    type: 'instagram-activity',
+    title: 'Instagram Activity',
+    description: 'Instagram DM threads, unread count and active connected accounts',
+    category: 'instagram',
+    icon: 'Instagram',
+    defaultSize: { w: 6, h: 3 },
+    minSize: { w: 4, h: 3 },
+    maxSize: { w: 12, h: 5 },
+  },
+  'combined-funnel': {
+    id: 'combined-funnel',
+    type: 'combined-funnel',
+    title: 'Sales Funnel',
+    description: 'One cross-channel lead funnel — new leads to booked meeting (SAH) with overall + per-stage conversion',
+    category: 'analytics',
+    icon: 'Filter',
+    defaultSize: { w: 12, h: 5 },
+    minSize: { w: 6, h: 4 },
+    maxSize: { w: 12, h: 7 },
+  },
 };
 // Widget categories for the library
 export const WIDGET_CATEGORIES: { id: WidgetCategory; label: string; icon: string }[] = [
@@ -211,14 +274,21 @@ export const WIDGET_CATEGORIES: { id: WidgetCategory; label: string; icon: strin
   { id: 'calendar', label: 'Calendar & Scheduling', icon: 'Calendar' },
   { id: 'ai-insights', label: 'AI Insights', icon: 'Brain' },
   { id: 'whatsapp', label: 'WhatsApp', icon: 'MessageSquare' },
+  { id: 'linkedin', label: 'LinkedIn', icon: 'TrendingUp' },
+  { id: 'email', label: 'Email', icon: 'Mail' },
+  { id: 'instagram', label: 'Instagram', icon: 'Instagram' },
 ];
 // Default dashboard layout
 export const DEFAULT_LAYOUT: WidgetLayoutItem[] = [
   { i: 'calls-today-1', x: 0, y: 0, w: 4, h: 2, minW: 3, minH: 2 },
   { i: 'answer-rate-1', x: 4, y: 0, w: 4, h: 2, minW: 3, minH: 2 },
   { i: 'calls-monthly-1', x: 8, y: 0, w: 4, h: 2, minW: 3, minH: 2 },
-  { i: 'conversation-funnel-1', x: 0, y: 2, w: 6, h: 4, minW: 4, minH: 3 },
+  { i: 'combined-funnel-1', x: 0, y: 2, w: 12, h: 5, minW: 6, minH: 4 },
+  { i: 'linkedin-funnel-1', x: 0, y: 7, w: 6, h: 4, minW: 4, minH: 3 },
+  { i: 'conversation-funnel-1', x: 6, y: 7, w: 6, h: 4, minW: 4, minH: 3 },
   { i: 'reengage-topics-1', x: 6, y: 2, w: 6, h: 4, minW: 4, minH: 3 },
+  { i: 'email-activity-1', x: 0, y: 6, w: 6, h: 4, minW: 4, minH: 3 },
+  { i: 'instagram-activity-1', x: 6, y: 6, w: 6, h: 3, minW: 4, minH: 3 },
   { i: 'broadcast-performance-1', x: 0, y: 6, w: 12, h: 3, minW: 6, minH: 3 },
   { i: 'calls-chart-1', x: 0, y: 5, w: 6, h: 4, minW: 4, minH: 3 },
   { i: 'voice-agents-1', x: 6, y: 5, w: 6, h: 4, minW: 4, minH: 3 },

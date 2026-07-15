@@ -25,8 +25,15 @@ import {
   X,
   Send,
   Sparkles,
+  UserMinus,
+  EyeOff,
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useConnectedChannels, type ChannelId } from '@/hooks/useConnectedChannels';
 import KnowledgeBaseManager from './KnowledgeBaseManager';
+import CreateLinkedInTemplateModal from '@/components/templates/CreateLinkedInTemplateModal';
+import { useLinkedInMessageTemplates } from '@lad/frontend-features/campaigns';
+import type { LinkedInMessageTemplate } from '@lad/frontend-features/campaigns';
 import dynamic from 'next/dynamic';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
 
@@ -140,6 +147,26 @@ const SETTINGS_API = '/api/whatsapp-conversations/chat-settings';
 const FOLLOWUP_CONFIG_API = '/api/whatsapp-conversations/followup-config';
 const SHAREABLE_ASSETS_API = '/api/whatsapp-conversations/chat-settings/shareable-assets';
 const APPROVED_TEMPLATES_API = '/api/whatsapp-conversations/followup-settings/templates';
+const GENERATE_PROMPT_API = '/api/ai-playground/generate-prompt';
+
+interface MissingField { key: string; label: string; placeholder?: string; severity?: 'required' | 'optional'; }
+interface GenerateResult {
+  success: boolean;
+  prompt_text: string | null;
+  missing_fields?: MissingField[];
+  error?: string;
+  supported?: string[];
+}
+
+/** Generate a channel system prompt from the tenant's ICP/business knowledge (review-before-save). */
+async function generatePrompt(channel: string, providedFields: Record<string, string> = {}): Promise<GenerateResult> {
+  const res = await fetchWithTenant(GENERATE_PROMPT_API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ channel, provided_fields: providedFields }),
+  });
+  return res.json();
+}
 
 async function fetchApprovedTemplates(): Promise<WhatsAppApprovedTemplate[]> {
   try {
@@ -208,17 +235,30 @@ async function fetchFollowupConfig(): Promise<FollowupTimingConfig> {
   }
 }
 
-async function updateFollowupConfig(config: FollowupTimingConfig): Promise<boolean> {
+async function updateFollowupConfig(
+  config: FollowupTimingConfig
+): Promise<{ ok: boolean; error?: string }> {
   try {
     const res = await fetchWithTenant(FOLLOWUP_CONFIG_API, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(config),
     });
-    const data = await res.json();
-    return data.success ?? false;
-  } catch {
-    return false;
+    const data = await res.json().catch(() => ({}));
+    if (data.success) return { ok: true };
+    // Surface the backend's reason — FastAPI validation errors arrive as
+    // `detail` (e.g. the H16 guard: an enabled stage past the 24h window
+    // with no template). A bare "Failed to save" hides the actionable part.
+    return {
+      ok: false,
+      error:
+        (typeof data.detail === 'string' && data.detail) ||
+        data.error ||
+        data.message ||
+        `Save failed (HTTP ${res.status})`,
+    };
+  } catch (e: any) {
+    return { ok: false, error: e?.message || 'Network error while saving' };
   }
 }
 
@@ -368,6 +408,156 @@ function Toast({ message, type, onClose }: { message: string; type: 'success' | 
   );
 }
 
+// ── Email agent card (Gmail/Outlook tab) ─────────────────────────
+// The email counterpart of the WABA/LinkedIn chat agents: the inbound poller
+// (LAD-Email-Comms) answers new emails using this prompt via the shared AI
+// stack (LAD-WABA-Comms). Prompt lives in the prompts table (channel='email',
+// name='default'); the on/off flag in chat_settings.metadata.email_agent_enabled.
+
+function EmailAgentCard({ showToast }: { showToast: (msg: string, type: 'success' | 'error') => void }) {
+  const [enabled, setEnabled] = useState(false);
+  const [promptText, setPromptText] = useState('');
+  const [promptExists, setPromptExists] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [settingsRes, promptsRes] = await Promise.all([
+          fetchWithTenant(SETTINGS_API),
+          fetchWithTenant(PROMPTS_API),
+        ]);
+        if (cancelled) return;
+        if (settingsRes.ok) {
+          const s = await settingsRes.json();
+          setEnabled(Boolean(s?.email_agent_enabled ?? s?.data?.email_agent_enabled));
+        }
+        if (promptsRes.ok) {
+          const p = await promptsRes.json();
+          const list: Array<{ name: string; channel?: string; prompt_text?: string; is_active?: boolean }> =
+            p?.data ?? p?.prompts ?? [];
+          const emailPrompt = list.find((x) => x.channel === 'email' && x.name === 'default');
+          if (emailPrompt) {
+            setPromptText(emailPrompt.prompt_text || '');
+            setPromptExists(true);
+          }
+        }
+      } catch { /* card renders with defaults */ }
+      finally { if (!cancelled) setLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleToggle = async (next: boolean) => {
+    setEnabled(next);
+    try {
+      const res = await fetchWithTenant(`${SETTINGS_API}?channel=waba`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email_agent_enabled: next }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      showToast(next ? 'Email agent enabled' : 'Email agent disabled', 'success');
+    } catch {
+      setEnabled(!next);
+      showToast('Failed to update email agent toggle', 'error');
+    }
+  };
+
+  const handleSavePrompt = async () => {
+    if (!promptText.trim()) { showToast('Write a system prompt first', 'error'); return; }
+    setSaving(true);
+    try {
+      const res = promptExists
+        ? await fetchWithTenant(`${PROMPTS_API}/default?channel=email`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt_text: promptText, channel: 'email' }),
+          })
+        : await fetchWithTenant(PROMPTS_API, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: 'default', prompt_text: promptText, channel: 'email' }),
+          });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setPromptExists(true);
+      showToast('Email agent prompt saved', 'success');
+    } catch {
+      showToast('Failed to save email agent prompt', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+      <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900">Email agent (Gmail &amp; Outlook)</h3>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Automatically replies to new emails in your connected inboxes using the prompt
+            below — same AI brain as your WhatsApp agent. Replies stay in the original thread.
+          </p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={enabled}
+          onClick={() => handleToggle(!enabled)}
+          disabled={loading}
+          className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
+            enabled ? 'bg-red-500' : 'bg-gray-300'
+          } ${loading ? 'opacity-50' : ''}`}
+        >
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+              enabled ? 'translate-x-6' : 'translate-x-1'
+            }`}
+          />
+        </button>
+      </div>
+
+      <div className="px-5 py-4 space-y-3">
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          Reading inboxes needs the new read permission — accounts connected before the email
+          agent existed must be <span className="font-medium">disconnected and reconnected once</span>{' '}
+          in Settings → Integrations. The agent only answers mail received after it&apos;s enabled.
+        </p>
+        <div>
+          <label className="text-xs font-medium text-gray-700">System prompt</label>
+          <textarea
+            value={promptText}
+            onChange={(e) => setPromptText(e.target.value)}
+            rows={8}
+            disabled={loading}
+            placeholder={
+              'You are the assistant for <business>. Answer questions about our services, ' +
+              'pricing and availability using the knowledge base. Be concise and professional. ' +
+              'If the sender asks for anything you are unsure about, say a team member will follow up.'
+            }
+            className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-red-400 disabled:bg-gray-50"
+          />
+          <p className="mt-1 text-[11px] text-gray-500">
+            The knowledge base and tone from your chat settings are added automatically.
+          </p>
+        </div>
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={handleSavePrompt}
+            disabled={saving || loading}
+            className="px-4 py-2 rounded-lg bg-red-500 text-white text-sm font-medium hover:bg-red-600 disabled:opacity-50"
+          >
+            {saving ? 'Saving…' : 'Save prompt'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Component ───────────────────────────────────────────────
 
 export function ChatSettings() {
@@ -386,9 +576,28 @@ export function ChatSettings() {
   const [loading, setLoading] = useState(true);
   const [activeChannel, setActiveChannel] = useState('waba');
   const [expandedPrompt, setExpandedPrompt] = useState<string | null>(null);
+
+  // ── Connection-aware visibility ─────────────────────────────────────────
+  // Only connected channels get their settings shown; a channel that is
+  // positively NOT connected is hidden (tabs, typing rows, LinkedIn cards).
+  // Nothing is deleted — reconnecting brings the settings back with their
+  // saved values, because visibility is derived from live status per mount.
+  // Fail-open: while probing (or if a probe errors) the channel stays visible.
+  const router = useRouter();
+  const { loaded: channelsLoaded, isVisible: isChannelVisible } = useConnectedChannels();
+  const visibleChannels = CHANNELS.filter((c) => isChannelVisible(c.id as ChannelId));
+  const hiddenChannels = CHANNELS.filter((c) => !isChannelVisible(c.id as ChannelId));
+  const visibleIds = visibleChannels.map((c) => c.id).join(',');
+  // If the active tab's channel just got hidden, snap to the first visible one.
+  useEffect(() => {
+    if (!channelsLoaded) return;
+    const ids = visibleIds ? visibleIds.split(',') : [];
+    if (ids.length > 0 && !ids.includes(activeChannel)) {
+      setActiveChannel(ids[0]);
+    }
+  }, [channelsLoaded, visibleIds, activeChannel]);
   const [editedTexts, setEditedTexts] = useState<Record<string, string>>({});
   const [savingPrompt, setSavingPrompt] = useState<string | null>(null);
-  const [savingSettings, setSavingSettings] = useState(false);
   const [savingKb, setSavingKb] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -412,6 +621,14 @@ export function ChatSettings() {
   const [newPromptName, setNewPromptName] = useState('');
   const [newPromptText, setNewPromptText] = useState('');
   const [creatingPrompt, setCreatingPrompt] = useState(false);
+
+  // AI prompt generation
+  const [generatingPrompt, setGeneratingPrompt] = useState<string | null>(null); // prompt.name or '__new__'
+  const [missingFieldsModal, setMissingFieldsModal] = useState<{
+    promptName: string | null;
+    fields: MissingField[];
+    values: Record<string, string>;
+  } | null>(null);
 
   // Web scraping state
   const [newWebUrl, setNewWebUrl] = useState('');
@@ -444,24 +661,38 @@ export function ChatSettings() {
     auto_like_posts: boolean;
     auto_comment_posts: boolean;
     ai_agent_reply_delay_seconds: number;
+    auto_withdraw_pending_enabled: boolean;
+    auto_withdraw_pending_days: number;
   }>({
     auto_like_posts: false,
     auto_comment_posts: false,
     ai_agent_reply_delay_seconds: 0,
+    auto_withdraw_pending_enabled: false,
+    auto_withdraw_pending_days: 90,
   });
   const [savingLinkedinAutomation, setSavingLinkedinAutomation] = useState(false);
 
   // LinkedIn follow-up sequence settings (tenant-level cadence for the
-  // 4-touch post-acceptance sequence — see LinkedInAutoFollowupService).
+  // post-acceptance sequence — see LinkedInAutoFollowupService).
+  //
+  // Each touch = { hours, template_id }. A null template_id means "AI-generated"
+  // (the historical behaviour); a template id means "send that LinkedIn
+  // template's body + media" — parity with the WhatsApp follow-up section.
   const DEFAULT_LI_FOLLOWUP_HOURS = [24, 72, 168, 336];
+  type LiFollowupTouch = { hours: number; template_id: string | null };
   const [linkedinFollowup, setLinkedinFollowup] = useState<{
     enabled: boolean;
-    schedule_hours: number[];
+    touches: LiFollowupTouch[];
   }>({
     enabled: true,
-    schedule_hours: DEFAULT_LI_FOLLOWUP_HOURS,
+    touches: DEFAULT_LI_FOLLOWUP_HOURS.map((h) => ({ hours: h, template_id: null })),
   });
   const [savingLinkedinFollowup, setSavingLinkedinFollowup] = useState(false);
+  // The touch row whose template dropdown is mid-"create new template" flow.
+  const [pendingTemplateTouchIdx, setPendingTemplateTouchIdx] = useState<number | null>(null);
+  // Tenant's LinkedIn templates for the per-touch dropdown. Auto-refreshes after
+  // a create (the create hook invalidates the list + clears the local cache).
+  const { data: liTemplates } = useLinkedInMessageTemplates({ is_active: true });
 
   // Load data on mount
   useEffect(() => {
@@ -481,18 +712,34 @@ export function ChatSettings() {
         setFollowupConfig(f);
         if (liSettings?.success && liSettings.data) {
           const rawDelay = Number(liSettings.data.ai_agent_reply_delay_seconds);
+          const rawWithdrawDays = Number(liSettings.data.auto_withdraw_pending_days);
           setLinkedinAutomation({
             auto_like_posts:              !!liSettings.data.auto_like_posts,
             auto_comment_posts:           !!liSettings.data.auto_comment_posts,
             ai_agent_reply_delay_seconds: Number.isFinite(rawDelay) ? Math.max(0, Math.min(300, rawDelay)) : 0,
+            auto_withdraw_pending_enabled: !!liSettings.data.auto_withdraw_pending_enabled,
+            auto_withdraw_pending_days:   Number.isFinite(rawWithdrawDays) ? Math.max(30, rawWithdrawDays) : 90,
           });
         }
         if (liFollowup?.success && liFollowup.data) {
+          // Prefer the per-touch model; fall back to legacy plain hours (mapped to
+          // AI-generated touches), then to the default cadence.
+          let touches: LiFollowupTouch[] = [];
+          if (Array.isArray(liFollowup.data.touches) && liFollowup.data.touches.length > 0) {
+            touches = liFollowup.data.touches
+              .map((t: any) => ({ hours: Number(t?.hours) || 0, template_id: t?.template_id || null }))
+              .filter((t: LiFollowupTouch) => t.hours > 0);
+          } else if (Array.isArray(liFollowup.data.schedule_hours) && liFollowup.data.schedule_hours.length > 0) {
+            touches = liFollowup.data.schedule_hours
+              .map((v: any) => ({ hours: Number(v) || 0, template_id: null }))
+              .filter((t: LiFollowupTouch) => t.hours > 0);
+          }
+          if (touches.length === 0) {
+            touches = DEFAULT_LI_FOLLOWUP_HOURS.map((h) => ({ hours: h, template_id: null }));
+          }
           setLinkedinFollowup({
             enabled: liFollowup.data.enabled !== false,
-            schedule_hours: Array.isArray(liFollowup.data.schedule_hours) && liFollowup.data.schedule_hours.length > 0
-              ? liFollowup.data.schedule_hours.map((v: any) => Number(v) || 0).filter((v: number) => v > 0)
-              : DEFAULT_LI_FOLLOWUP_HOURS,
+            touches,
           });
         }
         setShareableAssets(Array.isArray(assets) ? assets : []);
@@ -602,6 +849,48 @@ export function ChatSettings() {
     setCreatingPrompt(false);
   }, [newPromptName, newPromptText, activeChannel, showToast]);
 
+  // ── AI prompt generation ─────────────────────────────────────
+  const runGenerate = useCallback(
+    async (promptName: string | null, providedFields: Record<string, string> = {}) => {
+      const busyKey = promptName ?? '__new__';
+      setGeneratingPrompt(busyKey);
+      try {
+        const out = await generatePrompt(activeChannel, providedFields);
+        if (out?.error === 'unsupported_channel') {
+          showToast('Prompt generation is available for LinkedIn only right now', 'error');
+          return;
+        }
+        const requiredMissing = (out?.missing_fields || []).filter((f) => f.severity !== 'optional');
+        if (out?.success && !out.prompt_text && requiredMissing.length) {
+          // Need a few facts that aren't on file yet — open the collect-info form.
+          setMissingFieldsModal({ promptName, fields: out.missing_fields || [], values: providedFields });
+          return;
+        }
+        if (out?.success && out.prompt_text) {
+          setMissingFieldsModal(null);
+          if (promptName) {
+            // Existing card → stage as an unsaved edit for review, then user clicks Save Changes.
+            setEditedTexts((prev) => ({ ...prev, [promptName]: out.prompt_text as string }));
+            setExpandedPrompt(promptName);
+          } else {
+            // No prompt for this channel yet → prefill the "Add New Prompt" form.
+            setShowNewPrompt(true);
+            setNewPromptName('SYSTEM_PROMPT');
+            setNewPromptText(out.prompt_text);
+          }
+          showToast('Draft generated — review it, then Save Changes', 'success');
+        } else {
+          showToast('Failed to generate prompt', 'error');
+        }
+      } catch {
+        showToast('Failed to generate prompt', 'error');
+      } finally {
+        setGeneratingPrompt(null);
+      }
+    },
+    [activeChannel, showToast]
+  );
+
   // ── Knowledge Base save ──────────────────────────────────────
 
   const handleSaveKb = useCallback(async () => {
@@ -696,33 +985,60 @@ export function ChatSettings() {
     setSavingBehaviour(false);
   }, [chatSettings.typing_indicator, chatSettings.waba_typing_indicator, showToast]);
 
-  // ── Campaign Settings save ───────────────────────────────────
-
-  const handleSaveCampaign = useCallback(async () => {
-    setSavingSettings(true);
-    const ok = await updateChatSettings({ campaign_frequency: chatSettings.campaign_frequency });
-    showToast(ok ? 'Campaign settings saved' : 'Failed to save', ok ? 'success' : 'error');
-    setSavingSettings(false);
-  }, [chatSettings.campaign_frequency, showToast]);
-
   // ── Follow-up Timing save ────────────────────────────────────
 
   const handleSaveFollowup = useCallback(async () => {
+    // Pre-check mirroring the backend H16 guard: an ENABLED stage that fires
+    // past Meta's 24h customer-service window MUST have an approved template
+    // (free-form text is rejected there, so the stage would never send).
+    // Catching it here gives a friendlier message than the API's 400.
+    const STAGE_LABELS: Record<string, string> = {
+      FIRST: '1st Follow-up', SECOND: '2nd Follow-up', THIRD: '3rd Follow-up', FOURTH: 'Final message',
+    };
+    const offending = (Object.keys(followupConfig.stages) as Array<keyof typeof followupConfig.stages>)
+      .filter((k) => {
+        const s = followupConfig.stages[k];
+        return s.enabled && (s.delay_hours ?? 0) > 24 && !(s.template_name || '').trim();
+      })
+      .map((k) => STAGE_LABELS[k] || k);
+    // NOTE: the backend enforces this per-stage regardless of the master
+    // enabled flag, so the pre-check must too.
+    if (offending.length > 0) {
+      showToast(
+        `${offending.join(', ')}: delays past 24h need an approved WhatsApp template — pick one or disable the stage`,
+        'error'
+      );
+      return;
+    }
+
     setSavingFollowup(true);
-    const ok = await updateFollowupConfig(followupConfig);
-    showToast(ok ? 'Follow-up timing saved' : 'Failed to save', ok ? 'success' : 'error');
+    const result = await updateFollowupConfig(followupConfig);
+    showToast(result.ok ? 'Follow-up timing saved' : (result.error || 'Failed to save'), result.ok ? 'success' : 'error');
     setSavingFollowup(false);
   }, [followupConfig, showToast]);
 
   const handleSaveLinkedinAutomation = useCallback(async () => {
     setSavingLinkedinAutomation(true);
+    // Floor the withdraw window at 30 days (backend clamps too) so a stray small
+    // value can never retract fresh invitations. Reflect the clamp in the UI.
+    const cleanDays = Math.max(30, Math.floor(Number(linkedinAutomation.auto_withdraw_pending_days) || 90));
+    const payload = { ...linkedinAutomation, auto_withdraw_pending_days: cleanDays };
     try {
       const res = await fetch('/api/social-integration/linkedin/automation-settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(linkedinAutomation),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
+      if (data.success && data.data) {
+        setLinkedinAutomation((prev) => ({
+          ...prev,
+          auto_withdraw_pending_enabled: !!data.data.auto_withdraw_pending_enabled,
+          auto_withdraw_pending_days: Number.isFinite(Number(data.data.auto_withdraw_pending_days))
+            ? Math.max(30, Number(data.data.auto_withdraw_pending_days))
+            : cleanDays,
+        }));
+      }
       showToast(data.success ? 'LinkedIn automation settings saved' : 'Failed to save', data.success ? 'success' : 'error');
     } catch {
       showToast('Failed to save', 'error');
@@ -734,10 +1050,10 @@ export function ChatSettings() {
   const handleSaveLinkedinFollowup = useCallback(async () => {
     // Clamp + validate cadence before sending — backend re-validates but a
     // fast frontend check gives the user immediate feedback.
-    const cleanHours = (linkedinFollowup.schedule_hours || [])
-      .map((v) => Number(v))
-      .filter((v) => Number.isFinite(v) && v > 0 && v <= 24 * 365);
-    if (cleanHours.length === 0) {
+    const cleanTouches = (linkedinFollowup.touches || [])
+      .map((t) => ({ hours: Number(t.hours), template_id: t.template_id || null }))
+      .filter((t) => Number.isFinite(t.hours) && t.hours > 0 && t.hours <= 24 * 365);
+    if (cleanTouches.length === 0) {
       showToast('Add at least one positive hour value to the cadence', 'error');
       return;
     }
@@ -748,14 +1064,19 @@ export function ChatSettings() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           enabled: linkedinFollowup.enabled,
-          schedule_hours: cleanHours,
+          touches: cleanTouches,
         }),
       });
       const data = await res.json();
       if (data.success && data.data) {
+        const touches: LiFollowupTouch[] = Array.isArray(data.data.touches) && data.data.touches.length > 0
+          ? data.data.touches
+              .map((t: any) => ({ hours: Number(t?.hours) || 0, template_id: t?.template_id || null }))
+              .filter((t: LiFollowupTouch) => t.hours > 0)
+          : cleanTouches;
         setLinkedinFollowup({
           enabled: data.data.enabled !== false,
-          schedule_hours: Array.isArray(data.data.schedule_hours) ? data.data.schedule_hours : cleanHours,
+          touches,
         });
       }
       showToast(data.success ? 'LinkedIn follow-up settings saved' : 'Failed to save', data.success ? 'success' : 'error');
@@ -912,10 +1233,11 @@ export function ChatSettings() {
           </p>
         </div>
 
-        {/* Channel tabs */}
+        {/* Channel tabs — only connected channels; hidden ones collapse into
+            a "+N more" chip that jumps to the Integrations tab. */}
         <div className="border-b border-gray-100 overflow-x-auto hide-scrollbar">
-          <div className="flex gap-1 -mb-px px-6 min-w-max flex-nowrap">
-            {CHANNELS.map((ch) => (
+          <div className="flex items-center gap-1 -mb-px px-6 min-w-max flex-nowrap">
+            {visibleChannels.map((ch) => (
               <button
                 key={ch.id}
                 onClick={() => setActiveChannel(ch.id)}
@@ -929,16 +1251,52 @@ export function ChatSettings() {
                 {ch.label}
               </button>
             ))}
+            {hiddenChannels.length > 0 && (
+              <button
+                onClick={() => router.push('/settings?tab=integrations')}
+                title={`Not connected: ${hiddenChannels.map((c) => c.label).join(', ')}. Connect to configure.`}
+                className="flex items-center gap-1 px-3 py-1 my-1.5 text-xs text-gray-400 border border-dashed border-gray-300 rounded-full hover:text-gray-600 hover:border-gray-400 transition-colors whitespace-nowrap"
+              >
+                <Plus className="h-3 w-3" />
+                {hiddenChannels.length} more
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Prompts list */}
+        {/* No channels connected at all — invite to connect instead of blank tabs */}
+        {channelsLoaded && visibleChannels.length === 0 && (
+          <div className="px-6 py-12 text-center text-gray-400">
+            <EyeOff className="h-8 w-8 mx-auto mb-2 opacity-40" />
+            <p className="text-sm text-gray-500">No channels connected</p>
+            <p className="text-xs mt-1 mb-4">Connect WhatsApp, LinkedIn, Gmail or Instagram to configure AI prompts</p>
+            <button
+              onClick={() => router.push('/settings?tab=integrations')}
+              className="text-sm font-medium text-blue-600 hover:text-blue-700"
+            >
+              Connect a channel →
+            </button>
+          </div>
+        )}
+
+        {/* Prompts list — hidden entirely when no channel is connected */}
+        {(!channelsLoaded || visibleChannels.length > 0) && (
         <div className="divide-y divide-gray-100">
           {filteredPrompts.length === 0 ? (
             <div className="px-6 py-12 text-center text-gray-400">
               <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-40" />
               <p className="text-sm">No prompts for {CHANNELS.find((c) => c.id === activeChannel)?.label}</p>
               <p className="text-xs mt-1">Create one to get started</p>
+              {activeChannel === 'linkedin' && (
+                <button
+                  onClick={() => runGenerate(null)}
+                  disabled={generatingPrompt === '__new__'}
+                  className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 border border-blue-200 rounded-md hover:bg-blue-50 disabled:opacity-40"
+                >
+                  {generatingPrompt === '__new__' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                  Generate with AI
+                </button>
+              )}
             </div>
           ) : (
             filteredPrompts.map((prompt) => {
@@ -1008,18 +1366,35 @@ export function ChatSettings() {
                             ? `Last updated: ${new Date(prompt.updated_at).toLocaleDateString()}`
                             : ''}
                         </span>
-                        <button
-                          onClick={() => handleSavePrompt(prompt.name)}
-                          disabled={!hasEdit || savingPrompt === prompt.name}
-                          className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                        >
-                          {savingPrompt === prompt.name ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <Save className="h-3 w-3" />
+                        <div className="flex items-center gap-2">
+                          {activeChannel === 'linkedin' && (
+                            <button
+                              onClick={() => runGenerate(prompt.name)}
+                              disabled={generatingPrompt === prompt.name}
+                              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 border border-blue-200 rounded-md hover:bg-blue-50 disabled:opacity-40 transition-colors"
+                              title="Generate a prompt from your business profile & ICP"
+                            >
+                              {generatingPrompt === prompt.name ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Sparkles className="h-3 w-3" />
+                              )}
+                              Generate with AI
+                            </button>
                           )}
-                          Save Changes
-                        </button>
+                          <button
+                            onClick={() => handleSavePrompt(prompt.name)}
+                            disabled={!hasEdit || savingPrompt === prompt.name}
+                            className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                          >
+                            {savingPrompt === prompt.name ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Save className="h-3 w-3" />
+                            )}
+                            Save Changes
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -1028,8 +1403,10 @@ export function ChatSettings() {
             })
           )}
         </div>
+        )}
 
-        {/* Add new prompt */}
+        {/* Add new prompt — needs at least one connected channel */}
+        {(!channelsLoaded || visibleChannels.length > 0) && (
         <div className="px-6 py-3 border-t border-gray-100">
           {!showNewPrompt ? (
             <button
@@ -1057,7 +1434,7 @@ export function ChatSettings() {
                   onChange={(e) => setActiveChannel(e.target.value)}
                   className="flex-1 px-3 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 bg-white"
                 >
-                  {CHANNELS.map((ch) => (
+                  {visibleChannels.map((ch) => (
                     <option key={ch.id} value={ch.id}>{ch.label}</option>
                   ))}
                 </select>
@@ -1068,6 +1445,18 @@ export function ChatSettings() {
                 onChange={(e) => setNewPromptText(e.target.value)}
                 className="w-full h-32 px-3 py-2 text-sm font-mono border border-gray-200 rounded-md resize-y focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
               />
+              {/* LinkedIn-only: draft a fresh prompt from the business profile & ICP into the fields above */}
+              {activeChannel === 'linkedin' && (
+                <button
+                  onClick={() => runGenerate(null)}
+                  disabled={generatingPrompt === '__new__'}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 border border-blue-200 rounded-md hover:bg-blue-50 disabled:opacity-40"
+                  title="Generate a prompt from your business profile & ICP"
+                >
+                  {generatingPrompt === '__new__' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                  Generate with AI
+                </button>
+              )}
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleCreatePrompt}
@@ -1081,6 +1470,7 @@ export function ChatSettings() {
             </div>
           )}
         </div>
+        )}
       </div>
 
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
@@ -1095,10 +1485,11 @@ export function ChatSettings() {
             <h2 className="text-lg font-semibold text-gray-900">Shareable Assets</h2>
           </div>
           <p className="text-sm text-gray-500">
-            Files (price list, brochure, menu…) the AI agent can attach automatically
-            in WhatsApp when the customer asks. The system listens for the trigger
-            keywords in the AI&apos;s reply, downloads the file from the URL, and sends
-            it as a real attachment — so customers never see a raw link.
+            Files (price list, brochure, menu…) the AI agents can attach automatically
+            when the customer asks — on WhatsApp, LinkedIn, and email. The system
+            listens for the trigger keywords in the AI&apos;s reply, downloads the file
+            from the URL, and sends it as a real attachment — so customers never see
+            a raw link.
           </p>
         </div>
         <div className="p-6 space-y-4">
@@ -1359,8 +1750,9 @@ export function ChatSettings() {
             <h2 className="text-lg font-semibold text-gray-900">Company Website Context</h2>
           </div>
           <p className="text-sm text-gray-500">
-            Let the AI answer WhatsApp questions using content from your website or blog pages.
-            URLs are scraped once when you save and the text is cached — no live requests on each reply.
+            Let the AI answer customer questions using content from your website or blog pages —
+            on WhatsApp, LinkedIn, and email. URLs are scraped once when you save and the text is
+            cached — no live requests on each reply.
           </p>
         </div>
         <div className="p-6 space-y-5">
@@ -1369,7 +1761,7 @@ export function ChatSettings() {
             <div>
               <p className="text-sm font-medium text-gray-800">Enable Website Context</p>
               <p className="text-xs text-gray-500 mt-0.5">
-                When ON, scraped website content is included in every WhatsApp AI reply
+                When ON, scraped website content is included in AI replies on every channel
               </p>
             </div>
             <button
@@ -1649,6 +2041,10 @@ export function ChatSettings() {
       </div>
 
       {/* ── Section 3: Chat Behaviour ────────────────────────────── */}
+      {/* Channel-specific settings follow the ACTIVE System Prompts tab: the
+          typing rows are WhatsApp settings, so this card only shows while a
+          WhatsApp tab is selected — and only the selected flavour's row. */}
+      {(activeChannel === 'personal_whatsapp' || activeChannel === 'waba') && (
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
         <div className="p-6 border-b border-gray-100">
           <div className="flex items-center gap-2 mb-1">
@@ -1665,11 +2061,11 @@ export function ChatSettings() {
             <p className="text-sm font-medium text-gray-800 mb-1">Typing Indicator</p>
             <p className="text-xs text-gray-500 mb-3">
               Show &quot;typing…&quot; to the contact while the AI is composing a reply.
-              Configure separately for each channel.
             </p>
 
             <div className="space-y-3 border border-gray-100 rounded-lg divide-y divide-gray-100 overflow-hidden">
               {/* Personal WhatsApp row */}
+              {activeChannel === 'personal_whatsapp' && (
               <div className="flex items-center justify-between px-4 py-3">
                 <div className="flex items-center gap-2.5">
                   <span className="h-2 w-2 rounded-full bg-emerald-400 flex-shrink-0" />
@@ -1691,8 +2087,10 @@ export function ChatSettings() {
                   )}
                 </button>
               </div>
+              )}
 
               {/* WABA row */}
+              {activeChannel === 'waba' && (
               <div className="flex items-center justify-between px-4 py-3">
                 <div className="flex items-center gap-2.5">
                   <span className="h-2 w-2 rounded-full bg-green-500 flex-shrink-0" />
@@ -1714,6 +2112,7 @@ export function ChatSettings() {
                   )}
                 </button>
               </div>
+              )}
             </div>
           </div>
 
@@ -1729,124 +2128,42 @@ export function ChatSettings() {
           </div>
         </div>
       </div>
+      )}
 
-      {/* ── Section 5: Campaign Settings ──────────────────────────── */}
+      {/* NOTE: the old Section 5 "Campaign Settings" card (campaign_frequency:
+          enable/interval/max-daily) was removed 2026-07-05 — the values were
+          never consumed by any campaign path. The field remains in the
+          ChatSettings API type because the backend still stores/returns it. */}
+
+      {/* ── Section 6: WhatsApp Post-Conversation Follow-up Timing ── */}
+      {/* WhatsApp-only: the config lives in the whatsapp-conversations service
+          (FOLLOWUP_CONFIG_API) and the stages/booking reminders send via
+          WhatsApp templates. Titled + badged accordingly (users assumed it
+          applied to every channel) and shown only while a WhatsApp tab is
+          selected. LinkedIn has its own follow-up card; other channels none. */}
+      {(activeChannel === 'waba' || activeChannel === 'personal_whatsapp') && (
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
         <div className="p-6 border-b border-gray-100">
           <div className="flex items-center gap-2 mb-1">
-            <Clock className="h-5 w-5 text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Campaign Settings</h2>
+            <Bell className="h-5 w-5 text-green-600" />
+            <h2 className="text-lg font-semibold text-gray-900">WhatsApp Follow-ups</h2>
+            <span className="flex items-center gap-1.5 ml-1 px-2 py-0.5 text-[11px] font-medium text-green-700 bg-green-50 border border-green-200 rounded-full">
+              <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+              WhatsApp only
+            </span>
           </div>
           <p className="text-sm text-gray-500">
-            Configure automated campaign frequency and limits.
-          </p>
-        </div>
-        <div className="p-6 space-y-5">
-          {/* Enable toggle */}
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-800">Enable Automated Campaigns</p>
-              <p className="text-xs text-gray-500 mt-0.5">Send automated follow-up messages to leads</p>
-            </div>
-            <button
-              onClick={() =>
-                setChatSettings((prev) => ({
-                  ...prev,
-                  campaign_frequency: {
-                    ...prev.campaign_frequency,
-                    enabled: !prev.campaign_frequency.enabled,
-                  },
-                }))
-              }
-            >
-              {chatSettings.campaign_frequency.enabled ? (
-                <ToggleRight className="h-6 w-6 text-blue-500" />
-              ) : (
-                <ToggleLeft className="h-6 w-6 text-gray-300" />
-              )}
-            </button>
-          </div>
-
-          {/* Interval hours */}
-          <div>
-            <label className="block text-sm font-medium text-gray-800 mb-1">
-              Message Interval (hours)
-            </label>
-            <p className="text-xs text-gray-500 mb-2">Minimum time between automated messages to the same lead</p>
-            <input
-              type="number"
-              min={1}
-              max={168}
-              value={chatSettings.campaign_frequency.interval_hours}
-              onChange={(e) =>
-                setChatSettings((prev) => ({
-                  ...prev,
-                  campaign_frequency: {
-                    ...prev.campaign_frequency,
-                    interval_hours: parseInt(e.target.value) || 24,
-                  },
-                }))
-              }
-              className="w-32 px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
-            />
-          </div>
-
-          {/* Max daily messages */}
-          <div>
-            <label className="block text-sm font-medium text-gray-800 mb-1">
-              Max Daily Messages
-            </label>
-            <p className="text-xs text-gray-500 mb-2">Maximum number of automated messages sent per day across all leads</p>
-            <input
-              type="number"
-              min={1}
-              max={1000}
-              value={chatSettings.campaign_frequency.max_daily_messages}
-              onChange={(e) =>
-                setChatSettings((prev) => ({
-                  ...prev,
-                  campaign_frequency: {
-                    ...prev.campaign_frequency,
-                    max_daily_messages: parseInt(e.target.value) || 50,
-                  },
-                }))
-              }
-              className="w-32 px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
-            />
-          </div>
-
-          <div className="flex justify-end pt-2">
-            <button
-              onClick={handleSaveCampaign}
-              disabled={savingSettings}
-              className="flex items-center gap-1.5 px-5 py-2.5 text-sm font-semibold text-white bg-[#0B1957] rounded-xl hover:opacity-90 disabled:opacity-50 transition-all shadow-md active:scale-95"
-            >
-              {savingSettings ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Save Campaign Settings
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Section 6: Post-Conversation Follow-up Timing ────────── */}
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-        <div className="p-6 border-b border-gray-100">
-          <div className="flex items-center gap-2 mb-1">
-            <Bell className="h-5 w-5 text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Post-Conversation Follow-ups</h2>
-          </div>
-          <p className="text-sm text-gray-500">
-            Configure when automated follow-up messages are sent after a conversation ends.
-            Each stage fires once at the scheduled delay.
+            Configure when automated follow-up messages are sent after a WhatsApp conversation ends.
+            Each stage fires once at the scheduled delay. Booking reminders below also send via WhatsApp.
           </p>
         </div>
         <div className="p-6 space-y-5">
           {/* Master enable */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-800">Enable Post-Conversation Follow-ups</p>
+              <p className="text-sm font-medium text-gray-800">Enable WhatsApp Follow-ups</p>
               <p className="text-xs text-gray-500 mt-0.5">
-                Automatically send follow-up messages when a customer stops responding
+                Automatically send follow-up messages when a customer stops responding on WhatsApp
               </p>
             </div>
             <button
@@ -2026,9 +2343,7 @@ export function ChatSettings() {
                           ),
                         }))
                       }
-                      className={`w-full pl-3 pr-10 py-2 text-sm border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all appearance-none ${
-                        !reminder.template_name ? 'border-red-300' : 'border-gray-200'
-                      }`}
+                      className="w-full pl-3 pr-10 py-2 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all appearance-none"
                       style={{
                         backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
                         backgroundPosition: 'right 0.5rem center',
@@ -2036,10 +2351,13 @@ export function ChatSettings() {
                         backgroundSize: '1.5em 1.5em'
                       }}
                     >
+                      {/* Empty value = AI-generated: the WABA service composes the
+                          reminder at send time (free-form inside the 24h window,
+                          generic approved-template fallback outside it). */}
                       <option value="">
                         {loadingTemplates
                           ? 'Loading templates…'
-                          : '— Pick a template (required) —'}
+                          : '— AI-generated (default) —'}
                       </option>
                       {approvedTemplates.map((t) => (
                         <option key={`${t.name}-${t.language}`} value={t.name}>
@@ -2091,7 +2409,9 @@ export function ChatSettings() {
             </button>
 
             <p className="text-xs text-gray-500">
-              All reminders need an APPROVED WhatsApp template — Meta blocks free-text replies outside the 24-hour conversation window.
+              AI-generated reminders send as personalised free-text while the customer&apos;s 24-hour
+              conversation window is open, and fall back to your approved follow-up template when it
+              isn&apos;t. Pick an approved template instead for guaranteed delivery regardless of the window.
               {followupConfig.booking_reminders.length >= 10 && (
                 <span className="block mt-1 text-amber-600">Maximum 10 reminders per booking.</span>
               )}
@@ -2118,13 +2438,23 @@ export function ChatSettings() {
           </div>
         </div>
       </div>
+      )}
 
       {/* ── Section 7: LinkedIn Automation ──────────────────────── */}
+      {/* Both LinkedIn cards (Automation + Follow-up Sequence) follow the
+          active System Prompts tab — shown only while LinkedIn is selected.
+          Saved values persist regardless of visibility. */}
+      {activeChannel === 'linkedin' && (
+      <>
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
         <div className="p-6 border-b border-gray-100">
           <div className="flex items-center gap-2 mb-1">
             <Linkedin className="h-5 w-5 text-blue-600" />
             <h2 className="text-lg font-semibold text-gray-900">LinkedIn Automation</h2>
+            <span className="flex items-center gap-1.5 ml-1 px-2 py-0.5 text-[11px] font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-full">
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
+              LinkedIn only
+            </span>
           </div>
           <p className="text-sm text-gray-500">
             Automatically engage with the post used to personalise each connection request or follow-up message.
@@ -2213,6 +2543,58 @@ export function ChatSettings() {
                 <span className="text-xs text-gray-500 w-8">sec</span>
               </div>
             </div>
+
+            {/* Auto-withdraw old pending connection requests */}
+            <div className="flex items-center justify-between px-4 py-3">
+              <div className="flex items-center gap-2.5">
+                <UserMinus className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-gray-800">Auto-withdraw old pending requests</p>
+                  <p className="text-xs text-gray-500">
+                    Withdraw connection requests that are still pending after the set number of days (minimum 30)
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className={`flex items-center gap-1.5 ${linkedinAutomation.auto_withdraw_pending_enabled ? '' : 'opacity-40'}`}>
+                  <span className="text-xs text-gray-500">older than</span>
+                  <input
+                    type="number"
+                    min={30}
+                    step={1}
+                    value={linkedinAutomation.auto_withdraw_pending_days}
+                    disabled={!linkedinAutomation.auto_withdraw_pending_enabled}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value, 10);
+                      setLinkedinAutomation((prev) => ({
+                        ...prev,
+                        auto_withdraw_pending_days: Number.isFinite(v) ? v : 0,
+                      }));
+                    }}
+                    onBlur={() =>
+                      setLinkedinAutomation((prev) => ({
+                        ...prev,
+                        auto_withdraw_pending_days: Math.max(30, Math.floor(Number(prev.auto_withdraw_pending_days) || 90)),
+                      }))
+                    }
+                    className="w-16 px-2 py-1.5 border border-gray-200 rounded-md text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:bg-gray-100"
+                  />
+                  <span className="text-xs text-gray-500">days</span>
+                </div>
+                <button
+                  onClick={() =>
+                    setLinkedinAutomation((prev) => ({ ...prev, auto_withdraw_pending_enabled: !prev.auto_withdraw_pending_enabled }))
+                  }
+                  title={linkedinAutomation.auto_withdraw_pending_enabled ? 'On — click to disable' : 'Off — click to enable'}
+                >
+                  {linkedinAutomation.auto_withdraw_pending_enabled ? (
+                    <ToggleRight className="h-6 w-6 text-blue-500" />
+                  ) : (
+                    <ToggleLeft className="h-6 w-6 text-gray-300" />
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
 
           <div className="flex justify-end pt-2">
@@ -2236,9 +2618,13 @@ export function ChatSettings() {
               <Clock className="h-5 w-5 text-amber-600" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900">LinkedIn Follow-up Sequence</h3>
+            <span className="flex items-center gap-1.5 ml-1 px-2 py-0.5 text-[11px] font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-full">
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
+              LinkedIn only
+            </span>
           </div>
           <p className="text-sm text-gray-500">
-            After a connection request is accepted, the AI agent schedules this sequence of messages towards booking a meeting. Each message uses your LinkedIn chat-agent prompt (above), is auto-cancelled when the lead replies, and is dynamically rescheduled when the lead asks for a specific future time.
+            After a connection request is accepted, the AI agent schedules this sequence of messages towards booking a meeting. Each touch is AI-generated from your LinkedIn chat-agent prompt (above) by default, or you can pin a saved LinkedIn template (body + media) to a specific touch. Every message is auto-cancelled when the lead replies, and is dynamically rescheduled when the lead asks for a specific future time.
           </p>
         </div>
         <div className="p-6 space-y-5">
@@ -2267,13 +2653,17 @@ export function ChatSettings() {
           <div className="border border-gray-100 rounded-lg p-4">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <p className="text-sm font-medium text-gray-800">Cadence (hours from acceptance)</p>
+                <p className="text-sm font-medium text-gray-800">Cadence &amp; message per touch</p>
                 <p className="text-xs text-gray-500">
                   One entry = one follow-up. Default: 24, 72, 168, 336 (≈ +1d, +3d, +7d, +14d).
+                  Each touch is AI-generated by default, or you can pick a saved LinkedIn template.
                 </p>
               </div>
               <button
-                onClick={() => setLinkedinFollowup((prev) => ({ ...prev, schedule_hours: DEFAULT_LI_FOLLOWUP_HOURS }))}
+                onClick={() => setLinkedinFollowup((prev) => ({
+                  ...prev,
+                  touches: DEFAULT_LI_FOLLOWUP_HOURS.map((h) => ({ hours: h, template_id: null })),
+                }))}
                 className="text-xs text-amber-600 hover:underline"
                 disabled={!linkedinFollowup.enabled}
                 title="Reset to default cadence"
@@ -2283,61 +2673,132 @@ export function ChatSettings() {
             </div>
 
             <div className="space-y-2">
-              {linkedinFollowup.schedule_hours.map((hours, idx) => (
-                <div key={idx} className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-gray-500 w-16">
-                    Touch {idx + 1}
-                  </span>
-                  <input
-                    type="number"
-                    min={1}
-                    max={24 * 365}
-                    value={hours}
-                    disabled={!linkedinFollowup.enabled}
-                    onChange={(e) => {
-                      const v = parseInt(e.target.value, 10);
-                      setLinkedinFollowup((prev) => {
-                        const next = [...prev.schedule_hours];
-                        next[idx] = Number.isFinite(v) ? v : 0;
-                        return { ...prev, schedule_hours: next };
-                      });
-                    }}
-                    className="w-24 px-2 py-1 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-200 disabled:bg-gray-50 disabled:text-gray-400"
-                  />
-                  <span className="text-xs text-gray-400">
-                    hours (≈ {(hours / 24).toFixed(hours % 24 === 0 ? 0 : 1)}d)
-                  </span>
-                  <button
-                    onClick={() =>
-                      setLinkedinFollowup((prev) => ({
-                        ...prev,
-                        schedule_hours: prev.schedule_hours.filter((_, i) => i !== idx),
-                      }))
-                    }
-                    disabled={!linkedinFollowup.enabled || linkedinFollowup.schedule_hours.length <= 1}
-                    className="text-gray-300 hover:text-red-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                    title="Remove this touch"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
+              {linkedinFollowup.touches.map((touch, idx) => {
+                // A selected template that is no longer in the active list (deleted
+                // or deactivated) still needs an option so the select shows it.
+                const templates = liTemplates || [];
+                const selectedMissing = !!touch.template_id
+                  && !templates.some((t) => t.id === touch.template_id);
+                return (
+                  <div key={idx} className="rounded-lg border border-gray-100 p-3 space-y-2 bg-gray-50/40">
+                    {/* Timing row */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-gray-500 w-16">
+                        Touch {idx + 1}
+                      </span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={24 * 365}
+                        value={touch.hours}
+                        disabled={!linkedinFollowup.enabled}
+                        onChange={(e) => {
+                          const v = parseInt(e.target.value, 10);
+                          setLinkedinFollowup((prev) => {
+                            const next = [...prev.touches];
+                            next[idx] = { ...next[idx], hours: Number.isFinite(v) ? v : 0 };
+                            return { ...prev, touches: next };
+                          });
+                        }}
+                        className="w-24 px-2 py-1 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-200 disabled:bg-gray-50 disabled:text-gray-400"
+                      />
+                      <span className="text-xs text-gray-400">
+                        hours (≈ {(touch.hours / 24).toFixed(touch.hours % 24 === 0 ? 0 : 1)}d)
+                      </span>
+                      <button
+                        onClick={() =>
+                          setLinkedinFollowup((prev) => ({
+                            ...prev,
+                            touches: prev.touches.filter((_, i) => i !== idx),
+                          }))
+                        }
+                        disabled={!linkedinFollowup.enabled || linkedinFollowup.touches.length <= 1}
+                        className="ml-auto text-gray-300 hover:text-red-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        title="Remove this touch"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    {/* Template row (parity with the WhatsApp follow-up section) */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-gray-500 w-16">Message</span>
+                      <select
+                        value={touch.template_id ?? ''}
+                        disabled={!linkedinFollowup.enabled}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === '__create__') {
+                            // Open the create modal; leave template_id untouched until saved.
+                            setPendingTemplateTouchIdx(idx);
+                            return;
+                          }
+                          setLinkedinFollowup((prev) => {
+                            const next = [...prev.touches];
+                            next[idx] = { ...next[idx], template_id: val || null };
+                            return { ...prev, touches: next };
+                          });
+                        }}
+                        className="flex-1 pl-3 pr-10 py-2 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-amber-200 disabled:opacity-40 disabled:bg-gray-50 transition-all appearance-none"
+                        style={{
+                          backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+                          backgroundPosition: 'right 0.5rem center',
+                          backgroundRepeat: 'no-repeat',
+                          backgroundSize: '1.5em 1.5em',
+                        }}
+                        title="AI-generated by default, or send a saved LinkedIn template (body + media) for this touch"
+                      >
+                        <option value="">AI-generated (default)</option>
+                        {templates.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.name}{t.is_default ? ' (Default)' : ''}
+                          </option>
+                        ))}
+                        {selectedMissing && (
+                          <option value={touch.template_id as string}>
+                            (selected template unavailable)
+                          </option>
+                        )}
+                        <option value="__create__">➕ Create new template…</option>
+                      </select>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             <button
               onClick={() =>
-                setLinkedinFollowup((prev) => ({
-                  ...prev,
-                  schedule_hours: [...prev.schedule_hours, prev.schedule_hours[prev.schedule_hours.length - 1] * 2 || 24],
-                }))
+                setLinkedinFollowup((prev) => {
+                  const last = prev.touches[prev.touches.length - 1];
+                  const nextHours = (last ? last.hours * 2 : 24) || 24;
+                  return { ...prev, touches: [...prev.touches, { hours: nextHours, template_id: null }] };
+                })
               }
-              disabled={!linkedinFollowup.enabled || linkedinFollowup.schedule_hours.length >= 10}
+              disabled={!linkedinFollowup.enabled || linkedinFollowup.touches.length >= 10}
               className="mt-3 flex items-center gap-1 text-xs text-amber-600 hover:underline disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Plus className="h-3 w-3" />
               Add another touch
             </button>
           </div>
+
+          {/* Create-new-template modal (opened by the per-touch dropdown). Auto-
+              selects the new template for the touch that requested it. */}
+          <CreateLinkedInTemplateModal
+            open={pendingTemplateTouchIdx !== null}
+            onClose={() => setPendingTemplateTouchIdx(null)}
+            onCreated={(tpl: LinkedInMessageTemplate) => {
+              const idx = pendingTemplateTouchIdx;
+              if (idx === null) return;
+              setLinkedinFollowup((prev) => {
+                const next = [...prev.touches];
+                if (next[idx]) next[idx] = { ...next[idx], template_id: tpl.id };
+                return { ...prev, touches: next };
+              });
+              setPendingTemplateTouchIdx(null);
+            }}
+          />
 
           <div className="flex justify-end pt-2">
             <button
@@ -2351,9 +2812,95 @@ export function ChatSettings() {
           </div>
         </div>
       </div>
+      </>
+      )}
+
+      {/* ── Email agent (Gmail/Outlook tab) ──────────────────────── */}
+      {activeChannel === 'gmail' && <EmailAgentCard showToast={showToast} />}
+
+      {/* ── Hidden channels hint ─────────────────────────────────── */}
+      {/* One quiet strip so hidden settings are discoverable — the settings
+          themselves are kept and reappear once the channel is reconnected. */}
+      {channelsLoaded && hiddenChannels.length > 0 && (
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm px-5 py-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <EyeOff className="h-4 w-4 text-gray-400 flex-shrink-0" />
+            <p className="text-sm text-gray-500">
+              {hiddenChannels.map((c) => c.label).join(', ')} settings are hidden because
+              {hiddenChannels.length === 1 ? " it isn't" : " they aren't"} connected. Your saved settings are kept.
+            </p>
+          </div>
+          <button
+            onClick={() => router.push('/settings?tab=integrations')}
+            className="text-sm font-medium text-blue-600 hover:text-blue-700 whitespace-nowrap"
+          >
+            Connect channels →
+          </button>
+        </div>
+      )}
 
       {/* Toast */}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+
+      {/* Missing-fields modal — collects the few facts needed to generate the prompt */}
+      {missingFieldsModal && (
+        <>
+          <div className="fixed inset-0 z-[100] bg-black/30" onClick={() => setMissingFieldsModal(null)} />
+          <div className="fixed left-1/2 top-1/2 z-[110] w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white p-5 shadow-2xl">
+            <div className="flex items-start justify-between mb-1">
+              <h3 className="text-sm font-semibold text-gray-900">A few details to tailor the prompt</h3>
+              <button onClick={() => setMissingFieldsModal(null)} className="text-gray-400 hover:text-gray-600">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mb-4">
+              These aren&apos;t on file yet. We&apos;ll remember them for next time.
+            </p>
+            <div className="space-y-3">
+              {missingFieldsModal.fields.map((f) => (
+                <div key={f.key}>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    {f.label}
+                    {f.severity !== 'optional' && <span className="text-red-500"> *</span>}
+                  </label>
+                  <input
+                    type="text"
+                    value={missingFieldsModal.values[f.key] || ''}
+                    placeholder={f.placeholder || ''}
+                    onChange={(e) =>
+                      setMissingFieldsModal((prev) =>
+                        prev ? { ...prev, values: { ...prev.values, [f.key]: e.target.value } } : prev
+                      )
+                    }
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center justify-end gap-2 mt-5">
+              <button
+                onClick={() => setMissingFieldsModal(null)}
+                className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => runGenerate(missingFieldsModal.promptName, missingFieldsModal.values)}
+                disabled={
+                  generatingPrompt !== null ||
+                  missingFieldsModal.fields.some(
+                    (f) => f.severity !== 'optional' && !(missingFieldsModal.values[f.key] || '').trim()
+                  )
+                }
+                className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {generatingPrompt !== null ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                Generate
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* AI Playground side panel — opens over current page */}
       {playgroundOpen && (

@@ -16,6 +16,8 @@ export function AgentBuilderVideoProgress({
   videoUrl,
   status = "active",
   onNext,
+  progress,
+  onBack,
 }: {
   title?: string;
   description?: string;
@@ -25,9 +27,13 @@ export function AgentBuilderVideoProgress({
   videoUrl?: string;
   status?: "active" | "completed" | "cancelled" | "failed";
   onNext?: (val?: string) => void;
+  progress?: number;
+  onBack?: () => void;
 }) {
   const [retryCounts, setRetryCounts] = React.useState<Record<string, number>>({});
   const [cooldowns, setCooldowns] = React.useState<Record<string, number>>({});
+
+  const isExtraction = phase?.toLowerCase().includes("dna") || phase?.toLowerCase().includes("extraction") || phase?.toLowerCase().includes("business");
 
   React.useEffect(() => {
     const timer = setInterval(() => {
@@ -64,14 +70,14 @@ export function AgentBuilderVideoProgress({
   };
 
   const handleGlobalRetry = () => {
-    const failedBlocks = blocks.filter(b => b.value === "failed");
+    const failedBlocks = cleanBlocks.filter(b => b.value === "failed");
     let triggeredAny = false;
     
     const nextCooldowns = { ...cooldowns };
     const nextRetryCounts = { ...retryCounts };
 
-    failedBlocks.forEach((block, idx) => {
-      const blockIdx = blocks.indexOf(block);
+    failedBlocks.forEach((block) => {
+      const blockIdx = cleanBlocks.indexOf(block);
       const key = getBlockKey(block, blockIdx);
       const currentCount = nextRetryCounts[key] || 0;
       if (currentCount < 3 && !(nextCooldowns[key] > 0)) {
@@ -100,10 +106,41 @@ export function AgentBuilderVideoProgress({
     }
   };
   
-  const total = blocks.length || 4;
-  const totalWeight = blocks.reduce((acc, b) => acc + getWeight(b.value), 0);
-  const allCompleted = blocks.length > 0 && blocks.every((b) => b.value === "completed");
-  const progressPercent = allCompleted ? 100 : Math.min(99, Math.round((totalWeight / total) * 100));
+  // Extract percentage in parentheses/brackets from title, description, or blocks
+  let extractedProgress: number | undefined = progress;
+  const pctRegex = /[\(\[]\s*(\d+)\s*%\s*[\)\]]/;
+
+  let cleanTitle = title;
+  const titleMatch = cleanTitle.match(pctRegex);
+  if (titleMatch) {
+    extractedProgress = parseInt(titleMatch[1], 10);
+    cleanTitle = cleanTitle.replace(pctRegex, "").replace(/\s+/g, " ").trim();
+  }
+
+  let cleanDescription = description;
+  const descMatch = cleanDescription.match(pctRegex);
+  if (descMatch) {
+    extractedProgress = parseInt(descMatch[1], 10);
+    cleanDescription = cleanDescription.replace(pctRegex, "").replace(/\s+/g, " ").trim();
+  }
+
+  const cleanBlocks = blocks.map((block) => {
+    let cleanLabel = block.label;
+    const blockMatch = cleanLabel.match(pctRegex);
+    if (blockMatch) {
+      if (extractedProgress === undefined || extractedProgress === progress) {
+        extractedProgress = parseInt(blockMatch[1], 10);
+      }
+      cleanLabel = cleanLabel.replace(pctRegex, "").replace(/\s+/g, " ").trim();
+    }
+    const blockValue = status === "completed" ? "completed" : block.value;
+    return { ...block, label: cleanLabel, value: blockValue };
+  });
+
+  const total = cleanBlocks.length || 4;
+  const totalWeight = cleanBlocks.reduce((acc, b) => acc + getWeight(b.value), 0);
+  const allCompleted = cleanBlocks.length > 0 && cleanBlocks.every((b) => b.value === "completed");
+  const progressPercent = status === "completed" ? 100 : (extractedProgress !== undefined ? extractedProgress : (allCompleted ? 100 : Math.min(99, Math.round((totalWeight / total) * 100))));
 
   const handleDownload = async () => {
     if (!videoUrl) return;
@@ -178,9 +215,9 @@ export function AgentBuilderVideoProgress({
   };
 
   // Check retry eligibility for global button
-  const failedBlocks = blocks.filter(b => b.value === "failed");
+  const failedBlocks = cleanBlocks.filter(b => b.value === "failed");
   const retryableFailedBlocks = failedBlocks.filter(b => {
-    const key = getBlockKey(b, blocks.indexOf(b));
+    const key = getBlockKey(b, cleanBlocks.indexOf(b));
     return (retryCounts[key] || 0) < 3 && !(cooldowns[key] > 0);
   });
   const allFailedReachedLimit = failedBlocks.length > 0 && retryableFailedBlocks.length === 0;
@@ -190,6 +227,15 @@ export function AgentBuilderVideoProgress({
       {/* Header */}
       <div className="w-full flex shrink-0 items-center justify-between p-4 border-b border-slate-100 bg-white/80 z-10">
         <div className="flex items-center gap-2 pl-4">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="mr-1 p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-all active:scale-95 border border-transparent hover:border-slate-100"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="size-4" />
+            </button>
+          )}
           <Video className={cn("size-4 text-primary", status === "active" && "animate-pulse")} />
           <span className="text-[11px] font-bold text-primary uppercase tracking-wider">
             {phase || "Production Pipeline"}
@@ -200,10 +246,10 @@ export function AgentBuilderVideoProgress({
       {/* Main Content Area */}
       <div className="relative flex-1 min-h-0 w-full flex flex-col pt-6 px-6 overflow-y-auto scrollbar-none">
         <h2 className="text-xl font-bold text-[#0b1957] text-center leading-snug mb-2">
-          {title}
+          {cleanTitle}
         </h2>
         <p className="text-xs text-slate-500 text-center mb-6 font-medium max-w-[320px] mx-auto leading-relaxed">
-          {description}
+          {cleanDescription}
         </p>
 
         {/* Real-time Video Player Preview */}
@@ -247,7 +293,7 @@ export function AgentBuilderVideoProgress({
 
         {/* Segments Progress List */}
         <div className="flex-1 w-full space-y-3 pb-8">
-          {blocks.map((block, idx) => {
+          {cleanBlocks.map((block, idx) => {
             const { icon, statusText, colorClass } = getStatusDetails(block.value);
             
             const itemKey = getBlockKey(block, idx);
@@ -320,14 +366,14 @@ export function AgentBuilderVideoProgress({
             <div className="flex items-center gap-2 mb-1">
               <Loader2 className="size-3 text-slate-500 animate-spin" />
               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest animate-pulse">
-                Processing Generation Loop...
+                {isExtraction ? "Extracting Brand Guidelines..." : "Processing Generation Loop..."}
               </span>
             </div>
             <button
               onClick={() => onNext?.("[CANCEL_VIDEO_GEN]")}
               className="w-full max-w-[280px] py-2 bg-white border border-red-200 hover:bg-red-50 text-red-600 font-bold text-[11px] rounded-xl transition-all active:scale-95 cursor-pointer text-center flex items-center justify-center gap-1 shadow-sm"
             >
-              Stop & Keep Video
+              {isExtraction ? "Stop Extraction" : "Stop & Keep Video"}
             </button>
           </>
         ) : (
@@ -366,15 +412,17 @@ export function AgentBuilderVideoProgress({
             )}
             
             <div className="w-full flex items-center justify-center gap-2">
-              <button
-                type="button"
-                onClick={() => onNext?.("[SHOW_GALLERY]")}
-                className="flex-1 py-2.5 border border-slate-200 hover:bg-slate-50 text-[#0b1957] font-bold text-[11px] rounded-xl transition-all active:scale-95 cursor-pointer text-center flex items-center justify-center gap-1 shadow-sm"
-              >
-                <ArrowLeft className="size-3.5" />
-                Back to Gallery
-              </button>
-              {status !== "completed" && (
+              {!isExtraction && (
+                <button
+                  type="button"
+                  onClick={() => onNext?.("[SHOW_GALLERY]")}
+                  className="flex-1 py-2.5 border border-slate-200 hover:bg-slate-50 text-[#0b1957] font-bold text-[11px] rounded-xl transition-all active:scale-95 cursor-pointer text-center flex items-center justify-center gap-1 shadow-sm"
+                >
+                  <ArrowLeft className="size-3.5" />
+                  Back to Gallery
+                </button>
+              )}
+              {!isExtraction && status !== "completed" && (
                 <button
                   type="button"
                   onClick={() => onNext?.("Back to script approval")}

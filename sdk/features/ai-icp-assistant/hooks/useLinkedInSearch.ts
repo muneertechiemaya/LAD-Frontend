@@ -193,6 +193,10 @@ export function useLinkedInSearch() {
           ...(body.targeting_filters  ? { targeting_filters:  body.targeting_filters  } : {}),
           // ICP description for lead qualification scoring
           ...(body.icp_description    ? { icp_description:    body.icp_description    } : {}),
+          // Minimum ICP score to return. 0 = return all scored leads (0–100) so
+          // the caller can present the full range for checkbox selection. Checked
+          // with `!== undefined` because 0 is a valid, intentional value.
+          ...(body.icp_min_score !== undefined ? { icp_min_score: body.icp_min_score } : {}),
           // Sales Navigator flag
           ...(body.useSalesNav        ? { useSalesNav:        body.useSalesNav        } : {}),
         };
