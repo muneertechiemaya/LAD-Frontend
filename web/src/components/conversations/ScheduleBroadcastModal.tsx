@@ -34,11 +34,16 @@ export function ScheduleBroadcastModal({ open, onClose, groupIds, channel, onSch
   const [submitting, setSubmitting] = useState(false);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Recurrence (template mode only). 'once' = one-shot at scheduledAt.
+  const [repeat, setRepeat] = useState<'once' | 'daily' | 'weekly' | 'monthly'>('once');
+  const [recurDay, setRecurDay] = useState<number>(0);   // weekly: 0-6 (Sun=0) | monthly: 1-31
+  const [recurTime, setRecurTime] = useState<string>('09:00');
 
   useEffect(() => {
     if (!open) {
       setMode('message'); setMessage(''); setTemplateName(''); setParams([]);
       setScheduledAt(''); setError(null); setSubmitting(false);
+      setRepeat('once'); setRecurDay(0); setRecurTime('09:00');
     }
   }, [open]);
 
@@ -85,11 +90,26 @@ export function ScheduleBroadcastModal({ open, onClose, groupIds, channel, onSch
 
   const submit = async () => {
     setError(null);
-    if (!scheduledAt) { setError('Pick a date and time'); return; }
-    const whenIso = new Date(scheduledAt).toISOString();
-    if (new Date(whenIso).getTime() <= Date.now() + 30 * 1000) { setError('Pick a time at least a minute from now'); return; }
     if (mode === 'message' && !message.trim()) { setError('Enter a message'); return; }
     if (mode === 'template' && !templateName) { setError('Pick a template'); return; }
+
+    // Recurring (template only) sends the rule + tenant-local timezone; one-shot sends scheduled_at.
+    const recurring = mode === 'template' && repeat !== 'once';
+    let timing: Record<string, unknown>;
+    if (recurring) {
+      if (!recurTime) { setError('Pick a time'); return; }
+      timing = {
+        recurrence: repeat,
+        recurrence_day: repeat === 'daily' ? null : recurDay,
+        recurrence_time: recurTime,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      };
+    } else {
+      if (!scheduledAt) { setError('Pick a date and time'); return; }
+      const whenIso = new Date(scheduledAt).toISOString();
+      if (new Date(whenIso).getTime() <= Date.now() + 30 * 1000) { setError('Pick a time at least a minute from now'); return; }
+      timing = { scheduled_at: whenIso };
+    }
 
     setSubmitting(true);
     try {
@@ -97,7 +117,7 @@ export function ScheduleBroadcastModal({ open, onClose, groupIds, channel, onSch
         ? await fetchWithTenant(`/api/whatsapp-conversations/chat-groups/broadcast-to-groups?channel=${channel}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ group_ids: groupIds, message: message.trim(), scheduled_at: whenIso }),
+            body: JSON.stringify({ group_ids: groupIds, message: message.trim(), ...timing }),
           })
         : await fetchWithTenant(`/api/whatsapp-conversations/chat-groups/schedule-template-broadcast?channel=${channel}`, {
             method: 'POST',
@@ -107,7 +127,7 @@ export function ScheduleBroadcastModal({ open, onClose, groupIds, channel, onSch
               template_name: templateName,
               language_code: selectedTemplate?.language || 'en',
               parameters: params,
-              scheduled_at: whenIso,
+              ...timing,
             }),
           });
       const data = await res.json().catch(() => ({}));
@@ -139,7 +159,7 @@ export function ScheduleBroadcastModal({ open, onClose, groupIds, channel, onSch
               <button
                 key={m}
                 type="button"
-                onClick={() => setMode(m)}
+                onClick={() => { setMode(m); if (m === 'message') setRepeat('once'); }}
                 className={`flex-1 text-sm py-1.5 rounded-md border transition-colors ${
                   mode === m ? 'bg-emerald-500 text-white border-emerald-500' : 'border-border hover:bg-muted'
                 }`}
@@ -191,16 +211,89 @@ export function ScheduleBroadcastModal({ open, onClose, groupIds, channel, onSch
             </div>
           )}
 
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">Send at</label>
-            <input
-              type="datetime-local"
-              value={scheduledAt}
-              min={minDateTime}
-              onChange={(e) => setScheduledAt(e.target.value)}
-              className="mt-1 w-full text-sm rounded-md border border-border bg-background px-3 py-2"
-            />
-          </div>
+          {/* Repeat — template mode only (recurrence requires a template) */}
+          {mode === 'template' && (
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Repeat</label>
+              <select
+                value={repeat}
+                onChange={(e) => {
+                  const v = e.target.value as 'once' | 'daily' | 'weekly' | 'monthly';
+                  setRepeat(v);
+                  if (v === 'monthly' && (recurDay < 1 || recurDay > 31)) setRecurDay(1);
+                  if (v === 'weekly' && (recurDay < 0 || recurDay > 6)) setRecurDay(0);
+                }}
+                className="mt-1 w-full text-sm rounded-md border border-border bg-background px-3 py-2"
+              >
+                <option value="once">Don&apos;t repeat (one time)</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
+          )}
+
+          {mode === 'template' && repeat !== 'once' ? (
+            <>
+              <div className="flex gap-2">
+                {repeat === 'weekly' && (
+                  <div className="flex-1">
+                    <label className="text-xs font-medium text-muted-foreground">On</label>
+                    <select
+                      value={recurDay}
+                      onChange={(e) => setRecurDay(Number(e.target.value))}
+                      className="mt-1 w-full text-sm rounded-md border border-border bg-background px-3 py-2"
+                    >
+                      {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((d, i) => (
+                        <option key={i} value={i}>{d}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                {repeat === 'monthly' && (
+                  <div className="flex-1">
+                    <label className="text-xs font-medium text-muted-foreground">Day of month</label>
+                    <select
+                      value={recurDay}
+                      onChange={(e) => setRecurDay(Number(e.target.value))}
+                      className="mt-1 w-full text-sm rounded-md border border-border bg-background px-3 py-2"
+                    >
+                      {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <div className="flex-1">
+                  <label className="text-xs font-medium text-muted-foreground">At</label>
+                  <input
+                    type="time"
+                    value={recurTime}
+                    onChange={(e) => setRecurTime(e.target.value)}
+                    className="mt-1 w-full text-sm rounded-md border border-border bg-background px-3 py-2"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Repeats {repeat === 'daily'
+                  ? 'every day'
+                  : repeat === 'weekly'
+                    ? `every ${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][recurDay] || 'Sun'}`
+                    : `on day ${recurDay} of each month`} at {recurTime}. Runs until you cancel it.
+              </p>
+            </>
+          ) : (
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Send at</label>
+              <input
+                type="datetime-local"
+                value={scheduledAt}
+                min={minDateTime}
+                onChange={(e) => setScheduledAt(e.target.value)}
+                className="mt-1 w-full text-sm rounded-md border border-border bg-background px-3 py-2"
+              />
+            </div>
+          )}
 
           {error && <p className="text-sm text-red-500">{error}</p>}
         </div>

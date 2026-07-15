@@ -195,14 +195,12 @@ export default function EmployeeCard({
             {(employee.title || employee.company) && (
               <div
                 className={`
-                  text-sm text-gray-600 dark:text-[#7a8ba3] w-full min-w-0
-                  ${employeeViewMode === 'grid' ? 'text-center' : 'text-left'}
+                  flex flex-col gap-1 w-full min-w-0
+                  text-sm text-gray-600 dark:text-[#7a8ba3]
+                  ${employeeViewMode === 'grid' ? 'items-center text-center' : 'items-start text-left'}
                 `}
               >
-                {employee.title && employee.company && (
-                  <span className="line-clamp-2 break-words">{employee.title} at {employee.company}</span>
-                )}
-                {employee.title && !employee.company && (
+                {employee.title && (
                   <Badge
                     variant="default"
                     className={`
@@ -213,8 +211,11 @@ export default function EmployeeCard({
                     {employee.title}
                   </Badge>
                 )}
-                {!employee.title && employee.company && (
-                  <span className="line-clamp-1 break-words text-slate-500 dark:text-[#7a8ba3]">{employee.company}</span>
+                {/* Company shown on its own line, under the name/title chip */}
+                {employee.company && (
+                  <span className="line-clamp-1 break-words text-slate-500 dark:text-[#7a8ba3]">
+                    {employee.company}
+                  </span>
                 )}
               </div>
             )}

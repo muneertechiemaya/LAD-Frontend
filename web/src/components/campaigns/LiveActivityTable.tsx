@@ -15,11 +15,12 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import {
   Download, Filter, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
   ExternalLink, ChevronDown, ChevronUp, Sparkles, Globe, Newspaper, Mic, Award, FileText, Users, MessageSquare,
-  RotateCw, CheckCircle2, AlertCircle, ArrowUpDown,
+  RotateCw, CheckCircle2, AlertCircle, ArrowUpDown, XCircle, Ban,
 } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
-import { useCampaignActivityFeed, retryConnection } from '@lad/frontend-features/campaigns';
+import { useCampaignActivityFeed, retryConnection, withdrawConnection } from '@lad/frontend-features/campaigns';
+import { useToast } from '@/components/ui/use-toast';
 import { apiGet } from '@/lib/api';
 import { MiniStepper } from './MiniStepper';
 import { StatusStepper, type WorkflowStep } from './StatusStepper';
@@ -343,9 +344,18 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
   // Tracks which lead's "Agent Insights" panel is open (one at a time)
   const [expandedLeadId, setExpandedLeadId] = useState<string | null>(null);
 
+  const { toast } = useToast();
+
   // Retry-state per lead — leadId → { status, message? }
   // Drives the small status pill that appears next to the Retry button.
   const [retryState, setRetryState] = useState<Record<string, {
+    status: 'pending' | 'success' | 'failed';
+    message?: string;
+  }>>({});
+
+  // Withdraw-state per lead — leadId → { status, message? }
+  // Drives the small status pill next to the Withdraw button (mirrors retry).
+  const [withdrawState, setWithdrawState] = useState<Record<string, {
     status: 'pending' | 'success' | 'failed';
     message?: string;
   }>>({});
@@ -496,6 +506,59 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
     }
   };
 
+  /**
+   * Withdraw a still-pending LinkedIn connection request for a single lead.
+   * Confirms first, then calls the withdraw endpoint. A `no_pending_invite`
+   * response (nothing to retract — already accepted/withdrawn) is surfaced as a
+   * friendly toast rather than an error.
+   */
+  const handleWithdraw = async (leadId: string) => {
+    if (!leadId || withdrawState[leadId]?.status === 'pending') return;
+    if (typeof window !== 'undefined' &&
+        !window.confirm('Withdraw this connection request?')) {
+      return;
+    }
+    setWithdrawState((prev) => ({ ...prev, [leadId]: { status: 'pending' } }));
+    try {
+      const result = await withdrawConnection(leadId, campaignId);
+      if (result.success && result.withdrawn) {
+        setWithdrawState((prev) => ({
+          ...prev,
+          [leadId]: { status: 'success', message: 'Connection request withdrawn' },
+        }));
+        // Pull the freshly-inserted CONNECTION_WITHDRAWN row into the feed.
+        setTimeout(() => refresh(), 500);
+      } else if (result.reason === 'no_pending_invite') {
+        // Nothing to do — invite already accepted, withdrawn, or never pending.
+        setWithdrawState((prev) => {
+          const next = { ...prev };
+          delete next[leadId];
+          return next;
+        });
+        toast({
+          title: 'No pending request to withdraw',
+          description: 'This connection request is no longer pending.',
+        });
+      } else {
+        setWithdrawState((prev) => ({
+          ...prev,
+          [leadId]: {
+            status: 'failed',
+            message: result.error || 'Withdrawal failed',
+          },
+        }));
+      }
+    } catch (err: any) {
+      setWithdrawState((prev) => ({
+        ...prev,
+        [leadId]: {
+          status: 'failed',
+          message: err?.message || 'Withdrawal failed',
+        },
+      }));
+    }
+  };
+
   // Group activities by lead
   const groupedLeads = useMemo(() => {
     if (!activities || activities.length === 0) return [];
@@ -518,6 +581,7 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
           connectionStatus: 'NOT_SENT' as const,
           connectionSentWithMessage: false,
           connectionAccepted: false,
+          connectionWithdrawn: false,   // tracks CONNECTION_WITHDRAWN
           contacted: false,
           contactedStatus: undefined,
           callMade: false,          // tracks VOICE_CALL_MADE / VOICE_CALL_INITIATED
@@ -577,7 +641,12 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
         }
       }
 
-      if (actionType.includes('CONNECTION')) {
+      if (actionType.includes('CONNECTION') && actionType.includes('WITHDRAW')) {
+        // A withdrawn request is terminal for the connect step — mark it and
+        // skip the SENT/ACCEPT handling below so the row reads "Withdrawn".
+        lead.connectionWithdrawn = true;
+        lead.connectionStatus = 'WITHDRAWN';
+      } else if (actionType.includes('CONNECTION')) {
         // Capture the personalization source — which post/article URL the agent
         // used as the hook. Only present on CONNECTION_SENT_WITH_MESSAGE rows.
         if (
@@ -1085,6 +1154,69 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
                                   </TooltipTrigger>
                                   <TooltipContent side="bottom" className="max-w-[260px]">
                                     {rs.message}
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                          </div>
+                        );
+                      })()}
+                      {/* Withdraw button — appears when this lead has a still-pending
+                          sent connection request (SENT and not accepted/replied/
+                          already withdrawn). Retracts the LinkedIn invitation. */}
+                      {(() => {
+                        const ws = withdrawState[lead.leadId];
+                        const isPendingSent =
+                          lead.connectionStatus === 'SENT' &&
+                          !lead.connectionAccepted &&
+                          !lead.leadReplied &&
+                          !lead.connectionWithdrawn;
+                        // Keep showing once withdrawn (so the success pill lingers).
+                        if (!isPendingSent && ws?.status !== 'success') return null;
+
+                        const isPending = ws?.status === 'pending';
+                        const isSuccess = ws?.status === 'success';
+                        const isFailed  = ws?.status === 'failed';
+
+                        return (
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleWithdraw(lead.leadId);
+                              }}
+                              disabled={isPending || isSuccess}
+                              title={
+                                isSuccess
+                                  ? 'Connection request withdrawn'
+                                  : isPending
+                                  ? 'Withdrawing…'
+                                  : 'Withdraw this pending connection request'
+                              }
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 text-[11px] rounded border transition-colors ${
+                                isSuccess
+                                  ? 'bg-slate-100 text-slate-600 border-slate-200 cursor-default'
+                                  : isPending
+                                  ? 'bg-slate-100 text-slate-500 border-slate-200 cursor-wait'
+                                  : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+                              }`}
+                            >
+                              {isPending && <Loader2 className="w-3 h-3 animate-spin" />}
+                              {isSuccess && <XCircle className="w-3 h-3" />}
+                              {!isPending && !isSuccess && <Ban className="w-3 h-3" />}
+                              {isSuccess ? 'Withdrawn' : isPending ? 'Withdrawing…' : 'Withdraw'}
+                            </button>
+                            {isFailed && ws?.message && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="text-red-500">
+                                      <AlertCircle className="w-3 h-3" />
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="bottom" className="max-w-[260px]">
+                                    {ws.message}
                                   </TooltipContent>
                                 </Tooltip>
                               </TooltipProvider>

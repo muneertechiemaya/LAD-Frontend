@@ -61,6 +61,11 @@ const FIELD_COPY: Record<string, { label: string; hint?: string; multiline?: boo
   valueProposition:   { label: 'Value proposition',    multiline: true,  placeholder: 'AI sales assistant for outbound teams in MENA.' },
   productsServices:   { label: 'Products & services',  multiline: true,  hint: 'What the prospect actually buys.' },
   targetCustomers:    { label: 'Target customers',     multiline: true,  hint: 'Plain language — the chat dives deeper.' },
+  contactEmail:       { label: 'Contact email',        hint: 'Shared by the agent when a prospect asks how to reach you.', placeholder: 'you@company.com' },
+  contactPhone:       { label: 'Contact phone',        hint: 'Shared by the agent when a prospect asks how to reach you.', placeholder: '+971 50 123 4567' },
+  personaName:        { label: 'Agent speaks as',       hint: 'The name the LinkedIn agent messages prospects as.', placeholder: 'e.g. Sneha' },
+  personaTitle:       { label: 'Your title / role',     hint: 'How you introduce yourself.', placeholder: 'e.g. Founder' },
+  bookingLink:        { label: 'Booking / calendar link', hint: 'Offered when a prospect is ready for a call.', placeholder: 'https://cal.com/you/intro' },
 
   companyDescription: { label: 'Company description',  multiline: true },
   icpJobTitles:       { label: 'Job titles',           hint: 'Comma-separate, partial matches OK.', placeholder: 'Head of Growth, VP Sales' },

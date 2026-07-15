@@ -26,6 +26,7 @@ export function AgentBuilderMCQ({
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showCustomInput, setShowCustomInput] = useState(false);
+  const [customValue, setCustomValue] = useState("");
 
   // Layout rule: stack rows up to 4 options, wrap chips if more.
   const isStacked = options.length <= 4;
@@ -34,6 +35,8 @@ export function AgentBuilderMCQ({
     setSelectedId((prev) => (prev === id ? null : id));
     setShowCustomInput(false);
   };
+
+  const isSubmitDisabled = !selectedId || (selectedId === "custom" && !customValue.trim());
 
   return (
     <div className="relative flex flex-col items-center w-[448px] max-w-full h-[600px] bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-300 outline-none focus:outline-none focus:ring-0">
@@ -122,9 +125,11 @@ export function AgentBuilderMCQ({
                      placeholder="Type your option..." 
                      className="w-full bg-white border border-[#0b1957] rounded-2xl px-5 py-4 text-sm text-[#0b1957] shadow-lg outline-none focus:ring-2 focus:ring-[#0b1957]/20" 
                      autoFocus 
+                     value={customValue}
+                     onChange={(e) => setCustomValue(e.target.value)}
                      onKeyDown={(e) => {
-                         if (e.key === "Enter" && e.currentTarget.value.trim() && onNext) {
-                             onNext(e.currentTarget.value.trim());
+                         if (e.key === "Enter" && customValue.trim() && onNext) {
+                             onNext(customValue.trim());
                          }
                      }}
                    />
@@ -156,14 +161,16 @@ export function AgentBuilderMCQ({
                 if (selectedId && selectedId !== "custom" && onNext) {
                     const opt = options.find(o => o.id === selectedId);
                     onNext(opt ? opt.label : selectedId);
+                } else if (selectedId === "custom" && onNext) {
+                    onNext(customValue.trim());
                 } else if (onNext) {
                     onNext("");
                 }
             }}
-            disabled={!selectedId && !showCustomInput}
+            disabled={isSubmitDisabled}
             className={cn(
                "px-8 py-3 rounded-full font-bold shadow-lg transition-all active:scale-95 flex items-center gap-2",
-               (selectedId || showCustomInput) 
+               !isSubmitDisabled
                   ? "bg-gradient-to-br from-[#0b1957] to-[#1e293b] text-white hover:shadow-xl shadow-[#0b1957]/20 cursor-pointer" 
                   : "bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200 shadow-none"
             )}

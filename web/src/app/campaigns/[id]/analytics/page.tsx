@@ -13,12 +13,13 @@ import {
   AlertCircle, Linkedin, Phone, MessageCircle,
   Reply, MousePointerClick, BarChart, Activity, Rocket, Zap, Lightbulb,
   Megaphone, Gauge, Moon, Sun, Wifi, WifiOff, Loader2, RadioTower,
-  SquarePen, Sparkles, ChevronDown, ChevronUp, RefreshCw
+  SquarePen, Sparkles, ChevronDown, ChevronUp, RefreshCw, CalendarClock
 } from 'lucide-react';
 import { useCampaignAnalytics, useCampaignLeads } from '@lad/frontend-features/campaigns';
 import { useToast } from '@/components/ui/app-toaster';
 import AnalyticsCharts from '@/components/analytics/AnalyticsCharts';
 import { LiveActivityTable } from '@/components/campaigns';
+import ScheduledFollowupsModal from '@/components/campaigns/ScheduledFollowupsModal';
 import { LiveBadge } from '@/components/LiveBadge';
 import { proxyPost } from '@/lib/api';
 
@@ -62,6 +63,7 @@ export default function CampaignAnalyticsPage() {
   // ── Bulk Follow-up state ───────────────────────────────────────────────────
   const { leads: allLeads, loading: leadsLoading } = useCampaignLeads(campaignId);
   const [followupPanelOpen, setFollowupPanelOpen] = useState(false);
+  const [scheduleManagerOpen, setScheduleManagerOpen] = useState(false);
   const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
   const [bulkChannel, setBulkChannel] = useState<string>('');
   const [bulkStatus, setBulkStatus] = useState<'idle' | 'running' | 'done'>('idle');
@@ -444,7 +446,6 @@ export default function CampaignAnalyticsPage() {
             <span className="text-white !text-white">View Leads</span>
           </Button>
           <Button
-            variant="none"
             onClick={() => router.push(`/onboarding?campaignId=${campaignId}`)}
             className="h-10 px-4 rounded-xl font-semibold text-sm tracking-wide text-white !text-white transition-all duration-200 cursor-pointer border-none outline-none active:scale-[0.99]
               bg-[#0b1957] hover:bg-[#122572] shadow-[0_4px_12px_rgba(11,25,87,0.15)]
@@ -590,28 +591,40 @@ export default function CampaignAnalyticsPage() {
       {/* ── Bulk Follow-up Panel ────────────────────────────────────────── */}
       <div className="mb-8">
         {/* Collapsed header — always visible */}
-        <button
-          onClick={() => { setFollowupPanelOpen(v => !v); setBulkStatus('idle'); setLeadProgress([]); setSelectedLeadIds(new Set()); }}
-          className="w-full flex items-center justify-between px-5 py-4 bg-white dark:bg-[#1a2a43] rounded-2xl border border-slate-200 dark:border-[#262831] shadow-sm hover:border-[#0b1957]/40 hover:shadow-md transition-all"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#0b1957]/10 dark:bg-blue-500/20 flex items-center justify-center transition-colors">
-              <Send className="w-5 h-5 text-[#0b1957] dark:text-blue-400" />
+        <div className="flex items-stretch gap-2">
+          <button
+            onClick={() => { setFollowupPanelOpen(v => !v); setBulkStatus('idle'); setLeadProgress([]); setSelectedLeadIds(new Set()); }}
+            className="flex-1 flex items-center justify-between px-5 py-4 bg-white dark:bg-[#1a2a43] rounded-2xl border border-slate-200 dark:border-[#262831] shadow-sm hover:border-[#0b1957]/40 hover:shadow-md transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-[#0b1957]/10 dark:bg-blue-500/20 flex items-center justify-center transition-colors">
+                <Send className="w-5 h-5 text-[#0b1957] dark:text-blue-400" />
+              </div>
+              <div className="text-left">
+                <p className="font-bold text-[#1E293B] dark:text-white text-base">Send Follow-up</p>
+                <p className="text-xs text-slate-500 dark:text-slate-300">Select leads → choose channel → AI generates personalised messages and sends</p>
+              </div>
             </div>
-            <div className="text-left">
-              <p className="font-bold text-[#1E293B] dark:text-white text-base">Send Follow-up</p>
-              <p className="text-xs text-slate-500 dark:text-slate-300">Select leads → choose channel → AI generates personalised messages and sends</p>
+            <div className="flex items-center gap-3">
+              {selectedLeadIds.size > 0 && !followupPanelOpen && (
+                <span className="text-xs bg-[#0b1957] text-white px-2.5 py-1 rounded-full font-semibold">
+                  {selectedLeadIds.size} selected
+                </span>
+              )}
+              {followupPanelOpen ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
             </div>
-          </div>
-          <div className="flex items-center gap-3">
-            {selectedLeadIds.size > 0 && !followupPanelOpen && (
-              <span className="text-xs bg-[#0b1957] text-white px-2.5 py-1 rounded-full font-semibold">
-                {selectedLeadIds.size} selected
-              </span>
-            )}
-            {followupPanelOpen ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
-          </div>
-        </button>
+          </button>
+
+          {/* Manage the auto follow-up SCHEDULE for connection-accepted leads */}
+          <button
+            onClick={() => setScheduleManagerOpen(true)}
+            title="View & manage scheduled follow-ups for connection-accepted leads"
+            className="flex items-center gap-2 px-4 rounded-2xl border border-slate-200 dark:border-[#262831] bg-white dark:bg-[#1a2a43] text-sm font-semibold text-[#0b1957] dark:text-white shadow-sm hover:border-[#0b1957]/40 hover:shadow-md transition-all whitespace-nowrap"
+          >
+            <CalendarClock className="w-4 h-4" />
+            <span className="hidden sm:inline">Manage schedule</span>
+          </button>
+        </div>
 
         {/* Expanded panel */}
         {followupPanelOpen && (
@@ -986,6 +999,13 @@ export default function CampaignAnalyticsPage() {
           <Button onClick={() => router.push(`/campaigns/${campaignId}`)} style={{ background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)' }} className="font-semibold">Configure Campaign</Button>
         </Card>
       )} */}
+
+      {/* Scheduled Follow-ups manager (connection-accepted leads) */}
+      <ScheduledFollowupsModal
+        campaignId={campaignId}
+        open={scheduleManagerOpen}
+        onClose={() => setScheduleManagerOpen(false)}
+      />
     </div>
   );
 }

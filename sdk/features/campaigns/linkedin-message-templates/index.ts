@@ -12,6 +12,9 @@ export type {
   TemplateFilters,
   PersonalizedTemplate,
   TemplateCategory,
+  TemplateMedia,
+  TemplateMediaType,
+  TemplateMediaUploadResult,
 } from './types';
 
 export {
@@ -32,6 +35,7 @@ export {
   createMessageTemplate,
   updateMessageTemplate,
   deleteMessageTemplate,
+  uploadTemplateMedia,
   saveTemplatesToLocalStorage,
   loadTemplatesFromLocalStorage,
   clearTemplatesFromLocalStorage,
