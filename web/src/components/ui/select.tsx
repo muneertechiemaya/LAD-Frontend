@@ -57,7 +57,7 @@ function SelectContent({
       <SelectPrimitive.Content
         data-slot="select-content"
         className={cn(
-          "bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 relative z-[1001] max-h-(--radix-select-content-available-height) min-w-[8rem] origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md border shadow-md",
+          "bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 relative z-[1001] max-h-(--radix-select-content-available-height) origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md border shadow-md",
           position === "popper" &&
             "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
           className
@@ -104,14 +104,37 @@ function SelectItem({
     <SelectPrimitive.Item
       data-slot="select-item"
       className={cn(
-        "focus:bg-accent focus:text-accent-foreground [&_svg:not([class*='text-'])]:text-muted-foreground relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
+        "relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-none select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2 transition-colors duration-150 group",
+
+                // --- LIGHT MODE HOVER & TICK MATRIX ---
+                // Unhovered State
+                "data-[state=checked]:bg-white data-[state=checked]:text-[#000724]",
+                // Hovered State (Deep Navy background, White text)
+                "focus:bg-[#0A1957] focus:text-white data-[state=checked]:focus:bg-[#0A1957] data-[state=checked]:focus:text-white",
+
+                // --- DARK MODE HOVER & TICK MATRIX ---
+                // Unhovered State
+                "dark:data-[state=checked]:bg-[#1A2A43]/50 dark:data-[state=checked]:text-white",
+                // Hovered State (Vibrant Green background, Dark Blue slate text)
+                "dark:focus:bg-[#22C55E] dark:focus:text-[#000724] dark:data-[state=checked]:focus:bg-[#22C55E] dark:data-[state=checked]:focus:text-[#000724]",
         className
       )}
       {...props}
     >
       <span className="absolute right-2 flex size-3.5 items-center justify-center">
         <SelectPrimitive.ItemIndicator>
-          <CheckIcon className="size-4" />
+          <CheckIcon className={cn("size-4 transition-colors duration-150",
+                  // --- BASE MODE COLOR RULES (UNHOVERED STATES) ---
+                  // Light Mode Unhovered: Brand Navy | Dark Mode Unhovered: Clean White
+                  "text-[#0B1957] dark:text-white",
+
+                  // --- ACTIVE FOCUS HOVER TRANSFORM HOOKS ---
+                  // Light Mode Hover: Tick turns crisp white over navy background bar
+                  "group-focus:text-white",
+                  // Dark Mode Hover: Tick transitions to dark blue slate over green background bar
+                  "dark:group-focus:text-[#000724]"
+              )}
+          />
         </SelectPrimitive.ItemIndicator>
       </span>
       <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
@@ -175,4 +198,4 @@ export {
   SelectSeparator,
   SelectTrigger,
   SelectValue,
-}
+}
