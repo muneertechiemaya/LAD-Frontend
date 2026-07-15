@@ -56,7 +56,7 @@ function ThinkingIndicator({ generating }: { generating: boolean }) {
             repeat: Infinity,
             ease: "easeInOut",
           }}
-          className="absolute inset-0 bg-[#0b1957]/10 rounded-full"
+          className="absolute inset-0 bg-[#0b1957]/10 dark:bg-blue-400/10 rounded-full"
         />
         <motion.div
           animate={{
@@ -67,9 +67,9 @@ function ThinkingIndicator({ generating }: { generating: boolean }) {
             repeat: Infinity,
             ease: "linear",
           }}
-          className="size-16 border-2 border-dashed border-[#0b1957]/20 rounded-full flex items-center justify-center"
+          className="size-16 border-2 border-dashed border-[#0b1957]/20  dark:border-blue-400/20 rounded-full flex items-center justify-center"
         >
-          <Sparkles className="size-8 text-[#0b1957] animate-pulse" />
+          <Sparkles className="size-8 text-[#0b1957] dark:text-blue-400 animate-pulse" />
         </motion.div>
       </div>
       <div className="h-6 flex items-center justify-center overflow-hidden">
@@ -80,7 +80,7 @@ function ThinkingIndicator({ generating }: { generating: boolean }) {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -20, opacity: 0 }}
             transition={{ duration: 0.5 }}
-            className="text-sm font-medium text-[#0b1957]/70"
+            className="text-sm font-medium text-[#0b1957]/70 dark:text-blue-200/70"
           >
             {steps[index]}
           </motion.p>
@@ -115,20 +115,20 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
   /* ── 1. LOADING SCREEN ── */
   if (mb.step === "loading" || mb.generating) {
     content = (
-      <div className="relative flex flex-col items-center w-[448px] max-w-full p-10 bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden h-[450px] justify-center text-center space-y-8 animate-in fade-in zoom-in-95 duration-300">
+      <div className="relative flex flex-col items-center w-[448px] max-w-full p-10 bg-white dark:bg-[#000724] rounded-3xl border border-slate-200 dark:border-[#1e3a8a] shadow-xl overflow-hidden h-[450px] justify-center text-center space-y-8 animate-in fade-in zoom-in-95 duration-300">
         {onClose && (
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 z-50 p-1.5 bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-all border border-slate-100"
+            className="absolute top-4 right-4 z-50 p-1.5 bg-slate-50 dark:bg-[#060b21] hover:bg-slate-100 dark:hover:bg-[#111827] rounded-full text-slate-400 dark:text-slate-300 hover:text-slate-600 dark:hover:text-gray-300 transition-all border border-slate-100 dark:border-[#1e3a8a]"
           >
             <X className="size-4" />
           </button>
         )}
         <div className="space-y-2">
-          <h2 className="text-2xl font-bold text-[#0b1957]">
+          <h2 className="text-2xl font-bold text-[#0b1957] dark:text-white">
             {mb.generating ? "Generating Concepts" : "AI Media Journey"}
           </h2>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-500 dark:text-slate-300">
             {mb.generating ? "Creating your visuals in real-time" : "Creating your workspace in real-time"}
           </p>
         </div>
@@ -140,31 +140,30 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
   /* ── 2. WELCOME / CHOICE SCREEN ── */
   else if (mb.step === "welcome") {
     content = (
-      <div className="relative flex flex-col items-center w-[448px] max-w-full p-8 bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-300 h-[550px]">
+      <div className="relative flex flex-col items-center w-[448px] max-w-full p-8 bg-white dark:bg-[#000724] rounded-3xl border border-slate-200 dark:border-[#1e3a8a] shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-300 h-[550px]">
         {onClose && (
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 z-50 p-1.5 bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-all border border-slate-100"
+            className="absolute top-4 right-4 z-50 p-1.5 bg-slate-50  dark:bg-[#060b21]  hover:bg-slate-100 dark:hover:bg-[#111827] rounded-full text-slate-400 hover:text-slate-600 dark:text-slate-300 transition-all border border-slate-100  dark:border-[#1e3a8a]"
           >
             <X className="size-4" />
           </button>
         )}
 
         <div className="mb-6 mt-4 relative w-48 h-12 flex items-center justify-center">
-          <img src="/MrLAD-logo.svg" alt="LAD Logo" className="object-contain max-h-10" />
+          <img src="/MrLAD-logo.svg" alt="LAD Logo" className="dark:hidden object-contain max-h-10 dark:brightness-200" />
+          <img src="/MrLAD-logo-white.svg" alt="LAD Logo" className="hidden  dark:block object-contain max-h-10 dark:brightness-200" />
         </div>
 
         <div className="text-center space-y-2 mb-8">
-          <h2 className="text-2xl font-bold text-[#0b1957] tracking-tight">
-            AI Media Generation
-          </h2>
-          <p className="text-xs text-slate-500 max-w-[280px] leading-relaxed font-medium">
+          <h2 className="text-2xl font-bold text-[#0b1957] dark:text-white tracking-tight">AI Media Generation</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-300 max-w-[280px] leading-relaxed font-medium">
             Generate high-converting image concepts or premium videos for your outreach campaigns.
           </p>
         </div>
 
         {mb.error && (
-          <div className="w-full p-3 mb-4 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-xl text-center animate-in fade-in duration-200">
+          <div className="w-full p-3 mb-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 text-red-700 dark:text-red-400 text-xs font-semibold rounded-xl text-center animate-in fade-in duration-200">
             {mb.error}
           </div>
         )}
@@ -172,7 +171,7 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
         <div className="w-full space-y-4">
           <button
             onClick={mb.selectImageCreation}
-            className="w-full group relative flex items-center gap-4 p-5 bg-gradient-to-br from-[#0b1957] to-[#1e293b] hover:to-[#0b1957] text-white rounded-2xl transition-all shadow-lg hover:shadow-xl active:scale-[0.98] cursor-pointer"
+            className="w-full group relative flex items-center gap-4 p-5 bg-gradient-to-br from-[#0b1957] to-[#1e293b]  dark:from-[#2563eb] dark:to-[#2563eb] hover:to-[#0b1957] text-white rounded-2xl transition-all shadow-lg hover:shadow-xl active:scale-[0.98] cursor-pointer"
           >
             <div className="size-12 bg-white/10 rounded-xl flex items-center justify-center text-blue-200">
               <ImageIcon className="size-6" />
@@ -187,14 +186,14 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
 
           <button
             onClick={handleVideoClick}
-            className="w-full group relative flex items-center gap-4 p-5 bg-white border-2 border-slate-100 hover:border-slate-200 hover:bg-slate-50 rounded-2xl transition-all active:scale-[0.98] cursor-pointer"
+            className="w-full group relative flex items-center gap-4 p-5 bg-white dark:bg-[#060b21] border-2 border-slate-100 dark:border-[#1e3a8a] hover:border-slate-200 hover:bg-slate-50   dark:hover:bg-[#111827]  rounded-2xl transition-all active:scale-[0.98] cursor-pointer"
           >
-            <div className="size-12 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 group-hover:text-slate-600">
+            <div className="size-12 bg-slate-100 dark:bg-[#111827]  rounded-xl flex items-center justify-center text-slate-400 group-hover:text-slate-600 dark:text-slate-300">
               <Video className="size-6" />
             </div>
             <div className="text-left">
-              <div className="text-base font-bold text-slate-400 group-hover:text-slate-600">Video Generation</div>
-              <div className="text-[11px] text-slate-400">
+              <div className="text-base font-bold text-slate-400 group-hover:text-slate-600 dark:text-slate-300">Video Generation</div>
+              <div className="text-[11px] text-slate-400 dark:text-slate-300">
                 Generate personalized video ads for outbound leads.
               </div>
             </div>
@@ -202,7 +201,7 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
         </div>
 
         {comingSoonMessage && (
-          <div className="absolute bottom-20 bg-[#0b1957] text-white text-xs px-4 py-2 rounded-full font-semibold shadow-md animate-bounce">
+          <div className="absolute bottom-20 bg-[#0b1957] dark:bg-blue-600  text-white text-xs px-4 py-2 rounded-full font-semibold shadow-md animate-bounce">
             Video Generation is coming soon!
           </div>
         )}
@@ -210,12 +209,12 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
         <button
           onClick={mb.fetchGallery}
           disabled={mb.loadingGallery}
-          className="mt-auto text-xs font-bold text-[#0b1957] hover:underline cursor-pointer flex items-center gap-1 active:scale-95 transition-all mb-2"
+          className="mt-auto text-xs font-bold text-[#0b1957] hover:underline cursor-pointer flex items-center gap-1 active:scale-95 transition-all mb-2 dark:text-slate-300"
         >
           {mb.loadingGallery ? "Loading Vault..." : "View Asset Vault / Gallery"}
         </button>
 
-        <p className="text-[10px] text-slate-400 text-center font-medium">
+        <p className="text-[10px] text-slate-400 text-center font-medium dark:text-slate-300">
           Media generations are saved to your asset vault.
         </p>
       </div>
@@ -228,7 +227,7 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
       <div className="relative">
         <button
           onClick={handleBack}
-          className="absolute top-4 left-4 z-50 p-1.5 bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 transition-all active:scale-95 border border-slate-100"
+          className="absolute top-4 left-4 z-50 p-1.5 bg-slate-50  dark:bg-[#060b21]  hover:bg-slate-100  dark:hover:bg-[#111827] rounded-full text-slate-400  dark:text-slate-300 transition-all active:scale-95 border border-slate-100 dark:border-[#1e3a8a]"
           aria-label="Go back"
         >
           <ArrowLeft className="size-4" />
@@ -252,7 +251,7 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
       <div className="relative">
         <button
           onClick={handleBack}
-          className="absolute top-4 left-4 z-50 p-1.5 bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 transition-all active:scale-95 border border-slate-100"
+          className="absolute top-4 left-4 z-50 p-1.5 bg-slate-50  dark:bg-[#060b21] hover:bg-slate-100 dark:hover:bg-[#111827]  rounded-full text-slate-400  dark:text-slate-300 transition-all active:scale-95 border border-slate-100  dark:border-[#1e3a8a]"
           aria-label="Go back"
         >
           <ArrowLeft className="size-4" />
@@ -446,21 +445,21 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
   return (
     <div className="relative">
       {content}
-      
+
       {showCost && cost > 0 && (
         <div className="absolute top-[18px] right-[56px] z-50 group/cost select-none">
           <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-full text-[11px] font-bold text-emerald-700 shadow-sm cursor-pointer transition-all active:scale-95">
             <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
             <span>${cost.toFixed(4)}</span>
           </div>
-          
+
           {/* Tooltip */}
           <div className="absolute right-0 top-full mt-2 w-72 bg-white border border-slate-100 rounded-2xl shadow-xl p-4 transition-all duration-200 opacity-0 scale-95 origin-top-right group-hover/cost:opacity-100 group-hover/cost:scale-100 pointer-events-none z-[9999] text-left">
             <h3 className="text-xs font-bold text-[#0b1957] mb-2 flex items-center justify-between">
               <span>Session Cost</span>
               <span className="text-emerald-600">${cost.toFixed(4)}</span>
             </h3>
-            
+
             {breakdown.length === 0 ? (
               <p className="text-[10px] text-slate-400">No cost recorded yet.</p>
             ) : (
