@@ -152,6 +152,43 @@ function toArr(v: any): string[] {
 const ICP_LEADS_PROMPT = 'Get leads from my active ICP';
 const isIcpLeadsPrompt = (s: string) => s.trim().toLowerCase() === ICP_LEADS_PROMPT.toLowerCase();
 
+/** Synthetic stand-in names the pipeline can produce for a lead whose real name
+ *  wasn't resolved ("Lead 1", "Prospect 3", "Unknown"). Mirrors the backend
+ *  core/utils/nameSafety.js — kept in sync so a placeholder is never shown as a
+ *  person nor persisted (via initial_leads) as one. */
+const PLACEHOLDER_NAME_RE = /^(?:(?:lead|prospect|contact)(?:\s*\d+)?|unknown|n\/?a|none|null|undefined)$/i;
+function isPlaceholderName(s?: string | null): boolean {
+    const t = (s ?? '').trim();
+    return t === '' || PLACEHOLDER_NAME_RE.test(t);
+}
+
+/** Read a discovered/imported person's name tolerantly across camelCase and
+ *  snake_case. The import/save (and enrichment) responses carry a mix — reading
+ *  both is what stops the resolved name being dropped on a casing mismatch. */
+function readLeadName(r: any): { firstName: string; lastName: string; name: string } {
+    const firstName = String(r?.firstName ?? r?.first_name ?? '').trim();
+    const lastName = String(r?.lastName ?? r?.last_name ?? '').trim();
+    const name = String(r?.name ?? `${firstName} ${lastName}`).trim();
+    return { firstName, lastName, name };
+}
+
+/** Best human-facing DISPLAY label for a lead — a real name when we have one,
+ *  else the company or headline, and only "Lead N" as a last resort. Never shows
+ *  a synthetic placeholder as if it were a person. For DISPLAY only; the persisted
+ *  lead name must stay empty when unknown (see the launch payload). */
+function leadDisplayLabel(
+    parts: { firstName?: string; lastName?: string; name?: string; company?: string; headline?: string },
+    idx: number,
+): string {
+    const full = (parts.name || `${parts.firstName || ''} ${parts.lastName || ''}`).trim();
+    if (full && !isPlaceholderName(full)) return full;
+    const company = (parts.company || '').trim();
+    if (company) return company;
+    const headline = (parts.headline || '').trim();
+    if (headline) return headline;
+    return `Lead ${idx + 1}`;
+}
+
 /** Map SearchDispatcher candidates (ProspectCandidate) → the page's LeadProfile shape,
  *  so an ICP-discovery run drops into the same leads list/panel the LinkedIn search uses. */
 function candidatesToLeadProfiles(candidates: any[]): LeadProfile[] {
@@ -1939,7 +1976,7 @@ export default function AdvancedSearchAIPage() {
             // Update the leads panel display
             const updatedPanelLeads: LeadProfile[] = updatedLeads.map((l, i) => ({
                 id: `inbound-${i}`,
-                name: `${l.firstName} ${l.lastName}`.trim() || `Lead ${i + 1}`,
+                name: leadDisplayLabel({ firstName: l.firstName, lastName: l.lastName, company: l.companyName }, i),
                 first_name: l.firstName,
                 last_name: l.lastName,
                 headline: l.companyName ? `at ${l.companyName}` : '',
@@ -1974,7 +2011,11 @@ export default function AdvancedSearchAIPage() {
 
     // Delete inbound lead handlers
     const openDeleteConfirmation = (index: number) => {
-        const name = `${inboundLeads[index].firstName} ${inboundLeads[index].lastName}`.trim() || `Lead ${index + 1}`;
+        const name = leadDisplayLabel({
+            firstName: inboundLeads[index].firstName,
+            lastName: inboundLeads[index].lastName,
+            company: inboundLeads[index].companyName,
+        }, index);
         setDeleteConfirmation({ index, name });
     };
 
@@ -1998,7 +2039,7 @@ export default function AdvancedSearchAIPage() {
             // Update the leads panel display
             const updatedPanelLeads: LeadProfile[] = updatedLeads.map((l, i) => ({
                 id: `inbound-${i}`,
-                name: `${l.firstName} ${l.lastName}`.trim() || `Lead ${i + 1}`,
+                name: leadDisplayLabel({ firstName: l.firstName, lastName: l.lastName, company: l.companyName }, i),
                 first_name: l.firstName,
                 last_name: l.lastName,
                 headline: l.companyName ? `at ${l.companyName}` : '',
@@ -2714,10 +2755,10 @@ export default function AdvancedSearchAIPage() {
                         const savedLeads: any[] = Array.isArray(saveData.leads) ? saveData.leads : [];
                         if (savedLeads.length > parsed.length) {
                             const rebuiltInbound: ParsedInboundLead[] = savedLeads.map((r) => {
-                                const nm = (r.name || '').trim();
+                                const { firstName, lastName } = readLeadName(r);
                                 return {
-                                    firstName: r.first_name || nm.split(/\s+/)[0] || '',
-                                    lastName: r.last_name || nm.split(/\s+/).slice(1).join(' ') || '',
+                                    firstName,
+                                    lastName,
                                     companyName: r.company || '',
                                     linkedinProfile: r.linkedin_url || '',
                                     email: '', whatsapp: '', phone: '', website: '', notes: '',
@@ -2728,12 +2769,12 @@ export default function AdvancedSearchAIPage() {
                             });
                             setInboundLeads(rebuiltInbound);
                             const rebuiltPanel: LeadProfile[] = savedLeads.map((r, i) => {
-                                const nm = (r.name || '').trim();
+                                const { firstName, lastName, name } = readLeadName(r);
                                 return {
                                     id: r.id || `inbound-${i}`,
-                                    name: nm || `Lead ${i + 1}`,
-                                    first_name: r.first_name || '',
-                                    last_name: r.last_name || '',
+                                    name: leadDisplayLabel({ name, company: r.company, headline: r.headline || r.title || r.target_title }, i),
+                                    first_name: firstName,
+                                    last_name: lastName,
                                     headline: r.headline || r.title || r.target_title || (r.company ? `at ${r.company}` : ''),
                                     location: r.location || '',
                                     current_company: r.company || '',
@@ -2774,10 +2815,10 @@ export default function AdvancedSearchAIPage() {
                                     const fannedOut = results.length > parsed.length;
                                     if (fannedOut) {
                                         const rebuiltInbound: ParsedInboundLead[] = results.map((r) => {
-                                            const nm = (r.name || '').trim();
+                                            const { firstName, lastName } = readLeadName(r);
                                             return {
-                                                firstName: nm.split(/\s+/)[0] || '',
-                                                lastName: nm.split(/\s+/).slice(1).join(' ') || '',
+                                                firstName,
+                                                lastName,
                                                 companyName: r.company || '',
                                                 linkedinProfile: r.linkedin_url || '',
                                                 email: r.email || '',
@@ -2795,12 +2836,12 @@ export default function AdvancedSearchAIPage() {
                                         // Default-select every discovered person (user can uncheck any).
                                         setSelectedLeadIds(new Set(results.map((r) => r.leadId).filter(Boolean)));
                                         const rebuiltPanel: LeadProfile[] = results.map((r, i) => {
-                                            const nm = (r.name || '').trim();
+                                            const { firstName, lastName, name } = readLeadName(r);
                                             return {
                                                 id: `inbound-${i}`,
-                                                name: nm || `Lead ${i + 1}`,
-                                                first_name: nm.split(/\s+/)[0] || '',
-                                                last_name: nm.split(/\s+/).slice(1).join(' ') || '',
+                                                name: leadDisplayLabel({ name, company: r.company, headline: r.job_title }, i),
+                                                first_name: firstName,
+                                                last_name: lastName,
                                                 headline: r.job_title || (r.company ? `at ${r.company}` : ''),
                                                 location: '',
                                                 current_company: r.company || '',
@@ -2933,7 +2974,7 @@ export default function AdvancedSearchAIPage() {
             // Convert inbound leads to LeadProfile format for the panel
             const panelLeads: LeadProfile[] = parsed.map((l, i) => ({
                 id: `inbound-${i}`,
-                name: `${l.firstName} ${l.lastName}`.trim() || `Lead ${i + 1}`,
+                name: leadDisplayLabel({ firstName: l.firstName, lastName: l.lastName, company: l.companyName }, i),
                 first_name: l.firstName,
                 last_name: l.lastName,
                 headline: l.companyName ? `at ${l.companyName}` : '',
@@ -8406,22 +8447,31 @@ function CheckpointFormInline({
                         const id = inboundLeadIds[idx];
                         return !id || selectedLeadIds.has(id);
                     })
-                    .map(({ il, idx }) => mapLead({
-                        id: `inbound-${idx}`,
-                        name: `${il.firstName} ${il.lastName}`.trim() || `Lead ${idx + 1}`,
-                        first_name: il.firstName,
-                        last_name: il.lastName,
-                        headline: il.companyName ? `at ${il.companyName}` : '',
-                        location: '',
-                        current_company: il.companyName,
-                        profile_url: il.linkedinProfile,
-                        profile_picture: '',
-                        industry: '',
-                        network_distance: '',
-                        // Crucial: pass phone and email so they are stored in lead_data
-                        phone: il.phone || il.whatsapp || '',
-                        email: il.email || '',
-                    } as any, 'inbound_lead'))
+                    .map(({ il, idx }) => {
+                        // Never persist a synthetic "Lead N" as the lead's real name.
+                        // Keep the discovered name when we have one; otherwise send an
+                        // EMPTY name and let the backend snapshot (from the linked lead
+                        // row), the connect-time backfill, or the greeting guard supply
+                        // the right name — anything but "Hi Lead,".
+                        const realName = `${il.firstName || ''} ${il.lastName || ''}`.trim();
+                        const nameIsReal = !isPlaceholderName(realName) && !isPlaceholderName(il.firstName);
+                        return mapLead({
+                            id: `inbound-${idx}`,
+                            name: nameIsReal ? realName : '',
+                            first_name: nameIsReal ? il.firstName : '',
+                            last_name: nameIsReal ? il.lastName : '',
+                            headline: il.companyName ? `at ${il.companyName}` : '',
+                            location: '',
+                            current_company: il.companyName,
+                            profile_url: il.linkedinProfile,
+                            profile_picture: '',
+                            industry: '',
+                            network_distance: '',
+                            // Crucial: pass phone and email so they are stored in lead_data
+                            phone: il.phone || il.whatsapp || '',
+                            email: il.email || '',
+                        } as any, 'inbound_lead');
+                    })
                 : [];
 
             const payload = {
