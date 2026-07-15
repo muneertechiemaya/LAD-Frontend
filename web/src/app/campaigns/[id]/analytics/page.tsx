@@ -432,24 +432,27 @@ export default function CampaignAnalyticsPage() {
               {analytics.campaign.status}
             </Badge>
             <LiveBadge isConnected={isConnected} showOffline className="font-semibold" />
-            <p className="text-sm text-[#64748B] dark:text-[#7a8ba3]">Created {new Date(analytics.campaign.created_at).toLocaleDateString()}</p>
+            <p className="text-sm text-[#64748B] dark:text-slate-300">Created {new Date(analytics.campaign.created_at).toLocaleDateString()}</p>
           </div>
         </div>
         <div className="flex gap-3 items-start">
           <Button
             onClick={() => router.push(`/campaigns/${campaignId}/analytics/leads`)}
-            className="bg-[#0b1957] text-white rounded-xl font-semibold px-3 py-1.5 shadow-[0_4px_20px_rgba(11,25,87,0.3)] hover:bg-[#0a1540]"
+            className="h-10 px-4 rounded-xl font-semibold text-sm tracking-wide text-white !text-white transition-all duration-200 cursor-pointer border-none outline-none active:scale-[0.99]
+                      bg-[#0b1957] hover:bg-[#122572] shadow-[0_4px_20px_rgba(11,25,87,0.3)]
+                      dark:bg-[#2563eb] dark:hover:bg-blue-700 dark:shadow-[0_4px_20px_rgba(37,99,235,0.25)]"
           >
-            <Users className="w-4 h-4 mr-2" />
-            View Leads
+            <Users className="w-4 h-4 mr-2 shrink-0 stroke-[2] text-white !text-white" />
+            <span className="text-white !text-white">View Leads</span>
           </Button>
           <Button
-            variant="outline"
             onClick={() => router.push(`/onboarding?campaignId=${campaignId}`)}
-            className="border-[#0b1957] text-[#0b1957] font-semibold border-2 hover:bg-[#0b1957]/5 rounded-xl dark:border-slate-500 dark:text-slate-100 dark:bg-transparent dark:hover:bg-slate-800 dark:hover:text-white dark:hover:border-slate-400"
+            className="h-10 px-4 rounded-xl font-semibold text-sm tracking-wide text-white !text-white transition-all duration-200 cursor-pointer border-none outline-none active:scale-[0.99]
+              bg-[#0b1957] hover:bg-[#122572] shadow-[0_4px_12px_rgba(11,25,87,0.15)]
+              dark:bg-[#2563eb] dark:hover:bg-blue-700 dark:shadow-[0_4px_12px_rgba(37,99,235,0.2)]"
           >
-            <SquarePen />
-            Edit Campaign
+            <SquarePen className="w-4 h-4 mr-2 shrink-0 stroke-[2] text-white !text-white" />
+            <span className="text-white !text-white">Edit Campaign</span>
           </Button>
         </div>
       </div>
@@ -472,7 +475,7 @@ export default function CampaignAnalyticsPage() {
                   </Avatar>
                 </div>
                 <div className="flex-1 flex flex-col justify-end">
-                  <p className="text-sm text-slate-500 dark:text-[#7a8ba3] mb-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                  <p className="text-sm text-slate-500 dark:text-slate-300 mb-1 overflow-hidden text-ellipsis whitespace-nowrap">
                     Total Leads
                   </p>
                   <h5 className="text-2xl font-bold text-slate-800 dark:text-white">
@@ -500,10 +503,10 @@ export default function CampaignAnalyticsPage() {
                   </Avatar>
                 </div>
                 <div className="flex-1 flex flex-col justify-end">
-                  <p className="text-sm text-slate-500 dark:text-[#7a8ba3] mb-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                  <p className="text-sm text-slate-500 dark:text-slate-300 mb-1 overflow-hidden text-ellipsis whitespace-nowrap">
                     {sentLabel}
                   </p>
-                  <h5 className="text-2xl font-bold text-slate-800 dark:text-white">
+                  <h5 className="text-2xl font-bold text-slate-800 dark:text-slate-300">
                     {primarySentCount}
                   </h5>
                 </div>
@@ -521,14 +524,14 @@ export default function CampaignAnalyticsPage() {
             <div className="flex-1 flex flex-col p-4">
               <div className="flex flex-col h-full">
                 <div className="flex justify-end mb-2">
-                  <Avatar className="bg-indigo-100 w-12 h-12 rounded-full">
-                    <AvatarFallback className="bg-indigo-100">
-                      <Linkedin className="w-6 h-6 text-indigo-600" />
+                  <Avatar className="bg-blue-50 dark:!bg-white w-12 h-12 rounded-full">
+                    <AvatarFallback className="bg-blue-50 dark:!bg-white">
+                      <Linkedin className="w-6 h-6 text-[#0077B5]" />
                     </AvatarFallback>
                   </Avatar>
                 </div>
                 <div className="flex-1 flex flex-col justify-end">
-                  <p className="text-sm text-slate-500 dark:text-[#7a8ba3] mb-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                  <p className="text-sm text-slate-500 dark:text-slate-300 mb-1 overflow-hidden text-ellipsis whitespace-nowrap">
                     Connected
                   </p>
                   <h5 className="text-2xl font-bold text-slate-800 dark:text-white">
@@ -549,24 +552,24 @@ export default function CampaignAnalyticsPage() {
             <div className="flex-1 flex flex-col p-4">
               <div className="flex flex-col h-full">
                 <div className="flex justify-end mb-2">
-                  <Avatar className="bg-amber-100 w-12 h-12 rounded-full">
-                    <AvatarFallback className="bg-amber-100">
-                      <Reply className="w-6 h-6 text-amber-600" />
+                  <Avatar className="bg-amber-100 dark:bg-amber-500/20 w-12 h-12 rounded-full">
+                    <AvatarFallback className="bg-amber-100 dark:bg-transparent">
+                      <Reply className="w-6 h-6 text-amber-600 dark:text-amber-400" />
                     </AvatarFallback>
                   </Avatar>
                 </div>
                 <div className="flex-1 flex flex-col justify-end">
-                  <p className="text-sm text-slate-500 dark:text-[#7a8ba3] mb-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                  <p className="text-sm text-slate-500 dark:text-slate-300 mb-1 overflow-hidden text-ellipsis whitespace-nowrap">
                     Lead Contact Back
                   </p>
                   <h5 className="text-2xl font-bold text-slate-800 dark:text-white">
                     {analytics.overview.replied}
                   </h5>
                   {/* Follow-ups sent sub-stat */}
-                  <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-100">
+                  <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                     <Sparkles className="w-3.5 h-3.5 text-violet-500 flex-shrink-0" />
-                    <span className="text-xs text-slate-500">Follow-ups sent:</span>
-                    <span className="text-sm font-bold text-violet-600">{totalFollowupsSent}</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-300">Follow-ups sent:</span>
+                    <span className="text-sm font-bold text-violet-600 dark:text-violet-400">{totalFollowupsSent}</span>
                   </div>
                 </div>
               </div>
@@ -594,12 +597,12 @@ export default function CampaignAnalyticsPage() {
             className="flex-1 flex items-center justify-between px-5 py-4 bg-white dark:bg-[#1a2a43] rounded-2xl border border-slate-200 dark:border-[#262831] shadow-sm hover:border-[#0b1957]/40 hover:shadow-md transition-all"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#0b1957]/10 flex items-center justify-center">
-                <Send className="w-5 h-5 text-[#0b1957]" />
+              <div className="w-10 h-10 rounded-full bg-[#0b1957]/10 dark:bg-blue-500/20 flex items-center justify-center transition-colors">
+                <Send className="w-5 h-5 text-[#0b1957] dark:text-blue-400" />
               </div>
               <div className="text-left">
                 <p className="font-bold text-[#1E293B] dark:text-white text-base">Send Follow-up</p>
-                <p className="text-xs text-slate-500 dark:text-[#7a8ba3]">Select leads → choose channel → AI generates personalised messages and sends</p>
+                <p className="text-xs text-slate-500 dark:text-slate-300">Select leads → choose channel → AI generates personalised messages and sends</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -627,7 +630,7 @@ export default function CampaignAnalyticsPage() {
         {followupPanelOpen && (
           <div className="mt-2 bg-white dark:bg-[#1a2a43] rounded-2xl border border-slate-200 dark:border-[#262831] shadow-sm overflow-hidden">
             {/* Toolbar */}
-            <div className="flex flex-wrap items-center gap-3 px-5 py-4 border-b border-slate-100">
+            <div className="flex flex-wrap items-center gap-3 px-5 py-4 border-b border-slate-100 dark:border-slate-800">
               {/* Select all */}
               <div className="flex items-center gap-2 mr-2">
                 <Checkbox
@@ -636,7 +639,7 @@ export default function CampaignAnalyticsPage() {
                   onCheckedChange={toggleAll}
                   disabled={selectableLeads.length === 0}
                 />
-                <label htmlFor="select-all" className="text-sm font-medium text-slate-600 cursor-pointer select-none">
+                <label htmlFor="select-all" className="text-sm font-medium text-slate-600 dark:text-slate-300 cursor-pointer select-none">
                   {selectedLeadIds.size === selectableLeads.length && selectedLeadIds.size > 0
                     ? 'Deselect all'
                     : `Select all (${selectableLeads.length})`}
@@ -644,7 +647,7 @@ export default function CampaignAnalyticsPage() {
               </div>
 
               {selectedLeadIds.size > 0 && (
-                <span className="text-xs bg-[#0b1957]/10 text-[#0b1957] px-2.5 py-1 rounded-full font-semibold">
+                <span className="text-xs bg-[#0b1957]/10 dark:bg-blue-500/20 text-[#0b1957] dark:text-blue-400 px-2.5 py-1 rounded-full font-semibold">
                   {selectedLeadIds.size} selected
                 </span>
               )}
@@ -669,7 +672,7 @@ export default function CampaignAnalyticsPage() {
               <Button
                 onClick={startBulkFollowup}
                 disabled={!selectedLeadIds.size || !bulkChannel || bulkStatus === 'running'}
-                className="bg-[#0b1957] hover:bg-[#1a2d8f] text-white rounded-xl h-9 px-4 gap-2 text-sm font-semibold shadow-sm"
+                className="bg-[#0b1957] hover:bg-[#1a2d8f] dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-xl h-9 px-4 gap-2 text-sm font-semibold shadow-sm transition-colors disabled:opacity-50"
               >
                 {bulkStatus === 'running' ? (
                   <><Loader2 className="w-4 h-4 animate-spin" />Sending {bulkDoneCount}/{selectedLeadIds.size}…</>
@@ -681,21 +684,21 @@ export default function CampaignAnalyticsPage() {
 
             {/* Progress list (shown during / after send) */}
             {leadProgress.length > 0 && (
-              <div className="px-5 py-3 border-b border-slate-100 max-h-48 overflow-y-auto">
+              <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-800 max-h-48 overflow-y-auto">
                 <div className="space-y-1.5">
                   {leadProgress.map(p => (
                     <div key={p.id} className="flex items-center gap-3 text-sm py-1">
                       <div className="w-5 flex-shrink-0">
-                        {p.status === 'pending'  && <div className="w-2 h-2 rounded-full bg-slate-300 mx-auto" />}
-                        {p.status === 'sending'  && <Loader2 className="w-4 h-4 animate-spin text-[#0b1957]" />}
+                        {p.status === 'pending'  && <div className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-700 mx-auto" />}
+                        {p.status === 'sending'  && <Loader2 className="w-4 h-4 animate-spin text-[#0b1957] dark:text-blue-400" />}
                         {p.status === 'done'     && <CheckCircle className="w-4 h-4 text-green-500" />}
                         {p.status === 'error'    && <AlertCircle className="w-4 h-4 text-red-400" />}
                       </div>
-                      <span className="font-medium text-slate-700 w-36 truncate">{p.name}</span>
-                      {p.status === 'done'  && <span className="text-xs text-slate-400 truncate flex-1">{p.message}</span>}
+                      <span className="font-medium text-slate-700 dark:text-slate-200 w-36 truncate">{p.name}</span>
+                      {p.status === 'done'  && <span className="text-xs text-slate-400 dark:text-slate-500 truncate flex-1">{p.message}</span>}
                       {p.status === 'error' && <span className="text-xs text-red-400 truncate flex-1">{p.error}</span>}
-                      {p.status === 'sending' && <span className="text-xs text-[#0b1957] flex-1 flex items-center gap-1"><Sparkles className="w-3 h-3 animate-pulse" />Researching & generating…</span>}
-                      {p.status === 'pending' && <span className="text-xs text-slate-300 flex-1">Queued</span>}
+                      {p.status === 'sending' && <span className="text-xs text-[#0b1957] dark:text-blue-400 flex-1 flex items-center gap-1"><Sparkles className="w-3 h-3 animate-pulse" />Researching & generating…</span>}
+                      {p.status === 'pending' && <span className="text-xs text-slate-300 dark:text-slate-600 flex-1">Queued</span>}
                     </div>
                   ))}
                 </div>
@@ -704,7 +707,7 @@ export default function CampaignAnalyticsPage() {
 
             {/* Lead list with checkboxes */}
             {bulkStatus !== 'running' && (
-              <div className="max-h-72 overflow-y-auto divide-y divide-slate-50">
+              <div className="max-h-72 overflow-y-auto divide-y divide-slate-50 dark:divide-slate-800/40">
                 {leadsLoading ? (
                   <div className="flex items-center justify-center py-8 gap-2 text-slate-400">
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -714,12 +717,12 @@ export default function CampaignAnalyticsPage() {
                   <div className="text-center py-10 px-6">
                     {bulkChannel === 'linkedin' ? (
                       <>
-                        <Linkedin className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                        <p className="text-sm font-medium text-slate-500">No connected leads yet</p>
-                        <p className="text-xs text-slate-400 mt-1">LinkedIn follow-ups can only be sent to leads who have accepted your connection request. Switch to Email or WhatsApp to reach all leads.</p>
+                        <Linkedin className="w-8 h-8 text-slate-300 dark:text-slate-700 mx-auto mb-2" />
+                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">No connected leads yet</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">LinkedIn follow-ups can only be sent to leads who have accepted your connection request. Switch to Email or WhatsApp to reach all leads.</p>
                       </>
                     ) : (
-                      <p className="text-sm text-slate-400">No leads found for this campaign</p>
+                      <p className="text-sm text-slate-400 dark:text-slate-500">No leads found for this campaign</p>
                     )}
                   </div>
                 ) : (
@@ -737,15 +740,15 @@ export default function CampaignAnalyticsPage() {
                       {lead.photo_url ? (
                         <img src={lead.photo_url} alt={lead.name} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
                       ) : (
-                        <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center flex-shrink-0">
-                          <span className="text-xs font-bold text-slate-500">
+                        <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center flex-shrink-0">
+                          <span className="text-xs font-bold text-slate-500 dark:text-slate-300">
                             {(lead.first_name?.[0] || lead.name?.[0] || '?').toUpperCase()}
                           </span>
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-slate-800 truncate">{lead.name || `${lead.first_name || ''} ${lead.last_name || ''}`.trim()}</p>
-                        <p className="text-xs text-slate-400 truncate">{[lead.title, lead.company].filter(Boolean).join(' · ')}</p>
+                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">{lead.name || `${lead.first_name || ''} ${lead.last_name || ''}`.trim()}</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500 truncate">{[lead.title, lead.company].filter(Boolean).join(' · ')}</p>
                       </div>
                       <div className="flex gap-1.5 flex-shrink-0 items-center">
                         {(lead.has_connected || lead.status?.includes('connect')) && (
@@ -762,7 +765,7 @@ export default function CampaignAnalyticsPage() {
                           const sentNow = leadProgress.find(p => p.id === lead.id && p.status === 'done') ? 1 : 0;
                           const total = (lead.manual_followup_count || 0) + sentNow;
                           return total > 0 ? (
-                            <span className="text-xs bg-violet-50 text-violet-600 border border-violet-200 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
+                            <span className="text-xs bg-violet-50 dark:bg-transparent border border-violet-200 dark:border-violet-500/30 text-violet-600 dark:text-violet-400 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
                               <Sparkles className="w-2.5 h-2.5" />
                               {total} follow-up{total !== 1 ? 's' : ''}
                             </span>
@@ -777,8 +780,8 @@ export default function CampaignAnalyticsPage() {
 
             {/* Done summary */}
             {bulkStatus === 'done' && (
-              <div className="px-5 py-3 bg-green-50 border-t border-green-100 flex items-center justify-between">
-                <p className="text-sm font-semibold text-green-700">
+              <div className="px-5 py-3 bg-green-50 dark:bg-emerald-950/30 border-t border-green-100 dark:border-emerald-900/50 flex items-center justify-between">
+                <p className="text-sm font-semibold text-green-700 dark:text-emerald-400">
                   ✓ Sent {leadProgress.filter(p => p.status === 'done').length} follow-ups via {bulkChannel}
                   {leadProgress.filter(p => p.status === 'error').length > 0 && (
                     <span className="text-red-500 ml-2">({leadProgress.filter(p => p.status === 'error').length} failed)</span>
@@ -786,7 +789,7 @@ export default function CampaignAnalyticsPage() {
                 </p>
                 <button
                   onClick={() => { setBulkStatus('idle'); setLeadProgress([]); setSelectedLeadIds(new Set()); }}
-                  className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1"
+                  className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 flex items-center gap-1"
                 >
                   <RefreshCw className="w-3.5 h-3.5" /> Reset
                 </button>
@@ -799,12 +802,12 @@ export default function CampaignAnalyticsPage() {
       {/* Analytics Charts Section */}
       <div className="mb-8">
         <div className="flex items-center gap-4 mb-6">
-          <Avatar className="w-11 h-11 bg-white border border-slate-200 shadow-sm">
+          <Avatar className="w-11 h-11 bg-white dark:bg-[#1a2a43] border border-slate-200 dark:border-[#262831] shadow-sm">
             <AvatarFallback><BarChart className="w-5 h-5 text-[#0b1957]" /></AvatarFallback>
           </Avatar>
           <div className="flex-1">
             <h5 className="text-xl font-bold text-[#1E293B] dark:text-white">Visual Analytics</h5>
-            <p className="text-sm text-[#64748B] dark:text-[#7a8ba3]">Charts and graphs for deeper insights</p>
+            <p className="text-sm text-[#64748B] dark:text-slate-300">Charts and graphs for deeper insights</p>
           </div>
           <LiveBadge isConnected={isConnected} className="font-semibold animate-pulse text-xs" />
         </div>
@@ -837,7 +840,7 @@ export default function CampaignAnalyticsPage() {
                 </Avatar>
                 <div className="flex-1">
                   <h6 className="text-lg font-bold text-[#1E293B] dark:text-white">Channel Performance</h6>
-                  <p className="text-xs text-[#64748B] dark:text-[#7a8ba3]">Active channels</p>
+                  <p className="text-xs text-[#64748B] dark:text-slate-300">Active channels</p>
                 </div>
                 <LiveBadge isConnected={isConnected} className="font-semibold animate-pulse text-xs" />
               </div>
@@ -857,46 +860,52 @@ export default function CampaignAnalyticsPage() {
                     <div key={item.platform} className="p-4 rounded-lg border border-[#E2E8F0] dark:border-[#262831] bg-white dark:bg-[#253456]">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">
-                          <Avatar className="w-8 h-8" style={{ backgroundColor: `${config.color}20` }}>
-                            <AvatarFallback>
-                              <PlatformIcon className="w-4 h-4" style={{ color: config.color }} />
+                          <Avatar className="w-8 h-8 dark:!bg-blue-500/20 text-white flex items-center justify-center" style={{ backgroundColor: `${config.color}20` }}>
+                            <AvatarFallback className="bg-transparent">
+                              <PlatformIcon className="w-4 h-4 dark:!text-blue-400" style={{
+                                color: 'var(--platform-color)',
+                                ['--platform-color' as any]: config.color
+                              }}/>
                             </AvatarFallback>
                           </Avatar>
                           <div>
                             <p className="text-sm font-semibold text-[#1E293B] dark:text-white">{config.name}</p>
-                            <p className="text-xs text-[#64748B] dark:text-[#7a8ba3]">{item.actions > 0 ? 'Active' : 'Ready'}</p>
+                            <p className="text-xs text-[#64748B] dark:text-slate-300">{item.actions > 0 ? 'Active' : 'Ready'}</p>
                           </div>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-4 gap-2 mb-3">
                         <div className="text-center">
-                          <p className="text-lg font-bold" style={{ color: config.color }}>{item.actions}</p>
-                          <p className="text-xs text-[#64748B] dark:text-[#7a8ba3]">Actions</p>
+                          <p className="text-lg font-bold dark:text-blue-400" style={{ color: config.color }}>{item.actions}</p>
+                          <p className="text-xs text-[#64748B] dark:text-slate-300">Actions</p>
                         </div>
                         <div className="text-center">
-                          <p className="text-lg font-bold text-green-600">{item.sent}</p>
-                          <p className="text-xs text-[#64748B] dark:text-[#7a8ba3]">Sent</p>
+                          <p className="text-lg font-bold text-green-600 dark:text-emerald-400">{item.sent}</p>
+                          <p className="text-xs text-[#64748B] dark:text-slate-300">Sent</p>
                         </div>
                         <div className="text-center">
-                          <p className="text-lg font-bold text-blue-600">{item.connected}</p>
-                          <p className="text-xs text-[#64748B] dark:text-[#7a8ba3]">Connected</p>
+                          <p className="text-lg font-bold text-blue-600 dark:text-sky-400">{item.connected}</p>
+                          <p className="text-xs text-[#64748B] dark:text-slate-300">Connected</p>
                         </div>
                         <div className="text-center">
-                          <p className="text-lg font-bold text-violet-600">{totalFollowupsSent}</p>
-                          <p className="text-xs text-[#64748B] dark:text-[#7a8ba3]">Follow-ups</p>
+                          <p className="text-lg font-bold text-violet-600 dark:text-violet-400">{totalFollowupsSent}</p>
+                          <p className="text-xs text-[#64748B] dark:text-slate-300">Follow-ups</p>
                         </div>
                       </div>
 
                       <div>
                         <div className="flex justify-between mb-1">
-                          <p className="text-xs text-[#64748B] dark:text-[#7a8ba3]">Success Rate</p>
-                          <p className="text-xs font-bold" style={{ color: config.color }}>{safeRate.toFixed(1)}%</p>
+                          <p className="text-xs text-[#64748B] dark:text-slate-300">Success Rate</p>
+                          <p className="text-xs font-bold dark:text-blue-400" style={{ color: config.color }}>{safeRate.toFixed(1)}%</p>
                         </div>
                         <div className="relative h-1.5 rounded-full bg-slate-200 dark:bg-slate-800">
                           <div
                             className="absolute h-1.5 rounded-full"
-                            style={{ width: `${Math.min(safeRate, 100)}%`, backgroundColor: config.color }}
+                            style={{
+                              width: `${Math.min(safeRate, 100)}%`,
+                              backgroundColor: typeof window !== 'undefined' && document.documentElement.classList.contains('dark') ? '#60a5fa' : config.color
+                            }}
                           ></div>
                         </div>
                       </div>
@@ -917,7 +926,7 @@ export default function CampaignAnalyticsPage() {
               </Avatar>
               <div className="flex-1">
                 <h6 className="text-lg font-bold text-[#1E293B] dark:text-white">Outreach Metrics</h6>
-                <p className="text-xs text-[#64748B] dark:text-[#7a8ba3]">Message tracking</p>
+                <p className="text-xs text-[#64748B] dark:text-slate-300">Message tracking</p>
               </div>
               <LiveBadge isConnected={isConnected} className="font-semibold animate-pulse text-xs" />
             </div>
@@ -932,10 +941,10 @@ export default function CampaignAnalyticsPage() {
               ].map((metric) => (
                 <div key={metric.label} className="flex justify-between items-center p-4 rounded-lg border border-[#E2E8F0] dark:border-[#262831] bg-white dark:bg-[#253456]">
                   <div className="flex items-center gap-4">
-                    <Avatar className="w-9 h-9" style={{ backgroundColor: `${metric.color}20` }}>
-                      <AvatarFallback><metric.icon className="w-4 h-4" style={{ color: metric.color }} /></AvatarFallback>
+                    <Avatar className="w-9 h-9 dark:!bg-blue-500/20" style={{ backgroundColor: `${metric.color}20` }}>
+                      <AvatarFallback className="bg-transparent"><metric.icon className="w-4 h-4 dark:!text-blue-400" style={{ color: metric.color }} /></AvatarFallback>
                     </Avatar>
-                    <p className="text-[#64748B] dark:text-[#7a8ba3]">{metric.label}</p>
+                    <p className="text-[#64748B] dark:text-slate-300">{metric.label}</p>
                   </div>
                   <h6 className="text-lg font-bold text-[#1E293B] dark:text-white">{metric.value}</h6>
                 </div>
@@ -952,7 +961,7 @@ export default function CampaignAnalyticsPage() {
               </Avatar>
               <div className="flex-1">
                 <h6 className="text-lg font-bold text-[#1E293B] dark:text-white">Performance Rates</h6>
-                <p className="text-xs text-[#64748B] dark:text-[#7a8ba3]">Success percentages</p>
+                <p className="text-xs text-[#64748B] dark:text-slate-300">Success percentages</p>
               </div>
               <LiveBadge isConnected={isConnected} className="font-semibold animate-pulse text-xs" />
             </div>
@@ -966,8 +975,8 @@ export default function CampaignAnalyticsPage() {
               ].map((rate) => (
                 <div key={rate.label}>
                   <div className="flex justify-between mb-2">
-                    <p className="text-[#64748B] dark:text-[#7a8ba3]">{rate.label}</p>
-                    <p className="font-bold" style={{ color: rate.color }}>{rate.value.toFixed(1)}%</p>
+                    <p className="text-[#64748B] dark:text-slate-300">{rate.label}</p>
+                    <p className="font-bold dark:text-blue-400" style={{ color: rate.color }}>{rate.value.toFixed(1)}%</p>
                   </div>
                   <div className="relative h-2.5 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-800/80">
                     <div className="absolute h-full rounded-full transition-all" style={{ width: `${rate.value}%`, backgroundColor: rate.color }}></div>

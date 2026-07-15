@@ -859,7 +859,6 @@ export const MessageComposer = memo(function MessageComposer({
           sendProgress={templateSendProgress}
           channel={resolvedBackendChannel}
           isBulkSend={false}
-          hideBatchSettings={!conversationId}
         />
 
         {/* ── Text input ── */}

@@ -300,7 +300,7 @@ const GoalForm: React.FC<{ onCancel: () => void; onSubmit: (g: Partial<Goal>) =>
         <Field label="Type">
           <Select
               value={type || undefined}
-              onValueChange={(val) => setType(val)}
+              onValueChange={(val: string) => setType(val)}
           >
             <SelectTrigger className="w-full h-11 px-3 text-sm border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#00051d] text-slate-800 dark:text-white rounded-xl focus:ring-0 focus-visible:ring-0 focus:border-slate-400 dark:focus:border-slate-600 font-semibold transition-all">
               <SelectValue placeholder="Select type..." />
