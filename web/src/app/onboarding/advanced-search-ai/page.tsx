@@ -7,7 +7,7 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Gem, Upload, FileSpreadsheet, Download, CheckCircle2, Pencil, Trash2, ChevronDown, ChevronLeft, ChevronRight, X, MessageSquare, Users, Zap, Plus, Image as ImageIcon, Video, Loader2, Mic, Globe, Newspaper, UserPlus, Check, History, Volume2, ArrowLeft } from 'lucide-react';
+import { Sparkles, Gem, Upload, FileSpreadsheet, Download, CheckCircle2, Pencil, Trash2, ChevronDown, ChevronLeft, ChevronRight, X, MessageSquare, Users, Zap, Plus, Image as ImageIcon, Video, Loader2, Mic, Globe, Newspaper, UserPlus, Check, History, Volume2, ArrowLeft, Mail, Phone as PhoneIcon, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ProfileSummaryDialog } from '@/components/campaigns';
 import AgentVisualizer from '@/components/ui/AgentVisualizer';
@@ -105,6 +105,13 @@ interface ParsedInboundLead {
     phone: string;
     website: string;
     notes: string;
+    // Role/title target(s) — e.g. a "Target Contacts" or "Job Title" column. May hold
+    // several titles ("COO; HR Director"); the backend router splits + fans these out.
+    title: string;
+    // Optional location/geo (city/country/region) to geo-target the title discovery.
+    location: string;
+    // LinkedIn profile photo (DP) for discovered people.
+    profilePicture: string;
 }
 
 interface ChatMsg {
@@ -382,6 +389,18 @@ function parseRows(rows: string[][], resolve: (leads: ParsedInboundLead[]) => vo
             phone: h.findIndex(x => x.toLowerCase().includes('phone')),
             website: h.findIndex(x => x.toLowerCase().includes('website')),
             notes: h.findIndex(x => x.toLowerCase().includes('notes')),
+            // Role/title target(s): "Target Contacts", "Job Title", "Title", "Role", "Designation", "Position".
+            title: h.findIndex(x => {
+                const s = x.toLowerCase();
+                return s.includes('title') || s.includes('target') || s.includes('role')
+                    || s.includes('designation') || s.includes('position');
+            }),
+            // Location/geo: "Location", "City", "Country", "Region", "Geo".
+            location: h.findIndex(x => {
+                const s = x.toLowerCase();
+                return s.includes('location') || s.includes('city') || s.includes('country')
+                    || s.includes('region') || s.includes('geo');
+            }),
         };
         const leads = rows.slice(1).map(r => ({
             firstName: (ci.firstName >= 0 ? r[ci.firstName] : '') || '',
@@ -393,6 +412,9 @@ function parseRows(rows: string[][], resolve: (leads: ParsedInboundLead[]) => vo
             phone: fixPhone((ci.phone >= 0 ? r[ci.phone] : '') || ''),
             website: (ci.website >= 0 ? r[ci.website] : '') || '',
             notes: (ci.notes >= 0 ? r[ci.notes] : '') || '',
+            title: (ci.title >= 0 ? r[ci.title] : '') || '',
+            location: (ci.location >= 0 ? r[ci.location] : '') || '',
+            profilePicture: '',
         })).filter(l => {
             const isExample = l.companyName.toLowerCase().includes('delete this') || l.notes.toLowerCase().includes('delete this') || l.email.toLowerCase().includes('example.com');
             const hasData = (l.companyName && l.companyName.trim().length > 1) || (l.email && l.email.includes('@')) || (l.linkedinProfile && l.linkedinProfile.includes('linkedin.com'));
@@ -768,6 +790,8 @@ export default function AdvancedSearchAIPage() {
     const [pendingSearchConfirmation, setPendingSearchConfirmation] = useState<{ intent: LeadTargeting; originalQuery: string } | null>(null);
     // Pending location request: stores intent+query for ABM searches missing a location, awaiting user input
     const [pendingLocationRequest, setPendingLocationRequest] = useState<{ intent: LeadTargeting; originalQuery: string; abmType: string; personName?: string; companyName?: string } | null>(null);
+    // Import paused awaiting an in-chat location answer (role-based sheet with no location column)
+    const [pendingImportLocation, setPendingImportLocation] = useState<{ parsed: ParsedInboundLead[] } | null>(null);
 
     // Generic prospect search (company-type intent queries)
     // ── lastSearchType: distinguishes LinkedIn search from generic prospect search ──
@@ -2603,6 +2627,9 @@ export default function AdvancedSearchAIPage() {
             phone: c.phone || '',
             website: c.website || '',
             notes: c.notes || '',
+            title: c.title || c.job_title || c.headline || '',
+            location: c.location || '',
+            profilePicture: c.profile_picture || c.photo || '',
         }));
 
         setInboundLeads(asInbound);
@@ -2621,6 +2648,229 @@ export default function AdvancedSearchAIPage() {
         setTimeout(() => setCpStep(0), 300);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [cpContacts, cpSelected, cpSourceKey]);
+
+    /* ── Finish an inbound import: save (+ role discovery) → enrich → summary ──
+       Split out of handleInboundFile so the import can PAUSE on an in-chat location
+       question (role-based sheets with no location column) and resume here with the
+       user's answer. Pass existingProcessingId to reuse an already-shown loading
+       bubble (the caller then owns the busy flag); omit it to run standalone. */
+    const finishInboundImport = useCallback(async (parsed: ParsedInboundLead[], finalLocation: string, existingProcessingId?: string) => {
+        const processingId = existingProcessingId || `l-${Date.now()}`;
+        if (!existingProcessingId) {
+            setMessages(p => [...p, { id: processingId, role: 'ai', text: '', ts: new Date(), loading: true }]);
+            setBusy(true);
+        }
+        try {
+            const counts = computeInboundCounts(parsed);
+            const inboundTargeting: LeadTargeting = {
+                job_titles: [], industries: [],
+                locations: finalLocation ? [finalLocation] : [],
+                keywords: [`${counts.total} Inbound Leads`],
+            };
+            setTargeting(inboundTargeting);
+
+            // ── SAVE LEADS TO DATABASE ──
+            // Convert to save format and persist to campaign_leads table
+            const leadsForSave = parsed.map(l => ({
+                first_name: l.firstName,
+                last_name: l.lastName,
+                email: l.email,
+                phone: l.phone || l.whatsapp,
+                company: l.companyName,
+                linkedin_url: l.linkedinProfile,
+                website: l.website,
+                notes: l.notes,
+                // Role/title target(s) — the backend router splits multi-role cells and
+                // fans out one lead per title, then discovers people for each role.
+                title: l.title,
+            }));
+
+            try {
+                const saveResponse = await fetch('/api/campaigns/leads/import/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        leads: leadsForSave,
+                        location: finalLocation || undefined,
+                        detectedChannels: {
+                            email: counts.email > 0,
+                            whatsapp: counts.whatsapp > 0,
+                            phone: counts.phone > 0,
+                            linkedin: counts.linkedin > 0,
+                            website: counts.website > 0,
+                        },
+                    }),
+                });
+
+                if (saveResponse.ok) {
+                    const saveData = await saveResponse.json();
+                    // Store real lead UUIDs so campaign creation can link to leads table
+                    if (saveData.leadIds && saveData.leadIds.length > 0) {
+                        setInboundLeadIds(saveData.leadIds);
+
+                        // If the backend fanned out a company+title row into multiple DISCOVERED
+                        // people, show them right away from the save response (the created leads
+                        // carry the real names + LinkedIn URLs) — no need to wait for enrichment.
+                        const savedLeads: any[] = Array.isArray(saveData.leads) ? saveData.leads : [];
+                        if (savedLeads.length > parsed.length) {
+                            const rebuiltInbound: ParsedInboundLead[] = savedLeads.map((r) => {
+                                const nm = (r.name || '').trim();
+                                return {
+                                    firstName: r.first_name || nm.split(/\s+/)[0] || '',
+                                    lastName: r.last_name || nm.split(/\s+/).slice(1).join(' ') || '',
+                                    companyName: r.company || '',
+                                    linkedinProfile: r.linkedin_url || '',
+                                    email: '', whatsapp: '', phone: '', website: '', notes: '',
+                                    title: r.headline || r.title || r.target_title || '',
+                                    location: r.location || '',
+                                    profilePicture: r.profile_picture || '',
+                                };
+                            });
+                            setInboundLeads(rebuiltInbound);
+                            const rebuiltPanel: LeadProfile[] = savedLeads.map((r, i) => {
+                                const nm = (r.name || '').trim();
+                                return {
+                                    id: r.id || `inbound-${i}`,
+                                    name: nm || `Lead ${i + 1}`,
+                                    first_name: r.first_name || '',
+                                    last_name: r.last_name || '',
+                                    headline: r.headline || r.title || r.target_title || (r.company ? `at ${r.company}` : ''),
+                                    location: r.location || '',
+                                    current_company: r.company || '',
+                                    profile_url: r.linkedin_url || '',
+                                    profile_picture: r.profile_picture || '',
+                                    industry: '',
+                                    network_distance: '',
+                                    locked: false,
+                                };
+                            });
+                            setLeads(rebuiltPanel);
+                            // Keep ids aligned 1:1 with the rebuilt list (checkboxes map by index).
+                            setInboundLeadIds(savedLeads.map((r) => r.id).filter(Boolean));
+                            // Default-select every discovered person (user can uncheck any).
+                            setSelectedLeadIds(new Set(savedLeads.map((r) => r.id).filter(Boolean)));
+                            counts.total = savedLeads.length;
+                            counts.linkedin = savedLeads.filter((r) => r.linkedin_url).length;
+                        }
+
+                        // ── FULL INBOUND ENRICHMENT (Google + Gemini + Unipile) ──
+                        try {
+                            const enrichRes = await fetch('/api/campaigns/leads/enrich-inbound', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    leadIds: saveData.leadIds,
+                                    icpProfile: businessProfile || null,
+                                }),
+                            });
+                            if (enrichRes.ok) {
+                                const enrichData = await enrichRes.json();
+                                if (enrichData.success && enrichData.results?.length > 0) {
+                                    const results = enrichData.results as any[];
+                                    // When the backend fanned out a company+title row into multiple
+                                    // DISCOVERED people, the saved leads no longer map 1:1 to the
+                                    // uploaded rows — rebuild the panel from the discovered people so
+                                    // they actually show (instead of the single "Unknown/Ripple" row).
+                                    const fannedOut = results.length > parsed.length;
+                                    if (fannedOut) {
+                                        const rebuiltInbound: ParsedInboundLead[] = results.map((r) => {
+                                            const nm = (r.name || '').trim();
+                                            return {
+                                                firstName: nm.split(/\s+/)[0] || '',
+                                                lastName: nm.split(/\s+/).slice(1).join(' ') || '',
+                                                companyName: r.company || '',
+                                                linkedinProfile: r.linkedin_url || '',
+                                                email: r.email || '',
+                                                whatsapp: '',
+                                                phone: r.phone || '',
+                                                website: '',
+                                                notes: r.background_summary || '',
+                                                title: r.job_title || '',
+                                                location: '',
+                                                profilePicture: r.profile_picture || '',
+                                            };
+                                        });
+                                        setInboundLeads(rebuiltInbound);
+                                        setInboundLeadIds(results.map((r) => r.leadId));
+                                        // Default-select every discovered person (user can uncheck any).
+                                        setSelectedLeadIds(new Set(results.map((r) => r.leadId).filter(Boolean)));
+                                        const rebuiltPanel: LeadProfile[] = results.map((r, i) => {
+                                            const nm = (r.name || '').trim();
+                                            return {
+                                                id: `inbound-${i}`,
+                                                name: nm || `Lead ${i + 1}`,
+                                                first_name: nm.split(/\s+/)[0] || '',
+                                                last_name: nm.split(/\s+/).slice(1).join(' ') || '',
+                                                headline: r.job_title || (r.company ? `at ${r.company}` : ''),
+                                                location: '',
+                                                current_company: r.company || '',
+                                                profile_url: r.linkedin_url || '',
+                                                profile_picture: '',
+                                                industry: r.industry || '',
+                                                network_distance: '',
+                                                locked: false,
+                                            };
+                                        });
+                                        setLeads(rebuiltPanel);
+                                        counts.total = results.length;
+                                        counts.linkedin = results.filter((r) => r.linkedin_url).length;
+                                    } else {
+                                        // 1:1 imports — merge enrichment into the uploaded rows (keeps
+                                        // any email/phone the sheet provided).
+                                        const enrichedIds: string[] = saveData.leadIds;
+                                        const enrichMap: Record<string, any> = {};
+                                        results.forEach((r) => { enrichMap[r.leadId] = r; });
+                                        setInboundLeads(prev => prev.map((lead, idx) => {
+                                            const lid = enrichedIds[idx];
+                                            const enriched = lid ? enrichMap[lid] : null;
+                                            if (!enriched) return lead;
+                                            return {
+                                                ...lead,
+                                                linkedinProfile: lead.linkedinProfile || enriched.linkedin_url || lead.linkedinProfile,
+                                                notes: enriched.background_summary
+                                                    ? `${enriched.background_summary}${lead.notes ? '\n' + lead.notes : ''}`
+                                                    : lead.notes,
+                                            };
+                                        }));
+                                        const newLinkedIn = results.filter((r) => r.linkedin_url && !parsed[enrichedIds.indexOf(r.leadId)]?.linkedinProfile).length;
+                                        if (newLinkedIn > 0) counts.linkedin = (counts.linkedin || 0) + newLinkedIn;
+                                    }
+                                }
+                            }
+                        } catch (enrichErr) {
+                            console.warn('[Lead Import] Inbound enrichment error:', enrichErr);
+                        }
+                    }
+                } else {
+                    console.warn('Failed to save leads to database');
+                }
+            } catch (saveErr) {
+                console.warn('Error saving leads:', saveErr);
+            }
+
+            let summaryText = `**${counts.total} lead${counts.total !== 1 ? 's' : ''} successfully imported.**\n\n**Contact data detected:**\n`;
+            if (counts.linkedin > 0) summaryText += `\n• LinkedIn: ${counts.linkedin} profile${counts.linkedin !== 1 ? 's' : ''}`;
+            if (counts.email > 0) summaryText += `\n• Email: ${counts.email} address${counts.email !== 1 ? 'es' : ''}`;
+            if (counts.whatsapp > 0) summaryText += `\n• WhatsApp: ${counts.whatsapp} number${counts.whatsapp !== 1 ? 's' : ''}`;
+            if (counts.phone > 0) summaryText += `\n• Phone: ${counts.phone} number${counts.phone !== 1 ? 's' : ''}`;
+            if (counts.website > 0) summaryText += `\n• Website: ${counts.website} URL${counts.website !== 1 ? 's' : ''}`;
+            if (finalLocation) summaryText += `\n\n📍 Search location: **${finalLocation}**`;
+            summaryText += `\n\nBuilding profiles in the background — searching Google and LinkedIn for additional context on each lead.\n\nWhen ready, click **"Create Outreach Journey"** below to configure your campaign.`;
+
+            setMessages(p => p.filter(m => m.id !== processingId).concat({
+                id: `a-${Date.now()}`, role: 'ai', text: summaryText, ts: new Date(),
+                targeting: inboundTargeting, inboundAction: 'summary', inboundSummary: counts,
+            }));
+            setTimeout(() => setShowPanel('leads'), 500);
+        } catch (err: any) {
+            setMessages(p => p.filter(m => m.id !== processingId).concat({
+                id: `a-${Date.now()}`, role: 'ai', text: `⚠️ **Error importing leads:** ${err.message}`, ts: new Date(),
+            }));
+        } finally {
+            if (!existingProcessingId) setBusy(false);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [businessProfile]);
 
     /* ── Core send logic ── */
     /* ── Inbound file handler ── */
@@ -2666,6 +2916,9 @@ export default function AdvancedSearchAIPage() {
                     phone: lead.phone || '',
                     website: lead.website || '',
                     notes: lead.notes || '',
+                    title: lead.title || lead.job_title || '',
+                    location: lead.location || '',
+                    profilePicture: lead.profile_picture || '',
                 }));
             } else {
                 // Use local CSV parsing for spreadsheet files
@@ -2701,109 +2954,32 @@ export default function AdvancedSearchAIPage() {
             };
             setTargeting(inboundTargeting);
 
-            // ── SAVE LEADS TO DATABASE ──
-            // Convert to save format and persist to campaign_leads table
-            const leadsForSave = parsed.map(l => ({
-                first_name: l.firstName,
-                last_name: l.lastName,
-                email: l.email,
-                phone: l.phone || l.whatsapp,
-                company: l.companyName,
-                linkedin_url: l.linkedinProfile,
-                website: l.website,
-                notes: l.notes,
-            }));
-
-            try {
-                const saveResponse = await fetch('/api/campaigns/leads/import/save', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        leads: leadsForSave,
-                        detectedChannels: {
-                            email: counts.email > 0,
-                            whatsapp: counts.whatsapp > 0,
-                            phone: counts.phone > 0,
-                            linkedin: counts.linkedin > 0,
-                            website: counts.website > 0,
-                        },
-                    }),
-                });
-
-                if (saveResponse.ok) {
-                    const saveData = await saveResponse.json();
-                    // Store real lead UUIDs so campaign creation can link to leads table
-                    if (saveData.leadIds && saveData.leadIds.length > 0) {
-                        setInboundLeadIds(saveData.leadIds);
-
-                        // ── FULL INBOUND ENRICHMENT (Google + Gemini + Unipile) ──
-                        try {
-                            const enrichRes = await fetch('/api/campaigns/leads/enrich-inbound', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    leadIds: saveData.leadIds,
-                                    icpProfile: businessProfile || null,
-                                }),
-                            });
-                            if (enrichRes.ok) {
-                                const enrichData = await enrichRes.json();
-                                if (enrichData.success && enrichData.results?.length > 0) {
-                                    const enrichedIds: string[] = saveData.leadIds;
-                                    // Build maps: leadId → enriched data
-                                    const enrichMap: Record<string, { linkedin_url?: string; background_summary?: string; job_title?: string; industry?: string; icp_score?: number; tier?: string }> = {};
-                                    enrichData.results.forEach((r: any) => {
-                                        enrichMap[r.leadId] = r;
-                                    });
-                                    // Update inboundLeads state
-                                    setInboundLeads(prev => prev.map((lead, idx) => {
-                                        const lid = enrichedIds[idx];
-                                        const enriched = lid ? enrichMap[lid] : null;
-                                        if (!enriched) return lead;
-                                        return {
-                                            ...lead,
-                                            linkedinProfile: lead.linkedinProfile || enriched.linkedin_url || lead.linkedinProfile,
-                                            notes: enriched.background_summary
-                                                ? `${enriched.background_summary}${lead.notes ? '\n' + lead.notes : ''}`
-                                                : lead.notes,
-                                        };
-                                    }));
-                                    // Update counts
-                                    const newLinkedIn = enrichData.results.filter((r: any) => r.linkedin_url && !parsed[enrichedIds.indexOf(r.leadId)]?.linkedinProfile).length;
-                                    if (newLinkedIn > 0) counts.linkedin = (counts.linkedin || 0) + newLinkedIn;
-                                }
-                            }
-                        } catch (enrichErr) {
-                            console.warn('[Lead Import] Inbound enrichment error:', enrichErr);
-                        }
-                    }
-                } else {
-                    console.warn('Failed to save leads to database');
-                }
-            } catch (saveErr) {
-                console.warn('Error saving leads:', saveErr);
+            // ── LOCATION GATE ──
+            // Role-based rows (company + title, no person name) search LinkedIn globally
+            // unless we narrow by location. If the sheet has no location column, ask in
+            // the chat — with a quick option to search worldwide — and resume the import
+            // in doSend → finishInboundImport with the user's answer.
+            const sheetLocation = parsed.find(l => l.location && l.location.trim())?.location?.trim() || '';
+            const hasTitleRows = parsed.some(l => (l.title && l.title.trim()) && !l.firstName && !l.lastName && (l.companyName && l.companyName.trim()));
+            if (!sheetLocation && hasTitleRows) {
+                setPendingImportLocation({ parsed });
+                setMessages(p => p.filter(m => m.id !== processingId).concat({
+                    id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
+                    text: `📋 Your file has **role-based targets** (company + job titles) rather than named people — I'll search LinkedIn to find the right person for each role.\n\n📍 **Which location should I focus the search on?**\n\nType a city, country or region (e.g. **Dubai**, **UAE**, **MEA**) — or search worldwide.`,
+                    options: [{ label: '🌍 Search worldwide', value: 'worldwide' }],
+                }));
+                return; // finally{} clears busy; the reply resumes the import
             }
 
-            let summaryText = `**${counts.total} lead${counts.total !== 1 ? 's' : ''} successfully imported.**\n\n**Contact data detected:**\n`;
-            if (counts.linkedin > 0) summaryText += `\n• LinkedIn: ${counts.linkedin} profile${counts.linkedin !== 1 ? 's' : ''}`;
-            if (counts.email > 0) summaryText += `\n• Email: ${counts.email} address${counts.email !== 1 ? 'es' : ''}`;
-            if (counts.whatsapp > 0) summaryText += `\n• WhatsApp: ${counts.whatsapp} number${counts.whatsapp !== 1 ? 's' : ''}`;
-            if (counts.phone > 0) summaryText += `\n• Phone: ${counts.phone} number${counts.phone !== 1 ? 's' : ''}`;
-            if (counts.website > 0) summaryText += `\n• Website: ${counts.website} URL${counts.website !== 1 ? 's' : ''}`;
-            summaryText += `\n\nBuilding profiles in the background — searching Google and LinkedIn for additional context on each lead.\n\nWhen ready, click **"Create Outreach Journey"** below to configure your campaign.`;
-
-            setMessages(p => p.filter(m => m.id !== processingId).concat({
-                id: `a-${Date.now()}`, role: 'ai', text: summaryText, ts: new Date(),
-                targeting: inboundTargeting, inboundAction: 'summary', inboundSummary: counts,
-            }));
-            setTimeout(() => setShowPanel('leads'), 500);
+            await finishInboundImport(parsed, sheetLocation, processingId);
         } catch (err: any) {
             setMessages(p => p.filter(m => m.id !== processingId).concat({
                 id: `a-${Date.now()}`, role: 'ai', text: `⚠️ **Error parsing file:** ${err.message}\n\nTry uploading:\n• Images with business card or contact information\n• CSV/Excel files with structured lead data`,
                 ts: new Date(), inboundAction: 'upload',
             }));
         } finally { setBusy(false); }
-    }, []);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [finishInboundImport]);
 
     const doSend = useCallback(async (text: string, opts?: { targetingOverride?: LeadTargeting }) => {
         if (!text.trim() || busy) return;
@@ -2818,6 +2994,21 @@ export default function AdvancedSearchAIPage() {
         setMessages(p => [...p, { id: uid, role: 'user', text, ts: new Date() }, { id: lid, role: 'ai', text: '', ts: new Date(), loading: true }]);
         setBusy(true);
         setMsgCount(c => c + 1);
+
+        // ── PRIORITY -2: Import location answer ──
+        // If we asked which location to use for an imported role-based sheet
+        // (company + job titles), treat this reply as the answer and resume the
+        // import: save → discover people per role → enrich. Must run before every
+        // other intent handler so short replies like "Dubai" aren't misrouted.
+        if (pendingImportLocation) {
+            const reply = text.trim();
+            const isGlobal = /^(🌍\s*)?(worldwide|search worldwide|global(ly)?|everywhere|anywhere|skip|no)$/i.test(reply);
+            const parsedLeads = pendingImportLocation.parsed;
+            setPendingImportLocation(null);
+            await finishInboundImport(parsedLeads, isGlobal ? '' : reply, lid);
+            setBusy(false);
+            return;
+        }
 
         // ── PRIORITY -1a: Existing client / relationship-building intent ──
         const isRelationshipIntent = /existing client|strengthen.*relation|strengthen.*client|client relation|re.engage.*client|re-engage.*client/i.test(text);
@@ -3892,7 +4083,7 @@ export default function AdvancedSearchAIPage() {
                 id: `a-${Date.now()}`, role: 'ai', text: '⚠️ Something went wrong. Please try again.', ts: new Date(),
             }));
         } finally { setBusy(false); }
-    }, [busy, messages, convId, targeting, pendingIntent, pendingSearchConfirmation, pendingLocationRequest, webSearchEnabled]);
+    }, [busy, messages, convId, targeting, pendingIntent, pendingSearchConfirmation, pendingLocationRequest, pendingImportLocation, finishInboundImport, webSearchEnabled]);
 
     const onChatSend = useCallback(() => {
         if (!input.trim() || busy) return;
@@ -5395,16 +5586,34 @@ export default function AdvancedSearchAIPage() {
                                     <div className="adv-leads-list">
                                         {inboundLeads.map((lead, i) => (
                                           <div key={i} className="adv-lead-card flex items-start gap-3 p-4 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                                              <div className="adv-lead-avatar w-10 h-10 self-start rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
-                                                   style={{ background: avatarColor(`${lead.firstName} ${lead.lastName}`) }}>
-                                                  {initials(`${lead.firstName} ${lead.lastName}`) || '?'}
+                                              {inboundLeadIds[i] && (
+                                                  <input
+                                                      type="checkbox"
+                                                      checked={selectedLeadIds.has(inboundLeadIds[i])}
+                                                      onChange={(e) => { e.stopPropagation(); toggleLeadSelection(inboundLeadIds[i]); }}
+                                                      title={selectedLeadIds.has(inboundLeadIds[i]) ? 'Selected for campaign — uncheck to remove' : 'Add to campaign'}
+                                                      className="mt-2.5 flex-shrink-0 cursor-pointer"
+                                                      style={{ width: '17px', height: '17px', accentColor: '#4f46e5' }}
+                                                  />
+                                              )}
+                                              <div className="adv-lead-avatar w-10 h-10 self-start rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0 overflow-hidden"
+                                                   style={{ background: lead.profilePicture ? 'transparent' : avatarColor(`${lead.firstName} ${lead.lastName}`) }}>
+                                                  {lead.profilePicture
+                                                      ? <img src={lead.profilePicture} alt={`${lead.firstName} ${lead.lastName}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                                      : (initials(`${lead.firstName} ${lead.lastName}`) || '?')}
                                               </div>
                                                 <div className="adv-lead-info flex-1 min-w-0">
                                                     <div className="flex items-center gap-2">
                                                         <span className="adv-lead-name text-gray-900 dark:text-gray-100 font-bold text-sm">{[lead.firstName, lead.lastName].filter(Boolean).join(' ') || 'Unknown'}</span>
                                                         <span className="adv-verified text-green-600 dark:text-green-400">✓</span>
                                                     </div>
-                                                    <div className="adv-lead-title text-xs text-gray-500 dark:text-slate-300 truncate">{lead.companyName || 'No company'}</div>
+                                                    <div className="adv-lead-title text-xs text-gray-500 dark:text-slate-300 truncate">
+                                                        {lead.companyName || 'No company'}
+                                                        {lead.location ? <span className="text-gray-400 dark:text-slate-400"> · {lead.location}</span> : null}
+                                                    </div>
+                                                    {lead.title && lead.title !== lead.companyName && (
+                                                        <div className="text-xs text-gray-500 dark:text-slate-300 truncate" title={lead.title}>{lead.title}</div>
+                                                    )}
                                                     {lead.email && <div className="text-xs text-gray-500 dark:text-slate-300 flex items-center gap-1 overflow-hidden"><span className="flex-shrink-0">✉️</span><span className="truncate">{lead.email}</span></div>}
                                                     {lead.phone && <div className="text-xs text-gray-500 dark:text-slate-300 flex items-center gap-1 overflow-hidden"><span className="flex-shrink-0">📞</span><span className="truncate">{lead.phone}</span></div>}
                                                     {lead.linkedinProfile && (
@@ -6970,13 +7179,17 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                           {msg.inboundSummary.website > 0 && <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-white dark:bg-gray-800 text-purple-700 dark:text-purple-300 border border-purple-100 dark:border-purple-900">
                 🌐 Website ({msg.inboundSummary.website})</span>}
                       </div>
-                      <div className="mt-3 pt-3 border-t border-emerald-200/50 dark:border-emerald-800/50">
-                          <button
-                            onClick={onStartCheckpoints}
-                            className="w-full px-4 py-2.5 bg-[#172560] dark:bg-blue-700 text-white border-none rounded-[10px] text-[13px] font-bold cursor-pointer transition-all hover:bg-[#0b1957] dark:hover:bg-blue-600 shadow-sm"
-                          >
-                              Create Outreach Journey</button>
-                      </div>
+                      {/* Only show this CTA when the auto/manual action buttons aren't already
+                          rendered (msg.targeting) — otherwise it duplicates "Configure manually". */}
+                      {!msg.targeting && (
+                          <div className="mt-3 pt-3 border-t border-emerald-200/50 dark:border-emerald-800/50">
+                              <button
+                                onClick={onStartCheckpoints}
+                                className="w-full px-4 py-2.5 bg-[#172560] dark:bg-blue-700 text-white border-none rounded-[10px] text-[13px] font-bold cursor-pointer transition-all hover:bg-[#0b1957] dark:hover:bg-blue-600 shadow-sm"
+                              >
+                                  Create Outreach Journey</button>
+                          </div>
+                      )}
                   </div>
                 )}
 
@@ -7714,7 +7927,17 @@ function CheckpointFormInline({
     const CREDIT_COST_PER_LEAD = 5;
 
     // Compute qualified leads count based on ICP threshold
-    const qualifiedLeadCount = leads.filter(l => (l.icp_score ?? 0) >= (parseInt(icpThreshold) || 0)).length;
+    // Inbound imports: the user can uncheck leads in the panel — every config number
+    // (duration copy, leads/day, totals) must reflect the SELECTED count, not the
+    // full import.
+    const inboundSelectedCount = inboundMode
+        ? (selectedLeadIds.size > 0
+            ? (inboundLeadIds.filter(id => selectedLeadIds.has(id)).length || inboundLeadIds.length || inboundLeads.length)
+            : (inboundLeadIds.length || inboundLeads.length))
+        : null;
+    const qualifiedLeadCount = inboundSelectedCount != null && inboundSelectedCount > 0
+        ? inboundSelectedCount
+        : leads.filter(l => (l.icp_score ?? 0) >= (parseInt(icpThreshold) || 0)).length;
 
     // Compute LinkedIn capacity based on campaign duration
     const campaignDays = parseInt(days) || 30;
@@ -7848,8 +8071,32 @@ function CheckpointFormInline({
     };
 
     const suggestName = () => {
-        const t = targeting;
         const datePart = new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+
+        // Inbound imports: targeting.job_titles is empty, so the targeting-based path
+        // yields a meaningless "Leads in X". Derive from the SELECTED imported leads
+        // instead (companies + location) — same spirit as the outbound name.
+        if (inboundMode && inboundLeads.length > 0) {
+            const selected = inboundLeads.filter((_, idx) => {
+                if (selectedLeadIds.size === 0) return true;
+                const id = inboundLeadIds[idx];
+                return !id || selectedLeadIds.has(id);
+            });
+            const pool = selected.length > 0 ? selected : inboundLeads;
+            const companies = [...new Set(pool.map(l => (l.companyName || '').trim()).filter(Boolean))];
+            const companyPart = companies.length === 0
+                ? 'Imported Leads'
+                : companies.length === 1
+                    ? companies[0]
+                    : companies.length === 2
+                        ? `${companies[0]} & ${companies[1]}`
+                        : `${companies[0]} +${companies.length - 1} more`;
+            const inbLocPart = targeting?.locations?.length ? ` (${targeting.locations[0].split(',')[0]})` : '';
+            setName(`${companyPart} Outreach${inbLocPart} · ${datePart}`);
+            return;
+        }
+
+        const t = targeting;
         // Simple pluralize: append "s" unless the word already ends in one.
         const pluralize = (s: string) => (s.endsWith('s') ? s : `${s}s`);
         // " +N" suffix when the targeting has more than one value for a facet.
@@ -8147,24 +8394,34 @@ function CheckpointFormInline({
                 ? leads.map(l => mapLead(l, 'direct_contact'))
                 : [];
 
-            // Inbound leads from CSV/image upload
+            // Inbound leads from CSV/image upload.
+            // Respect the panel checkboxes: inboundLeads[i] aligns 1:1 with
+            // inboundLeadIds[i], so unchecked people are excluded here too (they'd
+            // otherwise sneak into the campaign via initial_leads).
             const inboundContactLeads = inboundMode && inboundLeads.length > 0
-                ? inboundLeads.map((il, idx) => mapLead({
-                    id: `inbound-${idx}`,
-                    name: `${il.firstName} ${il.lastName}`.trim() || `Lead ${idx + 1}`,
-                    first_name: il.firstName,
-                    last_name: il.lastName,
-                    headline: il.companyName ? `at ${il.companyName}` : '',
-                    location: '',
-                    current_company: il.companyName,
-                    profile_url: il.linkedinProfile,
-                    profile_picture: '',
-                    industry: '',
-                    network_distance: '',
-                    // Crucial: pass phone and email so they are stored in lead_data
-                    phone: il.phone || il.whatsapp || '',
-                    email: il.email || '',
-                } as any, 'inbound_lead'))
+                ? inboundLeads
+                    .map((il, idx) => ({ il, idx }))
+                    .filter(({ idx }) => {
+                        if (selectedLeadIds.size === 0) return true;
+                        const id = inboundLeadIds[idx];
+                        return !id || selectedLeadIds.has(id);
+                    })
+                    .map(({ il, idx }) => mapLead({
+                        id: `inbound-${idx}`,
+                        name: `${il.firstName} ${il.lastName}`.trim() || `Lead ${idx + 1}`,
+                        first_name: il.firstName,
+                        last_name: il.lastName,
+                        headline: il.companyName ? `at ${il.companyName}` : '',
+                        location: '',
+                        current_company: il.companyName,
+                        profile_url: il.linkedinProfile,
+                        profile_picture: '',
+                        industry: '',
+                        network_distance: '',
+                        // Crucial: pass phone and email so they are stored in lead_data
+                        phone: il.phone || il.whatsapp || '',
+                        email: il.email || '',
+                    } as any, 'inbound_lead'))
                 : [];
 
             const payload = {
@@ -8181,7 +8438,13 @@ function CheckpointFormInline({
                 // Pass real DB UUIDs so CampaignModel links leads via lead_id (with snapshot + phone)
                 // Covers both CSV/image imports (inboundLeadIds) and chat-entered direct contacts (directContactLeadIds)
                 inbound_lead_ids: (() => {
-                    const ids = [...inboundLeadIds, ...directContactLeadIds];
+                    let ids = [...inboundLeadIds, ...directContactLeadIds];
+                    // Respect checkbox selection for imported/discovered people: if the user
+                    // unchecked some, enrol only the selected ones.
+                    if (inboundMode && selectedLeadIds.size > 0) {
+                        const filtered = ids.filter(id => selectedLeadIds.has(id));
+                        if (filtered.length > 0) ids = filtered;
+                    }
                     return ids.length > 0 ? ids : undefined;
                 })(),
                 config: {
@@ -9970,36 +10233,49 @@ function CheckpointFormInline({
                         className="flex flex-col gap-2 dark:bg-[#000724]"
                         style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}
                       >
-                          {['7', '14', '30', '60', '90'].map((d, i) => {
-                              const dNum = parseInt(d);
-                              const wd = Math.floor(dNum * 5 / 7);
+                          {[
+                              { d: '1', label: 'Once' },
+                              { d: '7', label: '7 days' },
+                              { d: '14', label: '14 days' },
+                              { d: '30', label: '30 days' },
+                              { d: '60', label: '60 days' },
+                          ].map((o, i) => {
+                              const dNum = parseInt(o.d);
+                              const isOnce = dNum <= 1;
+                              const wd = Math.max(1, Math.floor(dNum * 5 / 7));
                               const perDay = Math.min(LINKEDIN_DAILY_LIMIT, Math.max(1, qualifiedLeadCount));
                               const totalOverDuration = perDay * wd;
                               const capped = qualifiedLeadCount > LINKEDIN_DAILY_LIMIT;
+                              const leadWord = `lead${qualifiedLeadCount !== 1 ? 's' : ''}`;
+                              const desc = isOnce
+                                  ? (inboundMode
+                                      ? `One-time send to your ${qualifiedLeadCount} selected ${leadWord} — no drip schedule`
+                                      : `Single-day run — targets up to ${perDay} leads once`)
+                                  : (inboundMode
+                                      ? `Reaches your ${qualifiedLeadCount} selected ${leadWord} over ${wd} working day${wd !== 1 ? 's' : ''}`
+                                      : capped
+                                          ? `Targets ${perDay}/day (capped from ${qualifiedLeadCount}; LinkedIn safe limit), ~${totalOverDuration} new leads over ${wd} working days`
+                                          : `Targets ${perDay} new leads/day via pagination, ~${totalOverDuration} leads over ${wd} working days`);
                               return (
                                 <div
-                                  key={d}
-                                  onClick={() => setDays(d)}
-                                  // Using 'dark:' modifiers to update background/border while keeping original style logic
-                                  className={`${days === d ? 'border-indigo-500 bg-indigo-50 dark:bg-[#2563eb]' : 'border-[#e0eaf5] dark:border-gray-800 bg-white dark:bg-[#000724]'} transition-all cursor-pointer`}
+                                  key={o.d}
+                                  onClick={() => setDays(o.d)}
+                                  className={`${days === o.d ? 'border-indigo-500 bg-indigo-50 dark:bg-[#2563eb]' : 'border-[#e0eaf5] dark:border-gray-800 bg-white dark:bg-[#000724]'} transition-all cursor-pointer`}
                                   style={{
-                                      /* Keep your existing style object properties here if preferred, or use the class above */
                                       display: 'flex', alignItems: 'center', gap: '12px', padding: '12px',
                                       borderRadius: '12px', border: '1px solid', marginBottom: '8px'
                                   }}
                                 >
-                                    <div style={numBadge(i + 1, days === d)}>{days === d ? '✓' : i + 1}</div>
+                                    <div style={numBadge(i + 1, days === o.d)}>{days === o.d ? '✓' : i + 1}</div>
                                     <div style={{ flex: 1 }}>
                                         <div style={{ fontWeight: 600 }} className="text-gray-900 dark:text-gray-100">
-                                            {d} days
+                                            {o.label}
                                         </div>
                                         <div
                                           style={{ fontSize: '11px', marginTop: '2px' }}
-                                          className={capped ? 'text-[#b45309] dark:text-amber-500' : 'text-[#6b7280] dark:text-slate-300'}
+                                          className={capped && !inboundMode ? 'text-[#b45309] dark:text-amber-500' : 'text-[#6b7280] dark:text-slate-300'}
                                         >
-                                            {capped
-                                              ? `Targets ${perDay}/day (capped from ${qualifiedLeadCount}; LinkedIn safe limit), ~${totalOverDuration} new leads over ${wd} working days`
-                                              : `Targets ${perDay} new leads/day via pagination, ~${totalOverDuration} leads over ${wd} working days`}
+                                            {desc}
                                         </div>
                                     </div>
                                 </div>
