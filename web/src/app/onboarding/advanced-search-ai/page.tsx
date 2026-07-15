@@ -5220,7 +5220,7 @@ export default function AdvancedSearchAIPage() {
                                 VP of Sales in UK SaaS
                             </button>
                             <button className="adv-gemini-chip" onClick={() => { setInput('Strengthen my relationship with existing clients'); taRef.current?.focus(); }}>
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="19" y1="8" x2="19" y2="14" /><line x1="22" y1="11" x2="16" y2="11" /></svg>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1a5.5 5.5 0 1 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8z" /></svg>
                                 Strengthen client relationships
                             </button>
                             <button className="adv-gemini-chip" onClick={() => { setInput(ICP_LEADS_PROMPT); taRef.current?.focus(); }}>
@@ -11465,45 +11465,40 @@ const css = `
             .adv-gemini-chip {
                 display: inline-flex;
                 align-items: center;
-                gap: 8px;
-                padding: 10px 20px;
-                border: 1.5px solid transparent;
-                border-radius: 24px;
-                font-size: 13.5px;
+                gap: 9px;
+                padding: 9px 15px 9px 9px;
+                border: 1px solid #e4eaf5;
+                border-radius: 14px;
+                font-size: 13px;
                 font-weight: 500;
-                color: #374151;
+                letter-spacing: -0.006em;
+                color: #55607a;
                 background: #fff;
                 cursor: pointer;
-                transition: all 0.15s;
+                transition: color .2s, border-color .2s, transform .2s cubic-bezier(.2,.7,.2,1), box-shadow .2s;
                 white-space: nowrap;
                 flex: 0 0 auto;
-                position: relative;
-                z-index: 0;
             }
-            .adv-gemini-chip::before {
-                content: '';
-                position: absolute;
-                inset: -1.5px;
-                border-radius: 25.5px;
-                padding: 1.5px;
-                background: linear-gradient(90deg,#0b1957,#1a3a8f,#2563eb,#3b82f6,#0b1957);
-                background-size: 300% 100%;
-                animation: adv-border-move 4s linear infinite;
-                -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-                -webkit-mask-composite: xor;
-                mask-composite: exclude;
-                z-index: -1;
-                pointer-events: none;
-                opacity: 0.5;
-                transition: opacity 0.2s;
-            }
-            .adv-gemini-chip:hover::before {
-                opacity: 1;
+            .adv-gemini-chip svg {
+                width: 26px;
+                height: 26px;
+                padding: 5.5px;
+                box-sizing: border-box;
+                border-radius: 9px;
+                background: #f1f4fc;
+                color: #2563eb;
+                flex: none;
+                transition: background .2s, color .2s;
             }
             .adv-gemini-chip:hover {
-                background: #fafaff;
+                color: #0b1330;
+                border-color: #cfd9ee;
+                transform: translateY(-2px);
+                box-shadow: 0 10px 24px -10px rgba(11,25,87,.22);
+            }
+            .adv-gemini-chip:hover svg {
+                background: #e4ecfb;
                 color: #0b1957;
-                box-shadow: 0 2px 12px rgba(11,25,87,0.1);
             }
             /* ── MOBILE RESPONSIVE ── */
             @media (max-width: 768px) {
@@ -11745,7 +11740,7 @@ const css = `
                 .adv-gemini-chip { padding: 10px 8px !important; font-size: 11px !important; gap: 6px !important; min-height: 56px !important; }
 
                 /* ── MOBILE DARK MODE OVERRIDES (EXTRA SMALL DEVICES) ── */
-                .dark .adv-gemini-chip { background: #1A2A43 !important; border-color: #1e293b !important; }
+                .dark .adv-gemini-chip { background: #0e1834 !important; border-color: #1e2a4a !important; }
             }
 
             /* Dark Mode Styling - uses .dark class on <html> */
@@ -11772,8 +11767,10 @@ const css = `
             /* Chips & Interactive Elements */
             .dark .adv-chip { background: #1A2A43; color: #ffffff; border: 1px solid #000724; }
             .dark .adv-chip:hover { background: #2B7CFF; color: #ffffff; }
-            .dark .adv-gemini-chip { background: #1A2A43; color: #ffffff; border: 1px solid #000724; }
-            .dark .adv-gemini-chip:hover { background: #2B7CFF; color: #ffffff; }
+            .dark .adv-gemini-chip { background: #0e1834; color: #9aa6c4; border: 1px solid #1e2a4a; }
+            .dark .adv-gemini-chip svg { background: #131f3d; color: #5b8def; }
+            .dark .adv-gemini-chip:hover { background: #0e1834; color: #eaeffb; border-color: #2c3b63; transform: translateY(-2px); box-shadow: 0 14px 30px -12px rgba(0,0,0,.6); }
+            .dark .adv-gemini-chip:hover svg { background: #16234a; color: #7ba4f5; }
 
             /* Options & Dropdowns */
             .dark .adv-close-btn { color: #ffffff; }
