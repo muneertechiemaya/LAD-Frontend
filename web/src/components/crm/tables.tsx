@@ -437,7 +437,7 @@ function FilterDropdown({
 }) {
   return (
     <div className="relative">
-      <Select value={value || ''} onValueChange={(val) => onChange(val || null)}>
+      <Select value={value || 'all_placeholder'} onValueChange={(val) => onChange(val === 'all_placeholder' ? null : val)}>
         <SelectTrigger className="h-9 px-3 text-[12.5px] font-medium border border-slate-200 dark:border-[#262831] bg-white dark:bg-[#000724] text-[#172560] dark:text-white rounded-lg focus:ring-2 focus:ring-[#0B1957]/30">
           <SelectValue placeholder={`${label}: All`} />
         </SelectTrigger>
