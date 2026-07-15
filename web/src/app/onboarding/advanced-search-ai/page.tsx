@@ -5058,17 +5058,22 @@ export default function AdvancedSearchAIPage() {
                                 <>
                                     {(() => {
                                         const lastUserMsgIdx = mediaMessages.map(msg => msg.role).lastIndexOf('user');
-                                        return mediaMessages.map((m, idx) => (
-                                            <MediaBubble 
-                                                key={m.id} 
-                                                msg={m} 
-                                                isActive={idx === mediaMessages.length - 1} 
-                                                isLastUser={idx === lastUserMsgIdx}
-                                                handleMediaBack={handleMediaBack}
-                                                mb={mb}
-                                                submitMediaInput={submitMediaInput}
-                                            />
-                                        ));
+                                        return mediaMessages.map((m, idx) => {
+                                            const nextMsg = mediaMessages[idx + 1];
+                                            const userSelectionText = (nextMsg && nextMsg.role === 'user') ? nextMsg.text : undefined;
+                                            return (
+                                                <MediaBubble 
+                                                    key={m.id} 
+                                                    msg={m} 
+                                                    isActive={idx === mediaMessages.length - 1} 
+                                                    isLastUser={idx === lastUserMsgIdx}
+                                                    handleMediaBack={handleMediaBack}
+                                                    mb={mb}
+                                                    submitMediaInput={submitMediaInput}
+                                                    userSelectionText={userSelectionText}
+                                                />
+                                            );
+                                        });
                                     })()}
                                     {/* Inline Loader — rendered dynamically below messages, perfectly centered in the left chat/split container */}
                                     {(mb.step === "loading" || mb.generating) && (
@@ -11054,18 +11059,40 @@ function AgentBuilderTrendOptions({
     description,
     options,
     onNext,
-    generating
+    generating,
+    isActive = true,
+    selectionText
 }: {
     title?: string;
     description?: string;
     options: any[];
     onNext?: (selected: string[]) => void;
     generating?: boolean;
+    isActive?: boolean;
+    selectionText?: string;
 }) {
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
 
+    // Automatically parse selectionText and populate selectedIds when rendering history
+    useEffect(() => {
+        if (!isActive && selectionText) {
+            const selectedTitles = selectionText.split(" | ").map(s => s.trim());
+            const matchedIds: string[] = [];
+            options.forEach(opt => {
+                const text = opt.label || opt.text || "";
+                const firstLine = (text.split("\n")[0] || "").trim();
+                if (selectedTitles.includes(firstLine) || selectedTitles.includes(opt.title)) {
+                    matchedIds.push(opt.id);
+                }
+            });
+            setSelectedIds(matchedIds);
+        }
+    }, [isActive, selectionText, options]);
+
     const toggleSelect = (id: string, isSkip: boolean) => {
+        if (!isActive) return; // Completely lock selections in history
+
         if (isSkip) {
             if (onNext) onNext(["Start Directly (Skip Trends)"]);
             return;
@@ -11143,7 +11170,12 @@ function AgentBuilderTrendOptions({
                             <button
                                 key={opt.id}
                                 onClick={() => toggleSelect(opt.id, false)}
-                                className="bg-white border border-slate-200 hover:border-[#0b1957]/50 max-w-[240px] truncate max-h-[36px] text-left rounded-2xl px-4 py-2.5 text-xs font-semibold text-[#0b1957] transition-all duration-300 ease-in-out cursor-pointer shadow-sm hover:-translate-y-[1px]"
+                                disabled={!isActive}
+                                className={`bg-white border border-slate-200 max-w-[240px] truncate max-h-[36px] text-left rounded-2xl px-4 py-2.5 text-xs font-semibold text-[#0b1957] transition-all duration-300 ease-in-out shadow-sm ${
+                                    isActive 
+                                        ? "hover:border-[#0b1957]/50 hover:-translate-y-[1px] cursor-pointer" 
+                                        : "cursor-default opacity-50"
+                                }`}
                                 title={optTitle}
                             >
                                 <span className="font-bold truncate text-[12px]">{optTitle}</span>
@@ -11154,12 +11186,16 @@ function AgentBuilderTrendOptions({
                     return (
                         <div 
                             key={opt.id} 
-                            className="bg-white border border-[#0b1957] bg-blue-50/20 w-full rounded-2xl p-4 shadow-sm text-left flex flex-col gap-3"
+                            className={`bg-white border border-[#0b1957] bg-blue-50/20 w-full rounded-2xl p-4 shadow-sm text-left flex flex-col gap-3 ${
+                                !isActive ? "opacity-85" : ""
+                            }`}
                         >
                             <div 
                                 onClick={() => toggleSelect(opt.id, false)}
-                                className="flex items-center justify-between gap-2 border-b border-slate-100/80 pb-2.5 cursor-pointer hover:opacity-80 transition-opacity"
-                                title="Click to deselect"
+                                className={`flex items-center justify-between gap-2 border-b border-slate-100/80 pb-2.5 ${
+                                    isActive ? "cursor-pointer hover:opacity-80" : "cursor-default"
+                                } transition-opacity`}
+                                title={isActive ? "Click to deselect" : undefined}
                             >
                                 <span className="font-bold text-[12px] text-[#0b1957]">{optTitle}</span>
                                 <span className="text-[10px] bg-[#0b1957] text-white px-2.5 py-0.5 rounded-full select-none flex items-center gap-1 font-bold">
@@ -11268,12 +11304,14 @@ function MediaStepWidget({
     msg, 
     isActive, 
     mb, 
-    submitMediaInput 
+    submitMediaInput,
+    userSelectionText
 }: { 
     msg: any; 
     isActive: boolean; 
     mb: any; 
     submitMediaInput: (text: string, valueToSend?: string | string[]) => void; 
+    userSelectionText?: string;
 }) {
     switch (msg.step) {
         case "builder-image-output":
@@ -11379,6 +11417,8 @@ function MediaStepWidget({
                         submitMediaInput(selectedLabels.join(" | "), selectedLabels.join(" | "));
                     } : undefined}
                     generating={isActive ? mb.generating : false}
+                    isActive={isActive}
+                    selectionText={userSelectionText}
                 />
             );
         case "gallery":
@@ -11524,7 +11564,8 @@ function MediaBubble({
     isLastUser,
     handleMediaBack,
     mb, 
-    submitMediaInput 
+    submitMediaInput,
+    userSelectionText
 }: { 
     msg: any; 
     isActive: boolean; 
@@ -11532,6 +11573,7 @@ function MediaBubble({
     handleMediaBack?: () => void;
     mb: any; 
     submitMediaInput: (text: string, valueToSend?: string | string[]) => void; 
+    userSelectionText?: string;
 }) {
     if (msg.role === 'user') return (
         <div className="adv-bubble adv-bubble-user fadeUp" style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
@@ -11655,7 +11697,7 @@ function MediaBubble({
                         )}
 
                         {/* Visual widget/output if applicable */}
-                        <MediaStepWidget msg={msg} isActive={isActive} mb={mb} submitMediaInput={submitMediaInput} />
+                        <MediaStepWidget msg={msg} isActive={isActive} mb={mb} submitMediaInput={submitMediaInput} userSelectionText={userSelectionText} />
                     </div>
                 )}
             </div>
