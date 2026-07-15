@@ -6979,7 +6979,7 @@ function CheckpointFormInline({
                                     onClick={() => setIcpThreshold(opt.value)}
                                     className={`flex items-center gap-3 p-4 rounded-xl border transition-all cursor-pointer ${
                                       selected
-                                        ? 'border-indigo-500 bg-indigo-950/30'
+                                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30'
                                         : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-[#000724] hover:border-gray-300 dark:hover:border-gray-700'
                                     }`}
                                   >
@@ -6994,7 +6994,7 @@ function CheckpointFormInline({
                                       </div>
                                       <div
                                         className={`text-[12px] font-bold whitespace-nowrap ${
-                                          selected ? 'text-indigo-400' : 'text-gray-400 dark:text-gray-500'
+                                          selected ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 dark:text-gray-500'
                                         }`}
                                       >
                                           {displayCount} lead{displayCount !== 1 ? 's' : ''}
@@ -7078,7 +7078,7 @@ function CheckpointFormInline({
                             ].filter(ch => !ch.disabled).map((ch, i) => (
                               <div key={ch.id} onClick={() => toggleNextChannel(ch.id)} className={`flex items-center gap-3 p-4 rounded-xl border transition-all cursor-pointer ${
                                   nextChannels.includes(ch.id)
-                                    ? 'border-indigo-500 bg-indigo-950/30 dark:bg-[#2563eb]'
+                                    ? 'border-indigo-500 bg-indigo-50 dark:bg-[#2563eb]'
                                     : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-[#000724] hover:border-gray-300 dark:hover:border-gray-700'
                                 }`}
                               >
