@@ -199,7 +199,19 @@ export const useDashboardStore = create<DashboardState>()(
       // v3: hard-reset to DEFAULT_LAYOUT so existing users get the new
       //     conversation-analytics widgets (Enquiries & Bookings funnel +
       //     Re-engage by Topic) at their intended slot under the stat cards.
-      version: 3,
+      // v4: hard-reset to DEFAULT_LAYOUT so existing users get the new
+      //     Lead Journey widget (accepted / responded / SAH) under the stats.
+      // v5: hard-reset to DEFAULT_LAYOUT for the channel-aware redesign — adds
+      //     the LinkedIn Funnel widget; widgets are now hidden when their
+      //     channel isn't connected (DashboardGrid gating).
+      // v6: hard-reset to DEFAULT_LAYOUT — adds the Email Activity and
+      //     Instagram Activity widgets (channel-gated like the rest).
+      // v7: hard-reset to DEFAULT_LAYOUT — adds the combined Sales Funnel
+      //     widget (cross-channel: new leads → accepted → responded → SAH).
+      // v8: Sales Funnel is now interactive (click a stage → drill into its
+      //     leads), which supersedes the separate Lead Journey widget — removed
+      //     from the default layout (still available in the widget library).
+      version: 8,
       migrate: (persistedState: Record<string, unknown>) => {
         if (!persistedState) return persistedState;
         return { ...persistedState, layout: DEFAULT_LAYOUT };

@@ -358,3 +358,36 @@ export interface LlmCostData {
   range: { days: number };
   generatedAt: string;
 }
+
+// ── R4 migration status (per-tenant migration runner) ───────────────────────
+export interface MigrationManifestEntry {
+  id: string;
+  class: 'core' | 'tenant';
+  description: string;
+}
+
+export interface MigrationTargetStatus {
+  target: string; // 'core' or a tenant_id
+  name: string;
+  schema: string;
+  status: 'current' | 'behind' | 'schema_absent' | 'unreachable';
+  schemaExists: boolean | null;
+  applied: string[];
+  missing: string[];
+  ledgerPresent: boolean;
+  ledgerVersions: string[];
+}
+
+export interface MigrationStatusData {
+  env: { coreSchema: string; tenantSchema: string };
+  manifest: MigrationManifestEntry[];
+  core: MigrationTargetStatus;
+  tenants: MigrationTargetStatus[];
+  summary: {
+    tenantsChecked: number;
+    byStatus: Record<string, number>;
+    tenantsBehind: number;
+    coreStatus: string;
+    ledgerAdoption: number;
+  };
+}

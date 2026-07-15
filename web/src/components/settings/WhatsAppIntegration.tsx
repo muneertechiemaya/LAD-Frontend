@@ -41,7 +41,7 @@ import { useTenant } from '@/contexts/TenantContext';
 
 // ── Types ────────────────────────────────────────────────────────
 
-type ConnectionStatus = 'disconnected' | 'connecting' | 'qr_scanning' | 'connected' | 'error';
+type ConnectionStatus = 'disconnected' | 'connecting' | 'qr_scanning' | 'pairing' | 'connected' | 'error';
 
 interface PersonalAccount {
   id: string;
@@ -50,6 +50,8 @@ interface PersonalAccount {
   connected_at: string | null;
   gateway_account_id: string | null;
   qr_code?: string;
+  pairing_code?: string | null;
+  method?: 'qr' | 'pairing_code';
   qr_expires_in?: number;
 }
 
@@ -179,7 +181,10 @@ async function fetchSyncedContacts(
   }
 }
 
-async function createAccount(tenantId: string | null): Promise<PersonalAccount | null> {
+async function createAccount(
+  tenantId: string | null,
+  phoneNumber?: string | null,
+): Promise<PersonalAccount | null> {
   try {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (tenantId) headers['X-Tenant-ID'] = tenantId;
@@ -187,7 +192,7 @@ async function createAccount(tenantId: string | null): Promise<PersonalAccount |
     const res = await fetch(`${PERSONAL_WA_API}/accounts`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({}),
+      body: JSON.stringify(phoneNumber ? { phone_number: phoneNumber } : {}),
     });
     if (!res.ok) return null;
     return res.json();
@@ -264,6 +269,10 @@ export const WhatsAppIntegration: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [timer, setTimer] = useState(0);
+  // Linking method: scan a QR, or enter a phone number and type an 8-char code.
+  const [linkMethod, setLinkMethod] = useState<'qr' | 'phone'>('qr');
+  const [phoneInput, setPhoneInput] = useState('');
+  const [pairingCode, setPairingCode] = useState<string | null>(null);
   const [autoAssign, setAutoAssign] = useState<AutoAssignConfig>({
     enabled: false,
     saved_contacts_to: 'human_agent',
@@ -366,17 +375,26 @@ export const WhatsAppIntegration: React.FC = () => {
 
   // ── Start QR generation ─────────────────────────────────────
 
-  const startLogin = useCallback(async () => {
+  const startLogin = useCallback(async (phoneNumber?: string) => {
     cleanup();
     setLoading(true);
     setError(null);
     setQrImage(null);
+    setPairingCode(null);
     setStatus('connecting');
 
-    const result = await createAccount(tenantId);
+    const digits = phoneNumber ? phoneNumber.replace(/\D/g, '') : '';
+    if (phoneNumber && digits.length < 8) {
+      setError('Enter your full number with country code (e.g. 971501234567).');
+      setStatus('error');
+      setLoading(false);
+      return;
+    }
+
+    const result = await createAccount(tenantId, digits || null);
 
     if (!result || !result.id) {
-      setError('Failed to initiate QR. Check that the WhatsApp service is running.');
+      setError('Failed to start linking. Check that the WhatsApp service is running.');
       setStatus('error');
       setLoading(false);
       return;
@@ -384,8 +402,11 @@ export const WhatsAppIntegration: React.FC = () => {
 
     setAccount(result);
 
-    // Generate QR image from QR string
-    if (result.qr_code) {
+    if (result.pairing_code) {
+      // Phone-number linking: show the 8-char code to type into WhatsApp.
+      setPairingCode(result.pairing_code);
+      setStatus('pairing');
+    } else if (result.qr_code) {
       try {
         const QRCode = (await import('qrcode')).default;
         const img = await QRCode.toDataURL(result.qr_code, { width: 260, margin: 2 });
@@ -393,12 +414,14 @@ export const WhatsAppIntegration: React.FC = () => {
       } catch {
         setQrImage(null);
       }
+      setStatus('qr_scanning');
+    } else {
+      setStatus('connecting');
     }
 
-    setStatus('qr_scanning');
     setLoading(false);
 
-    // Start countdown timer
+    // Start countdown timer (QR and pairing codes both expire)
     const expiresIn = result.qr_expires_in || 240;
     setTimer(expiresIn);
     timerRef.current = setInterval(() => {
@@ -406,8 +429,9 @@ export const WhatsAppIntegration: React.FC = () => {
         if (t <= 1) {
           cleanup();
           setQrImage(null);
+          setPairingCode(null);
           setStatus('disconnected');
-          setError('QR code expired. Please try again.');
+          setError('Link code expired. Please try again.');
           return 0;
         }
         return t - 1;
@@ -423,16 +447,18 @@ export const WhatsAppIntegration: React.FC = () => {
         cleanup();
         setAccount(statusResult);
         setQrImage(null);
+        setPairingCode(null);
         setStatus('connected');
         // Load contacts after successful connection
         loadContacts();
       } else if (statusResult.status === 'error' || statusResult.status === 'disconnected' || statusResult.status === 'expired') {
         cleanup();
         setQrImage(null);
+        setPairingCode(null);
         setStatus('error');
         setError('Connection failed. Please try again.');
       }
-      // If qr_scanning or reconnecting, keep polling
+      // qr_scanning / pairing / reconnecting → keep polling
     }, 3000);
   }, [tenantId, cleanup]);
 
@@ -487,7 +513,8 @@ export const WhatsAppIntegration: React.FC = () => {
     switch (status) {
       case 'connected': return 'Connected';
       case 'qr_scanning': return 'Waiting for scan...';
-      case 'connecting': return 'Generating QR...';
+      case 'pairing': return 'Waiting for code entry...';
+      case 'connecting': return 'Preparing link...';
       case 'error': return 'Error';
       default: return 'Disconnected';
     }
@@ -497,6 +524,7 @@ export const WhatsAppIntegration: React.FC = () => {
     switch (status) {
       case 'connected': return <CheckCircle className="h-5 w-5 text-green-500 dark:text-green-400" />;
       case 'qr_scanning':
+      case 'pairing':
       case 'connecting': return <RefreshCw className="h-5 w-5 text-blue-500 dark:text-indigo-400 animate-spin" />;
       case 'error': return <AlertCircle className="h-5 w-5 text-red-500 dark:text-red-400" />;
       default: return <WifiOff className="h-5 w-5 text-slate-400 dark:text-slate-500" />;
@@ -558,7 +586,56 @@ export const WhatsAppIntegration: React.FC = () => {
           </div>
         )}
 
-        {/* QR Code Display */}
+        {/* Linking-method toggle + phone input (only while not connected / not mid-link) */}
+        {status !== 'connected' && status !== 'qr_scanning' && status !== 'pairing' && (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setLinkMethod('qr')}
+                disabled={loading}
+                className={`text-sm font-medium rounded-lg border px-3 py-2 transition disabled:opacity-50 ${
+                  linkMethod === 'qr'
+                    ? 'border-green-500 bg-green-50 text-green-700'
+                    : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                Scan QR code
+              </button>
+              <button
+                type="button"
+                onClick={() => setLinkMethod('phone')}
+                disabled={loading}
+                className={`text-sm font-medium rounded-lg border px-3 py-2 transition disabled:opacity-50 ${
+                  linkMethod === 'phone'
+                    ? 'border-green-500 bg-green-50 text-green-700'
+                    : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                Use phone number
+              </button>
+            </div>
+
+            {linkMethod === 'phone' && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-gray-600">
+                  WhatsApp number (with country code, digits only)
+                </label>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  value={phoneInput}
+                  onChange={(e) => setPhoneInput(e.target.value)}
+                  placeholder="e.g. 971501234567"
+                  disabled={loading}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* QR Code Display (QR method) */}
         {qrImage && status === 'qr_scanning' && (
           <div className="border-2 border-dashed border-slate-200 dark:border-slate-800 p-5 rounded-xl text-center bg-slate-50/50 dark:bg-[#060e29]/40">
             <div className="flex justify-between items-center mb-3">
@@ -578,11 +655,35 @@ export const WhatsAppIntegration: React.FC = () => {
           </div>
         )}
 
+        {/* Pairing Code Display (phone-number method) */}
+        {pairingCode && status === 'pairing' && (
+          <div className="border-2 border-dashed border-gray-300 p-5 rounded-lg text-center">
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-sm font-medium text-gray-700">Enter this code in WhatsApp</span>
+              <span className={`text-sm font-mono ${timer < 60 ? 'text-red-500 font-bold' : 'text-gray-500'}`}>
+                {formatTime(timer)}
+              </span>
+            </div>
+            <div className="text-3xl font-mono font-bold tracking-[0.25em] text-gray-900 py-3 select-all">
+              {pairingCode.length === 8 ? `${pairingCode.slice(0, 4)}-${pairingCode.slice(4)}` : pairingCode}
+            </div>
+            <p className="text-xs text-gray-400 mt-3 leading-relaxed">
+              Open WhatsApp &gt; Settings &gt; Linked Devices &gt; Link a device &gt;{' '}
+              <span className="font-semibold">Link with phone number instead</span> &gt; enter this code
+            </p>
+          </div>
+        )}
+
         {/* Action Buttons */}
         {status !== 'connected' ? (
           <Button
-            onClick={startLogin}
-            disabled={loading || status === 'qr_scanning'}
+            onClick={() => (linkMethod === 'phone' ? startLogin(phoneInput) : startLogin())}
+            disabled={
+              loading ||
+              status === 'qr_scanning' ||
+              status === 'pairing' ||
+              (linkMethod === 'phone' && phoneInput.replace(/\D/g, '').length < 8)
+            }
             className="w-full h-11 bg-[#0b1957] dark:bg-primary text-white dark:text-primary-foreground font-semibold rounded-xl transition-all active:scale-[0.98] cursor-pointer shadow-md shadow-[#0b1957]/10"
           >
             {loading ? (
@@ -590,7 +691,13 @@ export const WhatsAppIntegration: React.FC = () => {
             ) : (
               <QrCode className="mr-2 h-4 w-4" />
             )}
-            {status === 'qr_scanning' ? 'Waiting for scan...' : 'Generate QR'}
+            {status === 'qr_scanning'
+              ? 'Waiting for scan...'
+              : status === 'pairing'
+                ? 'Waiting for code entry...'
+                : linkMethod === 'phone'
+                  ? 'Get pairing code'
+                  : 'Generate QR'}
           </Button>
         ) : (
           <Button
@@ -657,7 +764,7 @@ export const WhatsAppIntegration: React.FC = () => {
             <div className="flex gap-2 items-center">
               <Select
                       value={bulkAssignUserId || undefined}
-                      onValueChange={(val) => setBulkAssignUserId(val)}
+                      onValueChange={(val: string) => setBulkAssignUserId(val)}
                       disabled={teamMembersLoading}
                   >
                     <SelectTrigger

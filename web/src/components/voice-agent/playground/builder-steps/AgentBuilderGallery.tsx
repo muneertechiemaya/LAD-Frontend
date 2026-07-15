@@ -39,6 +39,8 @@ export function AgentBuilderGallery({
   onExtendVideo,
   onAddDialogues,
   onDeleteAssets,
+  isFullHistory = false,
+  onLoadFullHistory,
 }: {
   images?: ImageGroup[];
   videos?: VideoAsset[];
@@ -50,6 +52,8 @@ export function AgentBuilderGallery({
   onExtendVideo?: (url: string) => void;
   onAddDialogues?: (url: string) => void;
   onDeleteAssets?: (urls: string[]) => void;
+  isFullHistory?: boolean;
+  onLoadFullHistory?: () => void;
 }) {
   const [selectedGroup, setSelectedGroup] = useState<ImageGroup | null>(null);
   const [activeVideo, setActiveVideo] = useState<string | null>(null);
@@ -621,7 +625,7 @@ export function AgentBuilderGallery({
             })}
             
             {/* Cute load more button */}
-            {unifiedAssets.length > visibleCount && (
+            {unifiedAssets.length > visibleCount ? (
               <div className="flex justify-center pt-3 pb-6 animate-in fade-in duration-300">
                 <button
                   onClick={() => setVisibleCount((prev) => prev + 12)}
@@ -631,6 +635,18 @@ export function AgentBuilderGallery({
                   Load More
                 </button>
               </div>
+            ) : (
+              !isFullHistory && onLoadFullHistory && (
+                <div className="flex justify-center pt-3 pb-6 animate-in fade-in duration-300">
+                  <button
+                    onClick={onLoadFullHistory}
+                    className="px-5 py-2 text-[11px] font-bold text-[#0b1957] bg-blue-50/50 border border-blue-100 rounded-full hover:bg-blue-50 hover:border-blue-200 transition-all active:scale-95 shadow-sm flex items-center gap-1.5"
+                  >
+                    <Sparkles className="size-3 text-[#0b1957] fill-current animate-pulse" />
+                    Load Older Generations (Pre-90 Days)
+                  </button>
+                </div>
+              )
             )}
           </>
         )}
