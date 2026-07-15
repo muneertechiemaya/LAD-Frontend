@@ -1,6 +1,6 @@
 'use client';
 import React, { useMemo, useState, useEffect } from 'react';
-import { Workflow, Play, GitBranch, Zap, ArrowRightLeft, ArrowUpDown, Plus, X, ChevronRight, ChevronLeft, Linkedin, Mail, MessageCircle, Phone, UserPlus, Send, Eye } from 'lucide-react';
+import { Workflow, Play, GitBranch, Zap, ArrowRightLeft, ArrowUpDown, Plus, X, ChevronRight, ChevronLeft, Linkedin, Mail, MessageCircle, Phone, UserPlus, Send, Eye, Wand2 } from 'lucide-react';
 import { useOnboardingStore, WorkflowPreviewStep } from '@/store/onboardingStore';
 import { StepType } from '@/types/campaign';
 import ReactFlow, {
@@ -39,6 +39,7 @@ const PLATFORMS: any[] = [
   { id: 'email',    label: 'Email',    icon: <Mail className="w-4 h-4" />,     color: '#ea4335', desc: 'Direct mailing' },
   { id: 'whatsapp', label: 'WhatsApp', icon: <MessageCircle className="w-4 h-4" />, color: '#25d366', desc: 'Instant messaging' },
   { id: 'voice',    label: 'Voice',    icon: <Phone className="w-4 h-4" />,    color: '#8b5cf6', desc: 'AI Phone calls' },
+  { id: 'media',    label: 'AI Media', icon: <Wand2 className="w-4 h-4" />,    color: '#d946ef', desc: 'Generate brand media' },
 ];
 
 const PLATFORM_ACTIONS: Record<string, any[]> = {
@@ -55,6 +56,9 @@ const PLATFORM_ACTIONS: Record<string, any[]> = {
   ],
   voice: [
     { type: 'voice_agent_call', title: 'AI Call', icon: <Phone className="w-4 h-4" />, desc: 'AI voice interaction' },
+  ],
+  media: [
+    { type: 'media_generation', title: 'Generate Media', icon: <Wand2 className="w-4 h-4" />, desc: 'Brand image/video for outreach' },
   ],
 };
 
@@ -78,8 +82,8 @@ function FlowInner({
 
   useEffect(() => {
     const t = setTimeout(() => {
-      fitView({ padding: 0.15, duration: 500, minZoom: 0.2, maxZoom: 0.85 });
-    }, 300);
+      fitView({ padding: 0.14, duration: 400, minZoom: 0.4, maxZoom: 1 });
+    }, 250);
     return () => clearTimeout(t);
   }, [workflowPreview, fitView]);
 
@@ -107,10 +111,10 @@ function FlowInner({
         nodesConnectable={false}
         elementsSelectable={true}
         fitView
-        fitViewOptions={{ padding: 0.15, minZoom: 0.2, maxZoom: 0.85 }}
+        fitViewOptions={{ padding: 0.14, minZoom: 0.4, maxZoom: 1 }}
         minZoom={0.1}
         maxZoom={2}
-        defaultViewport={{ x: 0, y: 0, zoom: 0.6 }}
+        defaultViewport={{ x: 0, y: 0, zoom: 0.9 }}
         attributionPosition="bottom-left"
         proOptions={{ hideAttribution: true }}
         className="bg-gray-50 dark:bg-[#0b1229]" // Replaces style={{ background: '#fafafa' }}
@@ -199,6 +203,7 @@ export default function WorkflowPreviewPanel({
         <div className="flex gap-1.5 mt-2.5 flex-wrap">
           {workflowPreview.map((step) => {
             const color = step.type.includes('linkedin') || step.type === 'lead_generation' ? '#0a66c2'
+              : step.type === 'media_generation' ? '#d946ef'
               : step.type.includes('email') ? '#ea4335'
                 : step.type.includes('whatsapp') ? '#25d366'
                   : step.type.includes('voice') ? '#8b5cf6'

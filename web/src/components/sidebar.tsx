@@ -556,7 +556,7 @@ export function Sidebar() {
           "hidden md:flex flex-col shrink-0 h-screen border-r border-sidebar-border shadow-2xl",
           "bg-white dark:bg-[#000724]",
           "transition-all duration-500 ease-[cubic-bezier(.4,0,.2,1)]",
-          "overflow-hidden fixed left-0 top-0 z-50",
+          "overflow-hidden fixed left-0 top-0 z-[5000]",
           isExpanded ? "w-64" : "w-16",
         )}
         onMouseEnter={() => setIsHovered(true)}

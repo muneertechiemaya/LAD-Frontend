@@ -21,6 +21,7 @@ export type MediaBuilderStep =
   | "builder-workflow-choice"
   | "builder-video-progress"
   | "builder-keyframes-confirm"
+  | "builder-brand-dna"
   | "gallery";
 
 export interface MediaUiPayload {
@@ -36,6 +37,9 @@ export interface MediaUiPayload {
   status?: string;
   total_cost?: number;
   cost_breakdown?: any[];
+  brand_dna?: any;
+  progress?: number;
+  history?: any[];
 }
 
 export function useMediaBuilder() {
@@ -49,12 +53,20 @@ export function useMediaBuilder() {
   const [galleryImages, setGalleryImages] = useState<any[]>([]);
   const [galleryVideos, setGalleryVideos] = useState<any[]>([]);
   const [loadingGallery, setLoadingGallery] = useState(false);
+  const [isGalleryFullHistory, setIsGalleryFullHistory] = useState<boolean>(false);
+  const [pastSessions, setPastSessions] = useState<any[]>([]);
+  const [loadingSessions, setLoadingSessions] = useState<boolean>(false);
 
   const holdAbortRef = useRef<AbortController | null>(null);
+  const mageHoldAbortRef = useRef<AbortController | null>(null);
   const sessionIdRef = useRef<string>("");
+  const wasInBrandDnaExtractionRef = useRef<boolean>(false);
+  const isMageExtractionRef = useRef<boolean>(false);
 
   const workerUrl =
     process.env.NEXT_PUBLIC_PLAYGROUND_WORKER_URL || "http://localhost:8080";
+  const mageUrl =
+    process.env.NEXT_PUBLIC_MAGE_API_URL || "http://localhost:8001";
 
   const getAuthHeaders = () => {
     const token = safeStorage.getItem("token");
@@ -126,6 +138,85 @@ export function useMediaBuilder() {
     [workerUrl],
   );
 
+  const establishMageHold = useCallback(
+    async (id: string) => {
+      try {
+        console.warn(`[MediaBuilder] Establishing hold for MAGe ${id}...`);
+        
+        const startTime = Date.now();
+        const timeoutMs = 60000; // 1 minute
+        let connected = false;
+        
+        while (Date.now() - startTime < timeoutMs) {
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3000);
+            
+            const probe = await fetch(mageUrl, {
+              method: "GET",
+              signal: controller.signal,
+            });
+            clearTimeout(timeoutId);
+            
+            if (probe.ok) {
+              connected = true;
+              break;
+            }
+          } catch {
+            console.warn("[MediaBuilder] MAGe status probe failed, retrying...");
+          }
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+        }
+        
+        if (!connected) {
+          throw new Error("Failed to wake up MAGe Brand DNA extractor service.");
+        }
+
+        if (mageHoldAbortRef.current) mageHoldAbortRef.current.abort();
+        const controller = new AbortController();
+        mageHoldAbortRef.current = controller;
+
+        fetch(`${mageUrl}/api/brand-profiler/hold`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ session_id: id }),
+          signal: controller.signal,
+        }).catch((e) => {
+          if (e.name !== "AbortError") {
+            console.error("MAGe hold request ended:", e);
+          }
+        });
+      } catch (e: unknown) {
+        console.error("Failed to hold MAGe worker:", e);
+      }
+    },
+    [mageUrl],
+  );
+
+  const releaseMageHold = useCallback(
+    async (id: string) => {
+      if (!id) return;
+      if (mageHoldAbortRef.current) {
+        mageHoldAbortRef.current.abort();
+      }
+      try {
+        await fetch(`${mageUrl}/api/brand-profiler/release`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ session_id: id }),
+        });
+        console.warn(`[MediaBuilder] Released hold for MAGe ${id}`);
+      } catch (e) {
+        console.error("Failed to release MAGe worker:", e);
+      }
+    },
+    [mageUrl],
+  );
+
   const releaseHold = useCallback(
     async (id: string) => {
       if (!id) return;
@@ -150,11 +241,15 @@ export function useMediaBuilder() {
     if (holdAbortRef.current) {
       holdAbortRef.current.abort();
     }
+    if (mageHoldAbortRef.current) {
+      mageHoldAbortRef.current.abort();
+    }
     const currentSessionId = sessionIdRef.current;
     if (currentSessionId) {
       await releaseHold(currentSessionId);
+      await releaseMageHold(currentSessionId);
     }
-  }, [releaseHold]);
+  }, [releaseHold, releaseMageHold]);
 
   const startFlow = useCallback(() => {
     const newSessionId = `media-${Math.random().toString(36).substring(2, 9)}`;
@@ -167,6 +262,58 @@ export function useMediaBuilder() {
     setGenerating(false);
     setIsUploading(false);
   }, []);
+
+  const fetchPastSessions = useCallback(async () => {
+    setLoadingSessions(true);
+    try {
+      const res = await fetch(`${workerUrl}/playground-media/sessions`, {
+        method: "GET",
+        headers: getAuthHeaders(),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPastSessions(data.sessions || []);
+      }
+    } catch (e) {
+      console.error("Failed to fetch past sessions:", e);
+    } finally {
+      setLoadingSessions(false);
+    }
+  }, [workerUrl]);
+
+  const loadSession = useCallback(async (targetSessionId: string) => {
+    setStep("loading");
+    setError("");
+    setSessionId(targetSessionId);
+    sessionIdRef.current = targetSessionId;
+    try {
+      await establishHold(targetSessionId);
+      
+      const res = await fetch(`${workerUrl}/playground-media/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({
+          session_id: targetSessionId,
+          message: "",
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Server returned status ${res.status}`);
+      }
+
+      const data = await res.json();
+      setUiPayload(data);
+      setStep(data.step as MediaBuilderStep);
+    } catch (err) {
+      const errorObj = err as Error;
+      setError(errorObj.message || "Failed to load session.");
+      setStep("welcome");
+    }
+  }, [workerUrl, establishHold]);
 
   const selectImageCreation = useCallback(async () => {
     setStep("loading");
@@ -192,20 +339,7 @@ export function useMediaBuilder() {
       }
 
       const data = await res.json();
-      setUiPayload({
-        step: data.step,
-        question: data.question,
-        description: data.description,
-        options: data.options,
-        images: data.images,
-        video: data.video,
-        phase: data.phase,
-        enable_upload: data.enable_upload,
-        blocks: data.blocks,
-        status: data.status,
-        total_cost: data.total_cost,
-        cost_breakdown: data.cost_breakdown,
-      });
+      setUiPayload(data);
       setStep(data.step as MediaBuilderStep);
     } catch (err) {
       const errorObj = err as Error;
@@ -238,20 +372,7 @@ export function useMediaBuilder() {
       }
 
       const data = await res.json();
-      setUiPayload({
-        step: data.step,
-        question: data.question,
-        description: data.description,
-        options: data.options,
-        images: data.images,
-        video: data.video,
-        phase: data.phase,
-        enable_upload: data.enable_upload,
-        blocks: data.blocks,
-        status: data.status,
-        total_cost: data.total_cost,
-        cost_breakdown: data.cost_breakdown,
-      });
+      setUiPayload(data);
       setStep(data.step as MediaBuilderStep);
     } catch (err) {
       const errorObj = err as Error;
@@ -288,20 +409,7 @@ export function useMediaBuilder() {
 
         if (res.ok && active) {
           const data = await res.json();
-          setUiPayload({
-            step: data.step,
-            question: data.question,
-            description: data.description,
-            options: data.options,
-            images: data.images,
-            video: data.video,
-            phase: data.phase,
-            enable_upload: data.enable_upload,
-            blocks: data.blocks,
-            status: data.status,
-            total_cost: data.total_cost,
-            cost_breakdown: data.cost_breakdown,
-          });
+          setUiPayload(data);
           setStep(data.step as MediaBuilderStep);
         }
       } catch (err) {
@@ -314,6 +422,22 @@ export function useMediaBuilder() {
       clearInterval(intervalId);
     };
   }, [step, sessionId, workerUrl, uiPayload?.status, uiPayload?.phase]);
+
+  // Set wasInBrandDnaExtractionRef when entering builder-video-progress step for MAGe
+  useEffect(() => {
+    if (step === "builder-video-progress" && isMageExtractionRef.current) {
+      wasInBrandDnaExtractionRef.current = true;
+    }
+  }, [step]);
+
+  // Auto-release MAGe hold if we transition away from the progress step
+  useEffect(() => {
+    if (step !== "builder-video-progress" && wasInBrandDnaExtractionRef.current) {
+      wasInBrandDnaExtractionRef.current = false;
+      isMageExtractionRef.current = false;
+      releaseMageHold(sessionIdRef.current);
+    }
+  }, [step, releaseMageHold]);
 
   const uploadReference = useCallback(async (file: File) => {
     if (references.length >= 5) {
@@ -415,7 +539,26 @@ export function useMediaBuilder() {
       messageToSend = userInput.join(", ");
     }
 
+    if (messageToSend === "Create new ICP profile") {
+      if (typeof window !== "undefined") {
+        window.location.href = window.location.origin + "/onboarding/advanced-search-ai?open_icp=true";
+      }
+      return;
+    }
+
+    if (messageToSend === "Analyze a new website") {
+      try {
+        await establishMageHold(sessionId);
+        isMageExtractionRef.current = true;
+      } catch (e) {
+        console.error("Failed to establish MAGe hold:", e);
+      }
+    }
+
     if (references.length > 0) {
+      if (!messageToSend || !messageToSend.trim()) {
+        messageToSend = "Attached reference images:";
+      }
       if (step === "builder-image-output") {
         messageToSend += ` from the generated image user selected the attachements for improvemnts`;
       } else {
@@ -441,20 +584,7 @@ export function useMediaBuilder() {
       }
 
       const data = await res.json();
-      setUiPayload({
-        step: data.step,
-        question: data.question,
-        description: data.description,
-        options: data.options,
-        images: data.images,
-        video: data.video,
-        phase: data.phase,
-        enable_upload: data.enable_upload,
-        blocks: data.blocks,
-        status: data.status,
-        total_cost: data.total_cost,
-        cost_breakdown: data.cost_breakdown,
-      });
+      setUiPayload(data);
       setStep(data.step as MediaBuilderStep);
       
       // Clear references display once we transition past the reference guidance step
@@ -466,14 +596,17 @@ export function useMediaBuilder() {
     } finally {
       setGenerating(false);
     }
-  }, [sessionId, step, uiPayload, workerUrl, references]);
+  }, [sessionId, step, uiPayload, workerUrl, references, establishMageHold]);
 
-  const fetchGallery = useCallback(async () => {
+  const fetchGallery = useCallback(async (loadAll: boolean = false) => {
     setStep("gallery");
     setLoadingGallery(true);
     setError("");
     try {
-      const res = await fetch(`${workerUrl}/playground-media/gallery`, {
+      const url = loadAll
+        ? `${workerUrl}/playground-media/gallery?max_age_days=`
+        : `${workerUrl}/playground-media/gallery?max_age_days=90`;
+      const res = await fetch(url, {
         method: "GET",
         headers: getAuthHeaders(),
       });
@@ -483,6 +616,7 @@ export function useMediaBuilder() {
       const data = await res.json();
       setGalleryImages(data.images || []);
       setGalleryVideos(data.videos || []);
+      setIsGalleryFullHistory(loadAll);
     } catch (err) {
       const errorObj = err as Error;
       setError(errorObj.message || "Failed to retrieve media gallery.");
@@ -533,20 +667,7 @@ export function useMediaBuilder() {
       }
 
       const chatData = await chatRes.json();
-      setUiPayload({
-        step: chatData.step,
-        question: chatData.question,
-        description: chatData.description,
-        options: chatData.options,
-        images: chatData.images,
-        video: chatData.video,
-        phase: chatData.phase,
-        enable_upload: chatData.enable_upload,
-        blocks: chatData.blocks,
-        status: chatData.status,
-        total_cost: chatData.total_cost,
-        cost_breakdown: chatData.cost_breakdown,
-      });
+      setUiPayload(chatData);
       setStep(chatData.step as MediaBuilderStep);
     } catch (err) {
       const errorObj = err as Error;
@@ -578,20 +699,7 @@ export function useMediaBuilder() {
       }
 
       const data = await res.json();
-      setUiPayload({
-        step: data.step,
-        question: data.question,
-        description: data.description,
-        options: data.options,
-        images: data.images,
-        video: data.video,
-        phase: data.phase,
-        enable_upload: data.enable_upload,
-        blocks: data.blocks,
-        status: data.status,
-        total_cost: data.total_cost,
-        cost_breakdown: data.cost_breakdown,
-      });
+      setUiPayload(data);
       setStep(data.step as MediaBuilderStep);
     } catch (err) {
       const errorObj = err as Error;
@@ -623,20 +731,7 @@ export function useMediaBuilder() {
       }
 
       const data = await res.json();
-      setUiPayload({
-        step: data.step,
-        question: data.question,
-        description: data.description,
-        options: data.options,
-        images: data.images,
-        video: data.video,
-        phase: data.phase,
-        enable_upload: data.enable_upload,
-        blocks: data.blocks,
-        status: data.status,
-        total_cost: data.total_cost,
-        cost_breakdown: data.cost_breakdown,
-      });
+      setUiPayload(data);
       setStep(data.step as MediaBuilderStep);
     } catch (err) {
       const errorObj = err as Error;
@@ -668,20 +763,7 @@ export function useMediaBuilder() {
       }
 
       const data = await res.json();
-      setUiPayload({
-        step: data.step,
-        question: data.question,
-        description: data.description,
-        options: data.options,
-        images: data.images,
-        video: data.video,
-        phase: data.phase,
-        enable_upload: data.enable_upload,
-        blocks: data.blocks,
-        status: data.status,
-        total_cost: data.total_cost,
-        cost_breakdown: data.cost_breakdown,
-      });
+      setUiPayload(data);
       setStep(data.step as MediaBuilderStep);
     } catch (err) {
       const errorObj = err as Error;
@@ -717,11 +799,49 @@ export function useMediaBuilder() {
     }
   }, [workerUrl, fetchGallery]);
 
+  const undoStep = useCallback(async () => {
+    setStep("loading");
+    setError("");
+    try {
+      await establishHold(sessionId);
+
+      const res = await fetch(`${workerUrl}/playground-media/undo`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({
+          session_id: sessionId,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Undo failed with status ${res.status}`);
+      }
+
+      const data = await res.json();
+      setUiPayload(data);
+      setStep(data.step as MediaBuilderStep);
+    } catch (err) {
+      const errorObj = err as Error;
+      setError(errorObj.message || "Failed to undo step.");
+      if (uiPayload) {
+        setStep(uiPayload.step);
+      } else {
+        setStep("welcome");
+      }
+    }
+  }, [sessionId, workerUrl, establishHold, uiPayload]);
+
   return {
     step,
     setStep,
     sessionId,
+    setSessionId,
     uiPayload,
+    setUiPayload,
     references,
     isUploading,
     generating,
@@ -730,6 +850,9 @@ export function useMediaBuilder() {
     galleryImages,
     galleryVideos,
     loadingGallery,
+    isGalleryFullHistory,
+    pastSessions,
+    loadingSessions,
     startFlow,
     selectImageCreation,
     selectVideoGeneration,
@@ -743,5 +866,8 @@ export function useMediaBuilder() {
     extendVideoFromGallery,
     addDialoguesFromGallery,
     deleteAssets,
+    undoStep,
+    fetchPastSessions,
+    loadSession,
   };
 }

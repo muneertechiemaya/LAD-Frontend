@@ -3,16 +3,30 @@
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Gem, Upload, FileSpreadsheet, Download, CheckCircle2,Pencil, Trash2,ChevronDown, ChevronLeft, ChevronRight, X, MessageSquare, Users, Zap, Plus } from 'lucide-react';
+import { Sparkles, Gem, Upload, FileSpreadsheet, Download, CheckCircle2, Pencil, Trash2, ChevronDown, ChevronLeft, ChevronRight, X, MessageSquare, Users, Zap, Plus, Image as ImageIcon, Video, Loader2, Mic, Globe, Newspaper, UserPlus, Check, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ProfileSummaryDialog } from '@/components/campaigns';
 import AgentVisualizer from '@/components/ui/AgentVisualizer';
 import { useOnboardingStore } from '@/store/onboardingStore';
+import { deriveConfig, applyConfig, type SyncStep } from '@/components/onboarding/workflow/configStepsSync';
 import WorkflowPreviewPanel from '@/components/onboarding/WorkflowPreviewPanel';
 import { MediaGenerationModal } from '@/components/voice-agent/MediaGenerationModal';
+import { useMediaBuilder } from "@/hooks/voice-agent/useMediaBuilder";
+import { AgentBuilderTextInput } from "@/components/voice-agent/playground/builder-steps/AgentBuilderTextInput";
+import { AgentBuilderMCQ } from "@/components/voice-agent/playground/builder-steps/AgentBuilderMCQ";
+import { AgentBuilderImageOutput } from "@/components/voice-agent/playground/builder-steps/AgentBuilderImageOutput";
+import { AgentBuilderVideoConfirm } from "@/components/voice-agent/playground/builder-steps/AgentBuilderVideoConfirm";
+import { AgentBuilderVideoOutput } from "@/components/voice-agent/playground/builder-steps/AgentBuilderVideoOutput";
+import { AgentBuilderGallery } from "@/components/voice-agent/playground/builder-steps/AgentBuilderGallery";
+import { AgentBuilderScriptConfirm } from "@/components/voice-agent/playground/builder-steps/AgentBuilderScriptConfirm";
+import { AgentBuilderWorkflowChoice } from "@/components/voice-agent/playground/builder-steps/AgentBuilderWorkflowChoice";
+import { AgentBuilderVideoProgress } from "@/components/voice-agent/playground/builder-steps/AgentBuilderVideoProgress";
+import { AgentBuilderKeyframesConfirm } from "@/components/voice-agent/playground/builder-steps/AgentBuilderKeyframesConfirm";
+import { AgentBuilderBrandDNA } from "@/components/voice-agent/playground/builder-steps/AgentBuilderBrandDNA";
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmailTemplates, useCreateEmailTemplate } from '@lad/frontend-features/email-templates';
 import { useConnectedEmailSenders } from '@lad/frontend-features/email-senders';
@@ -491,6 +505,9 @@ export default function AdvancedSearchAIPage() {
     const campaignCreation = useCampaignCreation();
     const { fetchLeadSummaryPreview, saveProspectFeedback, generateProspectSummary } = campaignCreation;
     const voiceAgent = useVoiceAgent(false);
+    // Connected email senders — loaded on mount so "Let Agent Deal" can detect the
+    // email channel synchronously (the child also calls this; React Query dedupes).
+    const { data: connectedSendersParent = [] } = useConnectedEmailSenders();
     const billing = useBilling(false);
 
     // Unified single-screen mode - always show chat interface
@@ -500,6 +517,9 @@ export default function AdvancedSearchAIPage() {
     const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
     const editHydratedRef = useRef(false);
     const [input, setInput] = useState('');
+    const [isRecording, setIsRecording] = useState(false);
+    const [recognitionInstance, setRecognitionInstance] = useState<any>(null);
+    const [beautifying, setBeautifying] = useState(false);
     const [busy, setBusy] = useState(false);
     const [typedPlaceholder, setTypedPlaceholder] = useState('');
     useEffect(() => {
@@ -531,10 +551,17 @@ export default function AdvancedSearchAIPage() {
         timer = setTimeout(tick, 600);
         return () => clearTimeout(timer);
     }, [messages.length]);
+
+
+
     const [targeting, setTargeting] = useState<LeadTargeting | null>(null);
     const [leads, setLeads] = useState<LeadProfile[]>([]);
     const [filteredLeads, setFilteredLeads] = useState<LeadProfile[]>([]);   // below ICP threshold
     const [showFilteredLeads, setShowFilteredLeads] = useState(false);        // toggle "Show all"
+    // Per-lead selection: which prospects the user has checked to enroll into the
+    // campaign. The list now spans the full ICP range (0–100); the user picks the
+    // exact prospects rather than relying on a score cutoff. Keyed by lead.id.
+    const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
     const [showPanel, setShowPanel] = useState<false | 'leads' | 'workflow'>(false);
     const setWorkflowPreview = useOnboardingStore(s => s.setWorkflowPreview);
     // Activity tracking for SearchingThinker
@@ -543,6 +570,7 @@ export default function AdvancedSearchAIPage() {
     // Checkpoint form state (inline in chat)
     const [pendingContact, setPendingContact] = useState<any>(null); // detected contact from phone/email outreach
     const [cpStep, setCpStep] = useState(-1); // -1 = not started, 0-6 = steps
+    const [agentDealLoading, setAgentDealLoading] = useState(false); // "Let Agent Deal" one-click build
     const [isMobile, setIsMobile] = useState(false);
     const [chatBlocked, setChatBlocked] = useState(false);
 
@@ -563,7 +591,6 @@ export default function AdvancedSearchAIPage() {
     }, [messages]);
 
     const [cpIcpThreshold, setCpIcpThreshold] = useState('75');
-    const [cpActions, setCpActions] = useState<string[]>([]);
     const [cpConnMsg, setCpConnMsg] = useState('');
     const [cpFollowMsg, setCpFollowMsg] = useState('');
     const [cpEnableDailyWebPresence, setCpEnableDailyWebPresence] = useState(false);
@@ -571,85 +598,56 @@ export default function AdvancedSearchAIPage() {
     const [cpEnableAiPersonalization, setCpEnableAiPersonalization] = useState(false);
     const [cpEnableAiConnectionPersonalization, setCpEnableAiConnectionPersonalization] = useState(false);
     const [cpEnableAiFollowupPersonalization, setCpEnableAiFollowupPersonalization] = useState(false);
-    const [cpNextChannels, setCpNextChannels] = useState<string[]>([]); // email, whatsapp, voice_call
-    const [cpTriggerCondition, setCpTriggerCondition] = useState(''); // connection_accepted, message_replied, profile_visited
 
-    // Dynamically build workflow preview
+    // ── Config ⇄ Workflow: single source of truth ────────────────────────────
+    // The onboarding store's `workflowPreview` steps array is canonical. The
+    // structural config the guided checkpoints collect — LinkedIn actions,
+    // follow-up channels, trigger condition — is DERIVED from it here, and the
+    // setters below reconcile edits back into it. So the guided toggles and the
+    // Workflow Builder canvas stay in sync in BOTH directions in real time
+    // (this replaces the old one-way, destructive derive-and-overwrite effect,
+    // which also silently dropped LinkedIn actions and clobbered canvas edits).
+    const workflowPreview = useOnboardingStore(s => s.workflowPreview);
+    const _cpCfg = useMemo(() => deriveConfig(workflowPreview as unknown as SyncStep[]), [workflowPreview]);
+    const cpActions = _cpCfg.actions;                     // ['connect','message','profile_view'] subset
+    const cpNextChannels = _cpCfg.nextChannels;           // ['email','whatsapp','voice_call'] subset
+    const cpTriggerCondition = _cpCfg.triggerCondition;   // '' | 'connection_accepted' | …
+
+    // The lead-search node is the campaign's lead SOURCE, only relevant when leads
+    // are discovered via LinkedIn search. For direct-contact / inbound-import
+    // campaigns (leads provided directly) it must be omitted from the canvas so it
+    // matches what actually launches. Kept in a ref (updated each render below,
+    // once inboundMode/pendingContact are in scope) so the reconcile callbacks read
+    // the latest value without a stale closure or a temporal-dead-zone reference.
+    const includeLeadSourceRef = useRef(true);
+    const _applyCpCfg = useCallback((patch: Partial<{ actions: string[]; nextChannels: string[]; triggerCondition: string }>) => {
+        const cur = useOnboardingStore.getState().workflowPreview as unknown as SyncStep[];
+        setWorkflowPreview(applyConfig(cur, patch, { includeLeadSource: includeLeadSourceRef.current }) as any);
+    }, [setWorkflowPreview]);
+
+    // These keep the exact React.Dispatch<SetStateAction<string[]>> shape the
+    // CheckpointFormInline props expect, so the guided toggles need no changes —
+    // they just reconcile the shared steps array instead of local state.
+    const setCpActions = useCallback((a: string[] | ((p: string[]) => string[])) => {
+        const cur = deriveConfig(useOnboardingStore.getState().workflowPreview as unknown as SyncStep[]).actions;
+        _applyCpCfg({ actions: typeof a === 'function' ? a(cur) : a });
+    }, [_applyCpCfg]);
+    const setCpNextChannels = useCallback((a: string[] | ((p: string[]) => string[])) => {
+        const cur = deriveConfig(useOnboardingStore.getState().workflowPreview as unknown as SyncStep[]).nextChannels;
+        _applyCpCfg({ nextChannels: typeof a === 'function' ? a(cur) : a });
+    }, [_applyCpCfg]);
+    const setCpTriggerCondition = useCallback((v: string) => {
+        _applyCpCfg({ triggerCondition: v });
+    }, [_applyCpCfg]);
+
+    // Seed a clean base (Lead Search only) when the shared steps array is empty,
+    // so a first-ever load starts sensibly. A non-empty array (edit-mode
+    // hydration or a persisted session) is left untouched.
     useEffect(() => {
-        const steps: any[] = [];
-        let order = 1;
-        // Start node
-        steps.push({
-            id: 'lead-gen',
-            type: 'lead_generation',
-            title: 'LinkedIn Lead Search',
-            description: 'Find target leads on LinkedIn',
-            channel: 'linkedin',
-            order_index: order++
-        });
-
-        if (cpActions.includes('connect')) {
-            steps.push({
-                id: 'connect',
-                type: 'linkedin_connect',
-                title: 'Send Connection Request',
-                description: 'Auto-connect with leads on LinkedIn',
-                channel: 'linkedin',
-                order_index: order++
-            });
-        }
-
-        if (cpActions.includes('message')) {
-            steps.push({
-                id: 'message',
-                type: 'linkedin_message',
-                title: 'Send Follow-up Message',
-                description: 'Message after connection accepted',
-                channel: 'linkedin',
-                order_index: order++
-            });
-        }
-
-        if (cpActions.includes('profile_view')) {
-            steps.push({
-                id: 'profile_view',
-                type: 'linkedin_visit',
-                title: 'View Profile',
-                description: 'Visit their LinkedIn profile',
-                channel: 'linkedin',
-                order_index: order++
-            });
-        }
-
-        if (cpNextChannels.length > 0 && cpTriggerCondition) {
-            const condLabels: Record<string, string> = {
-                connection_accepted: 'Wait for Connection Accepted',
-                message_replied: 'Wait for Message Reply',
-                profile_visited: 'Wait for Profile Visit'
-            };
-            steps.push({
-                id: 'condition',
-                type: 'wait_for_condition',
-                title: condLabels[cpTriggerCondition] || 'Wait for Condition',
-                description: 'Trigger condition',
-                channel: 'system',
-                order_index: order++
-            });
-
-            cpNextChannels.forEach((ch, idx) => {
-                steps.push({
-                    id: `ch-${ch}-${idx}`,
-                    type: ch === 'voice_call' ? 'voice_agent_call' : `${ch}_send`,
-                    title: ch === 'email' ? 'Send Follow-up Email' : ch === 'whatsapp' ? 'Send WhatsApp Message' : 'AI Voice Call',
-                    description: `Follow up via ${ch}`,
-                    channel: ch.split('_')[0],
-                    order_index: order++
-                });
-            });
-        }
-
-        setWorkflowPreview(steps);
-    }, [cpActions, cpNextChannels, cpTriggerCondition, setWorkflowPreview]);
+        const cur = useOnboardingStore.getState().workflowPreview as unknown as SyncStep[];
+        if (!cur || cur.length === 0) setWorkflowPreview(applyConfig([], {}, { includeLeadSource: includeLeadSourceRef.current }) as any);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
     const [cpDays, setCpDays] = useState('30');
     const [cpChannelConfigStep, setCpChannelConfigStep] = useState(0); // Tracks which channel we're configuring (0-based)
     const [cpChannelDelays, setCpChannelDelays] = useState<Record<string, { days: string; hours: string }>>({}); // Delays per channel
@@ -672,6 +670,77 @@ export default function AdvancedSearchAIPage() {
     const [cpEmailGenLoading, setCpEmailGenLoading] = useState(false);
     const [cpEmailFromAddress, setCpEmailFromAddress] = useState(''); // selected sender email
     const [cpEmailProvider, setCpEmailProvider] = useState('');       // 'google' | 'microsoft'
+
+    // ── "Let Agent Deal" ──────────────────────────────────────────────────────
+    // One click builds the full outreach sequence across EVERY channel the tenant
+    // has connected, with market-standard delays, then opens the config panel at
+    // the channels step. LinkedIn is always the primary channel (the lead source);
+    // Email / WhatsApp / Voice are appended only when connected. Message templates
+    // for email/WhatsApp remain the user's choice (the inline panels ask for them);
+    // LinkedIn + follow-up copy is generated per-lead at send time via the AI
+    // personalization flags we enable here.
+    const letAgentDeal = async () => {
+        setAgentDealLoading(true);
+        try {
+            // Detect connected channels. Email senders are already loaded (hook);
+            // voice agents + WhatsApp accounts are fetched here (both return arrays).
+            let voiceAgents: any[] = [];
+            let waAccts: any[] = [];
+            const [vRes, wRes] = await Promise.allSettled([
+                voiceAgent.fetchAgents(),
+                fetch('/api/social-integration/whatsapp/accounts', { credentials: 'include' }).then(r => r.json()),
+            ]);
+            if (vRes.status === 'fulfilled' && Array.isArray(vRes.value)) voiceAgents = vRes.value;
+            if (wRes.status === 'fulfilled' && wRes.value?.success && Array.isArray(wRes.value.accounts)) waAccts = wRes.value.accounts;
+
+            const hasEmail = (connectedSendersParent as any[]).length > 0;
+            const hasWhatsApp = waAccts.length > 0;
+            const hasVoice = voiceAgents.length > 0;
+
+            // Channel sequence — LinkedIn primary, then each connected follow-up in
+            // market-standard order (LinkedIn → Email → WhatsApp → Voice).
+            const channels = ['linkedin'];
+            if (hasEmail) channels.push('email');
+            if (hasWhatsApp) channels.push('whatsapp');
+            if (hasVoice) channels.push('voice_call');
+
+            // Market-standard cadence (delay BEFORE each channel's step).
+            setCpChannelDelays({
+                linkedin: { days: '0', hours: '0' },   // starts immediately
+                email: { days: '2', hours: '0' },      // 2 days after the LinkedIn touch
+                whatsapp: { days: '2', hours: '0' },   // 2 days after email
+                voice_call: { days: '3', hours: '0' }, // 3 days after WhatsApp
+            });
+
+            // Structural build. Order matters: channels first (so 'linkedin' is
+            // present), then LinkedIn actions materialise, then the trigger.
+            setCpNextChannels(channels);
+            setCpActions(['profile_view', 'connect', 'message']);
+            setCpTriggerCondition('connection_accepted');
+
+            // Daily + per-lead AI personalization — the agent tailors each message.
+            setCpEnableDailyWebPresence(true);
+            setCpEnableDailyPosts(true);              // fetch each lead's recent LinkedIn posts
+            setCpEnableAiPersonalization(true);
+            setCpEnableAiConnectionPersonalization(true);
+            setCpEnableAiFollowupPersonalization(true);
+
+            // Pre-fill the first connected email account + voice agent (WhatsApp
+            // account auto-selects inside the config panel when the channel mounts).
+            if (hasEmail) {
+                setCpEmailFromAddress((connectedSendersParent as any[])[0].email);
+                setCpEmailProvider((connectedSendersParent as any[])[0].provider || '');
+            }
+            if (hasVoice) setCpSelectedAgentId(voiceAgents[0].agent_id || voiceAgents[0].id || '');
+
+            // Open the config panel at the channels step so the built pipeline is
+            // visible and the user can pick templates + launch.
+            setCpStep(1);
+        } finally {
+            setAgentDealLoading(false);
+        }
+    };
+
     // WhatsApp config (populated when whatsapp channel selected)
     const [cpWaBody, setCpWaBody] = useState('');
     const [cpWaFromNumber, setCpWaFromNumber] = useState('');
@@ -713,10 +782,16 @@ export default function AdvancedSearchAIPage() {
 
     // Inbound CSV upload state
     const [inboundMode, setInboundMode] = useState(false);
+    // Keep the lead-source gate current (read by the reconcile callbacks above via
+    // includeLeadSourceRef). Direct-contact (a pending contact with no LinkedIn
+    // URL) and inbound-import campaigns provide leads directly, so they omit the
+    // LinkedIn lead-search node — matching the launch builder.
+    includeLeadSourceRef.current = !inboundMode && !(pendingContact && !pendingContact.linkedin_url);
     const [inboundLeads, setInboundLeads] = useState<ParsedInboundLead[]>([]);
     const [inboundLeadIds, setInboundLeadIds] = useState<string[]>([]); // Real UUIDs from leads table (CSV/image)
     const [directContactLeadIds, setDirectContactLeadIds] = useState<string[]>([]); // Real UUIDs for chat-entered direct contacts
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const mediaFileInputRef = useRef<HTMLInputElement>(null);
 
     // Contact picker modal state
     const [showContactPicker, setShowContactPicker] = useState(false);
@@ -761,8 +836,201 @@ export default function AdvancedSearchAIPage() {
     // ── AI Playground state ──────────────────────────────────────────────────
     // ── AI Playground (chat-based business profiling) ────────────────────────
     const [showPlayground, setShowPlayground] = useState(false);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('open_icp') === 'true') {
+                setShowPlayground(true);
+            }
+        }
+    }, []);
+
     const [showMediaModal, setShowMediaModal] = useState(false);
+
+    interface MediaChatMsg {
+        id: string;
+        role: 'user' | 'ai';
+        text: string;
+        description?: string;
+        step?: string;
+        payload?: any;
+        timestamp: Date;
+        loading?: boolean;
+    }
+
+    const [mediaMode, setMediaMode] = useState(false);
+    const [mediaMessages, setMediaMessages] = useState<Array<MediaChatMsg>>([]);
+    const mb = useMediaBuilder();
+    const [brandDnaRequestedChanges, setBrandDnaRequestedChanges] = useState(false);
+    const [isHydrated, setIsHydrated] = useState(false);
+    const lastRestoredSessionIdRef = useRef<string>("");
+
+    // Save states to localStorage to prevent page refresh loss
+    useEffect(() => {
+        if (!isHydrated || typeof window === 'undefined') return;
+        if (mediaMode && mb.sessionId) {
+            localStorage.setItem('mrlad_media_mode', 'true');
+            localStorage.setItem('mrlad_active_media_session_id', mb.sessionId);
+            localStorage.setItem('mrlad_media_messages', JSON.stringify(mediaMessages));
+            localStorage.setItem('mrlad_chat_messages', JSON.stringify(messages));
+            localStorage.setItem('mrlad_cp_step', String(cpStep));
+        } else {
+            if (!mediaMode) {
+                localStorage.removeItem('mrlad_media_mode');
+                localStorage.removeItem('mrlad_active_media_session_id');
+                localStorage.removeItem('mrlad_media_messages');
+                localStorage.removeItem('mrlad_chat_messages');
+                localStorage.removeItem('mrlad_cp_step');
+            }
+        }
+    }, [mediaMode, mb.sessionId, mediaMessages, messages, cpStep, isHydrated]);
+
+    // Hydrate state from localStorage on mount and validate session
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        
+        const cachedMediaMode = localStorage.getItem('mrlad_media_mode') === 'true';
+        const cachedSessionId = localStorage.getItem('mrlad_active_media_session_id');
+        const cachedMediaMessages = localStorage.getItem('mrlad_media_messages');
+        const cachedChatMessages = localStorage.getItem('mrlad_chat_messages');
+        const cachedCpStep = localStorage.getItem('mrlad_cp_step');
+
+        if (cachedMediaMode && cachedSessionId) {
+            console.warn(`[SessionHydrate] Re-hydrating cached session: ${cachedSessionId}`);
+            mb.loadSession(cachedSessionId).then(() => {
+                setMediaMode(true);
+                if (cachedMediaMessages) {
+                    try { setMediaMessages(JSON.parse(cachedMediaMessages)); } catch (e) { console.error(e); }
+                }
+                if (cachedChatMessages) {
+                    try { setMessages(JSON.parse(cachedChatMessages)); } catch (e) { console.error(e); }
+                }
+                if (cachedCpStep) {
+                    setCpStep(Number(cachedCpStep));
+                }
+                setIsHydrated(true);
+            }).catch((err) => {
+                console.error("[SessionHydrate] Cached session validation failed, discarding cache", err);
+                localStorage.removeItem('mrlad_media_mode');
+                localStorage.removeItem('mrlad_active_media_session_id');
+                localStorage.removeItem('mrlad_media_messages');
+                localStorage.removeItem('mrlad_chat_messages');
+                localStorage.removeItem('mrlad_cp_step');
+                setIsHydrated(true);
+            });
+        } else {
+            setIsHydrated(true);
+        }
+    }, []);
+
+    // Overwrite mediaMessages if backend returns history (during GCS re-hydration / load or dropdown switch)
+    useEffect(() => {
+        if (mb.uiPayload?.history && mb.sessionId && lastRestoredSessionIdRef.current !== mb.sessionId) {
+            console.warn("[SessionHydrate] Restoring messages list from session history payload for:", mb.sessionId);
+            lastRestoredSessionIdRef.current = mb.sessionId;
+            const restoredHistory = mb.uiPayload.history.map((m: any) => {
+                let mappedPayload = m.payload;
+                if (m.payload) {
+                    mappedPayload = {
+                        ...m.payload,
+                        step: m.payload.step || m.payload.step_type,
+                        question: m.payload.question || m.payload.title,
+                        description: m.payload.description,
+                        phase: m.payload.phase
+                    };
+                }
+                return {
+                    id: m.id || `msg-${Math.random()}`,
+                    role: m.role,
+                    text: m.text,
+                    description: m.description,
+                    step: m.step,
+                    payload: mappedPayload,
+                    timestamp: new Date(m.timestamp || Date.now())
+                };
+            });
+            setMediaMessages(restoredHistory);
+        }
+    }, [mb.uiPayload?.history, mb.sessionId]);
+
+    const hasOptionsOpen = mediaMode && (
+        mb.step === "welcome" || 
+        (mb.step === "builder-mcq-few" && mb.uiPayload?.options && mb.uiPayload.options.length > 0) ||
+        (mb.step === "builder-text" && mb.uiPayload?.enable_upload) ||
+        (mb.step === "builder-image-output" && (mb.references.length > 0 || mb.isUploading || mb.error)) ||
+        mb.step === "builder-video-confirm" ||
+        mb.step === "builder-video-output" ||
+        ((mb.step === "builder-script-confirm" || mb.step === "builder-workflow-choice") && mb.uiPayload?.options && mb.uiPayload.options.length > 0)
+    );
+
+    const isSplitScreenStep = mediaMode && (
+        mb.step === "builder-brand-dna" ||
+        mb.step === "builder-video-progress" ||
+        mb.step === "builder-keyframes-confirm"
+    );
+
+    const [mediaPlaceholder, setMediaPlaceholder] = useState('Ask Mr LAD / type response...');
+    useEffect(() => {
+        if (!mediaMode) return;
+
+        const hasOptions = (mb.step === "builder-mcq-few" && mb.uiPayload?.options && mb.uiPayload.options.length > 0) ||
+                           ((mb.step === "builder-script-confirm" || mb.step === "builder-workflow-choice") && mb.uiPayload?.options && mb.uiPayload.options.length > 0);
+
+        const isBrandDnaSplit = mb.step === "builder-brand-dna" && !brandDnaRequestedChanges;
+        const isBrandDnaChanges = mb.step === "builder-brand-dna" && brandDnaRequestedChanges;
+
+        if (!hasOptions && !isBrandDnaChanges && !isBrandDnaSplit && mb.step !== "builder-video-confirm") {
+            setMediaPlaceholder('Ask Mr LAD / type response...');
+            return;
+        }
+
+        const targetText = mb.step === "builder-video-confirm"
+            ? "Ask for changes in prompt here..."
+            : isBrandDnaChanges 
+                ? "What changes do you want?" 
+                : isBrandDnaSplit 
+                    ? "Review & select options on right" 
+                    : "Something else / refinements type here .....";
+
+        let cIdx = 0;
+        setMediaPlaceholder('');
+        let timer: ReturnType<typeof setInterval>;
+
+        const startTyping = () => {
+            timer = setInterval(() => {
+                cIdx++;
+                setMediaPlaceholder(targetText.slice(0, cIdx));
+                if (cIdx >= targetText.length) {
+                    clearInterval(timer);
+                }
+            }, 60);
+        };
+
+        const initialDelay = setTimeout(startTyping, 300);
+
+        return () => {
+            clearTimeout(initialDelay);
+            clearInterval(timer);
+        };
+    }, [mediaMode, mb.step, mb.uiPayload?.options, brandDnaRequestedChanges]);
+
     const [pgChatHistory, setPgChatHistory] = useState<Array<{ role: 'user' | 'assistant'; content: string; card?: any }>>([]);
+
+
+    useEffect(() => {
+        if (mediaMode && mb.step !== "builder-brand-dna") {
+            setBrandDnaRequestedChanges(false);
+        }
+    }, [mediaMode, mb.step]);
+
+    useEffect(() => {
+        if (brandDnaRequestedChanges) {
+            setTimeout(() => {
+                taRef.current?.focus();
+            }, 150);
+        }
+    }, [brandDnaRequestedChanges]);
     const [pgInput, setPgInput] = useState('');
     const [pgBusy, setPgBusy] = useState(false);
     const [pgCurrentCard, setPgCurrentCard] = useState<any>(null);
@@ -1058,6 +1326,39 @@ export default function AdvancedSearchAIPage() {
         }
     };
 
+    // ── Lead selection (checkbox) helpers ───────────────────────────────────
+    // The checkbox is the authoritative include signal: only checked leads are
+    // enrolled into the campaign at launch (see CheckpointFormInline.launchCampaign).
+    const toggleLeadSelection = (leadId: string) => {
+        setSelectedLeadIds(prev => {
+            const next = new Set(prev);
+            if (next.has(leadId)) next.delete(leadId); else next.add(leadId);
+            return next;
+        });
+    };
+    const selectAllLeads = () => {
+        setSelectedLeadIds(new Set(leads.map(l => l.id)));
+    };
+    const clearLeadSelection = () => {
+        setSelectedLeadIds(new Set());
+    };
+    // Seed default selection (leads scoring >= 50 pre-checked) for a fresh result
+    // set, replacing any prior selection. Used when a new search populates `leads`.
+    const seedDefaultSelection = (list: LeadProfile[]) => {
+        setSelectedLeadIds(new Set(
+            list.filter(l => (l.icp_score ?? 0) >= 50).map(l => l.id)
+        ));
+    };
+    // Merge default selection for newly appended leads ("Get More") without
+    // disturbing the user's existing manual checks/unchecks.
+    const mergeDefaultSelection = (appended: LeadProfile[]) => {
+        setSelectedLeadIds(prev => {
+            const next = new Set(prev);
+            appended.forEach(l => { if ((l.icp_score ?? 0) >= 50) next.add(l.id); });
+            return next;
+        });
+    };
+
     // Build a natural-language enrichment string from the Targeting card form values
     // and any bad-feedback comments — sent to the backend LLM to generate sharper keywords.
     const buildSearchEnrichment = (): string | undefined => {
@@ -1086,6 +1387,13 @@ export default function AdvancedSearchAIPage() {
             const updated = { ...prev, [leadId]: 'bad' as const };
             try { localStorage.setItem('lad_lead_feedback', JSON.stringify(updated)); } catch { }
             return updated;
+        });
+        // A rejected lead must not remain selected for enrollment.
+        setSelectedLeadIds(prev => {
+            if (!prev.has(leadId)) return prev;
+            const next = new Set(prev);
+            next.delete(leadId);
+            return next;
         });
         if (comment.trim()) {
             setLeadFeedbackComments(prev => {
@@ -1134,6 +1442,8 @@ export default function AdvancedSearchAIPage() {
 
     const endRef = useRef<HTMLDivElement>(null);
     const taRef = useRef<HTMLTextAreaElement>(null);
+    const mediaInputWrapRef = useRef<HTMLDivElement>(null);
+    const [mediaInputWrapHeight, setMediaInputWrapHeight] = useState(120);
 
     const [summaryDialogOpen, setSummaryDialogOpen] = useState(false);
     const [selectedEmployee, setSelectedEmployee] = useState<any | null>(null);
@@ -1280,11 +1590,38 @@ export default function AdvancedSearchAIPage() {
                     if (stepTypes.includes('linkedin_connect')) liActions.push('connect');
                     if (stepTypes.includes('linkedin_message')) liActions.push('message');
                 }
-                if (liActions.length) setCpActions(liActions);
                 setCpConnMsg(cs.connection_message ?? cfg.connection_message ?? '');
                 setCpFollowMsg(cs.followup_message ?? cfg.followup_message ?? '');
-                if (Array.isArray(cs.next_channels)) setCpNextChannels(cs.next_channels);
-                setCpTriggerCondition(cs.trigger_condition ?? cfg.trigger_condition ?? '');
+                // Reconcile the whole structural config (LinkedIn actions + channels
+                // + trigger) into the canonical steps in ONE shot, so the
+                // linkedin↔actions coupling is order-independent: LinkedIn actions
+                // only materialise when 'linkedin' is a selected channel, so include
+                // it whenever we restored any LinkedIn action.
+                {
+                    const curCfg = deriveConfig(useOnboardingStore.getState().workflowPreview as unknown as SyncStep[]);
+                    const hydChannels = Array.isArray(cs.next_channels) ? [...cs.next_channels] : [...curCfg.nextChannels];
+                    if (liActions.length && !hydChannels.includes('linkedin')) hydChannels.unshift('linkedin');
+                    const hydrated = applyConfig(
+                        useOnboardingStore.getState().workflowPreview as unknown as SyncStep[],
+                        { actions: liActions, nextChannels: hydChannels, triggerCondition: cs.trigger_condition ?? cfg.trigger_condition ?? '' },
+                        { includeLeadSource: includeLeadSourceRef.current },
+                    ) as any[];
+                    // Restore the AI Media node (preserved type — survives later
+                    // toggle reconciles). Source: checkpoint_selections.media_step,
+                    // else a persisted media_generation step row.
+                    const ms = cs.media_step
+                        || (camp?.steps || []).find((s: any) => (s.type || s.step_type) === 'media_generation')?.config;
+                    if (ms && !hydrated.some((s: any) => s.type === 'media_generation')) {
+                        hydrated.push({
+                            id: 'media-gen', type: 'media_generation', title: 'AI Media', channel: 'media',
+                            description: 'Generate brand media to attach to outreach',
+                            mediaUrl: ms.media_url || '', mediaType: ms.media_type || '',
+                            mediaFilename: ms.media_filename || '', mimeType: ms.mime_type || '',
+                            mediaPrompt: ms.prompt || '',
+                        });
+                    }
+                    setWorkflowPreview(hydrated as any);
+                }
                 if (cs.campaign_days != null) setCpDays(String(cs.campaign_days));
                 setCpName(cs.campaign_name ?? camp?.name ?? '');
                 if (typeof cs.enable_daily_web_presence === 'boolean') setCpEnableDailyWebPresence(cs.enable_daily_web_presence);
@@ -1312,6 +1649,16 @@ export default function AdvancedSearchAIPage() {
             setCreditBalance(0);
         }
     }, [billing.wallet, billing.error]);
+
+    // Auto-unlock search results when the tenant has any credit balance. Unlocking is a
+    // pure client-side flag flip (locked = CSS blur only — no data withheld, no charge).
+    // The leads.some(locked) guard prevents re-render loops and also covers late-arriving
+    // "Get More Leads" pages, which are constructed with locked: idx >= 5.
+    useEffect(() => {
+        if (creditBalance !== null && creditBalance >= 1 && leads.some(l => l.locked)) {
+            setLeads(prev => prev.map(l => ({ ...l, locked: false })));
+        }
+    }, [creditBalance, leads]);
 
     // Sync voice agent hook data → cpVoiceAgents/cpVoiceNumbers state
     // so CheckpointFormInline receives them as pre-populated props
@@ -1381,6 +1728,10 @@ export default function AdvancedSearchAIPage() {
                     forceRefresh ? null : (typeof data.data_age_days === 'number' ? data.data_age_days : null)
                 );
 
+                // Tracks whether we actually produced usable summary text — drives
+                // the AI-preview fallback below.
+                let summaryText = '';
+
                 // ── 1. Build rich text summary ─────────────────────────────────
                 if (data.profile_summary) {
                     const ps = data.profile_summary as any;
@@ -1414,13 +1765,14 @@ export default function AdvancedSearchAIPage() {
                         if (names) parts.push(`\n🌐 Languages: ${names}`);
                     }
                     const richSummary = parts.join('\n').trim();
-                    if (richSummary) setProfileSummary(richSummary);
+                    if (richSummary) { setProfileSummary(richSummary); summaryText = richSummary; }
                 } else if (data.company_profile) {
-                    setProfileSummary(
+                    const companyText = (
                         data.company_profile.overview ||
                         data.company_profile.description ||
-                        `${lead.current_company || 'Company'} — ${data.company_profile.industry || ''} ${data.company_profile.company_size_range ? `· ${data.company_profile.company_size_range} employees` : ''}`.trim()
-                    );
+                        `${lead.current_company || 'Company'} — ${data.company_profile.industry || ''} ${data.company_profile.company_size_range ? `· ${data.company_profile.company_size_range} employees` : ''}`
+                    ).trim();
+                    if (companyText) { setProfileSummary(companyText); summaryText = companyText; }
                 }
 
                 // ── 2. Web presence ────────────────────────────────────────────
@@ -1430,7 +1782,10 @@ export default function AdvancedSearchAIPage() {
                 if (data.recent_posts?.length) setProfileRecentPosts(data.recent_posts);
 
                 // ── 4. Fallback ────────────────────────────────────────────────
-                if (!data.profile_summary && !data.company_profile) {
+                // Run the AI preview whenever no usable summary text was produced —
+                // including a thin LinkedIn profile object (name/headline only, no
+                // about/experience), which previously rendered blank AND skipped this.
+                if (!summaryText) {
                     const fallback = await campaignCreation.fetchLeadSummaryPreview({
                         profileData: { name: lead.name, title: lead.headline || '', company: lead.current_company || '', linkedin_url: lead.profile_url || '' }
                     });
@@ -1494,6 +1849,27 @@ export default function AdvancedSearchAIPage() {
         setSummaryError(null);
     };
 
+    // Recompute per-channel counts for the "Leads Ready" summary card from the current lead set
+    const computeInboundCounts = (list: ParsedInboundLead[]) => ({
+        total: list.length,
+        linkedin: list.filter(l => l.linkedinProfile).length,
+        email: list.filter(l => l.email).length,
+        whatsapp: list.filter(l => l.whatsapp).length,
+        phone: list.filter(l => l.phone).length,
+        website: list.filter(l => l.website).length,
+    });
+
+    // Keep the in-chat "Leads Ready" summary card(s) in sync after a lead is edited or removed —
+    // the counts are baked into the message at import time and won't update on their own.
+    const syncInboundSummary = (list: ParsedInboundLead[]) => {
+        const counts = computeInboundCounts(list);
+        setMessages(p => p.map(m =>
+            m.inboundAction === 'summary' && m.inboundSummary
+                ? { ...m, inboundSummary: counts }
+                : m
+        ));
+    };
+
     // Edit inbound lead handlers
     const openEditLead = (index: number) => {
         setEditingLeadIndex(index);
@@ -1520,6 +1896,7 @@ export default function AdvancedSearchAIPage() {
             const updatedLeads = [...inboundLeads];
             updatedLeads[editingLeadIndex] = editFormData;
             setInboundLeads(updatedLeads);
+            syncInboundSummary(updatedLeads);
 
             // Save to database via API
             const response = await fetch('/api/campaigns/leads/import/update', {
@@ -1592,6 +1969,7 @@ export default function AdvancedSearchAIPage() {
             // Remove from inbound leads state
             const updatedLeads = inboundLeads.filter((_, i) => i !== index);
             setInboundLeads(updatedLeads);
+            syncInboundSummary(updatedLeads);
 
             // Update the leads panel display
             const updatedPanelLeads: LeadProfile[] = updatedLeads.map((l, i) => ({
@@ -1712,6 +2090,443 @@ export default function AdvancedSearchAIPage() {
         }
     }, [icpSearch]);
 
+    const handleStartMediaGeneration = useCallback(() => {
+        setMediaMode(true);
+        setMediaMessages([
+            {
+                id: "welcome-msg",
+                role: "ai",
+                text: "AI Media Generation",
+                description: "Generate high-converting image concepts or premium videos for your outreach campaigns. Media generations are saved to your asset vault.",
+                step: "welcome",
+                timestamp: new Date()
+            }
+        ]);
+        mb.startFlow();
+    }, [mb]);
+
+    const submitMediaInput = useCallback((text: string, valueToSend?: string | string[], customReferences?: { path: string, thumbnail: string }[]) => {
+        const finalRefs = customReferences || (mb.references && mb.references.length > 0 ? [...mb.references] : undefined);
+        const displayText = text || (finalRefs && finalRefs.length > 0 ? `Uploaded ${finalRefs.length} reference${finalRefs.length > 1 ? 's' : ''}` : "");
+        setMediaMessages(prev => [
+            ...prev.filter(m => !m.loading),
+            {
+                id: `user-${Date.now()}`,
+                role: "user",
+                text: displayText,
+                references: finalRefs,
+                timestamp: new Date()
+            }
+        ]);
+        mb.advanceStep(valueToSend !== undefined ? valueToSend : text);
+    }, [mb]);
+
+    const startImageCreation = useCallback(() => {
+        setMediaMessages(prev => [
+            ...prev,
+            {
+                id: `user-${Date.now()}`,
+                role: "user",
+                text: "Image Creation",
+                timestamp: new Date()
+            }
+        ]);
+        mb.selectImageCreation();
+    }, [mb]);
+
+    const startVideoGeneration = useCallback(() => {
+        setMediaMessages(prev => [
+            ...prev,
+            {
+                id: `user-${Date.now()}`,
+                role: "user",
+                text: "Video Generation",
+                timestamp: new Date()
+            }
+        ]);
+        mb.selectVideoGeneration();
+    }, [mb]);
+
+    const handleMediaBack = useCallback(() => {
+        if (mb.step === "welcome") {
+            setMediaMode(false);
+            setMediaMessages([]);
+            lastRestoredSessionIdRef.current = "";
+        } else {
+            mb.undoStep();
+        }
+    }, [mb]);
+
+
+    const renderOptionsExtension = () => {
+        if (!mediaMode) return null;
+
+        const hasOptions = mb.step === "welcome" || 
+                           (mb.step === "builder-mcq-few" && mb.uiPayload?.options && mb.uiPayload.options.length > 0) ||
+                           (mb.step === "builder-text" && mb.uiPayload?.enable_upload) ||
+                           (mb.step === "builder-image-output" && (mb.references.length > 0 || mb.isUploading || mb.error)) ||
+                           mb.step === "builder-video-confirm" ||
+                           ((mb.step === "builder-script-confirm" || mb.step === "builder-workflow-choice") && mb.uiPayload?.options && mb.uiPayload.options.length > 0);
+
+        if (!hasOptions) return null;
+
+        if (mb.step === "welcome") {
+            return (
+                <div className="adv-options-extension fadeUp">
+                    <div className="text-[11px] font-bold text-[#0b1957]/50 uppercase tracking-wider mb-3">Select Journey</div>
+                    <div className="flex flex-col gap-2">
+                        <button
+                            onClick={startImageCreation}
+                            className="w-full text-left p-3.5 rounded-xl border border-slate-200 hover:border-[#0b1957] hover:bg-slate-50 transition-all flex items-start gap-3 group cursor-pointer"
+                        >
+                            <div className="p-2 bg-blue-50 rounded-lg text-[#0b1957]">
+                                <ImageIcon className="size-5" />
+                            </div>
+                            <div>
+                                <div className="text-[13px] font-bold text-[#0b1957]">Image Creation</div>
+                                <div className="text-[10px] text-slate-500 font-medium">Create &amp; edit custom brand designs or ICP target graphics.</div>
+                            </div>
+                        </button>
+                        <button
+                            onClick={startVideoGeneration}
+                            className="w-full text-left p-3.5 rounded-xl border border-slate-200 hover:border-[#0b1957] hover:bg-slate-50 transition-all flex items-start gap-3 group cursor-pointer"
+                        >
+                            <div className="p-2 bg-slate-100 rounded-lg text-slate-400 group-hover:text-[#0b1957]">
+                                <Video className="size-5" />
+                            </div>
+                            <div>
+                                <div className="text-[13px] font-bold text-slate-400 group-hover:text-[#0b1957]">Video Generation</div>
+                                <div className="text-[10px] text-slate-400 font-medium">Generate personalized video ads for outbound leads.</div>
+                            </div>
+                        </button>
+                        <div className="flex items-center justify-between border-t border-slate-100 pt-2 mt-1">
+                            <button
+                                onClick={() => {
+                                    mb.fetchGallery();
+                                }}
+                                className="text-xs font-bold text-[#0b1957] hover:underline cursor-pointer"
+                            >
+                                View Asset Vault / Gallery
+                            </button>
+                            <span className="text-[10px] text-slate-400">Generations save to your vault</span>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        if (mb.step === "builder-mcq-few" && mb.uiPayload?.options) {
+            return (
+                <div className="adv-options-extension fadeUp">
+                    <div className="text-[11px] font-bold text-[#0b1957]/50 uppercase tracking-wider mb-2">Options</div>
+                    <div className="flex flex-wrap gap-2 justify-start max-h-48 overflow-y-auto scrollbar-thin w-full">
+                        {mb.uiPayload.options.map((opt) => (
+                            <button
+                                key={opt.id}
+                                onClick={() => submitMediaInput(opt.label, opt.label)}
+                                className="bg-white border border-slate-200 hover:border-[#0b1957] rounded-xl px-4 py-2 text-xs font-semibold text-[#0b1957] hover:bg-slate-50 transition-all duration-300 ease-in-out cursor-pointer shadow-sm text-left max-w-full truncate max-h-[34px] hover:max-h-[200px] hover:whitespace-normal hover:break-words"
+                                title={opt.label}
+                            >
+                                {opt.label}
+                            </button>
+                        ))}
+                        <button
+                            onClick={() => submitMediaInput("Skip", "")}
+                            className="border border-dashed border-slate-300 rounded-full px-6 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-50 transition-all cursor-pointer"
+                        >
+                            Skip
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        if (mb.step === "builder-text" && mb.uiPayload?.enable_upload) {
+            return (
+                <div className="adv-options-extension fadeUp">
+                    <div className="text-[11px] font-bold text-[#0b1957]/50 uppercase tracking-wider mb-2">Upload References (Optional)</div>
+                    <div className="flex flex-wrap gap-2 items-center mb-2">
+                        {mb.references.map((ref) => (
+                            <div key={ref.path} className="relative size-12 border border-slate-200 rounded-lg overflow-hidden group">
+                                <img src={ref.thumbnail} className="object-cover size-full" />
+                                <button
+                                    onClick={() => mb.removeReference(ref.path)}
+                                    className="absolute inset-0 bg-black/40 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                    <X className="size-4" />
+                                </button>
+                            </div>
+                        ))}
+                        {mb.references.length < 5 && (
+                            <label className="size-12 border border-dashed border-slate-300 hover:border-[#0b1957] rounded-lg flex items-center justify-center cursor-pointer text-slate-400 hover:text-[#0b1957] transition-all">
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                        const f = e.target.files?.[0];
+                                        if (f) mb.uploadReference(f);
+                                    }}
+                                />
+                                <span className="text-base font-semibold">+</span>
+                            </label>
+                        )}
+                    </div>
+                    {mb.isUploading && <div className="text-[10px] text-slate-500 flex items-center gap-1"><Loader2 className="size-3 animate-spin" /> Uploading image...</div>}
+                    {mb.error && <div className="text-[10px] text-red-500">{mb.error}</div>}
+                </div>
+            );
+        }
+
+        if (mb.step === "builder-image-output") {
+            if (mb.references.length === 0 && !mb.isUploading && !mb.error) {
+                return null;
+            }
+            return (
+                <div className="adv-options-extension fadeUp">
+                    <div className="text-[11px] font-bold text-[#0b1957]/50 uppercase tracking-wider mb-2">Attached References</div>
+                    <div className="flex flex-wrap gap-2 items-center mb-2">
+                        {mb.references.map((ref) => (
+                            <div key={ref.path} className="relative size-12 border border-slate-200 rounded-lg overflow-hidden group">
+                                <img src={ref.thumbnail} className="object-cover size-full" />
+                                <button
+                                    onClick={() => mb.removeReference(ref.path)}
+                                    className="absolute inset-0 bg-black/40 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                    <X className="size-4" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                    {mb.isUploading && <div className="text-[10px] text-slate-500 flex items-center gap-1"><Loader2 className="size-3 animate-spin" /> Uploading image...</div>}
+                    {mb.error && <div className="text-[10px] text-red-500">{mb.error}</div>}
+                </div>
+            );
+        }
+
+        if (mb.step === "builder-video-confirm") {
+            return (
+                <div className="adv-options-extension fadeUp">
+                    <div className="text-[11px] font-bold text-[#0b1957]/50 uppercase tracking-wider mb-2">Actions</div>
+                    <div className="flex gap-2 justify-start">
+                        <button
+                            onClick={() => submitMediaInput("Confirm and Generate Video", "Yes, generate video")}
+                            className="py-2 px-6 bg-gradient-to-r from-[#0b1957] to-[#1e293b] hover:from-[#0b1957] text-white rounded-full text-xs font-bold shadow-md hover:shadow-lg transition-all active:scale-95 text-center cursor-pointer"
+                        >
+                            Confirm &amp; Generate Video
+                        </button>
+                        <button
+                            onClick={() => mb.undoStep()}
+                            className="py-2 px-6 bg-white border border-slate-200 hover:border-red-500 text-slate-500 hover:text-red-500 rounded-full text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                        >
+                            Cancel / Go Back
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        if (mb.step === "builder-video-output") {
+            const handleDownload = async () => {
+                const videoUrl = mb.uiPayload?.video || "";
+                if (!videoUrl) return;
+                try {
+                    const response = await fetch(videoUrl);
+                    const blob = await response.blob();
+                    const blobUrl = window.URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = blobUrl;
+                    a.download = "animated-concept.mp4";
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(blobUrl);
+                } catch (err) {
+                    console.warn("Direct blob download failed, falling back to navigation:", err);
+                    const a = document.createElement("a");
+                    a.href = videoUrl;
+                    a.target = "_blank";
+                    a.click();
+                }
+            };
+
+            return (
+                <div className="adv-options-extension fadeUp">
+                    <div className="text-[11px] font-bold text-[#0b1957]/50 uppercase tracking-wider mb-2">Actions</div>
+                    <div className="flex flex-col gap-2 w-full">
+                        {/* Primary action button: Add Dialogues */}
+                        <button
+                            type="button"
+                            onClick={() => submitMediaInput("Add Dialogues (AI Voiceover)", "[ADD_DIALOGUES]")}
+                            className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white font-bold text-xs rounded-full transition-all active:scale-95 shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+                        >
+                            <Volume2 className="size-4" />
+                            Add Dialogues (AI Voiceover)
+                        </button>
+
+                        {/* Secondary action buttons: Back, Extend, Download */}
+                        <div className="flex gap-2 w-full">
+                            <button
+                                type="button"
+                                onClick={() => submitMediaInput("Back to Gallery", "[SHOW_GALLERY]")}
+                                className="flex-1 py-2 px-4 border border-slate-200 hover:bg-slate-50 text-[#0b1957] font-bold text-[10px] rounded-full transition-all active:scale-95 cursor-pointer text-center flex items-center justify-center gap-1"
+                            >
+                                <ArrowLeft className="size-3" />
+                                Back to Gallery
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => submitMediaInput("Extend Video", "[EXTEND_VIDEO]")}
+                                className="flex-1 py-2 px-4 border border-blue-200 hover:bg-blue-50/50 text-blue-700 bg-blue-50/25 font-bold text-[10px] rounded-full transition-all active:scale-95 cursor-pointer text-center flex items-center justify-center gap-1 shadow-sm hover:shadow"
+                            >
+                                <Sparkles className="size-3 text-amber-500" />
+                                Extend Video
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleDownload}
+                                className="flex-1 py-2 px-4 bg-gradient-to-br from-[#0b1957] to-[#1e293b] hover:from-[#0b1957] hover:to-[#0b1957] text-white font-bold text-[10px] rounded-full transition-all active:scale-95 shadow-md hover:shadow-lg cursor-pointer text-center flex items-center justify-center gap-1"
+                            >
+                                <Download className="size-3" />
+                                Download
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        if (mb.step === "builder-script-confirm" || mb.step === "builder-workflow-choice") {
+            return (
+                <div className="adv-options-extension fadeUp">
+                    <div className="text-[11px] font-bold text-[#0b1957]/50 uppercase tracking-wider mb-2">Choose Script / Workflow</div>
+                    <div className="flex flex-wrap gap-2 justify-start items-center max-h-40 overflow-y-auto scrollbar-thin">
+                        {mb.uiPayload?.options?.map((opt) => (
+                            <button
+                                key={opt.id}
+                                onClick={() => submitMediaInput(opt.label, opt.label)}
+                                className="bg-white border border-slate-200 hover:border-[#0b1957] rounded-lg px-4 py-2 text-left text-xs font-semibold text-[#0b1957] hover:bg-slate-50 transition-all cursor-pointer"
+                            >
+                                {opt.label}
+                            </button>
+                        ))}
+                        <button
+                            onClick={() => mb.undoStep()}
+                            className="border border-dashed border-slate-300 rounded-lg px-4 py-2 text-center text-xs font-bold text-slate-400 hover:bg-slate-50 transition-all cursor-pointer"
+                        >
+                            Go Back
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+
+
+        return null;
+    };
+
+    // Sync mediaMessages with mb hook state transitions
+    useEffect(() => {
+        if (!mediaMode) return;
+
+        // 1. Handle Welcome Step
+        if (mb.step === "welcome") {
+            setMediaMessages([
+                {
+                    id: "welcome-msg",
+                    role: "ai",
+                    text: "AI Media Generation",
+                    description: "Generate high-converting image concepts or premium videos for your outreach campaigns. Media generations are saved to your asset vault.",
+                    step: "welcome",
+                    timestamp: new Date()
+                }
+            ]);
+            return;
+        }
+
+        // 2. Handle Real Steps with Payloads
+        if (mb.step !== "loading" && !mb.generating && mb.uiPayload) {
+            setMediaMessages(prev => {
+                // Check if this step already exists in history (for undo truncation)
+                const existingIndex = prev.findIndex(m => {
+                    const isStepTypeMatch = m.step === mb.step;
+                    const mPhase = m.payload?.phase || m.payload?.phase_label;
+                    const uiPhase = mb.uiPayload?.phase;
+                    const isPhaseMatch = mPhase === uiPhase;
+                    const mQuestion = m.payload?.question || m.payload?.title || m.text;
+                    const uiQuestion = mb.uiPayload?.question || mb.uiPayload?.title;
+                    const isQuestionMatch = mQuestion === uiQuestion;
+                    return isStepTypeMatch && isPhaseMatch && isQuestionMatch;
+                });
+
+                if (existingIndex !== -1) {
+                    return prev.slice(0, existingIndex + 1);
+                }
+
+                // Avoid duplicate additions of the current active step, but update its payload with the latest data
+                const lastMsg = prev[prev.length - 1];
+                const isLastMsgMatch = lastMsg && (() => {
+                    const isStepTypeMatch = lastMsg.step === mb.step;
+                    const mPhase = lastMsg.payload?.phase || lastMsg.payload?.phase_label;
+                    const uiPhase = mb.uiPayload?.phase;
+                    const isPhaseMatch = mPhase === uiPhase;
+                    const mQuestion = lastMsg.payload?.question || lastMsg.payload?.title || lastMsg.text;
+                    const uiQuestion = mb.uiPayload?.question || mb.uiPayload?.title;
+                    const isQuestionMatch = mQuestion === uiQuestion;
+                    return isStepTypeMatch && isPhaseMatch && isQuestionMatch;
+                })();
+
+                if (isLastMsgMatch) {
+                    return prev.map((m, idx) => idx === prev.length - 1 ? {
+                        ...m,
+                        text: mb.uiPayload?.question || m.text,
+                        description: mb.uiPayload?.description || m.description,
+                        payload: mb.uiPayload
+                    } : m);
+                }
+
+                const stableId = `ai-${mb.step}-${mb.uiPayload?.phase || ''}-${mb.uiPayload?.question ? mb.uiPayload.question.substring(0, 16) : ''}`;
+                return [
+                    ...prev,
+                    {
+                        id: stableId,
+                        role: "ai",
+                        text: mb.uiPayload?.question || "",
+                        description: mb.uiPayload?.description,
+                        step: mb.step,
+                        payload: mb.uiPayload,
+                        timestamp: new Date()
+                    }
+                ];
+            });
+        }
+    }, [mb.step, mb.uiPayload, mb.generating, mediaMode]);
+
+    // Auto-scroll when mediaMessages or options step/state updates
+    useEffect(() => {
+        if (mediaMode) {
+            const timer = setTimeout(() => {
+                endRef.current?.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+            return () => clearTimeout(timer);
+        }
+    }, [mediaMessages, mediaMode, mb.step, mb.uiPayload?.options, hasOptionsOpen]);
+
+    // Measure input wrap height dynamically to adjust scroll padding
+    useEffect(() => {
+        if (!mediaMode || !mediaInputWrapRef.current) return;
+
+        const observer = new ResizeObserver((entries) => {
+            for (let entry of entries) {
+                setMediaInputWrapHeight(entry.target.clientHeight);
+            }
+        });
+
+        observer.observe(mediaInputWrapRef.current);
+        return () => observer.disconnect();
+    }, [mediaMode, mb.step, mb.uiPayload?.options, hasOptionsOpen]);
+
     const onLandingSubmit = useCallback(() => {
         if (!input.trim()) return;
         addToHistory(input.trim());
@@ -1794,14 +2609,7 @@ export default function AdvancedSearchAIPage() {
         setInboundMode(true);
         setShowContactPicker(false);
 
-        const counts = {
-            total: asInbound.length,
-            linkedin: asInbound.filter(l => l.linkedinProfile).length,
-            email: asInbound.filter(l => l.email).length,
-            whatsapp: asInbound.filter(l => l.whatsapp).length,
-            phone: asInbound.filter(l => l.phone).length,
-            website: asInbound.filter(l => l.website).length,
-        };
+        const counts = computeInboundCounts(asInbound);
 
         const sourceName = CP_SOURCES.find(s => s.key === cpSourceKey)?.label || 'Contacts';
         setMessages(p => [...p,
@@ -1867,14 +2675,7 @@ export default function AdvancedSearchAIPage() {
             setInboundLeads(parsed);
             setInboundMode(true);
 
-            const counts = {
-                total: parsed.length,
-                linkedin: parsed.filter(l => l.linkedinProfile).length,
-                email: parsed.filter(l => l.email).length,
-                whatsapp: parsed.filter(l => l.whatsapp).length,
-                phone: parsed.filter(l => l.phone).length,
-                website: parsed.filter(l => l.website).length,
-            };
+            const counts = computeInboundCounts(parsed);
 
             // Convert inbound leads to LeadProfile format for the panel
             const panelLeads: LeadProfile[] = parsed.map((l, i) => ({
@@ -2480,6 +3281,7 @@ export default function AdvancedSearchAIPage() {
                                         enriched_profile: item.enriched_profile || undefined,
                                     }));
                                     setLeads(prospectLeads);
+                                    seedDefaultSelection(prospectLeads);
                                     setShowPanel('leads');
                                     // Track seen IDs for "get more" dedup
                                     setSeenProspectIds(prospectLeads.map(l => l.profile_url || l.id));
@@ -2596,6 +3398,7 @@ export default function AdvancedSearchAIPage() {
                                 enriched_profile: item.enriched_profile || undefined,
                             }));
                             setLeads(prospectLeads);
+                            seedDefaultSelection(prospectLeads);
                             setShowPanel('leads');
                             setSeenProspectIds(prospectLeads.map(l => l.profile_url || l.id));
                             setNoMoreLeads(!d.hasMore);
@@ -2837,6 +3640,9 @@ export default function AdvancedSearchAIPage() {
                     icp_description: icpDesc,
                     search_enrichment: buildSearchEnrichment(),
                     useSalesNav,
+                    // Return the full ICP range (0–100) so the user can pick prospects
+                    // via checkboxes rather than being capped at the backend's default 50.
+                    icp_min_score: 0,
                 });
 
                 // Extract and set activities from response
@@ -2900,6 +3706,7 @@ export default function AdvancedSearchAIPage() {
                             };
                         });
                         setLeads(realLeads);
+                        seedDefaultSelection(realLeads);
                         searchTotal = d.total || realLeads.length;
                         setLastModuleUsed(d.module_used || 'advanced_search');
 
@@ -3285,7 +4092,18 @@ export default function AdvancedSearchAIPage() {
     }, [targeting, tgNationality, tgExperienceLevel, tgCompanySize, tgCompanyAge, tgEducation, tgSkills, tgPostedRecently, doSend]);
 
     const onKey = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); messages.length === 0 ? onLandingSubmit() : onChatSend(); }
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            if (mediaMode) {
+                if (input.trim() || (mb.references && mb.references.length > 0)) {
+                    submitMediaInput(input.trim());
+                    setInput('');
+                    if (taRef.current) taRef.current.style.height = 'auto';
+                }
+            } else {
+                messages.length === 0 ? onLandingSubmit() : onChatSend();
+            }
+        }
     };
 
     const reset = () => {
@@ -3368,6 +4186,7 @@ export default function AdvancedSearchAIPage() {
                         enriched_profile: item.enriched_profile || undefined,
                     }));
                     setLeads(prev => [...prev, ...moreLeads]);
+                    mergeDefaultSelection(moreLeads);
                     setSeenProspectIds(prev => [...prev, ...moreLeads.map(l => l.profile_url || l.id)]);
                     if (!d.hasMore) setNoMoreLeads(true);
                 } else {
@@ -3419,6 +4238,8 @@ export default function AdvancedSearchAIPage() {
                 filters: searchCursor ? { cursor: searchCursor } : {},
                 start: searchCursor ? 0 : leads.length,
                 useSalesNav,
+                // Keep pagination consistent with the full-range initial list.
+                icp_min_score: 0,
             };
 
             setIsSearching(true);
@@ -3457,6 +4278,7 @@ export default function AdvancedSearchAIPage() {
                     };
                 });
                 setLeads(prev => [...prev, ...moreLeads]);
+                mergeDefaultSelection(moreLeads);
                 setSearchCursor(d.cursor || null);
                 if (d.total) setTotalResults(d.total);
             } else {
@@ -3706,7 +4528,7 @@ export default function AdvancedSearchAIPage() {
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" /></svg>
                         Get leads from my active ICP
                     </button>
-                    <button className="adv-chip" onClick={() => setShowMediaModal(true)}>
+                    <button className="adv-chip" onClick={handleStartMediaGeneration}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
                         Media Generation
                     </button>
@@ -3739,18 +4561,263 @@ export default function AdvancedSearchAIPage() {
     // Identify the latest message with targeting actions, inbound summary, or follow-up options to show in the mobile footer
     const lastActionMsg = [...messages].reverse().find(m => !!m.targeting || m.inboundAction === 'summary' || (m.options && m.options.length > 0));
 
+
+
+    const renderActiveSplitWidget = () => {
+        if (!mediaMode) return null;
+        switch (mb.step) {
+            case "builder-brand-dna":
+                return (
+                    <AgentBuilderBrandDNA
+                        brandDna={mb.uiPayload?.brand_dna}
+                        onNext={(val) => {
+                            if (val === "Request Changes") {
+                                setBrandDnaRequestedChanges(true);
+                            } else if (val === "Select this & start") {
+                                submitMediaInput("Select this & start", "Select this & start");
+                            } else if (val === "Go back") {
+                                mb.undoStep();
+                            }
+                        }}
+                        phase={mb.uiPayload?.phase}
+                        onBack={() => mb.undoStep()}
+                        hideButtons={brandDnaRequestedChanges}
+                        fullBleed={false}
+                    />
+                );
+            case "builder-video-progress":
+                return (
+                    <AgentBuilderVideoProgress
+                        title={mb.uiPayload?.question}
+                        description={mb.uiPayload?.description}
+                        blocks={mb.uiPayload?.blocks || []}
+                        phase={mb.uiPayload?.phase}
+                        videoUrl={mb.uiPayload?.video}
+                        status={mb.uiPayload?.status}
+                        progress={mb.uiPayload?.progress}
+                        onBack={() => mb.undoStep()}
+                        onNext={(val) => {
+                            if (val === "[SHOW_GALLERY]") {
+                                mb.fetchGallery();
+                            } else {
+                                submitMediaInput(val, val);
+                            }
+                        }}
+                    />
+                );
+            case "builder-image-output":
+                return (
+                    <AgentBuilderImageOutput
+                        title={mb.uiPayload?.question}
+                        description={mb.uiPayload?.description}
+                        images={mb.uiPayload?.images || []}
+                        video={mb.uiPayload?.video}
+                        onNext={(val) => submitMediaInput("Proceed with layout", val)}
+                        phase={mb.uiPayload?.phase}
+                        generating={mb.generating}
+                        references={mb.references}
+                        onUpload={mb.uploadReference}
+                        onRemove={mb.removeReference}
+                        isUploading={mb.isUploading}
+                        error={mb.error}
+                        onBack={() => mb.undoStep()}
+                    />
+                );
+            case "builder-video-confirm":
+                return (
+                    <AgentBuilderVideoConfirm
+                        title={mb.uiPayload?.question}
+                        description={mb.uiPayload?.description}
+                        image={mb.uiPayload?.images?.[0]}
+                        onNext={(val) => submitMediaInput("Generate Video", val)}
+                        phase={mb.uiPayload?.phase}
+                        references={mb.references}
+                        onUpload={mb.uploadReference}
+                        onRemove={mb.removeReference}
+                        isUploading={mb.isUploading}
+                        error={mb.error}
+                        onBack={() => mb.undoStep()}
+                    />
+                );
+            case "builder-video-output":
+                return (
+                    <AgentBuilderVideoOutput
+                        title={mb.uiPayload?.question}
+                        description={mb.uiPayload?.description}
+                        videoUrl={mb.uiPayload?.video}
+                        onNext={(val) => submitMediaInput("Proceed", val)}
+                        phase={mb.uiPayload?.phase}
+                        onBack={() => mb.undoStep()}
+                    />
+                );
+            case "builder-keyframes-confirm":
+                return (
+                    <AgentBuilderKeyframesConfirm
+                        title={mb.uiPayload?.question}
+                        description={mb.uiPayload?.description}
+                        keyframes={mb.uiPayload?.images || []}
+                        onNext={(val) => submitMediaInput(val || "", val)}
+                        phase={mb.uiPayload?.phase}
+                        references={mb.references}
+                        onUpload={mb.uploadReference}
+                        onRemove={mb.removeReference}
+                        isUploading={mb.isUploading}
+                        error={mb.error}
+                        onBack={() => mb.undoStep()}
+                        feedbackText={input}
+                        setFeedbackText={setInput}
+                        isSplitScreen={true}
+                    />
+                );
+            default:
+                return null;
+        }
+    };
+
+    const toggleRecording = async () => {
+        if (beautifying) return;
+
+        if (isRecording) {
+            if (recognitionInstance) {
+                try {
+                    recognitionInstance.stop();
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+            setIsRecording(false);
+            setBeautifying(true);
+
+            const rawText = input.trim();
+            if (!rawText) {
+                setBeautifying(false);
+                return;
+            }
+
+            try {
+                const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
+                const workerUrl = process.env.NEXT_PUBLIC_PLAYGROUND_WORKER_URL || "http://localhost:8080";
+                const res = await fetch(`${workerUrl}/playground-media/beautify-transcription`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        ...(token && { Authorization: `Bearer ${token}` })
+                    },
+                    body: JSON.stringify({ text: rawText })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data && data.beautified_text) {
+                        setInput(data.beautified_text);
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to beautify transcription:", err);
+            } finally {
+                setBeautifying(false);
+            }
+        } else {
+            const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert("Speech recognition is not supported in this browser. Please use Chrome, Safari, or Edge.");
+                return;
+            }
+
+            try {
+                await navigator.mediaDevices.getUserMedia({ audio: true });
+            } catch (err) {
+                console.error("Microphone access denied:", err);
+                alert("Microphone access is required for voice interaction.");
+                return;
+            }
+
+            const rec = new SpeechRecognition();
+            rec.continuous = true;
+            rec.interimResults = true;
+            rec.lang = 'en-US';
+
+            rec.onresult = (event: any) => {
+                let finalTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    finalTranscript += event.results[i][0].transcript;
+                }
+                if (finalTranscript) {
+                    setInput(finalTranscript);
+                }
+            };
+
+            rec.onerror = (event: any) => {
+                console.error("Speech recognition error:", event.error);
+                if (event.error !== 'aborted') {
+                    setIsRecording(false);
+                }
+            };
+
+            rec.onend = () => {
+                setIsRecording(false);
+            };
+
+            rec.start();
+            setIsRecording(true);
+            setRecognitionInstance(rec);
+        }
+    };
+
     /* ═══════════════════════════════════════════════
        SCREEN 2: CHAT + LEADS PANEL
        ═══════════════════════════════════════════════ */
     return (
         <div className="adv-chat-root">
             <div className="adv-yellow-bar" />
+            
+            {/* Dynamic Media Studio Sticky Header */}
+            {mediaMode && (
+                <>
+                    <div className="adv-media-header">
+                        <button 
+                            className="adv-media-header-back-btn" 
+                            onClick={handleMediaBack} 
+                            style={{ display: mb.step === "welcome" ? "none" : "flex" }}
+                            title="Undo last message"
+                        >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+                            <span>Undo last message</span>
+                        </button>
+                        
+                        <div className="adv-media-header-title">
+                            {mb.uiPayload?.phase || (mb.step === "welcome" ? "AI Media Studio" : "Waking up Mr. LADs...")}
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginLeft: 'auto' }}>
+                            <SessionSelector mb={mb} />
+                            
+                            <button
+                                onClick={() => {
+                                    mb.closeFlow();
+                                    setMediaMode(false);
+                                    setMediaMessages([]);
+                                    lastRestoredSessionIdRef.current = "";
+                                }}
+                                className="adv-media-header-exit-btn cursor-pointer"
+                            >
+                                <X className="size-4" style={{ flexShrink: 0 }} />
+                                <span>Exit Media Gen</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div className="adv-media-header-fade" />
+                </>
+            )}
+
             <div className="adv-chat-main">
                 {/* LEFT: CHAT */}
-                <div className={`adv-chat-left${messages.length === 0 ? ' adv-chat-left-empty' : ''}`} style={{ width: showPanel ? '60%' : '100%' }}>
-                    <button className="adv-chat-back" onClick={reset}>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
-                    </button>
+                <div className={`adv-chat-left${(messages.length === 0 && !mediaMode) ? ' adv-chat-left-empty' : ''}${mediaMode ? ' media-active-left' : ''}`} style={{ width: (showPanel || isSplitScreenStep) ? '60%' : '100%', position: (mediaMode && mb.step === "builder-brand-dna" && brandDnaRequestedChanges) ? 'static' : undefined }}>
+                    
+                    {!mediaMode && (
+                        <>
+                            <button className="adv-chat-back" onClick={reset}>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+                            </button>
 
                     {/* AI Playground button — top-right */}
                     {(!isMobile || messages.length === 0) && (
@@ -3777,10 +4844,12 @@ export default function AdvancedSearchAIPage() {
                             )}
                         </button>
                     )}
-
-                    <div className="adv-chat-msgs">
+                        </>
+                    )}
+                    
+                    <div className={`adv-chat-msgs${hasOptionsOpen ? ' has-options-open' : ''}`} style={{ paddingBottom: mediaMode ? `${mediaInputWrapHeight + 16}px` : undefined }}>
                         {/* Landing Content - Show when no messages */}
-                        {messages.length === 0 && (
+                        {messages.length === 0 && !mediaMode && (
                             <div className="adv-gemini-hero">
                                 <div className="adv-gemini-logo-wrap">
                                     <img src="/logo.svg" alt="LAD" className="adv-gemini-logo" />
@@ -3793,18 +4862,43 @@ export default function AdvancedSearchAIPage() {
                         )}
 
                         <div className="adv-msgs-inner">
-                            {messages.map((m, idx) => {
-                                // Show real activities in the AI's thinking indicator (replace "Thinking...")
-                                const displayMsg = isSearching && idx === messages.length - 1 && messages[idx].role === 'ai'
-                                    ? {
-                                        ...m,
-                                        content: activities.length > 0
-                                            ? activities[activities.length - 1].message
-                                            : 'Qualifying...'
-                                    }
-                                    : m;
-                                return <Bubble key={m.id} msg={displayMsg} onOpt={onOptClick} onShowPanel={setShowPanel} onStartCheckpoints={() => setCpStep(0)} onStartTargeting={() => { setTgStep(0); setChatBlocked(false); }} hasPanel={!!showPanel} leadsCount={leads.length} filteredLeadsCount={filteredLeads.length} onUploadClick={() => fileInputRef.current?.click()} useSalesNav={useSalesNav} isMobile={isMobile} />;
-                            })}
+                            {mediaMode ? (
+                                <>
+                                    {(() => {
+                                        const lastUserMsgIdx = mediaMessages.map(msg => msg.role).lastIndexOf('user');
+                                        return mediaMessages.map((m, idx) => (
+                                            <MediaBubble 
+                                                key={m.id} 
+                                                msg={m} 
+                                                isActive={idx === mediaMessages.length - 1} 
+                                                isLastUser={idx === lastUserMsgIdx}
+                                                handleMediaBack={handleMediaBack}
+                                                mb={mb}
+                                                submitMediaInput={submitMediaInput}
+                                            />
+                                        ));
+                                    })()}
+                                    {/* Inline Loader — rendered dynamically below messages, perfectly centered in the left chat/split container */}
+                                    {(mb.step === "loading" || mb.generating) && (
+                                        <div className="w-full flex justify-center py-12 fadeUp">
+                                            <ThinkingIndicator generating={mb.generating} />
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                messages.map((m, idx) => {
+                                    // Show real activities in the AI's thinking indicator (replace "Thinking...")
+                                    const displayMsg = isSearching && idx === messages.length - 1 && messages[idx].role === 'ai'
+                                        ? {
+                                            ...m,
+                                            content: activities.length > 0
+                                                ? activities[activities.length - 1].message
+                                                : 'Qualifying...'
+                                        }
+                                        : m;
+                                    return <Bubble key={m.id} msg={displayMsg} onOpt={onOptClick} onShowPanel={setShowPanel} onStartCheckpoints={() => setCpStep(0)} onLetAgentDeal={letAgentDeal} agentDealLoading={agentDealLoading} onStartTargeting={() => { setTgStep(0); setChatBlocked(false); }} hasPanel={!!showPanel} leadsCount={leads.length} filteredLeadsCount={filteredLeads.length} onUploadClick={() => fileInputRef.current?.click()} useSalesNav={useSalesNav} isMobile={isMobile} />;
+                                })
+                            )}
                             {/* Import leads prompt — shown when conversation is about existing client relationships */}
                             {(() => {
                                 const allText = messages.map(m => m.text?.toLowerCase() || '').join(' ');
@@ -3859,6 +4953,8 @@ export default function AdvancedSearchAIPage() {
                             <div className="adv-msgs-inner">
                                 <CheckpointFormInline
                                     editingCampaignId={editingCampaignId}
+                                    onLetAgentDeal={letAgentDeal}
+                                    agentDealLoading={agentDealLoading}
                                     step={cpStep}
                                     setStep={setCpStep}
                                     icpThreshold={cpIcpThreshold}
@@ -3920,6 +5016,9 @@ export default function AdvancedSearchAIPage() {
                                     targeting={targeting}
                                     leads={leads}
                                     leadFeedback={leadFeedback}
+                                    selectedLeadIds={selectedLeadIds}
+                                    creditBalance={creditBalance}
+                                    onOpenRecharge={() => setShowRechargeModal(true)}
                                     searchSessions={searchSessions}
                                     chatMessages={messages}
                                     pendingContact={pendingContact}
@@ -3974,82 +5073,138 @@ export default function AdvancedSearchAIPage() {
 
 
                     {!(isMobile && chatBlocked) && (
-                        <div className={`adv-chat-input-wrap ${(!isMobile && chatBlocked) ? 'adv-chat-blur' : ''}`}>
-                            <div className="adv-chat-input-box">
-                                <textarea ref={taRef} value={input} rows={1} disabled={busy || (creditBalance !== null && creditBalance <= 0 && msgCount >= 10)}
+                        <div ref={mediaInputWrapRef} className={`adv-chat-input-wrap ${(!isMobile && chatBlocked) ? 'adv-chat-blur' : ''} ${(mediaMode && mb.step === "builder-brand-dna" && brandDnaRequestedChanges) ? 'adv-chat-input-wrap-full' : ''}`}>
+                            
+                            {mediaMode && renderOptionsExtension()}
+
+                             <div className={`adv-chat-input-box ${hasOptionsOpen ? 'has-extension' : ''}`}>
+                                <textarea ref={taRef} value={input} rows={1} 
+                                    disabled={mediaMode ? (mb.generating || mb.step === 'loading' || (mb.step === 'builder-brand-dna' && !brandDnaRequestedChanges)) : (busy || (creditBalance !== null && creditBalance <= 0 && msgCount >= 10))}
                                     onChange={e => { setInput(e.target.value); e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 100) + 'px'; }}
                                     onKeyDown={onKey}
-                                    placeholder={creditBalance !== null && creditBalance <= 0 && msgCount >= 10 ? 'Message limit reached — add credits to continue' : (typedPlaceholder || 'Ask Mr LAD...')}
+                                    placeholder={mediaMode ? (mb.step === 'builder-image-output' ? 'Type feedback to refine generated images...' : mediaPlaceholder) : (creditBalance !== null && creditBalance <= 0 && msgCount >= 10 ? 'Message limit reached — add credits to continue' : (typedPlaceholder || 'Ask Mr LAD...'))}
                                     className="adv-chat-ta" />
                                 <div className="adv-chat-input-foot">
                                     <div style={{ position: 'relative' }}>
-                                        <button className="adv-chat-attach-btn" title="Add files or tools" onClick={(e) => { e.stopPropagation(); setShowChatAttachMenu(!showChatAttachMenu); }}>
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
-                                        </button>
-                                        {showChatAttachMenu && (
-                                            <div className="adv-attach-menu" onClick={e => e.stopPropagation()}>
-                                                <div className="adv-attach-item" onClick={() => { fileInputRef.current?.click(); setShowChatAttachMenu(false); }}>
-                                                    <div className="adv-attach-icon" style={{ background: '#dcfce7' }}>
-                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
+                                        {mediaMode ? (
+                                            <button 
+                                                className="adv-chat-attach-btn" 
+                                                title="Upload reference images" 
+                                                onClick={(e) => { e.stopPropagation(); mediaFileInputRef.current?.click(); }}
+                                            >
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+                                            </button>
+                                        ) : (
+                                            <>
+                                                <button className="adv-chat-attach-btn" title="Add files or tools" onClick={(e) => { e.stopPropagation(); setShowChatAttachMenu(!showChatAttachMenu); }}>
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+                                                </button>
+                                                {showChatAttachMenu && (
+                                                    <div className="adv-attach-menu" onClick={e => e.stopPropagation()}>
+                                                        <div className="adv-attach-item" onClick={() => { fileInputRef.current?.click(); setShowChatAttachMenu(false); }}>
+                                                            <div className="adv-attach-icon" style={{ background: '#dcfce7' }}>
+                                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
+                                                            </div>
+                                                            <div>
+                                                                <div className="adv-attach-label">Import leads</div>
+                                                                <div className="adv-attach-sub">CSV, Excel, images, PDFs</div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="adv-attach-item" onClick={() => { openContactPicker(); setShowChatAttachMenu(false); }}>
+                                                            <div className="adv-attach-icon" style={{ background: '#dce3f5' }}>
+                                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0b1957" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87" /><path d="M16 3.13a4 4 0 010 7.75" /></svg>
+                                                            </div>
+                                                            <div>
+                                                                <div className="adv-attach-label">Select contacts</div>
+                                                                <div className="adv-attach-sub">Pick from your existing contacts</div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="adv-attach-divider" />
+                                                        <div className="adv-attach-item" onClick={() => { setShowChatAttachMenu(false); router.push('/settings'); }}>
+                                                            <div className="adv-attach-icon" style={{ background: '#fef3c7' }}>
+                                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" /></svg>
+                                                            </div>
+                                                            <div>
+                                                                <div className="adv-attach-label">Connect tools</div>
+                                                                <div className="adv-attach-sub">LinkedIn, HubSpot, Salesforce</div>
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <div className="adv-attach-label">Import leads</div>
-                                                        <div className="adv-attach-sub">CSV, Excel, images, PDFs</div>
-                                                    </div>
-                                                </div>
-                                                <div className="adv-attach-item" onClick={() => { openContactPicker(); setShowChatAttachMenu(false); }}>
-                                                    <div className="adv-attach-icon" style={{ background: '#dce3f5' }}>
-                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0b1957" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87" /><path d="M16 3.13a4 4 0 010 7.75" /></svg>
-                                                    </div>
-                                                    <div>
-                                                        <div className="adv-attach-label">Select contacts</div>
-                                                        <div className="adv-attach-sub">Pick from your existing contacts</div>
-                                                    </div>
-                                                </div>
-                                                <div className="adv-attach-divider" />
-                                                <div className="adv-attach-item" onClick={() => { setShowChatAttachMenu(false); router.push('/settings'); }}>
-                                                    <div className="adv-attach-icon" style={{ background: '#fef3c7' }}>
-                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" /></svg>
-                                                    </div>
-                                                    <div>
-                                                        <div className="adv-attach-label">Connect tools</div>
-                                                        <div className="adv-attach-sub">LinkedIn, HubSpot, Salesforce</div>
-                                                    </div>
-                                                </div>
-                                            </div>
+                                                )}
+                                            </>
                                         )}
                                     </div>
-                                    {/* Premium Search toggle — uses Serper X-Ray + Sales Navigator */}
-                                    <button
-                                        className="adv-premium-btn"
-                                        onClick={() => setUseSalesNav(v => !v)}
-                                        title={useSalesNav ? 'Premium Search ON — Google X-Ray + Sales Navigator (1 credit/search)' : 'Enable Premium Search: Google X-Ray + Sales Navigator (1 credit/search)'}
-                                        style={{
-                                            display: 'flex', alignItems: 'center', gap: '4px',
-                                            padding: '3px 8px', borderRadius: '12px', border: 'none',
-                                            cursor: 'pointer', fontSize: '11px', fontWeight: 600,
-                                            transition: 'all 0.15s',
-                                            background: useSalesNav ? '#0a66c2' : '#f1f5f9',
-                                            color: useSalesNav ? '#fff' : '#64748b',
-                                            boxShadow: useSalesNav ? '0 1px 4px rgba(10,102,194,.35)' : 'none',
+                                    {/* Premium Search or Mic Button based on mediaMode */}
+                                    {mediaMode ? (
+                                        <button
+                                            className={`adv-premium-btn ${isRecording ? 'recording-pulse' : ''}`}
+                                            onClick={toggleRecording}
+                                            disabled={beautifying}
+                                            title={beautifying ? "Beautifying..." : isRecording ? "Stop voice transcription" : "Talk to Mr. LADs — voice interaction"}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', gap: '4px',
+                                                padding: '3px 8px', borderRadius: '12px',
+                                                border: isRecording ? '1.5px solid #ef4444' : 'none',
+                                                cursor: beautifying ? 'not-allowed' : 'pointer',
+                                                fontSize: '11px', fontWeight: 600,
+                                                transition: 'all 0.15s',
+                                                background: beautifying ? '#e2e8f0' : isRecording ? '#fef2f2' : '#f1f5f9',
+                                                color: beautifying ? '#94a3b8' : isRecording ? '#ef4444' : '#64748b',
+                                                boxShadow: 'none',
+                                            }}
+                                        >
+                                            {beautifying ? (
+                                                <Loader2 className="size-3 animate-spin" />
+                                            ) : isRecording ? (
+                                                <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: '3px', color: '#ef4444', flexShrink: 0 }}>
+                                                    <rect x="4" y="4" width="16" height="16" rx="2" />
+                                                </svg>
+                                            ) : (
+                                                <Mic className="size-3" style={{ strokeWidth: 2.5 }} />
+                                            )}
+                                            {beautifying ? "Beautifying..." : isRecording ? "Stop" : "Talk to Mr. LADs"}
+                                        </button>
+                                    ) : (
+                                        <button
+                                            className="adv-premium-btn"
+                                            onClick={() => setUseSalesNav(v => !v)}
+                                            title={useSalesNav ? 'Premium Search ON — Google X-Ray + Sales Navigator (1 credit/search)' : 'Enable Premium Search: Google X-Ray + Sales Navigator (1 credit/search)'}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', gap: '4px',
+                                                padding: '3px 8px', borderRadius: '12px', border: 'none',
+                                                cursor: 'pointer', fontSize: '11px', fontWeight: 600,
+                                                transition: 'all 0.15s',
+                                                background: useSalesNav ? '#0a66c2' : '#f1f5f9',
+                                                color: useSalesNav ? '#fff' : '#64748b',
+                                                boxShadow: useSalesNav ? '0 1px 4px rgba(10,102,194,.35)' : 'none',
+                                            }}
+                                        >
+                                            {/* Star icon for Premium */}
+                                            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                                            </svg>
+                                            {useSalesNav ? 'Premium Search ON' : 'Premium Search'}
+                                        </button>
+                                    )}
+                                    <button 
+                                        className="adv-send-circle adv-send-sm" 
+                                        disabled={mediaMode ? ((!input.trim() && (!mb.references || mb.references.length === 0)) || mb.generating || mb.step === 'loading' || (mb.step === 'builder-brand-dna' && !brandDnaRequestedChanges)) : (!input.trim() || busy || (creditBalance !== null && creditBalance <= 0 && msgCount >= 10))} 
+                                        onClick={mediaMode ? () => { if (input.trim() || (mb.references && mb.references.length > 0)) { submitMediaInput(input.trim()); setInput(''); if (taRef.current) taRef.current.style.height = 'auto'; } } : onChatSend}
+                                        style={{ 
+                                            background: (mediaMode ? ((!input.trim() && (!mb.references || mb.references.length === 0)) || mb.generating || mb.step === 'loading' || (mb.step === 'builder-brand-dna' && !brandDnaRequestedChanges)) : (!input.trim() || busy || (creditBalance !== null && creditBalance <= 0 && msgCount >= 10))) ? '#e5e7eb' : '#172560', 
+                                            boxShadow: (mediaMode ? ((!input.trim() && (!mb.references || mb.references.length === 0)) || mb.generating) : (!input.trim() || busy)) ? 'none' : '0 2px 8px rgba(23,37,96,.3)' 
                                         }}
                                     >
-                                        {/* Star icon for Premium */}
-                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                                        </svg>
-                                        {useSalesNav ? 'Premium Search ON' : 'Premium Search'}
-                                    </button>
-                                    <button className="adv-send-circle adv-send-sm" disabled={!input.trim() || busy || (creditBalance !== null && creditBalance <= 0 && msgCount >= 10)} onClick={onChatSend}
-                                        style={{ background: !input.trim() || busy || (creditBalance !== null && creditBalance <= 0 && msgCount >= 10) ? '#e5e7eb' : '#172560', boxShadow: !input.trim() || busy ? 'none' : '0 2px 8px rgba(23,37,96,.3)' }}>
-                                        {busy ? <div className="adv-spinner" /> : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>}
+                                        {mediaMode && mb.generating ? <div className="adv-spinner" /> : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>}
                                     </button>
                                 </div>
-                                <div className="adv-msg-counter">{creditBalance !== null && creditBalance > 0 ? `${msgCount} messages used` : `${msgCount}/10 messages used`}</div>
+                                {!mediaMode && (
+                                    <div className="adv-msg-counter">{creditBalance !== null && creditBalance > 0 ? `${msgCount} messages used` : `${msgCount}/10 messages used`}</div>
+                                )}
                             </div>
                         </div>
                     )}
-                    {messages.length === 0 && (
+                    {messages.length === 0 && !mediaMode && (
                         <div className="adv-gemini-chips">
 
                             <button className="adv-gemini-chip" onClick={() => { setInput('Connect me with founders in trading companies in UAE'); taRef.current?.focus(); }}>
@@ -4067,13 +5222,12 @@ export default function AdvancedSearchAIPage() {
                             <button className="adv-gemini-chip" onClick={() => { setInput('Strengthen my relationship with existing clients'); taRef.current?.focus(); }}>
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="19" y1="8" x2="19" y2="14" /><line x1="22" y1="11" x2="16" y2="11" /></svg>
                                 Strengthen client relationships
-
                             </button>
                             <button className="adv-gemini-chip" onClick={() => { setInput(ICP_LEADS_PROMPT); taRef.current?.focus(); }}>
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" /></svg>
                                 Get leads from my active ICP
                             </button>
-                            <button className="adv-gemini-chip" onClick={() => setShowMediaModal(true)}>
+                            <button className="adv-gemini-chip" onClick={handleStartMediaGeneration}>
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
                                 Media Generation
                             </button>
@@ -4082,6 +5236,15 @@ export default function AdvancedSearchAIPage() {
                     {/* Hidden file input — accepts all supported lead import formats */}
                     <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls,.jpg,.jpeg,.png,.pdf" className="hidden" style={{ display: 'none' }}
                         onChange={e => { const f = e.target.files?.[0]; if (f) handleInboundFile(f); e.target.value = ''; }} />
+                    <input ref={mediaFileInputRef} type="file" accept="image/*" multiple className="hidden" style={{ display: 'none' }}
+                        onChange={e => {
+                            if (e.target.files) {
+                                Array.from(e.target.files).forEach(file => {
+                                    mb.uploadReference(file);
+                                });
+                            }
+                            e.target.value = '';
+                        }} />
                 </div>
 
                 {/* MOBILE ICP BUTTON (Always visible on mobile) */}
@@ -4198,6 +5361,35 @@ export default function AdvancedSearchAIPage() {
                                     }
                                 </p>
 
+                                {/* Selection bar — pick which prospects to enroll into the campaign */}
+                                {!inboundMode && leads.length > 0 && (
+                                    <div style={{
+                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                        gap: '8px', margin: '4px 0 10px', padding: '8px 12px',
+                                        background: '#f1f5ff', border: '1px solid #dbe4ff', borderRadius: '10px',
+                                    }}>
+                                        <span style={{ fontSize: '12px', fontWeight: 600, color: '#0b1957' }}>
+                                            {selectedLeadIds.size} of {leads.length} selected
+                                        </span>
+                                        <div style={{ display: 'flex', gap: '6px' }}>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); selectAllLeads(); }}
+                                                style={{ fontSize: '12px', fontWeight: 600, color: '#172560', background: '#fff', border: '1px solid #c7d2fe', borderRadius: '8px', padding: '4px 10px', cursor: 'pointer' }}
+                                            >
+                                                Select all
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); clearLeadSelection(); }}
+                                                style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '4px 10px', cursor: 'pointer' }}
+                                            >
+                                                Clear
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Inbound leads (CSV upload) */}
                                 {inboundMode && inboundLeads.length > 0 && (
                                     <div className="adv-leads-list">
@@ -4307,8 +5499,10 @@ export default function AdvancedSearchAIPage() {
                                                         )}
                                                     </div>
                                                     <div className="adv-lead-title">
-                                                        {lead.headline || lead.current_company || (lead.profile_url ? 'LinkedIn User' : lead.phone ? 'Phone Contact' : lead.email ? 'Email Contact' : 'Contact')}
+                                                        {lead.headline || (lead.profile_url ? 'LinkedIn User' : lead.phone ? 'Phone Contact' : lead.email ? 'Email Contact' : 'Contact')}
                                                     </div>
+                                                    {/* Company name under the name/title */}
+                                                    {lead.current_company && <div className="adv-lead-company">{lead.current_company}</div>}
                                                     {lead.location && <div className="adv-lead-location text-[11px] text-gray-400 dark:text-gray-500">📍 {lead.location}</div>}
                                                     {lead.inferred_nationality && (
                                                         <div className="flex items-center gap-[4px] mt-[3px]">
@@ -4344,6 +5538,14 @@ export default function AdvancedSearchAIPage() {
                                                     ) : null}
                                                 </div>
                                                 <div className="flex flex-col items-center gap-[4px] flex-shrink-0">
+                                                    <input
+                                                        type="checkbox"
+                                                        title={selectedLeadIds.has(lead.id) ? 'Selected for campaign — click to remove' : 'Add to campaign'}
+                                                        checked={selectedLeadIds.has(lead.id)}
+                                                        onChange={(e) => { e.stopPropagation(); toggleLeadSelection(lead.id); }}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#172560' }}
+                                                    />
                                                     <button
                                                        className="adv-lead-action flex items-center justify-center w-[36px] h-[36px] rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700"
                                                         title="Generate Summary"
@@ -4452,8 +5654,10 @@ export default function AdvancedSearchAIPage() {
                                                                 )}
                                                             </div>
                                                             <div className="adv-lead-title" style={{ color: '#9ca3af' }}>
-                                                                {lead.headline || lead.current_company || (lead.profile_url ? 'LinkedIn User' : 'Contact')}
+                                                                {lead.headline || (lead.profile_url ? 'LinkedIn User' : 'Contact')}
                                                             </div>
+                                                            {/* Company name under the name/title */}
+                                                            {lead.current_company && <div className="adv-lead-company" style={{ color: '#9ca3af' }}>{lead.current_company}</div>}
                                                             {lead.location && <div className="adv-lead-location" style={{ color: '#9ca3af' }}>📍 {lead.location}</div>}
                                                             {lead.icp_reasoning && (
                                                                 <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px', lineHeight: '1.4', fontStyle: 'italic' }}>
@@ -4958,6 +6162,24 @@ export default function AdvancedSearchAIPage() {
                     </div>
                 )}
 
+                {/* RIGHT: Split-Screen Widget Panel */}
+                {isSplitScreenStep && (
+                    <div className="adv-media-brand-dna-panel" style={{ 
+                        width: '40%', 
+                        height: '100%', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        padding: '24px', 
+                        position: 'relative', 
+                        overflow: 'hidden' 
+                    }}>
+                        <div style={{ height: '100%', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', transform: 'translateY(-24px)' }}>
+                            {renderActiveSplitWidget()}
+                        </div>
+                    </div>
+                )}
+
                 <MediaGenerationModal isOpen={showMediaModal} onClose={() => setShowMediaModal(false)} />
 
                 {/* Credit Recharge Modal */}
@@ -5031,6 +6253,30 @@ export default function AdvancedSearchAIPage() {
                                     Recharge Now
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                )}
+                {/* Gallery Popup Overlay Modal */}
+                {mb.step === "gallery" && (
+                    <div style={{
+                        position: 'fixed', inset: 0, zIndex: 9999,
+                        background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                        <div style={{ background: '#fff', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+                            <AgentBuilderGallery
+                                images={mb.galleryImages}
+                                videos={mb.galleryVideos}
+                                loading={mb.loadingGallery}
+                                onBack={() => mb.setStep("welcome")}
+                                onGenerateImages={mb.generateImagesFromGallery}
+                                onAnimateImage={mb.animateImageFromGallery}
+                                onExtendVideo={mb.extendVideoFromGallery}
+                                onAddDialogues={mb.addDialoguesFromGallery}
+                                onDeleteAssets={mb.deleteAssets}
+                                isFullHistory={mb.isGalleryFullHistory}
+                                onLoadFullHistory={() => mb.fetchGallery(true)}
+                            />
                         </div>
                     </div>
                 )}
@@ -5171,20 +6417,23 @@ export default function AdvancedSearchAIPage() {
                               { label: 'Company', key: 'companyName', placeholder: 'Company name' },
                               { label: 'LinkedIn URL', key: 'linkedinProfile', placeholder: 'https://linkedin.com/in/...' },
                               { label: 'Website', key: 'website', placeholder: 'https://...' }
-                          ].map((field) => (
+                          ].map((field) => {
+                            const fieldKey = field.key as keyof ParsedInboundLead;
+                            return (
                             <div key={field.key}>
                                 <label className="mb-2 block text-xs font-semibold text-gray-500 dark:text-gray-400">
                                     {field.label}
                                 </label>
                                 <input
                                   type="text"
-                                  value={editFormData[field.key]}
-                                  onChange={(e) => updateEditField(field.key, e.target.value)}
+                                  value={editFormData[fieldKey]}
+                                  onChange={(e) => updateEditField(fieldKey, e.target.value)}
                                   placeholder={field.placeholder} // Using the placeholder property here
                                   className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm transition-colors focus:border-blue-500 focus:outline-none dark:border-[#262831] dark:bg-[#000724] dark:text-white dark:placeholder-gray-500"
                                 />
                             </div>
-                          ))}
+                            );
+                          })}
 
                           {/* Notes */}
                           <div>
@@ -5424,9 +6673,8 @@ export default function AdvancedSearchAIPage() {
 /* ═══════════════════════════════════════════════
    CHAT BUBBLE
    ═══════════════════════════════════════════════ */
-import { useSelector } from 'react-redux';
 
-function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onStartTargeting, hasPanel, leadsCount, filteredLeadsCount, onUploadClick, useSalesNav, isMobile }: { msg: ChatMsg; onOpt: (v: string) => void; onShowPanel: (panel: 'leads' | 'workflow') => void; onStartCheckpoints: () => void; onStartTargeting: () => void; hasPanel: boolean; leadsCount: number; filteredLeadsCount?: number; onUploadClick?: () => void; useSalesNav?: boolean; isMobile?: boolean }) {
+function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, agentDealLoading, onStartTargeting, hasPanel, leadsCount, filteredLeadsCount, onUploadClick, useSalesNav, isMobile }: { msg: ChatMsg; onOpt: (v: string) => void; onShowPanel: (panel: 'leads' | 'workflow') => void; onStartCheckpoints: () => void; onLetAgentDeal?: () => void; agentDealLoading?: boolean; onStartTargeting: () => void; hasPanel: boolean; leadsCount: number; filteredLeadsCount?: number; onUploadClick?: () => void; useSalesNav?: boolean; isMobile?: boolean }) {
     const user = useSelector((state: any) => state.auth?.user);
     const displayName = user?.name || "User";
     const userInitial = displayName.charAt(0).toUpperCase();
@@ -5651,23 +6899,36 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onStartTargeting,
 
                 {/* ── Modern action buttons (Example 1 style) ── */}
                 {msg.targeting && (
-                  <div className="flex flex-nowrap items-center justify-between border-t border-gray-200 dark:border-gray-800 pt-3 gap-2">
-                      <button
-                        className="adv-act-btn adv-act-btn-refine flex items-center gap-1.5 px-4 py-2.5 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-[12.5px] font-semibold text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-blue-600 hover:text-gray-900 dark:hover:text-white transition-colors"
-                        onClick={() => onOpt('Refine my targeting criteria')}
-                      >
-                          Refine
-                      </button>
-
-                      <button
-                        className="flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-[#0b1957] dark:bg-blue-600 text-[12.5px] font-bold text-white shadow-lg shadow-blue-900/20 hover:opacity-90 transition-all tracking-[0.01em]"
-                        onClick={onStartCheckpoints}
-                      >
-                          Create Outreach Journey
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M5 12h14M12 5l7 7-7 7" />
-                          </svg>
-                      </button>
+                  <div className="flex flex-col gap-2.5 border-t border-gray-200 dark:border-gray-800 pt-3">
+                      {/* ⚡ Hero action — let the agent build the whole multi-channel campaign */}
+                      {onLetAgentDeal && (
+                          <button type="button" onClick={onLetAgentDeal} disabled={agentDealLoading}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-none text-white text-[13.5px] font-bold tracking-[0.01em] transition-opacity disabled:cursor-default disabled:opacity-75 cursor-pointer"
+                            style={{
+                                background: "linear-gradient(135deg, #0b1957 0%, #3730a3 100%)",
+                                boxShadow: "0 4px 14px rgba(11,25,87,0.22)",
+                            }}>
+                              <span style={{ fontSize: "16px", lineHeight: 1 }}>{agentDealLoading ? "⏳" : "⚡"}</span>
+                              {agentDealLoading ? "Building your campaign…" : "Let Agent Deal — auto-build every connected channel"}
+                          </button>
+                      )}
+                      <div className="adv-action-btns flex flex-nowrap gap-2 justify-between">
+                          <button
+                            className="adv-act-btn adv-act-btn-refine flex items-center gap-1.5 px-4 py-2.5 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-[12.5px] font-semibold text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-blue-600 hover:text-gray-900 dark:hover:text-white transition-colors"
+                            onClick={() => onOpt('Refine my targeting criteria')}
+                          >
+                              Refine
+                          </button>
+                          <button
+                            className="adv-act-btn adv-act-btn-journey flex items-center gap-1.5 px-4 py-2.5 rounded-full border border-[#0b1957] dark:border-blue-400 bg-white dark:bg-gray-800 text-[12.5px] font-bold text-[#0b1957] dark:text-blue-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors tracking-[0.01em]"
+                            onClick={onStartCheckpoints}
+                          >
+                              Configure manually
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M5 12h14M12 5l7 7-7 7" />
+                              </svg>
+                          </button>
+                      </div>
                   </div>
                 )}
 
@@ -5967,11 +7228,67 @@ const CP_QUESTIONS = [
     { id: 'name', question: 'Give your campaign a name', type: 'input' },
 ];
 
+// ── AI Personalisation toggle primitives ─────────────────────────────────────
+// Shared, accessible switch + row so every personalisation option is pixel-identical.
+// Two accents encode meaning: `indigo` = live-data inputs, `violet` = AI generation.
+const AI_PERSO_ACCENTS: Record<'indigo' | 'violet', { on: string; tint: string; border: string; chip: string }> = {
+    indigo: { on: '#4338ca', tint: '#eef2ff', border: '#c7d2fe', chip: '#e0e7ff' },
+    violet: { on: '#7c3aed', tint: '#f5f3ff', border: '#ddd6fe', chip: '#ede9fe' },
+};
+
+function AiPersoToggle({ checked, onChange, accent = 'indigo', size = 'sm', disabled = false }: {
+    checked: boolean; onChange: (v: boolean) => void; accent?: 'indigo' | 'violet'; size?: 'sm' | 'lg'; disabled?: boolean;
+}) {
+    const a = AI_PERSO_ACCENTS[accent];
+    const W = size === 'lg' ? 40 : 34, H = size === 'lg' ? 22 : 20, TH = H - 4;
+    return (
+        <button type="button" role="switch" aria-checked={checked} disabled={disabled}
+            onClick={(e) => { e.stopPropagation(); if (!disabled) onChange(!checked); }}
+            style={{
+                width: W, height: H, borderRadius: 99, border: 'none', padding: 0, flexShrink: 0,
+                background: checked ? a.on : '#cbd5e1', position: 'relative',
+                cursor: disabled ? 'not-allowed' : 'pointer', transition: 'background .2s',
+                boxShadow: checked ? `0 0 0 3px ${a.on}22` : 'none',
+            }}>
+            <span style={{
+                position: 'absolute', top: 2, left: checked ? W - TH - 2 : 2, width: TH, height: TH,
+                borderRadius: '50%', background: '#fff', transition: 'left .2s', boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
+            }} />
+        </button>
+    );
+}
+
+function AiPersoRow({ icon, title, desc, checked, onChange, accent = 'indigo', disabled = false }: {
+    icon: React.ReactNode; title: string; desc: string; checked: boolean; onChange: (v: boolean) => void;
+    accent?: 'indigo' | 'violet'; disabled?: boolean;
+}) {
+    const a = AI_PERSO_ACCENTS[accent];
+    return (
+        <div role="button" aria-pressed={checked} onClick={() => { if (!disabled) onChange(!checked); }}
+            style={{
+                display: 'flex', alignItems: 'center', gap: 11, padding: '10px 12px',
+                background: checked ? a.tint : '#fff', border: `1px solid ${checked ? a.border : '#e5e7eb'}`,
+                borderRadius: 10, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.55 : 1,
+                transition: 'background .15s, border-color .15s',
+            }}>
+            <div style={{
+                width: 30, height: 30, borderRadius: 8, flexShrink: 0, display: 'grid', placeItems: 'center',
+                background: checked ? a.chip : '#f3f4f6', color: checked ? a.on : '#94a3b8', transition: 'background .15s, color .15s',
+            }}>{icon}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{title}</div>
+                <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 1, lineHeight: 1.35 }}>{desc}</div>
+            </div>
+            <AiPersoToggle checked={checked} onChange={onChange} accent={accent} disabled={disabled} />
+        </div>
+    );
+}
+
 function CheckpointFormInline({
     step, setStep, icpThreshold, setIcpThreshold, actions, setActions, connMsg, setConnMsg, followMsg, setFollowMsg,
     nextChannels, setNextChannels, triggerCondition, setTriggerCondition,
     days, setDays, channelConfigStep, setChannelConfigStep, channelDelays, setChannelDelays, name, setName, genLoading, setGenLoading, launching, setLaunching, targeting, leads,
-    leadFeedback, searchSessions, chatMessages,
+    leadFeedback, selectedLeadIds, creditBalance, onOpenRecharge, searchSessions, chatMessages,
     voiceAgents, setVoiceAgents, voiceNumbers, setVoiceNumbers,
     selectedAgentId, setSelectedAgentId, selectedVoiceId, setSelectedVoiceId,
     selectedFromNumber, setSelectedFromNumber,
@@ -5990,6 +7307,7 @@ function CheckpointFormInline({
     enableAiConnectionPersonalization, setEnableAiConnectionPersonalization,
     enableAiFollowupPersonalization, setEnableAiFollowupPersonalization,
     editingCampaignId,
+    onLetAgentDeal, agentDealLoading,
 }: {
     step: number; setStep: (s: number) => void;
     icpThreshold: string; setIcpThreshold: (v: string) => void;
@@ -6007,6 +7325,9 @@ function CheckpointFormInline({
     targeting: LeadTargeting | null;
     leads: LeadProfile[];
     leadFeedback: Record<string, 'good' | 'bad'>;
+    selectedLeadIds: Set<string>;
+    creditBalance: number | null;
+    onOpenRecharge: () => void;
     searchSessions: { query: string; targeting: LeadTargeting | null; icp_description: string; timestamp: string }[];
     chatMessages: ChatMsg[];
     voiceAgents: any[]; setVoiceAgents: (v: any[]) => void;
@@ -6036,6 +7357,7 @@ function CheckpointFormInline({
     enableAiConnectionPersonalization: boolean; setEnableAiConnectionPersonalization: (v: boolean) => void;
     enableAiFollowupPersonalization: boolean; setEnableAiFollowupPersonalization: (v: boolean) => void;
     editingCampaignId?: string | null;
+    onLetAgentDeal: () => void; agentDealLoading: boolean;
 }) {
     const totalSteps = CP_QUESTIONS.length;
 
@@ -6173,7 +7495,11 @@ function CheckpointFormInline({
     // Initialise from the `actions` prop so edit-mode hydration (the parent sets
     // cpActions from the saved campaign / its steps) pre-checks the LinkedIn action
     // boxes. In the create flow `actions` is [] at mount, so this is a no-op there.
-    const [liChannelActions, setLiChannelActions] = useState<string[]>(actions || []);
+    // Use the shared config actions (derived from the canonical workflowPreview
+    // by the parent) so LinkedIn action toggles round-trip to the Workflow canvas
+    // instead of living in an orphaned local copy that never synced back.
+    const liChannelActions = actions || [];
+    const setLiChannelActions = setActions;
     const [liFollowGenLoading, setLiFollowGenLoading] = useState(false);
 
     // AI Generate inline context panel state (one per message type)
@@ -6380,6 +7706,13 @@ function CheckpointFormInline({
     const LINKEDIN_DAILY_LIMIT = 40; // safe daily connection request limit
     const LINKEDIN_WEEKLY_LIMIT = 190; // safe weekly limit
 
+    // Minimum credit ESTIMATE per enrolled lead, matching the default personalized-connect
+    // flow (featureCreditConfig: personalized connect = 5 flat). Real billing is PER-ACTION
+    // at execution time — launch itself charges 0; connect=1, personalized connect=5,
+    // template msg=5, enrichment=2, phone=10 — so this gate is a deliberate minimum
+    // estimate, NOT the actual charge.
+    const CREDIT_COST_PER_LEAD = 5;
+
     // Compute qualified leads count based on ICP threshold
     const qualifiedLeadCount = leads.filter(l => (l.icp_score ?? 0) >= (parseInt(icpThreshold) || 0)).length;
 
@@ -6397,6 +7730,14 @@ function CheckpointFormInline({
     // across the campaign duration and made subsequent scheduled runs fetch only 1 lead/day.)
     const safeLeadsPerDay = Math.min(LINKEDIN_DAILY_LIMIT, Math.max(1, qualifiedLeadCount));
     const exceedsLinkedInLimits = qualifiedLeadCount > LINKEDIN_DAILY_LIMIT;
+
+    // Credit gate for launch. Enrolled = CHECKED leads minus thumbs-down — mirrors
+    // launchCampaign's goodMatchLeads filter, not raw selectedLeadIds.size.
+    // creditBalance === null (billing fetch failed) fails OPEN — never block launch
+    // on a billing-fetch error.
+    const enrolledCount = leads.filter(l => selectedLeadIds.has(l.id)).filter(l => leadFeedback[l.id] !== 'bad').length;
+    const requiredCredits = enrolledCount * CREDIT_COST_PER_LEAD;
+    const creditsOk = creditBalance == null || creditBalance >= requiredCredits;
 
     const toggleAction = (a: string) => {
         const newActions = actions.includes(a) ? actions.filter(x => x !== a) : [...actions, a];
@@ -6507,11 +7848,34 @@ function CheckpointFormInline({
     };
 
     const suggestName = () => {
-        const titlePart = targeting?.job_titles?.length ? targeting.job_titles[0] + 's' : 'Leads';
-        const locPart = targeting?.locations?.length ? ` in ${targeting.locations[0].split(',')[0]}` : '';
-        const indPart = targeting?.industries?.length && !locPart ? ` (${targeting.industries[0]})` : '';
+        const t = targeting;
         const datePart = new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-        setName(`${titlePart}${locPart}${indPart} - ${datePart}`);
+        // Simple pluralize: append "s" unless the word already ends in one.
+        const pluralize = (s: string) => (s.endsWith('s') ? s : `${s}s`);
+        // " +N" suffix when the targeting has more than one value for a facet.
+        const more = (arr?: string[]) => (arr && arr.length > 1 ? ` +${arr.length - 1}` : '');
+
+        // Title/role: first job title (pluralized), else first keyword, else "Leads".
+        let titlePart = 'Leads';
+        if (t?.job_titles?.length) {
+            titlePart = pluralize(t.job_titles[0].trim()) + more(t.job_titles);
+        } else if (t?.keywords?.length) {
+            titlePart = t.keywords[0].trim();
+        }
+
+        // Industry: always included when present (previously dropped whenever a location existed).
+        const indPart = t?.industries?.length
+            ? ` — ${t.industries[0].trim()}${more(t.industries)}`
+            : '';
+
+        // Location: city (part before the comma) of the first location.
+        const locPart = t?.locations?.length
+            ? ` in ${t.locations[0].split(',')[0].trim()}${more(t.locations)}`
+            : '';
+
+        // title + industry + location is the headline; date is a subtle suffix for uniqueness.
+        const composed = `${titlePart}${indPart}${locPart} · ${datePart}`.replace(/\s{2,}/g, ' ').trim();
+        setName(composed || `Leads · ${datePart}`);
     };
 
     // AI-generate a LinkedIn message for the given type
@@ -6664,6 +8028,33 @@ function CheckpointFormInline({
                     if (ch === 'voice_call') actionSteps.push({ type: 'voice_agent_call', title: 'AI Voice Call', channel: 'voice', order_index: orderIdx++, config: { agent_id: selectedAgentId || undefined, voice_id: selectedVoiceId || undefined, from_number: selectedFromNumber || undefined, ...chDelayConfig } });
                 }
             }
+
+            // ── AI Media step (media_generation) ──────────────────────────────
+            // The canvas node carries the accepted asset (permanent GCS quadruple,
+            // set via StepEditor → import-generated). Emit it as a real first step
+            // and stamp the asset onto every downstream send step that can carry
+            // media (LinkedIn message / WhatsApp / Email). The backend executor
+            // for media_generation is a fast no-op — sends read their own config.
+            const wfMediaNode = (useOnboardingStore.getState().workflowPreview || [])
+                .find((s: any) => s.type === 'media_generation') as any;
+            if (wfMediaNode?.mediaUrl) {
+                const mediaCfg = {
+                    media_url: wfMediaNode.mediaUrl,
+                    media_type: wfMediaNode.mediaType || 'image',
+                    media_filename: wfMediaNode.mediaFilename || undefined,
+                    mime_type: wfMediaNode.mimeType || undefined,
+                };
+                const MEDIA_CAPABLE = ['linkedin_message', 'whatsapp_send', 'email_send'];
+                for (const s of actionSteps) {
+                    if (MEDIA_CAPABLE.includes(s.type)) s.config = { ...s.config, ...mediaCfg };
+                }
+                actionSteps.unshift({
+                    type: 'media_generation', title: wfMediaNode.title || 'AI Media', channel: 'media',
+                    order_index: 0, config: { ...mediaCfg, prompt: wfMediaNode.mediaPrompt || undefined },
+                });
+                actionSteps.forEach((s, i) => { s.order_index = i + 1; });
+            }
+
             const t = targeting || { keywords: [], industries: [], locations: [], job_titles: [], profile_language: [] };
             const icpMin = parseInt(icpThreshold) || 0;
             // Build lead feedback summary for campaign config
@@ -6691,6 +8082,14 @@ function CheckpointFormInline({
                 ai_value_prop: aiMsgValueProp || '',
                 ai_tone: aiMsgTone || 'professional',
                 ai_goal: aiMsgGoal || 'get_meeting',
+                // AI Media node (edit-mode round-trip: hydration re-creates the canvas node)
+                media_step: wfMediaNode ? {
+                    media_url: wfMediaNode.mediaUrl || '',
+                    media_type: wfMediaNode.mediaType || '',
+                    media_filename: wfMediaNode.mediaFilename || '',
+                    mime_type: wfMediaNode.mimeType || '',
+                    prompt: wfMediaNode.mediaPrompt || '',
+                } : null,
             };
 
             // Get original ICP input (first user message in chat)
@@ -6734,14 +8133,14 @@ function CheckpointFormInline({
                 _source: source,
             });
 
-            // For direct contacts (phone/email only): include ALL leads (not just thumbs-up)
-            // For LinkedIn search campaigns: include all leads except explicitly thumbs-down'd ones.
-            // Previously required explicit thumbs-up (=== 'good') which meant zero leads if user
-            // never clicked thumbs-up — leads were lost. Now we only exclude rejected leads.
-            // IMPORTANT: Filter by ICP threshold selected by user (only LinkedIn search leads, not direct/inbound)
+            // For LinkedIn search campaigns: enroll exactly the leads the user CHECKED.
+            // The per-lead checkbox is the authoritative include signal — the user picks
+            // prospects across the full ICP range (0–100) rather than relying on a score
+            // cutoff. Thumbs-down already auto-unchecks a lead, so the feedback guard is a
+            // redundant safety net.
             const goodMatchLeads = leads
+                .filter(l => selectedLeadIds.has(l.id))
                 .filter(l => leadFeedback[l.id] !== 'bad')
-                .filter(l => (l.icp_score ?? 0) >= icpMin)  // Apply ICP threshold filter
                 .map(l => mapLead(l, 'user_good_match'));
 
             const directContactLeads = isDirectContact
@@ -7009,6 +8408,37 @@ function CheckpointFormInline({
                     {step === 1 && (
                         <div className="flex flex-col gap-2 dark:bg-[#000724]"
                              style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {/* "Let Agent Deal" — one-click auto-build across connected channels */}
+                            {!isDirectContact && (
+                                <div style={{ marginBottom: '2px' }}>
+                                    <button
+                                        type="button"
+                                        onClick={onLetAgentDeal}
+                                        disabled={agentDealLoading}
+                                        style={{
+                                            width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
+                                            padding: '14px 16px', borderRadius: '12px', border: 'none',
+                                            cursor: agentDealLoading ? 'default' : 'pointer',
+                                            background: 'linear-gradient(135deg, #0b1957 0%, #3730a3 100%)',
+                                            color: '#fff', boxShadow: '0 4px 14px rgba(11,25,87,0.22)',
+                                            opacity: agentDealLoading ? 0.75 : 1, transition: 'opacity 0.2s',
+                                        }}>
+                                        <div style={{ fontSize: '22px', lineHeight: 1 }}>{agentDealLoading ? '⏳' : '⚡'}</div>
+                                        <div style={{ flex: 1, textAlign: 'left' }}>
+                                            <div style={{ fontWeight: 700, fontSize: '15px' }}>
+                                                {agentDealLoading ? 'Building your campaign…' : 'Let Agent Deal'}
+                                            </div>
+                                            <div style={{ fontSize: '12px', opacity: 0.85, marginTop: '2px' }}>
+                                                Auto-build the full sequence across your connected channels, with recommended delays
+                                            </div>
+                                        </div>
+                                        {!agentDealLoading && <div style={{ fontSize: '18px' }}>→</div>}
+                                    </button>
+                                    <div style={{ textAlign: 'center', fontSize: '11px', color: '#9ca3af', margin: '8px 0 2px' }} className="dark:text-gray-500">
+                                        — or configure manually —
+                                    </div>
+                                </div>
+                            )}
                             {/* Context badge for direct contacts */}
                             {isDirectContact && (
                               <div
@@ -7089,23 +8519,6 @@ function CheckpointFormInline({
                                   </div>
                               </div>
                             ))}
-                            {!isDirectContact && (
-                              <div
-                                onClick={() => { setNextChannels([]); setStep(step + 1); }}
-                                style={optStyle(nextChannels.length === 0)}
-                                className="dark:bg-[#000724] dark:border-gray-800"
-                              >
-                                  <div style={numBadge(4, nextChannels.length === 0)}>{nextChannels.length === 0 ? '✓' : 4}</div>
-                                  <div style={{ flex: 1 }}>
-                                      <div style={{ fontWeight: 600 }} className="text-gray-900 dark:text-slate-300">
-                                          Skip
-                                      </div>
-                                      <div style={{ fontSize: '12px', marginTop: '2px' }} className="text-gray-500 dark:text-slate-300">
-                                          No additional channels — LinkedIn only
-                                      </div>
-                                  </div>
-                              </div>
-                            )}
 
 
                             {/* Email Config (inline when email selected) */}
@@ -7149,7 +8562,7 @@ function CheckpointFormInline({
                                             {connectedSenders.length > 0 ? (
                                               <Select
                                                 value={emailFromAddress}
-                                                onValueChange={(value) => {
+                                                onValueChange={(value: string) => {
                                                     const sender = connectedSenders.find(s => s.email === value);
                                                     setEmailFromAddress(value);
                                                     setEmailProvider(sender?.provider || '');
@@ -7188,7 +8601,7 @@ function CheckpointFormInline({
                                                        style={{ fontSize: '12px', fontWeight: 600,  marginBottom: '4px', display: 'block' }}>Use Saved Template</label>
                                                 <Select
                                                   value={selectedEmailTemplateId}
-                                                  onValueChange={(value) => {
+                                                  onValueChange={(value: string) => {
                                                       const tpl = emailTemplates.find(t => t.id === value);
                                                       if (tpl) {
                                                           setEmailSubject(tpl.subject);
@@ -7914,7 +9327,7 @@ function CheckpointFormInline({
                                             {voiceAgents.length > 0 ? (
                                               <Select
                                                 value={selectedAgentId}
-                                                onValueChange={(val) => {
+                                                onValueChange={(val: string) => {
                                                     setSelectedAgentId(val);
                                                     const agent = voiceAgents.find((a: any) => a.id === val);
                                                     if (agent?.voice_id) setSelectedVoiceId(agent.voice_id);
@@ -8437,341 +9850,82 @@ function CheckpointFormInline({
                                     </div>
 
                                     {/* ── 🤖 AI Daily Personalisation ───────────── */}
-                                    <div style={{ marginTop: '14px', borderTop: '1px solid #bfdbfe', paddingTop: '12px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: enableDailyWebPresence || enableDailyPosts || enableAiPersonalization ? '10px' : '0', cursor: 'pointer' }}
-                                            onClick={() => {
-                                                // If any toggle is on, turn all off; otherwise show the panel
-                                                if (enableDailyWebPresence || enableDailyPosts || enableAiPersonalization) {
-                                                    setEnableDailyWebPresence(false);
-                                                    setEnableDailyPosts(false);
-                                                    setEnableAiPersonalization(false);
-                                                } else {
-                                                    setEnableDailyWebPresence(true);
-                                                    setEnableDailyPosts(true);
-                                                    setEnableAiPersonalization(true);
-                                                }
-                                            }}>
-                                          <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                                            <span style={{ fontSize: '13px' }}>🤖</span>
-                                            <span className="text-[#4338ca] dark:text-blue-300"
-                                              style={{ fontSize: '13px', fontWeight: 700 }}>
-                                              AI Daily Personalisation
-                                          </span>
-                                            <span
-                                              className="text-[#6b7280] dark:text-gray-400"
-                                              style={{ fontSize: '11px', fontWeight: 400 }}>— unique messages per lead, powered by live data
-                                            </span>
-                                          </div>
-                                            <div style={{
-                                                width: '36px', height: '20px', borderRadius: '99px', flexShrink: 0,
-                                                background: (enableDailyWebPresence || enableDailyPosts || enableAiPersonalization) ? '#0b1957' : '#d1d5db',
-                                                position: 'relative', transition: 'background 0.2s',
-                                            }}>
-                                                <div style={{
-                                                    position: 'absolute', top: '2px',
-                                                    left: (enableDailyWebPresence || enableDailyPosts || enableAiPersonalization) ? '18px' : '2px',
-                                                    width: '16px', height: '16px', borderRadius: '50%', background: '#fff',
-                                                    transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                                                }} />
-                                            </div>
-                                        </div>
-
-                                        {(enableDailyWebPresence || enableDailyPosts || enableAiPersonalization) && (
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                                {/* Toggle: Web Presence */}
-                                                <div
-                                                  onClick={() => setEnableDailyWebPresence(!enableDailyWebPresence)}
-                                                  className={`flex items-center justify-between border rounded-[8px] cursor-pointer transition-colors
-                                                ${enableDailyWebPresence
-                                                    ? 'bg-[#e8ecfa] dark:bg-blue-900/40 border-[#c2d6eb] dark:border-blue-700'
-                                                    : 'bg-[#f9fafb] dark:bg-[#0f172a] border-[#e5e7eb] dark:border-[#334155]'
-                                                  }
-                                                `}
-                                                  style={{
-                                                      display: 'flex',
-                                                      alignItems: 'center',
-                                                      justifyContent: 'space-between',
-                                                      padding: '9px 12px'
-                                                  }}
-                                                >
-                                                    <div>
-                                                        <div
-                                                          className="text-[#1e293b] dark:text-gray-100"
-                                                          style={{ fontSize: '13px', fontWeight: 600 }}
-                                                        >
-                                                            🌐 Refresh web presence daily
-                                                        </div>
-                                                        <div
-                                                          className="text-[#6b7280] dark:text-slate-300"
-                                                          style={{ fontSize: '11px', marginTop: '2px' }}
-                                                        >
-                                                            Re-runs Google search for articles, news & social profiles per lead
-                                                        </div>
-                                                    </div>
-                                                    <div
-                                                      className={`w-[32px] h-[18px] rounded-[99px] flex-shrink-0 relative transition-colors
-                                                        ${enableDailyWebPresence ? 'bg-[#0b1957] dark:bg-blue-500' : 'bg-[#d1d5db] dark:bg-gray-600'}
-                                                        `}
-                                                      style={{
-                                                          position: 'relative',
-                                                          transition: 'background 0.2s'
-                                                      }}
-                                                    >
-                                                        <div
-                                                          className="absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white transition-[left] shadow-[0_1px_3px_rgba(0,0,0,0.2)]"
-                                                          style={{
-                                                              left: enableDailyWebPresence ? '16px' : '2px',
-                                                              transition: 'left 0.2s'
-                                                          }}
-                                                        />
-                                                    </div>
-                                                </div>
-
-                                                {/* Toggle: LinkedIn Posts */}
-                                                <div
-                                                  onClick={() => setEnableDailyPosts(!enableDailyPosts)}
-                                                  className={`flex items-center justify-between border rounded-[8px] cursor-pointer transition-colors
-        ${enableDailyPosts
-                                                    ? 'bg-[#e8ecfa] dark:bg-blue-900/40 border-[#c2d6eb] dark:border-blue-700'
-                                                    : 'bg-[#f9fafb] dark:bg-[#0f172a] border-[#e5e7eb] dark:border-[#334155]'
-                                                  }
-    `}
-                                                  style={{
-                                                      display: 'flex',
-                                                      alignItems: 'center',
-                                                      justifyContent: 'space-between',
-                                                      padding: '9px 12px'
-                                                  }}
-                                                >
-                                                    <div>
-                                                        <div
-                                                          className="text-[#1e293b] dark:text-gray-100"
-                                                          style={{ fontSize: '13px', fontWeight: 600 }}
-                                                        >
-                                                            📝 Fetch live LinkedIn posts
-                                                        </div>
-                                                        <div
-                                                          className="text-[#6b7280] dark:text-gray-400"
-                                                          style={{ fontSize: '11px', marginTop: '2px' }}
-                                                        >
-                                                            Pulls the lead&apos;s recent LinkedIn posts before each send
-                                                        </div>
-                                                    </div>
-                                                    <div
-                                                      className={`w-[32px] h-[18px] rounded-[99px] flex-shrink-0 relative transition-colors
-                                                        ${enableDailyPosts ? 'bg-[#0b1957] dark:bg-blue-500' : 'bg-[#d1d5db] dark:bg-gray-600'}
-                                                    `}
-                                                      style={{
-                                                          position: 'relative',
-                                                          transition: 'background 0.2s'
-                                                      }}
-                                                    >
-                                                        <div
-                                                          className="absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white transition-[left] shadow-[0_1px_3px_rgba(0,0,0,0.2)]"
-                                                          style={{
-                                                              left: enableDailyPosts ? '16px' : '2px',
-                                                              transition: 'left 0.2s'
-                                                          }}
-                                                        />
-                                                    </div>
-                                                </div>
-
-                                                {/* Toggle: AI Generate unique message */}
-                                                <div
-                                                  onClick={() => setEnableAiPersonalization(!enableAiPersonalization)}
-                                                  className={`flex items-center justify-between border rounded-[8px] cursor-pointer transition-colors
-                                                ${enableAiPersonalization
-                                                    ? 'bg-[#f5f3ff] dark:bg-violet-900/30 border-[#ddd6fe] dark:border-violet-700'
-                                                    : 'bg-[#f9fafb] dark:bg-[#0f172a] border-[#e5e7eb] dark:border-[#334155]'
-                                                  }
-                                                `}
-                                                  style={{
-                                                      display: 'flex',
-                                                      alignItems: 'center',
-                                                      justifyContent: 'space-between',
-                                                      padding: '9px 12px',
-                                                      opacity: (!enableDailyWebPresence && !enableDailyPosts) ? 0.5 : 1,
-                                                      pointerEvents: (!enableDailyWebPresence && !enableDailyPosts) ? 'none' : 'auto'
-                                                  }}
-                                                >
-                                                    <div>
-                                                        <div
-                                                          className="text-[#1e293b] dark:text-gray-100"
-                                                          style={{ fontSize: '13px', fontWeight: 600 }}
-                                                        >
-                                                            ✨ AI-generate unique message per lead
-                                                        </div>
-                                                        <div
-                                                          className="text-[#6b7280] dark:text-gray-400"
-                                                          style={{ fontSize: '11px', marginTop: '2px' }}
-                                                        >
-                                                            AI creates a personalised connect + follow-up using live web & post data
-                                                            {(!enableDailyWebPresence && !enableDailyPosts) ? ' — enable web presence or posts first' : ''}
-                                                        </div>
-                                                    </div>
-                                                    <div
-                                                      className={`w-[32px] h-[18px] rounded-[99px] flex-shrink-0 relative transition-colors
-                                                        ${enableAiPersonalization ? 'bg-[#7c3aed] dark:bg-violet-500' : 'bg-[#d1d5db] dark:bg-gray-600'}
-                                                    `}
-                                                      style={{
-                                                          position: 'relative',
-                                                          transition: 'background 0.2s'
-                                                      }}
-                                                    >
-                                                        <div
-                                                          className="absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white transition-[left] shadow-[0_1px_3px_rgba(0,0,0,0.2)]"
-                                                          style={{
-                                                              left: enableAiPersonalization ? '16px' : '2px',
-                                                              transition: 'left 0.2s'
-                                                          }}
-                                                        />
-                                                    </div>
-                                                </div>
-
-                                                {(enableDailyWebPresence || enableDailyPosts) && enableAiPersonalization && (
-                                                  <div
-                                                    className="bg-[#faf5ff] dark:bg-violet-900/20 border border-[#e9d5ff] dark:border-violet-800 text-[#7c3aed] dark:text-violet-300"
+                                    {(() => {
+                                        const anyOn = enableDailyWebPresence || enableDailyPosts || enableAiPersonalization;
+                                        const noSource = !enableDailyWebPresence && !enableDailyPosts;
+                                        const toggleAll = () => {
+                                            const next = !anyOn;
+                                            setEnableDailyWebPresence(next);
+                                            setEnableDailyPosts(next);
+                                            setEnableAiPersonalization(next);
+                                        };
+                                        return (
+                                            <div style={{ marginTop: '16px' }}>
+                                                {/* Master header — one tap toggles the whole feature */}
+                                                <div role="button" aria-pressed={anyOn} onClick={toggleAll}
                                                     style={{
-                                                        fontSize: '11px',
-                                                        borderRadius: '7px',
-                                                        padding: '7px 10px',
-                                                        lineHeight: 1.5
-                                                    }}
-                                                  >
-                                                      ✅ Each lead will receive a <strong>unique AI-generated message</strong> based on their live web presence & LinkedIn posts. Your static template message is used as a fallback.
-                                                  </div>
-                                                )}
+                                                        display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', cursor: 'pointer',
+                                                        borderRadius: anyOn ? '14px 14px 0 0' : 14,
+                                                        background: anyOn ? 'linear-gradient(135deg,#eef2ff 0%,#f5f3ff 100%)' : '#f8fafc',
+                                                        border: `1px solid ${anyOn ? '#c7d2fe' : '#e5e7eb'}`,
+                                                        borderBottom: anyOn ? '1px solid transparent' : '1px solid #e5e7eb',
+                                                        transition: 'background .2s',
+                                                    }}>
+                                                    <div style={{
+                                                        width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: 'grid', placeItems: 'center',
+                                                        background: anyOn ? 'linear-gradient(135deg,#4338ca,#7c3aed)' : '#eef2ff',
+                                                        boxShadow: anyOn ? '0 2px 8px rgba(67,56,202,0.30)' : 'none', transition: 'background .2s',
+                                                    }}>
+                                                        <img src={anyOn ? '/logo-white.svg' : '/logo.svg'} alt="LAD" style={{ width: 20, height: 20, display: 'block' }} />
+                                                    </div>
+                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                        <div style={{ fontSize: 13.5, fontWeight: 700, color: '#4338ca' }}>AI Daily Personalisation</div>
+                                                        <div style={{ fontSize: 11.5, color: '#6b7280', marginTop: 1 }}>Unique messages per lead, powered by live data</div>
+                                                    </div>
+                                                    <AiPersoToggle checked={anyOn} onChange={toggleAll} accent="indigo" size="lg" />
+                                                </div>
 
-                                                {(enableDailyWebPresence || enableDailyPosts) && enableAiPersonalization && (
-                                                  <div
-                                                    className="border-t border-[#e5e7eb] dark:border-[#334155]"
-                                                    style={{
-                                                        display: 'flex',
-                                                        flexDirection: 'column',
-                                                        gap: '10px',
-                                                        marginTop: '12px',
-                                                        paddingTop: '12px'
-                                                    }}
-                                                  >
-                                                      <div
-                                                        className="text-[#6b7280] dark:text-gray-400"
-                                                        style={{ fontSize: '12px', fontWeight: 600 }}
-                                                      >
-                                                          Granular AI Message Control:
-                                                      </div>
-                                                        {/* Toggle: AI Generate Connection Message */}
-                                                      <div
-                                                        onClick={() => setEnableAiConnectionPersonalization(!enableAiConnectionPersonalization)}
-                                                        className={`flex items-center justify-between border rounded-[8px] cursor-pointer transition-colors
-                                                        ${enableAiConnectionPersonalization
-                                                          ? 'bg-[#f5f3ff] dark:bg-violet-900/30 border-[#ddd6fe] dark:border-violet-700'
-                                                          : 'bg-[#f9fafb] dark:bg-[#0f172a] border-[#e5e7eb] dark:border-[#334155]'
-                                                        }
-                                                        `}
-                                                        style={{
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'space-between',
-                                                            padding: '9px 12px'
-                                                        }}
-                                                      >
-                                                          <div>
-                                                              <div
-                                                                className="text-[#1e293b] dark:text-gray-100"
-                                                                style={{ fontSize: '13px', fontWeight: 600 }}
-                                                              >
-                                                                  🔗 AI-generate connection request
-                                                              </div>
-                                                              <div
-                                                                className="text-[#6b7280] dark:text-gray-400"
-                                                                style={{ fontSize: '11px', marginTop: '2px' }}
-                                                              >
-                                                                  Create personalized connection messages
-                                                              </div>
-                                                          </div>
-                                                          <div
-                                                            className={`w-[32px] h-[18px] rounded-[99px] flex-shrink-0 relative transition-colors
-                                                                ${enableAiConnectionPersonalization ? 'bg-[#7c3aed] dark:bg-violet-500' : 'bg-[#d1d5db] dark:bg-gray-600'}
-                                                            `}
-                                                            style={{
-                                                                position: 'relative',
-                                                                transition: 'background 0.2s'
-                                                            }}
-                                                          >
-                                                              <div
-                                                                className="absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white transition-[left] shadow-[0_1px_3px_rgba(0,0,0,0.2)]"
-                                                                style={{
-                                                                    left: enableAiConnectionPersonalization ? '16px' : '2px',
-                                                                    transition: 'left 0.2s'
-                                                                }}
-                                                              />
-                                                          </div>
+                                                {anyOn && (
+                                                    <div style={{
+                                                        border: '1px solid #c7d2fe', borderTop: 'none', borderRadius: '0 0 14px 14px',
+                                                        background: '#fcfcff', padding: 13, display: 'flex', flexDirection: 'column', gap: 16,
+                                                    }}>
+                                                        {/* Group 1 — live data the agent gathers per lead */}
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                                            <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: '#4338ca' }}>Live data sources</div>
+                                                            <AiPersoRow icon={<Globe size={16} />} title="Refresh web presence daily" desc="Re-runs Google search for articles, news & social profiles per lead" checked={enableDailyWebPresence} onChange={setEnableDailyWebPresence} accent="indigo" />
+                                                            <AiPersoRow icon={<Newspaper size={16} />} title="Fetch live LinkedIn posts" desc="Pulls the lead's recent LinkedIn posts before each send" checked={enableDailyPosts} onChange={setEnableDailyPosts} accent="indigo" />
                                                         </div>
 
-                                                        {/* Toggle: AI Generate Followup Message */}
-                                                      <div
-                                                        onClick={() => setEnableAiFollowupPersonalization(!enableAiFollowupPersonalization)}
-                                                        className={`flex items-center justify-between border rounded-[8px] cursor-pointer transition-colors
-        ${enableAiFollowupPersonalization
-                                                          ? 'bg-[#f5f3ff] dark:bg-violet-900/30 border-[#ddd6fe] dark:border-violet-700'
-                                                          : 'bg-[#f9fafb] dark:bg-[#0f172a] border-[#e5e7eb] dark:border-[#334155]'
-                                                        }
-    `}
-                                                        style={{
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'space-between',
-                                                            padding: '9px 12px'
-                                                        }}
-                                                      >
-                                                          <div>
-                                                              <div
-                                                                className="text-[#1e293b] dark:text-gray-100"
-                                                                style={{ fontSize: '13px', fontWeight: 600 }}
-                                                              >
-                                                                  💬 AI-generate follow-up message
-                                                              </div>
-                                                              <div
-                                                                className="text-[#6b7280] dark:text-gray-400"
-                                                                style={{ fontSize: '11px', marginTop: '2px' }}
-                                                              >
-                                                                  Create personalized follow-up messages
-                                                              </div>
-                                                          </div>
-                                                          <div
-                                                            className={`w-[32px] h-[18px] rounded-[99px] flex-shrink-0 relative transition-colors
-                                                                ${enableAiFollowupPersonalization ? 'bg-[#7c3aed] dark:bg-violet-500' : 'bg-[#d1d5db] dark:bg-gray-600'}
-                                                            `}
-                                                            style={{
-                                                                position: 'relative',
-                                                                transition: 'background 0.2s'
-                                                            }}
-                                                          >
-                                                              <div
-                                                                className="absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white transition-[left] shadow-[0_1px_3px_rgba(0,0,0,0.2)]"
-                                                                style={{
-                                                                    left: enableAiFollowupPersonalization ? '16px' : '2px',
-                                                                    transition: 'left 0.2s'
-                                                                }}
-                                                              />
-                                                          </div>
-                                                      </div>
-                                                      <div
-                                                        className="bg-[#faf5ff] dark:bg-violet-900/20 border border-[#e9d5ff] dark:border-violet-800 text-[#7c3aed] dark:text-violet-300"
-                                                        style={{
-                                                            fontSize: '11px',
-                                                            borderRadius: '7px',
-                                                            padding: '7px 10px',
-                                                            lineHeight: 1.5
-                                                        }}
-                                                      >
-                                                          💡 <strong>Tip:</strong> Choose which message(s) should be AI-generated. Unchecked messages will use your static template.
-                                                      </div>
+                                                        {/* Group 2 — how the agent writes each message */}
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                                            <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: '#7c3aed' }}>AI message generation</div>
+                                                            <AiPersoRow icon={<Sparkles size={16} />} title="AI-generate unique message per lead"
+                                                                desc={noSource ? 'Enable a live data source above first' : 'AI writes a personalised connect + follow-up from live web & post data'}
+                                                                checked={enableAiPersonalization} onChange={setEnableAiPersonalization} accent="violet" disabled={noSource} />
+
+                                                            {enableAiPersonalization && !noSource && (
+                                                                <>
+                                                                    <div style={{ display: 'flex', gap: 8, fontSize: 11.5, color: '#6d28d9', background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: 9, padding: '9px 11px', lineHeight: 1.5 }}>
+                                                                        <Check size={15} style={{ flexShrink: 0, marginTop: 1 }} />
+                                                                        <span>Each lead gets a <strong>unique AI-generated message</strong> from their live web presence &amp; LinkedIn posts. Your static template is the fallback.</span>
+                                                                    </div>
+
+                                                                    {/* Nested granular control — clearly a child of the toggle above */}
+                                                                    <div style={{ marginLeft: 8, paddingLeft: 14, borderLeft: '2px solid #ddd6fe', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                                                        <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#7c3aed' }}>Which messages?</div>
+                                                                        <AiPersoRow icon={<UserPlus size={16} />} title="Connection request" desc="Personalised connect note per lead" checked={enableAiConnectionPersonalization} onChange={setEnableAiConnectionPersonalization} accent="violet" />
+                                                                        <AiPersoRow icon={<MessageSquare size={16} />} title="Follow-up message" desc="Personalised follow-up per lead" checked={enableAiFollowupPersonalization} onChange={setEnableAiFollowupPersonalization} accent="violet" />
+                                                                        <div style={{ fontSize: 11, color: '#9ca3af', paddingLeft: 2 }}>Unchecked messages use your static template.</div>
+                                                                    </div>
+                                                                </>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 )}
                                             </div>
-                                        )}
-                                    </div>
+                                        );
+                                    })()}
                                 </div>
                             )}
                         </div>
@@ -8893,6 +10047,28 @@ function CheckpointFormInline({
                                   ✨ Suggest
                               </button>
                           </div>
+                          {!creditsOk && (
+                              <div className="dark:bg-amber-900/20 dark:border-amber-700 dark:text-amber-300" style={{
+                                  padding: '10px 14px', borderRadius: '10px', fontSize: '12px', lineHeight: 1.5,
+                                  background: '#fef3c7', border: '1px solid #f59e0b', color: '#92400e',
+                                  display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-start',
+                              }}>
+                                  <div>
+                                      <strong>Not enough credits:</strong> You need {requiredCredits} credits to launch this
+                                      campaign ({enrolledCount} leads × {CREDIT_COST_PER_LEAD}). You have {creditBalance}.
+                                  </div>
+                                  <button onClick={onOpenRecharge} className="dark:bg-blue-700" style={{
+                                      padding: '6px 14px', borderRadius: '8px', border: 'none',
+                                      background: '#0b1957', color: '#fff', fontSize: '12px', fontWeight: 700,
+                                      cursor: 'pointer', transition: 'all 0.15s',
+                                  }}>Add credits</button>
+                              </div>
+                          )}
+                          {creditsOk && creditBalance !== null && enrolledCount > 0 && (
+                              <div className="dark:text-gray-500" style={{ fontSize: '12px', color: '#9ca3af' }}>
+                                  ≈{requiredCredits} credits will be used as this campaign runs
+                              </div>
+                          )}
                       </div>
                     )}
                 </div>
@@ -8934,13 +10110,13 @@ function CheckpointFormInline({
                                     </button>
                                 ) : (
                                     <button
-                                        disabled={!canNext() || launching}
+                                        disabled={!canNext() || launching || !creditsOk}
                                         onClick={launchCampaign}
                                         style={{
                                             padding: '8px 20px', borderRadius: '10px', border: 'none',
-                                            background: canNext() && !launching ? '#10b981' : '#e5e7eb',
-                                            color: canNext() && !launching ? '#fff' : '#9ca3af',
-                                            fontSize: '13px', fontWeight: 700, cursor: canNext() && !launching ? 'pointer' : 'default',
+                                            background: canNext() && !launching && creditsOk ? '#10b981' : '#e5e7eb',
+                                            color: canNext() && !launching && creditsOk ? '#fff' : '#9ca3af',
+                                            fontSize: '13px', fontWeight: 700, cursor: canNext() && !launching && creditsOk ? 'pointer' : 'default',
                                             display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.15s',
                                         }}
                                     >
@@ -9526,6 +10702,463 @@ function buildConfirmationMessage(intent: LeadTargeting, _originalQuery: string)
     return p.join('\n');
 }
 
+/* ── MODULE-LEVEL HELPER COMPONENTS TO PREVENT FLICKERING ── */
+function ThinkingIndicator({ generating }: { generating: boolean }) {
+    const [index, setIndex] = React.useState(0);
+    const steps = generating
+        ? [
+            "Waking up Mr. LADs...",
+            "Analyzing your visual prompt...",
+            "Generating unique design concepts...",
+            "Finalizing visual assets...",
+        ]
+        : [
+            "Waking up Mr. LADs...",
+            "Aligning your media workspace...",
+            "Loading design references...",
+        ];
+
+    React.useEffect(() => {
+        const timer = setInterval(() => {
+            setIndex((prev) => (prev + 1) % steps.length);
+        }, 2500);
+        return () => clearInterval(timer);
+    }, [steps.length]);
+
+    return (
+        <div className="flex flex-col items-center space-y-4 my-6">
+            <div className="relative size-20 flex items-center justify-center">
+                <motion.div
+                    animate={{
+                        scale: [1, 1.2, 1],
+                        opacity: [0.3, 0.6, 0.3],
+                    }}
+                    transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                    }}
+                    className="absolute inset-0 bg-[#0b1957]/10 rounded-full"
+                />
+                <motion.div
+                    animate={{
+                        rotate: 360,
+                    }}
+                    transition={{
+                        duration: 10,
+                        repeat: Infinity,
+                        ease: "linear",
+                    }}
+                    className="size-14 border-2 border-dashed border-[#0b1957]/20 rounded-full flex items-center justify-center"
+                >
+                    <Sparkles className="size-6 text-[#0b1957] animate-pulse" />
+                </motion.div>
+            </div>
+            <div className="h-6 flex items-center justify-center overflow-hidden">
+                <AnimatePresence mode="wait">
+                    <motion.p
+                        key={index}
+                        initial={{ y: 15, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: -15, opacity: 0 }}
+                        transition={{ duration: 0.5 }}
+                        className="text-xs font-semibold text-[#0b1957]/70"
+                    >
+                        {steps[index]}
+                    </motion.p>
+                </AnimatePresence>
+            </div>
+        </div>
+    );
+}
+
+function MediaStepWidget({ 
+    msg, 
+    isActive, 
+    mb, 
+    submitMediaInput 
+}: { 
+    msg: any; 
+    isActive: boolean; 
+    mb: any; 
+    submitMediaInput: (text: string, valueToSend?: string | string[]) => void; 
+}) {
+    switch (msg.step) {
+        case "builder-image-output":
+            return (
+                <AgentBuilderImageOutput
+                    title={msg.payload?.question}
+                    description={msg.payload?.description}
+                    images={isActive ? mb.uiPayload?.images || [] : msg.payload?.images || []}
+                    video={msg.payload?.video}
+                    onNext={isActive ? (val) => {
+                        if (val && val.startsWith("[ANIMATE_IMAGE]")) {
+                            const indexMatch = val.match(/index=(\d+)/);
+                            const imgIdx = indexMatch ? parseInt(indexMatch[1]) : 0;
+                            const imagesList = mb.uiPayload?.images || [];
+                            const imageUrl = imagesList[imgIdx];
+                            const customRefs = imageUrl ? [{ path: imageUrl, thumbnail: imageUrl }] : undefined;
+                            submitMediaInput("Animate this concept", val, customRefs);
+                        } else {
+                            submitMediaInput("Proceed with layout", val);
+                        }
+                    } : undefined}
+                    phase={msg.payload?.phase}
+                    generating={isActive ? mb.generating : false}
+                    references={isActive ? mb.references : []}
+                    onUpload={isActive ? mb.uploadReference : undefined}
+                    onRemove={isActive ? mb.removeReference : undefined}
+                    isUploading={isActive ? mb.isUploading : false}
+                    error={isActive ? mb.error : ""}
+                    onBack={isActive ? () => mb.undoStep() : undefined}
+                    hideHeader={true}
+                />
+            );
+        case "builder-video-confirm": {
+            const imgUrl = isActive ? mb.uiPayload?.images?.[0] : msg.payload?.images?.[0];
+            if (!imgUrl) return null;
+            return (
+                <div className="mt-2 flex justify-start">
+                    <div className="relative group overflow-hidden rounded-xl border border-slate-200/60 shadow-sm w-48 aspect-video">
+                        <img 
+                            src={imgUrl} 
+                            alt="Selected Concept Frame" 
+                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
+                        />
+                        <div className="absolute bottom-2 left-2 bg-slate-900/80 backdrop-blur-sm text-[9px] font-bold text-white px-2 py-0.5 rounded-full select-none">
+                            FRAME
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+        case "builder-video-output":
+            return (
+                <div className="mt-2 flex justify-start w-full">
+                    <AgentBuilderVideoOutput
+                        title={isActive ? mb.uiPayload?.question : msg.payload?.question}
+                        description={isActive ? mb.uiPayload?.description : msg.payload?.description}
+                        videoUrl={isActive ? mb.uiPayload?.video : msg.payload?.video}
+                        phase={isActive ? mb.uiPayload?.phase : msg.payload?.phase}
+                        onNext={undefined}
+                        onBack={undefined}
+                        hideHeader={true}
+                        hideFooter={true}
+                    />
+                </div>
+            );
+        case "builder-video-progress":
+            if (isActive) return null;
+            return (
+                <div className="mt-2 w-[448px] max-w-full bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-md">
+                    <AgentBuilderVideoProgress
+                        title={isActive ? mb.uiPayload?.question : msg.payload?.question}
+                        description={isActive ? mb.uiPayload?.description : msg.payload?.description}
+                        blocks={isActive ? mb.uiPayload?.blocks || [] : msg.payload?.blocks || []}
+                        phase={isActive ? mb.uiPayload?.phase : msg.payload?.phase}
+                        videoUrl={isActive ? mb.uiPayload?.video : msg.payload?.video}
+                        status={isActive ? mb.uiPayload?.status || "active" : "completed"}
+                        progress={isActive ? mb.uiPayload?.progress : 100}
+                        onBack={undefined}
+                        onNext={undefined}
+                    />
+                </div>
+            );
+        case "builder-brand-dna":
+            if (isActive) return null;
+            return (
+                <div className="mt-4 max-w-full w-[448px] bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-md">
+                    <AgentBuilderBrandDNA
+                        brandDna={msg.payload?.brand_dna}
+                        onNext={() => {}}
+                        phase={msg.payload?.phase}
+                        onBack={undefined}
+                        hideButtons={true}
+                    />
+                </div>
+            );
+        case "gallery":
+            return (
+                <div className="mt-4 max-w-full w-[700px] bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-md h-[550px]">
+                    <AgentBuilderGallery
+                        images={isActive ? mb.galleryImages : msg.payload?.images || []}
+                        videos={isActive ? mb.galleryVideos : msg.payload?.videos || []}
+                        loading={isActive ? mb.loadingGallery : false}
+                        onBack={() => mb.setStep("welcome")}
+                        onGenerateImages={isActive ? mb.generateImagesFromGallery : undefined}
+                        onAnimateImage={isActive ? async (url) => {
+                            setMediaMessages(prev => [
+                                ...prev.filter(m => !m.loading),
+                                {
+                                    id: `user-${Date.now()}`,
+                                    role: "user",
+                                    text: "Animate this concept",
+                                    references: [{ path: url, thumbnail: url }],
+                                    timestamp: new Date()
+                                }
+                            ]);
+                            await mb.animateImageFromGallery(url);
+                        } : undefined}
+                        onExtendVideo={isActive ? mb.extendVideoFromGallery : undefined}
+                        onAddDialogues={isActive ? mb.addDialoguesFromGallery : undefined}
+                        onDeleteAssets={isActive ? mb.deleteAssets : undefined}
+                        isFullHistory={isActive ? mb.isGalleryFullHistory : false}
+                        onLoadFullHistory={isActive ? () => mb.fetchGallery(true) : undefined}
+                    />
+                </div>
+            );
+        default:
+            return null;
+    }
+}
+
+function SessionSelector({ mb }: { mb: any }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+    const { fetchPastSessions } = mb;
+
+    useEffect(() => {
+        if (isOpen) {
+            fetchPastSessions();
+        }
+    }, [isOpen, fetchPastSessions]);
+
+    // Close on click outside
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    return (
+        <div ref={dropdownRef} style={{ position: 'relative' }}>
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="adv-media-header-exit cursor-pointer"
+                style={{ background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+                <History className="size-4" />
+                Saved Sessions
+            </button>
+
+            {isOpen && (
+                <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    right: 0,
+                    marginTop: '8px',
+                    width: '320px',
+                    maxHeight: '400px',
+                    background: '#fff',
+                    borderRadius: '12px',
+                    border: '1px solid #e5e7eb',
+                    boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+                    zIndex: 1000,
+                    overflowY: 'auto',
+                    padding: '8px 0'
+                }}>
+                    <div style={{ padding: '8px 16px', borderBottom: '1px solid #f3f4f6', fontWeight: 'bold', fontSize: '11px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Saved Sessions
+                    </div>
+                    {mb.loadingSessions ? (
+                        <div style={{ padding: '16px', textAlign: 'center', fontSize: '13px', color: '#9ca3af' }}>
+                            Loading sessions...
+                        </div>
+                    ) : mb.pastSessions?.length === 0 ? (
+                        <div style={{ padding: '16px', textAlign: 'center', fontSize: '13px', color: '#9ca3af' }}>
+                            No saved sessions found.
+                        </div>
+                    ) : (
+                        mb.pastSessions.map((s: any) => {
+                            const isCurrent = s.session_id === mb.sessionId;
+                            return (
+                                <button
+                                    key={s.session_id}
+                                    onClick={() => {
+                                        mb.loadSession(s.session_id);
+                                        setIsOpen(false);
+                                    }}
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px 16px',
+                                        textAlign: 'left',
+                                        background: isCurrent ? '#f1f5f9' : 'transparent',
+                                        border: 'none',
+                                        display: 'block',
+                                        cursor: 'pointer',
+                                        transition: 'background 0.2s',
+                                    }}
+                                    className="hover:bg-slate-50"
+                                >
+                                    <div style={{ fontWeight: 'bold', fontSize: '13px', color: isCurrent ? '#0f172a' : '#334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px' }}>{s.title}</span>
+                                        {isCurrent && <span style={{ fontSize: '10px', background: '#3b82f6', color: '#fff', padding: '1px 5px', borderRadius: '4px' }}>Active</span>}
+                                    </div>
+                                    <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {s.description || 'No description available.'}
+                                    </div>
+                                    <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '4px' }}>
+                                        {s.updated_at ? new Date(s.updated_at).toLocaleString() : 'Date unknown'}
+                                    </div>
+                                </button>
+                            );
+                        })
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function MediaBubble({ 
+    msg, 
+    isActive, 
+    isLastUser,
+    handleMediaBack,
+    mb, 
+    submitMediaInput 
+}: { 
+    msg: any; 
+    isActive: boolean; 
+    isLastUser?: boolean;
+    handleMediaBack?: () => void;
+    mb: any; 
+    submitMediaInput: (text: string, valueToSend?: string | string[]) => void; 
+}) {
+    if (msg.role === 'user') return (
+        <div className="adv-bubble adv-bubble-user fadeUp" style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
+            {isLastUser && handleMediaBack && (
+                <button
+                    onClick={handleMediaBack}
+                    title="Undo last message / Revert"
+                    className="adv-bubble-undo-btn"
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: 'none',
+                        background: 'none',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        borderRadius: '4px',
+                        order: 0,
+                        marginRight: '4px',
+                        transition: 'all 0.15s',
+                        alignSelf: 'center',
+                    }}
+                >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+                </button>
+            )}
+            <div className="adv-user-msg" style={{ margin: 0, order: 1 }}>
+                <div>{msg.text}</div>
+                {msg.references && msg.references.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px', justifyContent: 'flex-end' }}>
+                        {msg.references.map((ref: any, idx: number) => (
+                            <img 
+                                key={idx} 
+                                src={ref.thumbnail} 
+                                alt={ref.filename} 
+                                style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.2)' }} 
+                            />
+                        ))}
+                    </div>
+                )}
+            </div>
+            <div style={{ order: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '50%', backgroundColor: '#172560', color: 'white', fontSize: '13px', fontWeight: 'bold', flexShrink: 0 }}>
+                M
+            </div>
+        </div>
+    );
+
+    const renderInline = (raw: string) => {
+        const tokens = raw.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g);
+        return tokens.map((t, j) => {
+            if (t.startsWith('**') && t.endsWith('**')) return <strong key={j}>{t.slice(2, -2)}</strong>;
+            if (t.startsWith('*') && t.endsWith('*')) return <em key={j} className="adv-ai-em">{t.slice(1, -1)}</em>;
+            if (t.startsWith('`') && t.endsWith('`')) return <code key={j} style={{ background: '#f3f4f6', padding: '1px 5px', borderRadius: '4px', fontSize: '13px', fontFamily: 'monospace', color: '#0b1957' }}>{t.slice(1, -1)}</code>;
+            return t;
+        });
+    };
+
+    const renderMarkdownLines = (raw: string) => {
+        return raw.split('\n').map((line, i) => {
+            const trimmed = line.trim();
+            if (!trimmed) return <div key={i} style={{ height: '6px' }} />;
+            
+            // Check for lists
+            if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+                return (
+                    <li key={i} className="ml-4 list-disc" style={{ margin: '3.5px 0' }}>
+                        {renderInline(trimmed.substring(2))}
+                    </li>
+                );
+            }
+            if (trimmed.startsWith('### ')) return <div key={i} className="adv-ai-h3">{renderInline(trimmed.slice(4))}</div>;
+            if (trimmed.startsWith('## ')) return <div key={i} className="adv-ai-h3" style={{ fontSize: '14.5px' }}>{renderInline(trimmed.slice(3))}</div>;
+            return <p key={i} style={{ margin: '3.5px 0' }}>{renderInline(trimmed)}</p>;
+        });
+    };
+
+    return (
+        <div className="adv-bubble adv-bubble-ai fadeUp" style={{ maxWidth: '80%' }}>
+            <div className="adv-ai-avatar adv-ai-avatar-viz">
+                <AgentVisualizer state={msg.loading ? "thinking" : "idle"} size={36} />
+            </div>
+            <div className="adv-ai-body" style={{ width: '100%', minWidth: 0 }}>
+                <div className="adv-ai-name">
+                    LAD in Action
+                    <span className="adv-ai-name-dot" />
+                </div>
+
+                {msg.loading ? (
+                    <div className="mt-2 text-left">
+                        <ThinkingIndicator generating={mb.generating} />
+                    </div>
+                ) : (
+                    <div className="w-full text-left">
+                        {/* Title and Description */}
+                        {msg.step === "builder-video-progress" ? (
+                            <div className="adv-ai-text">
+                                <p style={{ margin: '3px 0' }}>Please wait for completion...</p>
+                            </div>
+                        ) : msg.step === "builder-video-confirm" ? (
+                            <div className="adv-ai-text">
+                                <div className="adv-ai-h3" style={{ fontSize: '11px', color: '#0b1957', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>
+                                    Prompt for Animation
+                                </div>
+                                <p style={{ margin: '4px 0', fontSize: '14px', lineHeight: '1.6', color: '#374151' }}>
+                                    {renderInline(isActive ? mb.uiPayload?.description || "" : msg.payload?.description || "")}
+                                </p>
+                            </div>
+                        ) : (
+                            <>
+                                {msg.text && (
+                                    <div className="adv-ai-text">
+                                        {renderMarkdownLines(msg.text)}
+                                    </div>
+                                )}
+                                {msg.description && (
+                                    <div className="text-sm text-slate-500 mt-2 leading-relaxed">
+                                        {renderMarkdownLines(msg.description)}
+                                    </div>
+                                )}
+                            </>
+                        )}
+
+                        {/* Visual widget/output if applicable */}
+                        <MediaStepWidget msg={msg} isActive={isActive} mb={mb} submitMediaInput={submitMediaInput} />
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
 /* ═══════════════════════════════════════════════
    CSS
    ═══════════════════════════════════════════════ */
@@ -9540,6 +11173,14 @@ const css = `
             @keyframes slideInRight {from {opacity:0; transform:translateX(100%); } to {opacity:1; transform:translateX(0); } }
             @keyframes spin {to {transform: rotate(360deg); } }
             @keyframes pulse {0 %, 100 % { opacity: .4 } 50% {opacity:1 } }
+            @keyframes recPulse {
+                0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+                70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+                100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+            }
+            .recording-pulse {
+                animation: recPulse 1.5s infinite;
+            }
             .fadeUp {animation: fadeUp .35s ease both; }
 
             /* ── LANDING ── */
@@ -9611,7 +11252,7 @@ const css = `
             .adv-recent-item span {flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
             /* ── CHAT SCREEN ── */
-            .adv-chat-root {height:100vh; display:flex; flex-direction:column; background:#fff; }
+            .adv-chat-root {height:100vh; display:flex; flex-direction:column; background:#fff; position: relative; }
             .adv-yellow-bar {height:4px; background:linear-gradient(90deg,#0b1957,#1a3a8f,#2563eb); flex-shrink:0; }
             .adv-chat-main {flex:1; display:flex; overflow:hidden; }
             .adv-chat-back {position:absolute; top:16px; left:20px; z-index:10; width:42px; height:42px; border-radius:50%; border:1px solid #e5e7eb; background:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,.06); transition:all .15s; }
@@ -9646,7 +11287,16 @@ const css = `
             .adv-tw-in{opacity:1;transform:translateY(0)}
             .adv-tw-out{opacity:0;transform:translateY(-6px)}
             /* ── CHAT INPUT ── */
-            .adv-chat-input-wrap {border-top:1px solid #f0f0f0; background:#fff; padding:12px 20px 16px; transition: opacity 0.3s ease; }
+            .adv-chat-input-wrap {
+                border-top: none !important;
+                background: linear-gradient(to top, #ffffff 65%, rgba(255,255,255,0.92) 85%, transparent 100%) !important;
+                padding: 16px 20px 16px;
+                transition: all 0.35s cubic-bezier(.4,0,.2,1);
+            }
+            .dark .adv-chat-input-wrap {
+                background: linear-gradient(to top, #000724 65%, rgba(0,7,36,0.92) 85%, transparent 100%) !important;
+                border-top: none !important;
+            }
             .adv-chat-blur { pointer-events: none; opacity: 0.5; }
             .adv-msg-counter {font-size:11px; color:#9ca3af; padding:4px 0 8px; text-align:center; }
             .adv-chat-input-box {display:flex; flex-direction:column; background:#fff; border:1.5px solid transparent; border-radius:24px; padding:16px 20px 12px; max-width:70%; margin:0 auto; transition:all .2s; box-shadow:0 2px 12px rgba(11,25,87,0.06); position:relative; z-index:0; }
@@ -9748,6 +11398,7 @@ const css = `
             .adv-lead-name {font-size:14px; font-weight:700; color:#111827; display:flex; align-items:center; gap:4px; }
             .adv-verified {background:#10b981; color:#fff; border-radius:50%; width:16px; height:16px; display:inline-flex; align-items:center; justify-content:center; font-size:9px; font-weight:800; }
             .adv-lead-title {font-size:12px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:10px}
+            .adv-lead-company {font-size:12px; font-weight:600; color:#374151; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
             .adv-lead-platform {margin-top:4px; display:flex; gap:4px; }
             .adv-lead-action {width:36px; height:36px; border-radius:50%; border:1.5px solid #e5e7eb; background:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; transition:all .15s; }
             .adv-lead-action:hover:not(:disabled) {border-color:#0b1957; background:#f2f6fa; }
@@ -10187,6 +11838,7 @@ const css = `
             .dark .adv-lead-card:hover { background: #253456; }
             .dark .adv-lead-name { color: #ffffff; }
             .dark .adv-lead-title { color: #7a8ba3; }
+            .dark .adv-lead-company { color: #b8c4d6; }
             .dark .adv-lead-action { background: #1A2A43; border-color: #000724; color: #ffffff; }
             .dark .adv-lead-action:hover:not(:disabled) { border-color: #000724; background: #253456; }
             .dark .adv-lead-avatar-img { border-color: #000724; }
@@ -10408,4 +12060,307 @@ const css = `
   --opt-text: #9ca3af;
   --opt-selected-text: #e2e8f0;
 }
-`;
+
+            /* ── MEDIA GENERATION CONNECTED OPTIONS PANEL ── */
+            .adv-options-extension {
+                background: #ffffff;
+                border: 1.5px solid #c2d6eb;
+                border-radius: 24px 24px 0 0; /* no bottom rounded corners */
+                padding: 16px 20px 42px; /* stretch bottom padding */
+                max-width: 70%;
+                margin: 0 auto;
+                margin-bottom: -32px; /* overlap with the input box */
+                box-shadow: 0 -4px 12px rgba(11,25,87,0.03), 0 2px 12px rgba(11,25,87,0.06);
+                position: relative;
+                z-index: 5; /* sit behind the input box */
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            .dark .adv-options-extension {
+                background: #1A2A43;
+                border-color: #000724;
+                box-shadow: none;
+            }
+            /* Keep fully rounded corners and stack on top of extension */
+            .adv-chat-input-box.has-extension {
+                border-radius: 24px !important;
+                z-index: 10 !important;
+                position: relative;
+            }
+            .adv-chat-input-box.has-extension::before {
+                border-radius: 25.5px !important;
+                z-index: 10 !important;
+            }
+            
+            /* Hide input wrap top border divide when mediaActive is true */
+            .media-active-left .adv-chat-input-wrap {
+                position: absolute !important;
+                bottom: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                width: 100% !important;
+                z-index: 100 !important;
+                border-top: none !important;
+                background: linear-gradient(to top, #ffffff 65%, rgba(255,255,255,0.92) 85%, transparent 100%) !important;
+                padding-top: 16px !important;
+            }
+            .dark .media-active-left .adv-chat-input-wrap {
+                background: linear-gradient(to top, #000724 65%, rgba(0,7,36,0.92) 85%, transparent 100%) !important;
+            }
+            
+            /* Flow margins when mediaActive is true */
+            .media-active-left .adv-chat-msgs {
+                padding-top: 12px !important;
+            }
+
+            /* Sticky Header */
+            .adv-media-header {
+                position: sticky;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 60px;
+                background: #ffffff;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 0 24px;
+                border-bottom: none !important; /* no visible separation line */
+                z-index: 100;
+                transition: all 0.2s ease;
+            }
+            .dark .adv-media-header {
+                background: #000724;
+            }
+            .adv-media-header-back {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 34px;
+                height: 34px;
+                border-radius: 50%;
+                border: 1.5px solid #e2e8f0;
+                background: #ffffff;
+                cursor: pointer;
+                transition: all 0.15s;
+            }
+            .adv-media-header-back:hover {
+                background: #f8fafc;
+                border-color: #cbd5e1;
+            }
+            .dark .adv-media-header-back {
+                background: #1a2a43;
+                border-color: #253456;
+            }
+            .dark .adv-media-header-back svg {
+                stroke: #ffffff;
+            }
+            .adv-media-header-title {
+                font-family: 'Space Grotesk', system-ui, sans-serif;
+                font-size: 15px;
+                font-weight: 600;
+                color: #0b1957;
+                position: absolute;
+                left: 50%;
+                transform: translateX(-50%);
+                pointer-events: none;
+            }
+            .dark .adv-media-header-title {
+                color: #60a5fa;
+            }
+            .adv-media-header-exit {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                padding: 7px 14px;
+                border-radius: 20px;
+                border: 1.5px solid #ef4444;
+                background: #fef2f2;
+                color: #ef4444;
+                font-size: 12px;
+                font-weight: 600;
+                transition: all 0.15s;
+            }
+            .adv-media-header-exit:hover {
+                background: #fee2e2;
+            }
+            .dark .adv-media-header-exit {
+                background: rgba(239,68,68,0.1);
+                border-color: #ef4444;
+            }
+            .adv-media-header-exit-btn {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 0px;
+                padding: 7px;
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                border: 1.5px solid #ef4444;
+                background: #fef2f2;
+                color: #ef4444;
+                font-size: 12px;
+                font-weight: 600;
+                overflow: hidden;
+                white-space: nowrap;
+                transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-radius 0.25s, padding 0.25s, gap 0.25s;
+                cursor: pointer;
+            }
+            .adv-media-header-exit-btn span {
+                opacity: 0;
+                max-width: 0;
+                transition: opacity 0.15s ease, max-width 0.25s ease;
+                display: inline-block;
+            }
+            .adv-media-header-exit-btn:hover {
+                width: 125px;
+                border-radius: 20px;
+                padding: 7px 14px;
+                gap: 6px;
+                background: #fee2e2;
+                justify-content: flex-start;
+            }
+            .adv-media-header-exit-btn:hover span {
+                opacity: 1;
+                max-width: 100px;
+            }
+            .dark .adv-media-header-exit-btn {
+                background: rgba(239,68,68,0.1);
+                border-color: #ef4444;
+            }
+            .adv-media-header-back-btn {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 0px;
+                padding: 7px;
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                border: 1.5px solid #cbd5e1;
+                background: #ffffff;
+                color: #475569;
+                font-size: 11px;
+                font-weight: 600;
+                overflow: hidden;
+                white-space: nowrap;
+                transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-radius 0.25s, padding 0.25s, gap 0.25s;
+                cursor: pointer;
+            }
+            .adv-media-header-back-btn span {
+                opacity: 0;
+                max-width: 0;
+                transition: opacity 0.15s ease, max-width 0.25s ease;
+                display: inline-block;
+            }
+            .adv-media-header-back-btn:hover {
+                width: 155px;
+                border-radius: 20px;
+                padding: 7px 12px;
+                gap: 6px;
+                background: #f1f5f9;
+                border-color: #64748b;
+                color: #1e293b;
+                justify-content: flex-start;
+            }
+            .adv-media-header-back-btn:hover span {
+                opacity: 1;
+                max-width: 110px;
+            }
+            .dark .adv-media-header-back-btn {
+                background: #1a2a43;
+                border-color: #253456;
+                color: #cbd5e1;
+            }
+            .dark .adv-media-header-back-btn:hover {
+                background: #253456;
+                border-color: #475569;
+                color: #f8fafc;
+            }
+
+            .adv-bubble-undo-btn {
+                color: #94a3b8;
+                border-radius: 4px;
+                transition: all 0.15s;
+            }
+            .adv-bubble-undo-btn:hover {
+                color: #ef4444 !important;
+                background: #fef2f2 !important;
+                transform: scale(1.1);
+            }
+            .dark .adv-bubble-undo-btn:hover {
+                background: rgba(239, 68, 68, 0.15) !important;
+            }
+            /* transparency fade overlay */
+            .adv-media-header-fade {
+                position: absolute;
+                top: 60px;
+                left: 0;
+                right: 0;
+                height: 48px;
+                background: linear-gradient(to bottom, #ffffff 15%, rgba(255,255,255,0.8) 50%, rgba(255,255,255,0));
+                pointer-events: none;
+                z-index: 99;
+            }
+            .dark .adv-media-header-fade {
+                background: linear-gradient(to bottom, #000724 15%, rgba(0,7,36,0.8) 50%, rgba(0,7,36,0));
+            }
+
+            .adv-chat-input-wrap-full {
+                position: absolute !important;
+                bottom: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                z-index: 100 !important;
+                border-top: none !important;
+                background: linear-gradient(to top, #ffffff 65%, rgba(255,255,255,0.92) 85%, transparent 100%) !important;
+                box-shadow: none !important;
+                padding: 16px 20px 16px !important;
+            }
+            .dark .adv-chat-input-wrap-full {
+                background: linear-gradient(to top, #000724 65%, rgba(0,7,36,0.92) 85%, transparent 100%) !important;
+                border-top: none !important;
+                box-shadow: none !important;
+            }
+
+            .adv-media-brand-dna-panel {
+                background: #f8fafc;
+                position: relative;
+            }
+            .dark .adv-media-brand-dna-panel {
+                background: #0b132b;
+            }
+            .adv-media-brand-dna-panel::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                bottom: 0;
+                left: 0;
+                width: 16px;
+                background: linear-gradient(to right, #ffffff, transparent);
+                pointer-events: none;
+                z-index: 10;
+            }
+            .dark .adv-media-brand-dna-panel::before {
+                background: linear-gradient(to right, #000724, transparent);
+            }
+
+            @media (max-width: 1024px) {
+                .adv-options-extension {
+                    max-width: 88% !important;
+                }
+            }
+            @media (max-width: 768px) {
+                .adv-options-extension {
+                    max-width: 100% !important;
+                    border-radius: 16px 16px 0 0;
+                    margin-bottom: -24px;
+                    padding-bottom: 32px;
+                }
+                .adv-chat-input-box.has-extension {
+                    border-radius: 16px !important;
+                }
+            }
+            `;

@@ -13,6 +13,7 @@ import { AgentBuilderScriptConfirm } from "./builder-steps/AgentBuilderScriptCon
 import { AgentBuilderWorkflowChoice } from "./builder-steps/AgentBuilderWorkflowChoice";
 import { AgentBuilderVideoProgress } from "./builder-steps/AgentBuilderVideoProgress";
 import { AgentBuilderKeyframesConfirm } from "./builder-steps/AgentBuilderKeyframesConfirm";
+import { AgentBuilderBrandDNA } from "./builder-steps/AgentBuilderBrandDNA";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface MediaBuilderProps {
@@ -106,17 +107,7 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
   };
 
   const handleBack = () => {
-    if (mb.step === "builder-mcq-few") {
-      mb.setStep("welcome");
-    } else if (mb.step === "builder-text") {
-      if (mb.uiPayload?.phase === "Phase 2: Describe Image") {
-        mb.selectImageCreation(); // Go back to references choice
-      } else {
-        mb.setStep("welcome");
-      }
-    } else {
-      mb.setStep("welcome");
-    }
+    mb.undoStep();
   };
 
   let content = null;
@@ -300,6 +291,7 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
         onRemove={mb.removeReference}
         isUploading={mb.isUploading}
         error={mb.error}
+        onBack={handleBack}
       />
     );
   }
@@ -319,6 +311,7 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
         onRemove={mb.removeReference}
         isUploading={mb.isUploading}
         error={mb.error}
+        onBack={handleBack}
       />
     );
   }
@@ -333,6 +326,7 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
         onClose={onClose}
         onNext={(val) => mb.advanceStep(val)}
         phase={mb.uiPayload?.phase}
+        onBack={handleBack}
       />
     );
   }
@@ -347,6 +341,7 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
         onClose={onClose}
         onNext={(val) => mb.advanceStep(val)}
         phase={mb.uiPayload?.phase}
+        onBack={handleBack}
       />
     );
   }
@@ -361,6 +356,7 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
         onClose={onClose}
         onNext={(val) => mb.advanceStep(val)}
         phase={mb.uiPayload?.phase}
+        onBack={handleBack}
       />
     );
   }
@@ -380,6 +376,7 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
         onRemove={mb.removeReference}
         isUploading={mb.isUploading}
         error={mb.error}
+        onBack={handleBack}
       />
     );
   }
@@ -395,6 +392,8 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
         phase={mb.uiPayload?.phase}
         videoUrl={mb.uiPayload?.video}
         status={mb.uiPayload?.status as any}
+        progress={mb.uiPayload?.progress}
+        onBack={handleBack}
         onNext={(val) => {
           if (val === "[SHOW_GALLERY]") {
             mb.fetchGallery();
@@ -402,6 +401,19 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
             mb.advanceStep(val);
           }
         }}
+      />
+    );
+  }
+
+  /* ── 7d. BRAND DNA VIEW ── */
+  else if (mb.step === "builder-brand-dna") {
+    content = (
+      <AgentBuilderBrandDNA
+        brandDna={mb.uiPayload?.brand_dna}
+        onClose={onClose}
+        onNext={(val) => mb.advanceStep(val)}
+        phase={mb.uiPayload?.phase}
+        onBack={handleBack}
       />
     );
   }
@@ -420,6 +432,8 @@ export default function MediaBuilder({ onClose }: MediaBuilderProps) {
         onExtendVideo={mb.extendVideoFromGallery}
         onAddDialogues={mb.addDialoguesFromGallery}
         onDeleteAssets={mb.deleteAssets}
+        isFullHistory={mb.isGalleryFullHistory}
+        onLoadFullHistory={() => mb.fetchGallery(true)}
       />
     );
   }
