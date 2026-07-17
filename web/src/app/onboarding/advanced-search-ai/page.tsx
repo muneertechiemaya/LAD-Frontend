@@ -8,7 +8,7 @@ import ReactMarkdown from 'react-markdown';
 import { useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Gem, Upload, FileSpreadsheet, Download, CheckCircle2, Pencil, Trash2, ChevronDown, ChevronLeft, ChevronRight, X, MessageSquare, Users, Zap, Plus, Image as ImageIcon, Video, Loader2, Mic, Globe, Newspaper, UserPlus, Check, History, Volume2, ArrowLeft, Mail, Phone as PhoneIcon, MapPin } from 'lucide-react';
+import { Sparkles, Gem, Upload, FileSpreadsheet, Download, CheckCircle2, Pencil, Trash2, ChevronDown, ChevronLeft, ChevronRight, X, MessageSquare, Users, Zap, Plus, Image as ImageIcon, Video, Loader2, Mic, Globe, Newspaper, UserPlus, Check, History, Volume2, ArrowLeft, Mail, Phone as PhoneIcon, MapPin, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ProfileSummaryDialog } from '@/components/campaigns';
 import AgentVisualizer from '@/components/ui/AgentVisualizer';
@@ -11287,6 +11287,15 @@ function AgentBuilderTrendOptions({
                     </button>
                 )}
 
+                {onNext && (
+                    <button
+                        onClick={() => onNext(["Generate More"])}
+                        disabled={generating}
+                        className="w-full sm:w-auto text-center border border-slate-200 hover:border-slate-300 rounded-xl px-5 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <RefreshCw className="size-3" /> Generate More
+                    </button>
+                )}
                 {skipOption && onNext && (
                     <button
                         onClick={() => toggleSelect(skipOption.id, true)}
