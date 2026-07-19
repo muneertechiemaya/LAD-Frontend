@@ -446,7 +446,7 @@ export default function CampaignAnalyticsPage() {
             <span className="text-white !text-white">View Leads</span>
           </Button>
           <Button
-            onClick={() => router.push(`/onboarding?campaignId=${campaignId}`)}
+            onClick={() => router.push(`/onboarding/advanced-search-ai?campaignId=${campaignId}`)}
             className="h-10 px-4 rounded-xl font-semibold text-sm tracking-wide text-white !text-white transition-all duration-200 cursor-pointer border-none outline-none active:scale-[0.99]
               bg-[#0b1957] hover:bg-[#122572] shadow-[0_4px_12px_rgba(11,25,87,0.15)]
               dark:bg-[#2563eb] dark:hover:bg-blue-700 dark:shadow-[0_4px_12px_rgba(37,99,235,0.2)]"
