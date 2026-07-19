@@ -114,6 +114,34 @@ interface ParsedInboundLead {
     profilePicture: string;
 }
 
+// ── Specific-person query detection ─────────────────────────────────────────
+// "Karen Lundquist, Association Manager at Impact Association Management" is one
+// fully-identified person, not an audience. Broad search + ICP scoring cannot
+// serve that query (the ICP is literally one person's name, so every candidate
+// scores ~0 and the campaign launches with zero leads). Detect this shape and
+// route it through the inbound waterfall pipeline instead, which resolves the
+// exact person once and attaches them to the campaign directly.
+// Conservative on purpose: false negatives just fall back to normal search.
+const PERSON_AUDIENCE_WORDS = /\b(founders?|co-?founders?|owners?|managers?|directors?|heads?|chiefs?|leads?|executives?|officers?|presidents?|professionals?|specialists?|consultants?|engineers?|developers?|designers?|marketers?|recruiters?|analysts?|advisors?|partners?|investors?|agents?|brokers?|people|teams?|companies|startups?|businesses|smes?|ceos?|c[tfmo]os?|cxos?|vps?)\b/i;
+function detectSpecificPersonQuery(t: LeadTargeting | null | undefined): { name: string; title: string; company: string; location: string } | null {
+    if (!t) return null;
+    const kw = (t.keywords || []).join(' ').replace(/\s+/g, ' ').trim();
+    const words = kw.split(' ').filter(Boolean);
+    // A person name: 2–4 name-cased words with no audience/role vocabulary.
+    if (words.length < 2 || words.length > 4) return null;
+    if (PERSON_AUDIENCE_WORDS.test(kw)) return null;
+    if (!words.every(w => /^[A-Z][A-Za-z'’.-]*$/.test(w))) return null;
+    // Require a company anchor — that's what the person-resolution waterfall keys on.
+    const company = (t.company_names && t.company_names[0]) || '';
+    if (!company) return null;
+    return {
+        name: kw,
+        title: (t.job_titles && t.job_titles[0]) || '',
+        company,
+        location: (t.locations && t.locations[0]) || '',
+    };
+}
+
 interface ChatMsg {
     id: string;
     role: 'user' | 'ai';
@@ -1369,6 +1397,14 @@ export default function AdvancedSearchAIPage() {
     // Seed default selection (leads scoring >= 50 pre-checked) for a fresh result
     // set, replacing any prior selection. Used when a new search populates `leads`.
     const seedDefaultSelection = (list: LeadProfile[]) => {
+        // A single-result search is almost always the specific person the user
+        // asked for — check them regardless of ICP score so launch never
+        // discards the only lead found (an ICP of "one person's name" scores
+        // every candidate near zero, which used to yield zero-lead campaigns).
+        if (list.length === 1) {
+            setSelectedLeadIds(new Set(list.map(l => l.id)));
+            return;
+        }
         setSelectedLeadIds(new Set(
             list.filter(l => (l.icp_score ?? 0) >= 50).map(l => l.id)
         ));
@@ -2707,6 +2743,11 @@ export default function AdvancedSearchAIPage() {
                     // Store real lead UUIDs so campaign creation can link to leads table
                     if (saveData.leadIds && saveData.leadIds.length > 0) {
                         setInboundLeadIds(saveData.leadIds);
+                        // Default-select every imported lead so the panel checkboxes
+                        // show checked (launch already enrolls all inbound ids when
+                        // nothing is selected — this makes the UI reflect that).
+                        // Fan-out branches below re-seed with the discovered ids.
+                        setSelectedLeadIds(new Set(saveData.leadIds));
 
                         // If the backend fanned out a company+title row into multiple DISCOVERED
                         // people, show them right away from the save response (the created leads
@@ -2834,6 +2875,15 @@ export default function AdvancedSearchAIPage() {
                                         }));
                                         const newLinkedIn = results.filter((r) => r.linkedin_url && !parsed[enrichedIds.indexOf(r.leadId)]?.linkedinProfile).length;
                                         if (newLinkedIn > 0) counts.linkedin = (counts.linkedin || 0) + newLinkedIn;
+                                        // Surface waterfall-resolved LinkedIn URLs on the panel cards
+                                        // too — the panel was built from the raw rows before enrichment
+                                        // ran, so resolved profiles would otherwise not be clickable.
+                                        // Panel cards are index-aligned with enrichedIds for 1:1 imports.
+                                        setLeads(prev => prev.map((pl, idx) => {
+                                            const enriched = enrichedIds[idx] ? enrichMap[enrichedIds[idx]] : null;
+                                            if (!enriched?.linkedin_url || pl.profile_url) return pl;
+                                            return { ...pl, profile_url: enriched.linkedin_url };
+                                        }));
                                     }
                                 }
                             }
@@ -3722,6 +3772,57 @@ export default function AdvancedSearchAIPage() {
                         return;
                     }
                     // If intent could not be determined, fall through and run the search immediately
+                }
+            }
+
+            // ── SPECIFIC-PERSON GATE ──────────────────────────────────────────
+            // A confirmed query that identifies one named person at a company must
+            // not go through broad search + ICP scoring (it can only return
+            // strangers who happen to share the first name). Route it through the
+            // same import/save + waterfall pipeline as file-imported leads: the
+            // backend resolves the exact person, the panel shows them checked, and
+            // campaign creation attaches them as an inbound lead (lead generation
+            // is skipped entirely at run time).
+            if (shouldRunSearch) {
+                const personIntent = confirmedForSearch ? confirmedForSearch.intent : updatedTargetState;
+                const person = detectSpecificPersonQuery(personIntent);
+                if (person) {
+                    const personLoadingId = `${lid}-person`;
+                    setMessages(p => p.filter(m => m.id !== lid).concat(
+                        {
+                            id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
+                            text: `🎯 Got it — **${person.name}**${person.company ? ` at **${person.company}**` : ''} is a specific person, so I'll skip the broad search and find their LinkedIn profile directly.`,
+                        },
+                        { id: personLoadingId, role: 'ai', text: '', ts: new Date(), loading: true },
+                    ));
+                    const [pFirst, ...pRest] = person.name.split(/\s+/);
+                    const personRow: ParsedInboundLead = {
+                        firstName: pFirst || person.name,
+                        lastName: pRest.join(' '),
+                        companyName: person.company,
+                        linkedinProfile: '', email: '', whatsapp: '', phone: '', website: '', notes: '',
+                        title: person.title,
+                        location: person.location,
+                        profilePicture: '',
+                    };
+                    setInboundLeads([personRow]);
+                    setInboundMode(true);
+                    setLeads([{
+                        id: 'inbound-0',
+                        name: person.name,
+                        first_name: personRow.firstName,
+                        last_name: personRow.lastName,
+                        headline: person.title ? `${person.title}${person.company ? ' at ' + person.company : ''}` : (person.company ? `at ${person.company}` : ''),
+                        location: person.location,
+                        current_company: person.company,
+                        profile_url: '',
+                        profile_picture: '',
+                        industry: '',
+                        network_distance: '',
+                        locked: false,
+                    }]);
+                    await finishInboundImport([personRow], person.location, personLoadingId);
+                    return;
                 }
             }
 
