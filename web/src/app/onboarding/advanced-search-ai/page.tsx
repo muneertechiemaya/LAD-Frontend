@@ -8575,29 +8575,40 @@ function CheckpointFormInline({
                     })
                 : [];
 
+            // Real DB UUIDs so CampaignModel links inbound / direct people via lead_id — the
+            // canonical path (links the real lead row with snapshot + phone), the same one
+            // ChatPanel uses. Covers CSV/image imports (inboundLeadIds) and chat-entered direct
+            // contacts (directContactLeadIds).
+            const resolvedInboundLeadIds: string[] | undefined = (() => {
+                let ids = [...inboundLeadIds, ...directContactLeadIds];
+                // Respect checkbox selection for imported/discovered people: if the user
+                // unchecked some, enrol only the selected ones.
+                if (inboundMode && selectedLeadIds.size > 0) {
+                    const filtered = ids.filter(id => selectedLeadIds.has(id));
+                    if (filtered.length > 0) ids = filtered;
+                }
+                return ids.length > 0 ? ids : undefined;
+            })();
+
             const payload = {
                 name: name || 'AI Growth Campaign', status: 'active',
                 campaign_type: inboundMode ? 'direct_outreach' : (isDirectContact ? 'direct_outreach' : 'linkedin_outreach'),
                 leads_per_day: safeLeadsPerDay,
                 campaign_start_date: startDate.toISOString(), campaign_end_date: endDate.toISOString(),
-                // Inbound leads take priority; then direct contacts; then LinkedIn good matches
-                initial_leads: inboundMode && inboundContactLeads.length > 0
-                    ? inboundContactLeads
-                    : (isDirectContact && directContactLeads.length > 0
-                        ? directContactLeads
-                        : (goodMatchLeads.length > 0 ? goodMatchLeads : undefined)),
-                // Pass real DB UUIDs so CampaignModel links leads via lead_id (with snapshot + phone)
-                // Covers both CSV/image imports (inboundLeadIds) and chat-entered direct contacts (directContactLeadIds)
-                inbound_lead_ids: (() => {
-                    let ids = [...inboundLeadIds, ...directContactLeadIds];
-                    // Respect checkbox selection for imported/discovered people: if the user
-                    // unchecked some, enrol only the selected ones.
-                    if (inboundMode && selectedLeadIds.size > 0) {
-                        const filtered = ids.filter(id => selectedLeadIds.has(id));
-                        if (filtered.length > 0) ids = filtered;
-                    }
-                    return ids.length > 0 ? ids : undefined;
-                })(),
+                // Inbound / direct-contact people are linked via inbound_lead_ids (the canonical
+                // path above). Do NOT also send them in initial_leads — the backend can't
+                // cross-dedupe the two paths, so it would enrol each person TWICE and spawn an
+                // orphan lead. Fail-open: if we have no real IDs (e.g. import-save failed), fall
+                // back to initial_leads so nothing is lost. LinkedIn-search campaigns keep using
+                // initial_leads (goodMatchLeads) — they never send inbound_lead_ids.
+                initial_leads: (inboundMode || isDirectContact)
+                    ? (resolvedInboundLeadIds
+                        ? undefined
+                        : (inboundMode && inboundContactLeads.length > 0
+                            ? inboundContactLeads
+                            : (isDirectContact && directContactLeads.length > 0 ? directContactLeads : undefined)))
+                    : (goodMatchLeads.length > 0 ? goodMatchLeads : undefined),
+                inbound_lead_ids: resolvedInboundLeadIds,
                 config: {
                     data_source: inboundMode ? 'csv_import' : (isDirectContact ? 'direct_contact' : 'linkedin_search'),
                     search_intent: (inboundMode || isDirectContact) ? null : t, search_query: (inboundMode || isDirectContact) ? '' : (t.keywords?.join(' ') || ''),
