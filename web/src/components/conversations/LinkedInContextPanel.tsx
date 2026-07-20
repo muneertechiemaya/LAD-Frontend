@@ -17,7 +17,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   X, Linkedin, ExternalLink, Tag, Plus, Trash2, Check, Loader2,
-  StickyNote, UserCheck, Sparkles, AlertCircle,
+  StickyNote, UserCheck, Sparkles, AlertCircle, ChevronLeft,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -302,12 +302,29 @@ export function LinkedInContextPanel({ conversation, onClose }: Props) {
   return (
     <div className={cn(
       "flex flex-col h-full bg-white border-l border-border w-full sm:w-[340px] flex-shrink-0",
-      "fixed inset-y-0 right-0 z-50 lg:static lg:z-0 lg:flex"
+      "fixed top-14 bottom-0 right-0 z-50 lg:static lg:z-0 lg:flex"
     )}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border flex-shrink-0">
-        <h3 className="text-sm font-semibold text-slate-800">Contact Details</h3>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 -ml-1 lg:hidden text-slate-500"
+            onClick={onClose}
+            aria-label="Back to chat"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          <h3 className="text-sm font-semibold text-slate-800">Contact Details</h3>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 hidden lg:inline-flex text-slate-500"
+          onClick={onClose}
+          aria-label="Close contact details"
+        >
           <X className="w-4 h-4" />
         </Button>
       </div>
