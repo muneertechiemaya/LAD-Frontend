@@ -148,7 +148,7 @@ export function LinkedInChatToolbar({
   // ── Render ──────────────────────────────────────────────────────────────
   return (
     <TooltipProvider>
-      <div className="flex items-center gap-1 px-3 py-1.5 border-t border-border bg-slate-50/50">
+      <div className="flex items-center gap-1 px-3 py-1.5 border-t border-border bg-slate-50/50 dark:bg-slate-700/50">
         {/* AI Agent pill */}
         <div className="hidden lg:block">
           <Tooltip>
