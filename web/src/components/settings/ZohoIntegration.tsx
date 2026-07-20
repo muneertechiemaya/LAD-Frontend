@@ -18,6 +18,7 @@ import {
   UploadCloud,
   Briefcase,
   Contact,
+  CheckSquare,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,7 +40,7 @@ const ZOHO_REGIONS: { value: string; label: string }[] = [
   { value: 'cn', label: 'China (.com.cn)' },
 ];
 
-type RecordType = 'contacts' | 'leads' | 'deals';
+type RecordType = 'contacts' | 'leads' | 'deals' | 'tasks';
 
 interface ZohoAccount {
   connected: boolean;
@@ -48,7 +49,7 @@ interface ZohoAccount {
   connected_user?: { name?: string | null; email?: string | null } | null;
   connected_at?: string;
   last_synced?: string;
-  counts?: { contacts?: number; leads?: number; deals?: number } | null;
+  counts?: { contacts?: number; leads?: number; deals?: number; tasks?: number } | null;
   auto_sync_enabled?: boolean;
 }
 
@@ -69,6 +70,13 @@ interface CRMRecord {
   closing_date?: string | null;
   account_name?: string | null;
   contact_name?: string | null;
+  // task fields
+  subject?: string | null;
+  priority?: string | null;
+  due_date?: string | null;
+  closed_time?: string | null;
+  related_to?: string | null;
+  status?: string | null;
 }
 
 export const ZohoIntegration: React.FC = () => {
@@ -217,7 +225,7 @@ export const ZohoIntegration: React.FC = () => {
       const data = await res.json();
       if (res.ok && data?.success) {
         const c = data?.data?.synced || {};
-        setSuccess(`Synced ${c.contacts || 0} contacts, ${c.leads || 0} leads, ${c.deals || 0} deals.`);
+        setSuccess(`Synced ${c.contacts || 0} contacts, ${c.leads || 0} leads, ${c.deals || 0} deals, ${c.tasks || 0} tasks.`);
         checkStatus();
         loadRecords(recordType, 1, recordsSearch);
       } else {
@@ -410,7 +418,7 @@ export const ZohoIntegration: React.FC = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="rounded-lg border border-border p-3 text-center">
               <div className="text-2xl font-semibold text-foreground">{account.counts?.contacts ?? '—'}</div>
               <div className="text-xs text-muted-foreground">Contacts</div>
@@ -422,6 +430,10 @@ export const ZohoIntegration: React.FC = () => {
             <div className="rounded-lg border border-border p-3 text-center">
               <div className="text-2xl font-semibold text-foreground">{account.counts?.deals ?? '—'}</div>
               <div className="text-xs text-muted-foreground">Deals</div>
+            </div>
+            <div className="rounded-lg border border-border p-3 text-center">
+              <div className="text-2xl font-semibold text-foreground">{account.counts?.tasks ?? '—'}</div>
+              <div className="text-xs text-muted-foreground">Tasks</div>
             </div>
           </div>
 
@@ -514,7 +526,7 @@ export const ZohoIntegration: React.FC = () => {
         <CardHeader>
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex gap-1">
-              {(['contacts', 'leads', 'deals'] as RecordType[]).map((t) => (
+              {(['contacts', 'leads', 'deals', 'tasks'] as RecordType[]).map((t) => (
                 <button
                   key={t}
                   onClick={() => { setRecordType(t); setRecordsSearch(''); }}
@@ -525,6 +537,7 @@ export const ZohoIntegration: React.FC = () => {
                   {t === 'contacts' && <Contact className="h-3.5 w-3.5" />}
                   {t === 'leads' && <Users className="h-3.5 w-3.5" />}
                   {t === 'deals' && <Briefcase className="h-3.5 w-3.5" />}
+                  {t === 'tasks' && <CheckSquare className="h-3.5 w-3.5" />}
                   {t}
                 </button>
               ))}
@@ -561,6 +574,20 @@ export const ZohoIntegration: React.FC = () => {
                           {r.stage && <Badge variant="secondary">{r.stage}</Badge>}
                           {r.amount != null && <div className="text-sm font-medium text-foreground mt-1">{r.amount.toLocaleString()}</div>}
                         </div>
+                      </>
+                    ) : recordType === 'tasks' ? (
+                      <>
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium text-foreground truncate">{r.subject || 'Untitled task'}</div>
+                          <div className="text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5">
+                            {r.related_to && <span className="truncate">{r.related_to}</span>}
+                            {r.due_date && <span>Due {new Date(r.due_date).toLocaleDateString()}</span>}
+                            {r.priority && <span>{r.priority} priority</span>}
+                          </div>
+                        </div>
+                        {r.status && (
+                          <Badge variant="secondary" className="flex-shrink-0">{r.status}</Badge>
+                        )}
                       </>
                     ) : (
                       <>
