@@ -300,8 +300,8 @@ function ConvListItem({
       className={cn(
         'w-full flex items-start gap-3 px-4 py-3 text-left transition-colors',
         isSelected
-          ? 'bg-blue-50 border-l-2 border-blue-600'
-          : 'hover:bg-slate-50 border-l-2 border-transparent',
+        ? 'bg-blue-50 dark:bg-blue-500/30 border-l-2 border-blue-600'
+        : 'hover:bg-slate-200 dark:hover:bg-slate-900/50 border-l-2 border-transparent',
         isPending && 'opacity-70',
       )}
     >
@@ -321,7 +321,7 @@ function ConvListItem({
         <div className="flex items-center justify-between gap-2">
           <span className={cn(
             'text-sm font-medium truncate',
-            isSelected ? 'text-blue-900' : 'text-slate-900',
+            isSelected ? 'text-blue-900 dark:text-blue-300' : 'text-slate-900 dark:text-white',
           )}>
             {conv.contact.name}
           </span>
@@ -669,7 +669,7 @@ export function LinkedInConversationView({
         <div className="hidden lg:flex items-center gap-2 px-4 py-3 border-b border-border bg-card">
           <div className="flex items-center gap-2 mr-2">
             <Linkedin className="w-4 h-4 text-blue-600" />
-            <span className="font-semibold text-sm text-slate-800 whitespace-nowrap">LinkedIn</span>
+            <span className="font-semibold text-sm text-slate-800 whitespace-nowrap dark:text-white">LinkedIn</span>
           </div>
 
           <div className="relative flex-1">
@@ -839,7 +839,7 @@ export function LinkedInConversationView({
               <ContactAvatar contact={selectedConv.contact} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="font-semibold text-sm text-slate-900 truncate">
+                  <p className="font-semibold text-sm text-slate-900 dark:text-white truncate">
                     {selectedConv.contact.name}
                   </p>
                   {/* Status badge in header */}
