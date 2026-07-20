@@ -665,18 +665,18 @@ export function LinkedInConversationView({
       )}>
 
 
-        {/* Header - hidden on mobile as parent provides account tabs */}
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card">
-          <div className="flex items-center gap-2 mr-2">
-            <Linkedin className="w-4 h-4 text-blue-600" />
-            <span className="font-semibold text-sm text-slate-800 whitespace-nowrap dark:text-white">LinkedIn</span>
+        {/* Header */}
+        <div className="flex items-center gap-2 px-2 md:px-4 py-2 md:py-3 border-b border-border bg-card">
+          <div className="flex items-center gap-1.5 md:gap-2 mr-1 md:mr-2">
+            <Linkedin className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-600" />
+            <span className="font-semibold text-xs md:text-sm text-slate-800 whitespace-nowrap dark:text-white">LinkedIn</span>
           </div>
 
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-2.5 md:left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
             <Input
               placeholder="Search conversations..."
-              className="pl-9 h-9 bg-secondary/50 border-none shadow-none focus-visible:ring-1"
+              className="pl-8 md:pl-9 h-8 md:h-9 text-xs md:text-sm bg-secondary/50 border-none shadow-none focus-visible:ring-1"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
             />
@@ -685,12 +685,12 @@ export function LinkedInConversationView({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 rounded-full"
+            className="h-7 w-7 md:h-8 md:w-8 rounded-full flex-shrink-0"
             onClick={loadConversations}
             disabled={loadingConvs}
             title="Refresh"
           >
-            <RefreshCw className={cn('h-3.5 w-3.5', loadingConvs && 'animate-spin')} />
+            <RefreshCw className={cn('h-3 w-3 md:h-3.5 md:w-3.5', loadingConvs && 'animate-spin')} />
           </Button>
         </div>
 
