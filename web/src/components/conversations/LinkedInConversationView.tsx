@@ -666,7 +666,7 @@ export function LinkedInConversationView({
 
 
         {/* Header - hidden on mobile as parent provides account tabs */}
-        <div className="hidden lg:flex items-center gap-2 px-4 py-3 border-b border-border bg-card">
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card">
           <div className="flex items-center gap-2 mr-2">
             <Linkedin className="w-4 h-4 text-blue-600" />
             <span className="font-semibold text-sm text-slate-800 whitespace-nowrap dark:text-white">LinkedIn</span>
