@@ -3874,6 +3874,13 @@ export default function AdvancedSearchAIPage() {
             let rawSearchResults: any[] = [];
             let searchTotal = 0;
             let icpWasApplied = false;
+            // Count of matches the backend found but hid because they were already
+            // contacted in a prior campaign. Used to explain an otherwise-confusing
+            // "0 results" empty state (search worked; the leads were just filtered).
+            let excludedAlreadyContacted = 0;
+            // True when 0 results is a transient provider rate-limit (HTTP 429),
+            // not an empty match set — surfaced so we tell the user to retry.
+            let searchRateLimited = false;
 
             // Determine effective search query for confirmed searches.
             // When user confirms a preview with "yes", "ok", etc., always use the pre-extracted intent
@@ -4015,6 +4022,8 @@ export default function AdvancedSearchAIPage() {
                     setSearchCursor(nextCursor);
                     setCursorHistory([null, nextCursor]); // page1=null(start), page2=nextCursor
                     icpWasApplied = !!d.icp_applied;
+                    excludedAlreadyContacted = Number(d.excluded_already_contacted) || 0;
+                    searchRateLimited = !!d.rate_limited;
                     if (Array.isArray(d.results) && d.results.length > 0) {
                         rawSearchResults = d.results;
                         realLeads = d.results.map((item: any, idx: number) => {
@@ -4178,6 +4187,19 @@ export default function AdvancedSearchAIPage() {
                 // lead-chat triggered a search and got results
                 finalText += `\n\n🔍 **Found ${searchTotal} leads** matching your criteria.`;
                 setTimeout(() => setShowPanel('leads'), 500);
+            }
+
+            // ── Explain an "empty" result truthfully instead of a bare "0 records" ──
+            // Two very different causes look identical without this: (a) LinkedIn
+            // temporarily rate-limited the search (transient — retry works), or
+            // (b) the search DID find people but all were hidden by the
+            // already-contacted filter. Either way a bare summary reads as
+            // "nothing found / broken search", so say what actually happened.
+            if (realLeads.length === 0 && searchRateLimited && !searchErrorMessage) {
+                finalText += `\n\n⏳ **LinkedIn is temporarily rate-limiting searches** on this account — this is not a problem with your search terms or your account. Please wait a minute and run the same search again.`;
+            } else if (realLeads.length === 0 && excludedAlreadyContacted > 0 && !searchErrorMessage) {
+                const n = excludedAlreadyContacted;
+                finalText += `\n\n🔎 **${n} matching ${n === 1 ? 'lead was' : 'leads were'} found but hidden** — you already sent ${n === 1 ? 'them a' : 'them'} connection request${n === 1 ? '' : 's'} in a previous campaign, so they're not shown again. Try a different search, or a lead you haven't contacted yet.`;
             }
 
             const journey = realLeads.length > 0 ? buildOutreachJourney(realLeads, ext) : undefined;

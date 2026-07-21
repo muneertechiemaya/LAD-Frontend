@@ -238,8 +238,20 @@ export function useLinkedInSearch() {
           confidence:       data.confidence       || null,
           confidence_score: data.confidence_score || null,
           needs_refinement: data.needs_refinement || false,
+          refinement_suggestion: data.refinement_suggestion || null,
           stats:            data.stats            || {},
           suggestions:      data.suggestions      || [],
+
+          // Count of matches the backend found but hid because the tenant already
+          // sent them a connection request in a prior campaign. Surfaced so the UI
+          // can explain a "0 results" that is really "all matches already contacted"
+          // instead of showing a bare empty state that looks like a broken search.
+          excluded_already_contacted: data.excluded_already_contacted ?? 0,
+
+          // True when 0 results is caused by a provider rate-limit (HTTP 429),
+          // not an empty match set — lets the UI say "temporarily throttled, retry
+          // shortly" instead of a bare empty state / "broaden your filters".
+          rate_limited: data.rate_limited ?? false,
 
           // Preserve success flag
           success: data.success,
