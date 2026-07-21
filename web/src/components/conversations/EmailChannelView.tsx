@@ -2722,7 +2722,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
           {/* Compose Button */}
           <div className={cn('pb-4 flex flex-shrink-0', sidebarOpen ? 'px-3 justify-start' : 'px-0 justify-center')}>
             <button
-              onClick={() => openCompose()}
+              onClick={() => { openCompose(); if (window.innerWidth < 768) setSidebarOpen(false); }}
               title="Compose new email"
               aria-label="Compose new email"
               className={cn(
@@ -2748,7 +2748,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
                       setActiveFolder(f.id);
                       setActiveContact(null);
                       setPage(0);
-
+                      if (window.innerWidth < 768) setSidebarOpen(false);
                     }}
                     aria-label={`${f.label}${f.count > 0 ? `, ${f.count} unread` : ''}`}
                     aria-current={isActive ? 'page' : undefined}
@@ -2824,7 +2824,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
                     {labels.length === 0
                       ? <p className="text-xs text-[#5f6368] dark:text-[#9aa0a6] text-center py-4 px-6">No labels — create one above</p>
                       : labels.map(g => (
-                        <button key={g.id} onClick={() => setActiveGroup(g as unknown as EmailGroup)}
+                        <button key={g.id} onClick={() => { setActiveGroup(g as unknown as EmailGroup); if (window.innerWidth < 768) setSidebarOpen(false); }}
                           aria-label={`Open label: ${g.name}`}
                           className="w-full flex items-center gap-3 pl-6 pr-4 py-1.5 hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] transition-colors text-left rounded-r-full">
                           <div className="h-4 w-4 rounded-full flex-shrink-0" style={{ backgroundColor: g.color }} aria-hidden="true" />
@@ -2836,7 +2836,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
               ) : (
                 <div className="flex flex-col items-center gap-1 py-1">
                   {labels.map(g => (
-                    <button key={g.id} onClick={() => setActiveGroup(g as unknown as EmailGroup)}
+                    <button key={g.id} onClick={() => { setActiveGroup(g as unknown as EmailGroup); if (window.innerWidth < 768) setSidebarOpen(false); }}
                       title={g.name} aria-label={`Open label: ${g.name}`}
                       className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043]">
                       <div className="h-4 w-4 rounded-full flex-shrink-0" style={{ backgroundColor: g.color }} aria-hidden="true" />
@@ -2890,7 +2890,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
                     {groups.length === 0
                       ? <p className="text-xs text-[#5f6368] dark:text-[#9aa0a6] text-center py-4 px-6">No groups — create one above</p>
                       : groups.map(g => (
-                        <button key={g.id} onClick={() => setActiveGroup(g)}
+                        <button key={g.id} onClick={() => { setActiveGroup(g); if (window.innerWidth < 768) setSidebarOpen(false); }}
                           aria-label={`Open group: ${g.name}, ${g.member_count} members`}
                           className="w-full flex items-center gap-3 pl-6 pr-4 py-1.5 hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] transition-colors text-left rounded-r-full">
                           <div className="h-4 w-4 rounded-full flex-shrink-0" style={{ backgroundColor: g.color }} aria-hidden="true" />
@@ -2903,7 +2903,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
               ) : (
                 <div className="flex flex-col items-center gap-1 py-1">
                   {groups.map(g => (
-                    <button key={g.id} onClick={() => setActiveGroup(g)}
+                    <button key={g.id} onClick={() => { setActiveGroup(g); if (window.innerWidth < 768) setSidebarOpen(false); }}
                       title={g.name} aria-label={`Open group: ${g.name}`}
                       className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043]">
                       <div className="h-4 w-4 rounded-full flex-shrink-0" style={{ backgroundColor: g.color }} aria-hidden="true" />
