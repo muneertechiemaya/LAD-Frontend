@@ -3003,7 +3003,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
                       });
                     }}
                     aria-label="Select all emails on this page"
-                    className="rounded border-[#dadce0] dark:border-[#3c4043] text-[#0b57d0] h-4 w-4 cursor-pointer ml-1"
+                    className="appearance-none h-4 w-4 rounded border border-[#747775] dark:border-[#3b82f6] dark:bg-transparent checked:bg-[#0b57d0] dark:checked:bg-[#3b82f6] checked:border-[#0b57d0] dark:checked:border-[#3b82f6] cursor-pointer ml-1 relative transition-colors bg-no-repeat bg-center bg-[length:10px_10px] checked:bg-[url('data:image/svg+xml;utf8,<svg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2024%2024%20%22%20fill=%22none%22%20stroke=%22white%22%20stroke-width=%223.5%22%20stroke-linecap=%22round%22%20stroke-linejoin=%22round%22><polyline%20points=%2220%206%209%2017%204%2012%22/></svg>')]"
                   />
                   <button onClick={() => { loadContacts(contactSearch); loadGroups(); }}
                     title="Refresh" aria-label="Refresh email list"
@@ -3171,7 +3171,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
                               checked={isSelected}
                               onChange={() => handleToggleSelect(c.id)}
                               aria-label={`Select email from ${c.contact_name ?? c.email}`}
-                              className="rounded border-[#dadce0] dark:border-[#3c4043] text-[#0b57d0] h-3.5 w-3.5 cursor-pointer"
+                              className="appearance-none h-3.5 w-3.5 rounded border border-[#747775] dark:border-[#3b82f6] dark:bg-transparent checked:bg-[#0b57d0] dark:checked:bg-[#3b82f6] checked:border-[#0b57d0] dark:checked:border-[#3b82f6] cursor-pointer relative transition-colors bg-no-repeat bg-center bg-[length:9px_9px] checked:bg-[url('data:image/svg+xml;utf8,<svg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2024%2024%20%22%20fill=%22none%22%20stroke=%22white%22%20stroke-width=%223.5%22%20stroke-linecap=%22round%22%20stroke-linejoin=%22round%22><polyline%20points=%2220%206%209%2017%204%2012%22/></svg>')]"
                             />
                             <button onClick={e => toggleStar(c.id, e)}
                               title={isStarred ? 'Unstar' : 'Star'}
