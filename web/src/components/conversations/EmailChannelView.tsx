@@ -1046,7 +1046,7 @@ function InlineTemplatePicker({ onSelect, onClose, anchorRef }: { onSelect: (tpl
   return (
     <div
       ref={ref}
-      className="w-80 bg-white dark:bg-[#2d2d2d] border border-[#dadce0] dark:border-[#3c4043] rounded-xl shadow-xl overflow-hidden"
+      className="w-80 max-w-[calc(100vw-2rem)] bg-white dark:bg-[#2d2d2d] border border-[#dadce0] dark:border-[#3c4043] rounded-xl shadow-xl overflow-hidden max-sm:!fixed max-sm:!left-1/2 max-sm:!-translate-x-1/2"
       style={
         pos
           ? { position: 'fixed', bottom: pos.bottom, left: pos.left, zIndex: 9999 }
