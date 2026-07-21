@@ -2480,16 +2480,16 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
       {/* ── Top Bar ── */}
       <header className="h-[64px] flex-shrink-0 flex items-center px-3 gap-2 bg-[#F6F8FC] dark:bg-[#1f1f1f]">
         {/* Left: fixed width matching sidebar so search aligns with email list */}
-        <div className="flex items-center gap-1 flex-shrink-0 w-[240px]">
+        <div className="flex items-center gap-1 flex-shrink-0 w-auto md:w-[240px]">
           <button
             onClick={() => setSidebarOpen(v => !v)}
             title="Main menu"
             aria-label="Toggle main menu"
-            className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043]"
+            className="h-9 w-9 md:h-10 md:w-10 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043]"
           >
-            <Menu className="h-5 w-5 text-[#444746] dark:text-[#9aa0a6]" />
+            <Menu className="h-4 w-4 md:h-5 md:w-5 text-[#444746] dark:text-[#9aa0a6]" />
           </button>
-          <div className="flex items-center gap-2 ml-1">
+          <div className="hidden md:flex items-center gap-2 ml-1">
             {provider === 'gmail' ? (
               <>
                 <svg viewBox="0 0 24 24" className="h-7 w-auto flex-shrink-0" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -2516,23 +2516,23 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
         </div>
         {/* Search: flex-1 so it starts right after logo, matching Gmail */}
         <div className="flex-1 min-w-0 max-w-[720px]">
-          <div className="relative h-[46px] flex items-center bg-[#EAF1FB] dark:bg-[#2d2d2d] hover:bg-[#E0EBF5] focus-within:bg-white dark:focus-within:bg-[#2d2d2d] focus-within:shadow-[0_1px_3px_rgba(60,64,67,.3)] rounded-full transition-all">
-            <Search className="absolute left-4 h-5 w-5 text-[#444746] dark:text-[#9aa0a6] pointer-events-none" aria-hidden="true" />
+          <div className="relative h-10 md:h-[46px] flex items-center bg-[#EAF1FB] dark:bg-[#2d2d2d] hover:bg-[#E0EBF5] focus-within:bg-white dark:focus-within:bg-[#2d2d2d] focus-within:shadow-[0_1px_3px_rgba(60,64,67,.3)] rounded-full transition-all">
+            <Search className="absolute left-3 md:left-4 h-4 w-4 md:h-5 md:w-5 text-[#444746] dark:text-[#9aa0a6] pointer-events-none" aria-hidden="true" />
             <input
               type="search"
               placeholder="Search in mail"
               value={contactSearch}
               onChange={e => setContactSearch(e.target.value)}
               aria-label="Search in mail"
-              className="w-full h-full bg-transparent pl-12 pr-12 text-sm text-[#202124] dark:text-[#e8eaed] placeholder:text-[#5f6368] dark:placeholder:text-[#9aa0a6] focus:outline-none"
+              className="w-full h-full bg-transparent pl-9 pr-9 md:pl-12 md:pr-12 text-sm text-[#202124] dark:text-[#e8eaed] placeholder:text-[#5f6368] dark:placeholder:text-[#9aa0a6] focus:outline-none"
             />
             <button
               title="Search options"
               aria-label="Search options"
               onClick={() => setShowSearchFilter(v => !v)}
-              className="absolute right-3 h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]"
+              className="absolute right-2 md:right-3 h-7 w-7 md:h-8 md:w-8 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]"
             >
-              <SlidersHorizontal className="h-4 w-4" />
+              <SlidersHorizontal className="h-3.5 w-3.5 md:h-4 md:w-4" />
             </button>
           </div>
         </div>
@@ -2659,39 +2659,39 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
           </div>
         )}
         {/* Right: icons — Gmail order: Help → Settings → Apps → Avatar */}
-        <div className="flex items-center gap-0.5 flex-shrink-0 pl-2 ml-auto">
+        <div className="flex items-center gap-0.5 flex-shrink-0 pl-1 md:pl-2 ml-auto">
           <button
             onClick={() => setShowImport(true)}
             title="Import leads"
             aria-label="Import leads"
-            className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]"
+            className="h-9 w-9 md:h-10 md:w-10 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]"
           >
-            <UserPlus className="h-5 w-5" />
+            <UserPlus className="h-4 w-4 md:h-5 md:w-5" />
           </button>
           <button
             title="Help"
             aria-label="Help"
-            className="hidden sm:flex h-10 w-10 items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]"
+            className="hidden sm:flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]"
           >
-            <HelpCircle className="h-5 w-5" />
+            <HelpCircle className="h-4 w-4 md:h-5 md:w-5" />
           </button>
           <button
             title="Settings"
             aria-label="Settings"
-            className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]"
+            className="h-9 w-9 md:h-10 md:w-10 flex items-center justify-center rounded-full hover:bg-[#e8eaed] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]"
           >
-            <Settings className="h-5 w-5" />
+            <Settings className="h-4 w-4 md:h-5 md:w-5" />
           </button>
           <button
             title="Profile"
             aria-label="View profile"
             onClick={() => setShowProfileModal(v => !v)}
-            className="ml-1 h-8 w-8 flex-shrink-0 rounded-full overflow-hidden hover:ring-2 hover:ring-[#dadce0] dark:hover:ring-[#3c4043] transition-all"
+            className="ml-1 h-7 w-7 md:h-8 md:w-8 flex-shrink-0 rounded-full overflow-hidden hover:ring-2 hover:ring-[#dadce0] dark:hover:ring-[#3c4043] transition-all"
           >
             {userImage
               ? <Image src={userImage} alt={connectedEmail?.charAt(0) ?? 'User'} width={32} height={32} className="h-full w-full object-cover" />
               : (
-                <div className="h-full w-full flex items-center justify-center bg-[#1a73e8] text-white text-sm font-medium uppercase select-none">
+                <div className="h-full w-full flex items-center justify-center bg-[#1a73e8] text-white text-xs md:text-sm font-medium uppercase select-none">
                   {connectedEmail?.charAt(0) ?? '?'}
                 </div>
               )}
