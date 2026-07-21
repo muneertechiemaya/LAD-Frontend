@@ -115,6 +115,34 @@ interface ParsedInboundLead {
     profilePicture: string;
 }
 
+// ── Specific-person query detection ─────────────────────────────────────────
+// "Karen Lundquist, Association Manager at Impact Association Management" is one
+// fully-identified person, not an audience. Broad search + ICP scoring cannot
+// serve that query (the ICP is literally one person's name, so every candidate
+// scores ~0 and the campaign launches with zero leads). Detect this shape and
+// route it through the inbound waterfall pipeline instead, which resolves the
+// exact person once and attaches them to the campaign directly.
+// Conservative on purpose: false negatives just fall back to normal search.
+const PERSON_AUDIENCE_WORDS = /\b(founders?|co-?founders?|owners?|managers?|directors?|heads?|chiefs?|leads?|executives?|officers?|presidents?|professionals?|specialists?|consultants?|engineers?|developers?|designers?|marketers?|recruiters?|analysts?|advisors?|partners?|investors?|agents?|brokers?|people|teams?|companies|startups?|businesses|smes?|ceos?|c[tfmo]os?|cxos?|vps?)\b/i;
+function detectSpecificPersonQuery(t: LeadTargeting | null | undefined): { name: string; title: string; company: string; location: string } | null {
+    if (!t) return null;
+    const kw = (t.keywords || []).join(' ').replace(/\s+/g, ' ').trim();
+    const words = kw.split(' ').filter(Boolean);
+    // A person name: 2–4 name-cased words with no audience/role vocabulary.
+    if (words.length < 2 || words.length > 4) return null;
+    if (PERSON_AUDIENCE_WORDS.test(kw)) return null;
+    if (!words.every(w => /^[A-Z][A-Za-z'’.-]*$/.test(w))) return null;
+    // Require a company anchor — that's what the person-resolution waterfall keys on.
+    const company = (t.company_names && t.company_names[0]) || '';
+    if (!company) return null;
+    return {
+        name: kw,
+        title: (t.job_titles && t.job_titles[0]) || '',
+        company,
+        location: (t.locations && t.locations[0]) || '',
+    };
+}
+
 interface ChatMsg {
     id: string;
     role: 'user' | 'ai';
@@ -152,6 +180,43 @@ function toArr(v: any): string[] {
 
 const ICP_LEADS_PROMPT = 'Get leads from my active ICP';
 const isIcpLeadsPrompt = (s: string) => s.trim().toLowerCase() === ICP_LEADS_PROMPT.toLowerCase();
+
+/** Synthetic stand-in names the pipeline can produce for a lead whose real name
+ *  wasn't resolved ("Lead 1", "Prospect 3", "Unknown"). Mirrors the backend
+ *  core/utils/nameSafety.js — kept in sync so a placeholder is never shown as a
+ *  person nor persisted (via initial_leads) as one. */
+const PLACEHOLDER_NAME_RE = /^(?:(?:lead|prospect|contact)(?:\s*\d+)?|unknown|n\/?a|none|null|undefined)$/i;
+function isPlaceholderName(s?: string | null): boolean {
+    const t = (s ?? '').trim();
+    return t === '' || PLACEHOLDER_NAME_RE.test(t);
+}
+
+/** Read a discovered/imported person's name tolerantly across camelCase and
+ *  snake_case. The import/save (and enrichment) responses carry a mix — reading
+ *  both is what stops the resolved name being dropped on a casing mismatch. */
+function readLeadName(r: any): { firstName: string; lastName: string; name: string } {
+    const firstName = String(r?.firstName ?? r?.first_name ?? '').trim();
+    const lastName = String(r?.lastName ?? r?.last_name ?? '').trim();
+    const name = String(r?.name ?? `${firstName} ${lastName}`).trim();
+    return { firstName, lastName, name };
+}
+
+/** Best human-facing DISPLAY label for a lead — a real name when we have one,
+ *  else the company or headline, and only "Lead N" as a last resort. Never shows
+ *  a synthetic placeholder as if it were a person. For DISPLAY only; the persisted
+ *  lead name must stay empty when unknown (see the launch payload). */
+function leadDisplayLabel(
+    parts: { firstName?: string; lastName?: string; name?: string; company?: string; headline?: string },
+    idx: number,
+): string {
+    const full = (parts.name || `${parts.firstName || ''} ${parts.lastName || ''}`).trim();
+    if (full && !isPlaceholderName(full)) return full;
+    const company = (parts.company || '').trim();
+    if (company) return company;
+    const headline = (parts.headline || '').trim();
+    if (headline) return headline;
+    return `Lead ${idx + 1}`;
+}
 
 /** Map SearchDispatcher candidates (ProspectCandidate) → the page's LeadProfile shape,
  *  so an ICP-discovery run drops into the same leads list/panel the LinkedIn search uses. */
@@ -1370,6 +1435,14 @@ export default function AdvancedSearchAIPage() {
     // Seed default selection (leads scoring >= 50 pre-checked) for a fresh result
     // set, replacing any prior selection. Used when a new search populates `leads`.
     const seedDefaultSelection = (list: LeadProfile[]) => {
+        // A single-result search is almost always the specific person the user
+        // asked for — check them regardless of ICP score so launch never
+        // discards the only lead found (an ICP of "one person's name" scores
+        // every candidate near zero, which used to yield zero-lead campaigns).
+        if (list.length === 1) {
+            setSelectedLeadIds(new Set(list.map(l => l.id)));
+            return;
+        }
         setSelectedLeadIds(new Set(
             list.filter(l => (l.icp_score ?? 0) >= 50).map(l => l.id)
         ));
@@ -1940,7 +2013,7 @@ export default function AdvancedSearchAIPage() {
             // Update the leads panel display
             const updatedPanelLeads: LeadProfile[] = updatedLeads.map((l, i) => ({
                 id: `inbound-${i}`,
-                name: `${l.firstName} ${l.lastName}`.trim() || `Lead ${i + 1}`,
+                name: leadDisplayLabel({ firstName: l.firstName, lastName: l.lastName, company: l.companyName }, i),
                 first_name: l.firstName,
                 last_name: l.lastName,
                 headline: l.companyName ? `at ${l.companyName}` : '',
@@ -1975,7 +2048,11 @@ export default function AdvancedSearchAIPage() {
 
     // Delete inbound lead handlers
     const openDeleteConfirmation = (index: number) => {
-        const name = `${inboundLeads[index].firstName} ${inboundLeads[index].lastName}`.trim() || `Lead ${index + 1}`;
+        const name = leadDisplayLabel({
+            firstName: inboundLeads[index].firstName,
+            lastName: inboundLeads[index].lastName,
+            company: inboundLeads[index].companyName,
+        }, index);
         setDeleteConfirmation({ index, name });
     };
 
@@ -1999,7 +2076,7 @@ export default function AdvancedSearchAIPage() {
             // Update the leads panel display
             const updatedPanelLeads: LeadProfile[] = updatedLeads.map((l, i) => ({
                 id: `inbound-${i}`,
-                name: `${l.firstName} ${l.lastName}`.trim() || `Lead ${i + 1}`,
+                name: leadDisplayLabel({ firstName: l.firstName, lastName: l.lastName, company: l.companyName }, i),
                 first_name: l.firstName,
                 last_name: l.lastName,
                 headline: l.companyName ? `at ${l.companyName}` : '',
@@ -2708,6 +2785,11 @@ export default function AdvancedSearchAIPage() {
                     // Store real lead UUIDs so campaign creation can link to leads table
                     if (saveData.leadIds && saveData.leadIds.length > 0) {
                         setInboundLeadIds(saveData.leadIds);
+                        // Default-select every imported lead so the panel checkboxes
+                        // show checked (launch already enrolls all inbound ids when
+                        // nothing is selected — this makes the UI reflect that).
+                        // Fan-out branches below re-seed with the discovered ids.
+                        setSelectedLeadIds(new Set(saveData.leadIds));
 
                         // If the backend fanned out a company+title row into multiple DISCOVERED
                         // people, show them right away from the save response (the created leads
@@ -2715,10 +2797,10 @@ export default function AdvancedSearchAIPage() {
                         const savedLeads: any[] = Array.isArray(saveData.leads) ? saveData.leads : [];
                         if (savedLeads.length > parsed.length) {
                             const rebuiltInbound: ParsedInboundLead[] = savedLeads.map((r) => {
-                                const nm = (r.name || '').trim();
+                                const { firstName, lastName } = readLeadName(r);
                                 return {
-                                    firstName: r.first_name || nm.split(/\s+/)[0] || '',
-                                    lastName: r.last_name || nm.split(/\s+/).slice(1).join(' ') || '',
+                                    firstName,
+                                    lastName,
                                     companyName: r.company || '',
                                     linkedinProfile: r.linkedin_url || '',
                                     email: '', whatsapp: '', phone: '', website: '', notes: '',
@@ -2729,12 +2811,12 @@ export default function AdvancedSearchAIPage() {
                             });
                             setInboundLeads(rebuiltInbound);
                             const rebuiltPanel: LeadProfile[] = savedLeads.map((r, i) => {
-                                const nm = (r.name || '').trim();
+                                const { firstName, lastName, name } = readLeadName(r);
                                 return {
                                     id: r.id || `inbound-${i}`,
-                                    name: nm || `Lead ${i + 1}`,
-                                    first_name: r.first_name || '',
-                                    last_name: r.last_name || '',
+                                    name: leadDisplayLabel({ name, company: r.company, headline: r.headline || r.title || r.target_title }, i),
+                                    first_name: firstName,
+                                    last_name: lastName,
                                     headline: r.headline || r.title || r.target_title || (r.company ? `at ${r.company}` : ''),
                                     location: r.location || '',
                                     current_company: r.company || '',
@@ -2775,10 +2857,10 @@ export default function AdvancedSearchAIPage() {
                                     const fannedOut = results.length > parsed.length;
                                     if (fannedOut) {
                                         const rebuiltInbound: ParsedInboundLead[] = results.map((r) => {
-                                            const nm = (r.name || '').trim();
+                                            const { firstName, lastName } = readLeadName(r);
                                             return {
-                                                firstName: nm.split(/\s+/)[0] || '',
-                                                lastName: nm.split(/\s+/).slice(1).join(' ') || '',
+                                                firstName,
+                                                lastName,
                                                 companyName: r.company || '',
                                                 linkedinProfile: r.linkedin_url || '',
                                                 email: r.email || '',
@@ -2796,12 +2878,12 @@ export default function AdvancedSearchAIPage() {
                                         // Default-select every discovered person (user can uncheck any).
                                         setSelectedLeadIds(new Set(results.map((r) => r.leadId).filter(Boolean)));
                                         const rebuiltPanel: LeadProfile[] = results.map((r, i) => {
-                                            const nm = (r.name || '').trim();
+                                            const { firstName, lastName, name } = readLeadName(r);
                                             return {
                                                 id: `inbound-${i}`,
-                                                name: nm || `Lead ${i + 1}`,
-                                                first_name: nm.split(/\s+/)[0] || '',
-                                                last_name: nm.split(/\s+/).slice(1).join(' ') || '',
+                                                name: leadDisplayLabel({ name, company: r.company, headline: r.job_title }, i),
+                                                first_name: firstName,
+                                                last_name: lastName,
                                                 headline: r.job_title || (r.company ? `at ${r.company}` : ''),
                                                 location: '',
                                                 current_company: r.company || '',
@@ -2835,6 +2917,15 @@ export default function AdvancedSearchAIPage() {
                                         }));
                                         const newLinkedIn = results.filter((r) => r.linkedin_url && !parsed[enrichedIds.indexOf(r.leadId)]?.linkedinProfile).length;
                                         if (newLinkedIn > 0) counts.linkedin = (counts.linkedin || 0) + newLinkedIn;
+                                        // Surface waterfall-resolved LinkedIn URLs on the panel cards
+                                        // too — the panel was built from the raw rows before enrichment
+                                        // ran, so resolved profiles would otherwise not be clickable.
+                                        // Panel cards are index-aligned with enrichedIds for 1:1 imports.
+                                        setLeads(prev => prev.map((pl, idx) => {
+                                            const enriched = enrichedIds[idx] ? enrichMap[enrichedIds[idx]] : null;
+                                            if (!enriched?.linkedin_url || pl.profile_url) return pl;
+                                            return { ...pl, profile_url: enriched.linkedin_url };
+                                        }));
                                     }
                                 }
                             }
@@ -2934,7 +3025,7 @@ export default function AdvancedSearchAIPage() {
             // Convert inbound leads to LeadProfile format for the panel
             const panelLeads: LeadProfile[] = parsed.map((l, i) => ({
                 id: `inbound-${i}`,
-                name: `${l.firstName} ${l.lastName}`.trim() || `Lead ${i + 1}`,
+                name: leadDisplayLabel({ firstName: l.firstName, lastName: l.lastName, company: l.companyName }, i),
                 first_name: l.firstName,
                 last_name: l.lastName,
                 headline: l.companyName ? `at ${l.companyName}` : '',
@@ -3723,6 +3814,57 @@ export default function AdvancedSearchAIPage() {
                         return;
                     }
                     // If intent could not be determined, fall through and run the search immediately
+                }
+            }
+
+            // ── SPECIFIC-PERSON GATE ──────────────────────────────────────────
+            // A confirmed query that identifies one named person at a company must
+            // not go through broad search + ICP scoring (it can only return
+            // strangers who happen to share the first name). Route it through the
+            // same import/save + waterfall pipeline as file-imported leads: the
+            // backend resolves the exact person, the panel shows them checked, and
+            // campaign creation attaches them as an inbound lead (lead generation
+            // is skipped entirely at run time).
+            if (shouldRunSearch) {
+                const personIntent = confirmedForSearch ? confirmedForSearch.intent : updatedTargetState;
+                const person = detectSpecificPersonQuery(personIntent);
+                if (person) {
+                    const personLoadingId = `${lid}-person`;
+                    setMessages(p => p.filter(m => m.id !== lid).concat(
+                        {
+                            id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
+                            text: `🎯 Got it — **${person.name}**${person.company ? ` at **${person.company}**` : ''} is a specific person, so I'll skip the broad search and find their LinkedIn profile directly.`,
+                        },
+                        { id: personLoadingId, role: 'ai', text: '', ts: new Date(), loading: true },
+                    ));
+                    const [pFirst, ...pRest] = person.name.split(/\s+/);
+                    const personRow: ParsedInboundLead = {
+                        firstName: pFirst || person.name,
+                        lastName: pRest.join(' '),
+                        companyName: person.company,
+                        linkedinProfile: '', email: '', whatsapp: '', phone: '', website: '', notes: '',
+                        title: person.title,
+                        location: person.location,
+                        profilePicture: '',
+                    };
+                    setInboundLeads([personRow]);
+                    setInboundMode(true);
+                    setLeads([{
+                        id: 'inbound-0',
+                        name: person.name,
+                        first_name: personRow.firstName,
+                        last_name: personRow.lastName,
+                        headline: person.title ? `${person.title}${person.company ? ' at ' + person.company : ''}` : (person.company ? `at ${person.company}` : ''),
+                        location: person.location,
+                        current_company: person.company,
+                        profile_url: '',
+                        profile_picture: '',
+                        industry: '',
+                        network_distance: '',
+                        locked: false,
+                    }]);
+                    await finishInboundImport([personRow], person.location, personLoadingId);
+                    return;
                 }
             }
 
@@ -8412,47 +8554,67 @@ function CheckpointFormInline({
                         const id = inboundLeadIds[idx];
                         return !id || selectedLeadIds.has(id);
                     })
-                    .map(({ il, idx }) => mapLead({
-                        id: `inbound-${idx}`,
-                        name: `${il.firstName} ${il.lastName}`.trim() || `Lead ${idx + 1}`,
-                        first_name: il.firstName,
-                        last_name: il.lastName,
-                        headline: il.companyName ? `at ${il.companyName}` : '',
-                        location: '',
-                        current_company: il.companyName,
-                        profile_url: il.linkedinProfile,
-                        profile_picture: '',
-                        industry: '',
-                        network_distance: '',
-                        // Crucial: pass phone and email so they are stored in lead_data
-                        phone: il.phone || il.whatsapp || '',
-                        email: il.email || '',
-                    } as any, 'inbound_lead'))
+                    .map(({ il, idx }) => {
+                        // Never persist a synthetic "Lead N" as the lead's real name.
+                        // Keep the discovered name when we have one; otherwise send an
+                        // EMPTY name and let the backend snapshot (from the linked lead
+                        // row), the connect-time backfill, or the greeting guard supply
+                        // the right name — anything but "Hi Lead,".
+                        const realName = `${il.firstName || ''} ${il.lastName || ''}`.trim();
+                        const nameIsReal = !isPlaceholderName(realName) && !isPlaceholderName(il.firstName);
+                        return mapLead({
+                            id: `inbound-${idx}`,
+                            name: nameIsReal ? realName : '',
+                            first_name: nameIsReal ? il.firstName : '',
+                            last_name: nameIsReal ? il.lastName : '',
+                            headline: il.companyName ? `at ${il.companyName}` : '',
+                            location: '',
+                            current_company: il.companyName,
+                            profile_url: il.linkedinProfile,
+                            profile_picture: '',
+                            industry: '',
+                            network_distance: '',
+                            // Crucial: pass phone and email so they are stored in lead_data
+                            phone: il.phone || il.whatsapp || '',
+                            email: il.email || '',
+                        } as any, 'inbound_lead');
+                    })
                 : [];
+
+            // Real DB UUIDs so CampaignModel links inbound / direct people via lead_id — the
+            // canonical path (links the real lead row with snapshot + phone), the same one
+            // ChatPanel uses. Covers CSV/image imports (inboundLeadIds) and chat-entered direct
+            // contacts (directContactLeadIds).
+            const resolvedInboundLeadIds: string[] | undefined = (() => {
+                let ids = [...inboundLeadIds, ...directContactLeadIds];
+                // Respect checkbox selection for imported/discovered people: if the user
+                // unchecked some, enrol only the selected ones.
+                if (inboundMode && selectedLeadIds.size > 0) {
+                    const filtered = ids.filter(id => selectedLeadIds.has(id));
+                    if (filtered.length > 0) ids = filtered;
+                }
+                return ids.length > 0 ? ids : undefined;
+            })();
 
             const payload = {
                 name: name || 'AI Growth Campaign', status: 'active',
                 campaign_type: inboundMode ? 'direct_outreach' : (isDirectContact ? 'direct_outreach' : 'linkedin_outreach'),
                 leads_per_day: safeLeadsPerDay,
                 campaign_start_date: startDate.toISOString(), campaign_end_date: endDate.toISOString(),
-                // Inbound leads take priority; then direct contacts; then LinkedIn good matches
-                initial_leads: inboundMode && inboundContactLeads.length > 0
-                    ? inboundContactLeads
-                    : (isDirectContact && directContactLeads.length > 0
-                        ? directContactLeads
-                        : (goodMatchLeads.length > 0 ? goodMatchLeads : undefined)),
-                // Pass real DB UUIDs so CampaignModel links leads via lead_id (with snapshot + phone)
-                // Covers both CSV/image imports (inboundLeadIds) and chat-entered direct contacts (directContactLeadIds)
-                inbound_lead_ids: (() => {
-                    let ids = [...inboundLeadIds, ...directContactLeadIds];
-                    // Respect checkbox selection for imported/discovered people: if the user
-                    // unchecked some, enrol only the selected ones.
-                    if (inboundMode && selectedLeadIds.size > 0) {
-                        const filtered = ids.filter(id => selectedLeadIds.has(id));
-                        if (filtered.length > 0) ids = filtered;
-                    }
-                    return ids.length > 0 ? ids : undefined;
-                })(),
+                // Inbound / direct-contact people are linked via inbound_lead_ids (the canonical
+                // path above). Do NOT also send them in initial_leads — the backend can't
+                // cross-dedupe the two paths, so it would enrol each person TWICE and spawn an
+                // orphan lead. Fail-open: if we have no real IDs (e.g. import-save failed), fall
+                // back to initial_leads so nothing is lost. LinkedIn-search campaigns keep using
+                // initial_leads (goodMatchLeads) — they never send inbound_lead_ids.
+                initial_leads: (inboundMode || isDirectContact)
+                    ? (resolvedInboundLeadIds
+                        ? undefined
+                        : (inboundMode && inboundContactLeads.length > 0
+                            ? inboundContactLeads
+                            : (isDirectContact && directContactLeads.length > 0 ? directContactLeads : undefined)))
+                    : (goodMatchLeads.length > 0 ? goodMatchLeads : undefined),
+                inbound_lead_ids: resolvedInboundLeadIds,
                 config: {
                     data_source: inboundMode ? 'csv_import' : (isDirectContact ? 'direct_contact' : 'linkedin_search'),
                     search_intent: (inboundMode || isDirectContact) ? null : t, search_query: (inboundMode || isDirectContact) ? '' : (t.keywords?.join(' ') || ''),
