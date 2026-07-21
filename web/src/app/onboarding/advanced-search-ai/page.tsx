@@ -3486,6 +3486,10 @@ export default function AdvancedSearchAIPage() {
             let aiOpts: { label: string; value: string }[] | undefined;
             // If user confirmed a search preview, start with the stored intent; otherwise use current targeting (or override from caller)
             let updatedTargetState = confirmedForSearch ? confirmedForSearch.intent : (opts?.targetingOverride || targeting);
+            // Tracks whether lead-chat produced a targeting for THIS turn (a fresh
+            // parse or a refine). When false at search time, the intent we hold is
+            // carried-over state (e.g. a prior ICP) that must be re-parsed.
+            let targetingFromChat = false;
 
             if (confirmedForSearch) {
                 // User confirmed the search preview — skip lead-chat and go straight to search
@@ -3504,7 +3508,7 @@ export default function AdvancedSearchAIPage() {
                     if (chatD) {
                         aiResponseText = chatD.response || '';
                         shouldRunSearch = !!chatD.newSearch;
-                        if (chatD.updatedTargeting) updatedTargetState = chatD.updatedTargeting;
+                        if (chatD.updatedTargeting) { updatedTargetState = chatD.updatedTargeting; targetingFromChat = true; }
                         setPendingIntent(chatD.pendingIntent || null);
                         if (Array.isArray(chatD.options) && chatD.options.length > 0) {
                             aiOpts = chatD.options;
@@ -3737,21 +3741,37 @@ export default function AdvancedSearchAIPage() {
                     let extractedPersonName: string | null = null;
                     let extractedCompanyName: string | null = null;
 
-                    if (!hasUsableIntent) {
+                    // Re-parse THIS message's text unless the carried intent was freshly
+                    // produced by lead-chat for this turn (a refine on a continuing
+                    // conversation). Without this, a stale ICP/targeting left by a prior
+                    // action (ICP Discovery, or the saved business-profile ICP) silently
+                    // hijacks a newly-typed query — the user types "Sales Manager in Real
+                    // Estate in Dubai" but the search runs their saved ICP instead.
+                    const carriedIntentIsFresh = targetingFromChat && !isFirstMessage;
+                    if (!hasUsableIntent || !carriedIntentIsFresh) {
                         try {
                             const intentD = await linkedInSearch.extractIntent(text);
-                            if (intentD?.intent) {
-                                previewIntent = {
-                                    job_titles: toArr(intentD.intent.job_titles),
-                                    industries: toArr(intentD.intent.industries),
-                                    locations: toArr(intentD.intent.locations),
-                                    keywords: toArr(intentD.intent.keywords),
-                                    profile_language: toArr(intentD.intent.profile_language),
-                                    company_names: toArr(intentD.intent.company_names),
-                                    seniority: toArr(intentD.intent.seniority),
-                                    functions: toArr(intentD.intent.functions),
-                                };
-                            }
+                            const freshIntent = intentD?.intent ? {
+                                job_titles: toArr(intentD.intent.job_titles),
+                                industries: toArr(intentD.intent.industries),
+                                locations: toArr(intentD.intent.locations),
+                                keywords: toArr(intentD.intent.keywords),
+                                profile_language: toArr(intentD.intent.profile_language),
+                                company_names: toArr(intentD.intent.company_names),
+                                seniority: toArr(intentD.intent.seniority),
+                                functions: toArr(intentD.intent.functions),
+                            } : null;
+                            const freshHasData = !!freshIntent && (
+                                (freshIntent.job_titles?.length ?? 0) > 0
+                                || (freshIntent.locations?.length ?? 0) > 0
+                                || (freshIntent.keywords?.length ?? 0) > 0
+                                || (freshIntent.company_names?.length ?? 0) > 0
+                                || (freshIntent.industries?.length ?? 0) > 0
+                            );
+                            // Prefer the fresh parse of this query when it found targeting.
+                            // A bare refine word ("go", "yes") parses to nothing and must
+                            // NOT wipe a legitimately carried intent — only override then.
+                            if (freshHasData || !hasUsableIntent) previewIntent = freshIntent;
                             // Capture ABM metadata
                             if (intentD?.abm_type) extractedAbmType = intentD.abm_type;
                             if (intentD?.llm_entities?.person_name) extractedPersonName = intentD.llm_entities.person_name;
