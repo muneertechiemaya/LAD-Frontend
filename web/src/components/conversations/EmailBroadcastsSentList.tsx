@@ -456,7 +456,7 @@ function ComposeBroadcastDialog({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>New broadcast</DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-[13px] sm:text-sm pr-6 sm:pr-0">
             Send the same message to many recipients via a connected Gmail or Outlook account.
           </DialogDescription>
         </DialogHeader>
