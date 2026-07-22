@@ -26,7 +26,7 @@ import 'reactflow/dist/style.css';
 import {
   Rocket, Loader2, Linkedin, Mail, MessageCircle, Phone, Clock,
   Users, Repeat, Search, X, HardDrive, Inbox, ListOrdered, BarChart3, GitFork, DatabaseZap,
-  Wand2, Trash2,
+  Wand2, Trash2, Radar,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,13 +48,14 @@ const edgeTypes = { labeled: LabeledEdge };
 
 // ─── Palette definitions ─────────────────────────────────────────────────────
 
-type SourceKey = 'zoho_recurring' | 'zoho_once' | 'ghl_once' | 'linkedin_search';
+type SourceKey = 'zoho_recurring' | 'zoho_once' | 'ghl_once' | 'linkedin_search' | 'linkedin_signal';
 
 const SOURCES: { key: SourceKey; label: string; sub: string; icon: React.ReactNode; chip: string; recurring?: boolean }[] = [
   { key: 'zoho_recurring', label: 'Zoho CRM — recurring', sub: 'Import new contacts daily', icon: <Repeat className="h-4 w-4 text-red-600" />, chip: 'bg-red-50 dark:bg-red-950/30', recurring: true },
   { key: 'zoho_once', label: 'Zoho CRM — one-time', sub: 'Import synced contacts now', icon: <Users className="h-4 w-4 text-red-600" />, chip: 'bg-red-50 dark:bg-red-950/30' },
   { key: 'ghl_once', label: 'GoHighLevel — one-time', sub: 'Import synced contacts now', icon: <Users className="h-4 w-4 text-blue-600" />, chip: 'bg-blue-50 dark:bg-blue-950/30' },
   { key: 'linkedin_search', label: 'LinkedIn Search', sub: 'Find new leads by keywords', icon: <Search className="h-4 w-4 text-[#0077B5]" />, chip: 'bg-sky-50 dark:bg-sky-950/30' },
+  { key: 'linkedin_signal', label: 'LinkedIn Signal Search', sub: 'Find leads from hiring/buying signals', icon: <Radar className="h-4 w-4 text-[#0077B5]" />, chip: 'bg-sky-50 dark:bg-sky-950/30', recurring: true },
 ];
 
 const COMING_SOON = [
@@ -393,6 +394,9 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     if (analyticsNode && !(configs[ANALYTICS_STEP_ID]?.recipient || '').trim()) {
       setError('Add a recipient (email or WhatsApp number) in the Analytics report node.'); setEditingId(ANALYTICS_STEP_ID); return;
     }
+    if (source === 'linkedin_signal' && !(configs[SOURCE_STEP_ID]?.signal_query || '').trim()) {
+      setError('Describe the signal to search for in the LinkedIn Signal Search source.'); setEditingId(SOURCE_STEP_ID); return;
+    }
     setLaunching(true);
 
     const perDayN = Math.max(1, parseInt(perDay, 10) || 25);
@@ -422,6 +426,18 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
           config: {
             source: 'linkedin_search',
             leadGenerationFilters: { keywords: (srcCfg.keywords || '').trim() },
+            leadGenerationLimit: perDayN,
+          },
+        });
+      } else if (source === 'linkedin_signal') {
+        const titles = (srcCfg.decision_maker_titles || '')
+          .split(',').map((t: string) => t.trim()).filter(Boolean);
+        steps.push({
+          type: 'lead_generation', title: 'Signal Lead Search', channel: 'linkedin', order_index: order++,
+          config: {
+            source: 'signal_detection',
+            signal_query: (srcCfg.signal_query || '').trim(),
+            decision_maker_titles: titles,
             leadGenerationLimit: perDayN,
           },
         });
@@ -667,6 +683,23 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Search keywords</label>
               <Input value={cfg.keywords || ''} onChange={(e) => setCfg(editingId, { keywords: e.target.value })} placeholder="e.g. VP Sales SaaS UAE" /></div>
           )}
+          {isSource && source === 'linkedin_signal' && (<>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-foreground">Signal</label>
+              <textarea className={`${field} min-h-[70px]`} value={cfg.signal_query || ''}
+                onChange={(e) => setCfg(editingId, { signal_query: e.target.value })}
+                placeholder="e.g. companies posting jobs for Salesforce revenue operations" />
+              <p className="text-[11px] text-muted-foreground">Describe the hiring / buying signal to look for in LinkedIn posts.</p>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-foreground">Decision-maker title(s)</label>
+              <Input value={cfg.decision_maker_titles || ''}
+                onChange={(e) => setCfg(editingId, { decision_maker_titles: e.target.value })}
+                placeholder="e.g. VP Revenue Operations, Head of Sales" />
+              <p className="text-[11px] text-muted-foreground">Comma-separated. Who to enrol at the companies that match the signal.</p>
+            </div>
+            <p className="text-xs text-muted-foreground">Runs daily until the campaign ends, enrolling up to {perDay}/day of newly-signalled leads.</p>
+          </>)}
 
           {isFollowup && (() => {
             const eid = editingId!;
