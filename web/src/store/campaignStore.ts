@@ -48,6 +48,7 @@ const defaultStepData: Record<StepType, Partial<StepData>> = {
   media_generation: { title: 'Media generation' },
   followup_sequence: { title: 'Follow-up sequence' },
   analytics_report: { title: 'Analytics report' },
+  zoho_update: { title: 'Update Zoho record' },
 };
 export const useCampaignStore = create<CampaignState>((set, get) => ({
   name: '',
