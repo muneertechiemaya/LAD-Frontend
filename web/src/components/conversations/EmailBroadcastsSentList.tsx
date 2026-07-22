@@ -888,13 +888,6 @@ function BroadcastDetailDialog({
               </DialogDescription>
             )}
           </div>
-          <button
-            onClick={() => onOpenChange(false)}
-            aria-label="Close"
-            className="rounded-full p-1.5 hover:bg-[#f6f8fc] dark:hover:bg-[#3c4043] flex-shrink-0"
-          >
-            <X className="h-4 w-4" />
-          </button>
         </DialogHeader>
 
         {/* Sender + recipient strip */}
