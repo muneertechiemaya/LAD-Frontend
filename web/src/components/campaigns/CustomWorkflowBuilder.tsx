@@ -177,9 +177,42 @@ function suggestDataPoint(field: { api_name: string; field_label: string }, chan
 
 // ─── Canvas (inner, needs ReactFlowProvider) ─────────────────────────────────
 
-function BuilderCanvas({ steps }: { steps: WorkflowPreviewStep[] }) {
-  const initialNodes = useMemo(() => createReactFlowNodes(steps, 'vertical'), [steps]);
-  const initialEdges = useMemo(() => createReactFlowEdges(steps, 'vertical'), [steps]);
+type BranchViz = { key: string; stepType: StepType; label: string; edgeLabel: string };
+
+function BuilderCanvas({ steps, branches = [], switchId }: { steps: WorkflowPreviewStep[]; branches?: BranchViz[]; switchId?: string }) {
+  // Base linear layout, then fan the Multi-condition node's branches out below
+  // it (Router-style multiple outputs → a separate node per condition).
+  const initialNodes = useMemo(() => {
+    const base = createReactFlowNodes(steps, 'vertical');
+    if (!switchId || !branches.length) return base;
+    const sw = base.find((n) => n.id === switchId);
+    if (!sw) return base;
+    const spread = 210;
+    const startX = sw.position.x - ((branches.length - 1) * spread) / 2;
+    const branchNodes = branches.map((b, i) => ({
+      id: `${switchId}-${b.key}`,
+      type: 'custom',
+      position: { x: startX + i * spread, y: sw.position.y + 200 },
+      draggable: true,
+      data: { title: b.label, type: b.stepType, description: b.key === 'else' ? 'fallback branch' : 'branch output', _layout: 'snake', _branch: true },
+    }));
+    return [...base, ...branchNodes];
+  }, [steps, branches, switchId]);
+  const initialEdges = useMemo(() => {
+    // Drop the linear edge leaving the switch — its outputs are the branches.
+    const base = createReactFlowEdges(steps, 'vertical').filter((e) => e.source !== switchId);
+    if (!switchId || !branches.length) return base;
+    const fan = branches.map((b) => ({
+      id: `e-${switchId}-${b.key}`,
+      source: switchId, sourceHandle: 'bottom',
+      target: `${switchId}-${b.key}`, targetHandle: 'top',
+      type: 'labeled',
+      animated: false,
+      data: { label: b.edgeLabel, color: '#d97706' },
+      style: { stroke: '#d97706', strokeWidth: 2, strokeDasharray: '6,6' },
+    }));
+    return [...base, ...fan];
+  }, [steps, branches, switchId]);
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   useEffect(() => { setNodes(initialNodes); setEdges(initialEdges); }, [initialNodes, initialEdges, setNodes, setEdges]);
@@ -263,6 +296,9 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
   const [mediaGalleryOpen, setMediaGalleryOpen] = useState(false);
   const [mediaImporting, setMediaImporting] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
+  // Multi-condition node: fields of the connected source (dynamic dropdown).
+  const [mcFields, setMcFields] = useState<{ value: string; label: string }[]>(SWITCH_FIELDS);
+  const [mcFieldsLoading, setMcFieldsLoading] = useState(false);
 
   // Fresh canvas on mount. The store is SHARED with the chat-built workflow
   // preview (advanced-search-ai) — snapshot it and restore on close so opening
@@ -275,7 +311,11 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
 
   // Node edit clicks (CustomWorkflowNode dispatches 'openStepEditor').
   useEffect(() => {
-    const onEdit = (e: any) => setEditingId(e.detail?.stepId || null);
+    const onEdit = (e: any) => {
+      const id: string = e.detail?.stepId || '';
+      // Clicking a fanned-out branch node opens the Multi-condition editor.
+      setEditingId(id.startsWith(`${MULTICOND_STEP_ID}-`) ? MULTICOND_STEP_ID : (id || null));
+    };
     window.addEventListener('openStepEditor', onEdit);
     return () => window.removeEventListener('openStepEditor', onEdit);
   }, []);
@@ -408,8 +448,58 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     return () => { cancelled = true; };
   }, [editingId, zohoModule]);
 
+  // Multi-condition: load the connected source's fields for the "Branch on"
+  // dropdown. Zoho sources → the module's real fields via /fields; other
+  // sources → the generic semantic field list.
+  useEffect(() => {
+    if (editingId !== MULTICOND_STEP_ID) return;
+    const isZoho = source === 'zoho_recurring' || source === 'zoho_once';
+    if (!isZoho) { setMcFields(SWITCH_FIELDS); return; }
+    const mod = (configs[SOURCE_STEP_ID]?.zoho_modules === 'contacts_leads' || configs[SOURCE_STEP_ID]?.zoho_type === 'leads') ? 'Leads' : 'Contacts';
+    let cancelled = false;
+    setMcFieldsLoading(true);
+    fetch(`/api/social-integration/zoho/fields?module=${mod}`, { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled) return;
+        if (d?.success && Array.isArray(d.fields) && d.fields.length) {
+          const fetched = d.fields.map((f: any) => ({ value: f.api_name, label: f.field_label || f.api_name }));
+          // 'Tag' is a semantic pseudo-field (Zoho tags aren't a writable field);
+          // prepend it if the module's field list didn't already include one.
+          const hasTag = fetched.some((f: { value: string }) => /tag/i.test(f.value));
+          setMcFields(hasTag ? fetched : [{ value: 'tag', label: 'Tag' }, ...fetched]);
+        } else { setMcFields(SWITCH_FIELDS); }
+      })
+      .catch(() => { if (!cancelled) setMcFields(SWITCH_FIELDS); })
+      .finally(() => { if (!cancelled) setMcFieldsLoading(false); });
+    return () => { cancelled = true; };
+  }, [editingId, source, configs]);
+
   const editingStep = workflowPreview.find((s) => s.id === editingId) || null;
   const cfg = editingId ? (configs[editingId] || {}) : {};
+
+  // Router-style branch visualisation for the Multi-condition node: one output
+  // node per condition (+ else), fanned out on the canvas.
+  const CH_TO_STEP: Record<string, StepType> = { email: 'email_send', linkedin: 'linkedin_message', whatsapp: 'whatsapp_send' };
+  const mcBranches: BranchViz[] = useMemo(() => {
+    if (!workflowPreview.some((s) => s.id === MULTICOND_STEP_ID)) return [];
+    const c = configs[MULTICOND_STEP_ID] || {};
+    const fLabel = mcFields.find((f) => f.value === (c.field || 'tag'))?.label || 'field';
+    const opLabel = (op: string) => SWITCH_OPS.find((o) => o.value === op)?.label || 'is';
+    const rows: any[] = Array.isArray(c.cases) && c.cases.length ? c.cases : [{}];
+    const out: BranchViz[] = rows.map((cs, i) => {
+      const v = (cs?.value || '').trim();
+      return {
+        key: `b${i}`,
+        stepType: CH_TO_STEP[cs?.channel] || 'email_send',
+        label: v ? `If ${fLabel} ${opLabel(cs?.op || 'equals')} "${v}"` : `Condition ${i + 1}`,
+        edgeLabel: (v ? `${opLabel(cs?.op || 'equals')} ${v}` : `#${i + 1}`).slice(0, 22),
+      };
+    });
+    out.push({ key: 'else', stepType: CH_TO_STEP[(c.default?.channel)] || 'email_send', label: 'Otherwise', edgeLabel: 'else' });
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workflowPreview, configs, mcFields]);
 
   // ── Launch ────────────────────────────────────────────────────────────────
   const launch = async () => {
@@ -954,7 +1044,7 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
             const swField: string = cfg.field || 'tag';
             const cases: any[] = Array.isArray(cfg.cases) && cfg.cases.length ? cfg.cases : [{ op: 'equals', value: '', channel: 'email', subject: '', body: '' }];
             const def = cfg.default || { channel: 'email', subject: '', body: '' };
-            const fieldLabel = SWITCH_FIELDS.find((f) => f.value === swField)?.label || 'Tag';
+            const fieldLabel = mcFields.find((f) => f.value === swField)?.label || 'Tag';
             const setCase = (i: number, patch: any) => { const next = cases.map((c, idx) => (idx === i ? { ...c, ...patch } : c)); setCfg(eid, { cases: next }); updateWorkflowStep(eid, { description: `${next.length} conditions + else` }); };
             const addCase = () => { if (cases.length >= 6) return; const next = [...cases, { op: 'equals', value: '', channel: 'email', subject: '', body: '' }]; setCfg(eid, { cases: next }); updateWorkflowStep(eid, { description: `${next.length} conditions + else` }); };
             const removeCase = (i: number) => { if (cases.length <= 1) return; const next = cases.filter((_, idx) => idx !== i); setCfg(eid, { cases: next }); updateWorkflowStep(eid, { description: `${next.length} conditions + else` }); };
@@ -969,10 +1059,12 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
             </>);
             return (<>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-foreground">Branch on</label>
+                <label className="text-xs font-medium text-foreground">Branch on {mcFieldsLoading && <span className="text-muted-foreground">· loading fields…</span>}</label>
                 <select className={field} value={swField} onChange={(e) => setCfg(eid, { field: e.target.value })}>
-                  {SWITCH_FIELDS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
+                  {!mcFields.some((f) => f.value === swField) && swField && <option value={swField}>{swField}</option>}
+                  {mcFields.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
                 </select>
+                <p className="text-[11px] text-muted-foreground">{(source === 'zoho_recurring' || source === 'zoho_once') ? 'Fields from your connected Zoho module.' : 'Contact fields available for this source.'}</p>
               </div>
               {cases.map((c, i) => (
                 <div key={i} className="rounded-lg border border-border p-2.5 space-y-2 bg-muted/20">
@@ -1371,7 +1463,7 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
             </div>
           ) : (
             <ReactFlowProvider>
-              <BuilderCanvas steps={workflowPreview} />
+              <BuilderCanvas steps={workflowPreview} branches={mcBranches} switchId={MULTICOND_STEP_ID} />
             </ReactFlowProvider>
           )}
           {renderEditor()}
