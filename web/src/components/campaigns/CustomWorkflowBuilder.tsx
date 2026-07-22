@@ -26,10 +26,13 @@ import 'reactflow/dist/style.css';
 import {
   Rocket, Loader2, Linkedin, Mail, MessageCircle, Phone, Clock,
   Users, Repeat, Search, X, HardDrive, Inbox, ListOrdered, BarChart3, GitFork, DatabaseZap,
+  Wand2, Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
+import { useMediaBuilder } from '@/hooks/voice-agent/useMediaBuilder';
+import { MediaGenerationModal } from '@/components/voice-agent/MediaGenerationModal';
 import { useOnboardingStore, type WorkflowPreviewStep } from '@/store/onboardingStore';
 import type { StepType } from '@/types/campaign';
 import { useVoiceAgent } from '@lad/frontend-features/ai-icp-assistant';
@@ -113,6 +116,11 @@ const FU_CHANNELS = [
 // back onto the lead's Zoho record. Keys MUST match the backend
 // ZohoWritebackService.SOURCE_RESOLVERS.
 const ZOHO_UPDATE_STEP_ID = 'zoho-update-node';
+
+// "AI Media" node (single-instance) — generate a brand image/video at design
+// time; the media_generation step records it and the asset is attached to the
+// workflow's email/WhatsApp outreach at launch.
+const MEDIA_STEP_ID = 'media-gen-node';
 
 type DataPoint = { key: string; label: string; match: RegExp; needsChannel?: Channel };
 const WORKFLOW_DATA_POINTS: DataPoint[] = [
@@ -230,6 +238,12 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
   const [zohoFields, setZohoFields] = useState<any[]>([]);
   const [zohoFieldsLoading, setZohoFieldsLoading] = useState(false);
   const [zohoFieldsError, setZohoFieldsError] = useState<string | null>(null);
+  // AI Media node: generated-asset gallery + studio modal.
+  const mediaBuilder = useMediaBuilder();
+  const [showMediaStudio, setShowMediaStudio] = useState(false);
+  const [mediaGalleryOpen, setMediaGalleryOpen] = useState(false);
+  const [mediaImporting, setMediaImporting] = useState(false);
+  const [mediaError, setMediaError] = useState<string | null>(null);
 
   // Fresh canvas on mount. The store is SHARED with the chat-built workflow
   // preview (advanced-search-ai) — snapshot it and restore on close so opening
@@ -296,9 +310,51 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     setEditingId(ZOHO_UPDATE_STEP_ID);
   };
 
+  const addMedia = () => {
+    if (!workflowPreview.some((s) => s.id === MEDIA_STEP_ID)) {
+      addWorkflowStep({ id: MEDIA_STEP_ID, type: 'media_generation', channel: 'email', title: 'AI Media', description: 'Generate media to attach' });
+    }
+    setEditingId(MEDIA_STEP_ID);
+  };
+
   const setCfg = useCallback((id: string, patch: any) => {
     setConfigs((c) => ({ ...c, [id]: { ...(c[id] || {}), ...patch } }));
   }, []);
+
+  const mediaTypeFromName = (name: string): 'image' | 'video' | 'document' => {
+    const ext = (name.split('?')[0].split('.').pop() || '').toLowerCase();
+    if (['mp4', 'webm', 'mov', '3gp'].includes(ext)) return 'video';
+    if (['pdf', 'doc', 'docx'].includes(ext)) return 'document';
+    return 'image';
+  };
+
+  // Re-home a generated asset (MAGe 7-day signed URL) into the permanent
+  // campaign bucket and attach it to the AI Media node.
+  const importGenerated = useCallback(async (sourceUrl: string) => {
+    if (!sourceUrl) return;
+    setMediaImporting(true); setMediaError(null);
+    try {
+      const filename = decodeURIComponent(sourceUrl.split('?')[0].split('/').pop() || 'generated-media');
+      const res = await fetchWithTenant('/api/campaigns/media/import-generated', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source_url: sourceUrl, media_type: mediaTypeFromName(filename), filename }),
+      });
+      const d = await res.json();
+      if (!res.ok || !d?.url) throw new Error(d?.error || `Import failed (${res.status})`);
+      setCfg(MEDIA_STEP_ID, {
+        media_url: d.url,
+        media_type: d.media_type || mediaTypeFromName(d.filename || filename),
+        media_filename: d.filename || filename,
+      });
+      updateWorkflowStep(MEDIA_STEP_ID, { description: `${d.media_type || mediaTypeFromName(filename)} attached` });
+      setMediaGalleryOpen(false);
+    } catch (e: any) {
+      setMediaError(e?.message || 'Failed to import media');
+    } finally {
+      setMediaImporting(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setCfg, updateWorkflowStep]);
 
   // Lazy-load Zoho field metadata when the write-back node is open, per module.
   const zohoModule = configs[ZOHO_UPDATE_STEP_ID]?.module === 'Leads' ? 'Leads' : 'Contacts';
@@ -327,8 +383,9 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     if (!name.trim()) { setError('Name your workflow.'); return; }
     if (!source) { setError('Pick a contact source (first node).'); return; }
     const outreachSteps = workflowPreview.filter(
-      (s) => s.id !== SOURCE_STEP_ID && s.id !== FOLLOWUP_STEP_ID && s.id !== ANALYTICS_STEP_ID && s.id !== ZOHO_UPDATE_STEP_ID
+      (s) => s.id !== SOURCE_STEP_ID && s.id !== FOLLOWUP_STEP_ID && s.id !== ANALYTICS_STEP_ID && s.id !== ZOHO_UPDATE_STEP_ID && s.id !== MEDIA_STEP_ID
     );
+    const mediaNode = workflowPreview.find((s) => s.id === MEDIA_STEP_ID);
     const followupNode = workflowPreview.find((s) => s.id === FOLLOWUP_STEP_ID);
     const analyticsNode = workflowPreview.find((s) => s.id === ANALYTICS_STEP_ID);
     const zohoUpdateNode = workflowPreview.find((s) => s.id === ZOHO_UPDATE_STEP_ID);
@@ -460,6 +517,26 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
         }
       }
 
+      // "AI Media" node → records a media_generation step AND attaches the
+      // generated asset to every email/WhatsApp step that has no media of its
+      // own (the engine's email/whatsapp executors read config.media_url).
+      const mc = configs[MEDIA_STEP_ID] || {};
+      if (mediaNode && mc.media_url) {
+        for (const st of steps) {
+          if ((st.type === 'email_send' || st.type === 'whatsapp_send') && !st.config?.media_url) {
+            st.config = { ...(st.config || {}), media_url: mc.media_url, media_type: mc.media_type || 'image', media_filename: mc.media_filename || undefined };
+          }
+        }
+        // Record the asset as a media_generation step at the front (after source).
+        const mediaStep = {
+          type: 'media_generation', title: 'AI Media', channel: 'linkedin', order_index: 0,
+          config: { media_url: mc.media_url, media_type: mc.media_type || 'image', media_filename: mc.media_filename || undefined },
+        };
+        const insertAt = steps.length && steps[0].type === 'lead_generation' ? 1 : 0;
+        steps.splice(insertAt, 0, mediaStep);
+        steps.forEach((st, i) => { st.order_index = i; }); // renumber after splice
+      }
+
       const ac = configs[ANALYTICS_STEP_ID] || {};
 
       const payload: any = {
@@ -520,7 +597,8 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     const isAnalytics = editingId === ANALYTICS_STEP_ID;
     const isRouter = !!editingId?.startsWith('rt-');
     const isZohoUpdate = editingId === ZOHO_UPDATE_STEP_ID;
-    const isMacro = isFollowup || isAnalytics || isZohoUpdate;
+    const isMedia = editingId === MEDIA_STEP_ID;
+    const isMacro = isFollowup || isAnalytics || isZohoUpdate || isMedia;
     const visual = isSource
       ? SOURCES.find((s) => s.key === source)
       : isFollowup
@@ -529,6 +607,8 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
           ? { icon: <BarChart3 className="h-4 w-4 text-cyan-600" />, chip: 'bg-cyan-50 dark:bg-cyan-950/30' }
           : isZohoUpdate
             ? { icon: <DatabaseZap className="h-4 w-4 text-red-600" />, chip: 'bg-red-50 dark:bg-red-950/30' }
+          : isMedia
+            ? { icon: <Wand2 className="h-4 w-4 text-fuchsia-600" />, chip: 'bg-fuchsia-50 dark:bg-fuchsia-950/30' }
           : isRouter
             ? { icon: <GitFork className="h-4 w-4 text-rose-600" />, chip: 'bg-rose-50 dark:bg-rose-950/30' }
             : OUTREACH.find((o) => o.type === editingStep.type && !o.router);
@@ -539,7 +619,7 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
           <div className="min-w-0 flex-1">
             <div className="text-sm font-semibold text-foreground truncate">{editingStep.title}</div>
             <div className="text-xs text-muted-foreground">
-              {isSource ? 'Contact source settings' : isFollowup ? 'Follow-up sequence settings' : isAnalytics ? 'Report settings' : isZohoUpdate ? 'Field mapping' : isRouter ? 'Fallback routing settings' : 'Step settings'}
+              {isSource ? 'Contact source settings' : isFollowup ? 'Follow-up sequence settings' : isAnalytics ? 'Report settings' : isZohoUpdate ? 'Field mapping' : isMedia ? 'AI media' : isRouter ? 'Fallback routing settings' : 'Step settings'}
             </div>
           </div>
           <button onClick={() => setEditingId(null)} className="h-7 w-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors flex-shrink-0">
@@ -710,6 +790,55 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
                 </div>
               )}
               <p className="text-[11px] leading-snug text-muted-foreground">Runs when a lead finishes the sequence — writes the mapped workflow &amp; enrichment data back onto its original Zoho record. Only non-empty values are written; blank fields are left untouched.</p>
+            </>);
+          })()}
+
+          {isMedia && (() => {
+            const m = cfg || {};
+            const imgs = mediaBuilder.galleryImages || [];
+            const vids = mediaBuilder.galleryVideos || [];
+            const openGallery = () => { setMediaGalleryOpen((o) => !o); if (!mediaGalleryOpen) mediaBuilder.fetchGallery?.().catch(() => {}); };
+            return (<>
+              {m.media_url ? (
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-foreground">Attached media</label>
+                  {m.media_type === 'video'
+                    ? <video src={m.media_url} controls className="w-full max-h-48 rounded-md bg-black" />
+                    : <img src={m.media_url} alt={m.media_filename || 'media'} className="w-full max-h-48 object-contain rounded-md border border-border" />}
+                  <button type="button" onClick={() => { setCfg(MEDIA_STEP_ID, { media_url: '', media_type: '', media_filename: '' }); updateWorkflowStep(MEDIA_STEP_ID, { description: 'Generate media to attach' }); }}
+                    className="inline-flex items-center gap-1.5 text-xs text-red-600 hover:underline"><Trash2 className="h-3.5 w-3.5" /> Remove</button>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">No media yet. Generate one in the AI Media Studio, then pick it below.</p>
+              )}
+              {mediaError && <p className="text-xs text-red-600">{mediaError}</p>}
+              <div className="flex flex-col gap-2">
+                <button type="button" onClick={() => setShowMediaStudio(true)}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-fuchsia-300 bg-fuchsia-50 dark:bg-fuchsia-950/30 px-3 py-2 text-sm font-medium text-fuchsia-700 hover:bg-fuchsia-100 dark:hover:bg-fuchsia-900/40">
+                  <Wand2 className="h-4 w-4" /> Open AI Media Studio</button>
+                <button type="button" onClick={openGallery} className="text-xs font-medium text-[#0b1957] hover:underline text-left">
+                  {mediaGalleryOpen ? 'Hide generated media' : 'Pick from generated media'}</button>
+              </div>
+              {mediaGalleryOpen && (
+                <div className="rounded-lg border border-border p-2 bg-muted/20">
+                  {mediaBuilder.loadingGallery ? (
+                    <p className="py-3 text-center text-xs text-muted-foreground flex items-center justify-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</p>
+                  ) : (!imgs.length && !vids.length) ? (
+                    <p className="py-3 text-center text-xs text-muted-foreground">No generated media yet — use the studio first.</p>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-2 max-h-52 overflow-y-auto">
+                      {imgs.map((it: any, i: number) => { const u = it?.url || it?.signed_url || (typeof it === 'string' ? it : ''); return u ? (
+                        <img key={`gi-${i}`} src={u} alt="generated" onClick={() => importGenerated(u)} className="h-16 w-full object-cover rounded cursor-pointer hover:ring-2 ring-fuchsia-400" />
+                      ) : null; })}
+                      {vids.map((it: any, i: number) => { const u = it?.url || it?.signed_url || (typeof it === 'string' ? it : ''); return u ? (
+                        <video key={`gv-${i}`} src={u} muted onClick={() => importGenerated(u)} className="h-16 w-full object-cover rounded cursor-pointer hover:ring-2 ring-fuchsia-400" />
+                      ) : null; })}
+                    </div>
+                  )}
+                  {mediaImporting && <p className="mt-2 text-xs text-muted-foreground flex items-center gap-1.5"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Attaching…</p>}
+                </div>
+              )}
+              <p className="text-[11px] leading-snug text-muted-foreground">The asset attaches to your email &amp; WhatsApp steps automatically. Email inlines images only.</p>
             </>);
           })()}
 
@@ -995,10 +1124,39 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
             })()}
           </div>
 
-          {/* ── 5. Sync back to CRM ───────────────────────────────────────── */}
+          {/* ── 5. AI Media ───────────────────────────────────────────────── */}
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="h-5 w-5 rounded-full bg-[#0b1957] text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">5</span>
+              <span className="text-sm font-semibold text-foreground">AI Media</span>
+            </div>
+            <p className="text-xs text-muted-foreground mb-2.5 ml-7">Generate a brand image or video to attach to outreach</p>
+            {(() => {
+              const added = workflowPreview.some((s) => s.id === MEDIA_STEP_ID);
+              return (
+                <button onClick={addMedia}
+                  className={`relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
+                    added ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20' : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                  }`}>
+                  <IconChip icon={<Wand2 className="h-4 w-4 text-fuchsia-600" />} chip="bg-fuchsia-50 dark:bg-fuchsia-950/30" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold text-foreground truncate">Generate media</span>
+                    <span className="block text-xs text-muted-foreground truncate">Image / video · attaches to email &amp; WhatsApp</span>
+                  </span>
+                  {added && (
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    </span>
+                  )}
+                </button>
+              );
+            })()}
+          </div>
+
+          {/* ── 6. Sync back to CRM ───────────────────────────────────────── */}
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="h-5 w-5 rounded-full bg-[#0b1957] text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">6</span>
               <span className="text-sm font-semibold text-foreground">Sync back to Zoho</span>
             </div>
             <p className="text-xs text-muted-foreground mb-2.5 ml-7">Write campaign data back onto the Zoho contact</p>
@@ -1039,6 +1197,14 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
           {renderEditor()}
         </div>
       </div>
+
+      {/* AI Media Studio (MAGe) — generate assets, then pick from the gallery. */}
+      {showMediaStudio && (
+        <MediaGenerationModal
+          isOpen={showMediaStudio}
+          onClose={() => { setShowMediaStudio(false); setMediaGalleryOpen(true); mediaBuilder.fetchGallery?.().catch(() => {}); }}
+        />
+      )}
     </div>
   );
 }
