@@ -101,6 +101,9 @@ interface ParsedInboundLead {
     phone: string;
     website: string;
     notes: string;
+    // Role/title target(s) for company+title imports (e.g. a "Target Contacts" column).
+    title: string;
+    location: string;
 }
 
 interface ChatMsg {
@@ -378,6 +381,18 @@ function parseRows(rows: string[][], resolve: (leads: ParsedInboundLead[]) => vo
             phone: h.findIndex(x => x.toLowerCase().includes('phone')),
             website: h.findIndex(x => x.toLowerCase().includes('website')),
             notes: h.findIndex(x => x.toLowerCase().includes('notes')),
+            // Role/title target(s): "Target Contacts", "Job Title", "Title", "Role", "Designation", "Position".
+            title: h.findIndex(x => {
+                const s = x.toLowerCase();
+                return s.includes('title') || s.includes('target') || s.includes('role')
+                    || s.includes('designation') || s.includes('position');
+            }),
+            // Location/geo: "Location", "City", "Country", "Region", "Geo".
+            location: h.findIndex(x => {
+                const s = x.toLowerCase();
+                return s.includes('location') || s.includes('city') || s.includes('country')
+                    || s.includes('region') || s.includes('geo');
+            }),
         };
         const leads = rows.slice(1).map(r => ({
             firstName: (ci.firstName >= 0 ? r[ci.firstName] : '') || '',
@@ -389,6 +404,8 @@ function parseRows(rows: string[][], resolve: (leads: ParsedInboundLead[]) => vo
             phone: fixPhone((ci.phone >= 0 ? r[ci.phone] : '') || ''),
             website: (ci.website >= 0 ? r[ci.website] : '') || '',
             notes: (ci.notes >= 0 ? r[ci.notes] : '') || '',
+            title: (ci.title >= 0 ? r[ci.title] : '') || '',
+            location: (ci.location >= 0 ? r[ci.location] : '') || '',
         })).filter(l => {
             const isExample = l.companyName.toLowerCase().includes('delete this') || l.notes.toLowerCase().includes('delete this') || l.email.toLowerCase().includes('example.com');
             const hasData = (l.companyName && l.companyName.trim().length > 1) || (l.email && l.email.includes('@')) || (l.linkedinProfile && l.linkedinProfile.includes('linkedin.com'));
@@ -2703,6 +2720,10 @@ export default function AdvancedSearchAIPage() {
                 linkedin_url: l.linkedinProfile,
                 website: l.website,
                 notes: l.notes,
+                // Role/title target(s) — the backend router splits multi-role cells
+                // (e.g. "MEA Managing Director; Facilities Manager") and discovers
+                // real people per (company, role) via Unipile.
+                title: l.title,
             }));
 
             try {
