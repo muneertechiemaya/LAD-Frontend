@@ -387,7 +387,14 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
           leads_per_day: perDayN,
           campaign_days: daysN,
           working_days: 'monday-friday',
-          ...(source === 'zoho_recurring' ? { zoho_modules: srcCfg.zoho_modules || 'contacts', zoho_tag: (srcCfg.zoho_tag || '').trim() || undefined } : {}),
+          ...(source === 'zoho_recurring' ? {
+            zoho_modules: srcCfg.zoho_modules || 'contacts',
+            zoho_tag: (srcCfg.zoho_tag || '').trim() || undefined,
+            // Compliant, read-only Instagram enrichment: resolve each contact's
+            // handle + optional public business_discovery profile. No follow/DM
+            // (Meta's API exposes none) — maps contacts to IG for inbound.
+            ...(srcCfg.resolve_instagram ? { resolve_instagram: true, instagram_business_discovery: srcCfg.instagram_business_discovery !== false } : {}),
+          } : {}),
           ...(followupNode ? {
             followup_sequence: { touches: fuTouchList.length, channel: fuChannel, timeline_hours: fuTouchList.map((t) => t.hours || 24), human_approval: !!fc.human_approval },
           } : {}),
@@ -458,6 +465,21 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Only tag (optional)</label>
               <Input value={cfg.zoho_tag || ''} onChange={(e) => setCfg(editingId, { zoho_tag: e.target.value })} placeholder="e.g. Auto-Conversion Lead" /></div>
             <p className="text-xs text-muted-foreground">Imports up to {perDay}/day of newly-created records, every day until the campaign ends.</p>
+            <div className="rounded-lg border border-border p-2.5 space-y-2 bg-muted/20">
+              <label className="flex items-center gap-2 text-xs font-medium text-foreground cursor-pointer">
+                <input type="checkbox" checked={!!cfg.resolve_instagram} onChange={(e) => setCfg(editingId, { resolve_instagram: e.target.checked })} />
+                Enrich with Instagram
+              </label>
+              {cfg.resolve_instagram && (
+                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer pl-6">
+                  <input type="checkbox" checked={cfg.instagram_business_discovery !== false} onChange={(e) => setCfg(editingId, { instagram_business_discovery: e.target.checked })} />
+                  Fetch public profile stats (business accounts)
+                </label>
+              )}
+              <p className="text-[11px] leading-snug text-muted-foreground">
+                Finds each contact&apos;s Instagram handle (from their Zoho profile, website, or search) and maps them to Instagram for inbound engagement. Read-only — Meta&apos;s API does not permit auto-following, liking, or DMing.
+              </p>
+            </div>
           </>)}
           {isSource && source === 'zoho_once' && (<>
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Record type</label>
