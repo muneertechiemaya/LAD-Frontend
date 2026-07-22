@@ -686,8 +686,12 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
         initialLeads = fileRows.map((r, i) => {
           const first = val(r, idx.first_name), last = val(r, idx.last_name);
           const full = val(r, idx.full_name) || [first, last].filter(Boolean).join(' ');
+          const email = val(r, idx.email), li = val(r, idx.linkedin_url), company = val(r, idx.company);
+          // Content-based sourceId so dedup is meaningful and rows never collide
+          // across imports (a plain row number "1" would dedup with other lists).
+          const key = (email || li || `${full}|${company}` || `row-${i + 1}`).trim().toLowerCase() || `row-${i + 1}`;
           return {
-            id: String(i + 1),
+            id: `file:${key}`,
             name: full || undefined,
             first_name: first || (full ? full.split(' ')[0] : undefined),
             last_name: last || (full ? full.split(' ').slice(1).join(' ') || undefined : undefined),
@@ -881,7 +885,11 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
           } : {}),
         },
         steps,
-        ...(initialLeads ? { initial_leads: initialLeads } : {}),
+        // Mark one-time imports as direct outreach so the backend saves the
+        // leads as source='direct_contact' (NOT 'linkedin_search') — otherwise
+        // the LinkedIn step treats the row id as a Unipile provider_id and
+        // skips the name+company resolution waterfall.
+        ...(initialLeads ? { initial_leads: initialLeads, campaign_type: 'direct_outreach' } : {}),
       };
 
       const res = await fetchWithTenant('/api/campaigns', {
