@@ -26,7 +26,7 @@ import 'reactflow/dist/style.css';
 import {
   Rocket, Loader2, Linkedin, Mail, MessageCircle, Phone, Clock,
   Users, Repeat, Search, X, HardDrive, Inbox, ListOrdered, BarChart3, GitFork, DatabaseZap,
-  Wand2, Trash2, Radar, Split, Plus,
+  Wand2, Trash2, Radar, Split, Plus, Upload, FileSpreadsheet,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,15 +48,89 @@ const edgeTypes = { labeled: LabeledEdge };
 
 // ─── Palette definitions ─────────────────────────────────────────────────────
 
-type SourceKey = 'zoho_recurring' | 'zoho_once' | 'ghl_once' | 'linkedin_search' | 'linkedin_signal';
+type SourceKey = 'zoho_recurring' | 'zoho_once' | 'ghl_once' | 'linkedin_search' | 'linkedin_signal' | 'file_import';
 
 const SOURCES: { key: SourceKey; label: string; sub: string; icon: React.ReactNode; chip: string; recurring?: boolean }[] = [
   { key: 'zoho_recurring', label: 'Zoho CRM — recurring', sub: 'Import new contacts daily', icon: <Repeat className="h-4 w-4 text-red-600" />, chip: 'bg-red-50 dark:bg-red-950/30', recurring: true },
   { key: 'zoho_once', label: 'Zoho CRM — one-time', sub: 'Import synced contacts now', icon: <Users className="h-4 w-4 text-red-600" />, chip: 'bg-red-50 dark:bg-red-950/30' },
   { key: 'ghl_once', label: 'GoHighLevel — one-time', sub: 'Import synced contacts now', icon: <Users className="h-4 w-4 text-blue-600" />, chip: 'bg-blue-50 dark:bg-blue-950/30' },
+  { key: 'file_import', label: 'File import (CSV / Excel)', sub: 'Upload a list and map columns', icon: <FileSpreadsheet className="h-4 w-4 text-emerald-600" />, chip: 'bg-emerald-50 dark:bg-emerald-950/30' },
   { key: 'linkedin_search', label: 'LinkedIn Search', sub: 'Find new leads by keywords', icon: <Search className="h-4 w-4 text-[#0077B5]" />, chip: 'bg-sky-50 dark:bg-sky-950/30' },
   { key: 'linkedin_signal', label: 'LinkedIn Signal Search', sub: 'Find leads from hiring/buying signals', icon: <Radar className="h-4 w-4 text-[#0077B5]" />, chip: 'bg-sky-50 dark:bg-sky-950/30', recurring: true },
 ];
+
+// Target fields the file columns map to. 'ignore' drops the column.
+const IMPORT_FIELDS = [
+  { value: 'ignore', label: '— Ignore —' },
+  { value: 'full_name', label: 'Full name' },
+  { value: 'first_name', label: 'First name' },
+  { value: 'last_name', label: 'Last name' },
+  { value: 'company', label: 'Company' },
+  { value: 'title', label: 'Job title' },
+  { value: 'location', label: 'Location' },
+  { value: 'email', label: 'Email' },
+  { value: 'phone', label: 'Phone / WhatsApp' },
+  { value: 'linkedin_url', label: 'LinkedIn URL' },
+  { value: 'website', label: 'Website' },
+];
+
+/** Quote-aware CSV → string[][]. */
+function parseCSVText(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [], cell = '', q = false;
+  const s = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (q) {
+      if (c === '"') { if (s[i + 1] === '"') { cell += '"'; i++; } else q = false; }
+      else cell += c;
+    } else if (c === '"') q = true;
+    else if (c === ',') { row.push(cell); cell = ''; }
+    else if (c === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
+    else cell += c;
+  }
+  if (cell.length || row.length) { row.push(cell); rows.push(row); }
+  return rows.filter((r) => r.some((v) => (v || '').trim()));
+}
+
+/** Parse a CSV/XLSX File → { headers, rows }. Excel via exceljs (dynamic import). */
+async function parseImportFile(file: File): Promise<{ headers: string[]; rows: string[][] }> {
+  const isExcel = /\.(xlsx|xls)$/i.test(file.name);
+  let grid: string[][];
+  if (isExcel) {
+    const { Workbook } = await import('exceljs');
+    const wb = new Workbook();
+    await wb.xlsx.load(await file.arrayBuffer());
+    const ws = wb.worksheets[0];
+    if (!ws) throw new Error('No worksheet found in the Excel file.');
+    grid = [];
+    ws.eachRow((r) => {
+      const vals = (r.values as any[]).slice(1).map((v) => (v == null ? '' : String(typeof v === 'object' && v.text ? v.text : v).trim()));
+      grid.push(vals);
+    });
+    grid = grid.filter((r) => r.some((v) => (v || '').trim()));
+  } else {
+    grid = parseCSVText(await file.text());
+  }
+  if (grid.length < 2) throw new Error('File needs a header row and at least one data row.');
+  return { headers: grid[0].map((h) => (h || '').trim()), rows: grid.slice(1) };
+}
+
+/** Suggest a target field for a header name. */
+function suggestImportField(header: string): string {
+  const s = (header || '').toLowerCase();
+  if (/full.?name|^name$|contact.?name/.test(s)) return 'full_name';
+  if (/first/.test(s)) return 'first_name';
+  if (/last|surname/.test(s)) return 'last_name';
+  if (/company|account|organi[sz]ation|employer/.test(s)) return 'company';
+  if (/title|designation|role|position|job/.test(s)) return 'title';
+  if (/location|city|country|region|geo|state/.test(s)) return 'location';
+  if (/e-?mail/.test(s)) return 'email';
+  if (/phone|mobile|whatsapp|contact.?number/.test(s)) return 'phone';
+  if (/linkedin/.test(s)) return 'linkedin_url';
+  if (/website|url|domain/.test(s) && !/linkedin/.test(s)) return 'website';
+  return 'ignore';
+}
 
 const COMING_SOON = [
   { label: 'Google Drive', icon: <HardDrive className="h-4 w-4 text-muted-foreground" /> },
@@ -299,6 +373,13 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
   // Multi-condition node: fields of the connected source (dynamic dropdown).
   const [mcFields, setMcFields] = useState<{ value: string; label: string }[]>(SWITCH_FIELDS);
   const [mcFieldsLoading, setMcFieldsLoading] = useState(false);
+  // File import source: parsed grid + header→field mapping.
+  const [fileName, setFileName] = useState('');
+  const [fileHeaders, setFileHeaders] = useState<string[]>([]);
+  const [fileRows, setFileRows] = useState<string[][]>([]);
+  const [fileMapping, setFileMapping] = useState<Record<number, string>>({});
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [fileParsing, setFileParsing] = useState(false);
 
   // Fresh canvas on mount. The store is SHARED with the chat-built workflow
   // preview (advanced-search-ai) — snapshot it and restore on close so opening
@@ -393,6 +474,24 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
 
   const setCfg = useCallback((id: string, patch: any) => {
     setConfigs((c) => ({ ...c, [id]: { ...(c[id] || {}), ...patch } }));
+  }, []);
+
+  const handleImportFile = useCallback(async (file: File) => {
+    setFileError(null); setFileParsing(true);
+    try {
+      const { headers, rows } = await parseImportFile(file);
+      setFileName(file.name);
+      setFileHeaders(headers);
+      setFileRows(rows);
+      const auto: Record<number, string> = {};
+      headers.forEach((h, i) => { auto[i] = suggestImportField(h); });
+      setFileMapping(auto);
+    } catch (e: any) {
+      setFileError(e?.message || 'Could not read the file.');
+      setFileName(''); setFileHeaders([]); setFileRows([]); setFileMapping({});
+    } finally {
+      setFileParsing(false);
+    }
   }, []);
 
   const mediaTypeFromName = (name: string): 'image' | 'video' | 'document' => {
@@ -526,6 +625,13 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     if (source === 'linkedin_signal' && !(configs[SOURCE_STEP_ID]?.signal_query || '').trim()) {
       setError('Describe the signal to search for in the LinkedIn Signal Search source.'); setEditingId(SOURCE_STEP_ID); return;
     }
+    if (source === 'file_import') {
+      if (!fileRows.length) { setError('Upload a CSV/Excel file in the File import source.'); setEditingId(SOURCE_STEP_ID); return; }
+      const mapped = Object.values(fileMapping);
+      if (!mapped.includes('full_name') && !(mapped.includes('first_name') || mapped.includes('last_name')) && !mapped.includes('company') && !mapped.includes('email') && !mapped.includes('linkedin_url')) {
+        setError('Map at least a name, company, email, or LinkedIn column in the File import source.'); setEditingId(SOURCE_STEP_ID); return;
+      }
+    }
     setLaunching(true);
 
     const perDayN = Math.max(1, parseInt(perDay, 10) || 25);
@@ -570,6 +676,31 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
             leadGenerationLimit: perDayN,
           },
         });
+      } else if (source === 'file_import') {
+        // File import: build initial_leads from the parsed grid + header mapping.
+        // Leads carrying name+company (but no LinkedIn URL) are resolved by the
+        // LinkedIn step's Unipile name+company waterfall at execution time.
+        const colOf = (f: string) => { const e = Object.entries(fileMapping).find(([, v]) => v === f); return e ? Number(e[0]) : -1; };
+        const idx = { full_name: colOf('full_name'), first_name: colOf('first_name'), last_name: colOf('last_name'), company: colOf('company'), title: colOf('title'), location: colOf('location'), email: colOf('email'), phone: colOf('phone'), linkedin_url: colOf('linkedin_url'), website: colOf('website') };
+        const val = (r: string[], i: number) => (i >= 0 ? (r[i] || '').trim() : '');
+        initialLeads = fileRows.map((r, i) => {
+          const first = val(r, idx.first_name), last = val(r, idx.last_name);
+          const full = val(r, idx.full_name) || [first, last].filter(Boolean).join(' ');
+          return {
+            id: String(i + 1),
+            name: full || undefined,
+            first_name: first || (full ? full.split(' ')[0] : undefined),
+            last_name: last || (full ? full.split(' ').slice(1).join(' ') || undefined : undefined),
+            company_name: val(r, idx.company) || undefined,
+            title: val(r, idx.title) || undefined,
+            location: val(r, idx.location) || undefined,
+            email: val(r, idx.email) || undefined,
+            phone: val(r, idx.phone) || undefined,
+            linkedin_url: val(r, idx.linkedin_url) || undefined,
+            website: val(r, idx.website) || undefined,
+          };
+        }).filter((l) => l.name || l.company_name || l.email || l.linkedin_url);
+        if (!initialLeads.length) throw new Error('No usable rows after mapping — check your column mapping.');
       } else {
         // One-time import: fetch synced contacts now → initial_leads at create.
         const limit = Math.min(500, Math.max(1, parseInt(srcCfg.import_count, 10) || 100));
@@ -843,6 +974,30 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">How many (max 500)</label>
               <Input type="number" value={cfg.import_count || '100'} onChange={(e) => setCfg(editingId, { import_count: e.target.value })} /></div>
           )}
+          {isSource && source === 'file_import' && (<>
+            <label className="flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border hover:border-emerald-400 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 cursor-pointer px-3 py-4 text-sm font-medium text-foreground transition-colors">
+              <Upload className="h-4 w-4 text-emerald-600" />
+              {fileParsing ? 'Reading file…' : fileName ? 'Choose a different file' : 'Upload CSV or Excel'}
+              <input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImportFile(f); e.target.value = ''; }} />
+            </label>
+            {fileError && <p className="text-xs text-red-600">{fileError}</p>}
+            {!!fileHeaders.length && (<>
+              <p className="text-xs text-muted-foreground">{fileName} · <span className="font-medium text-foreground">{fileRows.length}</span> row{fileRows.length !== 1 ? 's' : ''} · map columns below</p>
+              <div className="space-y-2 max-h-[46vh] overflow-y-auto pr-1">
+                {fileHeaders.map((h, i) => (
+                  <div key={i} className="grid grid-cols-2 gap-2 items-center">
+                    <span className="text-xs text-foreground truncate" title={h}>{h || `Column ${i + 1}`}</span>
+                    <select className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs"
+                      value={fileMapping[i] || 'ignore'}
+                      onChange={(e) => setFileMapping((m) => ({ ...m, [i]: e.target.value }))}>
+                      {IMPORT_FIELDS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
+                    </select>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[11px] leading-snug text-muted-foreground">Any combination works (name + company, company + title + location, name + location…). When a LinkedIn step runs, Unipile resolves each lead&apos;s LinkedIn profile from the mapped name + company.</p>
+            </>)}
+          </>)}
           {isSource && source === 'linkedin_search' && (
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Search keywords</label>
               <Input value={cfg.keywords || ''} onChange={(e) => setCfg(editingId, { keywords: e.target.value })} placeholder="e.g. VP Sales SaaS UAE" /></div>
