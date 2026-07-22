@@ -104,15 +104,18 @@ const Login: React.FC = () => {
 
   return (
       <div className="w-full max-w-[430px] p-8 rounded-2xl shadow-2xl border backdrop-blur-xl from-white to-gray-50 dark:from-[#1a2f6b] dark:to-gray-900 border-gray-200 dark:border-gray-700">
-        {/* Logo */}
-        <picture>
-          <source media="(prefers-color-scheme: dark)" srcSet="/MrLAD-logo-white.svg" />
-          <img
-            src="/MrLAD-logo.svg"
-            className="w-24 mx-auto mb-2 opacity-100 drop-shadow-md"
-            alt="logo"
-          />
-        </picture>
+        {/* Logo — driven by the app theme (.dark class), not OS prefers-color-scheme */}
+        <img
+          src="/MrLAD-logo.svg"
+          className="w-24 mx-auto mb-2 opacity-100 drop-shadow-md block dark:hidden"
+          alt="logo"
+        />
+        <img
+          src="/MrLAD-logo-white.svg"
+          className="w-24 mx-auto mb-2 opacity-100 drop-shadow-md hidden dark:block"
+          alt=""
+          aria-hidden="true"
+        />
         {/* Title */}
         <h2 className="text-center text-2xl font-bold text-gray-900 dark:text-white mb-1">
           👋 Welcome Back!
