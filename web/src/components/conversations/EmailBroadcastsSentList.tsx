@@ -246,52 +246,107 @@ function BroadcastRow({
         }
       }}
       aria-label={`Open broadcast: ${run.subject || '(no subject)'}`}
-      className="group flex items-center gap-3 px-4 py-2 border-b border-[#f0f0f0] dark:border-white/5 text-sm hover:shadow-[inset_1px_0_0_#dadce0,inset_-1px_0_0_#dadce0,0_1px_2px_0_rgba(60,64,67,.3),0_1px_3px_1px_rgba(60,64,67,.15)] dark:hover:shadow-[inset_1px_0_0_rgba(255,255,255,0.06),inset_-1px_0_0_rgba(255,255,255,0.06),0_1px_2px_0_rgba(0,0,0,.4)] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      className="group border-b border-[#f0f0f0] dark:border-white/5 text-sm hover:shadow-[inset_1px_0_0_#dadce0,inset_-1px_0_0_#dadce0,0_1px_2px_0_rgba(60,64,67,.3),0_1px_3px_1px_rgba(60,64,67,.15)] dark:hover:shadow-[inset_1px_0_0_rgba(255,255,255,0.06),inset_-1px_0_0_rgba(255,255,255,0.06),0_1px_2px_0_rgba(0,0,0,.4)] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
     >
-      {/* Avatar — sender initials */}
-      <div
-        className={`h-9 w-9 rounded-full bg-gradient-to-br ${avatarGradient(
-          run.from_email,
-        )} flex items-center justify-center text-white font-bold text-xs flex-shrink-0`}
-        aria-hidden
-      >
-        {avatarInitials(run.from_email)}
+      {/* ── Desktop view (>= sm) — Original untouched layout ── */}
+      <div className="hidden sm:flex items-center gap-3 px-4 py-2">
+        {/* Avatar — sender initials */}
+        <div
+          className={`h-9 w-9 rounded-full bg-gradient-to-br ${avatarGradient(
+            run.from_email,
+          )} flex items-center justify-center text-white font-bold text-xs flex-shrink-0`}
+          aria-hidden
+        >
+          {avatarInitials(run.from_email)}
+        </div>
+
+        {/* Sender + recipients pill */}
+        <div className="min-w-0 w-44 flex flex-col">
+          <span className="truncate font-medium text-[#202124] dark:text-[#e8eaed]">
+            {run.from_email}
+          </span>
+          <span className="mt-0.5">
+            <RecipientsPill run={run} />
+          </span>
+        </div>
+
+        {/* Subject + counts */}
+        <div className="flex-1 min-w-0 flex items-center gap-2">
+          <span className="truncate text-[#202124] dark:text-[#e8eaed]">
+            {run.subject || '(no subject)'}
+          </span>
+          <span className="text-xs text-[#5f6368] dark:text-[#9aa0a6] flex-shrink-0">
+            · {run.sent_count}/{run.recipient_count} sent
+            {run.failed_count > 0 && (
+              <span className="text-destructive ml-1">· {run.failed_count} failed</span>
+            )}
+            {run.unsubscribed_skipped_count > 0 && (
+              <span className="ml-1">· {run.unsubscribed_skipped_count} opted out</span>
+            )}
+          </span>
+        </div>
+
+        {/* Time + status */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Badge variant={statusBadgeVariant(run.status)}>
+            {statusLabel(run.status)}
+          </Badge>
+          <span className="text-xs text-[#5f6368] dark:text-[#9aa0a6] tabular-nums w-16 text-right">
+            {relativeTime(run.created_at)}
+          </span>
+        </div>
       </div>
 
-      {/* Sender + recipients pill */}
-      <div className="min-w-0 w-44 flex flex-col">
-        <span className="truncate font-medium text-[#202124] dark:text-[#e8eaed]">
-          {run.from_email}
-        </span>
-        <span className="mt-0.5">
-          <RecipientsPill run={run} />
-        </span>
-      </div>
+      {/* ── Mobile view (< sm) — 2-line compact responsive layout ── */}
+      <div className="flex sm:hidden items-start gap-3 px-3 py-2.5">
+        {/* Avatar */}
+        <div
+          className={`h-9 w-9 rounded-full bg-gradient-to-br ${avatarGradient(
+            run.from_email,
+          )} flex items-center justify-center text-white font-bold text-xs flex-shrink-0 mt-0.5`}
+          aria-hidden
+        >
+          {avatarInitials(run.from_email)}
+        </div>
 
-      {/* Subject + counts */}
-      <div className="flex-1 min-w-0 flex items-center gap-2">
-        <span className="truncate text-[#202124] dark:text-[#e8eaed]">
-          {run.subject || '(no subject)'}
-        </span>
-        <span className="text-xs text-[#5f6368] dark:text-[#9aa0a6] flex-shrink-0">
-          · {run.sent_count}/{run.recipient_count} sent
-          {run.failed_count > 0 && (
-            <span className="text-destructive ml-1">· {run.failed_count} failed</span>
-          )}
-          {run.unsubscribed_skipped_count > 0 && (
-            <span className="ml-1">· {run.unsubscribed_skipped_count} opted out</span>
-          )}
-        </span>
-      </div>
+        {/* Content container */}
+        <div className="flex-1 min-w-0 flex flex-col gap-1">
+          {/* Line 1: Sender (left) & Badge + Date (right) */}
+          <div className="flex items-center justify-between min-w-0">
+            <span className="truncate font-medium text-[#202124] dark:text-[#e8eaed] min-w-0 flex-1">
+              {run.from_email}
+            </span>
+            <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
+              <Badge variant={statusBadgeVariant(run.status)}>
+                {statusLabel(run.status)}
+              </Badge>
+              <span className="text-xs text-[#5f6368] dark:text-[#9aa0a6] tabular-nums">
+                {relativeTime(run.created_at)}
+              </span>
+            </div>
+          </div>
 
-      {/* Time + status */}
-      <div className="flex items-center gap-2 flex-shrink-0">
-        <Badge variant={statusBadgeVariant(run.status)}>
-          {statusLabel(run.status)}
-        </Badge>
-        <span className="text-xs text-[#5f6368] dark:text-[#9aa0a6] tabular-nums w-16 text-right">
-          {relativeTime(run.created_at)}
-        </span>
+          {/* Line 2: Subject (left) & Recipients pill + Sent counts (right) */}
+          <div className="flex items-center justify-between gap-2 min-w-0">
+            <span className="truncate text-[#202124] dark:text-[#e8eaed] min-w-0 flex-1">
+              {run.subject || '(no subject)'}
+            </span>
+            <div className="text-xs text-[#5f6368] dark:text-[#9aa0a6] flex-shrink-0 flex items-center gap-1.5 ml-auto">
+              <span className="flex-shrink-0">
+                <RecipientsPill run={run} />
+              </span>
+              <span className="flex-shrink-0 whitespace-nowrap">
+                · {run.sent_count}/{run.recipient_count} sent
+                {run.failed_count > 0 && (
+                  <span className="text-destructive ml-1">· {run.failed_count} failed</span>
+                )}
+                {run.unsubscribed_skipped_count > 0 && (
+                  <span className="ml-1">· {run.unsubscribed_skipped_count} opted out</span>
+                )}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
