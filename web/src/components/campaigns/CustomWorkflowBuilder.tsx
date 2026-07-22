@@ -26,7 +26,7 @@ import 'reactflow/dist/style.css';
 import {
   Rocket, Loader2, Linkedin, Mail, MessageCircle, Phone, Clock,
   Users, Repeat, Search, X, HardDrive, Inbox, ListOrdered, BarChart3, GitFork, DatabaseZap,
-  Wand2, Trash2, Radar,
+  Wand2, Trash2, Radar, Split, Plus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -122,6 +122,24 @@ const ZOHO_UPDATE_STEP_ID = 'zoho-update-node';
 // time; the media_generation step records it and the asset is attached to the
 // workflow's email/WhatsApp outreach at launch.
 const MEDIA_STEP_ID = 'media-gen-node';
+
+// "Multi-condition" (switch) node — routes each lead down one of N branches by
+// a lead field (if/elseif/else). Expands at launch into a `switch` step + one
+// guarded message step per branch (backend prunes the non-chosen branches).
+const MULTICOND_STEP_ID = 'multicond-node';
+const SWITCH_FIELDS = [
+  { value: 'tag', label: 'Tag' },
+  { value: 'title', label: 'Job title' },
+  { value: 'company', label: 'Company' },
+  { value: 'seniority', label: 'Seniority' },
+  { value: 'industry', label: 'Industry' },
+  { value: 'location', label: 'Location' },
+];
+const SWITCH_OPS = [
+  { value: 'equals', label: 'is' },
+  { value: 'contains', label: 'contains' },
+  { value: 'not_equals', label: 'is not' },
+];
 
 type DataPoint = { key: string; label: string; match: RegExp; needsChannel?: Channel };
 const WORKFLOW_DATA_POINTS: DataPoint[] = [
@@ -318,6 +336,21 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     setEditingId(MEDIA_STEP_ID);
   };
 
+  const addMultiCond = () => {
+    if (!workflowPreview.some((s) => s.id === MULTICOND_STEP_ID)) {
+      addWorkflowStep({ id: MULTICOND_STEP_ID, type: 'switch', channel: 'email', title: 'Multi-condition', description: '2 conditions + else' });
+      setCfg(MULTICOND_STEP_ID, {
+        field: 'tag',
+        cases: [
+          { op: 'equals', value: '', channel: 'email', subject: '', body: '' },
+          { op: 'equals', value: '', channel: 'email', subject: '', body: '' },
+        ],
+        default: { channel: 'email', subject: '', body: '' },
+      });
+    }
+    setEditingId(MULTICOND_STEP_ID);
+  };
+
   const setCfg = useCallback((id: string, patch: any) => {
     setConfigs((c) => ({ ...c, [id]: { ...(c[id] || {}), ...patch } }));
   }, []);
@@ -384,13 +417,19 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     if (!name.trim()) { setError('Name your workflow.'); return; }
     if (!source) { setError('Pick a contact source (first node).'); return; }
     const outreachSteps = workflowPreview.filter(
-      (s) => s.id !== SOURCE_STEP_ID && s.id !== FOLLOWUP_STEP_ID && s.id !== ANALYTICS_STEP_ID && s.id !== ZOHO_UPDATE_STEP_ID && s.id !== MEDIA_STEP_ID
+      (s) => s.id !== SOURCE_STEP_ID && s.id !== FOLLOWUP_STEP_ID && s.id !== ANALYTICS_STEP_ID && s.id !== ZOHO_UPDATE_STEP_ID && s.id !== MEDIA_STEP_ID && s.id !== MULTICOND_STEP_ID
     );
     const mediaNode = workflowPreview.find((s) => s.id === MEDIA_STEP_ID);
+    const multiCondNode = workflowPreview.find((s) => s.id === MULTICOND_STEP_ID);
     const followupNode = workflowPreview.find((s) => s.id === FOLLOWUP_STEP_ID);
     const analyticsNode = workflowPreview.find((s) => s.id === ANALYTICS_STEP_ID);
     const zohoUpdateNode = workflowPreview.find((s) => s.id === ZOHO_UPDATE_STEP_ID);
-    if (!outreachSteps.length && !followupNode) { setError('Add at least one outreach step.'); return; }
+    if (!outreachSteps.length && !followupNode && !multiCondNode) { setError('Add at least one outreach step.'); return; }
+    if (multiCondNode) {
+      const mcCases: any[] = (configs[MULTICOND_STEP_ID]?.cases) || [];
+      const validCases = mcCases.filter((c) => (c.value || '').trim() && (c.body || c.subject || '').trim());
+      if (!validCases.length) { setError('Add at least one condition (value + message) in the Multi-condition node.'); setEditingId(MULTICOND_STEP_ID); return; }
+    }
     if (analyticsNode && !(configs[ANALYTICS_STEP_ID]?.recipient || '').trim()) {
       setError('Add a recipient (email or WhatsApp number) in the Analytics report node.'); setEditingId(ANALYTICS_STEP_ID); return;
     }
@@ -533,6 +572,38 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
         }
       }
 
+      // "Multi-condition" node → a `switch` step + one guarded message step per
+      // branch (if/elseif/else). The backend evaluates the field, stamps the
+      // chosen branch, and prunes the rest so only one branch sends.
+      if (multiCondNode) {
+        const sc = configs[MULTICOND_STEP_ID] || {};
+        const switchId = `sw-${MULTICOND_STEP_ID}`;
+        const rawCases: any[] = Array.isArray(sc.cases) ? sc.cases : [];
+        const cases = rawCases.filter((c) => (c.value || '').trim() && (c.body || c.subject || '').trim());
+        const buildBranchStep = (b: any, branchKey: string, titlePrefix: string) => {
+          const guard = { run_if_branch: { switch_id: switchId, branch: branchKey } };
+          const ch = b.channel === 'linkedin' ? 'linkedin' : b.channel === 'whatsapp' ? 'whatsapp' : 'email';
+          if (ch === 'linkedin') return { type: 'linkedin_message', title: `${titlePrefix} (LinkedIn)`, channel: 'linkedin', order_index: order++, config: { message: (b.body || '').trim(), ...guard } };
+          if (ch === 'whatsapp') return { type: 'whatsapp_send', title: `${titlePrefix} (WhatsApp)`, channel: 'whatsapp', order_index: order++, config: { whatsappMessage: (b.body || '').trim(), ...guard } };
+          return { type: 'email_send', title: `${titlePrefix} (email)`, channel: 'email', order_index: order++, config: { subject: (b.subject || '').trim(), body: (b.body || '').trim(), ...guard } };
+        };
+        if (cases.length) {
+          steps.push({
+            type: 'switch', title: 'Multi-condition', channel: 'email', order_index: order++,
+            config: {
+              switch_id: switchId,
+              field: sc.field || 'tag',
+              cases: cases.map((c, i) => ({ op: c.op || 'equals', value: (c.value || '').trim(), branch: `b${i}` })),
+              default_branch: 'else',
+            },
+          });
+          cases.forEach((c, i) => steps.push(buildBranchStep(c, `b${i}`, `If ${sc.field || 'tag'} ${SWITCH_OPS.find((o) => o.value === (c.op || 'equals'))?.label || 'is'} "${(c.value || '').trim()}"`)));
+          if ((sc.default?.body || sc.default?.subject || '').trim()) {
+            steps.push(buildBranchStep(sc.default, 'else', 'Otherwise'));
+          }
+        }
+      }
+
       // "AI Media" node → records a media_generation step AND attaches the
       // generated asset to every email/WhatsApp step that has no media of its
       // own (the engine's email/whatsapp executors read config.media_url).
@@ -614,7 +685,8 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     const isRouter = !!editingId?.startsWith('rt-');
     const isZohoUpdate = editingId === ZOHO_UPDATE_STEP_ID;
     const isMedia = editingId === MEDIA_STEP_ID;
-    const isMacro = isFollowup || isAnalytics || isZohoUpdate || isMedia;
+    const isMultiCond = editingId === MULTICOND_STEP_ID;
+    const isMacro = isFollowup || isAnalytics || isZohoUpdate || isMedia || isMultiCond;
     const visual = isSource
       ? SOURCES.find((s) => s.key === source)
       : isFollowup
@@ -625,6 +697,8 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
             ? { icon: <DatabaseZap className="h-4 w-4 text-red-600" />, chip: 'bg-red-50 dark:bg-red-950/30' }
           : isMedia
             ? { icon: <Wand2 className="h-4 w-4 text-fuchsia-600" />, chip: 'bg-fuchsia-50 dark:bg-fuchsia-950/30' }
+          : isMultiCond
+            ? { icon: <Split className="h-4 w-4 text-amber-600" />, chip: 'bg-amber-50 dark:bg-amber-950/30' }
           : isRouter
             ? { icon: <GitFork className="h-4 w-4 text-rose-600" />, chip: 'bg-rose-50 dark:bg-rose-950/30' }
             : OUTREACH.find((o) => o.type === editingStep.type && !o.router);
@@ -635,7 +709,7 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
           <div className="min-w-0 flex-1">
             <div className="text-sm font-semibold text-foreground truncate">{editingStep.title}</div>
             <div className="text-xs text-muted-foreground">
-              {isSource ? 'Contact source settings' : isFollowup ? 'Follow-up sequence settings' : isAnalytics ? 'Report settings' : isZohoUpdate ? 'Field mapping' : isMedia ? 'AI media' : isRouter ? 'Fallback routing settings' : 'Step settings'}
+              {isSource ? 'Contact source settings' : isFollowup ? 'Follow-up sequence settings' : isAnalytics ? 'Report settings' : isZohoUpdate ? 'Field mapping' : isMedia ? 'AI media' : isMultiCond ? 'Branch by condition' : isRouter ? 'Fallback routing settings' : 'Step settings'}
             </div>
           </div>
           <button onClick={() => setEditingId(null)} className="h-7 w-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors flex-shrink-0">
@@ -875,6 +949,58 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
             </>);
           })()}
 
+          {isMultiCond && (() => {
+            const eid = editingId!;
+            const swField: string = cfg.field || 'tag';
+            const cases: any[] = Array.isArray(cfg.cases) && cfg.cases.length ? cfg.cases : [{ op: 'equals', value: '', channel: 'email', subject: '', body: '' }];
+            const def = cfg.default || { channel: 'email', subject: '', body: '' };
+            const fieldLabel = SWITCH_FIELDS.find((f) => f.value === swField)?.label || 'Tag';
+            const setCase = (i: number, patch: any) => { const next = cases.map((c, idx) => (idx === i ? { ...c, ...patch } : c)); setCfg(eid, { cases: next }); updateWorkflowStep(eid, { description: `${next.length} conditions + else` }); };
+            const addCase = () => { if (cases.length >= 6) return; const next = [...cases, { op: 'equals', value: '', channel: 'email', subject: '', body: '' }]; setCfg(eid, { cases: next }); updateWorkflowStep(eid, { description: `${next.length} conditions + else` }); };
+            const removeCase = (i: number) => { if (cases.length <= 1) return; const next = cases.filter((_, idx) => idx !== i); setCfg(eid, { cases: next }); updateWorkflowStep(eid, { description: `${next.length} conditions + else` }); };
+            const BranchBody = ({ b, onChange }: { b: any; onChange: (p: any) => void }) => (<>
+              <select className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs" value={b.channel || 'email'} onChange={(e) => onChange({ channel: e.target.value })}>
+                <option value="email">Send email</option><option value="linkedin">LinkedIn message</option><option value="whatsapp">WhatsApp</option>
+              </select>
+              {(b.channel || 'email') === 'email' && (
+                <Input value={b.subject || ''} onChange={(e) => onChange({ subject: e.target.value })} placeholder="Email subject" />
+              )}
+              <textarea className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs min-h-[56px]" value={b.body || ''} onChange={(e) => onChange({ body: e.target.value })} placeholder="Message (leave blank to let Mr LAD draft it)" />
+            </>);
+            return (<>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">Branch on</label>
+                <select className={field} value={swField} onChange={(e) => setCfg(eid, { field: e.target.value })}>
+                  {SWITCH_FIELDS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
+                </select>
+              </div>
+              {cases.map((c, i) => (
+                <div key={i} className="rounded-lg border border-border p-2.5 space-y-2 bg-muted/20">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-foreground">{i === 0 ? 'If' : 'Else if'}</span>
+                    {cases.length > 1 && <button type="button" onClick={() => removeCase(i)} className="text-muted-foreground hover:text-red-600"><Trash2 className="h-3.5 w-3.5" /></button>}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-muted-foreground shrink-0">{fieldLabel}</span>
+                    <select className="rounded-md border border-input bg-background px-1.5 py-1.5 text-xs" value={c.op || 'equals'} onChange={(e) => setCase(i, { op: e.target.value })}>
+                      {SWITCH_OPS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                    <Input value={c.value || ''} onChange={(e) => setCase(i, { value: e.target.value })} placeholder="e.g. person1" />
+                  </div>
+                  <BranchBody b={c} onChange={(p) => setCase(i, p)} />
+                </div>
+              ))}
+              {cases.length < 6 && (
+                <button type="button" onClick={addCase} className="inline-flex items-center gap-1.5 text-xs font-medium text-[#0b1957] hover:underline"><Plus className="h-3.5 w-3.5" /> Add condition</button>
+              )}
+              <div className="rounded-lg border border-dashed border-border p-2.5 space-y-2">
+                <span className="text-xs font-semibold text-foreground">Otherwise (else)</span>
+                <BranchBody b={def} onChange={(p) => setCfg(eid, { default: { ...def, ...p } })} />
+              </div>
+              <p className="text-[11px] leading-snug text-muted-foreground">Each lead runs exactly ONE branch — the first condition that matches, else the fallback. Conditions are checked top-to-bottom.</p>
+            </>);
+          })()}
+
           {!isSource && (editingStep.type === 'linkedin_connect' || editingStep.type === 'linkedin_message') && (<>
             {res.liTemplates.length > 0 && (
               <div className="space-y-1"><label className="text-xs font-medium text-foreground">LinkedIn template (optional)</label>
@@ -1097,6 +1223,27 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
               </div>
             ))}
             <p className="text-[11px] text-muted-foreground mt-3 leading-relaxed">Click a node on the canvas to configure it · hover a node and use ✕ to remove it.</p>
+            {/* Branching — route each lead to a different message by a field. */}
+            {(() => {
+              const added = workflowPreview.some((s) => s.id === MULTICOND_STEP_ID);
+              return (
+                <button onClick={addMultiCond}
+                  className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
+                    added ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20' : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                  }`}>
+                  <IconChip icon={<Split className="h-4 w-4 text-amber-600" />} chip="bg-amber-50 dark:bg-amber-950/30" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold text-foreground truncate">Multi-condition</span>
+                    <span className="block text-xs text-muted-foreground truncate">Route by tag / field → different message</span>
+                  </span>
+                  {added && (
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    </span>
+                  )}
+                </button>
+              );
+            })()}
           </div>
 
           {/* 3 · Follow-ups */}

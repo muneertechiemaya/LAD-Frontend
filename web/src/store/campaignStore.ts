@@ -49,6 +49,7 @@ const defaultStepData: Record<StepType, Partial<StepData>> = {
   followup_sequence: { title: 'Follow-up sequence' },
   analytics_report: { title: 'Analytics report' },
   zoho_update: { title: 'Update Zoho record' },
+  switch: { title: 'Multi-condition' },
 };
 export const useCampaignStore = create<CampaignState>((set, get) => ({
   name: '',
