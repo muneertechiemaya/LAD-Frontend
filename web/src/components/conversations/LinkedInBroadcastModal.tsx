@@ -17,13 +17,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   Megaphone, X, Users, Send, Loader2, RefreshCw, Plus,
-  CheckCircle, Clock, AlertCircle, Ban,
+  CheckCircle, Clock, AlertCircle, Ban, Briefcase,
 } from 'lucide-react';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
 
 const BASE = '/api/campaigns/linkedin-broadcast';
 
 interface Group { id: string; name: string; member_count: number; source_type?: string; }
+interface Campaign { campaign_id: string; name: string; accepted_count: number; not_responded_count: number; }
 interface Template { id: string; name: string; content?: string; category?: string; }
 interface Run {
   id: string; name?: string; status: string; recipient_count: number;
@@ -52,10 +53,13 @@ const STATUS_META: Record<string, { label: string; cls: string; icon: JSX.Elemen
 export default function LinkedInBroadcastModal({ onClose }: Props) {
   const [tab, setTab] = useState<'compose' | 'runs'>('compose');
   const [groups, setGroups] = useState<Group[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [runs, setRuns] = useState<Run[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<string>('');
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+  const [selectedCampaign, setSelectedCampaign] = useState<string>('');
+  const [excludeResponded, setExcludeResponded] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
@@ -73,14 +77,18 @@ export default function LinkedInBroadcastModal({ onClose }: Props) {
     const { data } = await getJson(`${BASE}/runs`);
     setRuns(Array.isArray(data.data) ? data.data : []);
   }, []);
+  const loadCampaigns = useCallback(async () => {
+    const { data } = await getJson(`${BASE}/campaigns`);
+    setCampaigns(Array.isArray(data.data) ? data.data : []);
+  }, []);
 
   useEffect(() => {
     (async () => {
       setLoading(true);
-      await Promise.all([loadGroups(), loadTemplates(), loadRuns()]);
+      await Promise.all([loadGroups(), loadCampaigns(), loadTemplates(), loadRuns()]);
       setLoading(false);
     })();
-  }, [loadGroups, loadTemplates, loadRuns]);
+  }, [loadGroups, loadCampaigns, loadTemplates, loadRuns]);
 
   // Poll runs while the Runs tab is open (drip progresses server-side).
   useEffect(() => {
@@ -89,16 +97,23 @@ export default function LinkedInBroadcastModal({ onClose }: Props) {
     return () => clearInterval(t);
   }, [tab, loadRuns]);
 
+  const chosenCampaign = campaigns.find((c) => c.campaign_id === selectedCampaign);
+  const audienceCount = chosenCampaign ? (excludeResponded ? chosenCampaign.not_responded_count : chosenCampaign.accepted_count) : 0;
+
   const createGroupFromAccepted = async () => {
-    const name = newGroupName.trim();
-    if (!name) return;
+    if (!selectedCampaign || !chosenCampaign) { setNotice({ kind: 'err', text: 'Select a campaign first' }); return; }
+    const suffix = excludeResponded ? ' — not responded' : ' — accepted';
+    const name = (newGroupName.trim() || `${chosenCampaign.name}${suffix}`).slice(0, 200);
     setBusy('create');
     setNotice(null);
     try {
       const created = await getJson(`${BASE}/groups`, { method: 'POST', body: JSON.stringify({ name, source_type: 'campaign_accepted' }) });
       if (!created.ok) { setNotice({ kind: 'err', text: created.data?.error || 'Could not create group' }); return; }
       const groupId = created.data.data.id;
-      const mat = await getJson(`${BASE}/groups/${groupId}/members`, { method: 'POST', body: JSON.stringify({ source: 'campaign_accepted' }) });
+      const mat = await getJson(`${BASE}/groups/${groupId}/members`, {
+        method: 'POST',
+        body: JSON.stringify({ source: 'campaign_accepted', campaign_id: selectedCampaign, exclude_responded: excludeResponded }),
+      });
       if (!mat.ok) { setNotice({ kind: 'err', text: mat.data?.error || 'Group created but adding members failed' }); }
       else {
         const { added, skipped, member_count } = mat.data.data;
@@ -219,14 +234,45 @@ export default function LinkedInBroadcastModal({ onClose }: Props) {
                 ) : (
                   <p className="text-xs text-muted-foreground mb-3">No broadcast groups yet. Create one from your accepted connections below.</p>
                 )}
-                <div className="flex gap-2">
-                  <input value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)}
-                    placeholder="New group from accepted connections"
-                    className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm" />
-                  <button onClick={createGroupFromAccepted} disabled={!newGroupName.trim() || busy === 'create'}
-                    className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-3 py-2 text-sm text-white disabled:opacity-50">
-                    {busy === 'create' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Build
-                  </button>
+                {/* Build a new group from a campaign's accepted connections */}
+                <div className="rounded-md border border-border p-3 space-y-2.5">
+                  <div className="text-xs font-semibold text-foreground flex items-center gap-1.5"><Briefcase className="h-3.5 w-3.5" /> New group from a campaign</div>
+                  {campaigns.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No campaigns with accepted LinkedIn connections yet.</p>
+                  ) : (
+                    <>
+                      <select value={selectedCampaign} onChange={(e) => { setSelectedCampaign(e.target.value); setNewGroupName(''); }}
+                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm">
+                        <option value="">Select a campaign…</option>
+                        {campaigns.map((c) => (
+                          <option key={c.campaign_id} value={c.campaign_id}>{c.name} ({c.accepted_count} accepted)</option>
+                        ))}
+                      </select>
+
+                      {chosenCampaign && (
+                        <div className="space-y-1.5 pl-0.5">
+                          <label className="flex items-center gap-2 text-sm cursor-pointer">
+                            <input type="radio" name="acceptance_filter" checked={!excludeResponded} onChange={() => setExcludeResponded(false)} />
+                            <span>All accepted <span className="text-muted-foreground">({chosenCampaign.accepted_count})</span></span>
+                          </label>
+                          <label className="flex items-center gap-2 text-sm cursor-pointer">
+                            <input type="radio" name="acceptance_filter" checked={excludeResponded} onChange={() => setExcludeResponded(true)} />
+                            <span>Accepted, excluding responded <span className="text-muted-foreground">({chosenCampaign.not_responded_count})</span></span>
+                          </label>
+                        </div>
+                      )}
+
+                      <input value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)}
+                        placeholder={chosenCampaign ? `${chosenCampaign.name}${excludeResponded ? ' — not responded' : ' — accepted'}` : 'Group name (optional)'}
+                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" />
+
+                      <button onClick={createGroupFromAccepted} disabled={!selectedCampaign || busy === 'create'}
+                        className="w-full inline-flex items-center justify-center gap-1 rounded-md bg-blue-600 px-3 py-2 text-sm text-white disabled:opacity-50">
+                        {busy === 'create' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                        Build group{chosenCampaign ? ` (${audienceCount})` : ''}
+                      </button>
+                    </>
+                  )}
                 </div>
               </section>
 
