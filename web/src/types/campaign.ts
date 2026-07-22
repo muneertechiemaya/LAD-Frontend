@@ -23,7 +23,10 @@ export type StepType =
   | 'delay'
   | 'condition'
   | 'start'
-  | 'end';
+  | 'end'
+  // Custom Workflow Builder macro nodes (visual-only; expanded/stripped at launch)
+  | 'followup_sequence'
+  | 'analytics_report';
 export type ConditionType = 
   | 'connected'           // LinkedIn: if connected
   | 'linkedin_replied'     // LinkedIn: if replied to message

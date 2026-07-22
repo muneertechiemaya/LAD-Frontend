@@ -23,6 +23,8 @@ function getBrandConfig(type: string) {
   if (type === 'delay')            return { bg: '#6b7280', border: '#4b5563', glow: 'rgba(107,114,128,0.25)' };
   if (type === 'tag')              return { bg: '#9ca3af', border: '#6b7280', glow: 'rgba(156,163,175,0.25)' };
   if (type === 'condition')        return { bg: '#8b5cf6', border: '#7c3aed', glow: 'rgba(139,92,246,0.25)' };
+  if (type === 'followup_sequence') return { bg: '#6366f1', border: '#4f46e5', glow: 'rgba(99,102,241,0.25)' };
+  if (type === 'analytics_report') return { bg: '#06b6d4', border: '#0891b2', glow: 'rgba(6,182,212,0.25)' };
   return                                  { bg: '#6366f1', border: '#4f46e5', glow: 'rgba(99,102,241,0.25)' };
 }
 
