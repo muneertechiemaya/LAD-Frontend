@@ -25,11 +25,14 @@ import ReactFlow, { ReactFlowProvider, useNodesState, useEdgesState } from 'reac
 import 'reactflow/dist/style.css';
 import {
   Rocket, Loader2, Linkedin, Mail, MessageCircle, Phone, Clock,
-  Users, Repeat, Search, X, HardDrive, Inbox, ListOrdered, BarChart3, GitFork,
+  Users, Repeat, Search, X, HardDrive, Inbox, ListOrdered, BarChart3, GitFork, DatabaseZap,
+  Wand2, Trash2, Radar, Split, Plus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
+import { useMediaBuilder } from '@/hooks/voice-agent/useMediaBuilder';
+import { MediaGenerationModal } from '@/components/voice-agent/MediaGenerationModal';
 import { useOnboardingStore, type WorkflowPreviewStep } from '@/store/onboardingStore';
 import type { StepType } from '@/types/campaign';
 import { useVoiceAgent } from '@lad/frontend-features/ai-icp-assistant';
@@ -45,13 +48,14 @@ const edgeTypes = { labeled: LabeledEdge };
 
 // ─── Palette definitions ─────────────────────────────────────────────────────
 
-type SourceKey = 'zoho_recurring' | 'zoho_once' | 'ghl_once' | 'linkedin_search';
+type SourceKey = 'zoho_recurring' | 'zoho_once' | 'ghl_once' | 'linkedin_search' | 'linkedin_signal';
 
 const SOURCES: { key: SourceKey; label: string; sub: string; icon: React.ReactNode; chip: string; recurring?: boolean }[] = [
   { key: 'zoho_recurring', label: 'Zoho CRM — recurring', sub: 'Import new contacts daily', icon: <Repeat className="h-4 w-4 text-red-600" />, chip: 'bg-red-50 dark:bg-red-950/30', recurring: true },
   { key: 'zoho_once', label: 'Zoho CRM — one-time', sub: 'Import synced contacts now', icon: <Users className="h-4 w-4 text-red-600" />, chip: 'bg-red-50 dark:bg-red-950/30' },
   { key: 'ghl_once', label: 'GoHighLevel — one-time', sub: 'Import synced contacts now', icon: <Users className="h-4 w-4 text-blue-600" />, chip: 'bg-blue-50 dark:bg-blue-950/30' },
   { key: 'linkedin_search', label: 'LinkedIn Search', sub: 'Find new leads by keywords', icon: <Search className="h-4 w-4 text-[#0077B5]" />, chip: 'bg-sky-50 dark:bg-sky-950/30' },
+  { key: 'linkedin_signal', label: 'LinkedIn Signal Search', sub: 'Find leads from hiring/buying signals', icon: <Radar className="h-4 w-4 text-[#0077B5]" />, chip: 'bg-sky-50 dark:bg-sky-950/30', recurring: true },
 ];
 
 const COMING_SOON = [
@@ -108,6 +112,68 @@ const FU_CHANNELS = [
   { value: 'email', label: 'Email' },
   { value: 'whatsapp', label: 'WhatsApp' },
 ];
+
+// "Update Zoho record" write-back node (single-instance) — maps workflow data
+// back onto the lead's Zoho record. Keys MUST match the backend
+// ZohoWritebackService.SOURCE_RESOLVERS.
+const ZOHO_UPDATE_STEP_ID = 'zoho-update-node';
+
+// "AI Media" node (single-instance) — generate a brand image/video at design
+// time; the media_generation step records it and the asset is attached to the
+// workflow's email/WhatsApp outreach at launch.
+const MEDIA_STEP_ID = 'media-gen-node';
+
+// "Multi-condition" (switch) node — routes each lead down one of N branches by
+// a lead field (if/elseif/else). Expands at launch into a `switch` step + one
+// guarded message step per branch (backend prunes the non-chosen branches).
+const MULTICOND_STEP_ID = 'multicond-node';
+const SWITCH_FIELDS = [
+  { value: 'tag', label: 'Tag' },
+  { value: 'title', label: 'Job title' },
+  { value: 'company', label: 'Company' },
+  { value: 'seniority', label: 'Seniority' },
+  { value: 'industry', label: 'Industry' },
+  { value: 'location', label: 'Location' },
+];
+const SWITCH_OPS = [
+  { value: 'equals', label: 'is' },
+  { value: 'contains', label: 'contains' },
+  { value: 'not_equals', label: 'is not' },
+];
+
+type DataPoint = { key: string; label: string; match: RegExp; needsChannel?: Channel };
+const WORKFLOW_DATA_POINTS: DataPoint[] = [
+  { key: 'full_name',          label: 'Full name',            match: /full.?name|^name$/i },
+  { key: 'first_name',         label: 'First name',           match: /first.?name/i },
+  { key: 'last_name',          label: 'Last name',            match: /last.?name/i },
+  { key: 'email',              label: 'Email',                match: /e-?mail/i },
+  { key: 'phone',              label: 'Phone',                match: /phone|mobile/i },
+  { key: 'company',            label: 'Company',              match: /company|account.?name|organi[sz]ation/i },
+  { key: 'title',              label: 'Job title',            match: /title|designation|\brole\b/i },
+  { key: 'linkedin_url',       label: 'LinkedIn URL',         match: /linkedin/i, needsChannel: 'linkedin' },
+  { key: 'instagram_url',      label: 'Instagram URL',        match: /instagram/i, needsChannel: 'instagram' },
+  { key: 'seniority',          label: 'Seniority',            match: /seniority|\blevel\b/i },
+  { key: 'department',         label: 'Department',           match: /department|division/i },
+  { key: 'location',           label: 'Location',             match: /location|\bcity\b|\bstate\b|country|address/i },
+  { key: 'industry',           label: 'Industry',             match: /industry|sector/i },
+  { key: 'headline',           label: 'Headline / summary',   match: /headline|about|summary|description/i },
+  { key: 'campaign_status',    label: 'Campaign status',      match: /lead.?status|\bstatus\b|\bstage\b/i },
+  { key: 'campaign_name',      label: 'Campaign name',        match: /campaign/i },
+  { key: 'last_channel',       label: 'Last channel used',    match: /channel|\bsource\b/i },
+  { key: 'last_activity_date', label: "Today's date",         match: /date|last.?activity|modified/i },
+  { key: 'notes',              label: 'Last message / notes', match: /\bnote|comment|remark/i },
+];
+
+/** Suggest a data-point for a Zoho field, sequence-aware (only maps a channel
+ *  source when that channel is actually in the workflow). Returns key or ''. */
+function suggestDataPoint(field: { api_name: string; field_label: string }, channels: Set<Channel>): string {
+  const hay = `${field.field_label || ''} ${field.api_name || ''}`;
+  for (const dp of WORKFLOW_DATA_POINTS) {
+    if (dp.needsChannel && !channels.has(dp.needsChannel)) continue;
+    if (dp.match.test(hay)) return dp.key;
+  }
+  return '';
+}
 
 // ─── Canvas (inner, needs ReactFlowProvider) ─────────────────────────────────
 
@@ -187,6 +253,16 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [launching, setLaunching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Zoho write-back node: the target module's field metadata (fetched lazily).
+  const [zohoFields, setZohoFields] = useState<any[]>([]);
+  const [zohoFieldsLoading, setZohoFieldsLoading] = useState(false);
+  const [zohoFieldsError, setZohoFieldsError] = useState<string | null>(null);
+  // AI Media node: generated-asset gallery + studio modal.
+  const mediaBuilder = useMediaBuilder();
+  const [showMediaStudio, setShowMediaStudio] = useState(false);
+  const [mediaGalleryOpen, setMediaGalleryOpen] = useState(false);
+  const [mediaImporting, setMediaImporting] = useState(false);
+  const [mediaError, setMediaError] = useState<string | null>(null);
 
   // Fresh canvas on mount. The store is SHARED with the chat-built workflow
   // preview (advanced-search-ai) — snapshot it and restore on close so opening
@@ -245,9 +321,92 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     setEditingId(ANALYTICS_STEP_ID);
   };
 
+  const addZohoUpdate = () => {
+    if (!workflowPreview.some((s) => s.id === ZOHO_UPDATE_STEP_ID)) {
+      addWorkflowStep({ id: ZOHO_UPDATE_STEP_ID, type: 'zoho_update', channel: 'linkedin', title: 'Update Zoho record', description: 'Write back to Contacts' });
+      setCfg(ZOHO_UPDATE_STEP_ID, { module: 'Contacts', map: {} });
+    }
+    setEditingId(ZOHO_UPDATE_STEP_ID);
+  };
+
+  const addMedia = () => {
+    if (!workflowPreview.some((s) => s.id === MEDIA_STEP_ID)) {
+      addWorkflowStep({ id: MEDIA_STEP_ID, type: 'media_generation', channel: 'email', title: 'AI Media', description: 'Generate media to attach' });
+    }
+    setEditingId(MEDIA_STEP_ID);
+  };
+
+  const addMultiCond = () => {
+    if (!workflowPreview.some((s) => s.id === MULTICOND_STEP_ID)) {
+      addWorkflowStep({ id: MULTICOND_STEP_ID, type: 'switch', channel: 'email', title: 'Multi-condition', description: '2 conditions + else' });
+      setCfg(MULTICOND_STEP_ID, {
+        field: 'tag',
+        cases: [
+          { op: 'equals', value: '', channel: 'email', subject: '', body: '' },
+          { op: 'equals', value: '', channel: 'email', subject: '', body: '' },
+        ],
+        default: { channel: 'email', subject: '', body: '' },
+      });
+    }
+    setEditingId(MULTICOND_STEP_ID);
+  };
+
   const setCfg = useCallback((id: string, patch: any) => {
     setConfigs((c) => ({ ...c, [id]: { ...(c[id] || {}), ...patch } }));
   }, []);
+
+  const mediaTypeFromName = (name: string): 'image' | 'video' | 'document' => {
+    const ext = (name.split('?')[0].split('.').pop() || '').toLowerCase();
+    if (['mp4', 'webm', 'mov', '3gp'].includes(ext)) return 'video';
+    if (['pdf', 'doc', 'docx'].includes(ext)) return 'document';
+    return 'image';
+  };
+
+  // Re-home a generated asset (MAGe 7-day signed URL) into the permanent
+  // campaign bucket and attach it to the AI Media node.
+  const importGenerated = useCallback(async (sourceUrl: string) => {
+    if (!sourceUrl) return;
+    setMediaImporting(true); setMediaError(null);
+    try {
+      const filename = decodeURIComponent(sourceUrl.split('?')[0].split('/').pop() || 'generated-media');
+      const res = await fetchWithTenant('/api/campaigns/media/import-generated', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source_url: sourceUrl, media_type: mediaTypeFromName(filename), filename }),
+      });
+      const d = await res.json();
+      if (!res.ok || !d?.url) throw new Error(d?.error || `Import failed (${res.status})`);
+      setCfg(MEDIA_STEP_ID, {
+        media_url: d.url,
+        media_type: d.media_type || mediaTypeFromName(d.filename || filename),
+        media_filename: d.filename || filename,
+      });
+      updateWorkflowStep(MEDIA_STEP_ID, { description: `${d.media_type || mediaTypeFromName(filename)} attached` });
+      setMediaGalleryOpen(false);
+    } catch (e: any) {
+      setMediaError(e?.message || 'Failed to import media');
+    } finally {
+      setMediaImporting(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setCfg, updateWorkflowStep]);
+
+  // Lazy-load Zoho field metadata when the write-back node is open, per module.
+  const zohoModule = configs[ZOHO_UPDATE_STEP_ID]?.module === 'Leads' ? 'Leads' : 'Contacts';
+  useEffect(() => {
+    if (editingId !== ZOHO_UPDATE_STEP_ID) return;
+    let cancelled = false;
+    setZohoFieldsLoading(true); setZohoFieldsError(null);
+    fetch(`/api/social-integration/zoho/fields?module=${zohoModule}`, { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled) return;
+        if (d?.success && Array.isArray(d.fields)) setZohoFields(d.fields);
+        else { setZohoFields([]); setZohoFieldsError(d?.error || 'Could not load Zoho fields'); }
+      })
+      .catch(() => { if (!cancelled) { setZohoFields([]); setZohoFieldsError('Could not load Zoho fields — is Zoho connected?'); } })
+      .finally(() => { if (!cancelled) setZohoFieldsLoading(false); });
+    return () => { cancelled = true; };
+  }, [editingId, zohoModule]);
 
   const editingStep = workflowPreview.find((s) => s.id === editingId) || null;
   const cfg = editingId ? (configs[editingId] || {}) : {};
@@ -258,13 +417,24 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     if (!name.trim()) { setError('Name your workflow.'); return; }
     if (!source) { setError('Pick a contact source (first node).'); return; }
     const outreachSteps = workflowPreview.filter(
-      (s) => s.id !== SOURCE_STEP_ID && s.id !== FOLLOWUP_STEP_ID && s.id !== ANALYTICS_STEP_ID
+      (s) => s.id !== SOURCE_STEP_ID && s.id !== FOLLOWUP_STEP_ID && s.id !== ANALYTICS_STEP_ID && s.id !== ZOHO_UPDATE_STEP_ID && s.id !== MEDIA_STEP_ID && s.id !== MULTICOND_STEP_ID
     );
+    const mediaNode = workflowPreview.find((s) => s.id === MEDIA_STEP_ID);
+    const multiCondNode = workflowPreview.find((s) => s.id === MULTICOND_STEP_ID);
     const followupNode = workflowPreview.find((s) => s.id === FOLLOWUP_STEP_ID);
     const analyticsNode = workflowPreview.find((s) => s.id === ANALYTICS_STEP_ID);
-    if (!outreachSteps.length && !followupNode) { setError('Add at least one outreach step.'); return; }
+    const zohoUpdateNode = workflowPreview.find((s) => s.id === ZOHO_UPDATE_STEP_ID);
+    if (!outreachSteps.length && !followupNode && !multiCondNode) { setError('Add at least one outreach step.'); return; }
+    if (multiCondNode) {
+      const mcCases: any[] = (configs[MULTICOND_STEP_ID]?.cases) || [];
+      const validCases = mcCases.filter((c) => (c.value || '').trim() && (c.body || c.subject || '').trim());
+      if (!validCases.length) { setError('Add at least one condition (value + message) in the Multi-condition node.'); setEditingId(MULTICOND_STEP_ID); return; }
+    }
     if (analyticsNode && !(configs[ANALYTICS_STEP_ID]?.recipient || '').trim()) {
       setError('Add a recipient (email or WhatsApp number) in the Analytics report node.'); setEditingId(ANALYTICS_STEP_ID); return;
+    }
+    if (source === 'linkedin_signal' && !(configs[SOURCE_STEP_ID]?.signal_query || '').trim()) {
+      setError('Describe the signal to search for in the LinkedIn Signal Search source.'); setEditingId(SOURCE_STEP_ID); return;
     }
     setLaunching(true);
 
@@ -295,6 +465,18 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
           config: {
             source: 'linkedin_search',
             leadGenerationFilters: { keywords: (srcCfg.keywords || '').trim() },
+            leadGenerationLimit: perDayN,
+          },
+        });
+      } else if (source === 'linkedin_signal') {
+        const titles = (srcCfg.decision_maker_titles || '')
+          .split(',').map((t: string) => t.trim()).filter(Boolean);
+        steps.push({
+          type: 'lead_generation', title: 'Signal Lead Search', channel: 'linkedin', order_index: order++,
+          config: {
+            source: 'signal_detection',
+            signal_query: (srcCfg.signal_query || '').trim(),
+            decision_maker_titles: titles,
             leadGenerationLimit: perDayN,
           },
         });
@@ -373,6 +555,75 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
         });
       }
 
+      // "Update Zoho record" write-back → a terminal zoho_update step. Runs
+      // when the lead reaches it (place it last); maps workflow data back onto
+      // the lead's original Zoho record via ZohoWritebackService.
+      if (zohoUpdateNode) {
+        const zc = configs[ZOHO_UPDATE_STEP_ID] || {};
+        const map: Record<string, string> = zc.map || {};
+        const mappings = Object.entries(map)
+          .filter(([, sourceKey]) => sourceKey)
+          .map(([zoho_field, source]) => ({ zoho_field, source }));
+        if (mappings.length) {
+          steps.push({
+            type: 'zoho_update', title: 'Update Zoho record', channel: 'linkedin', order_index: order++,
+            config: { module: zc.module === 'Leads' ? 'Leads' : 'Contacts', mappings },
+          });
+        }
+      }
+
+      // "Multi-condition" node → a `switch` step + one guarded message step per
+      // branch (if/elseif/else). The backend evaluates the field, stamps the
+      // chosen branch, and prunes the rest so only one branch sends.
+      if (multiCondNode) {
+        const sc = configs[MULTICOND_STEP_ID] || {};
+        const switchId = `sw-${MULTICOND_STEP_ID}`;
+        const rawCases: any[] = Array.isArray(sc.cases) ? sc.cases : [];
+        const cases = rawCases.filter((c) => (c.value || '').trim() && (c.body || c.subject || '').trim());
+        const buildBranchStep = (b: any, branchKey: string, titlePrefix: string) => {
+          const guard = { run_if_branch: { switch_id: switchId, branch: branchKey } };
+          const ch = b.channel === 'linkedin' ? 'linkedin' : b.channel === 'whatsapp' ? 'whatsapp' : 'email';
+          if (ch === 'linkedin') return { type: 'linkedin_message', title: `${titlePrefix} (LinkedIn)`, channel: 'linkedin', order_index: order++, config: { message: (b.body || '').trim(), ...guard } };
+          if (ch === 'whatsapp') return { type: 'whatsapp_send', title: `${titlePrefix} (WhatsApp)`, channel: 'whatsapp', order_index: order++, config: { whatsappMessage: (b.body || '').trim(), ...guard } };
+          return { type: 'email_send', title: `${titlePrefix} (email)`, channel: 'email', order_index: order++, config: { subject: (b.subject || '').trim(), body: (b.body || '').trim(), ...guard } };
+        };
+        if (cases.length) {
+          steps.push({
+            type: 'switch', title: 'Multi-condition', channel: 'email', order_index: order++,
+            config: {
+              switch_id: switchId,
+              field: sc.field || 'tag',
+              cases: cases.map((c, i) => ({ op: c.op || 'equals', value: (c.value || '').trim(), branch: `b${i}` })),
+              default_branch: 'else',
+            },
+          });
+          cases.forEach((c, i) => steps.push(buildBranchStep(c, `b${i}`, `If ${sc.field || 'tag'} ${SWITCH_OPS.find((o) => o.value === (c.op || 'equals'))?.label || 'is'} "${(c.value || '').trim()}"`)));
+          if ((sc.default?.body || sc.default?.subject || '').trim()) {
+            steps.push(buildBranchStep(sc.default, 'else', 'Otherwise'));
+          }
+        }
+      }
+
+      // "AI Media" node → records a media_generation step AND attaches the
+      // generated asset to every email/WhatsApp step that has no media of its
+      // own (the engine's email/whatsapp executors read config.media_url).
+      const mc = configs[MEDIA_STEP_ID] || {};
+      if (mediaNode && mc.media_url) {
+        for (const st of steps) {
+          if ((st.type === 'email_send' || st.type === 'whatsapp_send') && !st.config?.media_url) {
+            st.config = { ...(st.config || {}), media_url: mc.media_url, media_type: mc.media_type || 'image', media_filename: mc.media_filename || undefined };
+          }
+        }
+        // Record the asset as a media_generation step at the front (after source).
+        const mediaStep = {
+          type: 'media_generation', title: 'AI Media', channel: 'linkedin', order_index: 0,
+          config: { media_url: mc.media_url, media_type: mc.media_type || 'image', media_filename: mc.media_filename || undefined },
+        };
+        const insertAt = steps.length && steps[0].type === 'lead_generation' ? 1 : 0;
+        steps.splice(insertAt, 0, mediaStep);
+        steps.forEach((st, i) => { st.order_index = i; }); // renumber after splice
+      }
+
       const ac = configs[ANALYTICS_STEP_ID] || {};
 
       const payload: any = {
@@ -432,13 +683,22 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     const isFollowup = editingId === FOLLOWUP_STEP_ID;
     const isAnalytics = editingId === ANALYTICS_STEP_ID;
     const isRouter = !!editingId?.startsWith('rt-');
-    const isMacro = isFollowup || isAnalytics;
+    const isZohoUpdate = editingId === ZOHO_UPDATE_STEP_ID;
+    const isMedia = editingId === MEDIA_STEP_ID;
+    const isMultiCond = editingId === MULTICOND_STEP_ID;
+    const isMacro = isFollowup || isAnalytics || isZohoUpdate || isMedia || isMultiCond;
     const visual = isSource
       ? SOURCES.find((s) => s.key === source)
       : isFollowup
         ? { icon: <ListOrdered className="h-4 w-4 text-indigo-600" />, chip: 'bg-indigo-50 dark:bg-indigo-950/30' }
         : isAnalytics
           ? { icon: <BarChart3 className="h-4 w-4 text-cyan-600" />, chip: 'bg-cyan-50 dark:bg-cyan-950/30' }
+          : isZohoUpdate
+            ? { icon: <DatabaseZap className="h-4 w-4 text-red-600" />, chip: 'bg-red-50 dark:bg-red-950/30' }
+          : isMedia
+            ? { icon: <Wand2 className="h-4 w-4 text-fuchsia-600" />, chip: 'bg-fuchsia-50 dark:bg-fuchsia-950/30' }
+          : isMultiCond
+            ? { icon: <Split className="h-4 w-4 text-amber-600" />, chip: 'bg-amber-50 dark:bg-amber-950/30' }
           : isRouter
             ? { icon: <GitFork className="h-4 w-4 text-rose-600" />, chip: 'bg-rose-50 dark:bg-rose-950/30' }
             : OUTREACH.find((o) => o.type === editingStep.type && !o.router);
@@ -449,7 +709,7 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
           <div className="min-w-0 flex-1">
             <div className="text-sm font-semibold text-foreground truncate">{editingStep.title}</div>
             <div className="text-xs text-muted-foreground">
-              {isSource ? 'Contact source settings' : isFollowup ? 'Follow-up sequence settings' : isAnalytics ? 'Report settings' : isRouter ? 'Fallback routing settings' : 'Step settings'}
+              {isSource ? 'Contact source settings' : isFollowup ? 'Follow-up sequence settings' : isAnalytics ? 'Report settings' : isZohoUpdate ? 'Field mapping' : isMedia ? 'AI media' : isMultiCond ? 'Branch by condition' : isRouter ? 'Fallback routing settings' : 'Step settings'}
             </div>
           </div>
           <button onClick={() => setEditingId(null)} className="h-7 w-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors flex-shrink-0">
@@ -497,6 +757,23 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Search keywords</label>
               <Input value={cfg.keywords || ''} onChange={(e) => setCfg(editingId, { keywords: e.target.value })} placeholder="e.g. VP Sales SaaS UAE" /></div>
           )}
+          {isSource && source === 'linkedin_signal' && (<>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-foreground">Signal</label>
+              <textarea className={`${field} min-h-[70px]`} value={cfg.signal_query || ''}
+                onChange={(e) => setCfg(editingId, { signal_query: e.target.value })}
+                placeholder="e.g. companies posting jobs for Salesforce revenue operations" />
+              <p className="text-[11px] text-muted-foreground">Describe the hiring / buying signal to look for in LinkedIn posts.</p>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-foreground">Decision-maker title(s)</label>
+              <Input value={cfg.decision_maker_titles || ''}
+                onChange={(e) => setCfg(editingId, { decision_maker_titles: e.target.value })}
+                placeholder="e.g. VP Revenue Operations, Head of Sales" />
+              <p className="text-[11px] text-muted-foreground">Comma-separated. Who to enrol at the companies that match the signal.</p>
+            </div>
+            <p className="text-xs text-muted-foreground">Runs daily until the campaign ends, enrolling up to {perDay}/day of newly-signalled leads.</p>
+          </>)}
 
           {isFollowup && (() => {
             const eid = editingId!;
@@ -578,6 +855,151 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
             </div>
             <p className="text-xs text-muted-foreground">Sent by Mr LAD via your connected {(cfg.channel || 'email') === 'whatsapp' ? 'WhatsApp' : 'email'} account while the campaign is running.</p>
           </>)}
+
+          {isZohoUpdate && (() => {
+            const eid = editingId!;
+            const zmap: Record<string, string> = cfg.map || {};
+            // Channels present in the sequence → sequence-aware suggestions.
+            const channels = new Set<Channel>();
+            workflowPreview.forEach((s) => { const o = OUTREACH.find((x) => x.type === s.type); if (o) channels.add(o.channel); });
+            if (source === 'zoho_recurring' && configs[SOURCE_STEP_ID]?.resolve_instagram) channels.add('instagram');
+            const setMap = (api: string, val: string) => setCfg(eid, { map: { ...zmap, [api]: val } });
+            const applySuggestions = () => {
+              const next: Record<string, string> = { ...zmap };
+              zohoFields.forEach((f) => { if (!next[f.api_name]) { const s = suggestDataPoint(f, channels); if (s) next[f.api_name] = s; } });
+              setCfg(eid, { map: next });
+            };
+            const mappedCount = Object.values(zmap).filter(Boolean).length;
+            return (<>
+              <div className="space-y-1"><label className="text-xs font-medium text-foreground">Update which record</label>
+                <select className={field} value={cfg.module || 'Contacts'} onChange={(e) => { setCfg(eid, { module: e.target.value }); updateWorkflowStep(eid, { description: `Write back to ${e.target.value}` }); }}>
+                  <option value="Contacts">Contacts</option><option value="Leads">Leads</option>
+                </select></div>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-foreground">Field mapping{mappedCount ? ` (${mappedCount})` : ''}</label>
+                <button type="button" onClick={applySuggestions} disabled={!zohoFields.length}
+                  className="text-[11px] font-medium text-[#0b1957] hover:underline disabled:opacity-40 disabled:no-underline">Suggest mappings</button>
+              </div>
+              {zohoFieldsLoading && <p className="text-xs text-muted-foreground">Loading Zoho fields…</p>}
+              {zohoFieldsError && <p className="text-xs text-red-600">{zohoFieldsError}</p>}
+              {!zohoFieldsLoading && !zohoFieldsError && !zohoFields.length && <p className="text-xs text-muted-foreground">No writable fields returned. Connect Zoho and sync first.</p>}
+              {!!zohoFields.length && (
+                <div className="space-y-2 max-h-[46vh] overflow-y-auto pr-1">
+                  {zohoFields.map((f) => (
+                    <div key={f.api_name} className="grid grid-cols-2 gap-2 items-center">
+                      <span className="text-xs text-foreground truncate" title={`${f.field_label} (${f.data_type})`}>{f.field_label}</span>
+                      <select className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs" value={zmap[f.api_name] || ''} onChange={(e) => setMap(f.api_name, e.target.value)}>
+                        <option value="">— Skip —</option>
+                        {WORKFLOW_DATA_POINTS.map((dp) => <option key={dp.key} value={dp.key}>{dp.label}</option>)}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="text-[11px] leading-snug text-muted-foreground">Runs when a lead finishes the sequence — writes the mapped workflow &amp; enrichment data back onto its original Zoho record. Only non-empty values are written; blank fields are left untouched.</p>
+            </>);
+          })()}
+
+          {isMedia && (() => {
+            const m = cfg || {};
+            const imgs = mediaBuilder.galleryImages || [];
+            const vids = mediaBuilder.galleryVideos || [];
+            const openGallery = () => { setMediaGalleryOpen((o) => !o); if (!mediaGalleryOpen) mediaBuilder.fetchGallery?.().catch(() => {}); };
+            return (<>
+              {m.media_url ? (
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-foreground">Attached media</label>
+                  {m.media_type === 'video'
+                    ? <video src={m.media_url} controls className="w-full max-h-48 rounded-md bg-black" />
+                    : <img src={m.media_url} alt={m.media_filename || 'media'} className="w-full max-h-48 object-contain rounded-md border border-border" />}
+                  <button type="button" onClick={() => { setCfg(MEDIA_STEP_ID, { media_url: '', media_type: '', media_filename: '' }); updateWorkflowStep(MEDIA_STEP_ID, { description: 'Generate media to attach' }); }}
+                    className="inline-flex items-center gap-1.5 text-xs text-red-600 hover:underline"><Trash2 className="h-3.5 w-3.5" /> Remove</button>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">No media yet. Generate one in the AI Media Studio, then pick it below.</p>
+              )}
+              {mediaError && <p className="text-xs text-red-600">{mediaError}</p>}
+              <div className="flex flex-col gap-2">
+                <button type="button" onClick={() => setShowMediaStudio(true)}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-fuchsia-300 bg-fuchsia-50 dark:bg-fuchsia-950/30 px-3 py-2 text-sm font-medium text-fuchsia-700 hover:bg-fuchsia-100 dark:hover:bg-fuchsia-900/40">
+                  <Wand2 className="h-4 w-4" /> Open AI Media Studio</button>
+                <button type="button" onClick={openGallery} className="text-xs font-medium text-[#0b1957] hover:underline text-left">
+                  {mediaGalleryOpen ? 'Hide generated media' : 'Pick from generated media'}</button>
+              </div>
+              {mediaGalleryOpen && (
+                <div className="rounded-lg border border-border p-2 bg-muted/20">
+                  {mediaBuilder.loadingGallery ? (
+                    <p className="py-3 text-center text-xs text-muted-foreground flex items-center justify-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</p>
+                  ) : (!imgs.length && !vids.length) ? (
+                    <p className="py-3 text-center text-xs text-muted-foreground">No generated media yet — use the studio first.</p>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-2 max-h-52 overflow-y-auto">
+                      {imgs.map((it: any, i: number) => { const u = it?.url || it?.signed_url || (typeof it === 'string' ? it : ''); return u ? (
+                        <img key={`gi-${i}`} src={u} alt="generated" onClick={() => importGenerated(u)} className="h-16 w-full object-cover rounded cursor-pointer hover:ring-2 ring-fuchsia-400" />
+                      ) : null; })}
+                      {vids.map((it: any, i: number) => { const u = it?.url || it?.signed_url || (typeof it === 'string' ? it : ''); return u ? (
+                        <video key={`gv-${i}`} src={u} muted onClick={() => importGenerated(u)} className="h-16 w-full object-cover rounded cursor-pointer hover:ring-2 ring-fuchsia-400" />
+                      ) : null; })}
+                    </div>
+                  )}
+                  {mediaImporting && <p className="mt-2 text-xs text-muted-foreground flex items-center gap-1.5"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Attaching…</p>}
+                </div>
+              )}
+              <p className="text-[11px] leading-snug text-muted-foreground">The asset attaches to your email &amp; WhatsApp steps automatically. Email inlines images only.</p>
+            </>);
+          })()}
+
+          {isMultiCond && (() => {
+            const eid = editingId!;
+            const swField: string = cfg.field || 'tag';
+            const cases: any[] = Array.isArray(cfg.cases) && cfg.cases.length ? cfg.cases : [{ op: 'equals', value: '', channel: 'email', subject: '', body: '' }];
+            const def = cfg.default || { channel: 'email', subject: '', body: '' };
+            const fieldLabel = SWITCH_FIELDS.find((f) => f.value === swField)?.label || 'Tag';
+            const setCase = (i: number, patch: any) => { const next = cases.map((c, idx) => (idx === i ? { ...c, ...patch } : c)); setCfg(eid, { cases: next }); updateWorkflowStep(eid, { description: `${next.length} conditions + else` }); };
+            const addCase = () => { if (cases.length >= 6) return; const next = [...cases, { op: 'equals', value: '', channel: 'email', subject: '', body: '' }]; setCfg(eid, { cases: next }); updateWorkflowStep(eid, { description: `${next.length} conditions + else` }); };
+            const removeCase = (i: number) => { if (cases.length <= 1) return; const next = cases.filter((_, idx) => idx !== i); setCfg(eid, { cases: next }); updateWorkflowStep(eid, { description: `${next.length} conditions + else` }); };
+            const BranchBody = ({ b, onChange }: { b: any; onChange: (p: any) => void }) => (<>
+              <select className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs" value={b.channel || 'email'} onChange={(e) => onChange({ channel: e.target.value })}>
+                <option value="email">Send email</option><option value="linkedin">LinkedIn message</option><option value="whatsapp">WhatsApp</option>
+              </select>
+              {(b.channel || 'email') === 'email' && (
+                <Input value={b.subject || ''} onChange={(e) => onChange({ subject: e.target.value })} placeholder="Email subject" />
+              )}
+              <textarea className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs min-h-[56px]" value={b.body || ''} onChange={(e) => onChange({ body: e.target.value })} placeholder="Message (leave blank to let Mr LAD draft it)" />
+            </>);
+            return (<>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">Branch on</label>
+                <select className={field} value={swField} onChange={(e) => setCfg(eid, { field: e.target.value })}>
+                  {SWITCH_FIELDS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
+                </select>
+              </div>
+              {cases.map((c, i) => (
+                <div key={i} className="rounded-lg border border-border p-2.5 space-y-2 bg-muted/20">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-foreground">{i === 0 ? 'If' : 'Else if'}</span>
+                    {cases.length > 1 && <button type="button" onClick={() => removeCase(i)} className="text-muted-foreground hover:text-red-600"><Trash2 className="h-3.5 w-3.5" /></button>}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-muted-foreground shrink-0">{fieldLabel}</span>
+                    <select className="rounded-md border border-input bg-background px-1.5 py-1.5 text-xs" value={c.op || 'equals'} onChange={(e) => setCase(i, { op: e.target.value })}>
+                      {SWITCH_OPS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                    <Input value={c.value || ''} onChange={(e) => setCase(i, { value: e.target.value })} placeholder="e.g. person1" />
+                  </div>
+                  <BranchBody b={c} onChange={(p) => setCase(i, p)} />
+                </div>
+              ))}
+              {cases.length < 6 && (
+                <button type="button" onClick={addCase} className="inline-flex items-center gap-1.5 text-xs font-medium text-[#0b1957] hover:underline"><Plus className="h-3.5 w-3.5" /> Add condition</button>
+              )}
+              <div className="rounded-lg border border-dashed border-border p-2.5 space-y-2">
+                <span className="text-xs font-semibold text-foreground">Otherwise (else)</span>
+                <BranchBody b={def} onChange={(p) => setCfg(eid, { default: { ...def, ...p } })} />
+              </div>
+              <p className="text-[11px] leading-snug text-muted-foreground">Each lead runs exactly ONE branch — the first condition that matches, else the fallback. Conditions are checked top-to-bottom.</p>
+            </>);
+          })()}
 
           {!isSource && (editingStep.type === 'linkedin_connect' || editingStep.type === 'linkedin_message') && (<>
             {res.liTemplates.length > 0 && (
@@ -801,6 +1223,27 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
               </div>
             ))}
             <p className="text-[11px] text-muted-foreground mt-3 leading-relaxed">Click a node on the canvas to configure it · hover a node and use ✕ to remove it.</p>
+            {/* Branching — route each lead to a different message by a field. */}
+            {(() => {
+              const added = workflowPreview.some((s) => s.id === MULTICOND_STEP_ID);
+              return (
+                <button onClick={addMultiCond}
+                  className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
+                    added ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20' : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                  }`}>
+                  <IconChip icon={<Split className="h-4 w-4 text-amber-600" />} chip="bg-amber-50 dark:bg-amber-950/30" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold text-foreground truncate">Multi-condition</span>
+                    <span className="block text-xs text-muted-foreground truncate">Route by tag / field → different message</span>
+                  </span>
+                  {added && (
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    </span>
+                  )}
+                </button>
+              );
+            })()}
           </div>
 
           {/* 3 · Follow-ups */}
@@ -860,6 +1303,64 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
               );
             })()}
           </div>
+
+          {/* ── 5. AI Media ───────────────────────────────────────────────── */}
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="h-5 w-5 rounded-full bg-[#0b1957] text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">5</span>
+              <span className="text-sm font-semibold text-foreground">AI Media</span>
+            </div>
+            <p className="text-xs text-muted-foreground mb-2.5 ml-7">Generate a brand image or video to attach to outreach</p>
+            {(() => {
+              const added = workflowPreview.some((s) => s.id === MEDIA_STEP_ID);
+              return (
+                <button onClick={addMedia}
+                  className={`relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
+                    added ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20' : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                  }`}>
+                  <IconChip icon={<Wand2 className="h-4 w-4 text-fuchsia-600" />} chip="bg-fuchsia-50 dark:bg-fuchsia-950/30" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold text-foreground truncate">Generate media</span>
+                    <span className="block text-xs text-muted-foreground truncate">Image / video · attaches to email &amp; WhatsApp</span>
+                  </span>
+                  {added && (
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    </span>
+                  )}
+                </button>
+              );
+            })()}
+          </div>
+
+          {/* ── 6. Sync back to CRM ───────────────────────────────────────── */}
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="h-5 w-5 rounded-full bg-[#0b1957] text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">6</span>
+              <span className="text-sm font-semibold text-foreground">Sync back to Zoho</span>
+            </div>
+            <p className="text-xs text-muted-foreground mb-2.5 ml-7">Write campaign data back onto the Zoho contact</p>
+            {(() => {
+              const added = workflowPreview.some((s) => s.id === ZOHO_UPDATE_STEP_ID);
+              return (
+                <button onClick={addZohoUpdate}
+                  className={`relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
+                    added ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20' : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                  }`}>
+                  <IconChip icon={<DatabaseZap className="h-4 w-4 text-red-600" />} chip="bg-red-50 dark:bg-red-950/30" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold text-foreground truncate">Update Zoho record</span>
+                    <span className="block text-xs text-muted-foreground truncate">Map fields · write-back on completion</span>
+                  </span>
+                  {added && (
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    </span>
+                  )}
+                </button>
+              );
+            })()}
+          </div>
         </div>
 
         {/* Canvas */}
@@ -876,6 +1377,14 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
           {renderEditor()}
         </div>
       </div>
+
+      {/* AI Media Studio (MAGe) — generate assets, then pick from the gallery. */}
+      {showMediaStudio && (
+        <MediaGenerationModal
+          isOpen={showMediaStudio}
+          onClose={() => { setShowMediaStudio(false); setMediaGalleryOpen(true); mediaBuilder.fetchGallery?.().catch(() => {}); }}
+        />
+      )}
     </div>
   );
 }
