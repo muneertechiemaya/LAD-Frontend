@@ -503,10 +503,10 @@ function ComposeBroadcastDialog({
                   role="tab"
                   aria-selected={mode === 'manual'}
                   onClick={() => setMode('manual')}
-                  className={`px-2 py-1 rounded ${
+                  className={`px-2 py-1 rounded transition-colors ${
                     mode === 'manual'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:bg-accent'
+                      ? 'bg-primary text-primary-foreground font-medium'
+                      : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                   }`}
                 >
                   Manual list
@@ -516,10 +516,10 @@ function ComposeBroadcastDialog({
                   role="tab"
                   aria-selected={mode === 'group'}
                   onClick={() => setMode('group')}
-                  className={`px-2 py-1 rounded ${
+                  className={`px-2 py-1 rounded transition-colors ${
                     mode === 'group'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:bg-accent'
+                      ? 'bg-primary text-primary-foreground font-medium'
+                      : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                   }`}
                 >
                   From group
