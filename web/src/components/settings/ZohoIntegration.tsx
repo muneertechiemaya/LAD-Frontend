@@ -40,8 +40,6 @@ const ZOHO_REGIONS: { value: string; label: string }[] = [
   { value: 'cn', label: 'China (.com.cn)' },
 ];
 
-type RecordType = 'contacts' | 'leads' | 'deals' | 'tasks';
-
 interface ZohoAccount {
   connected: boolean;
   region?: string;
@@ -51,32 +49,8 @@ interface ZohoAccount {
   last_synced?: string;
   counts?: { contacts?: number; leads?: number; deals?: number; tasks?: number } | null;
   auto_sync_enabled?: boolean;
-}
-
-interface CRMRecord {
-  id: string;
-  source_id: string;
-  name?: string | null;
-  email?: string | null;
-  phone?: string | null;
-  company_name?: string | null;
-  title?: string | null;
-  tags?: string[];
-  synced_at?: string;
-  // deal fields
-  deal_name?: string | null;
-  stage?: string | null;
-  amount?: number | null;
-  closing_date?: string | null;
-  account_name?: string | null;
-  contact_name?: string | null;
-  // task fields
-  subject?: string | null;
-  priority?: string | null;
-  due_date?: string | null;
-  closed_time?: string | null;
-  related_to?: string | null;
-  status?: string | null;
+  syncing?: boolean;
+  sync_error?: string | Record<string, string> | null;
 }
 
 export const ZohoIntegration: React.FC = () => {
@@ -91,14 +65,7 @@ export const ZohoIntegration: React.FC = () => {
   const [success, setSuccess] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<{ contacts?: number; success: boolean } | null>(null);
 
-  // Records browser
-  const [recordType, setRecordType] = useState<RecordType>('contacts');
-  const [records, setRecords] = useState<CRMRecord[]>([]);
-  const [recordsTotal, setRecordsTotal] = useState(0);
-  const [recordsPage, setRecordsPage] = useState(1);
-  const [recordsSearch, setRecordsSearch] = useState('');
-  const [recordsLoading, setRecordsLoading] = useState(false);
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollingRef = useRef(false);
 
   // Push panel
   const [pushOpen, setPushOpen] = useState(false);
@@ -182,8 +149,6 @@ export const ZohoIntegration: React.FC = () => {
       const res = await fetchWithTenant(`${ZOHO_API}/disconnect`, { method: 'POST' });
       if (res.ok) {
         setAccount({ connected: false });
-        setRecords([]);
-        setRecordsTotal(0);
         setSuccess('Zoho disconnected.');
       } else {
         setError('Failed to disconnect');
@@ -216,6 +181,58 @@ export const ZohoIntegration: React.FC = () => {
     }
   };
 
+  const formatSyncError = (e: unknown): string => {
+    if (!e) return '';
+    if (typeof e === 'string') return e;
+    if (typeof e === 'object') {
+      return Object.entries(e as Record<string, string>).map(([k, v]) => `${k} (${v})`).join('; ');
+    }
+    return String(e);
+  };
+
+  // Poll /status until the background sync finishes, then show counts + refresh.
+  const pollSyncStatus = useCallback(() => {
+    if (pollingRef.current) return; // already polling
+    pollingRef.current = true;
+    let tries = 0;
+    const tick = async () => {
+      tries += 1;
+      try {
+        const res = await fetchWithTenant(`${ZOHO_API}/status`);
+        const data = await res.json();
+        const d = data?.data;
+        if (d && !d.syncing) {
+          pollingRef.current = false;
+          setSyncing(false);
+          setAccount(d);
+          if (d.sync_error) {
+            setError(`Some modules failed to sync: ${formatSyncError(d.sync_error)}`);
+          } else {
+            const c = d.counts || {};
+            setSuccess(`Synced ${c.contacts || 0} contacts, ${c.leads || 0} leads, ${c.deals || 0} deals, ${c.tasks || 0} tasks.`);
+          }
+          return;
+        }
+      } catch { /* transient — keep polling */ }
+      if (tries < 120) {
+        setTimeout(tick, 3000); // poll up to ~6 min
+      } else {
+        pollingRef.current = false;
+        setSyncing(false);
+        setError('Sync is taking longer than expected — check back shortly, then refresh.');
+      }
+    };
+    setTimeout(tick, 3000);
+  }, []);
+
+  // If a sync is already running when the card opens, track it to completion.
+  useEffect(() => {
+    if (account?.syncing && !pollingRef.current) {
+      setSyncing(true);
+      pollSyncStatus();
+    }
+  }, [account?.syncing, pollSyncStatus]);
+
   const handleSync = async () => {
     setSyncing(true);
     setError(null);
@@ -224,53 +241,19 @@ export const ZohoIntegration: React.FC = () => {
       const res = await fetchWithTenant(`${ZOHO_API}/sync`, { method: 'POST' });
       const data = await res.json();
       if (res.ok && data?.success) {
-        const c = data?.data?.synced || {};
-        setSuccess(`Synced ${c.contacts || 0} contacts, ${c.leads || 0} leads, ${c.deals || 0} deals, ${c.tasks || 0} tasks.`);
-        checkStatus();
-        loadRecords(recordType, 1, recordsSearch);
+        // Background sync: server returns immediately; poll for completion.
+        setSuccess('Sync started — pulling from Zoho. This can take a minute for large accounts…');
+        pollSyncStatus();
       } else {
+        setSyncing(false);
         setError(data?.error || 'Sync failed');
       }
     } catch {
-      setError('Sync failed');
-    } finally {
       setSyncing(false);
+      setError('Sync failed');
     }
   };
 
-  const loadRecords = useCallback(async (type: RecordType, page: number, search: string) => {
-    setRecordsLoading(true);
-    try {
-      const q = new URLSearchParams({ type, page: String(page), limit: '50' });
-      if (search) q.set('search', search);
-      const res = await fetchWithTenant(`${ZOHO_API}/records/local?${q.toString()}`);
-      const data = await res.json();
-      if (res.ok && data?.success) {
-        setRecords(data.data || []);
-        setRecordsTotal(data.total || 0);
-        setRecordsPage(page);
-      } else {
-        setRecords([]);
-        setRecordsTotal(0);
-      }
-    } catch {
-      setRecords([]);
-      setRecordsTotal(0);
-    } finally {
-      setRecordsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (account?.connected) loadRecords(recordType, 1, '');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [account?.connected, recordType]);
-
-  const onSearchChange = (value: string) => {
-    setRecordsSearch(value);
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    searchTimerRef.current = setTimeout(() => loadRecords(recordType, 1, value), 350);
-  };
 
   const handlePush = async () => {
     if (!pushForm.email) {
@@ -322,7 +305,6 @@ export const ZohoIntegration: React.FC = () => {
     }
   };
 
-  const totalPages = Math.max(1, Math.ceil(recordsTotal / 50));
 
   if (loading) {
     return (
@@ -521,110 +503,20 @@ export const ZohoIntegration: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Synced records browser */}
+      {/* Records live on the CRM page now */}
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex gap-1">
-              {(['contacts', 'leads', 'deals', 'tasks'] as RecordType[]).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => { setRecordType(t); setRecordsSearch(''); }}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium capitalize flex items-center gap-1.5 transition-colors ${
-                    recordType === t ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'
-                  }`}
-                >
-                  {t === 'contacts' && <Contact className="h-3.5 w-3.5" />}
-                  {t === 'leads' && <Users className="h-3.5 w-3.5" />}
-                  {t === 'deals' && <Briefcase className="h-3.5 w-3.5" />}
-                  {t === 'tasks' && <CheckSquare className="h-3.5 w-3.5" />}
-                  {t}
-                </button>
-              ))}
-            </div>
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input className="pl-8" placeholder={`Search ${recordType}…`} value={recordsSearch} onChange={(e) => onSearchChange(e.target.value)} />
-            </div>
+        <CardContent className="py-5 flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <div className="text-sm font-medium text-foreground">Browse synced records</div>
+            <p className="text-sm text-muted-foreground">
+              Your Zoho Contacts, Leads, Deals, and Tasks are on the CRM page.
+            </p>
           </div>
-        </CardHeader>
-        <CardContent>
-          {recordsLoading ? (
-            <div className="flex items-center justify-center py-10 text-muted-foreground">
-              <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading…
-            </div>
-          ) : records.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground text-sm">
-              No {recordType} synced yet. Click “Sync from Zoho” to pull them in.
-            </div>
-          ) : (
-            <ScrollArea className="max-h-[420px]">
-              <div className="divide-y divide-border">
-                {records.map((r) => (
-                  <div key={r.id} className="py-2.5 flex items-center justify-between gap-3">
-                    {recordType === 'deals' ? (
-                      <>
-                        <div className="min-w-0">
-                          <div className="text-sm font-medium text-foreground truncate">{r.deal_name || 'Untitled deal'}</div>
-                          <div className="text-xs text-muted-foreground truncate">
-                            {[r.account_name, r.contact_name].filter(Boolean).join(' · ') || '—'}
-                          </div>
-                        </div>
-                        <div className="text-right flex-shrink-0">
-                          {r.stage && <Badge variant="secondary">{r.stage}</Badge>}
-                          {r.amount != null && <div className="text-sm font-medium text-foreground mt-1">{r.amount.toLocaleString()}</div>}
-                        </div>
-                      </>
-                    ) : recordType === 'tasks' ? (
-                      <>
-                        <div className="min-w-0">
-                          <div className="text-sm font-medium text-foreground truncate">{r.subject || 'Untitled task'}</div>
-                          <div className="text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5">
-                            {r.related_to && <span className="truncate">{r.related_to}</span>}
-                            {r.due_date && <span>Due {new Date(r.due_date).toLocaleDateString()}</span>}
-                            {r.priority && <span>{r.priority} priority</span>}
-                          </div>
-                        </div>
-                        {r.status && (
-                          <Badge variant="secondary" className="flex-shrink-0">{r.status}</Badge>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        <div className="min-w-0">
-                          <div className="text-sm font-medium text-foreground truncate">{r.name || '—'}</div>
-                          <div className="text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5">
-                            {r.email && <span className="inline-flex items-center gap-1"><Mail className="h-3 w-3" />{r.email}</span>}
-                            {r.phone && <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3" />{r.phone}</span>}
-                            {r.company_name && <span className="inline-flex items-center gap-1"><Building2 className="h-3 w-3" />{r.company_name}</span>}
-                          </div>
-                        </div>
-                        {r.title && <span className="text-xs text-muted-foreground flex-shrink-0">{r.title}</span>}
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </ScrollArea>
-          )}
-
-          {recordsTotal > 50 && (
-            <div className="flex items-center justify-between pt-3 mt-2 border-t border-border">
-              <span className="text-xs text-muted-foreground">
-                Page {recordsPage} of {totalPages} · {recordsTotal} {recordType}
-              </span>
-              <div className="flex gap-1">
-                <Button variant="outline" size="sm" disabled={recordsPage <= 1}
-                  onClick={() => loadRecords(recordType, recordsPage - 1, recordsSearch)}>
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="sm" disabled={recordsPage >= totalPages}
-                  onClick={() => loadRecords(recordType, recordsPage + 1, recordsSearch)}>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          )}
+          <a href="/crm/zoho">
+            <Button variant="outline">
+              Open Zoho CRM <ChevronRight className="h-4 w-4 ml-2" />
+            </Button>
+          </a>
         </CardContent>
       </Card>
     </div>

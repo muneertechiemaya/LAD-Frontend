@@ -8,6 +8,7 @@
 import * as React from 'react';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { TrendingUp } from 'lucide-react';
 
 import { useProspects, useDeleteProspect } from '@lad/frontend-features/prospects';
@@ -19,10 +20,15 @@ import KanbanBoard from '@/components/crm/kanban-board';
 import {
   AllContactsTable, ProspectsTable, LeadsTable, ClientsTable,
 } from '@/components/crm/tables';
+import { Pager, type CrmPagination } from '@/components/crm/shared';
 import { STAGES, type CrmContact } from '@/components/crm/data';
 import { toCrmContacts, toKanbanLeads } from '@/components/crm/adapt';
 
 export const dynamic = 'force-dynamic';
+
+// Server-side page size. The Master Agent caps a single page at 500; 50 keeps
+// the board + tables snappy while the pager walks through every record.
+const PAGE_SIZE = 50;
 
 const VIEW_TITLES: Record<Exclude<CrmView, 'board'>, string> = {
   all: 'All Contacts',
@@ -37,10 +43,28 @@ const EMPTY_BOX =
 export default function CrmPage() {
   const router = useRouter();
   const [view, setView] = useState<CrmView>('board');
+  const [page, setPage] = useState(1); // 1-indexed
 
-  // ── Live data ──────────────────────────────────────────────────────────────
-  const listQuery = useProspects({ limit: 200 });
-  const prospects = useMemo(() => listQuery.data ?? [], [listQuery.data]);
+  // ── Live data (one server-side page at a time) ──────────────────────────────
+  const listQuery = useProspects({ limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE });
+  const prospects = useMemo(() => listQuery.data?.items ?? [], [listQuery.data]);
+  const total = listQuery.data?.total ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  // Guard against a page that no longer exists (e.g. after deletions shrink the
+  // list): snap back to the last valid page once the new total is known.
+  React.useEffect(() => {
+    if (page > pageCount) setPage(pageCount);
+  }, [page, pageCount]);
+
+  const pagination: CrmPagination = {
+    page,
+    pageCount,
+    total,
+    pageSize: PAGE_SIZE,
+    onPageChange: setPage,
+    loading: listQuery.isFetching,
+  };
 
   const contacts = useMemo(() => toCrmContacts(prospects), [prospects]);
   const kanbanLeads = useMemo(() => toKanbanLeads(prospects), [prospects]);
@@ -89,17 +113,24 @@ export default function CrmPage() {
   const renderMain = () => {
     if (view === 'board')
       return (
-        <KanbanBoard
-          stages={STAGES}
-          leads={kanbanLeads}
-          selectedLeadId={null}
-          onSelectLead={openDetail}
-        />
+        <div className="space-y-3">
+          <KanbanBoard
+            stages={STAGES}
+            leads={kanbanLeads}
+            selectedLeadId={null}
+            onSelectLead={openDetail}
+          />
+          {pageCount > 1 && (
+            <div className="rounded-[20px] border border-slate-200 dark:border-[#262831] bg-white dark:bg-[#000724] px-5 py-3">
+              <Pager pagination={pagination} />
+            </div>
+          )}
+        </div>
       );
-    if (view === 'all') return <AllContactsTable rows={filteredContacts} onSelect={openDetail} onRemove={handleRemove} />;
-    if (view === 'prospects') return <ProspectsTable rows={filteredContacts} onSelect={openDetail} onRemove={handleRemove} />;
-    if (view === 'leads') return <LeadsTable rows={filteredContacts} onSelect={openDetail} onRemove={handleRemove} />;
-    if (view === 'clients') return <ClientsTable rows={filteredContacts} onSelect={openDetail} onRemove={handleRemove} />;
+    if (view === 'all') return <AllContactsTable rows={filteredContacts} onSelect={openDetail} onRemove={handleRemove} pagination={pagination} />;
+    if (view === 'prospects') return <ProspectsTable rows={filteredContacts} onSelect={openDetail} onRemove={handleRemove} pagination={pagination} />;
+    if (view === 'leads') return <LeadsTable rows={filteredContacts} onSelect={openDetail} onRemove={handleRemove} pagination={pagination} />;
+    if (view === 'clients') return <ClientsTable rows={filteredContacts} onSelect={openDetail} onRemove={handleRemove} pagination={pagination} />;
     return null;
   };
 
@@ -107,7 +138,7 @@ export default function CrmPage() {
     <div className="min-h-screen bg-[#F8F9FE] dark:bg-[#000724]">
       <TopBar crumbs={crumbs} />
       <main className="max-w-[1280px] mx-auto px-4 sm:px-6 py-6">
-        <div className="mb-5">
+        <div className="mb-5 flex items-start justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3">
             <TrendingUp className="w-7 h-7 text-[#1e293b] dark:text-white" />
             <div>
@@ -122,6 +153,12 @@ export default function CrmPage() {
               </p>
             </div>
           </div>
+          <Link
+            href="/crm/zoho"
+            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full border border-slate-200 dark:border-[#262831] bg-white dark:bg-[#000724] text-[13px] font-medium text-slate-700 dark:text-[#c7d2e0] hover:bg-slate-50 dark:hover:bg-[#1a2a43] transition-colors"
+          >
+            <span className="text-red-600 font-bold leading-none" aria-hidden>Z</span> Zoho CRM
+          </Link>
         </div>
 
         {listQuery.isError && (
@@ -145,7 +182,7 @@ export default function CrmPage() {
 
         <footer className="pt-6 pb-2 text-[11.5px] text-slate-400 dark:text-slate-300/60 flex items-center justify-between">
           <span>
-            {counts.all} contacts · {counts.leads} active deals · {counts.clients} clients
+            {total.toLocaleString()} contacts total · page {page} of {pageCount}
           </span>
           <span>Mr LAD · Master Agent</span>
         </footer>
