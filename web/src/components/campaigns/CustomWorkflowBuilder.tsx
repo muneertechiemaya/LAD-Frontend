@@ -26,7 +26,7 @@ import 'reactflow/dist/style.css';
 import {
   Rocket, Loader2, Linkedin, Mail, MessageCircle, Phone, Clock,
   Users, Repeat, Search, X, HardDrive, Inbox, ListOrdered, BarChart3, GitFork, DatabaseZap,
-  Wand2, Trash2, Radar, Split, Plus, Upload, FileSpreadsheet,
+  Wand2, Trash2, Radar, Split, Plus, Upload, FileSpreadsheet, Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -201,6 +201,12 @@ const MEDIA_STEP_ID = 'media-gen-node';
 // a lead field (if/elseif/else). Expands at launch into a `switch` step + one
 // guarded message step per branch (backend prunes the non-chosen branches).
 const MULTICOND_STEP_ID = 'multicond-node';
+
+// "AI Agent" node — LLM-normalises each lead (clean single title from a mixed
+// field, split name, tidy company) before the outreach/LinkedIn steps run.
+const AI_STEP_ID = 'ai-agent-node';
+const AI_DEFAULT_INSTRUCTION = 'If the job title has multiple or mixed roles, keep the single best-fit, most senior title. Split the full name into first/last and tidy the company name.';
+
 const SWITCH_FIELDS = [
   { value: 'tag', label: 'Tag' },
   { value: 'title', label: 'Job title' },
@@ -472,6 +478,14 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     setEditingId(MULTICOND_STEP_ID);
   };
 
+  const addAiParse = () => {
+    if (!workflowPreview.some((s) => s.id === AI_STEP_ID)) {
+      addWorkflowStep({ id: AI_STEP_ID, type: 'ai_parse', channel: 'linkedin', title: 'AI Agent', description: 'Clean & normalise lead data' });
+      setCfg(AI_STEP_ID, { instruction: AI_DEFAULT_INSTRUCTION });
+    }
+    setEditingId(AI_STEP_ID);
+  };
+
   const setCfg = useCallback((id: string, patch: any) => {
     setConfigs((c) => ({ ...c, [id]: { ...(c[id] || {}), ...patch } }));
   }, []);
@@ -606,8 +620,9 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     if (!name.trim()) { setError('Name your workflow.'); return; }
     if (!source) { setError('Pick a contact source (first node).'); return; }
     const outreachSteps = workflowPreview.filter(
-      (s) => s.id !== SOURCE_STEP_ID && s.id !== FOLLOWUP_STEP_ID && s.id !== ANALYTICS_STEP_ID && s.id !== ZOHO_UPDATE_STEP_ID && s.id !== MEDIA_STEP_ID && s.id !== MULTICOND_STEP_ID
+      (s) => s.id !== SOURCE_STEP_ID && s.id !== FOLLOWUP_STEP_ID && s.id !== ANALYTICS_STEP_ID && s.id !== ZOHO_UPDATE_STEP_ID && s.id !== MEDIA_STEP_ID && s.id !== MULTICOND_STEP_ID && s.id !== AI_STEP_ID
     );
+    const aiNode = workflowPreview.find((s) => s.id === AI_STEP_ID);
     const mediaNode = workflowPreview.find((s) => s.id === MEDIA_STEP_ID);
     const multiCondNode = workflowPreview.find((s) => s.id === MULTICOND_STEP_ID);
     const followupNode = workflowPreview.find((s) => s.id === FOLLOWUP_STEP_ID);
@@ -724,6 +739,16 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
           phone: c.phone || undefined,
           company_name: c.company_name || undefined,
         }));
+      }
+
+      // AI Agent → an ai_parse step that runs BEFORE outreach, so the LinkedIn
+      // step sees the cleaned single title / normalised name+company. (Emitted
+      // here, right after the source's lead_generation / initial_leads.)
+      if (aiNode) {
+        steps.push({
+          type: 'ai_parse', title: 'AI Agent', channel: 'linkedin', order_index: order++,
+          config: { instruction: (configs[AI_STEP_ID]?.instruction || AI_DEFAULT_INSTRUCTION).trim() },
+        });
       }
 
       // Outreach nodes in canvas order.
@@ -915,7 +940,8 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     const isZohoUpdate = editingId === ZOHO_UPDATE_STEP_ID;
     const isMedia = editingId === MEDIA_STEP_ID;
     const isMultiCond = editingId === MULTICOND_STEP_ID;
-    const isMacro = isFollowup || isAnalytics || isZohoUpdate || isMedia || isMultiCond;
+    const isAiParse = editingId === AI_STEP_ID;
+    const isMacro = isFollowup || isAnalytics || isZohoUpdate || isMedia || isMultiCond || isAiParse;
     const visual = isSource
       ? SOURCES.find((s) => s.key === source)
       : isFollowup
@@ -928,6 +954,8 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
             ? { icon: <Wand2 className="h-4 w-4 text-fuchsia-600" />, chip: 'bg-fuchsia-50 dark:bg-fuchsia-950/30' }
           : isMultiCond
             ? { icon: <Split className="h-4 w-4 text-amber-600" />, chip: 'bg-amber-50 dark:bg-amber-950/30' }
+          : isAiParse
+            ? { icon: <Sparkles className="h-4 w-4 text-violet-600" />, chip: 'bg-violet-50 dark:bg-violet-950/30' }
           : isRouter
             ? { icon: <GitFork className="h-4 w-4 text-rose-600" />, chip: 'bg-rose-50 dark:bg-rose-950/30' }
             : OUTREACH.find((o) => o.type === editingStep.type && !o.router);
@@ -938,7 +966,7 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
           <div className="min-w-0 flex-1">
             <div className="text-sm font-semibold text-foreground truncate">{editingStep.title}</div>
             <div className="text-xs text-muted-foreground">
-              {isSource ? 'Contact source settings' : isFollowup ? 'Follow-up sequence settings' : isAnalytics ? 'Report settings' : isZohoUpdate ? 'Field mapping' : isMedia ? 'AI media' : isMultiCond ? 'Branch by condition' : isRouter ? 'Fallback routing settings' : 'Step settings'}
+              {isSource ? 'Contact source settings' : isFollowup ? 'Follow-up sequence settings' : isAnalytics ? 'Report settings' : isZohoUpdate ? 'Field mapping' : isMedia ? 'AI media' : isMultiCond ? 'Branch by condition' : isAiParse ? 'AI data cleanup' : isRouter ? 'Fallback routing settings' : 'Step settings'}
             </div>
           </div>
           <button onClick={() => setEditingId(null)} className="h-7 w-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors flex-shrink-0">
@@ -1256,6 +1284,16 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
             </>);
           })()}
 
+          {isAiParse && (<>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-foreground">What should the AI clean up?</label>
+              <textarea className={`${field} min-h-[110px]`} value={cfg.instruction ?? AI_DEFAULT_INSTRUCTION}
+                onChange={(e) => setCfg(editingId!, { instruction: e.target.value })}
+                placeholder={AI_DEFAULT_INSTRUCTION} />
+            </div>
+            <p className="text-[11px] leading-snug text-muted-foreground">Runs on each lead before the outreach steps. It normalises the data — e.g. picks the single best job title when the column has a mix — and writes it back so the LinkedIn node resolves the right person. Uses your tenant&apos;s AI model.</p>
+          </>)}
+
           {!isSource && (editingStep.type === 'linkedin_connect' || editingStep.type === 'linkedin_message') && (<>
             {res.liTemplates.length > 0 && (
               <div className="space-y-1"><label className="text-xs font-medium text-foreground">LinkedIn template (optional)</label>
@@ -1490,6 +1528,27 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-semibold text-foreground truncate">Multi-condition</span>
                     <span className="block text-xs text-muted-foreground truncate">Route by tag / field → different message</span>
+                  </span>
+                  {added && (
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    </span>
+                  )}
+                </button>
+              );
+            })()}
+            {/* AI Agent — clean/normalise lead data before outreach. */}
+            {(() => {
+              const added = workflowPreview.some((s) => s.id === AI_STEP_ID);
+              return (
+                <button onClick={addAiParse}
+                  className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
+                    added ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20' : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                  }`}>
+                  <IconChip icon={<Sparkles className="h-4 w-4 text-violet-600" />} chip="bg-violet-50 dark:bg-violet-950/30" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold text-foreground truncate">AI Agent</span>
+                    <span className="block text-xs text-muted-foreground truncate">Clean messy titles / names before LinkedIn</span>
                   </span>
                   {added && (
                     <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
