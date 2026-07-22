@@ -2766,11 +2766,14 @@ export default function AdvancedSearchAIPage() {
                         // Fan-out branches below re-seed with the discovered ids.
                         setSelectedLeadIds(new Set(saveData.leadIds));
 
-                        // If the backend fanned out a company+title row into multiple DISCOVERED
-                        // people, show them right away from the save response (the created leads
-                        // carry the real names + LinkedIn URLs) — no need to wait for enrichment.
+                        // Use the backend's saved/discovered leads as the source of truth for
+                        // BOTH the panel and enrollment whenever it returns any — the created
+                        // leads carry the real names + LinkedIn URLs (and their real UUIDs, kept
+                        // index-aligned below). Gating on `> parsed.length` silently kept the
+                        // client-parsed "Unknown" rows whenever discovery returned the same count
+                        // or fewer (e.g. a throttled company+title run that fell back to placeholders).
                         const savedLeads: any[] = Array.isArray(saveData.leads) ? saveData.leads : [];
-                        if (savedLeads.length > parsed.length) {
+                        if (savedLeads.length > 0) {
                             const rebuiltInbound: ParsedInboundLead[] = savedLeads.map((r) => {
                                 const { firstName, lastName } = readLeadName(r);
                                 return {
