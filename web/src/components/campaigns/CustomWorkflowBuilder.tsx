@@ -26,7 +26,7 @@ import 'reactflow/dist/style.css';
 import {
   Rocket, Loader2, Linkedin, Mail, MessageCircle, Phone, Clock,
   Users, Repeat, Search, X, HardDrive, Inbox, ListOrdered, BarChart3, GitFork, DatabaseZap,
-  Wand2, Trash2, Radar, Split, Plus,
+  Wand2, Trash2, Radar, Split, Plus, Upload, FileSpreadsheet, Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,15 +48,89 @@ const edgeTypes = { labeled: LabeledEdge };
 
 // ─── Palette definitions ─────────────────────────────────────────────────────
 
-type SourceKey = 'zoho_recurring' | 'zoho_once' | 'ghl_once' | 'linkedin_search' | 'linkedin_signal';
+type SourceKey = 'zoho_recurring' | 'zoho_once' | 'ghl_once' | 'linkedin_search' | 'linkedin_signal' | 'file_import';
 
 const SOURCES: { key: SourceKey; label: string; sub: string; icon: React.ReactNode; chip: string; recurring?: boolean }[] = [
   { key: 'zoho_recurring', label: 'Zoho CRM — recurring', sub: 'Import new contacts daily', icon: <Repeat className="h-4 w-4 text-red-600" />, chip: 'bg-red-50 dark:bg-red-950/30', recurring: true },
   { key: 'zoho_once', label: 'Zoho CRM — one-time', sub: 'Import synced contacts now', icon: <Users className="h-4 w-4 text-red-600" />, chip: 'bg-red-50 dark:bg-red-950/30' },
   { key: 'ghl_once', label: 'GoHighLevel — one-time', sub: 'Import synced contacts now', icon: <Users className="h-4 w-4 text-blue-600" />, chip: 'bg-blue-50 dark:bg-blue-950/30' },
+  { key: 'file_import', label: 'File import (CSV / Excel)', sub: 'Upload a list and map columns', icon: <FileSpreadsheet className="h-4 w-4 text-emerald-600" />, chip: 'bg-emerald-50 dark:bg-emerald-950/30' },
   { key: 'linkedin_search', label: 'LinkedIn Search', sub: 'Find new leads by keywords', icon: <Search className="h-4 w-4 text-[#0077B5]" />, chip: 'bg-sky-50 dark:bg-sky-950/30' },
   { key: 'linkedin_signal', label: 'LinkedIn Signal Search', sub: 'Find leads from hiring/buying signals', icon: <Radar className="h-4 w-4 text-[#0077B5]" />, chip: 'bg-sky-50 dark:bg-sky-950/30', recurring: true },
 ];
+
+// Target fields the file columns map to. 'ignore' drops the column.
+const IMPORT_FIELDS = [
+  { value: 'ignore', label: '— Ignore —' },
+  { value: 'full_name', label: 'Full name' },
+  { value: 'first_name', label: 'First name' },
+  { value: 'last_name', label: 'Last name' },
+  { value: 'company', label: 'Company' },
+  { value: 'title', label: 'Job title' },
+  { value: 'location', label: 'Location' },
+  { value: 'email', label: 'Email' },
+  { value: 'phone', label: 'Phone / WhatsApp' },
+  { value: 'linkedin_url', label: 'LinkedIn URL' },
+  { value: 'website', label: 'Website' },
+];
+
+/** Quote-aware CSV → string[][]. */
+function parseCSVText(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [], cell = '', q = false;
+  const s = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (q) {
+      if (c === '"') { if (s[i + 1] === '"') { cell += '"'; i++; } else q = false; }
+      else cell += c;
+    } else if (c === '"') q = true;
+    else if (c === ',') { row.push(cell); cell = ''; }
+    else if (c === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
+    else cell += c;
+  }
+  if (cell.length || row.length) { row.push(cell); rows.push(row); }
+  return rows.filter((r) => r.some((v) => (v || '').trim()));
+}
+
+/** Parse a CSV/XLSX File → { headers, rows }. Excel via exceljs (dynamic import). */
+async function parseImportFile(file: File): Promise<{ headers: string[]; rows: string[][] }> {
+  const isExcel = /\.(xlsx|xls)$/i.test(file.name);
+  let grid: string[][];
+  if (isExcel) {
+    const { Workbook } = await import('exceljs');
+    const wb = new Workbook();
+    await wb.xlsx.load(await file.arrayBuffer());
+    const ws = wb.worksheets[0];
+    if (!ws) throw new Error('No worksheet found in the Excel file.');
+    grid = [];
+    ws.eachRow((r) => {
+      const vals = (r.values as any[]).slice(1).map((v) => (v == null ? '' : String(typeof v === 'object' && v.text ? v.text : v).trim()));
+      grid.push(vals);
+    });
+    grid = grid.filter((r) => r.some((v) => (v || '').trim()));
+  } else {
+    grid = parseCSVText(await file.text());
+  }
+  if (grid.length < 2) throw new Error('File needs a header row and at least one data row.');
+  return { headers: grid[0].map((h) => (h || '').trim()), rows: grid.slice(1) };
+}
+
+/** Suggest a target field for a header name. */
+function suggestImportField(header: string): string {
+  const s = (header || '').toLowerCase();
+  if (/full.?name|^name$|contact.?name/.test(s)) return 'full_name';
+  if (/first/.test(s)) return 'first_name';
+  if (/last|surname/.test(s)) return 'last_name';
+  if (/company|account|organi[sz]ation|employer/.test(s)) return 'company';
+  if (/title|designation|role|position|job/.test(s)) return 'title';
+  if (/location|city|country|region|geo|state/.test(s)) return 'location';
+  if (/e-?mail/.test(s)) return 'email';
+  if (/phone|mobile|whatsapp|contact.?number/.test(s)) return 'phone';
+  if (/linkedin/.test(s)) return 'linkedin_url';
+  if (/website|url|domain/.test(s) && !/linkedin/.test(s)) return 'website';
+  return 'ignore';
+}
 
 const COMING_SOON = [
   { label: 'Google Drive', icon: <HardDrive className="h-4 w-4 text-muted-foreground" /> },
@@ -127,6 +201,12 @@ const MEDIA_STEP_ID = 'media-gen-node';
 // a lead field (if/elseif/else). Expands at launch into a `switch` step + one
 // guarded message step per branch (backend prunes the non-chosen branches).
 const MULTICOND_STEP_ID = 'multicond-node';
+
+// "AI Agent" node — LLM-normalises each lead (clean single title from a mixed
+// field, split name, tidy company) before the outreach/LinkedIn steps run.
+const AI_STEP_ID = 'ai-agent-node';
+const AI_DEFAULT_INSTRUCTION = 'If the job title has multiple or mixed roles, keep the single best-fit, most senior title. Split the full name into first/last and tidy the company name.';
+
 const SWITCH_FIELDS = [
   { value: 'tag', label: 'Tag' },
   { value: 'title', label: 'Job title' },
@@ -177,9 +257,42 @@ function suggestDataPoint(field: { api_name: string; field_label: string }, chan
 
 // ─── Canvas (inner, needs ReactFlowProvider) ─────────────────────────────────
 
-function BuilderCanvas({ steps }: { steps: WorkflowPreviewStep[] }) {
-  const initialNodes = useMemo(() => createReactFlowNodes(steps, 'vertical'), [steps]);
-  const initialEdges = useMemo(() => createReactFlowEdges(steps, 'vertical'), [steps]);
+type BranchViz = { key: string; stepType: StepType; label: string; edgeLabel: string };
+
+function BuilderCanvas({ steps, branches = [], switchId }: { steps: WorkflowPreviewStep[]; branches?: BranchViz[]; switchId?: string }) {
+  // Base linear layout, then fan the Multi-condition node's branches out below
+  // it (Router-style multiple outputs → a separate node per condition).
+  const initialNodes = useMemo(() => {
+    const base = createReactFlowNodes(steps, 'vertical');
+    if (!switchId || !branches.length) return base;
+    const sw = base.find((n) => n.id === switchId);
+    if (!sw) return base;
+    const spread = 210;
+    const startX = sw.position.x - ((branches.length - 1) * spread) / 2;
+    const branchNodes = branches.map((b, i) => ({
+      id: `${switchId}-${b.key}`,
+      type: 'custom',
+      position: { x: startX + i * spread, y: sw.position.y + 200 },
+      draggable: true,
+      data: { title: b.label, type: b.stepType, description: b.key === 'else' ? 'fallback branch' : 'branch output', _layout: 'snake', _branch: true },
+    }));
+    return [...base, ...branchNodes];
+  }, [steps, branches, switchId]);
+  const initialEdges = useMemo(() => {
+    // Drop the linear edge leaving the switch — its outputs are the branches.
+    const base = createReactFlowEdges(steps, 'vertical').filter((e) => e.source !== switchId);
+    if (!switchId || !branches.length) return base;
+    const fan = branches.map((b) => ({
+      id: `e-${switchId}-${b.key}`,
+      source: switchId, sourceHandle: 'bottom',
+      target: `${switchId}-${b.key}`, targetHandle: 'top',
+      type: 'labeled',
+      animated: false,
+      data: { label: b.edgeLabel, color: '#d97706' },
+      style: { stroke: '#d97706', strokeWidth: 2, strokeDasharray: '6,6' },
+    }));
+    return [...base, ...fan];
+  }, [steps, branches, switchId]);
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   useEffect(() => { setNodes(initialNodes); setEdges(initialEdges); }, [initialNodes, initialEdges, setNodes, setEdges]);
@@ -263,6 +376,16 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
   const [mediaGalleryOpen, setMediaGalleryOpen] = useState(false);
   const [mediaImporting, setMediaImporting] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
+  // Multi-condition node: fields of the connected source (dynamic dropdown).
+  const [mcFields, setMcFields] = useState<{ value: string; label: string }[]>(SWITCH_FIELDS);
+  const [mcFieldsLoading, setMcFieldsLoading] = useState(false);
+  // File import source: parsed grid + header→field mapping.
+  const [fileName, setFileName] = useState('');
+  const [fileHeaders, setFileHeaders] = useState<string[]>([]);
+  const [fileRows, setFileRows] = useState<string[][]>([]);
+  const [fileMapping, setFileMapping] = useState<Record<number, string>>({});
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [fileParsing, setFileParsing] = useState(false);
 
   // Fresh canvas on mount. The store is SHARED with the chat-built workflow
   // preview (advanced-search-ai) — snapshot it and restore on close so opening
@@ -275,7 +398,11 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
 
   // Node edit clicks (CustomWorkflowNode dispatches 'openStepEditor').
   useEffect(() => {
-    const onEdit = (e: any) => setEditingId(e.detail?.stepId || null);
+    const onEdit = (e: any) => {
+      const id: string = e.detail?.stepId || '';
+      // Clicking a fanned-out branch node opens the Multi-condition editor.
+      setEditingId(id.startsWith(`${MULTICOND_STEP_ID}-`) ? MULTICOND_STEP_ID : (id || null));
+    };
     window.addEventListener('openStepEditor', onEdit);
     return () => window.removeEventListener('openStepEditor', onEdit);
   }, []);
@@ -351,8 +478,34 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     setEditingId(MULTICOND_STEP_ID);
   };
 
+  const addAiParse = () => {
+    if (!workflowPreview.some((s) => s.id === AI_STEP_ID)) {
+      addWorkflowStep({ id: AI_STEP_ID, type: 'ai_parse', channel: 'linkedin', title: 'AI Agent', description: 'Clean & normalise lead data' });
+      setCfg(AI_STEP_ID, { instruction: AI_DEFAULT_INSTRUCTION });
+    }
+    setEditingId(AI_STEP_ID);
+  };
+
   const setCfg = useCallback((id: string, patch: any) => {
     setConfigs((c) => ({ ...c, [id]: { ...(c[id] || {}), ...patch } }));
+  }, []);
+
+  const handleImportFile = useCallback(async (file: File) => {
+    setFileError(null); setFileParsing(true);
+    try {
+      const { headers, rows } = await parseImportFile(file);
+      setFileName(file.name);
+      setFileHeaders(headers);
+      setFileRows(rows);
+      const auto: Record<number, string> = {};
+      headers.forEach((h, i) => { auto[i] = suggestImportField(h); });
+      setFileMapping(auto);
+    } catch (e: any) {
+      setFileError(e?.message || 'Could not read the file.');
+      setFileName(''); setFileHeaders([]); setFileRows([]); setFileMapping({});
+    } finally {
+      setFileParsing(false);
+    }
   }, []);
 
   const mediaTypeFromName = (name: string): 'image' | 'video' | 'document' => {
@@ -408,8 +561,58 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     return () => { cancelled = true; };
   }, [editingId, zohoModule]);
 
+  // Multi-condition: load the connected source's fields for the "Branch on"
+  // dropdown. Zoho sources → the module's real fields via /fields; other
+  // sources → the generic semantic field list.
+  useEffect(() => {
+    if (editingId !== MULTICOND_STEP_ID) return;
+    const isZoho = source === 'zoho_recurring' || source === 'zoho_once';
+    if (!isZoho) { setMcFields(SWITCH_FIELDS); return; }
+    const mod = (configs[SOURCE_STEP_ID]?.zoho_modules === 'contacts_leads' || configs[SOURCE_STEP_ID]?.zoho_type === 'leads') ? 'Leads' : 'Contacts';
+    let cancelled = false;
+    setMcFieldsLoading(true);
+    fetch(`/api/social-integration/zoho/fields?module=${mod}`, { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled) return;
+        if (d?.success && Array.isArray(d.fields) && d.fields.length) {
+          const fetched = d.fields.map((f: any) => ({ value: f.api_name, label: f.field_label || f.api_name }));
+          // 'Tag' is a semantic pseudo-field (Zoho tags aren't a writable field);
+          // prepend it if the module's field list didn't already include one.
+          const hasTag = fetched.some((f: { value: string }) => /tag/i.test(f.value));
+          setMcFields(hasTag ? fetched : [{ value: 'tag', label: 'Tag' }, ...fetched]);
+        } else { setMcFields(SWITCH_FIELDS); }
+      })
+      .catch(() => { if (!cancelled) setMcFields(SWITCH_FIELDS); })
+      .finally(() => { if (!cancelled) setMcFieldsLoading(false); });
+    return () => { cancelled = true; };
+  }, [editingId, source, configs]);
+
   const editingStep = workflowPreview.find((s) => s.id === editingId) || null;
   const cfg = editingId ? (configs[editingId] || {}) : {};
+
+  // Router-style branch visualisation for the Multi-condition node: one output
+  // node per condition (+ else), fanned out on the canvas.
+  const CH_TO_STEP: Record<string, StepType> = { email: 'email_send', linkedin: 'linkedin_message', whatsapp: 'whatsapp_send' };
+  const mcBranches: BranchViz[] = useMemo(() => {
+    if (!workflowPreview.some((s) => s.id === MULTICOND_STEP_ID)) return [];
+    const c = configs[MULTICOND_STEP_ID] || {};
+    const fLabel = mcFields.find((f) => f.value === (c.field || 'tag'))?.label || 'field';
+    const opLabel = (op: string) => SWITCH_OPS.find((o) => o.value === op)?.label || 'is';
+    const rows: any[] = Array.isArray(c.cases) && c.cases.length ? c.cases : [{}];
+    const out: BranchViz[] = rows.map((cs, i) => {
+      const v = (cs?.value || '').trim();
+      return {
+        key: `b${i}`,
+        stepType: CH_TO_STEP[cs?.channel] || 'email_send',
+        label: v ? `If ${fLabel} ${opLabel(cs?.op || 'equals')} "${v}"` : `Condition ${i + 1}`,
+        edgeLabel: (v ? `${opLabel(cs?.op || 'equals')} ${v}` : `#${i + 1}`).slice(0, 22),
+      };
+    });
+    out.push({ key: 'else', stepType: CH_TO_STEP[(c.default?.channel)] || 'email_send', label: 'Otherwise', edgeLabel: 'else' });
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workflowPreview, configs, mcFields]);
 
   // ── Launch ────────────────────────────────────────────────────────────────
   const launch = async () => {
@@ -417,8 +620,9 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     if (!name.trim()) { setError('Name your workflow.'); return; }
     if (!source) { setError('Pick a contact source (first node).'); return; }
     const outreachSteps = workflowPreview.filter(
-      (s) => s.id !== SOURCE_STEP_ID && s.id !== FOLLOWUP_STEP_ID && s.id !== ANALYTICS_STEP_ID && s.id !== ZOHO_UPDATE_STEP_ID && s.id !== MEDIA_STEP_ID && s.id !== MULTICOND_STEP_ID
+      (s) => s.id !== SOURCE_STEP_ID && s.id !== FOLLOWUP_STEP_ID && s.id !== ANALYTICS_STEP_ID && s.id !== ZOHO_UPDATE_STEP_ID && s.id !== MEDIA_STEP_ID && s.id !== MULTICOND_STEP_ID && s.id !== AI_STEP_ID
     );
+    const aiNode = workflowPreview.find((s) => s.id === AI_STEP_ID);
     const mediaNode = workflowPreview.find((s) => s.id === MEDIA_STEP_ID);
     const multiCondNode = workflowPreview.find((s) => s.id === MULTICOND_STEP_ID);
     const followupNode = workflowPreview.find((s) => s.id === FOLLOWUP_STEP_ID);
@@ -435,6 +639,13 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     }
     if (source === 'linkedin_signal' && !(configs[SOURCE_STEP_ID]?.signal_query || '').trim()) {
       setError('Describe the signal to search for in the LinkedIn Signal Search source.'); setEditingId(SOURCE_STEP_ID); return;
+    }
+    if (source === 'file_import') {
+      if (!fileRows.length) { setError('Upload a CSV/Excel file in the File import source.'); setEditingId(SOURCE_STEP_ID); return; }
+      const mapped = Object.values(fileMapping);
+      if (!mapped.includes('full_name') && !(mapped.includes('first_name') || mapped.includes('last_name')) && !mapped.includes('company') && !mapped.includes('email') && !mapped.includes('linkedin_url')) {
+        setError('Map at least a name, company, email, or LinkedIn column in the File import source.'); setEditingId(SOURCE_STEP_ID); return;
+      }
     }
     setLaunching(true);
 
@@ -480,6 +691,35 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
             leadGenerationLimit: perDayN,
           },
         });
+      } else if (source === 'file_import') {
+        // File import: build initial_leads from the parsed grid + header mapping.
+        // Leads carrying name+company (but no LinkedIn URL) are resolved by the
+        // LinkedIn step's Unipile name+company waterfall at execution time.
+        const colOf = (f: string) => { const e = Object.entries(fileMapping).find(([, v]) => v === f); return e ? Number(e[0]) : -1; };
+        const idx = { full_name: colOf('full_name'), first_name: colOf('first_name'), last_name: colOf('last_name'), company: colOf('company'), title: colOf('title'), location: colOf('location'), email: colOf('email'), phone: colOf('phone'), linkedin_url: colOf('linkedin_url'), website: colOf('website') };
+        const val = (r: string[], i: number) => (i >= 0 ? (r[i] || '').trim() : '');
+        initialLeads = fileRows.map((r, i) => {
+          const first = val(r, idx.first_name), last = val(r, idx.last_name);
+          const full = val(r, idx.full_name) || [first, last].filter(Boolean).join(' ');
+          const email = val(r, idx.email), li = val(r, idx.linkedin_url), company = val(r, idx.company);
+          // Content-based sourceId so dedup is meaningful and rows never collide
+          // across imports (a plain row number "1" would dedup with other lists).
+          const key = (email || li || `${full}|${company}` || `row-${i + 1}`).trim().toLowerCase() || `row-${i + 1}`;
+          return {
+            id: `file:${key}`,
+            name: full || undefined,
+            first_name: first || (full ? full.split(' ')[0] : undefined),
+            last_name: last || (full ? full.split(' ').slice(1).join(' ') || undefined : undefined),
+            company_name: val(r, idx.company) || undefined,
+            title: val(r, idx.title) || undefined,
+            location: val(r, idx.location) || undefined,
+            email: val(r, idx.email) || undefined,
+            phone: val(r, idx.phone) || undefined,
+            linkedin_url: val(r, idx.linkedin_url) || undefined,
+            website: val(r, idx.website) || undefined,
+          };
+        }).filter((l) => l.name || l.company_name || l.email || l.linkedin_url);
+        if (!initialLeads.length) throw new Error('No usable rows after mapping — check your column mapping.');
       } else {
         // One-time import: fetch synced contacts now → initial_leads at create.
         const limit = Math.min(500, Math.max(1, parseInt(srcCfg.import_count, 10) || 100));
@@ -499,6 +739,16 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
           phone: c.phone || undefined,
           company_name: c.company_name || undefined,
         }));
+      }
+
+      // AI Agent → an ai_parse step that runs BEFORE outreach, so the LinkedIn
+      // step sees the cleaned single title / normalised name+company. (Emitted
+      // here, right after the source's lead_generation / initial_leads.)
+      if (aiNode) {
+        steps.push({
+          type: 'ai_parse', title: 'AI Agent', channel: 'linkedin', order_index: order++,
+          config: { instruction: (configs[AI_STEP_ID]?.instruction || AI_DEFAULT_INSTRUCTION).trim() },
+        });
       }
 
       // Outreach nodes in canvas order.
@@ -660,7 +910,11 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
           } : {}),
         },
         steps,
-        ...(initialLeads ? { initial_leads: initialLeads } : {}),
+        // Mark one-time imports as direct outreach so the backend saves the
+        // leads as source='direct_contact' (NOT 'linkedin_search') — otherwise
+        // the LinkedIn step treats the row id as a Unipile provider_id and
+        // skips the name+company resolution waterfall.
+        ...(initialLeads ? { initial_leads: initialLeads, campaign_type: 'direct_outreach' } : {}),
       };
 
       const res = await fetchWithTenant('/api/campaigns', {
@@ -686,7 +940,8 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     const isZohoUpdate = editingId === ZOHO_UPDATE_STEP_ID;
     const isMedia = editingId === MEDIA_STEP_ID;
     const isMultiCond = editingId === MULTICOND_STEP_ID;
-    const isMacro = isFollowup || isAnalytics || isZohoUpdate || isMedia || isMultiCond;
+    const isAiParse = editingId === AI_STEP_ID;
+    const isMacro = isFollowup || isAnalytics || isZohoUpdate || isMedia || isMultiCond || isAiParse;
     const visual = isSource
       ? SOURCES.find((s) => s.key === source)
       : isFollowup
@@ -699,6 +954,8 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
             ? { icon: <Wand2 className="h-4 w-4 text-fuchsia-600" />, chip: 'bg-fuchsia-50 dark:bg-fuchsia-950/30' }
           : isMultiCond
             ? { icon: <Split className="h-4 w-4 text-amber-600" />, chip: 'bg-amber-50 dark:bg-amber-950/30' }
+          : isAiParse
+            ? { icon: <Sparkles className="h-4 w-4 text-violet-600" />, chip: 'bg-violet-50 dark:bg-violet-950/30' }
           : isRouter
             ? { icon: <GitFork className="h-4 w-4 text-rose-600" />, chip: 'bg-rose-50 dark:bg-rose-950/30' }
             : OUTREACH.find((o) => o.type === editingStep.type && !o.router);
@@ -709,7 +966,7 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
           <div className="min-w-0 flex-1">
             <div className="text-sm font-semibold text-foreground truncate">{editingStep.title}</div>
             <div className="text-xs text-muted-foreground">
-              {isSource ? 'Contact source settings' : isFollowup ? 'Follow-up sequence settings' : isAnalytics ? 'Report settings' : isZohoUpdate ? 'Field mapping' : isMedia ? 'AI media' : isMultiCond ? 'Branch by condition' : isRouter ? 'Fallback routing settings' : 'Step settings'}
+              {isSource ? 'Contact source settings' : isFollowup ? 'Follow-up sequence settings' : isAnalytics ? 'Report settings' : isZohoUpdate ? 'Field mapping' : isMedia ? 'AI media' : isMultiCond ? 'Branch by condition' : isAiParse ? 'AI data cleanup' : isRouter ? 'Fallback routing settings' : 'Step settings'}
             </div>
           </div>
           <button onClick={() => setEditingId(null)} className="h-7 w-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors flex-shrink-0">
@@ -753,6 +1010,30 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">How many (max 500)</label>
               <Input type="number" value={cfg.import_count || '100'} onChange={(e) => setCfg(editingId, { import_count: e.target.value })} /></div>
           )}
+          {isSource && source === 'file_import' && (<>
+            <label className="flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border hover:border-emerald-400 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 cursor-pointer px-3 py-4 text-sm font-medium text-foreground transition-colors">
+              <Upload className="h-4 w-4 text-emerald-600" />
+              {fileParsing ? 'Reading file…' : fileName ? 'Choose a different file' : 'Upload CSV or Excel'}
+              <input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImportFile(f); e.target.value = ''; }} />
+            </label>
+            {fileError && <p className="text-xs text-red-600">{fileError}</p>}
+            {!!fileHeaders.length && (<>
+              <p className="text-xs text-muted-foreground">{fileName} · <span className="font-medium text-foreground">{fileRows.length}</span> row{fileRows.length !== 1 ? 's' : ''} · map columns below</p>
+              <div className="space-y-2 max-h-[46vh] overflow-y-auto pr-1">
+                {fileHeaders.map((h, i) => (
+                  <div key={i} className="grid grid-cols-2 gap-2 items-center">
+                    <span className="text-xs text-foreground truncate" title={h}>{h || `Column ${i + 1}`}</span>
+                    <select className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs"
+                      value={fileMapping[i] || 'ignore'}
+                      onChange={(e) => setFileMapping((m) => ({ ...m, [i]: e.target.value }))}>
+                      {IMPORT_FIELDS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
+                    </select>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[11px] leading-snug text-muted-foreground">Any combination works (name + company, company + title + location, name + location…). When a LinkedIn step runs, Unipile resolves each lead&apos;s LinkedIn profile from the mapped name + company.</p>
+            </>)}
+          </>)}
           {isSource && source === 'linkedin_search' && (
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Search keywords</label>
               <Input value={cfg.keywords || ''} onChange={(e) => setCfg(editingId, { keywords: e.target.value })} placeholder="e.g. VP Sales SaaS UAE" /></div>
@@ -954,7 +1235,7 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
             const swField: string = cfg.field || 'tag';
             const cases: any[] = Array.isArray(cfg.cases) && cfg.cases.length ? cfg.cases : [{ op: 'equals', value: '', channel: 'email', subject: '', body: '' }];
             const def = cfg.default || { channel: 'email', subject: '', body: '' };
-            const fieldLabel = SWITCH_FIELDS.find((f) => f.value === swField)?.label || 'Tag';
+            const fieldLabel = mcFields.find((f) => f.value === swField)?.label || 'Tag';
             const setCase = (i: number, patch: any) => { const next = cases.map((c, idx) => (idx === i ? { ...c, ...patch } : c)); setCfg(eid, { cases: next }); updateWorkflowStep(eid, { description: `${next.length} conditions + else` }); };
             const addCase = () => { if (cases.length >= 6) return; const next = [...cases, { op: 'equals', value: '', channel: 'email', subject: '', body: '' }]; setCfg(eid, { cases: next }); updateWorkflowStep(eid, { description: `${next.length} conditions + else` }); };
             const removeCase = (i: number) => { if (cases.length <= 1) return; const next = cases.filter((_, idx) => idx !== i); setCfg(eid, { cases: next }); updateWorkflowStep(eid, { description: `${next.length} conditions + else` }); };
@@ -969,10 +1250,12 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
             </>);
             return (<>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-foreground">Branch on</label>
+                <label className="text-xs font-medium text-foreground">Branch on {mcFieldsLoading && <span className="text-muted-foreground">· loading fields…</span>}</label>
                 <select className={field} value={swField} onChange={(e) => setCfg(eid, { field: e.target.value })}>
-                  {SWITCH_FIELDS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
+                  {!mcFields.some((f) => f.value === swField) && swField && <option value={swField}>{swField}</option>}
+                  {mcFields.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
                 </select>
+                <p className="text-[11px] text-muted-foreground">{(source === 'zoho_recurring' || source === 'zoho_once') ? 'Fields from your connected Zoho module.' : 'Contact fields available for this source.'}</p>
               </div>
               {cases.map((c, i) => (
                 <div key={i} className="rounded-lg border border-border p-2.5 space-y-2 bg-muted/20">
@@ -1000,6 +1283,16 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
               <p className="text-[11px] leading-snug text-muted-foreground">Each lead runs exactly ONE branch — the first condition that matches, else the fallback. Conditions are checked top-to-bottom.</p>
             </>);
           })()}
+
+          {isAiParse && (<>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-foreground">What should the AI clean up?</label>
+              <textarea className={`${field} min-h-[110px]`} value={cfg.instruction ?? AI_DEFAULT_INSTRUCTION}
+                onChange={(e) => setCfg(editingId!, { instruction: e.target.value })}
+                placeholder={AI_DEFAULT_INSTRUCTION} />
+            </div>
+            <p className="text-[11px] leading-snug text-muted-foreground">Runs on each lead before the outreach steps. It normalises the data — e.g. picks the single best job title when the column has a mix — and writes it back so the LinkedIn node resolves the right person. Uses your tenant&apos;s AI model.</p>
+          </>)}
 
           {!isSource && (editingStep.type === 'linkedin_connect' || editingStep.type === 'linkedin_message') && (<>
             {res.liTemplates.length > 0 && (
@@ -1244,6 +1537,27 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
                 </button>
               );
             })()}
+            {/* AI Agent — clean/normalise lead data before outreach. */}
+            {(() => {
+              const added = workflowPreview.some((s) => s.id === AI_STEP_ID);
+              return (
+                <button onClick={addAiParse}
+                  className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
+                    added ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20' : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                  }`}>
+                  <IconChip icon={<Sparkles className="h-4 w-4 text-violet-600" />} chip="bg-violet-50 dark:bg-violet-950/30" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold text-foreground truncate">AI Agent</span>
+                    <span className="block text-xs text-muted-foreground truncate">Clean messy titles / names before LinkedIn</span>
+                  </span>
+                  {added && (
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    </span>
+                  )}
+                </button>
+              );
+            })()}
           </div>
 
           {/* 3 · Follow-ups */}
@@ -1371,7 +1685,7 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
             </div>
           ) : (
             <ReactFlowProvider>
-              <BuilderCanvas steps={workflowPreview} />
+              <BuilderCanvas steps={workflowPreview} branches={mcBranches} switchId={MULTICOND_STEP_ID} />
             </ReactFlowProvider>
           )}
           {renderEditor()}
