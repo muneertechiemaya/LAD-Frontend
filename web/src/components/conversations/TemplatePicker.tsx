@@ -458,7 +458,7 @@ export function TemplatePicker({
                                   <SelectItem key={o.value} value={o.value}>
                                     <div className="flex flex-col">
                                       <span className="font-bold">{o.label}</span>
-                                      <span className="text-[10px] text-muted-foreground">{o.hint}</span>
+                                      <span className="text-[10px]">{o.hint}</span>
                                     </div>
                                   </SelectItem>
                                 ))}
@@ -519,24 +519,30 @@ export function TemplatePicker({
                     <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Name Personalization</h4>
                     <div className="grid grid-cols-2 gap-3">
                       <button
+                        type="button"
                         onClick={() => setNameFormat('first')}
                         className={cn(
                           "p-3 rounded-xl border transition-all text-left group",
-                          nameFormat === 'first' ? "border-orange-500 bg-orange-50/50 ring-1 ring-orange-200" : "border-gray-100 hover:border-orange-200"
+                          nameFormat === 'first'
+                            ? "border-orange-500 bg-orange-50/50 dark:bg-orange-950/40 ring-1 ring-orange-200 dark:ring-orange-500/30"
+                            : "border-gray-100 dark:border-[#3d3d3d] bg-white dark:bg-[#2e2f2f] hover:border-orange-200 dark:hover:border-orange-500/40"
                         )}
                       >
-                        <span className={cn("block text-sm font-bold", nameFormat === 'first' ? "text-orange-700" : "text-gray-900")}>First Name</span>
-                        <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight">e.g. Naveen</span>
+                        <span className={cn("block text-sm font-bold", nameFormat === 'first' ? "text-orange-700 dark:text-orange-400" : "text-gray-900 dark:text-white")}>First Name</span>
+                        <span className={cn("text-[10px] font-medium uppercase tracking-tight", nameFormat === 'first' ? "text-orange-600/80 dark:text-orange-300/80" : "text-muted-foreground dark:text-gray-400")}>e.g. Naveen</span>
                       </button>
                       <button
+                        type="button"
                         onClick={() => setNameFormat('full')}
                         className={cn(
                           "p-3 rounded-xl border transition-all text-left group",
-                          nameFormat === 'full' ? "border-orange-500 bg-orange-50/50 ring-1 ring-orange-200" : "border-gray-100 hover:border-orange-200"
+                          nameFormat === 'full'
+                            ? "border-orange-500 bg-orange-50/50 dark:bg-orange-950/40 ring-1 ring-orange-200 dark:ring-orange-500/30"
+                            : "border-gray-100 dark:border-[#3d3d3d] bg-white dark:bg-[#2e2f2f] hover:border-orange-200 dark:hover:border-orange-500/40"
                         )}
                       >
-                        <span className={cn("block text-sm font-bold", nameFormat === 'full' ? "text-orange-700" : "text-gray-900")}>Full Name</span>
-                        <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight">e.g. Naveen Reddy</span>
+                        <span className={cn("block text-sm font-bold", nameFormat === 'full' ? "text-orange-700 dark:text-orange-400" : "text-gray-900 dark:text-white")}>Full Name</span>
+                        <span className={cn("text-[10px] font-medium uppercase tracking-tight", nameFormat === 'full' ? "text-orange-600/80 dark:text-orange-300/80" : "text-muted-foreground dark:text-gray-400")}>e.g. Naveen Reddy</span>
                       </button>
                     </div>
                   </div>
