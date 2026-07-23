@@ -1212,7 +1212,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
   // Auto-resize textarea
   useEffect(() => {
     const ta = textareaRef.current;
-    if (ta) { ta.style.height = 'auto'; ta.style.height = `${Math.min(ta.scrollHeight, 150)}px`; }
+    if (ta) { ta.style.height = 'auto'; ta.style.height = `${Math.min(ta.scrollHeight, 120)}px`; }
   }, [text]);
 
   // Close attach menu on outside click
@@ -2140,10 +2140,10 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
         <div className="flex items-end gap-2">
 
           {/* ── Pill — attach + emoji + textarea all inside ── */}
-          <div className="flex-1 flex items-center bg-[#f0f2f5] dark:bg-[#171818] rounded-full px-2 h-[44px] gap-1">
+          <div className="flex-1 flex items-end bg-[#f0f2f5] dark:bg-[#171818] rounded-[24px] px-2 py-1 min-h-[44px] gap-1">
 
             {/* Attach — inside pill */}
-            <div ref={attachBtnRef} className="relative flex-shrink-0">
+            <div ref={attachBtnRef} className="relative flex-shrink-0 self-end mb-0.5">
               <button
                 type="button"
                 onClick={() => setShowAttachMenu(v => !v)}
@@ -2173,7 +2173,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
             </div>
 
             {/* Emoji — inside pill */}
-            <div className="relative flex-shrink-0">
+            <div className="relative flex-shrink-0 self-end mb-0.5">
               <button
                 type="button"
                 data-sticker-btn
@@ -2203,7 +2203,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
               onChange={e => setText(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={pendingFiles.length > 0 ? 'Add a caption (optional)…' : 'Type a message'}
-              className="flex-1 bg-transparent border-0 text-foreground dark:text-[#e9edef] py-2.5 px-1 text-[15px] focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-[#8696a0] dark:placeholder:text-[#a2a2a2] resize-none min-h-[24px] max-h-[120px] self-center"
+              className="flex-1 bg-transparent border-0 text-foreground dark:text-[#e9edef] py-2 px-1 text-[15px] focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-[#8696a0] dark:placeholder:text-[#a2a2a2] resize-none min-h-[24px] max-h-[120px] my-0.5 leading-normal"
               rows={1}
             />
           </div>
@@ -2212,7 +2212,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className={cn('h-9 w-9 flex items-center justify-center rounded-full transition-colors hover:bg-muted flex-shrink-0', agentType === 'human' && 'text-orange-500')}
+                className={cn('h-9 w-9 flex items-center justify-center rounded-full transition-colors hover:bg-muted flex-shrink-0 self-end mb-0.5', agentType === 'human' && 'text-orange-500')}
                 title={agentType === 'human' ? 'Human agent — tap to hand back to Mr LAD' : 'Mr LAD is replying — tap to take over'}
               >
                 {agentType === 'human' ? <User className="h-5 w-5" /> : <img src={isDark ? '/logo-white.svg' : '/logo.svg'} alt="Mr LAD" className="h-7 w-7 object-contain" />}
@@ -2230,28 +2230,30 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
             </DropdownMenuContent>
           </DropdownMenu>
 
-         {/* Send / Mic */}
-{isSending ? (
-  <Loader2 className="w-6 h-6 text-[#00a884] animate-spin" />
-) : (text.trim() || pendingFiles.length > 0) ? (
-  <button
-    type="button"
-    className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full transition-colors text-[#00a884] hover:text-[#008f6f]"
-    onClick={handleSend}
-    aria-label="Send message"
-  >
-    <Send className="w-6 h-6" />
-  </button>
-) : (
-  <button
-    ref={micBtnRef}
-    className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full transition-colors text-muted-foreground dark:text-[#8696a0] hover:text-[#00a884] dark:hover:text-[#00a884]"
-    onClick={startVoiceRecording}
-    aria-label="Record voice message"
-  >
-    <Mic className="w-6 h-6" />
-  </button>
-)}
+          {/* Send / Mic */}
+          {isSending ? (
+            <div className="shrink-0 w-9 h-9 flex items-center justify-center self-end mb-0.5">
+              <Loader2 className="w-6 h-6 text-[#00a884] animate-spin" />
+            </div>
+          ) : (text.trim() || pendingFiles.length > 0) ? (
+            <button
+              type="button"
+              className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full transition-colors text-[#00a884] hover:text-[#008f6f] self-end mb-0.5"
+              onClick={handleSend}
+              aria-label="Send message"
+            >
+              <Send className="w-6 h-6" />
+            </button>
+          ) : (
+            <button
+              ref={micBtnRef}
+              className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full transition-colors text-muted-foreground dark:text-[#8696a0] hover:text-[#00a884] dark:hover:text-[#00a884] self-end mb-0.5"
+              onClick={startVoiceRecording}
+              aria-label="Record voice message"
+            >
+              <Mic className="w-6 h-6" />
+            </button>
+          )}
 
         </div>
 
