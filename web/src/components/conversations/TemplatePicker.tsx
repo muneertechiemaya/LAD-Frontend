@@ -312,28 +312,10 @@ export function TemplatePicker({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:w-[90vw] sm:h-[90vh] flex flex-col p-0 overflow-hidden">
         <DialogHeader>
-          <div className="flex items-center justify-between w-full">
-            <DialogTitle className="flex items-center gap-3">
-              <MessageSquare className="h-6 w-6 text-orange-600" />
-              Send Template Message
-              <Badge variant="secondary" className="bg-orange-50 text-orange-700 border-orange-100 px-3">
-                {selectedCount} conversation{selectedCount !== 1 ? 's' : ''}
-              </Badge>
-            </DialogTitle>
-            
-            {channel === 'waba' && (
-            <div className="mr-8"> {/* Added explicitly to push the button left, away from the hidden close 'X' */}
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-9 text-xs px-3 rounded-lg border-orange-200 text-orange-700 hover:bg-orange-100 hover:text-orange-800 transition-all"
-                onClick={() => setShowCreateModal(true)}
-              >
-                <Plus className="w-3.5 h-3.5 mr-1.5" /> New template
-              </Button>
-            </div>
-            )}
-          </div>
+          <DialogTitle className="flex items-center gap-3">
+            <MessageSquare className="h-6 w-6 text-orange-600" />
+            Send Template Message
+          </DialogTitle>
         </DialogHeader>
 
         <CreateWabaTemplateModal
@@ -349,8 +331,8 @@ export function TemplatePicker({
           {!selectedTemplate ? (
             <>
               {/* Search */}
-              <div className="px-8 pt-6 pb-2">
-                <div className="relative">
+              <div className="px-8 pt-6 pb-2 flex items-center gap-3">
+                <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search templates..."
@@ -359,6 +341,16 @@ export function TemplatePicker({
                     className="pl-9 h-11 rounded-xl bg-gray-50 dark:bg-[#2e2f2f] border-gray-100 dark:border-[#3d3d3d] dark:text-white dark:placeholder:text-[#8696a0]"
                   />
                 </div>
+                {channel === 'waba' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-11 text-xs px-3.5 rounded-xl border-orange-200 text-orange-700 hover:bg-orange-100 hover:text-orange-800 dark:border-orange-500/30 dark:text-orange-400 dark:hover:bg-orange-500/10 transition-all shrink-0 font-medium"
+                    onClick={() => setShowCreateModal(true)}
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1.5" /> New template
+                  </Button>
+                )}
               </div>
 
               {/* Template list */}
@@ -617,7 +609,9 @@ export function TemplatePicker({
           <div className="flex items-center justify-between w-full">
             <div className="text-sm font-medium text-muted-foreground">
               {selectedTemplate ? (
-                <span>Ready to send to {selectedCount}</span>
+                <span>
+                  Ready to send {selectedCount} {selectedCount === 1 ? 'conversation' : 'conversations'}.
+                </span>
               ) : (
                 <span>Select a template to continue</span>
               )}
