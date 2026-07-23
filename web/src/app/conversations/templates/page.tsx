@@ -14,6 +14,7 @@ import {
   useDeleteLinkedInMessageTemplate,
   useInstagramMessageTemplates,
   useDeleteInstagramMessageTemplate,
+  linkedinTemplateTypeLabel,
 } from '@lad/frontend-features/campaigns';
 import type {
   LinkedInMessageTemplate,
@@ -641,9 +642,9 @@ export default function TemplatesPage() {
                     gradient="bg-gradient-to-r from-[#0A66C2] via-[#0e76d6] to-[#378fe9]"
                     icon={<Linkedin className="w-3.5 h-3.5 text-white/80" />}
                     name={t.name}
-                    preview={t.connection_message || t.followup_message || t.description || ''}
+                    preview={t.content || t.connection_message || t.followup_message || t.description || ''}
                     isDefault={t.is_default}
-                    footerRight={t.category ? <span className="capitalize">{t.category}</span> : null}
+                    footerRight={t.category ? <span>{linkedinTemplateTypeLabel(t.category)}</span> : null}
                     onEdit={() => { setLiEditing(t); setLiModalOpen(true); }}
                     onDelete={() => handleDeleteLi(t)}
                   />

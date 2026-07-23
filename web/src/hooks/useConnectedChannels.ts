@@ -20,7 +20,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
 
-export type ChannelId = 'waba' | 'personal_whatsapp' | 'linkedin' | 'gmail' | 'instagram';
+export type ChannelId = 'waba' | 'personal_whatsapp' | 'linkedin' | 'gmail' | 'instagram' | 'voice';
 export type ChannelStatus = 'connected' | 'disconnected' | 'unknown';
 
 const INITIAL: Record<ChannelId, ChannelStatus> = {
@@ -29,6 +29,7 @@ const INITIAL: Record<ChannelId, ChannelStatus> = {
   linkedin: 'unknown',
   gmail: 'unknown',
   instagram: 'unknown',
+  voice: 'unknown',
 };
 
 type ProbeResult =
@@ -100,6 +101,14 @@ async function probeInstagram(): Promise<ChannelStatus> {
   });
 }
 
+/** Voice is "connected" when the tenant has at least one usable voice agent. */
+async function probeVoice(): Promise<ChannelStatus> {
+  return toStatus(await probe('/api/voice-agent/user/available-agents'), (data) => {
+    const agents = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
+    return agents.length > 0;
+  });
+}
+
 export function useConnectedChannels() {
   const [statuses, setStatuses] = useState<Record<ChannelId, ChannelStatus>>(INITIAL);
   const [loaded, setLoaded] = useState(false);
@@ -109,16 +118,18 @@ export function useConnectedChannels() {
     if (inFlight.current) return;
     inFlight.current = true;
     try {
-      const [waba, personal, linkedin, gmail, instagram] = await Promise.all([
+      const [waba, personal, linkedin, gmail, instagram, voice] = await Promise.all([
         probeWaba(),
         probePersonalWhatsapp(),
         probeLinkedin(),
         probeEmail(),
         probeInstagram(),
+        probeVoice(),
       ]);
-      const next = { waba, personal_whatsapp: personal, linkedin, gmail, instagram };
+      const next = { waba, personal_whatsapp: personal, linkedin, gmail, instagram, voice };
       // Visible in devtools so "why is this tab shown/hidden?" is answerable.
       // 'unknown' = probe failed transiently → treated as visible (fail-open).
+      // eslint-disable-next-line no-console -- intentional diagnostic (see comment above)
       console.debug('[useConnectedChannels] statuses', next);
       setStatuses(next);
       setLoaded(true);

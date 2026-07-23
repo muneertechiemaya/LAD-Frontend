@@ -1,9 +1,15 @@
 'use client';
 
+import {
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import ReactMarkdown from 'react-markdown';
+import { useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Gem, Upload, FileSpreadsheet, Download, CheckCircle2, Trash2, ChevronLeft, ChevronRight, ChevronDown, X, MessageSquare, Users, Zap, Plus, Image as ImageIcon, Video, Loader2, Mic, Globe, Newspaper, UserPlus, Check, Pencil, Mail, Phone as PhoneIcon, MapPin } from 'lucide-react';
+import { Sparkles, Gem, Upload, FileSpreadsheet, Download, CheckCircle2, Pencil, Trash2, ChevronDown, ChevronLeft, ChevronRight, X, MessageSquare, Users, Zap, Plus, Image as ImageIcon, Video, Loader2, Mic, Globe, Newspaper, UserPlus, Check, History, Volume2, ArrowLeft, Mail, Phone as PhoneIcon, MapPin, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { ProfileSummaryDialog } from '@/components/campaigns';
 import AgentVisualizer from '@/components/ui/AgentVisualizer';
 import { useOnboardingStore } from '@/store/onboardingStore';
@@ -110,6 +116,34 @@ interface ParsedInboundLead {
     profilePicture: string;
 }
 
+// ── Specific-person query detection ─────────────────────────────────────────
+// "Karen Lundquist, Association Manager at Impact Association Management" is one
+// fully-identified person, not an audience. Broad search + ICP scoring cannot
+// serve that query (the ICP is literally one person's name, so every candidate
+// scores ~0 and the campaign launches with zero leads). Detect this shape and
+// route it through the inbound waterfall pipeline instead, which resolves the
+// exact person once and attaches them to the campaign directly.
+// Conservative on purpose: false negatives just fall back to normal search.
+const PERSON_AUDIENCE_WORDS = /\b(founders?|co-?founders?|owners?|managers?|directors?|heads?|chiefs?|leads?|executives?|officers?|presidents?|professionals?|specialists?|consultants?|engineers?|developers?|designers?|marketers?|recruiters?|analysts?|advisors?|partners?|investors?|agents?|brokers?|people|teams?|companies|startups?|businesses|smes?|ceos?|c[tfmo]os?|cxos?|vps?)\b/i;
+function detectSpecificPersonQuery(t: LeadTargeting | null | undefined): { name: string; title: string; company: string; location: string } | null {
+    if (!t) return null;
+    const kw = (t.keywords || []).join(' ').replace(/\s+/g, ' ').trim();
+    const words = kw.split(' ').filter(Boolean);
+    // A person name: 2–4 name-cased words with no audience/role vocabulary.
+    if (words.length < 2 || words.length > 4) return null;
+    if (PERSON_AUDIENCE_WORDS.test(kw)) return null;
+    if (!words.every(w => /^[A-Z][A-Za-z'’.-]*$/.test(w))) return null;
+    // Require a company anchor — that's what the person-resolution waterfall keys on.
+    const company = (t.company_names && t.company_names[0]) || '';
+    if (!company) return null;
+    return {
+        name: kw,
+        title: (t.job_titles && t.job_titles[0]) || '',
+        company,
+        location: (t.locations && t.locations[0]) || '',
+    };
+}
+
 interface ChatMsg {
     id: string;
     role: 'user' | 'ai';
@@ -147,6 +181,43 @@ function toArr(v: any): string[] {
 
 const ICP_LEADS_PROMPT = 'Get leads from my active ICP';
 const isIcpLeadsPrompt = (s: string) => s.trim().toLowerCase() === ICP_LEADS_PROMPT.toLowerCase();
+
+/** Synthetic stand-in names the pipeline can produce for a lead whose real name
+ *  wasn't resolved ("Lead 1", "Prospect 3", "Unknown"). Mirrors the backend
+ *  core/utils/nameSafety.js — kept in sync so a placeholder is never shown as a
+ *  person nor persisted (via initial_leads) as one. */
+const PLACEHOLDER_NAME_RE = /^(?:(?:lead|prospect|contact)(?:\s*\d+)?|unknown|n\/?a|none|null|undefined)$/i;
+function isPlaceholderName(s?: string | null): boolean {
+    const t = (s ?? '').trim();
+    return t === '' || PLACEHOLDER_NAME_RE.test(t);
+}
+
+/** Read a discovered/imported person's name tolerantly across camelCase and
+ *  snake_case. The import/save (and enrichment) responses carry a mix — reading
+ *  both is what stops the resolved name being dropped on a casing mismatch. */
+function readLeadName(r: any): { firstName: string; lastName: string; name: string } {
+    const firstName = String(r?.firstName ?? r?.first_name ?? '').trim();
+    const lastName = String(r?.lastName ?? r?.last_name ?? '').trim();
+    const name = String(r?.name ?? `${firstName} ${lastName}`).trim();
+    return { firstName, lastName, name };
+}
+
+/** Best human-facing DISPLAY label for a lead — a real name when we have one,
+ *  else the company or headline, and only "Lead N" as a last resort. Never shows
+ *  a synthetic placeholder as if it were a person. For DISPLAY only; the persisted
+ *  lead name must stay empty when unknown (see the launch payload). */
+function leadDisplayLabel(
+    parts: { firstName?: string; lastName?: string; name?: string; company?: string; headline?: string },
+    idx: number,
+): string {
+    const full = (parts.name || `${parts.firstName || ''} ${parts.lastName || ''}`).trim();
+    if (full && !isPlaceholderName(full)) return full;
+    const company = (parts.company || '').trim();
+    if (company) return company;
+    const headline = (parts.headline || '').trim();
+    if (headline) return headline;
+    return `Lead ${idx + 1}`;
+}
 
 /** Map SearchDispatcher candidates (ProspectCandidate) → the page's LeadProfile shape,
  *  so an ICP-discovery run drops into the same leads list/panel the LinkedIn search uses. */
@@ -535,6 +606,9 @@ export default function AdvancedSearchAIPage() {
     const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
     const editHydratedRef = useRef(false);
     const [input, setInput] = useState('');
+    const [isRecording, setIsRecording] = useState(false);
+    const [recognitionInstance, setRecognitionInstance] = useState<any>(null);
+    const [beautifying, setBeautifying] = useState(false);
     const [busy, setBusy] = useState(false);
     const [typedPlaceholder, setTypedPlaceholder] = useState('');
     useEffect(() => {
@@ -890,6 +964,96 @@ export default function AdvancedSearchAIPage() {
     const [mediaMessages, setMediaMessages] = useState<Array<MediaChatMsg>>([]);
     const mb = useMediaBuilder();
     const [brandDnaRequestedChanges, setBrandDnaRequestedChanges] = useState(false);
+    const [isHydrated, setIsHydrated] = useState(false);
+    const lastRestoredSessionIdRef = useRef<string>("");
+
+    // Save states to localStorage to prevent page refresh loss
+    useEffect(() => {
+        if (!isHydrated || typeof window === 'undefined') return;
+        if (mediaMode && mb.sessionId) {
+            localStorage.setItem('mrlad_media_mode', 'true');
+            localStorage.setItem('mrlad_active_media_session_id', mb.sessionId);
+            localStorage.setItem('mrlad_media_messages', JSON.stringify(mediaMessages));
+            localStorage.setItem('mrlad_chat_messages', JSON.stringify(messages));
+            localStorage.setItem('mrlad_cp_step', String(cpStep));
+        } else {
+            if (!mediaMode) {
+                localStorage.removeItem('mrlad_media_mode');
+                localStorage.removeItem('mrlad_active_media_session_id');
+                localStorage.removeItem('mrlad_media_messages');
+                localStorage.removeItem('mrlad_chat_messages');
+                localStorage.removeItem('mrlad_cp_step');
+            }
+        }
+    }, [mediaMode, mb.sessionId, mediaMessages, messages, cpStep, isHydrated]);
+
+    // Hydrate state from localStorage on mount and validate session
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        
+        const cachedMediaMode = localStorage.getItem('mrlad_media_mode') === 'true';
+        const cachedSessionId = localStorage.getItem('mrlad_active_media_session_id');
+        const cachedMediaMessages = localStorage.getItem('mrlad_media_messages');
+        const cachedChatMessages = localStorage.getItem('mrlad_chat_messages');
+        const cachedCpStep = localStorage.getItem('mrlad_cp_step');
+
+        if (cachedMediaMode && cachedSessionId) {
+            console.warn(`[SessionHydrate] Re-hydrating cached session: ${cachedSessionId}`);
+            mb.loadSession(cachedSessionId).then(() => {
+                setMediaMode(true);
+                if (cachedMediaMessages) {
+                    try { setMediaMessages(JSON.parse(cachedMediaMessages)); } catch (e) { console.error(e); }
+                }
+                if (cachedChatMessages) {
+                    try { setMessages(JSON.parse(cachedChatMessages)); } catch (e) { console.error(e); }
+                }
+                if (cachedCpStep) {
+                    setCpStep(Number(cachedCpStep));
+                }
+                setIsHydrated(true);
+            }).catch((err) => {
+                console.error("[SessionHydrate] Cached session validation failed, discarding cache", err);
+                localStorage.removeItem('mrlad_media_mode');
+                localStorage.removeItem('mrlad_active_media_session_id');
+                localStorage.removeItem('mrlad_media_messages');
+                localStorage.removeItem('mrlad_chat_messages');
+                localStorage.removeItem('mrlad_cp_step');
+                setIsHydrated(true);
+            });
+        } else {
+            setIsHydrated(true);
+        }
+    }, []);
+
+    // Overwrite mediaMessages if backend returns history (during GCS re-hydration / load or dropdown switch)
+    useEffect(() => {
+        if (mb.uiPayload?.history && mb.sessionId && lastRestoredSessionIdRef.current !== mb.sessionId) {
+            console.warn("[SessionHydrate] Restoring messages list from session history payload for:", mb.sessionId);
+            lastRestoredSessionIdRef.current = mb.sessionId;
+            const restoredHistory = mb.uiPayload.history.map((m: any) => {
+                let mappedPayload = m.payload;
+                if (m.payload) {
+                    mappedPayload = {
+                        ...m.payload,
+                        step: m.payload.step || m.payload.step_type,
+                        question: m.payload.question || m.payload.title,
+                        description: m.payload.description,
+                        phase: m.payload.phase
+                    };
+                }
+                return {
+                    id: m.id || `msg-${Math.random()}`,
+                    role: m.role,
+                    text: m.text,
+                    description: m.description,
+                    step: m.step,
+                    payload: mappedPayload,
+                    timestamp: new Date(m.timestamp || Date.now())
+                };
+            });
+            setMediaMessages(restoredHistory);
+        }
+    }, [mb.uiPayload?.history, mb.sessionId]);
 
     const hasOptionsOpen = mediaMode && (
         mb.step === "welcome" || 
@@ -903,7 +1067,8 @@ export default function AdvancedSearchAIPage() {
 
     const isSplitScreenStep = mediaMode && (
         mb.step === "builder-brand-dna" ||
-        mb.step === "builder-video-progress"
+        mb.step === "builder-video-progress" ||
+        mb.step === "builder-keyframes-confirm"
     );
 
     const [mediaPlaceholder, setMediaPlaceholder] = useState('Ask Mr LAD / type response...');
@@ -988,7 +1153,12 @@ export default function AdvancedSearchAIPage() {
         geographicFocus: '', valueProposition: '', competitors: '', campaignTone: '',
     });
     const [bpHydrated, setBpHydrated] = useState(false);
-
+    const [openSummaries, setOpenSummaries] = useState<Set<number>>(new Set());
+    const toggleSummary = (idx: number) => setOpenSummaries((prev) => {
+        const next = new Set(prev);
+        if (next.has(idx)) next.delete(idx); else next.add(idx);
+        return next;
+    });
     // Hydrate local state once when the hook's initial load completes.
     // We keep `businessProfile` as a local Record<string, string> because the
     // chat continues to mutate it through many setBusinessProfile calls — the
@@ -1276,6 +1446,14 @@ export default function AdvancedSearchAIPage() {
     // Seed default selection (leads scoring >= 50 pre-checked) for a fresh result
     // set, replacing any prior selection. Used when a new search populates `leads`.
     const seedDefaultSelection = (list: LeadProfile[]) => {
+        // A single-result search is almost always the specific person the user
+        // asked for — check them regardless of ICP score so launch never
+        // discards the only lead found (an ICP of "one person's name" scores
+        // every candidate near zero, which used to yield zero-lead campaigns).
+        if (list.length === 1) {
+            setSelectedLeadIds(new Set(list.map(l => l.id)));
+            return;
+        }
         setSelectedLeadIds(new Set(
             list.filter(l => (l.icp_score ?? 0) >= 50).map(l => l.id)
         ));
@@ -1517,7 +1695,7 @@ export default function AdvancedSearchAIPage() {
                 // LinkedIn actions: prefer the saved checkpoint selection, else derive from
                 // the persisted steps (the workflow is the source of truth) so the action
                 // checkboxes re-check even for campaigns missing checkpoint_selections.
-                let liActions: string[] = Array.isArray(cs.linkedin_actions) ? [...cs.linkedin_actions] : [];
+                const liActions: string[] = Array.isArray(cs.linkedin_actions) ? [...cs.linkedin_actions] : [];
                 if (liActions.length === 0 && Array.isArray(camp?.steps)) {
                     const stepTypes = camp.steps.map((s: any) => s.type || s.step_type);
                     if (stepTypes.includes('linkedin_visit')) liActions.push('profile_view');
@@ -1535,11 +1713,26 @@ export default function AdvancedSearchAIPage() {
                     const curCfg = deriveConfig(useOnboardingStore.getState().workflowPreview as unknown as SyncStep[]);
                     const hydChannels = Array.isArray(cs.next_channels) ? [...cs.next_channels] : [...curCfg.nextChannels];
                     if (liActions.length && !hydChannels.includes('linkedin')) hydChannels.unshift('linkedin');
-                    setWorkflowPreview(applyConfig(
+                    const hydrated = applyConfig(
                         useOnboardingStore.getState().workflowPreview as unknown as SyncStep[],
                         { actions: liActions, nextChannels: hydChannels, triggerCondition: cs.trigger_condition ?? cfg.trigger_condition ?? '' },
                         { includeLeadSource: includeLeadSourceRef.current },
-                    ) as any);
+                    ) as any[];
+                    // Restore the AI Media node (preserved type — survives later
+                    // toggle reconciles). Source: checkpoint_selections.media_step,
+                    // else a persisted media_generation step row.
+                    const ms = cs.media_step
+                        || (camp?.steps || []).find((s: any) => (s.type || s.step_type) === 'media_generation')?.config;
+                    if (ms && !hydrated.some((s: any) => s.type === 'media_generation')) {
+                        hydrated.push({
+                            id: 'media-gen', type: 'media_generation', title: 'AI Media', channel: 'media',
+                            description: 'Generate brand media to attach to outreach',
+                            mediaUrl: ms.media_url || '', mediaType: ms.media_type || '',
+                            mediaFilename: ms.media_filename || '', mimeType: ms.mime_type || '',
+                            mediaPrompt: ms.prompt || '',
+                        });
+                    }
+                    setWorkflowPreview(hydrated as any);
                 }
                 if (cs.campaign_days != null) setCpDays(String(cs.campaign_days));
                 setCpName(cs.campaign_name ?? camp?.name ?? '');
@@ -1568,6 +1761,16 @@ export default function AdvancedSearchAIPage() {
             setCreditBalance(0);
         }
     }, [billing.wallet, billing.error]);
+
+    // Auto-unlock search results when the tenant has any credit balance. Unlocking is a
+    // pure client-side flag flip (locked = CSS blur only — no data withheld, no charge).
+    // The leads.some(locked) guard prevents re-render loops and also covers late-arriving
+    // "Get More Leads" pages, which are constructed with locked: idx >= 5.
+    useEffect(() => {
+        if (creditBalance !== null && creditBalance >= 1 && leads.some(l => l.locked)) {
+            setLeads(prev => prev.map(l => ({ ...l, locked: false })));
+        }
+    }, [creditBalance, leads]);
 
     // Sync voice agent hook data → cpVoiceAgents/cpVoiceNumbers state
     // so CheckpointFormInline receives them as pre-populated props
@@ -1824,7 +2027,7 @@ export default function AdvancedSearchAIPage() {
             // Update the leads panel display
             const updatedPanelLeads: LeadProfile[] = updatedLeads.map((l, i) => ({
                 id: `inbound-${i}`,
-                name: `${l.firstName} ${l.lastName}`.trim() || `Lead ${i + 1}`,
+                name: leadDisplayLabel({ firstName: l.firstName, lastName: l.lastName, company: l.companyName }, i),
                 first_name: l.firstName,
                 last_name: l.lastName,
                 headline: l.companyName ? `at ${l.companyName}` : '',
@@ -1859,7 +2062,11 @@ export default function AdvancedSearchAIPage() {
 
     // Delete inbound lead handlers
     const openDeleteConfirmation = (index: number) => {
-        const name = `${inboundLeads[index].firstName} ${inboundLeads[index].lastName}`.trim() || `Lead ${index + 1}`;
+        const name = leadDisplayLabel({
+            firstName: inboundLeads[index].firstName,
+            lastName: inboundLeads[index].lastName,
+            company: inboundLeads[index].companyName,
+        }, index);
         setDeleteConfirmation({ index, name });
     };
 
@@ -1883,7 +2090,7 @@ export default function AdvancedSearchAIPage() {
             // Update the leads panel display
             const updatedPanelLeads: LeadProfile[] = updatedLeads.map((l, i) => ({
                 id: `inbound-${i}`,
-                name: `${l.firstName} ${l.lastName}`.trim() || `Lead ${i + 1}`,
+                name: leadDisplayLabel({ firstName: l.firstName, lastName: l.lastName, company: l.companyName }, i),
                 first_name: l.firstName,
                 last_name: l.lastName,
                 headline: l.companyName ? `at ${l.companyName}` : '',
@@ -2015,13 +2222,15 @@ export default function AdvancedSearchAIPage() {
     }, [mb]);
 
     const submitMediaInput = useCallback((text: string, valueToSend?: string | string[], customReferences?: { path: string, thumbnail: string }[]) => {
+        const finalRefs = customReferences || (mb.references && mb.references.length > 0 ? [...mb.references] : undefined);
+        const displayText = text || (finalRefs && finalRefs.length > 0 ? `Uploaded ${finalRefs.length} reference${finalRefs.length > 1 ? 's' : ''}` : "");
         setMediaMessages(prev => [
             ...prev.filter(m => !m.loading),
             {
                 id: `user-${Date.now()}`,
                 role: "user",
-                text: text,
-                references: customReferences || (mb.references && mb.references.length > 0 ? [...mb.references] : undefined),
+                text: displayText,
+                references: finalRefs,
                 timestamp: new Date()
             }
         ]);
@@ -2058,6 +2267,7 @@ export default function AdvancedSearchAIPage() {
         if (mb.step === "welcome") {
             setMediaMode(false);
             setMediaMessages([]);
+            lastRestoredSessionIdRef.current = "";
         } else {
             mb.undoStep();
         }
@@ -2306,19 +2516,19 @@ export default function AdvancedSearchAIPage() {
             return (
                 <div className="adv-options-extension fadeUp">
                     <div className="text-[11px] font-bold text-[#0b1957]/50 uppercase tracking-wider mb-2">Choose Script / Workflow</div>
-                    <div className="flex flex-col gap-2 max-h-40 overflow-y-auto scrollbar-thin">
+                    <div className="flex flex-wrap gap-2 justify-start items-center max-h-40 overflow-y-auto scrollbar-thin">
                         {mb.uiPayload?.options?.map((opt) => (
                             <button
                                 key={opt.id}
                                 onClick={() => submitMediaInput(opt.label, opt.label)}
-                                className="bg-white border border-slate-200 hover:border-[#0b1957] rounded-lg p-2.5 text-left text-xs font-semibold text-[#0b1957] hover:bg-slate-50 transition-all cursor-pointer"
+                                className="bg-white border border-slate-200 hover:border-[#0b1957] rounded-lg px-4 py-2 text-left text-xs font-semibold text-[#0b1957] hover:bg-slate-50 transition-all cursor-pointer"
                             >
                                 {opt.label}
                             </button>
                         ))}
                         <button
                             onClick={() => mb.undoStep()}
-                            className="border border-dashed border-slate-300 rounded-lg p-2 text-center text-xs font-bold text-slate-400 hover:bg-slate-50 transition-all cursor-pointer"
+                            className="border border-dashed border-slate-300 rounded-lg px-4 py-2 text-center text-xs font-bold text-slate-400 hover:bg-slate-50 transition-all cursor-pointer"
                         >
                             Go Back
                         </button>
@@ -2355,11 +2565,16 @@ export default function AdvancedSearchAIPage() {
         if (mb.step !== "loading" && !mb.generating && mb.uiPayload) {
             setMediaMessages(prev => {
                 // Check if this step already exists in history (for undo truncation)
-                const existingIndex = prev.findIndex(m => 
-                    m.step === mb.step && 
-                    m.payload?.phase === mb.uiPayload?.phase && 
-                    m.payload?.question === mb.uiPayload?.question
-                );
+                const existingIndex = prev.findIndex(m => {
+                    const isStepTypeMatch = m.step === mb.step;
+                    const mPhase = m.payload?.phase || m.payload?.phase_label;
+                    const uiPhase = mb.uiPayload?.phase;
+                    const isPhaseMatch = mPhase === uiPhase;
+                    const mQuestion = m.payload?.question || m.payload?.title || m.text;
+                    const uiQuestion = mb.uiPayload?.question || mb.uiPayload?.title;
+                    const isQuestionMatch = mQuestion === uiQuestion;
+                    return isStepTypeMatch && isPhaseMatch && isQuestionMatch;
+                });
 
                 if (existingIndex !== -1) {
                     return prev.slice(0, existingIndex + 1);
@@ -2367,10 +2582,18 @@ export default function AdvancedSearchAIPage() {
 
                 // Avoid duplicate additions of the current active step, but update its payload with the latest data
                 const lastMsg = prev[prev.length - 1];
-                if (lastMsg && 
-                    lastMsg.step === mb.step && 
-                    lastMsg.payload?.phase === mb.uiPayload?.phase && 
-                    lastMsg.payload?.question === mb.uiPayload?.question) {
+                const isLastMsgMatch = lastMsg && (() => {
+                    const isStepTypeMatch = lastMsg.step === mb.step;
+                    const mPhase = lastMsg.payload?.phase || lastMsg.payload?.phase_label;
+                    const uiPhase = mb.uiPayload?.phase;
+                    const isPhaseMatch = mPhase === uiPhase;
+                    const mQuestion = lastMsg.payload?.question || lastMsg.payload?.title || lastMsg.text;
+                    const uiQuestion = mb.uiPayload?.question || mb.uiPayload?.title;
+                    const isQuestionMatch = mQuestion === uiQuestion;
+                    return isStepTypeMatch && isPhaseMatch && isQuestionMatch;
+                })();
+
+                if (isLastMsgMatch) {
                     return prev.map((m, idx) => idx === prev.length - 1 ? {
                         ...m,
                         text: mb.uiPayload?.question || m.text,
@@ -2411,7 +2634,7 @@ export default function AdvancedSearchAIPage() {
         if (!mediaMode || !mediaInputWrapRef.current) return;
 
         const observer = new ResizeObserver((entries) => {
-            for (let entry of entries) {
+            for (const entry of entries) {
                 setMediaInputWrapHeight(entry.target.clientHeight);
             }
         });
@@ -2540,17 +2763,25 @@ export default function AdvancedSearchAIPage() {
                     // Store real lead UUIDs so campaign creation can link to leads table
                     if (saveData.leadIds && saveData.leadIds.length > 0) {
                         setInboundLeadIds(saveData.leadIds);
+                        // Default-select every imported lead so the panel checkboxes
+                        // show checked (launch already enrolls all inbound ids when
+                        // nothing is selected — this makes the UI reflect that).
+                        // Fan-out branches below re-seed with the discovered ids.
+                        setSelectedLeadIds(new Set(saveData.leadIds));
 
-                        // If the backend fanned out a company+title row into multiple DISCOVERED
-                        // people, show them right away from the save response (the created leads
-                        // carry the real names + LinkedIn URLs) — no need to wait for enrichment.
+                        // Use the backend's saved/discovered leads as the source of truth for
+                        // BOTH the panel and enrollment whenever it returns any — the created
+                        // leads carry the real names + LinkedIn URLs (and their real UUIDs, kept
+                        // index-aligned below). Gating on `> parsed.length` silently kept the
+                        // client-parsed "Unknown" rows whenever discovery returned the same count
+                        // or fewer (e.g. a throttled company+title run that fell back to placeholders).
                         const savedLeads: any[] = Array.isArray(saveData.leads) ? saveData.leads : [];
-                        if (savedLeads.length > parsed.length) {
+                        if (savedLeads.length > 0) {
                             const rebuiltInbound: ParsedInboundLead[] = savedLeads.map((r) => {
-                                const nm = (r.name || '').trim();
+                                const { firstName, lastName } = readLeadName(r);
                                 return {
-                                    firstName: r.first_name || nm.split(/\s+/)[0] || '',
-                                    lastName: r.last_name || nm.split(/\s+/).slice(1).join(' ') || '',
+                                    firstName,
+                                    lastName,
                                     companyName: r.company || '',
                                     linkedinProfile: r.linkedin_url || '',
                                     email: '', whatsapp: '', phone: '', website: '', notes: '',
@@ -2561,12 +2792,12 @@ export default function AdvancedSearchAIPage() {
                             });
                             setInboundLeads(rebuiltInbound);
                             const rebuiltPanel: LeadProfile[] = savedLeads.map((r, i) => {
-                                const nm = (r.name || '').trim();
+                                const { firstName, lastName, name } = readLeadName(r);
                                 return {
                                     id: r.id || `inbound-${i}`,
-                                    name: nm || `Lead ${i + 1}`,
-                                    first_name: r.first_name || '',
-                                    last_name: r.last_name || '',
+                                    name: leadDisplayLabel({ name, company: r.company, headline: r.headline || r.title || r.target_title }, i),
+                                    first_name: firstName,
+                                    last_name: lastName,
                                     headline: r.headline || r.title || r.target_title || (r.company ? `at ${r.company}` : ''),
                                     location: r.location || '',
                                     current_company: r.company || '',
@@ -2607,10 +2838,10 @@ export default function AdvancedSearchAIPage() {
                                     const fannedOut = results.length > parsed.length;
                                     if (fannedOut) {
                                         const rebuiltInbound: ParsedInboundLead[] = results.map((r) => {
-                                            const nm = (r.name || '').trim();
+                                            const { firstName, lastName } = readLeadName(r);
                                             return {
-                                                firstName: nm.split(/\s+/)[0] || '',
-                                                lastName: nm.split(/\s+/).slice(1).join(' ') || '',
+                                                firstName,
+                                                lastName,
                                                 companyName: r.company || '',
                                                 linkedinProfile: r.linkedin_url || '',
                                                 email: r.email || '',
@@ -2628,12 +2859,12 @@ export default function AdvancedSearchAIPage() {
                                         // Default-select every discovered person (user can uncheck any).
                                         setSelectedLeadIds(new Set(results.map((r) => r.leadId).filter(Boolean)));
                                         const rebuiltPanel: LeadProfile[] = results.map((r, i) => {
-                                            const nm = (r.name || '').trim();
+                                            const { firstName, lastName, name } = readLeadName(r);
                                             return {
                                                 id: `inbound-${i}`,
-                                                name: nm || `Lead ${i + 1}`,
-                                                first_name: nm.split(/\s+/)[0] || '',
-                                                last_name: nm.split(/\s+/).slice(1).join(' ') || '',
+                                                name: leadDisplayLabel({ name, company: r.company, headline: r.job_title }, i),
+                                                first_name: firstName,
+                                                last_name: lastName,
                                                 headline: r.job_title || (r.company ? `at ${r.company}` : ''),
                                                 location: '',
                                                 current_company: r.company || '',
@@ -2667,6 +2898,15 @@ export default function AdvancedSearchAIPage() {
                                         }));
                                         const newLinkedIn = results.filter((r) => r.linkedin_url && !parsed[enrichedIds.indexOf(r.leadId)]?.linkedinProfile).length;
                                         if (newLinkedIn > 0) counts.linkedin = (counts.linkedin || 0) + newLinkedIn;
+                                        // Surface waterfall-resolved LinkedIn URLs on the panel cards
+                                        // too — the panel was built from the raw rows before enrichment
+                                        // ran, so resolved profiles would otherwise not be clickable.
+                                        // Panel cards are index-aligned with enrichedIds for 1:1 imports.
+                                        setLeads(prev => prev.map((pl, idx) => {
+                                            const enriched = enrichedIds[idx] ? enrichMap[enrichedIds[idx]] : null;
+                                            if (!enriched?.linkedin_url || pl.profile_url) return pl;
+                                            return { ...pl, profile_url: enriched.linkedin_url };
+                                        }));
                                     }
                                 }
                             }
@@ -2809,7 +3049,7 @@ export default function AdvancedSearchAIPage() {
             // Convert inbound leads to LeadProfile format for the panel
             const panelLeads: LeadProfile[] = parsed.map((l, i) => ({
                 id: `inbound-${i}`,
-                name: `${l.firstName} ${l.lastName}`.trim() || `Lead ${i + 1}`,
+                name: leadDisplayLabel({ firstName: l.firstName, lastName: l.lastName, company: l.companyName }, i),
                 first_name: l.firstName,
                 last_name: l.lastName,
                 headline: l.companyName ? `at ${l.companyName}` : '',
@@ -3270,6 +3510,10 @@ export default function AdvancedSearchAIPage() {
             let aiOpts: { label: string; value: string }[] | undefined;
             // If user confirmed a search preview, start with the stored intent; otherwise use current targeting (or override from caller)
             let updatedTargetState = confirmedForSearch ? confirmedForSearch.intent : (opts?.targetingOverride || targeting);
+            // Tracks whether lead-chat produced a targeting for THIS turn (a fresh
+            // parse or a refine). When false at search time, the intent we hold is
+            // carried-over state (e.g. a prior ICP) that must be re-parsed.
+            let targetingFromChat = false;
 
             if (confirmedForSearch) {
                 // User confirmed the search preview — skip lead-chat and go straight to search
@@ -3288,7 +3532,7 @@ export default function AdvancedSearchAIPage() {
                     if (chatD) {
                         aiResponseText = chatD.response || '';
                         shouldRunSearch = !!chatD.newSearch;
-                        if (chatD.updatedTargeting) updatedTargetState = chatD.updatedTargeting;
+                        if (chatD.updatedTargeting) { updatedTargetState = chatD.updatedTargeting; targetingFromChat = true; }
                         setPendingIntent(chatD.pendingIntent || null);
                         if (Array.isArray(chatD.options) && chatD.options.length > 0) {
                             aiOpts = chatD.options;
@@ -3521,21 +3765,37 @@ export default function AdvancedSearchAIPage() {
                     let extractedPersonName: string | null = null;
                     let extractedCompanyName: string | null = null;
 
-                    if (!hasUsableIntent) {
+                    // Re-parse THIS message's text unless the carried intent was freshly
+                    // produced by lead-chat for this turn (a refine on a continuing
+                    // conversation). Without this, a stale ICP/targeting left by a prior
+                    // action (ICP Discovery, or the saved business-profile ICP) silently
+                    // hijacks a newly-typed query — the user types "Sales Manager in Real
+                    // Estate in Dubai" but the search runs their saved ICP instead.
+                    const carriedIntentIsFresh = targetingFromChat && !isFirstMessage;
+                    if (!hasUsableIntent || !carriedIntentIsFresh) {
                         try {
                             const intentD = await linkedInSearch.extractIntent(text);
-                            if (intentD?.intent) {
-                                previewIntent = {
-                                    job_titles: toArr(intentD.intent.job_titles),
-                                    industries: toArr(intentD.intent.industries),
-                                    locations: toArr(intentD.intent.locations),
-                                    keywords: toArr(intentD.intent.keywords),
-                                    profile_language: toArr(intentD.intent.profile_language),
-                                    company_names: toArr(intentD.intent.company_names),
-                                    seniority: toArr(intentD.intent.seniority),
-                                    functions: toArr(intentD.intent.functions),
-                                };
-                            }
+                            const freshIntent = intentD?.intent ? {
+                                job_titles: toArr(intentD.intent.job_titles),
+                                industries: toArr(intentD.intent.industries),
+                                locations: toArr(intentD.intent.locations),
+                                keywords: toArr(intentD.intent.keywords),
+                                profile_language: toArr(intentD.intent.profile_language),
+                                company_names: toArr(intentD.intent.company_names),
+                                seniority: toArr(intentD.intent.seniority),
+                                functions: toArr(intentD.intent.functions),
+                            } : null;
+                            const freshHasData = !!freshIntent && (
+                                (freshIntent.job_titles?.length ?? 0) > 0
+                                || (freshIntent.locations?.length ?? 0) > 0
+                                || (freshIntent.keywords?.length ?? 0) > 0
+                                || (freshIntent.company_names?.length ?? 0) > 0
+                                || (freshIntent.industries?.length ?? 0) > 0
+                            );
+                            // Prefer the fresh parse of this query when it found targeting.
+                            // A bare refine word ("go", "yes") parses to nothing and must
+                            // NOT wipe a legitimately carried intent — only override then.
+                            if (freshHasData || !hasUsableIntent) previewIntent = freshIntent;
                             // Capture ABM metadata
                             if (intentD?.abm_type) extractedAbmType = intentD.abm_type;
                             if (intentD?.llm_entities?.person_name) extractedPersonName = intentD.llm_entities.person_name;
@@ -3598,6 +3858,57 @@ export default function AdvancedSearchAIPage() {
                         return;
                     }
                     // If intent could not be determined, fall through and run the search immediately
+                }
+            }
+
+            // ── SPECIFIC-PERSON GATE ──────────────────────────────────────────
+            // A confirmed query that identifies one named person at a company must
+            // not go through broad search + ICP scoring (it can only return
+            // strangers who happen to share the first name). Route it through the
+            // same import/save + waterfall pipeline as file-imported leads: the
+            // backend resolves the exact person, the panel shows them checked, and
+            // campaign creation attaches them as an inbound lead (lead generation
+            // is skipped entirely at run time).
+            if (shouldRunSearch) {
+                const personIntent = confirmedForSearch ? confirmedForSearch.intent : updatedTargetState;
+                const person = detectSpecificPersonQuery(personIntent);
+                if (person) {
+                    const personLoadingId = `${lid}-person`;
+                    setMessages(p => p.filter(m => m.id !== lid).concat(
+                        {
+                            id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
+                            text: `🎯 Got it — **${person.name}**${person.company ? ` at **${person.company}**` : ''} is a specific person, so I'll skip the broad search and find their LinkedIn profile directly.`,
+                        },
+                        { id: personLoadingId, role: 'ai', text: '', ts: new Date(), loading: true },
+                    ));
+                    const [pFirst, ...pRest] = person.name.split(/\s+/);
+                    const personRow: ParsedInboundLead = {
+                        firstName: pFirst || person.name,
+                        lastName: pRest.join(' '),
+                        companyName: person.company,
+                        linkedinProfile: '', email: '', whatsapp: '', phone: '', website: '', notes: '',
+                        title: person.title,
+                        location: person.location,
+                        profilePicture: '',
+                    };
+                    setInboundLeads([personRow]);
+                    setInboundMode(true);
+                    setLeads([{
+                        id: 'inbound-0',
+                        name: person.name,
+                        first_name: personRow.firstName,
+                        last_name: personRow.lastName,
+                        headline: person.title ? `${person.title}${person.company ? ' at ' + person.company : ''}` : (person.company ? `at ${person.company}` : ''),
+                        location: person.location,
+                        current_company: person.company,
+                        profile_url: '',
+                        profile_picture: '',
+                        industry: '',
+                        network_distance: '',
+                        locked: false,
+                    }]);
+                    await finishInboundImport([personRow], person.location, personLoadingId);
+                    return;
                 }
             }
 
@@ -4184,7 +4495,7 @@ export default function AdvancedSearchAIPage() {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             if (mediaMode) {
-                if (input.trim()) {
+                if (input.trim() || (mb.references && mb.references.length > 0)) {
                     submitMediaInput(input.trim());
                     setInput('');
                     if (taRef.current) taRef.current.style.height = 'auto';
@@ -4502,7 +4813,8 @@ export default function AdvancedSearchAIPage() {
             <div className="adv-center">
                 {/* Mr LAD logo */}
                 <div className="adv-asterisk-wrap">
-                    <img src="/MrLAD-logo.svg" alt="Mr LAD" className="adv-lad-logo" />
+                    <img src="/MrLAD-logo.svg" alt="Mr LAD" className="dark:hidden adv-lad-logo" />
+                    <img src="/MrLAD-logo-white.svg" alt="Mr LAD" className="hidden dark:block adv-lad-logo" />
                 </div>
 
                 <h1 className="adv-title">Hey! I am LAD, How can I help you today?</h1>
@@ -4690,7 +5002,7 @@ export default function AdvancedSearchAIPage() {
                         blocks={mb.uiPayload?.blocks || []}
                         phase={mb.uiPayload?.phase}
                         videoUrl={mb.uiPayload?.video}
-                        status={mb.uiPayload?.status}
+                        status={mb.uiPayload?.status as 'completed' | 'failed' | 'cancelled' | 'active' | undefined}
                         progress={mb.uiPayload?.progress}
                         onBack={() => mb.undoStep()}
                         onNext={(val) => {
@@ -4747,8 +5059,116 @@ export default function AdvancedSearchAIPage() {
                         onBack={() => mb.undoStep()}
                     />
                 );
+            case "builder-keyframes-confirm":
+                return (
+                    <AgentBuilderKeyframesConfirm
+                        title={mb.uiPayload?.question}
+                        description={mb.uiPayload?.description}
+                        keyframes={mb.uiPayload?.images || []}
+                        onNext={(val) => submitMediaInput(val || "", val)}
+                        phase={mb.uiPayload?.phase}
+                        references={mb.references}
+                        onUpload={mb.uploadReference}
+                        onRemove={mb.removeReference}
+                        isUploading={mb.isUploading}
+                        error={mb.error}
+                        onBack={() => mb.undoStep()}
+                        feedbackText={input}
+                        setFeedbackText={setInput}
+                        isSplitScreen={true}
+                    />
+                );
             default:
                 return null;
+        }
+    };
+
+    const toggleRecording = async () => {
+        if (beautifying) return;
+
+        if (isRecording) {
+            if (recognitionInstance) {
+                try {
+                    recognitionInstance.stop();
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+            setIsRecording(false);
+            setBeautifying(true);
+
+            const rawText = input.trim();
+            if (!rawText) {
+                setBeautifying(false);
+                return;
+            }
+
+            try {
+                const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
+                const workerUrl = process.env.NEXT_PUBLIC_PLAYGROUND_WORKER_URL || "http://localhost:8080";
+                const res = await fetch(`${workerUrl}/playground-media/beautify-transcription`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        ...(token && { Authorization: `Bearer ${token}` })
+                    },
+                    body: JSON.stringify({ text: rawText })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data && data.beautified_text) {
+                        setInput(data.beautified_text);
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to beautify transcription:", err);
+            } finally {
+                setBeautifying(false);
+            }
+        } else {
+            const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert("Speech recognition is not supported in this browser. Please use Chrome, Safari, or Edge.");
+                return;
+            }
+
+            try {
+                await navigator.mediaDevices.getUserMedia({ audio: true });
+            } catch (err) {
+                console.error("Microphone access denied:", err);
+                alert("Microphone access is required for voice interaction.");
+                return;
+            }
+
+            const rec = new SpeechRecognition();
+            rec.continuous = true;
+            rec.interimResults = true;
+            rec.lang = 'en-US';
+
+            rec.onresult = (event: any) => {
+                let finalTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    finalTranscript += event.results[i][0].transcript;
+                }
+                if (finalTranscript) {
+                    setInput(finalTranscript);
+                }
+            };
+
+            rec.onerror = (event: any) => {
+                console.error("Speech recognition error:", event.error);
+                if (event.error !== 'aborted') {
+                    setIsRecording(false);
+                }
+            };
+
+            rec.onend = () => {
+                setIsRecording(false);
+            };
+
+            rec.start();
+            setIsRecording(true);
+            setRecognitionInstance(rec);
         }
     };
 
@@ -4764,29 +5184,35 @@ export default function AdvancedSearchAIPage() {
                 <>
                     <div className="adv-media-header">
                         <button 
-                            className="adv-media-header-back" 
+                            className="adv-media-header-back-btn" 
                             onClick={handleMediaBack} 
                             style={{ display: mb.step === "welcome" ? "none" : "flex" }}
-                            title="Go Back"
+                            title="Undo last message"
                         >
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+                            <span>Undo last message</span>
                         </button>
                         
                         <div className="adv-media-header-title">
                             {mb.uiPayload?.phase || (mb.step === "welcome" ? "AI Media Studio" : "Waking up Mr. LADs...")}
                         </div>
 
-                        <button
-                            onClick={() => {
-                                mb.closeFlow();
-                                setMediaMode(false);
-                                setMediaMessages([]);
-                            }}
-                            className="adv-media-header-exit cursor-pointer"
-                        >
-                            <X className="size-4" />
-                            Exit Media Gen
-                        </button>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginLeft: 'auto' }}>
+                            <SessionSelector mb={mb} />
+                            
+                            <button
+                                onClick={() => {
+                                    mb.closeFlow();
+                                    setMediaMode(false);
+                                    setMediaMessages([]);
+                                    lastRestoredSessionIdRef.current = "";
+                                }}
+                                className="adv-media-header-exit-btn cursor-pointer"
+                            >
+                                <X className="size-4" style={{ flexShrink: 0 }} />
+                                <span>Exit Media Gen</span>
+                            </button>
+                        </div>
                     </div>
                     <div className="adv-media-header-fade" />
                 </>
@@ -4802,37 +5228,31 @@ export default function AdvancedSearchAIPage() {
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
                             </button>
 
-                            {(!isMobile || messages.length === 0) && (
-                                <button
-                                    onClick={() => setShowPlayground(true)}
-                                    title="Configure AI context: company, ICP, sales script, etc."
-                                    className="adv-icp-discover-btn"
-                                    style={{
-                                        position: 'absolute', top: '16px', right: '20px', zIndex: 10,
-                                        display: 'flex', alignItems: 'center', gap: '7px',
-                                        padding: '8px 14px', borderRadius: '20px',
-                                        border: '1.5px solid',
-                                        borderColor: Object.values(businessProfile).some(v => v) ? '#0b1957' : '#e5e7eb',
-                                        background: Object.values(businessProfile).some(v => v) ? 'linear-gradient(135deg,#e8ecfa,#f0f3ff)' : '#fff',
-                                        color: Object.values(businessProfile).some(v => v) ? '#0b1957' : '#6b7280',
-                                        fontSize: '12.5px', fontWeight: 600, cursor: 'pointer',
-                                        boxShadow: '0 2px 8px rgba(0,0,0,.06)', transition: 'all .15s',
-                                    }}
-                                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#0b1957'; e.currentTarget.style.color = '#0b1957'; }}
-                                    onMouseLeave={e => {
-                                        e.currentTarget.style.borderColor = Object.values(businessProfile).some(v => v) ? '#0b1957' : '#e5e7eb';
-                                        e.currentTarget.style.color = Object.values(businessProfile).some(v => v) ? '#0b1957' : '#6b7280';
-                                    }}
-                                >
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                                        <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                                    </svg>
-                                    ICP Discovery
-                                    {Object.values(businessProfile).some(v => v) && (
-                                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981', display: 'inline-block', marginLeft: 2 }} />
-                                    )}
-                                </button>
+                    {/* AI Playground button — top-right */}
+                    {(!isMobile || messages.length === 0) && (
+                        <button
+                            onClick={() => setShowPlayground(true)}
+                            title="Configure AI context: company, ICP, sales script, etc."
+                            className={`adv-icp-discover-btn absolute top-4 right-5 z-10 flex items-center gap-2 px-4 h-9 sm:h-10 rounded-full text-xs font-bold uppercase tracking-wider text-white !text-white bg-[#0b1957] hover:bg-[#122572] dark:bg-[#2563eb] dark:hover:bg-blue-700 transition-all shadow-md active:scale-[0.98] cursor-pointer outline-none border-none ${
+                              Object.values(businessProfile).some((v) => v)
+                                ? 'opacity-100 ring-2 ring-emerald-500/50 dark:ring-emerald-400/40'
+                                : 'opacity-90 hover:opacity-100'
+                            }`}
+                            onMouseEnter={e => { e.currentTarget.style.borderColor = '#0b1957'; e.currentTarget.style.color = '#0b1957'; }}
+                            onMouseLeave={e => {
+                                e.currentTarget.style.borderColor = Object.values(businessProfile).some(v => v) ? '#0b1957' : '#e5e7eb';
+                                e.currentTarget.style.color = Object.values(businessProfile).some(v => v) ? '#0b1957' : '#6b7280';
+                            }}
+                        >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                                <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                            </svg>
+                            ICP Discovery
+                            {Object.values(businessProfile).some(v => v) && (
+                                <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981', display: 'inline-block', marginLeft: 2 }} />
                             )}
+                        </button>
+                    )}
                         </>
                     )}
                     
@@ -4853,29 +5273,30 @@ export default function AdvancedSearchAIPage() {
                         <div className="adv-msgs-inner">
                             {mediaMode ? (
                                 <>
-                                    {mediaMessages.map((m, idx) => (
-                                        <MediaBubble 
-                                            key={m.id} 
-                                            msg={m} 
-                                            isActive={idx === mediaMessages.length - 1} 
-                                            mb={mb}
-                                            submitMediaInput={submitMediaInput}
-                                        />
-                                    ))}
-                                    {/* Inline Loader Bubble — rendered dynamically below messages, avoiding history flickering */}
+                                    {(() => {
+                                        const lastUserMsgIdx = mediaMessages.map(msg => msg.role).lastIndexOf('user');
+                                        return mediaMessages.map((m, idx) => {
+                                            const nextMsg = mediaMessages[idx + 1];
+                                            const userSelectionText = (nextMsg && nextMsg.role === 'user') ? nextMsg.text : undefined;
+                                            return (
+                                                <MediaBubble 
+                                                    key={m.id} 
+                                                    msg={m} 
+                                                    isActive={idx === mediaMessages.length - 1} 
+                                                    isLastUser={idx === lastUserMsgIdx}
+                                                    handleMediaBack={handleMediaBack}
+                                                    mb={mb}
+                                                    submitMediaInput={submitMediaInput}
+                                                    userSelectionText={userSelectionText}
+                                                />
+                                            );
+                                        });
+                                    })()}
+                                    {/* Inline Loader — rendered dynamically below messages, perfectly centered in the left chat/split container */}
                                     {(mb.step === "loading" || mb.generating) && (
-                                        <MediaBubble
-                                            msg={{
-                                                id: "generating-loader",
-                                                role: "ai",
-                                                text: mb.generating ? "Generating Concepts..." : "Waking up Mr. LADs...",
-                                                loading: true,
-                                                timestamp: new Date()
-                                            }}
-                                            isActive={true}
-                                            mb={mb}
-                                            submitMediaInput={submitMediaInput}
-                                        />
+                                        <div className="w-full flex justify-center py-12 fadeUp">
+                                            <ThinkingIndicator generating={mb.generating} />
+                                        </div>
                                     )}
                                 </>
                             ) : (
@@ -5010,6 +5431,8 @@ export default function AdvancedSearchAIPage() {
                                     leads={leads}
                                     leadFeedback={leadFeedback}
                                     selectedLeadIds={selectedLeadIds}
+                                    creditBalance={creditBalance}
+                                    onOpenRecharge={() => setShowRechargeModal(true)}
                                     searchSessions={searchSessions}
                                     chatMessages={messages}
                                     pendingContact={pendingContact}
@@ -5137,20 +5560,32 @@ export default function AdvancedSearchAIPage() {
                                     {/* Premium Search or Mic Button based on mediaMode */}
                                     {mediaMode ? (
                                         <button
-                                            className="adv-premium-btn"
-                                            title="Talk to Mr. LADs — voice interaction"
+                                            className={`adv-premium-btn ${isRecording ? 'recording-pulse' : ''}`}
+                                            onClick={toggleRecording}
+                                            disabled={beautifying}
+                                            title={beautifying ? "Beautifying..." : isRecording ? "Stop voice transcription" : "Talk to Mr. LADs — voice interaction"}
                                             style={{
                                                 display: 'flex', alignItems: 'center', gap: '4px',
-                                                padding: '3px 8px', borderRadius: '12px', border: 'none',
-                                                cursor: 'default', fontSize: '11px', fontWeight: 600,
+                                                padding: '3px 8px', borderRadius: '12px',
+                                                border: isRecording ? '1.5px solid #ef4444' : 'none',
+                                                cursor: beautifying ? 'not-allowed' : 'pointer',
+                                                fontSize: '11px', fontWeight: 600,
                                                 transition: 'all 0.15s',
-                                                background: '#f1f5f9',
-                                                color: '#64748b',
+                                                background: beautifying ? '#e2e8f0' : isRecording ? '#fef2f2' : '#f1f5f9',
+                                                color: beautifying ? '#94a3b8' : isRecording ? '#ef4444' : '#64748b',
                                                 boxShadow: 'none',
                                             }}
                                         >
-                                            <Mic className="size-3" style={{ strokeWidth: 2.5 }} />
-                                            Talk to Mr. LADs
+                                            {beautifying ? (
+                                                <Loader2 className="size-3 animate-spin" />
+                                            ) : isRecording ? (
+                                                <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: '3px', color: '#ef4444', flexShrink: 0 }}>
+                                                    <rect x="4" y="4" width="16" height="16" rx="2" />
+                                                </svg>
+                                            ) : (
+                                                <Mic className="size-3" style={{ strokeWidth: 2.5 }} />
+                                            )}
+                                            {beautifying ? "Beautifying..." : isRecording ? "Stop" : "Talk to Mr. LADs"}
                                         </button>
                                     ) : (
                                         <button
@@ -5176,11 +5611,11 @@ export default function AdvancedSearchAIPage() {
                                     )}
                                     <button 
                                         className="adv-send-circle adv-send-sm" 
-                                        disabled={mediaMode ? (!input.trim() || mb.generating || mb.step === 'loading' || (mb.step === 'builder-brand-dna' && !brandDnaRequestedChanges)) : (!input.trim() || busy || (creditBalance !== null && creditBalance <= 0 && msgCount >= 10))} 
-                                        onClick={mediaMode ? () => { if (input.trim()) { submitMediaInput(input.trim()); setInput(''); if (taRef.current) taRef.current.style.height = 'auto'; } } : onChatSend}
+                                        disabled={mediaMode ? ((!input.trim() && (!mb.references || mb.references.length === 0)) || mb.generating || mb.step === 'loading' || (mb.step === 'builder-brand-dna' && !brandDnaRequestedChanges)) : (!input.trim() || busy || (creditBalance !== null && creditBalance <= 0 && msgCount >= 10))} 
+                                        onClick={mediaMode ? () => { if (input.trim() || (mb.references && mb.references.length > 0)) { submitMediaInput(input.trim()); setInput(''); if (taRef.current) taRef.current.style.height = 'auto'; } } : onChatSend}
                                         style={{ 
-                                            background: (mediaMode ? (!input.trim() || mb.generating || mb.step === 'loading' || (mb.step === 'builder-brand-dna' && !brandDnaRequestedChanges)) : (!input.trim() || busy || (creditBalance !== null && creditBalance <= 0 && msgCount >= 10))) ? '#e5e7eb' : '#172560', 
-                                            boxShadow: (mediaMode ? (!input.trim() || mb.generating) : (!input.trim() || busy)) ? 'none' : '0 2px 8px rgba(23,37,96,.3)' 
+                                            background: (mediaMode ? ((!input.trim() && (!mb.references || mb.references.length === 0)) || mb.generating || mb.step === 'loading' || (mb.step === 'builder-brand-dna' && !brandDnaRequestedChanges)) : (!input.trim() || busy || (creditBalance !== null && creditBalance <= 0 && msgCount >= 10))) ? '#e5e7eb' : '#172560', 
+                                            boxShadow: (mediaMode ? ((!input.trim() && (!mb.references || mb.references.length === 0)) || mb.generating) : (!input.trim() || busy)) ? 'none' : '0 2px 8px rgba(23,37,96,.3)' 
                                         }}
                                     >
                                         {mediaMode && mb.generating ? <div className="adv-spinner" /> : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>}
@@ -5208,7 +5643,7 @@ export default function AdvancedSearchAIPage() {
                                 VP of Sales in UK SaaS
                             </button>
                             <button className="adv-gemini-chip" onClick={() => { setInput('Strengthen my relationship with existing clients'); taRef.current?.focus(); }}>
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="19" y1="8" x2="19" y2="14" /><line x1="22" y1="11" x2="16" y2="11" /></svg>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1a5.5 5.5 0 1 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8z" /></svg>
                                 Strengthen client relationships
                             </button>
                             <button className="adv-gemini-chip" onClick={() => { setInput(ICP_LEADS_PROMPT); taRef.current?.focus(); }}>
@@ -5280,63 +5715,60 @@ export default function AdvancedSearchAIPage() {
                 {(showPanel === 'leads' || showPanel === 'workflow') && (leads.length > 0 || inboundLeads.length > 0 || filteredLeads.length > 0 || showPanel === 'workflow') && (
                     <div className="adv-leads-panel">
                         {/* Split-screen panel header */}
-                        <div style={{
-                            display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 20px',
-                            borderBottom: '1.5px solid #e5e7eb', background: '#fff', flexShrink: 0,
-                        }}>
-                            <div style={{ display: 'flex', gap: '4px', flex: 1, background: '#f3f4f6', borderRadius: '10px', padding: '3px' }}>
-                                <button onClick={() => setShowPanel('leads')} style={{
-                                    flex: 1, background: showPanel === 'leads' ? '#fff' : 'transparent',
-                                    border: 'none', fontSize: '13.5px', fontWeight: 600,
-                                    color: showPanel === 'leads' ? '#0b1957' : '#6b7280',
-                                    borderRadius: '8px', padding: '6px 12px', cursor: 'pointer',
-                                    boxShadow: showPanel === 'leads' ? '0 1px 4px rgba(0,0,0,.1)' : 'none',
-                                    transition: 'all .15s',
-                                }}>
+                        <div className="flex flex-shrink-0 items-center gap-3 border-b border-gray-200 bg-white px-5 py-3.5 dark:border-gray-800 dark:bg-[#000724]">
+                            {/* Toggle Container */}
+                            <div className="flex flex-1 gap-1 rounded-[10px] bg-gray-100 p-[3px] dark:bg-[#0b1229]">
+                                <button
+                                  onClick={() => setShowPanel('leads')}
+                                  className={`flex-1 rounded-[8px] px-3 py-1.5 text-[13.5px] font-semibold transition-all duration-150 ${
+                                    showPanel === 'leads'
+                                      ? 'bg-white text-[#0b1957] shadow-sm dark:bg-[#2563eb] dark:text-white'
+                                      : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                                  }`}
+                                >
                                     👤 Leads {leads.length > 0 || inboundLeads.length > 0 ? `(${inboundMode ? inboundLeads.length : leads.length})` : ''}
                                 </button>
-                                <button onClick={() => setShowPanel('workflow')} style={{
-                                    flex: 1, background: showPanel === 'workflow' ? '#fff' : 'transparent',
-                                    border: 'none', fontSize: '13.5px', fontWeight: 600,
-                                    color: showPanel === 'workflow' ? '#0b1957' : '#6b7280',
-                                    borderRadius: '8px', padding: '6px 12px', cursor: 'pointer',
-                                    boxShadow: showPanel === 'workflow' ? '0 1px 4px rgba(0,0,0,.1)' : 'none',
-                                    transition: 'all .15s',
-                                }}>
+                                <button
+                                  onClick={() => setShowPanel('workflow')}
+                                  className={`flex-1 rounded-[8px] px-3 py-1.5 text-[13.5px] font-semibold transition-all duration-150 ${
+                                    showPanel === 'workflow'
+                                      ? 'bg-white text-[#0b1957] shadow-sm dark:bg-[#2563eb] dark:text-white'
+                                      : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                                  }`}
+                                >
                                     ⚡ Workflow
                                 </button>
                             </div>
-                            <button onClick={() => setShowPanel(false)} style={{
-                                width: '32px', height: '32px', borderRadius: '8px', border: '1px solid #e5e7eb',
-                                background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center',
-                                justifyContent: 'center', flexShrink: 0, transition: 'all .15s',
-                            }}
-                                onMouseEnter={e => { e.currentTarget.style.background = '#f3f4f6'; }}
-                                onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}
+
+                            <button
+                              onClick={() => setShowPanel(false)}
+                              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition-colors hover:bg-gray-100 dark:border-gray-700 dark:bg-[#0b1229] dark:text-gray-400 dark:hover:bg-[#161d36] dark:hover:text-white"
                             >
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                                    <path d="M18 6L6 18M6 6l12 12" />
+                                </svg>
                             </button>
                         </div>
 
                         {showPanel === 'leads' ? (
 
-                            <div className="adv-panel-body">
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <h2 className="adv-panel-title" style={{ margin: 0 }}>
+                          <div className="adv-panel-body">
+                              <div className="flex justify-between items-center">
+                                  <h2 className="adv-panel-title m-0 text-gray-900 dark:text-gray-100">
                                         {inboundMode ? 'Your Imported Leads' : 'Your Lead Results'}
                                     </h2>
                                     {!inboundMode && totalResults > 0 && (
-                                        <span style={{ fontSize: '12px', color: '#6b7280', whiteSpace: 'nowrap' }}>
+                                      <span className="text-[12px] text-gray-500 dark:text-slate-300 whitespace-nowrap">
                                             {((searchPage - 1) * leadCount) + 1}-{Math.min(searchPage * leadCount, totalResults)} of {totalResults}
                                         </span>
                                     )}
                                     {inboundMode && inboundLeads.length > 0 && (
-                                        <span style={{ fontSize: '12px', background: '#e0eaf5', color: '#0b1957', padding: '3px 10px', borderRadius: '20px', fontWeight: 600 }}>
+                                      <span className="text-[12px] bg-blue-100 dark:bg-blue-900/50 text-[#0b1957] dark:text-blue-200 px-[10px] py-[3px] rounded-[20px] font-semibold">
                                             {inboundLeads.length} contacts
                                         </span>
                                     )}
                                     {!inboundMode && leads.length > 0 && totalResults === 0 && (
-                                        <span style={{ fontSize: '12px', background: '#e0eaf5', color: '#0b1957', padding: '3px 10px', borderRadius: '20px', fontWeight: 600 }}>
+                                      <span className="text-[12px] bg-blue-100 dark:bg-blue-900/50 text-[#0b1957] dark:text-blue-200 px-[10px] py-[3px] rounded-[20px] font-semibold">
                                             {leads.length} contact{leads.length !== 1 ? 's' : ''}
                                         </span>
                                     )}
@@ -5384,101 +5816,99 @@ export default function AdvancedSearchAIPage() {
                                 {/* Inbound leads (CSV upload) */}
                                 {inboundMode && inboundLeads.length > 0 && (
                                     <div className="adv-leads-list">
-                                        {inboundLeads.map((lead, i) => {
-                                            const fullName = [lead.firstName, lead.lastName].filter(Boolean).join(' ') || 'Unknown';
-                                            const isExpanded = expandedInboundIdx === i;
-                                            return (
-                                                <div key={i} className="adv-lead-card" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 0 }}>
-                                                    {/* ── Collapsed row ── */}
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%' }}>
-                                                        {inboundLeadIds[i] && (
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={selectedLeadIds.has(inboundLeadIds[i])}
-                                                                onChange={(e) => { e.stopPropagation(); toggleLeadSelection(inboundLeadIds[i]); }}
-                                                                title={selectedLeadIds.has(inboundLeadIds[i]) ? 'Selected for campaign — uncheck to remove' : 'Add to campaign'}
-                                                                style={{ width: '17px', height: '17px', accentColor: '#4f46e5', cursor: 'pointer', flexShrink: 0 }}
-                                                            />
-                                                        )}
-                                                        <div className="adv-lead-avatar" style={{ background: lead.profilePicture ? 'transparent' : avatarColor(fullName), overflow: 'hidden', flexShrink: 0 }}>
-                                                            {lead.profilePicture
-                                                                ? <img src={lead.profilePicture} alt={fullName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} referrerPolicy="no-referrer" />
-                                                                : (initials(fullName) || '?')}
-                                                        </div>
-                                                        <div
-                                                            onClick={() => setExpandedInboundIdx(isExpanded ? null : i)}
-                                                            style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}
-                                                            title={isExpanded ? 'Hide profile summary' : 'Show profile summary'}
-                                                        >
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                                <span className="adv-lead-name" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fullName}</span>
-                                                                <span className="adv-verified" style={{ flexShrink: 0 }}>✓</span>
-                                                                {lead.linkedinProfile && (
-                                                                    <a href={lead.linkedinProfile} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
-                                                                        title="Open LinkedIn profile" style={{ display: 'inline-flex', flexShrink: 0 }}>
-                                                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="#0a66c2"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" /></svg>
-                                                                    </a>
-                                                                )}
-                                                                <ChevronDown size={14} color="#9ca3af" style={{ flexShrink: 0, transition: 'transform 0.2s', transform: isExpanded ? 'rotate(180deg)' : 'none' }} />
-                                                            </div>
-                                                            <div style={{ fontSize: '12px', color: '#374151', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                                {lead.companyName || 'No company'}
-                                                                {lead.location ? <span style={{ color: '#9ca3af', fontWeight: 500 }}> · {lead.location}</span> : null}
-                                                            </div>
-                                                            {!isExpanded && lead.title && lead.title !== lead.companyName && (
-                                                                <div style={{ fontSize: '11.5px', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={lead.title}>{lead.title}</div>
-                                                            )}
-                                                        </div>
-                                                        <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                                                            <button onClick={(e) => { e.stopPropagation(); openEditLead(i); }} title="Edit lead"
-                                                                style={{ width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: '1px solid transparent', borderRadius: '8px', cursor: 'pointer', color: '#6b7280', transition: 'all 0.15s' }}
-                                                                onMouseEnter={(e) => { e.currentTarget.style.background = '#f3f4f6'; e.currentTarget.style.color = '#111827'; }}
-                                                                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#6b7280'; }}>
-                                                                <Pencil size={14} />
-                                                            </button>
-                                                            <button onClick={(e) => { e.stopPropagation(); openDeleteConfirmation(i); }} title="Remove lead"
-                                                                style={{ width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: '1px solid transparent', borderRadius: '8px', cursor: 'pointer', color: '#9ca3af', transition: 'all 0.15s' }}
-                                                                onMouseEnter={(e) => { e.currentTarget.style.background = '#fee2e2'; e.currentTarget.style.color = '#dc2626'; }}
-                                                                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#9ca3af'; }}>
-                                                                <Trash2 size={14} />
-                                                            </button>
-                                                        </div>
+                                        {inboundLeads.map((lead, i) => (
+                                          <div key={i} className="adv-lead-card flex items-start gap-3 p-4 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                                              {inboundLeadIds[i] && (
+                                                  <input
+                                                      type="checkbox"
+                                                      checked={selectedLeadIds.has(inboundLeadIds[i])}
+                                                      onChange={(e) => { e.stopPropagation(); toggleLeadSelection(inboundLeadIds[i]); }}
+                                                      title={selectedLeadIds.has(inboundLeadIds[i]) ? 'Selected for campaign — uncheck to remove' : 'Add to campaign'}
+                                                      className="mt-2.5 flex-shrink-0 cursor-pointer"
+                                                      style={{ width: '17px', height: '17px', accentColor: '#4f46e5' }}
+                                                  />
+                                              )}
+                                              <div className="adv-lead-avatar w-10 h-10 self-start rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0 overflow-hidden"
+                                                   style={{ background: lead.profilePicture ? 'transparent' : avatarColor(`${lead.firstName} ${lead.lastName}`) }}>
+                                                  {lead.profilePicture
+                                                      ? <img src={lead.profilePicture} alt={`${lead.firstName} ${lead.lastName}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                                      : (initials(`${lead.firstName} ${lead.lastName}`) || '?')}
+                                              </div>
+                                                <div className="adv-lead-info flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="adv-lead-name text-gray-900 dark:text-gray-100 font-bold text-sm">{[lead.firstName, lead.lastName].filter(Boolean).join(' ') || 'Unknown'}</span>
+                                                        <span className="adv-verified text-green-600 dark:text-green-400">✓</span>
                                                     </div>
-
-                                                    {/* ── Expanded profile summary ── */}
-                                                    {isExpanded && (
-                                                        <div style={{ marginTop: '10px', paddingTop: '10px', paddingLeft: inboundLeadIds[i] ? '27px' : 0, borderTop: '1px solid #f3f4f6', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                                            {lead.title && (
-                                                                <div style={{ fontSize: '12px', color: '#374151', lineHeight: 1.5 }}>
-                                                                    <span style={{ fontSize: '10px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: '2px' }}>Headline</span>
-                                                                    {lead.title}
-                                                                </div>
-                                                            )}
-                                                            {lead.notes && lead.notes.length > 0 && (
-                                                                <div style={{ fontSize: '11.5px', color: '#374151', padding: '8px 10px', background: 'linear-gradient(135deg, #f0f4ff 0%, #f8fafc 100%)', borderRadius: '8px', border: '1px solid #c7d7f5', lineHeight: 1.6 }}>
-                                                                    <span style={{ color: '#172560', fontWeight: 700, fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
-                                                                        <Sparkles size={10} /> AI Research Summary
-                                                                    </span>
-                                                                    {lead.notes}
-                                                                </div>
-                                                            )}
-                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                                                {lead.email && <div style={{ fontSize: '12px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '6px' }}><Mail size={12} style={{ flexShrink: 0 }} /><span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{lead.email}</span></div>}
-                                                                {lead.phone && <div style={{ fontSize: '12px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '6px' }}><PhoneIcon size={12} style={{ flexShrink: 0 }} /><span>{lead.phone}</span></div>}
-                                                                {lead.location && <div style={{ fontSize: '12px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '6px' }}><MapPin size={12} style={{ flexShrink: 0 }} /><span>{lead.location}</span></div>}
-                                                            </div>
-                                                            {lead.linkedinProfile && (
-                                                                <a href={lead.linkedinProfile} target="_blank" rel="noopener noreferrer"
-                                                                    style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: '#0a66c2', textDecoration: 'none', padding: '5px 10px', border: '1px solid #bfdbfe', borderRadius: '8px', background: '#eff6ff' }}>
-                                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="#0a66c2"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" /></svg>
-                                                                    View LinkedIn Profile
-                                                                </a>
-                                                            )}
+                                                    <div className="adv-lead-title text-xs text-gray-500 dark:text-slate-300 truncate">
+                                                        {lead.companyName || 'No company'}
+                                                        {lead.location ? <span className="text-gray-400 dark:text-slate-400"> · {lead.location}</span> : null}
+                                                    </div>
+                                                    {lead.title && lead.title !== lead.companyName && (
+                                                        <div className="text-xs text-gray-500 dark:text-slate-300 truncate" title={lead.title}>{lead.title}</div>
+                                                    )}
+                                                    {lead.email && <div className="text-xs text-gray-500 dark:text-slate-300 flex items-center gap-1 overflow-hidden"><span className="flex-shrink-0">✉️</span><span className="truncate">{lead.email}</span></div>}
+                                                    {lead.phone && <div className="text-xs text-gray-500 dark:text-slate-300 flex items-center gap-1 overflow-hidden"><span className="flex-shrink-0">📞</span><span className="truncate">{lead.phone}</span></div>}
+                                                    {lead.linkedinProfile && (
+                                                      <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                                                            <a href={lead.linkedinProfile} target="_blank" rel="noopener noreferrer"
+                                                               className="flex items-center gap-1 no-underline hover:underline">
+                                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="#0a66c2"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" /></svg>
+                                                                LinkedIn Profile
+                                                            </a>
                                                         </div>
                                                     )}
+                                                    {lead.notes && (
+                                                      <div className="mt-4 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden bg-transparent">
+                                                          {/* Header */}
+                                                          <button
+                                                            onClick={() => toggleSummary(i)}
+                                                            className="w-full flex items-center justify-between p-3 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors"
+                                                          >
+                                                              <div className="flex items-center gap-2 text-[10px] font-mono tracking-widest uppercase">
+                                                                  <Sparkles className="w-3 h-3 text-indigo-400" />
+                                                                  AI Research Summary
+                                                              </div>
+                                                              <ChevronDown className={`w-3 h-3 transition-transform ${openSummaries.has(i) ? 'rotate-180' : ''}`} />
+                                                          </button>
+
+                                                          {/* Content */}
+                                                          {openSummaries.has(i) && (
+                                                            <div className="p-4 pt-0 text-sm text-gray-600 dark:text-gray-300 leading-relaxed border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/30">
+                                                                {lead.notes}
+                                                            </div>
+                                                          )}
+                                                      </div>
+                                                    )}
                                                 </div>
-                                            );
-                                        })}
+                                                <div className="flex gap-2">
+                                                    <Button
+                                                      variant="ghost"
+                                                      size="icon"
+                                                      onClick={() => openEditLead(i)}
+                                                      className="h-5 w-5"
+
+                                                    >
+                                                        <Pencil className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                      variant="ghost"
+                                                      size="icon"
+                                                        onClick={() => openDeleteConfirmation(i)}
+                                                        className="h-5 w-5 text-destructive"
+                                                        onMouseEnter={(e) => {
+                                                            e.currentTarget.style.background = '#fecaca';
+                                                            e.currentTarget.style.borderColor = '#fca5a5';
+                                                        }}
+                                                        onMouseLeave={(e) => {
+                                                            e.currentTarget.style.background = '#fee2e2';
+                                                            e.currentTarget.style.borderColor = '#fecaca';
+                                                        }}
+                                                    >
+                                                        <Trash2 className="h-5 w-5" />
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
                                 )}
 
@@ -5486,30 +5916,25 @@ export default function AdvancedSearchAIPage() {
                                 {!inboundMode && (
                                     <div className="adv-leads-list">
                                         {leads.map((lead, i) => (
-                                            <div key={i} className={`adv-lead-card ${lead.locked ? 'adv-lead-locked' : ''}`}>
+                                            <div key={i} className={`adv-lead-card flex items-center gap-[14px] p-[14px_16px] border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${lead.locked ? 'adv-lead-locked' : ''}`}>
                                                 {lead.profile_picture ? (
-                                                    <img src={lead.profile_picture} alt={lead.name} className="adv-lead-avatar-img" />
+                                                    <img src={lead.profile_picture} alt={lead.name} className="w-[42px] h-[42px] rounded-full object-cover flex-shrink-0" />
                                                 ) : (
-                                                    <div className="adv-lead-avatar" style={{ background: avatarColor(lead.name) }}>
+                                                    <div className="adv-lead-avatar w-[42px] h-[42px] rounded-full flex items-center justify-center text-white font-bold text-[14px] flex-shrink-0" style={{ background: avatarColor(lead.name) }}>
                                                         {initials(lead.name)}
                                                     </div>
                                                 )}
-                                                <div className="adv-lead-info">
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <div className="adv-lead-info flex-1 min-w-0">
+                                                    <div className="flex items-center gap-[8px]">
                                                         {lead.profile_url && lead.profile_url.startsWith('http') ? (
                                                             <a href={lead.profile_url} target="_blank" rel="noopener noreferrer" className="adv-lead-name" style={{ textDecoration: 'none', color: 'inherit' }} onClick={e => e.stopPropagation()}>
-                                                                {lead.name} {!lead.locked && <span className="adv-verified">✓</span>}
+                                                                {lead.name} {!lead.locked && <span className="adv-verified text-green-600 dark:text-green-400 ml-1">✓</span>}
                                                             </a>
                                                         ) : (
-                                                            <span className="adv-lead-name">{lead.name} {!lead.locked && <span className="adv-verified">✓</span>}</span>
+                                                            <span className="adv-lead-name text-gray-900 dark:text-gray-100 font-bold text-[14px]">{lead.name} {!lead.locked && <span className="adv-verified">✓</span>}</span>
                                                         )}
                                                         {!targetingFiltersActive && lead.icp_score !== undefined && (
-                                                            <span style={{
-                                                                display: 'inline-flex', alignItems: 'center', gap: '3px',
-                                                                padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 700,
-                                                                background: scoreToMatchLevel(lead.icp_score) === 'strong' ? '#dcfce7' : '#fef9c3',
-                                                                color: scoreToMatchLevel(lead.icp_score) === 'strong' ? '#166534' : '#854d0e',
-                                                            }}>
+                                                          <span className={`inline-flex items-center gap-[3px] px-[8px] py-[2px] rounded-[12px] text-[11px] font-bold ${scoreToMatchLevel(lead.icp_score) === 'strong' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300' : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-300'}`}>
                                                                 {scoreToMatchLevel(lead.icp_score) === 'strong' ? '🟢' : '🟡'} {lead.icp_score}%
                                                             </span>
                                                         )}
@@ -5519,38 +5944,32 @@ export default function AdvancedSearchAIPage() {
                                                     </div>
                                                     {/* Company name under the name/title */}
                                                     {lead.current_company && <div className="adv-lead-company">{lead.current_company}</div>}
-                                                    {lead.location && <div className="adv-lead-location">📍 {lead.location}</div>}
+                                                    {lead.location && <div className="adv-lead-location text-[11px] text-gray-400 dark:text-gray-500">📍 {lead.location}</div>}
                                                     {lead.inferred_nationality && (
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '3px' }}>
-                                                            <span style={{
-                                                                display: 'inline-flex', alignItems: 'center', gap: '3px',
-                                                                padding: '1px 7px', borderRadius: '10px', fontSize: '10px', fontWeight: 600,
-                                                                background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe',
-                                                            }}>
+                                                        <div className="flex items-center gap-[4px] mt-[3px]">
+                                                            <span className="inline-flex items-center gap-[3px] px-[7px] py-[1px] rounded-[10px] text-[10px] font-semibold bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                                                                 🌍 {lead.inferred_nationality}
                                                                 {lead.nationality_confidence && lead.nationality_confidence >= 70 && (
-                                                                    <span style={{ opacity: 0.6, fontWeight: 400, marginLeft: '2px' }}>·{lead.nationality_confidence}%</span>
+                                                                    <span className="opacity-60 ml-[2px]">·{lead.nationality_confidence}%</span>
                                                                 )}
                                                             </span>
                                                         </div>
                                                     )}
                                                     {!targetingFiltersActive && lead.icp_reasoning && (
-                                                        <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px', lineHeight: '1.4', fontStyle: 'italic' }}>
+                                                        <div className="text-[11px] text-gray-500 dark:text-slate-300 mt-[4px] italic leading-relaxed">
                                                             {lead.icp_reasoning}
                                                         </div>
                                                     )}
                                                     {lead.enriched_profile?.skills && lead.enriched_profile.skills.length > 0 && (
-                                                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '6px' }}>
+                                                        <div className="flex gap-[4px] flex-wrap mt-[6px]">
                                                             {lead.enriched_profile.skills.slice(0, 4).map((skill, si) => (
-                                                                <span key={si} style={{
-                                                                    padding: '1px 6px', borderRadius: '8px', fontSize: '10px',
-                                                                    background: '#f3f4f6', color: '#4b5563', border: '1px solid #e5e7eb',
-                                                                }}>{skill}</span>
+                                                                <span key={si} className="px-[6px] py-[1px] rounded-[8px] text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600">
+                                                                    {skill}</span>
                                                             ))}
                                                         </div>
                                                     )}
                                                     {lead.profile_url ? (
-                                                        <div className="adv-lead-platform">
+                                                        <div className="adv-lead-platform mt-[4px]">
                                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="#0a66c2"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" /></svg>
                                                         </div>
                                                     ) : lead.phone ? (
@@ -5559,7 +5978,7 @@ export default function AdvancedSearchAIPage() {
                                                         <div className="adv-lead-platform" style={{ fontSize: '13px' }}>✉️</div>
                                                     ) : null}
                                                 </div>
-                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                                                <div className="flex flex-col items-center gap-[4px] flex-shrink-0">
                                                     <input
                                                         type="checkbox"
                                                         title={selectedLeadIds.has(lead.id) ? 'Selected for campaign — click to remove' : 'Add to campaign'}
@@ -5569,13 +5988,12 @@ export default function AdvancedSearchAIPage() {
                                                         style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#172560' }}
                                                     />
                                                     <button
-                                                        className="adv-lead-action"
+                                                       className="adv-lead-action flex items-center justify-center w-[36px] h-[36px] rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700"
                                                         title="Generate Summary"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             if (!lead.locked) handleViewSummary(lead);
                                                         }}
-                                                        style={{ pointerEvents: lead.locked ? 'none' : 'auto', border: 'none', background: 'transparent', cursor: lead.locked ? 'default' : 'pointer' }}
                                                     >
                                                         {lead.locked ? (
                                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0110 0v4" /></svg>
@@ -5584,15 +6002,11 @@ export default function AdvancedSearchAIPage() {
                                                         )}
                                                     </button>
                                                     {!lead.locked && (
-                                                        <div style={{ display: 'flex', gap: '2px' }}>
+                                                        <div className="flex gap-[2px]">
                                                             <button
                                                                 title="Good match"
                                                                 onClick={(e) => { e.stopPropagation(); toggleFeedback(lead.id, 'good'); }}
-                                                                style={{
-                                                                    border: 'none', background: leadFeedback[lead.id] === 'good' ? '#dcfce7' : 'transparent',
-                                                                    borderRadius: '6px', padding: '3px 5px', cursor: 'pointer', fontSize: '14px', lineHeight: 1,
-                                                                    transition: 'all 0.15s',
-                                                                }}
+                                                                className={`p-[3px_5px] rounded-[6px] text-[14px] ${leadFeedback[lead.id] === 'good' ? 'bg-green-100 dark:bg-green-900' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
                                                             >
                                                                 👍
                                                             </button>
@@ -5793,16 +6207,22 @@ export default function AdvancedSearchAIPage() {
                                 )}
                             </div>
                         ) : (
-                            <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
-                                {/* Workflow panel header */}
-                                <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', background: '#fff', flexShrink: 0 }}>
-                                    <div style={{ fontSize: '17px', fontWeight: 800, color: '#111827', marginBottom: '4px' }}>Campaign Workflow</div>
-                                    <div style={{ fontSize: '12.5px', color: '#6b7280' }}>Live preview of your outreach sequence</div>
-                                </div>
-                                <div style={{ flex: 1, overflow: 'hidden', padding: '4px 0' }}>
-                                    <WorkflowPreviewPanel />
-                                </div>
-                            </div>
+                          <div className="flex flex-1 flex-col overflow-auto bg-white dark:bg-[#000724]">
+                              {/* Workflow panel header */}
+                              <div className="flex-shrink-0 border-b border-gray-200 bg-white px-5 py-4 dark:border-gray-800 dark:bg-[#000724]">
+                                  <div className="mb-1 text-[17px] font-extrabold text-gray-900 dark:text-slate-300">
+                                      Campaign Workflow
+                                  </div>
+                                  <div className="text-[12.5px] text-gray-500 dark:text-slate-300">
+                                      Live preview of your outreach sequence
+                                  </div>
+                              </div>
+
+                              {/* Preview Body */}
+                              <div className="flex-1 overflow-hidden p-0 py-1">
+                                  <WorkflowPreviewPanel />
+                              </div>
+                          </div>
                         )}
                     </div>
                 )}
@@ -5816,59 +6236,42 @@ export default function AdvancedSearchAIPage() {
                         display: 'flex', alignItems: 'stretch',
                     }}>
                         {/* Backdrop */}
-                        <div onClick={() => setShowPlayground(false)} style={{ flex: 1, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }} />
+                        <div onClick={() => setShowPlayground(false)} className="flex-1 bg-black/35 backdrop-blur-[2px]" />
 
                         {/* Drawer */}
-                        <div style={{
-                            width: 480, maxWidth: '96vw', background: '#fff',
-                            display: 'flex', flexDirection: 'column',
-                            boxShadow: '-8px 0 40px rgba(0,0,0,.18)',
-                            animation: 'slideInRight .28s cubic-bezier(.4,0,.2,1) both',
-                            overflow: 'hidden',
-                        }}>
+                        <div className="w-[480px] max-w-[96vw] bg-white dark:bg-[#000724] flex flex-col shadow-[-8px_0_40px_rgba(0,0,0,.18)] animate-[slideInRight_0.28s_cubic-bezier(0.4,0,0.2,1)_both] overflow-hidden">
                             {/* ── Header ── */}
-                            <div style={{
-                                padding: '16px 20px 12px',
-                                borderBottom: '1.5px solid #e5e7eb',
-                                background: 'linear-gradient(135deg,#f0f3ff 0%,#e8ecfa 100%)',
-                                flexShrink: 0,
-                            }}>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                        <div style={{
-                                            width: 36, height: 36, borderRadius: 10,
-                                            background: 'linear-gradient(135deg,#0b1957,#1a3a8f)',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        }}>
+                            <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-800 bg-gradient-to-br from-[#f0f3ff] to-[#e8ecfa] dark:from-[#000c3b] dark:to-[#000724] flex-shrink-0">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#0b1957] to-[#1a3a8f] dark:from-[#0b1957] dark:to-[#1a3a8f] flex items-center justify-center">
                                             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round">
                                                 <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                                             </svg>
                                         </div>
                                         <div>
-                                            <div style={{ fontSize: 15, fontWeight: 800, color: '#111827' }}>ICP Discovery</div>
-                                            <div style={{ fontSize: 11.5, color: '#0b1957', fontWeight: 500 }}>
+                                            <div className="text-[15px] font-bold text-gray-900 dark:text-white">ICP Discovery</div>
+                                            <div className="text-[11.5px] font-semibold text-[#0b1957] dark:text-blue-300">
                                                 {pgIsComplete ? '✅ ICP profile complete!' : 'Answer questions to power smarter lead discovery'}
                                             </div>
                                         </div>
                                     </div>
-                                    <div style={{ display: 'flex', gap: 6 }}>
+                                    <div className="flex gap-2">
                                         <button
                                             onClick={pgStartConversation}
                                             title="Restart conversation"
-                                            style={{
-                                                padding: '5px 10px', borderRadius: 8, border: '1px solid #e5e7eb',
-                                                background: '#fff', color: '#6b7280', fontSize: 11.5, fontWeight: 600,
-                                                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-                                            }}
-                                        >
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /></svg>
-                                            Restart
+                                        className="p-2 sm:px-2.5 sm:py-1 text-[11px] font-bold rounded-lg border-none text-white dark:text-white bg-[#0B1957] dark:bg-[#2563eb] hover:bg-[#13257e] dark:hover:bg-[#2563eb]/90 flex items-center justify-center gap-1 cursor-pointer transition-all shadow-sm outline-none"
+                                      >
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-white dark:text-white flex-shrink-0">
+                                                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                                                <path d="M3 3v5h5" />
+                                            </svg>
+                                            <span className="hidden sm:inline">Restart</span>
                                         </button>
-                                        <button onClick={() => setShowPlayground(false)} style={{
-                                            width: 30, height: 30, border: '1px solid #e5e7eb', borderRadius: 8,
-                                            background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        }}>
-                                            <X size={15} color="#6b7280" />
+                                        <button onClick={() => setShowPlayground(false)}
+                                              className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#000724] hover:bg-gray-50 dark:hover:bg-[#1A2A43] cursor-pointer text-gray-600 dark:text-gray-300 transition-all"
+                                      >
+                                          <X size={15} />
                                         </button>
                                     </div>
                                 </div>
@@ -5882,17 +6285,16 @@ export default function AdvancedSearchAIPage() {
                                     const total = c.total;
                                     const pct = pgIsComplete ? 100 : c.pct;
                                     return (
-                                        <div style={{ marginTop: 10 }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                                                <span style={{ fontSize: 11, color: '#9ca3af', fontWeight: 600 }}>Profile completeness</span>
-                                                <span style={{ fontSize: 11, color: pct >= 70 ? '#10b981' : '#0b1957', fontWeight: 700 }}>{pct}% ({filled}/{total} fields)</span>
+                                        <div className="mt-3">
+                                            <div className="flex justify-between mb-1">
+                                                <span className="text-[11px] font-semibold text-gray-400 dark:text-gray-500">Profile completeness</span>
+                                                <span className={`text-[11px] font-bold ${pct >= 70 ? 'text-emerald-500' : 'text-[#0b1957] dark:text-blue-400'}`}>{pct}% ({filled}/{total} fields)</span>
                                             </div>
-                                            <div style={{ height: 5, borderRadius: 99, background: '#dce3f5', overflow: 'hidden' }}>
-                                                <div style={{
-                                                    height: '100%', borderRadius: 99,
-                                                    background: pct >= 70 ? 'linear-gradient(90deg,#10b981,#059669)' : 'linear-gradient(90deg,#0b1957,#0b1957)',
-                                                    width: `${pct}%`, transition: 'width .5s ease',
-                                                }} />
+                                            <div className="h-1.5 w-full bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
+                                                <div
+                                              className="h-full bg-emerald-500 transition-all duration-500"
+                                              style={{ width: `${pct}%` }}
+                                            />
                                             </div>
 
                                             {/* Edit affordance — once any field is filled, the tenant can jump
@@ -5901,16 +6303,10 @@ export default function AdvancedSearchAIPage() {
                                             {filled > 0 && (
                                                 <button
                                                     onClick={() => router.push('/settings?tab=businessprofile')}
-                                                    style={{
-                                                        marginTop: 8, width: '100%', padding: '7px 10px',
-                                                        borderRadius: 8, border: '1px solid #c7d2fe',
-                                                        background: '#fff', color: '#0b1957',
-                                                        fontSize: 11.5, fontWeight: 600, cursor: 'pointer',
-                                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                                                    }}
-                                                    title="Open the Business Profile editor to change any saved field"
-                                                >
-                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                                            title="Open the Business Profile editor to change any saved field"
+                                            className="mt-2 w-full px-2.5 py-2 rounded-lg border border-[#c7d2fe] dark:border-blue-900 bg-white dark:bg-[#000724] text-[#0b1957] dark:text-blue-300 text-[11.5px] font-semibold flex items-center justify-center gap-1.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-[#1A2A43] transition-colors"
+                                          >
+                                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
                                                     Review &amp; edit your {total} fields
                                                 </button>
                                             )}
@@ -5920,27 +6316,22 @@ export default function AdvancedSearchAIPage() {
                             </div>
 
                             {/* ── Chat Messages ── */}
-                            <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: 14, background: '#f9fafb' }}>
+                            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3.5 bg-gray-50 dark:bg-[#000724]">
                                 {pgChatHistory.length === 0 && !pgBusy && (
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: 14, padding: '40px 20px' }}>
-                                        <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'linear-gradient(135deg,#0b1957,#1a3a8f)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 24px rgba(11,25,87,.3)' }}>
+                                    <div className="flex flex-col items-center justify-center flex-1 p-10 text-center gap-4">
+                                        <div className="w-[50px] h-[50px] rounded-full flex items-center justify-center
+                                                                            bg-transparent transition-colors duration-300">
                                             <AgentVisualizer state="idle" size={36} />
                                         </div>
-                                        <div style={{ textAlign: 'center' }}>
-                                            <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', marginBottom: 6 }}>Define Your Ideal Customer Profile</div>
-                                            <div style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.6 }}>
+                                        <div className="max-w-[300px]">
+                                            <div className="text-base font-bold text-gray-900 dark:text-white mb-2">Define Your Ideal Customer Profile</div>
+                                            <div className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
                                                 Answer a few questions about your business and I&apos;ll identify exactly who you should target for outreach.
                                             </div>
                                         </div>
                                         <button
                                             onClick={pgStartConversation}
-                                            style={{
-                                                padding: '12px 28px', borderRadius: 12, border: 'none',
-                                                background: 'linear-gradient(135deg,#0b1957,#1a3a8f)',
-                                                color: '#fff', fontSize: 14, fontWeight: 700,
-                                                cursor: 'pointer', boxShadow: '0 4px 14px rgba(11,25,87,.4)',
-                                                display: 'flex', alignItems: 'center', gap: 8,
-                                            }}
+                                      className="flex items-center gap-2 px-7 py-3 rounded-xl border-none font-bold text-sm cursor-pointer transition-all shadow-[0_4px_14px_rgba(11,25,87,.4)] bg-gradient-to-br from-[#0b1957] to-[#1a3a8f] dark:from-blue-600 dark:to-blue-800 text-white"
                                         >
                                             <Sparkles size={16} />
                                             Start AI Setup
@@ -5951,29 +6342,20 @@ export default function AdvancedSearchAIPage() {
                                 {pgChatHistory.map((msg, idx) => (
                                     <div key={idx}>
                                         {msg.role === 'user' ? (
-                                            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                                                <div style={{
-                                                    maxWidth: '78%', background: 'linear-gradient(135deg,#0b1957,#2563eb)',
-                                                    color: '#fff', borderRadius: '18px 18px 4px 18px',
-                                                    padding: '10px 14px', fontSize: 13.5, lineHeight: 1.55,
-                                                    boxShadow: '0 2px 8px rgba(23,37,96,.2)',
-                                                }}>
+                                            <div className="flex justify-end">
+                                          <div className="max-w-[78%] bg-gradient-to-br from-[#0b1957] to-[#2563eb] text-white rounded-[18px_18px_4px_18px] p-[10px_14px] text-[13.5px] leading-[1.55] shadow-[0_2px_8px_rgba(23,37,96,.2)]"
+                                              >
                                                     {/* Hide card submission raw messages */}
                                                     {msg.content.startsWith('[Card submission:') ? '✅ Submitted' : msg.content}
                                                 </div>
                                             </div>
                                         ) : (
-                                            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                                                <div className="adv-ai-avatar adv-ai-avatar-viz" style={{ width: 32, height: 32, flexShrink: 0 }}>
+                                            <div className="flex gap-2.5 items-start">
+                                                <div className="w-8 h-8 flex-shrink-0">
                                                     <AgentVisualizer state="idle" size={32} />
                                                 </div>
-                                                <div style={{ flex: 1 }}>
-                                                    <div style={{
-                                                        background: '#fff', borderRadius: '4px 18px 18px 18px',
-                                                        padding: '10px 14px', fontSize: 13.5, color: '#374151',
-                                                        lineHeight: 1.65, boxShadow: '0 1px 4px rgba(0,0,0,.06)',
-                                                        border: '1px solid #f3f4f6',
-                                                    }}>
+                                                <div className="flex-1">
+                                                    <div className="bg-white dark:bg-gray-800 rounded-[4px_18px_18px_18px] p-[10px_14px] text-[13.5px] text-gray-700 dark:text-gray-200 leading-[1.65] shadow-[0_1px_4px_rgba(0,0,0,.06)] border border-gray-100 dark:border-gray-700">
                                                         {msg.content}
                                                     </div>
                                                 </div>
@@ -5984,13 +6366,13 @@ export default function AdvancedSearchAIPage() {
 
                                 {/* Typing indicator */}
                                 {pgBusy && (
-                                    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                                        <div className="adv-ai-avatar adv-ai-avatar-viz" style={{ width: 32, height: 32, flexShrink: 0 }}>
+                                    <div className="flex gap-2.5 items-start">
+                                        <div className="w-8 h-8 flex-shrink-0">
                                             <AgentVisualizer state="thinking" size={32} />
                                         </div>
-                                        <div style={{ background: '#fff', borderRadius: '4px 18px 18px 18px', padding: '12px 16px', boxShadow: '0 1px 4px rgba(0,0,0,.06)', border: '1px solid #f3f4f6', display: 'flex', gap: 4, alignItems: 'center' }}>
+                                        <div className="bg-white dark:bg-gray-800 rounded-[4px_18px_18px_18px] p-[12px_16px] shadow-[0_1px_4px_rgba(0,0,0,.06)] border border-gray-100 dark:border-gray-700 flex gap-1 items-center">
                                             {[0, 1, 2].map(i => (
-                                                <div key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: '#0b1957', animation: `pulse 1.2s ease ${i * 0.2}s infinite` }} />
+                                                <div key={i} className="w-1.5 h-1.5 rounded-full bg-[#0b1957] dark:bg-blue-400 animate-pulse" />
                                             ))}
                                         </div>
                                     </div>
@@ -6002,33 +6384,25 @@ export default function AdvancedSearchAIPage() {
                                     const fieldVal = pgCardValues[card.field];
 
                                     return (
-                                        <div style={{
-                                            background: '#fff', border: '1.5px solid #dce3f5', borderRadius: 14,
-                                            padding: '14px 16px', boxShadow: '0 2px 12px rgba(11,25,87,.08)',
-                                        }}>
-                                            <div style={{ fontSize: 12, fontWeight: 700, color: '#0b1957', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 shadow-[0_2px_12px_rgba(0,0,0,.08)]">
+                                            <div className="text-[12px] font-bold text-[#0b1957] dark:text-blue-300 mb-2.5 flex items-center gap-1.5">
                                                 <Sparkles size={12} /> {card.label}
                                             </div>
 
                                             {/* TEXT / TEXTAREA */}
                                             {(card.type === 'text' || card.type === 'textarea') && (
-                                                <div style={{ position: 'relative' }}>
+                                                <div className="relative">
                                                     <textarea
                                                         rows={card.type === 'textarea' ? 3 : 1}
                                                         value={fieldVal || ''}
                                                         onChange={e => setPgCardValues({ [card.field]: e.target.value })}
                                                         placeholder={card.placeholder || ''}
                                                         autoFocus
-                                                        style={{
-                                                            width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 8,
-                                                            padding: '9px 12px', paddingBottom: card.type === 'textarea' ? '36px' : '9px',
-                                                            fontSize: 13, color: '#374151',
-                                                            resize: 'vertical', outline: 'none', fontFamily: 'inherit',
-                                                            lineHeight: 1.5, background: '#fafafa', boxSizing: 'border-box',
-                                                        }}
-                                                        onFocus={e => { e.currentTarget.style.borderColor = '#0b1957'; }}
-                                                        onBlur={e => { e.currentTarget.style.borderColor = '#e5e7eb'; }}
-                                                        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && card.type !== 'textarea') { e.preventDefault(); pgSubmitCard(); } }}
+                                                      className={`w-full border border-gray-200 dark:border-gray-600 rounded-lg p-2.5 text-[13px] text-gray-700 dark:text-gray-100 resize-vertical outline-none bg-gray-50 dark:bg-gray-900 focus:border-[#0b1957] dark:focus:border-blue-500 ${card.type === 'textarea' ? 'pb-9' : ''}`}
+
+                                                      onFocus={e => { e.currentTarget.style.borderColor = '#0b1957'; }}
+                                                      onBlur={e => { e.currentTarget.style.borderColor = '#e5e7eb'; }}
+                                                      onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && card.type !== 'textarea') { e.preventDefault(); pgSubmitCard(); } }}
                                                     />
                                                     {card.type === 'textarea' && (
                                                         <button
@@ -6036,15 +6410,7 @@ export default function AdvancedSearchAIPage() {
                                                             onClick={pgGenerateSuggestion}
                                                             disabled={pgSuggesting}
                                                             title="Generate with AI"
-                                                            style={{
-                                                                position: 'absolute', bottom: 8, right: 8,
-                                                                display: 'flex', alignItems: 'center', gap: 4,
-                                                                padding: '4px 10px', borderRadius: 6, border: 'none',
-                                                                background: pgSuggesting ? '#e5e7eb' : 'linear-gradient(135deg,#0b1957,#1a3a8f)',
-                                                                color: pgSuggesting ? '#9ca3af' : '#fff',
-                                                                fontSize: 11.5, fontWeight: 600, cursor: pgSuggesting ? 'default' : 'pointer',
-                                                                transition: 'all .15s',
-                                                            }}
+                                                  className="absolute bottom-2 right-2 flex items-center gap-1 px-2.5 py-1 rounded-md border-none bg-gradient-to-br from-[#0b1957] to-[#1a3a8f] dark:from-blue-700 dark:to-blue-900 text-white text-[11.5px] font-semibold cursor-pointer disabled:bg-gray-300"
                                                         >
                                                             <Sparkles size={11} />
                                                             {pgSuggesting ? 'Generating…' : 'Generate with AI'}
@@ -6175,13 +6541,7 @@ export default function AdvancedSearchAIPage() {
                                             <button
                                                 onClick={pgSubmitCard}
                                                 disabled={!fieldVal && !pgTagInput.trim() && card.type !== 'hours'}
-                                                style={{
-                                                    marginTop: 12, width: '100%', padding: '9px 0', borderRadius: 9, border: 'none',
-                                                    background: fieldVal || pgTagInput.trim() || card.type === 'hours' ? 'linear-gradient(135deg,#0b1957,#1a3a8f)' : '#e5e7eb',
-                                                    color: fieldVal || pgTagInput.trim() || card.type === 'hours' ? '#fff' : '#9ca3af',
-                                                    fontSize: 13, fontWeight: 700, cursor: fieldVal || pgTagInput.trim() || card.type === 'hours' ? 'pointer' : 'default',
-                                                    transition: 'all .15s',
-                                                }}
+                                          className="mt-3 w-full py-2 rounded-lg border-none text-[13px] font-bold text-white bg-[#0b1957] dark:bg-blue-700 disabled:bg-gray-200 dark:disabled:bg-gray-700 disabled:text-gray-400 cursor-pointer transition-all"
                                             >
                                                 Submit →
                                             </button>
@@ -6194,34 +6554,27 @@ export default function AdvancedSearchAIPage() {
 
                             {/* ── Text Input Bar ── */}
                             {pgChatHistory.length > 0 && (
-                                <div style={{
-                                    padding: '10px 14px', borderTop: '1.5px solid #e5e7eb',
-                                    background: '#fff', flexShrink: 0, display: 'flex', gap: 8,
-                                }}>
+                                <div className="px-3.5 py-2.5 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex-shrink-0 flex gap-2">
                                     <input
                                         value={pgInput}
                                         onChange={e => setPgInput(e.target.value)}
                                         onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); pgSendMessage(pgInput); } }}
                                         placeholder="Type a message or skip to next question…"
                                         disabled={pgBusy}
-                                        style={{
-                                            flex: 1, border: '1.5px solid #e5e7eb', borderRadius: 24,
-                                            padding: '9px 16px', fontSize: 13.5, outline: 'none', fontFamily: 'inherit',
-                                            background: pgBusy ? '#f9fafb' : '#fff', color: '#374151',
-                                            transition: 'border .15s',
-                                        }}
-                                        onFocus={e => { e.currentTarget.style.borderColor = '#0b1957'; }}
-                                        onBlur={e => { e.currentTarget.style.borderColor = '#e5e7eb'; }}
+                                  className={`flex-1 border-[1.5px] rounded-[24px] px-4 py-2.5 text-[13.5px] outline-none transition-colors font-inherit 
+                                        ${pgBusy
+                                    ? 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-400'
+                                    : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-slate-300 focus:border-[#0b1957] dark:focus:border-blue-500'
+                                  }`}
                                     />
                                     <button
                                         onClick={() => pgSendMessage(pgInput)}
                                         disabled={!pgInput.trim() || pgBusy}
-                                        style={{
-                                            width: 38, height: 38, borderRadius: '50%', border: 'none', flexShrink: 0,
-                                            background: pgInput.trim() && !pgBusy ? 'linear-gradient(135deg,#0b1957,#1a3a8f)' : '#e5e7eb',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            cursor: pgInput.trim() && !pgBusy ? 'pointer' : 'default', transition: 'all .15s',
-                                        }}
+                                    className={`w-[38px] h-[38px] rounded-full border-none shrink-0 flex items-center justify-center transition-all ${
+                                    pgInput.trim() && !pgBusy
+                                      ? 'bg-gradient-to-br from-[#0b1957] to-[#1a3a8f] dark:from-blue-700 dark:to-blue-900 cursor-pointer'
+                                      : 'bg-gray-200 dark:bg-gray-700 cursor-default'
+                                        }`}
                                     >
                                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
                                     </button>
@@ -6481,186 +6834,72 @@ export default function AdvancedSearchAIPage() {
 
             {/* Edit Inbound Lead Modal */}
             {editingLeadIndex !== null && editFormData && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', zIndex: 9999
-                }} onClick={closeEditLead}>
-                    <div style={{
-                        background: 'white', borderRadius: '12px', padding: '24px',
-                        width: '90%', maxWidth: '500px', maxHeight: '80vh', overflow: 'auto',
-                        boxShadow: '0 20px 25px rgba(0,0,0,0.15)'
-                    }} onClick={(e) => e.stopPropagation()}>
-                        <h2 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>
-                            Edit Lead #{editingLeadIndex + 1}
-                        </h2>
+              <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={closeEditLead}>
+                  <div className="relative w-[90%] max-w-[500px] max-h-[80vh] overflow-auto rounded-2xl bg-white p-8 shadow-2xl dark:bg-[#101935] dark:text-white" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={closeEditLead}
+                        className="absolute top-6 right-6 text-gray-400 transition-colors hover:text-gray-600 dark:text-gray-400 dark:hover:text-white"
+                      >
+                          ✕
+                      </button>
 
-                        <div style={{ display: 'grid', gap: '16px' }}>
-                            {/* First Name */}
-                            <div>
-                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '6px', color: '#374151' }}>
-                                    First Name
+                      <h2 className="mb-6 text-lg font-bold">
+                          Edit Lead #{editingLeadIndex + 1}
+                      </h2>
+
+                      <div className="grid gap-5">
+                          {/* Reusable Input Helper Component logic would go here */}
+                          {/* Updated Inputs Map */}
+                          {[
+                              { label: 'First Name', key: 'firstName', placeholder: 'Lead first name' },
+                              { label: 'Last Name', key: 'lastName', placeholder: 'Lead last name' },
+                              { label: 'Email', key: 'email', placeholder: 'Lead email address' },
+                              { label: 'Phone', key: 'phone', placeholder: 'Lead phone number' },
+                              { label: 'Company', key: 'companyName', placeholder: 'Company name' },
+                              { label: 'LinkedIn URL', key: 'linkedinProfile', placeholder: 'https://linkedin.com/in/...' },
+                              { label: 'Website', key: 'website', placeholder: 'https://...' }
+                          ].map((field) => {
+                            const fieldKey = field.key as keyof ParsedInboundLead;
+                            return (
+                            <div key={field.key}>
+                                <label className="mb-2 block text-xs font-semibold text-gray-500 dark:text-gray-400">
+                                    {field.label}
                                 </label>
                                 <input
-                                    type="text"
-                                    value={editFormData.firstName}
-                                    onChange={(e) => updateEditField('firstName', e.target.value)}
-                                    style={{
-                                        width: '100%', padding: '8px 12px', border: '1px solid #d1d5db',
-                                        borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box'
-                                    }}
-                                    placeholder="First name"
+                                  type="text"
+                                  value={editFormData[fieldKey]}
+                                  onChange={(e) => updateEditField(fieldKey, e.target.value)}
+                                  placeholder={field.placeholder} // Using the placeholder property here
+                                  className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm transition-colors focus:border-blue-500 focus:outline-none dark:border-[#262831] dark:bg-[#000724] dark:text-white dark:placeholder-gray-500"
                                 />
                             </div>
+                            );
+                          })}
 
-                            {/* Last Name */}
-                            <div>
-                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '6px', color: '#374151' }}>
-                                    Last Name
-                                </label>
-                                <input
-                                    type="text"
-                                    value={editFormData.lastName}
-                                    onChange={(e) => updateEditField('lastName', e.target.value)}
-                                    style={{
-                                        width: '100%', padding: '8px 12px', border: '1px solid #d1d5db',
-                                        borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box'
-                                    }}
-                                    placeholder="Last name"
-                                />
-                            </div>
+                          {/* Notes */}
+                          <div>
+                              <label className="mb-2 block text-xs font-semibold text-gray-500 dark:text-gray-400">
+                                  Notes
+                              </label>
+                              <textarea
+                                value={editFormData.notes}
+                                onChange={(e) => updateEditField('notes', e.target.value)}
+                                className="h-20 w-full resize-y rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm transition-colors focus:border-blue-500 focus:outline-none dark:border-[#262831] dark:bg-[#000724] dark:text-white"
+                              />
+                          </div>
+                      </div>
+                      <div className="mt-8">
+                          <button
+                            onClick={saveEditedLead}
+                            disabled={savingLead}
+                            className="w-full rounded-xl bg-blue-600 py-3 text-sm font-bold text-white transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                              {savingLead ? 'Saving...' : 'Save Changes'}
+                          </button>
+                      </div>
 
-                            {/* Email */}
-                            <div>
-                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '6px', color: '#374151' }}>
-                                    Email
-                                </label>
-                                <input
-                                    type="email"
-                                    value={editFormData.email}
-                                    onChange={(e) => updateEditField('email', e.target.value)}
-                                    style={{
-                                        width: '100%', padding: '8px 12px', border: '1px solid #d1d5db',
-                                        borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box'
-                                    }}
-                                    placeholder="Email address"
-                                />
-                            </div>
-
-                            {/* Phone */}
-                            <div>
-                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '6px', color: '#374151' }}>
-                                    Phone
-                                </label>
-                                <input
-                                    type="tel"
-                                    value={editFormData.phone}
-                                    onChange={(e) => updateEditField('phone', e.target.value)}
-                                    style={{
-                                        width: '100%', padding: '8px 12px', border: '1px solid #d1d5db',
-                                        borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box'
-                                    }}
-                                    placeholder="Phone number"
-                                />
-                            </div>
-
-                            {/* Company */}
-                            <div>
-                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '6px', color: '#374151' }}>
-                                    Company
-                                </label>
-                                <input
-                                    type="text"
-                                    value={editFormData.companyName}
-                                    onChange={(e) => updateEditField('companyName', e.target.value)}
-                                    style={{
-                                        width: '100%', padding: '8px 12px', border: '1px solid #d1d5db',
-                                        borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box'
-                                    }}
-                                    placeholder="Company name"
-                                />
-                            </div>
-
-                            {/* LinkedIn Profile */}
-                            <div>
-                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '6px', color: '#374151' }}>
-                                    LinkedIn URL
-                                </label>
-                                <input
-                                    type="url"
-                                    value={editFormData.linkedinProfile}
-                                    onChange={(e) => updateEditField('linkedinProfile', e.target.value)}
-                                    style={{
-                                        width: '100%', padding: '8px 12px', border: '1px solid #d1d5db',
-                                        borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box'
-                                    }}
-                                    placeholder="https://linkedin.com/in/..."
-                                />
-                            </div>
-
-                            {/* Website */}
-                            <div>
-                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '6px', color: '#374151' }}>
-                                    Website
-                                </label>
-                                <input
-                                    type="url"
-                                    value={editFormData.website}
-                                    onChange={(e) => updateEditField('website', e.target.value)}
-                                    style={{
-                                        width: '100%', padding: '8px 12px', border: '1px solid #d1d5db',
-                                        borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box'
-                                    }}
-                                    placeholder="https://..."
-                                />
-                            </div>
-
-                            {/* Notes */}
-                            <div>
-                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '6px', color: '#374151' }}>
-                                    Notes
-                                </label>
-                                <textarea
-                                    value={editFormData.notes}
-                                    onChange={(e) => updateEditField('notes', e.target.value)}
-                                    style={{
-                                        width: '100%', padding: '8px 12px', border: '1px solid #d1d5db',
-                                        borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box',
-                                        minHeight: '80px', fontFamily: 'inherit', resize: 'vertical'
-                                    }}
-                                    placeholder="Any additional notes"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Action Buttons */}
-                        <div style={{ display: 'flex', gap: '12px', marginTop: '24px', justifyContent: 'flex-end' }}>
-                            <button
-                                onClick={closeEditLead}
-                                disabled={savingLead}
-                                style={{
-                                    padding: '8px 16px', border: '1px solid #d1d5db', borderRadius: '6px',
-                                    background: 'white', color: '#374151', cursor: savingLead ? 'not-allowed' : 'pointer',
-                                    fontSize: '14px', fontWeight: '500', opacity: savingLead ? 0.6 : 1
-                                }}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={saveEditedLead}
-                                disabled={savingLead}
-                                style={{
-                                    padding: '8px 16px', border: 'none', borderRadius: '6px',
-                                    background: savingLead ? '#d1d5db' : '#3b82f6', color: 'white',
-                                    cursor: savingLead ? 'not-allowed' : 'pointer',
-                                    fontSize: '14px', fontWeight: '500'
-                                }}
-                            >
-                                {savingLead ? 'Saving...' : 'Save Changes'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
+              </div>
+              </div>
             )}
 
             {/* Delete Confirmation Dialog */}
@@ -6882,7 +7121,6 @@ export default function AdvancedSearchAIPage() {
 /* ═══════════════════════════════════════════════
    CHAT BUBBLE
    ═══════════════════════════════════════════════ */
-import { useSelector } from 'react-redux';
 
 function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, agentDealLoading, onStartTargeting, hasPanel, leadsCount, filteredLeadsCount, onUploadClick, useSalesNav, isMobile }: { msg: ChatMsg; onOpt: (v: string) => void; onShowPanel: (panel: 'leads' | 'workflow') => void; onStartCheckpoints: () => void; onLetAgentDeal?: () => void; agentDealLoading?: boolean; onStartTargeting: () => void; hasPanel: boolean; leadsCount: number; filteredLeadsCount?: number; onUploadClick?: () => void; useSalesNav?: boolean; isMobile?: boolean }) {
     const user = useSelector((state: any) => state.auth?.user);
@@ -6997,11 +7235,11 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
 
                 {/* ── Web search source links ── */}
                 {msg.sources && msg.sources.length > 0 && (
-                    <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid #f0f0f0' }}>
-                        <div style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', letterSpacing: '0.06em', marginBottom: '8px', textTransform: 'uppercase' }}>
+                    <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800">
+                        <div className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2">
                             Sources
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                        <div className="flex flex-col gap-1.5">
                             {msg.sources.slice(0, 5).map((src, i) => {
                                 let hostname = '';
                                 try { hostname = new URL(src.url).hostname.replace('www.', ''); } catch { hostname = src.url; }
@@ -7011,23 +7249,16 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                                         href={src.url}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        style={{
-                                            display: 'flex', alignItems: 'center', gap: '7px',
-                                            fontSize: '12px', color: '#2563eb', textDecoration: 'none',
-                                            padding: '5px 8px', borderRadius: '8px', background: '#f8faff',
-                                            border: '1px solid #e0eaf5', transition: 'background .12s',
-                                        }}
-                                        onMouseEnter={e => (e.currentTarget.style.background = '#e8ecfa')}
-                                        onMouseLeave={e => (e.currentTarget.style.background = '#f8faff')}
+                                  className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400 no-underline px-2 py-1.5 rounded-lg border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                                     >
                                         {/* Globe icon */}
-                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}>
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-gray-500 dark:text-slate-300 flex-shrink-0" strokeWidth="2" strokeLinecap="round">
                                             <circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
                                         </svg>
-                                        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
                                             {src.title || hostname}
                                         </span>
-                                        <span style={{ fontSize: '10px', color: '#9ca3af', flexShrink: 0 }}>{hostname}</span>
+                                        <span className="text-[10px] text-gray-400 dark:text-gray-500 flex-shrink-0">{hostname}</span>
                                     </a>
                                 );
                             })}
@@ -7038,168 +7269,167 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                 {/* ── NAS.io-style MAIN PRODUCT CARD (only for first search results) ── */}
                 {msg.targeting && (
                     <div
-                        className="adv-main-product-card"
-                        onClick={onStartCheckpoints}
-                        style={{
-                            background: "#f9fafb",
-                            border: "1px solid #e5e7eb",
-                            borderRadius: "14px",
-                            padding: "16px",
-                            cursor: "pointer",
-                            transition: "all 0.15s",
-                            marginBottom: "12px",
-                            marginTop: "12px",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "14px"
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.backgroundColor = "#f3f4f6"; e.currentTarget.style.borderColor = "#0b1957"; }}
-                        onMouseLeave={e => { e.currentTarget.style.backgroundColor = "#f9fafb"; e.currentTarget.style.borderColor = "#e5e7eb"; }}
-                    >
-                        <div style={{
-                            width: "48px", height: "48px", background: "#0b1957", borderRadius: "10px",
-                            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0
-                        }}>
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" /></svg>
-                        </div>
-                        <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: "15px", fontWeight: 700, color: "#111827", marginBottom: "4px" }}>
-                                Automate Your Business Processes with AI Agents
-                            </div>
-                            <div style={{ fontSize: "12px", color: "#6b7280" }}>V1</div>
-                        </div>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6" /></svg>
-                    </div>
+                    onClick={onStartCheckpoints}
+                    className="adv-main-product-card flex items-center gap-[14px] p-4 my-3 border rounded-[14px] cursor-pointer transition-all duration-150
+                       bg-gray-50 dark:bg-gray-800
+                       border-gray-200 dark:border-gray-700
+                       hover:bg-gray-100 dark:hover:bg-gray-700
+                       hover:border-[#0b1957] dark:hover:border-blue-400 adv-main-product-card"
+                      >
+                      <div className="w-[48px] h-[48px] bg-[#0b1957] dark:bg-blue-600 rounded-[10px] flex items-center justify-center flex-shrink-0">
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" /></svg>
+                      </div>
+                      <div className="flex-1">
+                          <div className="text-[15px] font-bold text-gray-900 dark:text-gray-100 mb-1">
+                              Automate Your Business Processes with AI Agents
+                          </div>
+                          <div className="text-[12px] text-gray-500 dark:text-slate-300">V1</div>
+                      </div>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-gray-400 dark:text-gray-500" strokeWidth="2" strokeLinecap="round">
+                          <path d="M9 18l6-6-6-6" />
+                      </svg>
+                  </div>
                 )}
 
                 {/* ── NAS.io-style clickable result cards ── */}
                 {msg.targeting && (
-                    <div className="adv-result-cards" style={{ display: "flex", gap: "12px", marginBottom: "16px" }}>
+                    <div className="adv-result-cards flex gap-3 mb-4">
                         {/* Targeting card */}
-                        <div className="adv-rc" onClick={onStartTargeting} style={{
-                            flex: 1, padding: "14px", border: useSalesNav ? "1px solid #e5e7eb" : "1px solid #fde68a", borderRadius: "12px", display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", background: useSalesNav ? "#fff" : "#fffbeb"
-                        }}>
-                            <div className="adv-rc-icon adv-rc-icon-target" style={{ width: "32px", height: "32px", borderRadius: "8px", background: "#e8ecfa", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0b1957" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6" /><line x1="8" y1="12" x2="20" y2="12" /><line x1="12" y1="18" x2="20" y2="18" /><circle cx="2" cy="6" r="1" fill="#0b1957" /><circle cx="4" cy="12" r="1" fill="#0b1957" /><circle cx="8" cy="18" r="1" fill="#0b1957" /></svg>
-                            </div>
-                            <div className="adv-rc-body" style={{ flex: 1 }}>
-                                <div className="adv-rc-label" style={{ fontSize: "13px", fontWeight: 700 }}>Targeting</div>
-                                {!useSalesNav && (
-                                    <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "4px" }}>
-                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
-                                        <span style={{ fontSize: "10px", color: "#d97706", fontWeight: 500, lineHeight: 1.3 }}>Sales Navigator required for narrow filters</span>
-                                    </div>
-                                )}
-                            </div>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6" /></svg>
-                        </div>
-                        <div className="adv-rc adv-rc-leads" onClick={() => onShowPanel('leads')} style={{
-                            flex: 1, padding: "14px", border: "1px solid #e5e7eb", borderRadius: "12px", display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", background: "#fff"
-                        }}>
-                            <div className="adv-rc-icon adv-rc-icon-leads" style={{ width: "32px", height: "32px", borderRadius: "8px", background: "#e0eaf5", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0b1957" strokeWidth="2" strokeLinecap="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="8.5" cy="7" r="4" /><line x1="20" y1="8" x2="20" y2="14" /><line x1="23" y1="11" x2="17" y2="11" /></svg>
-                            </div>
-                            <div className="adv-rc-body" style={{ flex: 1 }}>
-                                <div className="adv-rc-label" style={{ fontSize: "13px", fontWeight: 700 }}>Leads</div>
-                                <div className="adv-rc-sub" style={{ fontSize: "11px", color: "#0b1957", fontWeight: 500 }}>
-                                    {leadsCount > 0
-                                        ? `${leadsCount} Leads found`
-                                        : filteredLeadsCount && filteredLeadsCount > 0
-                                            ? `${filteredLeadsCount} lead${filteredLeadsCount !== 1 ? 's' : ''} (below ICP threshold)`
-                                            : '0 Leads found'}
+                        <div className={`adv-rc flex flex-1 items-center gap-3 p-4 rounded-xl cursor-pointer border transition-colors ${
+                               useSalesNav
+                                ? "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                                : "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800"
+                            }`}
+                               onClick={onStartTargeting}
+                        >
+                            <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/40 flex items-center justify-center shrink-0">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-indigo-900 dark:text-indigo-300" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6" /><line x1="8" y1="12" x2="20" y2="12" /><line x1="12" y1="18" x2="20" y2="18" /><circle cx="2" cy="6" r="1" fill="currentColor" /><circle cx="4" cy="12" r="1" fill="currentColor" /><circle cx="8" cy="18" r="1" fill="currentColor" /></svg>
+                          </div>
+                            <div className="adv-rc-body">
+                                <div className="text-[13px] font-bold text-gray-900 dark:text-gray-100">Targeting</div>
+                              {!useSalesNav && (
+                                <div className="flex items-center gap-1 mt-1">
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-amber-600 dark:text-amber-500" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+                                    <span className="text-[10px] text-amber-600 dark:text-amber-500 font-medium leading-tight">Sales Navigator required</span>
                                 </div>
-                            </div>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6" /></svg>
-                        </div>
-                        <div className="adv-rc adv-rc-leads" onClick={() => onShowPanel('workflow')} style={{
-                            flex: 1, padding: "14px", border: "1px solid #e5e7eb", borderRadius: "12px", display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", background: "#fff"
-                        }}>
-                            <div className="adv-rc-icon" style={{ width: "32px", height: "32px", borderRadius: "8px", background: "#e0eaf5", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0b1957" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="2" /><circle cx="5" cy="19" r="2" /><circle cx="19" cy="19" r="2" /><path d="M12 7v4M9.5 17.5L12 11l2.5 6.5" /></svg>
-                            </div>
-                            <div className="adv-rc-body" style={{ flex: 1 }}>
-                                <div className="adv-rc-label" style={{ fontSize: "13px", fontWeight: 700 }}>Workflow</div>
-                                <div className="adv-rc-sub" style={{ fontSize: "11px", color: "#0b1957", fontWeight: 500 }}>Live preview</div>
-                            </div>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6" /></svg>
-                        </div>
-                    </div>
+                              )}
+                          </div>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-gray-400 dark:text-gray-500" strokeWidth="2"><path d="M9 18l6-6-6-6" /></svg>
+                      </div>
+                      <div className="adv-rc adv-rc-leads flex flex-1 items-center gap-3 p-4 rounded-xl cursor-pointer border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800" onClick={() => onShowPanel('leads')}>
+                          <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-indigo-900 dark:text-blue-300" strokeWidth="2"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="8.5" cy="7" r="4" /><line x1="20" y1="8" x2="20" y2="14" /><line x1="23" y1="11" x2="17" y2="11" /></svg>
+                          </div>
+                          <div className="flex-1">
+                              <div className="text-[13px] font-bold text-gray-900 dark:text-gray-100">Leads</div>
+                              <div className="text-[11px] text-indigo-900 dark:text-blue-300 font-medium">
+                                  {leadsCount > 0
+                                    ? `${leadsCount} Leads found`
+                                    : filteredLeadsCount && filteredLeadsCount > 0
+                                      ? `${filteredLeadsCount} lead${filteredLeadsCount !== 1 ? 's' : ''} (below ICP threshold)`
+                                      : '0 Leads found'}
+                              </div>
+                          </div>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-gray-400 dark:text-gray-500" strokeWidth="2"><path d="M9 18l6-6-6-6" /></svg>
+                      </div>
+                      <div className="adv-rc adv-rc-leads flex flex-1 items-center gap-3 p-4 rounded-xl cursor-pointer border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800" onClick={() => onShowPanel('workflow')}>
+                          <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-indigo-900 dark:text-blue-300" strokeWidth="2"><circle cx="12" cy="5" r="2" /><circle cx="5" cy="19" r="2" /><circle cx="19" cy="19" r="2" /><path d="M12 7v4M9.5 17.5L12 11l2.5 6.5" /></svg>
+                          </div>
+                          <div className="flex-1">
+                              <div className="text-[13px] font-bold text-gray-900 dark:text-gray-100">Workflow</div>
+                              <div className="text-[11px] text-indigo-900 dark:text-blue-300 font-medium">Live preview</div>
+                          </div>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-gray-400 dark:text-gray-500" strokeWidth="2"><path d="M9 18l6-6-6-6" /></svg>
+                      </div>
+                  </div>
                 )}
 
                 {/* ── Modern action buttons (Example 1 style) ── */}
                 {msg.targeting && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "10px", borderTop: "1px solid #e5e7eb", paddingTop: "12px" }}>
-                        {/* ⚡ Hero action — let the agent build the whole multi-channel campaign */}
-                        {onLetAgentDeal && (
-                            <button type="button" onClick={onLetAgentDeal} disabled={agentDealLoading} style={{
-                                width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
-                                padding: "12px 16px", borderRadius: "12px", border: "none",
-                                cursor: agentDealLoading ? "default" : "pointer",
-                                background: "linear-gradient(135deg, #0b1957 0%, #3730a3 100%)", color: "#fff",
-                                boxShadow: "0 4px 14px rgba(11,25,87,0.22)", opacity: agentDealLoading ? 0.75 : 1,
-                                fontSize: "13.5px", fontWeight: 700, letterSpacing: "0.01em", transition: "opacity 0.2s",
+                  <div className="flex flex-col gap-2.5 border-t border-gray-200 dark:border-gray-800 pt-3">
+                      {/* ⚡ Hero action — let the agent build the whole multi-channel campaign */}
+                      {onLetAgentDeal && (
+                          <button type="button" onClick={onLetAgentDeal} disabled={agentDealLoading}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-none text-white text-[13.5px] font-bold tracking-[0.01em] transition-opacity disabled:cursor-default disabled:opacity-75 cursor-pointer"
+                            style={{
+                                background: "linear-gradient(135deg, #0b1957 0%, #3730a3 100%)",
+                                boxShadow: "0 4px 14px rgba(11,25,87,0.22)",
                             }}>
-                                <span style={{ fontSize: "16px", lineHeight: 1 }}>{agentDealLoading ? "⏳" : "⚡"}</span>
-                                {agentDealLoading ? "Building your campaign…" : "Let Agent Deal — auto-build every connected channel"}
-                            </button>
-                        )}
-                        <div className="adv-action-btns" style={{ display: "flex", gap: "8px", flexWrap: "nowrap", justifyContent: "space-between" }}>
-                            <button className="adv-act-btn adv-act-btn-refine" style={{
-                                padding: "8px 12px", background: "#fff", border: "1px solid #e5e7eb", borderRadius: "20px", fontSize: "12px", fontWeight: 600, color: "#374151"
-                            }} onClick={() => onOpt('Refine my targeting criteria')}>Refine</button>
-                            <button className="adv-act-btn adv-act-btn-journey" style={{
-                                padding: "9px 16px", background: "#fff", border: "1px solid #0b1957", borderRadius: "20px", fontSize: "12.5px", fontWeight: 700, color: "#0b1957",
-                                display: "flex", alignItems: "center", gap: "6px", letterSpacing: "0.01em"
-                            }} onClick={onStartCheckpoints}>
-                                Configure manually
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
-                            </button>
-                        </div>
-                    </div>
+                              <span style={{ fontSize: "16px", lineHeight: 1 }}>{agentDealLoading ? "⏳" : "⚡"}</span>
+                              {agentDealLoading ? "Building your campaign…" : "Let Agent Deal — auto-build every connected channel"}
+                          </button>
+                      )}
+                      <div className="adv-action-btns flex flex-nowrap gap-2 justify-between">
+                          <button
+                            className="adv-act-btn adv-act-btn-refine flex items-center gap-1.5 px-4 py-2.5 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-[12.5px] font-semibold text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-blue-600 hover:text-gray-900 dark:hover:text-white transition-colors"
+                            onClick={() => onOpt('Refine my targeting criteria')}
+                          >
+                              Refine
+                          </button>
+                          <button
+                            className="adv-act-btn adv-act-btn-journey flex items-center gap-1.5 px-4 py-2.5 rounded-full border border-[#0b1957] dark:border-blue-400 bg-white dark:bg-gray-800 text-[12.5px] font-bold text-[#0b1957] dark:text-blue-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors tracking-[0.01em]"
+                            onClick={onStartCheckpoints}
+                          >
+                              Configure manually
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M5 12h14M12 5l7 7-7 7" />
+                              </svg>
+                          </button>
+                      </div>
+                  </div>
                 )}
 
                 {/* ── Inbound: Download Template + Upload buttons ── */}
                 {(msg.inboundAction === 'download' || msg.inboundAction === 'upload') && (
-                    <div style={{ display: 'flex', flexDirection: 'row', gap: '8px', flexWrap: 'nowrap', width: '100%', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e5e7eb' }}>
-                        <button onClick={downloadInboundTemplate} style={{
-                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 1, gap: '6px', padding: '10px 8px',
-                            background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', color: '#fff',
-                            border: 'none', borderRadius: '12px', fontWeight: 600, fontSize: '13px', cursor: 'pointer',
-                            boxShadow: '0 4px 12px rgba(16,185,129,0.25)', transition: 'all 0.2s', whiteSpace: 'nowrap'
-                        }}><Download size={16} /> Download</button>
-                        <button onClick={() => onUploadClick?.()} style={{
-                            display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 18px',
-                            background: '#fff', color: '#0b1957', border: '2px solid #0b1957', borderRadius: '12px',
-                            fontWeight: 600, fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s',
-                        }}><Upload size={16} /> Upload CSV File</button>
-                    </div>
+                  <div className="flex flex-row flex-nowrap gap-2 w-full mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                      <button onClick={downloadInboundTemplate}
+                              className="inline-flex items-center justify-center flex-1 gap-1.5 px-2 py-2.5 bg-gradient-to-br from-emerald-600 to-emerald-500 text-white border-none rounded-xl font-semibold text-[13px] cursor-pointer shadow-md hover:shadow-lg transition-all whitespace-nowrap"
+                      >
+                          <Download size={16} /> Download
+                      </button>
+                      <button
+                        onClick={() => onUploadClick?.()}
+                        className="inline-flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-800 text-[#0b1957] dark:text-blue-300 border-2 border-[#0b1957] dark:border-blue-400 rounded-xl font-semibold text-[13px] cursor-pointer transition-all hover:bg-gray-50 dark:hover:bg-gray-700"
+                      >
+                          <Upload size={16} /> Upload CSV File
+                      </button>
+                  </div>
                 )}
 
                 {/* ── Inbound: Summary with platform badges ── */}
                 {msg.inboundAction === 'summary' && msg.inboundSummary && (
-                    <div style={{ marginTop: '12px', padding: '14px', background: 'linear-gradient(135deg, #ecfdf5, #d1fae5)', borderRadius: '14px', border: '1px solid #a7f3d0' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                            <CheckCircle2 size={18} color="#059669" />
-                            <span style={{ fontSize: '14px', fontWeight: 700, color: '#065f46' }}>{msg.inboundSummary.total} Leads Ready</span>
-                        </div>
-                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                            {msg.inboundSummary.linkedin > 0 && <span style={{ fontSize: '11px', background: '#fff', color: '#1e40af', padding: '4px 10px', borderRadius: '12px', fontWeight: 600, border: '1px solid #bfdbfe', display: 'inline-flex', alignItems: 'center', gap: '4px' }}><LinkedInIcon size={12} /> LinkedIn ({msg.inboundSummary.linkedin})</span>}
-                            {msg.inboundSummary.email > 0 && <span style={{ fontSize: '11px', background: '#fff', color: '#be185d', padding: '4px 10px', borderRadius: '12px', fontWeight: 600, border: '1px solid #fbcfe8' }}>✉️ Email ({msg.inboundSummary.email})</span>}
-                            {msg.inboundSummary.whatsapp > 0 && <span style={{ fontSize: '11px', background: '#fff', color: '#166534', padding: '4px 10px', borderRadius: '12px', fontWeight: 600, border: '1px solid #bbf7d0' }}>💬 WhatsApp ({msg.inboundSummary.whatsapp})</span>}
-                            {msg.inboundSummary.phone > 0 && <span style={{ fontSize: '11px', background: '#fff', color: '#9a3412', padding: '4px 10px', borderRadius: '12px', fontWeight: 600, border: '1px solid #fed7aa' }}>📞 Phone ({msg.inboundSummary.phone})</span>}
-                            {msg.inboundSummary.website > 0 && <span style={{ fontSize: '11px', background: '#fff', color: '#6b21a8', padding: '4px 10px', borderRadius: '12px', fontWeight: 600, border: '1px solid #e9d5ff' }}>🌐 Website ({msg.inboundSummary.website})</span>}
-                        </div>
-                        {/* Only show this CTA when the auto/manual action buttons aren't already
-                            rendered (msg.targeting) — otherwise it duplicates "Configure manually". */}
-                        {!msg.targeting && (
-                            <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
-                                <button style={{
-                                    width: '100%', padding: "10px 14px", background: "#172560", border: "none", borderRadius: "10px", fontSize: "13px", fontWeight: 700, color: "#fff", cursor: 'pointer', boxShadow: '0 4px 12px rgba(23,37,96,0.2)',
-                                    display: 'block'
-                                }} onClick={onStartCheckpoints}>Create Outreach Journey</button>
-                            </div>
-                        )}
-                    </div>
+                  <div className="mt-3 p-4 rounded-[14px] border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20">
+                      {/* Header */}
+                      <div className="flex items-center gap-2 mb-2.5">
+                          <CheckCircle2 size={18} className="text-emerald-600 dark:text-emerald-400" />
+                          <span className="text-[14px] font-bold text-emerald-800 dark:text-emerald-300">
+            {msg.inboundSummary.total} Leads Ready</span>
+                      </div>
+                      <div className="flex gap-1.5 flex-wrap">
+                          {msg.inboundSummary.linkedin > 0 && <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 bg-white dark:bg-gray-800 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-900">
+                <LinkedInIcon size={12} /> LinkedIn ({msg.inboundSummary.linkedin})</span>}
+                          {msg.inboundSummary.email > 0 && <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-white dark:bg-gray-800 text-pink-700 dark:text-pink-300 border border-pink-100 dark:border-pink-900">
+                ✉️ Email ({msg.inboundSummary.email})</span>}
+                          {msg.inboundSummary.whatsapp > 0 && <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-white dark:bg-gray-800 text-green-700 dark:text-green-300 border border-green-100 dark:border-green-900">
+                💬 WhatsApp ({msg.inboundSummary.whatsapp})</span>}
+                          {msg.inboundSummary.phone > 0 && <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-white dark:bg-gray-800 text-orange-700 dark:text-orange-300 border border-orange-100 dark:border-orange-900">
+                📞 Phone ({msg.inboundSummary.phone})</span>}
+                          {msg.inboundSummary.website > 0 && <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-white dark:bg-gray-800 text-purple-700 dark:text-purple-300 border border-purple-100 dark:border-purple-900">
+                🌐 Website ({msg.inboundSummary.website})</span>}
+                      </div>
+                      {/* Only show this CTA when the auto/manual action buttons aren't already
+                          rendered (msg.targeting) — otherwise it duplicates "Configure manually". */}
+                      {!msg.targeting && (
+                          <div className="mt-3 pt-3 border-t border-emerald-200/50 dark:border-emerald-800/50">
+                              <button
+                                onClick={onStartCheckpoints}
+                                className="w-full px-4 py-2.5 bg-[#172560] dark:bg-blue-700 text-white border-none rounded-[10px] text-[13px] font-bold cursor-pointer transition-all hover:bg-[#0b1957] dark:hover:bg-blue-600 shadow-sm"
+                              >
+                                  Create Outreach Journey</button>
+                          </div>
+                      )}
+                  </div>
                 )}
 
                 {/* Option buttons from AI */}
@@ -7211,110 +7441,120 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
 
                 {/* ── Outreach Journey Stepper ── */}
                 {msg.outreach_journey && msg.outreach_journey.length > 0 && (
-                    <div style={{ marginTop: '16px' }}>
-                        <div style={{ fontSize: '12px', fontWeight: 700, color: '#374151', marginBottom: '10px', letterSpacing: '.04em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0b1957" strokeWidth="2.5" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
-                            Suggested Outreach Journey
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0', overflowX: 'auto', paddingBottom: '4px', justifyContent: "center" }}>
-                            {msg.outreach_journey.map((step, si) => {
-                                const channelConfig = {
-                                    linkedin: {
-                                        color: '#0a66c2', icon: (
-                                            <svg width="24" height="24" viewBox="0 0 24 24" fill={step.recommended ? '#fff' : '#9ca3af'}>
-                                                <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
-                                            </svg>
-                                        )
-                                    },
-                                    email: {
-                                        color: '#4f46e5', icon: (
-                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={step.recommended ? '#fff' : '#9ca3af'} strokeWidth="1.8" strokeLinecap="round"><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /></svg>
-                                        )
-                                    },
-                                    whatsapp: {
-                                        color: '#25d366', icon: (
-                                            <svg width="20" height="20" viewBox="0 0 24 24" fill={step.recommended ? '#fff' : '#9ca3af'}><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" /></svg>
-                                        )
-                                    },
-                                    voice: {
-                                        color: '#f97316', icon: (
-                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={step.recommended ? '#fff' : '#9ca3af'} strokeWidth="1.8" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.8 10.5 19.79 19.79 0 01.74 1.84 2 2 0 012.72 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.69a16 16 0 006.4 6.4l1.06-1.06a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" /></svg>
-                                        )
-                                    },
-                                };
-                                const config = channelConfig[step.channel as keyof typeof channelConfig] || channelConfig.email;
-                                const bgColor = step.recommended
-                                    ? step.channel === 'linkedin' ? '#0a66c2'
-                                        : step.channel === 'email' ? '#0b1957'
-                                            : step.channel === 'whatsapp' ? '#25d366'
-                                                : '#f97316'
-                                    : '#f3f4f6';
-                                return (
-                                    <div key={si} style={{ display: 'flex', alignItems: 'flex-start', flexShrink: 0 }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100px' }}>
+                  <div style={{ marginTop: '16px' }}>
+                      <div className="text-slate-700 dark:text-slate-300" style={{ fontSize: '12px', fontWeight: 700, marginBottom: '10px', letterSpacing: '.04em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="text-[#0b1957] dark:text-blue-400"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
+                          Suggested Outreach Journey
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0', overflowX: 'auto', paddingBottom: '4px', justifyContent: "center" }}>
+                          {msg.outreach_journey.map((step, si) => {
+                              const channelConfig = {
+                                  linkedin: {
+                                      icon: (
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className={step.recommended ? "text-white" : "text-slate-400 dark:text-slate-500"}>
+                                            <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
+                                        </svg>
+                                      )
+                                  },
+                                  email: {
+                                      icon: (
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className={step.recommended ? "text-white" : "text-slate-400 dark:text-slate-500"}>
+                                            <rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                                        </svg>
+                                      )
+                                  },
+                                  whatsapp: {
+                                      icon: (
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className={step.recommended ? "text-white" : "text-slate-400 dark:text-slate-500"}>
+                                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                                        </svg>
+                                      )
+                                  },
+                                  voice: {
+                                      icon: (
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className={step.recommended ? "text-white" : "text-slate-400 dark:text-slate-500"}>
+                                            <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.8 10.5 19.79 19.79 0 01.74 1.84 2 2 0 012.72 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.69a16 16 0 006.4 6.4l1.06-1.06a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" />
+                                        </svg>
+                                      )
+                                  },
+                              };
+                              const config = channelConfig[step.channel as keyof typeof channelConfig] || channelConfig.email;
+
+                              const shadowColor = step.channel === 'linkedin' ? '#0a66c2'
+                                : step.channel === 'email' ? '#0b1957'
+                                  : step.channel === 'whatsapp' ? '#25d366'
+                                    : '#f97316';
+
+                              return (
+                                <div key={si} style={{ display: 'flex', alignItems: 'flex-start', flexShrink: 0 }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100px' }}>
                                             {/* Icon circle with custom tooltip */}
-                                            <div style={{ position: 'relative', display: 'inline-flex' }}
-                                                onMouseEnter={e => {
-                                                    const tip = (e.currentTarget as HTMLElement).querySelector('.journey-tip') as HTMLElement;
-                                                    if (tip) tip.style.opacity = '1';
-                                                }}
-                                                onMouseLeave={e => {
-                                                    const tip = (e.currentTarget as HTMLElement).querySelector('.journey-tip') as HTMLElement;
-                                                    if (tip) tip.style.opacity = '0';
-                                                }}
+                                        <div style={{ position: 'relative', display: 'inline-flex' }}
+                                             onMouseEnter={e => {
+                                                 const tip = (e.currentTarget as HTMLElement).querySelector('.journey-tip') as HTMLElement;
+                                                 if (tip) tip.style.opacity = '1';
+                                             }}
+                                             onMouseLeave={e => {
+                                                 const tip = (e.currentTarget as HTMLElement).querySelector('.journey-tip') as HTMLElement;
+                                                 if (tip) tip.style.opacity = '0';
+                                             }}
+                                        >
+                                            <div
+                                              className={`journey-icon-circle flex items-center justify-center border ${
+                                                step.recommended
+                                                  ? step.channel === 'linkedin' ? 'bg-[#0a66c2] dark:bg-[#0a66c2]'
+                                                    : step.channel === 'email' ? 'bg-[#0b1957] dark:bg-[#2563eb]'
+                                                      : step.channel === 'whatsapp' ? 'bg-[#25d366] dark:bg-[#22c55e]'
+                                                        : 'bg-[#f97316] dark:bg-[#ea580c]'
+                                                  : 'bg-[#f3f4f6] dark:bg-[#1e293b] border-slate-200 dark:border-slate-800'
+                                              }`}
+                                              style={{
+                                                  width: '44px',
+                                                  height: '44px',
+                                                  borderRadius: '50%',
+                                                  boxShadow: step.recommended ? (typeof window !== 'undefined' && document.documentElement.classList.contains('dark') ? `0 4px 12px ${shadowColor}33` : `0 4px 12px ${shadowColor}55`) : 'none',
+                                                  flexShrink: 0,
+                                                  cursor: 'default'
+                                              }}
                                             >
-                                                <div className="journey-icon-circle" style={{
-                                                    width: '44px', height: '44px', borderRadius: '50%',
-                                                    background: bgColor,
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    boxShadow: step.recommended ? `0 4px 12px ${bgColor}55` : 'none',
-                                                    border: step.recommended ? 'none' : '1.5px solid #e5e7eb',
-                                                    flexShrink: 0, cursor: 'default', opacity: 1, visibility: 'visible'
-                                                }}>
-                                                    {config.icon}
-                                                </div>
-                                                {/* Custom tooltip */}
-                                                <div className="journey-tip" style={{
-                                                    opacity: 0, pointerEvents: 'none', transition: 'opacity 0.15s',
-                                                    position: 'absolute', bottom: 'calc(100% + 8px)', left: '50%',
+                                                {config.icon}
+                                            </div>
+                                            <div className="journey-tip border border-slate-200 dark:border-slate-800 bg-slate-900 dark:bg-[#111827] text-white" style={{
+                                                opacity: 0, pointerEvents: 'none', transition: 'opacity 0.15s',
+                                                position: 'absolute', bottom: 'calc(100% + 8px)', left: '50%',
+                                                transform: 'translateX(-50%)',
+                                                fontSize: '11px', borderRadius: '8px', padding: '6px 10px', width: '160px',
+                                                lineHeight: 1.4, textAlign: 'center', zIndex: 50,
+                                                boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                                                whiteSpace: 'normal',
+                                            }}>
+                                                {step.reason}
+                                                <div style={{
+                                                    position: 'absolute', top: '100%', left: '50%',
                                                     transform: 'translateX(-50%)',
-                                                    background: '#1f2937', color: '#fff', fontSize: '11px',
-                                                    borderRadius: '8px', padding: '6px 10px', width: '160px',
-                                                    lineHeight: 1.4, textAlign: 'center', zIndex: 50,
-                                                    boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-                                                    whiteSpace: 'normal',
-                                                }}>
-                                                    {step.reason}
-                                                    {/* Arrow */}
-                                                    <div style={{
-                                                        position: 'absolute', top: '100%', left: '50%',
-                                                        transform: 'translateX(-50%)',
-                                                        borderWidth: '5px', borderStyle: 'solid',
-                                                        borderColor: '#1f2937 transparent transparent transparent',
-                                                    }} />
-                                                </div>
+                                                    borderWidth: '5px', borderStyle: 'solid',
+                                                    borderColor: 'currentColor transparent transparent transparent'
+                                                }} className="text-slate-900 dark:text-[#111827]" />
                                             </div>
-                                            {/* Label */}
-                                            <div style={{ fontSize: '11px', fontWeight: 700, color: step.recommended ? '#111827' : '#9ca3af', marginTop: '6px', textAlign: 'center' }}>{step.label}</div>
-                                            {/* Action */}
-                                            <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '2px', textAlign: 'center', lineHeight: 1.3, padding: '0 4px' }}>{step.action}</div>
-                                            {step.recommended && (
-                                                <div style={{ marginTop: '4px', fontSize: '9px', background: '#eff6ff', color: '#2563eb', borderRadius: '8px', padding: '1px 6px', fontWeight: 700, textTransform: 'uppercase' }}>Recommended</div>
-                                            )}
                                         </div>
-                                        {/* Connector arrow between steps */}
-                                        {si < msg.outreach_journey!.length - 1 && (
-                                            <div style={{ display: 'flex', alignItems: 'center', paddingTop: '14px', flexShrink: 0 }}>
-                                                <svg width="24" height="16" viewBox="0 0 24 16" fill="none">
-                                                    <path d="M0 8h20M16 4l4 4-4 4" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                                </svg>
-                                            </div>
+                                        <div className="text-slate-800 dark:text-slate-200" style={{ fontSize: '11px', fontWeight: 700, marginTop: '6px', textAlign: 'center' }}>{step.label}</div>
+                                        <div className="text-slate-500 dark:text-slate-400" style={{ fontSize: '10px', marginTop: '2px', textAlign: 'center', lineHeight: 1.3, padding: '0 4px' }}>{step.action}</div>
+                                        {step.recommended && (
+                                          <div className="bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400" style={{ marginTop: '4px', fontSize: '9px', borderRadius: '8px', padding: '1px 6px', fontWeight: 700, textTransform: 'uppercase' }}>Recommended</div>
                                         )}
                                     </div>
-                                );
-                            })}
-                        </div>
-                    </div>
+                                    {si < msg.outreach_journey!.length - 1 && (
+                                      <div style={{ display: 'flex', alignItems: 'center', paddingTop: '14px', flexShrink: 0 }}>
+                                          <svg width="24" height="16" viewBox="0 0 24 16" fill="none">
+                                              <path d="M0 8h20M16 4l4 4-4 4" className="stroke-slate-300 dark:stroke-slate-700" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                          </svg>
+                                      </div>
+                                    )}
+                                </div>
+                              );
+                          })}
+                      </div>
+                  </div>
                 )}
 
                 {/* ── Lead Detail Form (inline card) ── */}
@@ -7500,7 +7740,7 @@ function CheckpointFormInline({
     step, setStep, icpThreshold, setIcpThreshold, actions, setActions, connMsg, setConnMsg, followMsg, setFollowMsg,
     nextChannels, setNextChannels, triggerCondition, setTriggerCondition,
     days, setDays, channelConfigStep, setChannelConfigStep, channelDelays, setChannelDelays, name, setName, genLoading, setGenLoading, launching, setLaunching, targeting, leads,
-    leadFeedback, selectedLeadIds, searchSessions, chatMessages,
+    leadFeedback, selectedLeadIds, creditBalance, onOpenRecharge, searchSessions, chatMessages,
     voiceAgents, setVoiceAgents, voiceNumbers, setVoiceNumbers,
     selectedAgentId, setSelectedAgentId, selectedVoiceId, setSelectedVoiceId,
     selectedFromNumber, setSelectedFromNumber,
@@ -7538,6 +7778,8 @@ function CheckpointFormInline({
     leads: LeadProfile[];
     leadFeedback: Record<string, 'good' | 'bad'>;
     selectedLeadIds: Set<string>;
+    creditBalance: number | null;
+    onOpenRecharge: () => void;
     searchSessions: { query: string; targeting: LeadTargeting | null; icp_description: string; timestamp: string }[];
     chatMessages: ChatMsg[];
     voiceAgents: any[]; setVoiceAgents: (v: any[]) => void;
@@ -7916,6 +8158,13 @@ function CheckpointFormInline({
     const LINKEDIN_DAILY_LIMIT = 40; // safe daily connection request limit
     const LINKEDIN_WEEKLY_LIMIT = 190; // safe weekly limit
 
+    // Minimum credit ESTIMATE per enrolled lead, matching the default personalized-connect
+    // flow (featureCreditConfig: personalized connect = 5 flat). Real billing is PER-ACTION
+    // at execution time — launch itself charges 0; connect=1, personalized connect=5,
+    // template msg=5, enrichment=2, phone=10 — so this gate is a deliberate minimum
+    // estimate, NOT the actual charge.
+    const CREDIT_COST_PER_LEAD = 5;
+
     // Compute qualified leads count based on ICP threshold
     // Inbound imports: the user can uncheck leads in the panel — every config number
     // (duration copy, leads/day, totals) must reflect the SELECTED count, not the
@@ -7943,6 +8192,14 @@ function CheckpointFormInline({
     // across the campaign duration and made subsequent scheduled runs fetch only 1 lead/day.)
     const safeLeadsPerDay = Math.min(LINKEDIN_DAILY_LIMIT, Math.max(1, qualifiedLeadCount));
     const exceedsLinkedInLimits = qualifiedLeadCount > LINKEDIN_DAILY_LIMIT;
+
+    // Credit gate for launch. Enrolled = CHECKED leads minus thumbs-down — mirrors
+    // launchCampaign's goodMatchLeads filter, not raw selectedLeadIds.size.
+    // creditBalance === null (billing fetch failed) fails OPEN — never block launch
+    // on a billing-fetch error.
+    const enrolledCount = leads.filter(l => selectedLeadIds.has(l.id)).filter(l => leadFeedback[l.id] !== 'bad').length;
+    const requiredCredits = enrolledCount * CREDIT_COST_PER_LEAD;
+    const creditsOk = creditBalance == null || creditBalance >= requiredCredits;
 
     const toggleAction = (a: string) => {
         const newActions = actions.includes(a) ? actions.filter(x => x !== a) : [...actions, a];
@@ -8055,9 +8312,9 @@ function CheckpointFormInline({
     const suggestName = () => {
         const datePart = new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 
-        // Inbound imports: targeting.job_titles is empty, so the generic path yields
-        // a meaningless "Leads in X". Derive from the SELECTED imported leads instead
-        // (companies + location) — the same spirit as the outbound targeting-based name.
+        // Inbound imports: targeting.job_titles is empty, so the targeting-based path
+        // yields a meaningless "Leads in X". Derive from the SELECTED imported leads
+        // instead (companies + location) — same spirit as the outbound name.
         if (inboundMode && inboundLeads.length > 0) {
             const selected = inboundLeads.filter((_, idx) => {
                 if (selectedLeadIds.size === 0) return true;
@@ -8073,15 +8330,38 @@ function CheckpointFormInline({
                     : companies.length === 2
                         ? `${companies[0]} & ${companies[1]}`
                         : `${companies[0]} +${companies.length - 1} more`;
-            const locPart = targeting?.locations?.length ? ` (${targeting.locations[0].split(',')[0]})` : '';
-            setName(`${companyPart} Outreach${locPart} - ${datePart}`);
+            const inbLocPart = targeting?.locations?.length ? ` (${targeting.locations[0].split(',')[0]})` : '';
+            setName(`${companyPart} Outreach${inbLocPart} · ${datePart}`);
             return;
         }
 
-        const titlePart = targeting?.job_titles?.length ? targeting.job_titles[0] + 's' : 'Leads';
-        const locPart = targeting?.locations?.length ? ` in ${targeting.locations[0].split(',')[0]}` : '';
-        const indPart = targeting?.industries?.length && !locPart ? ` (${targeting.industries[0]})` : '';
-        setName(`${titlePart}${locPart}${indPart} - ${datePart}`);
+        const t = targeting;
+        // Simple pluralize: append "s" unless the word already ends in one.
+        const pluralize = (s: string) => (s.endsWith('s') ? s : `${s}s`);
+        // " +N" suffix when the targeting has more than one value for a facet.
+        const more = (arr?: string[]) => (arr && arr.length > 1 ? ` +${arr.length - 1}` : '');
+
+        // Title/role: first job title (pluralized), else first keyword, else "Leads".
+        let titlePart = 'Leads';
+        if (t?.job_titles?.length) {
+            titlePart = pluralize(t.job_titles[0].trim()) + more(t.job_titles);
+        } else if (t?.keywords?.length) {
+            titlePart = t.keywords[0].trim();
+        }
+
+        // Industry: always included when present (previously dropped whenever a location existed).
+        const indPart = t?.industries?.length
+            ? ` — ${t.industries[0].trim()}${more(t.industries)}`
+            : '';
+
+        // Location: city (part before the comma) of the first location.
+        const locPart = t?.locations?.length
+            ? ` in ${t.locations[0].split(',')[0].trim()}${more(t.locations)}`
+            : '';
+
+        // title + industry + location is the headline; date is a subtle suffix for uniqueness.
+        const composed = `${titlePart}${indPart}${locPart} · ${datePart}`.replace(/\s{2,}/g, ' ').trim();
+        setName(composed || `Leads · ${datePart}`);
     };
 
     // AI-generate a LinkedIn message for the given type
@@ -8234,6 +8514,33 @@ function CheckpointFormInline({
                     if (ch === 'voice_call') actionSteps.push({ type: 'voice_agent_call', title: 'AI Voice Call', channel: 'voice', order_index: orderIdx++, config: { agent_id: selectedAgentId || undefined, voice_id: selectedVoiceId || undefined, from_number: selectedFromNumber || undefined, ...chDelayConfig } });
                 }
             }
+
+            // ── AI Media step (media_generation) ──────────────────────────────
+            // The canvas node carries the accepted asset (permanent GCS quadruple,
+            // set via StepEditor → import-generated). Emit it as a real first step
+            // and stamp the asset onto every downstream send step that can carry
+            // media (LinkedIn message / WhatsApp / Email). The backend executor
+            // for media_generation is a fast no-op — sends read their own config.
+            const wfMediaNode = (useOnboardingStore.getState().workflowPreview || [])
+                .find((s: any) => s.type === 'media_generation') as any;
+            if (wfMediaNode?.mediaUrl) {
+                const mediaCfg = {
+                    media_url: wfMediaNode.mediaUrl,
+                    media_type: wfMediaNode.mediaType || 'image',
+                    media_filename: wfMediaNode.mediaFilename || undefined,
+                    mime_type: wfMediaNode.mimeType || undefined,
+                };
+                const MEDIA_CAPABLE = ['linkedin_message', 'whatsapp_send', 'email_send'];
+                for (const s of actionSteps) {
+                    if (MEDIA_CAPABLE.includes(s.type)) s.config = { ...s.config, ...mediaCfg };
+                }
+                actionSteps.unshift({
+                    type: 'media_generation', title: wfMediaNode.title || 'AI Media', channel: 'media',
+                    order_index: 0, config: { ...mediaCfg, prompt: wfMediaNode.mediaPrompt || undefined },
+                });
+                actionSteps.forEach((s, i) => { s.order_index = i + 1; });
+            }
+
             const t = targeting || { keywords: [], industries: [], locations: [], job_titles: [], profile_language: [] };
             const icpMin = parseInt(icpThreshold) || 0;
             // Build lead feedback summary for campaign config
@@ -8261,6 +8568,14 @@ function CheckpointFormInline({
                 ai_value_prop: aiMsgValueProp || '',
                 ai_tone: aiMsgTone || 'professional',
                 ai_goal: aiMsgGoal || 'get_meeting',
+                // AI Media node (edit-mode round-trip: hydration re-creates the canvas node)
+                media_step: wfMediaNode ? {
+                    media_url: wfMediaNode.mediaUrl || '',
+                    media_type: wfMediaNode.mediaType || '',
+                    media_filename: wfMediaNode.mediaFilename || '',
+                    mime_type: wfMediaNode.mimeType || '',
+                    prompt: wfMediaNode.mediaPrompt || '',
+                } : null,
             };
 
             // Get original ICP input (first user message in chat)
@@ -8330,47 +8645,67 @@ function CheckpointFormInline({
                         const id = inboundLeadIds[idx];
                         return !id || selectedLeadIds.has(id);
                     })
-                    .map(({ il, idx }) => mapLead({
-                        id: `inbound-${idx}`,
-                        name: `${il.firstName} ${il.lastName}`.trim() || `Lead ${idx + 1}`,
-                        first_name: il.firstName,
-                        last_name: il.lastName,
-                        headline: il.companyName ? `at ${il.companyName}` : '',
-                        location: '',
-                        current_company: il.companyName,
-                        profile_url: il.linkedinProfile,
-                        profile_picture: '',
-                        industry: '',
-                        network_distance: '',
-                        // Crucial: pass phone and email so they are stored in lead_data
-                        phone: il.phone || il.whatsapp || '',
-                        email: il.email || '',
-                    } as any, 'inbound_lead'))
+                    .map(({ il, idx }) => {
+                        // Never persist a synthetic "Lead N" as the lead's real name.
+                        // Keep the discovered name when we have one; otherwise send an
+                        // EMPTY name and let the backend snapshot (from the linked lead
+                        // row), the connect-time backfill, or the greeting guard supply
+                        // the right name — anything but "Hi Lead,".
+                        const realName = `${il.firstName || ''} ${il.lastName || ''}`.trim();
+                        const nameIsReal = !isPlaceholderName(realName) && !isPlaceholderName(il.firstName);
+                        return mapLead({
+                            id: `inbound-${idx}`,
+                            name: nameIsReal ? realName : '',
+                            first_name: nameIsReal ? il.firstName : '',
+                            last_name: nameIsReal ? il.lastName : '',
+                            headline: il.companyName ? `at ${il.companyName}` : '',
+                            location: '',
+                            current_company: il.companyName,
+                            profile_url: il.linkedinProfile,
+                            profile_picture: '',
+                            industry: '',
+                            network_distance: '',
+                            // Crucial: pass phone and email so they are stored in lead_data
+                            phone: il.phone || il.whatsapp || '',
+                            email: il.email || '',
+                        } as any, 'inbound_lead');
+                    })
                 : [];
+
+            // Real DB UUIDs so CampaignModel links inbound / direct people via lead_id — the
+            // canonical path (links the real lead row with snapshot + phone), the same one
+            // ChatPanel uses. Covers CSV/image imports (inboundLeadIds) and chat-entered direct
+            // contacts (directContactLeadIds).
+            const resolvedInboundLeadIds: string[] | undefined = (() => {
+                let ids = [...inboundLeadIds, ...directContactLeadIds];
+                // Respect checkbox selection for imported/discovered people: if the user
+                // unchecked some, enrol only the selected ones.
+                if (inboundMode && selectedLeadIds.size > 0) {
+                    const filtered = ids.filter(id => selectedLeadIds.has(id));
+                    if (filtered.length > 0) ids = filtered;
+                }
+                return ids.length > 0 ? ids : undefined;
+            })();
 
             const payload = {
                 name: name || 'AI Growth Campaign', status: 'active',
                 campaign_type: inboundMode ? 'direct_outreach' : (isDirectContact ? 'direct_outreach' : 'linkedin_outreach'),
                 leads_per_day: safeLeadsPerDay,
                 campaign_start_date: startDate.toISOString(), campaign_end_date: endDate.toISOString(),
-                // Inbound leads take priority; then direct contacts; then LinkedIn good matches
-                initial_leads: inboundMode && inboundContactLeads.length > 0
-                    ? inboundContactLeads
-                    : (isDirectContact && directContactLeads.length > 0
-                        ? directContactLeads
-                        : (goodMatchLeads.length > 0 ? goodMatchLeads : undefined)),
-                // Pass real DB UUIDs so CampaignModel links leads via lead_id (with snapshot + phone)
-                // Covers both CSV/image imports (inboundLeadIds) and chat-entered direct contacts (directContactLeadIds)
-                inbound_lead_ids: (() => {
-                    let ids = [...inboundLeadIds, ...directContactLeadIds];
-                    // Respect checkbox selection for imported/discovered people: if the user
-                    // unchecked some, enrol only the selected ones.
-                    if (inboundMode && selectedLeadIds.size > 0) {
-                        const filtered = ids.filter(id => selectedLeadIds.has(id));
-                        if (filtered.length > 0) ids = filtered;
-                    }
-                    return ids.length > 0 ? ids : undefined;
-                })(),
+                // Inbound / direct-contact people are linked via inbound_lead_ids (the canonical
+                // path above). Do NOT also send them in initial_leads — the backend can't
+                // cross-dedupe the two paths, so it would enrol each person TWICE and spawn an
+                // orphan lead. Fail-open: if we have no real IDs (e.g. import-save failed), fall
+                // back to initial_leads so nothing is lost. LinkedIn-search campaigns keep using
+                // initial_leads (goodMatchLeads) — they never send inbound_lead_ids.
+                initial_leads: (inboundMode || isDirectContact)
+                    ? (resolvedInboundLeadIds
+                        ? undefined
+                        : (inboundMode && inboundContactLeads.length > 0
+                            ? inboundContactLeads
+                            : (isDirectContact && directContactLeads.length > 0 ? directContactLeads : undefined)))
+                    : (goodMatchLeads.length > 0 ? goodMatchLeads : undefined),
+                inbound_lead_ids: resolvedInboundLeadIds,
                 config: {
                     data_source: inboundMode ? 'csv_import' : (isDirectContact ? 'direct_contact' : 'linkedin_search'),
                     search_intent: (inboundMode || isDirectContact) ? null : t, search_query: (inboundMode || isDirectContact) ? '' : (t.keywords?.join(' ') || ''),
@@ -8486,17 +8821,30 @@ function CheckpointFormInline({
     };
 
     const baseBox: React.CSSProperties = {
-        background: '#fff', border: '1px solid #e0eaf5', borderRadius: '16px',
-        padding: '24px', maxWidth: '520px', width: '100%',
-        boxShadow: '0 4px 20px rgba(23,37,96,0.06)', animation: 'fadeUp 0.3s ease both',
+        background: 'var(--box-bg)',
+        border: '1px solid var(--box-border)',
+        borderRadius: '16px',
+        padding: '24px',
+        maxWidth: '520px',
+        width: '100%',
+        boxShadow: 'var(--box-shadow)',
+        animation: 'fadeUp 0.3s ease both',
     };
 
     const optStyle = (selected: boolean): React.CSSProperties => ({
-        display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px',
-        border: `2px solid ${selected ? '#0b1957' : '#e5e7eb'}`,
-        background: selected ? '#e8ecfa' : '#fff',
-        borderRadius: '12px', cursor: 'pointer', transition: 'all 0.15s', width: '100%',
-        fontSize: '14px', fontWeight: 500, color: selected ? '#0b1957' : '#374151',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        padding: '12px 16px',
+        border: `2px solid ${selected ? 'var(--opt-selected-border)' : 'var(--opt-border)'}`,
+        background: selected ? 'var(--opt-selected-bg)' : 'var(--opt-bg)',
+        borderRadius: '12px',
+        cursor: 'pointer',
+        transition: 'all 0.15s',
+        width: '100%',
+        fontSize: '14px',
+        fontWeight: 500,
+        color: selected ? 'var(--opt-selected-text)' : 'var(--opt-text)',
     });
 
     const numBadge = (n: number, selected: boolean): React.CSSProperties => ({
@@ -8524,14 +8872,16 @@ function CheckpointFormInline({
                 </div>
 
                 {/* Question header */}
-                <div style={{ fontSize: '15px', fontWeight: 600, color: '#111827', marginBottom: '16px', lineHeight: 1.4 }}>
+                <div
+                  className="text-gray-900 dark:text-gray-100"
+                  style={{ fontSize: '15px', fontWeight: 600, marginBottom: '16px', lineHeight: 1.4 }}
+                >
                     {q.question}
                 </div>
-
                 <div style={baseBox}>
                     {/* Step 0: ICP Threshold */}
                     {step === 0 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div className="flex flex-col dark:bg-[#000724]" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             {[
                                 { value: '80', label: 'Above 80%', desc: 'Only top-tier matches' },
                                 { value: '75', label: 'Above 75%', desc: 'High quality leads' },
@@ -8545,16 +8895,32 @@ function CheckpointFormInline({
                                     ? linkedInDailyLimit
                                     : count;
                                 return (
-                                    <div key={opt.value} onClick={() => setIcpThreshold(opt.value)} style={optStyle(selected)}>
-                                        <div style={numBadge(i + 1, selected)}>{selected ? '✓' : i + 1}</div>
-                                        <div style={{ flex: 1 }}>
-                                            <div style={{ fontWeight: 600 }}>{opt.label}</div>
-                                            <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{opt.desc}</div>
-                                        </div>
-                                        <div style={{ fontSize: '12px', fontWeight: 700, color: selected ? '#0b1957' : '#9ca3af', whiteSpace: 'nowrap' }}>
-                                            {displayCount} lead{displayCount !== 1 ? 's' : ''}
-                                        </div>
-                                    </div>
+                                  <div
+                                    key={opt.value}
+                                    onClick={() => setIcpThreshold(opt.value)}
+                                    className={`flex items-center gap-3 p-4 rounded-xl border transition-all cursor-pointer ${
+                                      selected
+                                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30'
+                                        : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-[#000724] hover:border-gray-300 dark:hover:border-gray-700'
+                                    }`}
+                                  >
+                                      <div style={numBadge(i + 1, selected)}>{selected ? '✓' : i + 1}</div>
+                                      <div style={{ flex: 1 }}>
+                                          <div className="font-semibold text-gray-900 dark:text-gray-100">
+                                              {opt.label}
+                                          </div>
+                                          <div className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">
+                                              {opt.desc}
+                                          </div>
+                                      </div>
+                                      <div
+                                        className={`text-[12px] font-bold whitespace-nowrap ${
+                                          selected ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 dark:text-gray-500'
+                                        }`}
+                                      >
+                                          {displayCount} lead{displayCount !== 1 ? 's' : ''}
+                                      </div>
+                                  </div>
                                 );
                             })}
                         </div>
@@ -8562,7 +8928,8 @@ function CheckpointFormInline({
 
                     {/* Step 1: Campaign Channels */}
                     {step === 1 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div className="flex flex-col gap-2 dark:bg-[#000724]"
+                             style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             {/* "Let Agent Deal" — one-click auto-build across connected channels */}
                             {!isDirectContact && (
                                 <div style={{ marginBottom: '2px' }}>
@@ -8589,39 +8956,62 @@ function CheckpointFormInline({
                                         </div>
                                         {!agentDealLoading && <div style={{ fontSize: '18px' }}>→</div>}
                                     </button>
-                                    <div style={{ textAlign: 'center', fontSize: '11px', color: '#9ca3af', margin: '8px 0 2px' }}>
+                                    <div style={{ textAlign: 'center', fontSize: '11px', color: '#9ca3af', margin: '8px 0 2px' }} className="dark:text-gray-500">
                                         — or configure manually —
                                     </div>
                                 </div>
                             )}
                             {/* Context badge for direct contacts */}
                             {isDirectContact && (
-                                <div style={{ padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', fontSize: '12px', color: '#166534', fontWeight: 500, marginBottom: '4px' }}>
-                                    {hasPhone && hasEmail
-                                        ? `📱✉️ Phone & email detected — select how you want to reach this contact${hasLinkedInInfo ? ' (LinkedIn available)' : ''}`
-                                        : hasPhone
-                                            ? `📱 Phone detected — WhatsApp or Voice Call recommended${hasLinkedInInfo ? ' · LinkedIn available' : ''}`
-                                            : `✉️ Email detected — Email outreach recommended${hasLinkedInInfo ? ' · LinkedIn available' : ''}`}
-                                </div>
+                              <div
+                                className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-400"
+                                style={{
+                                    padding: '10px 14px',
+                                    borderRadius: '10px',
+                                    fontSize: '12px',
+                                    fontWeight: 500,
+                                    marginBottom: '4px'
+                                }}
+                              >
+                                  {hasPhone && hasEmail
+                                    ? `📱✉️ Phone & email detected — select how you want to reach this contact${hasLinkedInInfo ? ' (LinkedIn available)' : ''}`
+                                    : hasPhone
+                                      ? `📱 Phone detected — WhatsApp or Voice Call recommended${hasLinkedInInfo ? ' · LinkedIn available' : ''}`
+                                      : `✉️ Email detected — Email outreach recommended${hasLinkedInInfo ? ' · LinkedIn available' : ''}`}
+                              </div>
                             )}
 
                             {/* Channel Configuration Sequential UI */}
                             {isInChannelConfiguration && (
-                                <div style={{ marginTop: '12px', padding: '16px', background: '#f9fafb', border: '2px solid #e5e7eb', borderRadius: '12px' }}>
-                                    {/* Step indicator */}
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                                        <div style={{ fontSize: '14px', fontWeight: 700, color: '#111827' }}>
-                                            {channelIcons[currentChannelBeingConfigured]} Configure {channelNames[currentChannelBeingConfigured]}
+                              <div
+                                className="bg-gray-50 dark:bg-[#000724] border-gray-200 dark:border-gray-800"
+                                style={{ marginTop: '12px', padding: '16px', borderRadius: '12px', border: '2px solid' }}
+                              >
+                                  {/* Step indicator */}
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                                      <div className="text-gray-900 dark:text-gray-100" style={{ fontSize: '14px', fontWeight: 700 }}>
+                                          {channelIcons[currentChannelBeingConfigured]} Configure {channelNames[currentChannelBeingConfigured]}
                                         </div>
-                                        <div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', background: '#fff', padding: '4px 10px', borderRadius: '12px', border: '1px solid #d1d5db' }}>
+                                      <div className="bg-white dark:bg-[#0b1229] border-gray-300 dark:border-gray-700 text-gray-500 dark:text-gray-400" style={{
+                                            fontSize: '12px',
+                                            fontWeight: 600,
+                                            padding: '4px 10px',
+                                            borderRadius: '12px',
+                                            border: '1px solid'
+                                        }}>
                                             Step {channelConfigStep + 1} of {selectedChannelsList.length}
                                         </div>
                                     </div>
 
                                     {/* Progress bar */}
-                                    <div style={{ width: '100%', height: '4px', background: '#e5e7eb', borderRadius: '2px', overflow: 'hidden', marginBottom: '16px' }}>
-                                        <div style={{ height: '100%', background: '#3b82f6', width: `${((channelConfigStep + 1) / selectedChannelsList.length) * 100}%`, transition: 'width 0.3s' }}></div>
-                                    </div>
+                                  <div className="bg-gray-200 dark:bg-gray-800" style={{ width: '100%', height: '4px', borderRadius: '2px', overflow: 'hidden', marginBottom: '16px' }}>
+                                      <div className="bg-blue-500" style={{
+                                            height: '100%',
+                                            width: `${((channelConfigStep + 1) / selectedChannelsList.length) * 100}%`,
+                                            transition: 'width 0.3s'
+                                        }}
+                                      ></div>
+                                  </div>
                                 </div>
                             )}
 
@@ -8638,48 +9028,86 @@ function CheckpointFormInline({
                                 { id: 'whatsapp', label: 'WhatsApp', desc: isDirectContact ? 'Send a WhatsApp message to this contact' : 'Send a WhatsApp message', icon: '💬', disabled: isDirectContact && !hasPhone },
                                 { id: 'voice_call', label: 'Voice Call', desc: isDirectContact ? 'Trigger an AI voice call to this contact' : 'Trigger an AI voice call', icon: '📞', disabled: isDirectContact && !hasPhone },
                             ].filter(ch => !ch.disabled).map((ch, i) => (
-                                <div key={ch.id} onClick={() => toggleNextChannel(ch.id)} style={optStyle(nextChannels.includes(ch.id))}>
-                                    <div style={numBadge(i + 1, nextChannels.includes(ch.id))}>{nextChannels.includes(ch.id) ? '✓' : i + 1}</div>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 600 }}>{ch.icon} {ch.label}</div>
-                                        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{ch.desc}</div>
-                                    </div>
-                                </div>
+                              <div key={ch.id} onClick={() => toggleNextChannel(ch.id)} className={`flex items-center gap-3 p-4 rounded-xl border transition-all cursor-pointer ${
+                                  nextChannels.includes(ch.id)
+                                    ? 'border-indigo-500 bg-indigo-50 dark:bg-[#2563eb]'
+                                    : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-[#000724] hover:border-gray-300 dark:hover:border-gray-700'
+                                }`}
+                              >
+                                  <div style={numBadge(i + 1, nextChannels.includes(ch.id))}>{nextChannels.includes(ch.id) ? '✓' : i + 1}</div>
+                                  <div style={{ flex: 1 }}>
+                                      <div className="font-semibold text-gray-900 dark:text-slate-300">{ch.icon} {ch.label}</div>
+                                      <div className="text-[12px] text-gray-500 dark:text-slate-300 mt-[2px]">{ch.desc}</div>
+                                  </div>
+                              </div>
                             ))}
 
 
                             {/* Email Config (inline when email selected) */}
                             {nextChannels.includes('email') && (isInChannelConfiguration ? currentChannelBeingConfigured === 'email' : true) && (
-                                <div style={{ marginTop: '12px', padding: '14px', background: '#f8faff', border: '1px solid #e0eaf5', borderRadius: '12px' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                                        <div style={{ fontSize: '13px', fontWeight: 700, color: '#0b1957' }}>✉️ Email Settings</div>
-                                        <button disabled={emailGenLoading} onClick={generateEmail}
-                                            style={{ background: 'none', border: 'none', fontSize: '12px', fontWeight: 700, color: emailGenLoading ? '#9ca3af' : '#0b1957', cursor: emailGenLoading ? 'default' : 'pointer' }}>
-                                            {emailGenLoading ? 'Generating...' : '✨ AI Generate'}
-                                        </button>
+                              <div
+                                className="bg-gray-50 dark:bg-[#000724] border border-gray-200 dark:border-gray-800"
+                                style={{ marginTop: '12px', padding: '14px', borderRadius: '12px' }}
+                              >
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                      <div
+                                        className="text-[#0b1957] dark:text-white"
+                                        style={{ fontSize: '13px', fontWeight: 700 }}
+                                      >✉️ Email Settings</div>
+                                      <button
+                                        disabled={emailGenLoading}
+                                        onClick={generateEmail}
+                                        className={emailGenLoading
+                                          ? 'text-[#9ca3af] dark:text-gray-600'
+                                          : 'text-[#0b1957] dark:text-slate-300'
+                                        }
+                                        style={{
+                                            background: 'none',
+                                            border: 'none',
+                                            fontSize: '12px',
+                                            fontWeight: 700,
+                                            cursor: emailGenLoading ? 'default' : 'pointer'
+                                        }}
+                                      >
+                                          {emailGenLoading ? 'Generating...' : '✨ AI Generate'}
+                                      </button>
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                         {/* From account selector */}
                                         <div>
-                                            <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '4px', display: 'block' }}>
+                                            <label
+                                              className="text-[#374151] dark:text-slate-300"
+                                              style={{ fontSize: '12px', fontWeight: 600, marginBottom: '4px', display: 'block' }}
+                                            >
                                                 Send From <span style={{ color: '#ef4444' }}>*</span>
                                             </label>
                                             {connectedSenders.length > 0 ? (
-                                                <select
-                                                    value={emailFromAddress}
-                                                    onChange={e => {
-                                                        const sender = connectedSenders.find(s => s.email === e.target.value);
-                                                        setEmailFromAddress(e.target.value);
-                                                        setEmailProvider(sender?.provider || '');
-                                                    }}
-                                                    style={{ width: '100%', border: '1px solid #e0eaf5', borderRadius: '8px', padding: '8px 10px', fontSize: '13px', background: '#fff', outline: 'none' }}>
-                                                    <option value="">— Select sender account —</option>
-                                                    {connectedSenders.map(s => (
-                                                        <option key={s.email} value={s.email}>
-                                                            {s.provider === 'google' ? '📧 Gmail' : '📨 Outlook'} — {s.email}
-                                                        </option>
-                                                    ))}
-                                                </select>
+                                              <Select
+                                                value={emailFromAddress}
+                                                onValueChange={(value: string) => {
+                                                    const sender = connectedSenders.find(s => s.email === value);
+                                                    setEmailFromAddress(value);
+                                                    setEmailProvider(sender?.provider || '');
+                                                }}
+                                              >
+                                                  <SelectTrigger className="flex items-center w-full px-3 bg-white dark:bg-[#000724] border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-[#111c3a] rounded-lg focus:ring-0 shadow-none h-[42px] text-sm">
+                                                      <SelectValue placeholder="— Select sender account —" />
+                                                  </SelectTrigger>
+                                                  <SelectContent  className="bg-white dark:bg-[#000724] border-slate-200 dark:border-[#262831]">
+                                                      {connectedSenders.map((s) => (
+                                                        <SelectItem
+                                                          key={s.email}
+                                                          value={s.email}
+                                                          className="pl-3 pr-6 text-sm justify-start transition-colors cursor-pointer text-slate-800 dark:text-white dark:focus:bg-[#22C55E] dark:focus:text-[#000724] dark:data-[state=checked]:focus:bg-[#22C55E] dark:data-[state=checked]:focus:text-[#000724]">
+                                                            <div className="flex items-center gap-3">
+                                                              <span className="text-sm">
+                                                                {s.provider === 'google' ? '📧 Gmail' : '📨 Outlook'} — {s.email}
+                                                              </span>
+                                                            </div>
+                                                        </SelectItem>
+                                                      ))}
+                                                  </SelectContent>
+                                              </Select>
                                             ) : (
                                                 <div style={{ fontSize: '12px', color: '#ef4444', padding: '8px 10px', background: '#fff5f5', border: '1px solid #fecaca', borderRadius: '8px' }}>
                                                     No email account connected.{' '}
@@ -8691,42 +9119,59 @@ function CheckpointFormInline({
                                         {/* Template picker */}
                                         {emailTemplates.length > 0 && (
                                             <div>
-                                                <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '4px', display: 'block' }}>Use Saved Template</label>
-                                                <select
-                                                    value={selectedEmailTemplateId}
-                                                    onChange={e => {
-                                                        const tpl = emailTemplates.find(t => t.id === e.target.value);
-                                                        if (tpl) { setEmailSubject(tpl.subject); setEmailBody(tpl.body); }
-                                                        setSelectedEmailTemplateId(e.target.value);
-                                                    }}
-                                                    style={{ width: '100%', border: '1px solid #e0eaf5', borderRadius: '8px', padding: '8px 10px', fontSize: '13px', background: '#fff', outline: 'none' }}>
-                                                    <option value="">— Select a template —</option>
-                                                    {emailTemplates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                                                </select>
+                                                <label className="text-[#374151] dark:text-slate-300"
+                                                       style={{ fontSize: '12px', fontWeight: 600,  marginBottom: '4px', display: 'block' }}>Use Saved Template</label>
+                                                <Select
+                                                  value={selectedEmailTemplateId}
+                                                  onValueChange={(value: string) => {
+                                                      const tpl = emailTemplates.find(t => t.id === value);
+                                                      if (tpl) {
+                                                          setEmailSubject(tpl.subject);
+                                                          setEmailBody(tpl.body);
+                                                      }
+                                                      setSelectedEmailTemplateId(value);
+                                                  }}
+                                                >
+                                                    <SelectTrigger className="flex items-center w-full px-3 bg-white dark:bg-[#000724] border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-[#111c3a] rounded-lg focus:ring-0 shadow-none h-[42px] text-sm">
+                                                        <SelectValue placeholder="— Select a template —" />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="bg-white dark:bg-[#000724] border-slate-200 dark:border-[#262831]">
+                                                        {emailTemplates.map((t) => (
+                                                          <SelectItem
+                                                            key={t.id}
+                                                            value={t.id}
+                                                            className="pl-3 pr-6 text-sm justify-start transition-colors cursor-pointer text-slate-800 dark:text-white dark:focus:bg-[#22C55E] dark:focus:text-[#000724] dark:data-[state=checked]:focus:bg-[#22C55E] dark:data-[state=checked]:focus:text-[#000724]">
+                                                              {t.name}
+                                                          </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
                                             </div>
                                         )}
                                         {/* Subject */}
                                         <div>
-                                            <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '4px', display: 'block' }}>Subject <span style={{ color: '#ef4444' }}>*</span></label>
+                                            <label className="text-[#374151] dark:text-slate-300"
+                                                   style={{ fontSize: '12px', fontWeight: 600, marginBottom: '4px', display: 'block' }}>Subject <span style={{ color: '#ef4444' }}>*</span></label>
                                             <input
-                                                type="text"
-                                                value={emailSubject}
-                                                onChange={e => setEmailSubject(e.target.value)}
-                                                placeholder="e.g. Quick question for {{first_name}}"
-                                                style={{ width: '100%', border: '1px solid #e0eaf5', borderRadius: '8px', padding: '8px 10px', fontSize: '13px', background: '#fff', outline: 'none', fontFamily: 'inherit' }}
+                                              type="text"
+                                              value={emailSubject}
+                                              onChange={e => setEmailSubject(e.target.value)}
+                                              placeholder="e.g. Quick question for {{first_name}}"
+                                              className="w-full px-[10px] py-[8px] border border-gray-200 dark:border-gray-800 rounded-lg bg-white dark:bg-[#000724] text-gray-900 dark:text-gray-100 text-[13px] outline-none focus:border-indigo-500 dark:focus:border-indigo-500 transition-colors"
                                             />
                                         </div>
                                         {/* Body */}
                                         <div>
-                                            <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '4px', display: 'block' }}>Email Body <span style={{ color: '#ef4444' }}>*</span></label>
+                                            <label  className="text-[#374151] dark:text-slate-300"
+                                                    style={{ fontSize: '12px', fontWeight: 600, marginBottom: '4px', display: 'block' }}>Email Body <span style={{ color: '#ef4444' }}>*</span></label>
                                             <textarea
-                                                value={emailBody}
-                                                onChange={e => setEmailBody(e.target.value)}
-                                                placeholder={'Hi {{first_name}},\n\nI came across your profile at {{company}} and wanted to reach out...\n\nBest,\n[Your name]'}
-                                                rows={6}
-                                                style={{ width: '100%', border: '1px solid #e0eaf5', borderRadius: '8px', padding: '10px 12px', fontSize: '13px', background: '#fff', outline: 'none', resize: 'vertical', fontFamily: 'inherit' }}
+                                              value={emailBody}
+                                              onChange={e => setEmailBody(e.target.value)}
+                                              placeholder={'Hi {{first_name}},\n\nI came across your profile at {{company}} and wanted to reach out...\n\nBest,\n[Your name]'}
+                                              rows={6}
+                                              className="w-full p-[10px_12px] border border-gray-200 dark:border-gray-800 rounded-lg bg-white dark:bg-[#000724] text-gray-900 dark:text-gray-100 text-[13px] outline-none resize-vertical focus:border-indigo-500 dark:focus:border-indigo-500 transition-colors"
                                             />
-                                            <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px' }}>
+                                          <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-[4px]">
                                                 Placeholders: {'{{first_name}}'} {'{{last_name}}'} {'{{company}}'} {'{{title}}'} {'{{industry}}'}
                                             </div>
                                         </div>
@@ -8746,7 +9191,8 @@ function CheckpointFormInline({
                                                     style={{ flex: 1, border: '1px solid #e0eaf5', borderRadius: '8px', padding: '8px 10px', fontSize: '13px', outline: 'none', fontFamily: 'inherit' }}
                                                 />
                                                 <button onClick={saveEmailTemplate}
-                                                    style={{ padding: '8px 14px', background: '#0b1957', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
+                                                    className="bg-[#0b1957] dark:bg-[#2563eb]"
+                                                    style={{ padding: '8px 14px', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
                                                     Save
                                                 </button>
                                                 <button onClick={() => { setSaveTemplateMode(false); setSaveTemplateName(''); }}
@@ -8761,26 +9207,37 @@ function CheckpointFormInline({
 
                             {/* Navigation & Summary for Channel Configuration */}
                             {isInChannelConfiguration && (
-                                <div style={{ marginTop: '16px', padding: '14px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '12px' }}>
-                                    {/* Per-Channel Delay Configuration */}
-                                    <div style={{ marginBottom: '16px', paddingBottom: '16px', borderBottom: '1px solid #e5e7eb' }}>
-                                        <div style={{ fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '10px' }}>⏱️ Delay before next step (Optional)</div>
+                              <div
+                                className="dark:bg-[#000724] dark:border-gray-800 bg-[#f9fafb]"
+                                style={{ marginTop: '16px', padding: '14px', border: '1px solid #e5e7eb', borderRadius: '12px' }}
+                              >
+                                  {/* Per-Channel Delay Configuration */}
+                                  <div
+                                    className="dark:border-gray-800"
+                                    style={{ marginBottom: '16px', paddingBottom: '16px', borderBottom: '1px solid #e5e7eb' }}
+                                  >
+                                      <div
+                                        className="dark:text-gray-300 text-[#374151]"
+                                        style={{ fontSize: '12px', fontWeight: 600,  marginBottom: '10px' }}
+                                      >⏱️ Delay before next step (Optional)</div>
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                                             <div>
-                                                <label style={{ fontSize: '11px', fontWeight: 600, color: '#6b7280', marginBottom: '4px', display: 'block' }}>Days</label>
+                                                <label className="text-[#6b7280] dark:text-slate-300"
+                                                       style={{ fontSize: '11px', fontWeight: 600, marginBottom: '4px', display: 'block' }}>Days</label>
                                                 <input
-                                                    type="number"
-                                                    value={channelDelays[currentChannelBeingConfigured]?.days || '0'}
-                                                    onChange={e => {
-                                                        const updated = { ...channelDelays, [currentChannelBeingConfigured]: { ...(channelDelays[currentChannelBeingConfigured] || { hours: '0' }), days: e.target.value } };
-                                                        setChannelDelays(updated);
-                                                    }}
-                                                    min="0" max="365" placeholder="0"
-                                                    style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '6px', padding: '7px 9px', fontSize: '12px', background: '#fff', outline: 'none' }}
+                                                  type="number"
+                                                  value={channelDelays[currentChannelBeingConfigured]?.days || '0'}
+                                                  onChange={e => {
+                                                      const updated = { ...channelDelays, [currentChannelBeingConfigured]: { ...(channelDelays[currentChannelBeingConfigured] || { hours: '0' }), days: e.target.value } };
+                                                      setChannelDelays(updated);
+                                                  }}
+                                                  min="0" max="365" placeholder="0"
+                                                  className="w-full px-[10px] py-[8px] border border-gray-200 dark:border-gray-800 rounded-lg bg-white dark:bg-[#000724] text-gray-900 dark:text-gray-100 text-[13px] outline-none focus:border-indigo-500 dark:focus:border-indigo-500 transition-colors"
                                                 />
                                             </div>
                                             <div>
-                                                <label style={{ fontSize: '11px', fontWeight: 600, color: '#6b7280', marginBottom: '4px', display: 'block' }}>Hours</label>
+                                                <label className="text-[#6b7280] dark:text-slate-300"
+                                                       style={{ fontSize: '11px', fontWeight: 600, color: '#6b7280', marginBottom: '4px', display: 'block' }}>Hours</label>
                                                 <input
                                                     type="number"
                                                     value={channelDelays[currentChannelBeingConfigured]?.hours || '0'}
@@ -8789,7 +9246,7 @@ function CheckpointFormInline({
                                                         setChannelDelays(updated);
                                                     }}
                                                     min="0" max="23" placeholder="0"
-                                                    style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '6px', padding: '7px 9px', fontSize: '12px', background: '#fff', outline: 'none' }}
+                                                    className="w-full px-[10px] py-[8px] border border-gray-200 dark:border-gray-800 rounded-lg bg-white dark:bg-[#000724] text-gray-900 dark:text-gray-100 text-[13px] outline-none focus:border-indigo-500 dark:focus:border-indigo-500 transition-colors"
                                                 />
                                             </div>
                                         </div>
@@ -8824,10 +9281,16 @@ function CheckpointFormInline({
 
                             {/* WhatsApp Config (inline when whatsapp selected) */}
                             {nextChannels.includes('whatsapp') && (isInChannelConfiguration ? currentChannelBeingConfigured === 'whatsapp' : true) && (
-                                <div style={{ marginTop: '12px', padding: '14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px' }}>
+                              <div
+                                className="dark:bg-emerald-950/30 dark:border-emerald-800 bg-[#f0fdf4]"
+                                style={{ marginTop: '12px', padding: '14px', border: '1px solid #bbf7d0', borderRadius: '12px' }}
+                              >
                                     {/* Header row */}
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                                        <div style={{ fontSize: '13px', fontWeight: 700, color: '#166534' }}>💬 WhatsApp Settings</div>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                      <div
+                                        className="dark:text-emerald-400 text-[#166534]"
+                                        style={{ fontSize: '13px', fontWeight: 700 }}
+                                      >💬 WhatsApp Settings</div>
                                         <button disabled={waGenLoading} onClick={generateWhatsApp}
                                             style={{ background: 'none', border: 'none', fontSize: '12px', fontWeight: 700, color: waGenLoading ? '#9ca3af' : '#166534', cursor: waGenLoading ? 'default' : 'pointer' }}>
                                             {waGenLoading ? 'Generating...' : '✨ AI Generate'}
@@ -8837,33 +9300,67 @@ function CheckpointFormInline({
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                         {/* Send From selector */}
                                         <div>
-                                            <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '4px', display: 'block' }}>
+                                            <label
+                                              className="dark:text-gray-300 text-[#374151]"
+                                              style={{ fontSize: '12px', fontWeight: 600, marginBottom: '4px', display: 'block' }}
+                                            >
                                                 Send From <span style={{ color: '#ef4444' }}>*</span>
                                             </label>
                                             {whatsAppAccounts.length > 0 ? (
-                                                <select value={waAccountId} onChange={e => setWaAccountId(e.target.value)}
-                                                    style={{ width: '100%', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '8px 10px', fontSize: '13px', background: '#fff', outline: 'none' }}>
-                                                    <option value="">— Select WhatsApp account —</option>
-                                                    {whatsAppAccounts.map((acc: any) => (
-                                                        <option key={acc.id} value={acc.id}>
-                                                            {acc.display_name} ({acc.account_type === 'business_api' ? 'Business API' : 'Personal'})
-                                                        </option>
-                                                    ))}
-                                                </select>
+                                              <Select
+                                                value={waAccountId}
+                                                onValueChange={setWaAccountId}
+                                              >
+                                                  <SelectTrigger className="flex items-center w-full px-3 bg-white dark:bg-[#000724] border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-[#111c3a] rounded-lg focus:ring-0 shadow-none h-[42px] text-sm">
+                                                      <SelectValue placeholder="— Select WhatsApp account —" />
+                                                  </SelectTrigger>
+                                                  <SelectContent className="bg-white dark:bg-[#000724] border-slate-200 dark:border-[#262831]">
+                                                      {whatsAppAccounts.map((acc: any) => (
+                                                        <SelectItem
+                                                          key={acc.id}
+                                                          value={acc.id}
+                                                          className="flex items-center w-full px-3 bg-white dark:bg-[#000724] border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-[#111c3a] rounded-lg focus:ring-0 shadow-none h-[42px] text-sm">
+
+                                                            <div className="flex items-center gap-2">
+                                                                <span>{acc.display_name}</span>
+                                                                <span className="text-[10px] opacity-70 bg-gray-100 dark:bg-emerald-900 px-1.5 py-0.5 rounded">
+            {acc.account_type === 'business_api' ? 'Business API' : 'Personal'}
+          </span>
+                                                            </div>
+                                                        </SelectItem>
+                                                      ))}
+                                                  </SelectContent>
+                                              </Select>
                                             ) : (
-                                                <div style={{ fontSize: '12px', color: '#b45309', padding: '8px 10px', background: '#fff', border: '1px solid #bbf7d0', borderRadius: '8px' }}>
-                                                    No WhatsApp account connected.{' '}
-                                                    <a href="/settings?tab=integrations" style={{ color: '#166534', fontWeight: 600 }}>Connect an account →</a>
-                                                </div>
+                                              <div
+                                                className="bg-white dark:bg-[#000724] border border-[#bbf7d0] dark:border-emerald-800 rounded-lg p-[8px_10px] text-[12px] text-[#b45309]"
+                                              >
+                                                  No WhatsApp account connected.{' '}
+                                                  <a
+                                                    href="/settings?tab=integrations"
+                                                    className="dark:text-emerald-400"
+                                                    style={{ color: '#166534', fontWeight: 600 }}
+                                                  >
+                                                      Connect an account →
+                                                  </a>
+                                              </div>
                                             )}
                                         </div>
 
                                         {/* ── Template Selector ── */}
                                         <div>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                                                <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151' }}>Message Template</label>
-                                                <button onClick={() => { setShowWaTemplatePanel(p => !p); setShowWaNewTmplForm(false); }}
-                                                    style={{ background: 'none', border: 'none', fontSize: '11px', fontWeight: 600, color: '#166534', cursor: 'pointer', padding: 0 }}>
+                                                <label
+                                                  className="dark:text-slate-300 text-[#374151]"
+                                                  style={{ fontSize: '12px', fontWeight: 600 }}
+                                                >
+                                                    Message Template
+                                                </label>
+                                                <button
+                                                  onClick={() => { setShowWaTemplatePanel(p => !p); setShowWaNewTmplForm(false); }}
+                                                  className="dark:text-emerald-400 text-[#166534]"
+                                                  style={{ background: 'none', border: 'none', fontSize: '11px', fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                                                >
                                                     {showWaTemplatePanel ? '✕ Close' : '📋 Browse templates'}
                                                 </button>
                                             </div>
@@ -8872,52 +9369,150 @@ function CheckpointFormInline({
                                             {selectedWaTemplateId && !showWaTemplatePanel && (() => {
                                                 const tmpl = waTemplates.find(t => t.id === selectedWaTemplateId);
                                                 return tmpl ? (
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 10px', background: '#dcfce7', border: '1px solid #86efac', borderRadius: '6px', fontSize: '12px' }}>
-                                                        <span style={{ fontWeight: 600, color: '#166534', flex: 1 }}>✓ {tmpl.name}</span>
-                                                        <span style={{ background: tmpl.channel_type === 'business_api' ? '#dbeafe' : '#f0fdf4', color: tmpl.channel_type === 'business_api' ? '#1d4ed8' : '#166534', border: `1px solid ${tmpl.channel_type === 'business_api' ? '#93c5fd' : '#86efac'}`, borderRadius: '4px', padding: '1px 6px', fontSize: '10px', fontWeight: 600 }}>
-                                                            {tmpl.channel_type === 'business_api' ? 'WABA' : 'Personal'}
+                                                  <div
+                                                    className="dark:bg-emerald-950/40 dark:border-emerald-800 bg-[#dcfce7]"
+                                                    style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 10px', border: '1px solid #86efac', borderRadius: '6px', fontSize: '12px' }}
+                                                  >
+                                                        <span className="dark:text-emerald-300 text-[#166534]" style={{ fontWeight: 600, flex: 1 }}>
+                                                            ✓ {tmpl.name}
                                                         </span>
-                                                        <button onClick={() => { setSelectedWaTemplateId(''); setWaBody(''); }}
-                                                            style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '12px', padding: 0 }}>✕</button>
-                                                    </div>
+                                                      <span
+                                                        className={`dark:border-opacity-40 ${tmpl.channel_type === 'business_api' ? 'dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800' : 'dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800'}`}
+                                                        style={{ background: tmpl.channel_type === 'business_api' ? '#dbeafe' : '#f0fdf4', color: tmpl.channel_type === 'business_api' ? '#1d4ed8' : '#166534', border: `1px solid ${tmpl.channel_type === 'business_api' ? '#93c5fd' : '#86efac'}`, borderRadius: '4px', padding: '1px 6px', fontSize: '10px', fontWeight: 600 }}
+                                                      >
+                                                        {tmpl.channel_type === 'business_api' ? 'WABA' : 'Personal'}
+                                                    </span>
+                                                      <button
+                                                        onClick={() => { setSelectedWaTemplateId(''); setWaBody(''); }}
+                                                        className="dark:text-gray-400 dark:hover:text-white text-[#6b7280]"
+                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', padding: 0 }}
+                                                      >
+                                                          ✕
+                                                      </button>
+                                                  </div>
                                                 ) : null;
                                             })()}
 
                                             {/* Template browser panel */}
                                             {showWaTemplatePanel && (
-                                                <div style={{ border: '1px solid #bbf7d0', borderRadius: '8px', background: '#fff', overflow: 'hidden' }}>
+                                              <div
+                                                className="dark:bg-[#000724] dark:border-emerald-900 bg-[#fff]"
+                                                style={{ border: '1px solid #bbf7d0', borderRadius: '8px', overflow: 'hidden' }}
+                                              >
                                                     {/* Existing templates list */}
                                                     {waTemplates.length > 0 && !showWaNewTmplForm && (
                                                         <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
                                                             {waTemplates.map(tmpl => (
-                                                                <div key={tmpl.id} onClick={() => applyWaTemplate(tmpl)}
-                                                                    style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '10px 12px', cursor: 'pointer', borderBottom: '1px solid #f0fdf4', transition: 'background 0.15s', background: selectedWaTemplateId === tmpl.id ? '#dcfce7' : 'transparent' }}
-                                                                    onMouseEnter={e => { if (selectedWaTemplateId !== tmpl.id) (e.currentTarget as HTMLDivElement).style.background = '#f0fdf4'; }}
-                                                                    onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = selectedWaTemplateId === tmpl.id ? '#dcfce7' : 'transparent'; }}>
+                                                              <div key={tmpl.id} onClick={() => applyWaTemplate(tmpl)}
+                                                                   className="group dark:border-emerald-950 dark:hover:bg-[#111c3a] dark:data-[selected=true]:bg-[#064e3b]"
+                                                                   data-selected={selectedWaTemplateId === tmpl.id}
+                                                                   style={{
+                                                                       display: 'flex',
+                                                                       alignItems: 'flex-start',
+                                                                       gap: '8px',
+                                                                       padding: '10px 12px',
+                                                                       cursor: 'pointer',
+                                                                       borderBottom: '1px solid #f0fdf4',
+                                                                       transition: 'background 0.15s',
+                                                                       background: selectedWaTemplateId === tmpl.id ? '#dcfce7' : 'transparent'
+                                                                   }}
+                                                                   onMouseEnter={e => { if (selectedWaTemplateId !== tmpl.id) (e.currentTarget as HTMLDivElement).style.background = '#f0fdf4'; }}
+                                                                   onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = selectedWaTemplateId === tmpl.id ? '#dcfce7' : 'transparent'; }}>
+
                                                                     <div style={{ flex: 1, minWidth: 0 }}>
                                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
-                                                                            <span style={{ fontSize: '12px', fontWeight: 600, color: '#166534' }}>{tmpl.name}</span>
-                                                                            <span style={{ background: tmpl.channel_type === 'business_api' ? '#dbeafe' : '#f0fdf4', color: tmpl.channel_type === 'business_api' ? '#1d4ed8' : '#166534', border: `1px solid ${tmpl.channel_type === 'business_api' ? '#93c5fd' : '#86efac'}`, borderRadius: '4px', padding: '1px 5px', fontSize: '9px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
-                                                                                {tmpl.channel_type === 'business_api' ? 'WABA' : 'Personal'}
+                                                                            <span
+                                                                              className="dark:text-emerald-300"
+                                                                              style={{ fontSize: '12px', fontWeight: 600, color: '#166534' }}
+                                                                            >
+                                                                              {tmpl.name}
                                                                             </span>
-                                                                            {tmpl.is_default && <span style={{ background: '#fef3c7', color: '#92400e', borderRadius: '4px', padding: '1px 5px', fontSize: '9px', fontWeight: 700 }}>Default</span>}
+                                                                            <span
+                                                                              className={`dark:border-opacity-30 ${
+                                                                                tmpl.channel_type === 'business_api'
+                                                                                  ? 'dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800'
+                                                                                  : 'dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-800'
+                                                                              }`}
+                                                                              style={{
+                                                                                  background: tmpl.channel_type === 'business_api' ? '#dbeafe' : '#f0fdf4',
+                                                                                  color: tmpl.channel_type === 'business_api' ? '#1d4ed8' : '#166534',
+                                                                                  border: `1px solid ${tmpl.channel_type === 'business_api' ? '#93c5fd' : '#86efac'}`,
+                                                                                  borderRadius: '4px',
+                                                                                  padding: '1px 5px',
+                                                                                  fontSize: '9px',
+                                                                                  fontWeight: 700,
+                                                                                  textTransform: 'uppercase',
+                                                                                  letterSpacing: '0.3px'
+                                                                              }}
+                                                                            >
+                                                                              {tmpl.channel_type === 'business_api' ? 'WABA' : 'Personal'}
+                                                                            </span>
+                                                                            {tmpl.is_default && (
+                                                                              <span
+                                                                                className="bg-[#fef3c7] text-[#92400e] dark:bg-amber-900/30 dark:text-amber-300 dark:border dark:border-amber-800/50"
+                                                                                style={{
+                                                                                    borderRadius: '4px',
+                                                                                    padding: '1px 5px',
+                                                                                    fontSize: '9px',
+                                                                                    fontWeight: 700
+                                                                                }}
+                                                                              >
+                                                                                Default
+                                                                            </span>
+                                                                            )}
                                                                         </div>
-                                                                        {tmpl.header_text && <div style={{ fontSize: '11px', color: '#6b7280', fontStyle: 'italic', marginBottom: '1px' }}>Header: {tmpl.header_text}</div>}
-                                                                        <div style={{ fontSize: '11px', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '260px' }}>{tmpl.content}</div>
-                                                                        {tmpl.footer_text && <div style={{ fontSize: '10px', color: '#9ca3af', marginTop: '1px' }}>Footer: {tmpl.footer_text}</div>}
+                                                                        {tmpl.header_text && (
+                                                                          <div
+                                                                            className="dark:text-gray-400 text-[#6b7280]"
+                                                                            style={{ fontSize: '11px', fontStyle: 'italic', marginBottom: '1px' }}
+                                                                          >
+                                                                              Header: {tmpl.header_text}
+                                                                          </div>
+                                                                        )}
+
+                                                                        <div
+                                                                          className="dark:text-gray-200 text-[#374151]"
+                                                                          style={{ fontSize: '11px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '260px' }}
+                                                                        >
+                                                                            {tmpl.content}
+                                                                        </div>
+
+                                                                        {tmpl.footer_text && (
+                                                                          <div
+                                                                            className="dark:text-gray-500 text-[#9ca3af]"
+                                                                            style={{ fontSize: '10px',  marginTop: '1px' }}
+                                                                          >
+                                                                              Footer: {tmpl.footer_text}
+                                                                          </div>
+                                                                        )}
                                                                     </div>
-                                                                    <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                                                                        <button onClick={e => { e.stopPropagation(); applyWaTemplate(tmpl); }}
-                                                                            style={{ background: '#166534', color: '#fff', border: 'none', borderRadius: '4px', padding: '3px 8px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>Use</button>
-                                                                        <button onClick={e => deleteWaTemplate(tmpl.id, e)}
-                                                                            style={{ background: 'none', border: '1px solid #fca5a5', color: '#dc2626', borderRadius: '4px', padding: '3px 6px', fontSize: '11px', cursor: 'pointer' }}>✕</button>
-                                                                    </div>
+                                                                  <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                                                                      <button
+                                                                        onClick={e => { e.stopPropagation(); applyWaTemplate(tmpl); }}
+                                                                        className="dark:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors"
+                                                                        style={{ background: '#166534', color: '#fff', border: 'none', borderRadius: '4px', padding: '3px 8px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+                                                                      >
+                                                                          Use
+                                                                      </button>
+                                                                      <button
+                                                                        onClick={e => deleteWaTemplate(tmpl.id, e)}
+                                                                        className="dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/30 transition-colors"
+                                                                        style={{ background: 'none', border: '1px solid #fca5a5', color: '#dc2626', borderRadius: '4px', padding: '3px 6px', fontSize: '11px', cursor: 'pointer' }}
+                                                                      >
+                                                                          ✕
+                                                                      </button>
+                                                                  </div>
                                                                 </div>
                                                             ))}
                                                         </div>
                                                     )}
                                                     {waTemplates.length === 0 && !showWaNewTmplForm && (
-                                                        <div style={{ padding: '16px', textAlign: 'center', fontSize: '12px', color: '#6b7280' }}>No saved templates yet.</div>
+                                                      <div
+                                                        className="dark:text-slate-300 text-[#6b7280]"
+                                                        style={{ padding: '16px', textAlign: 'center', fontSize: '12px', color: '' }}
+                                                      >
+                                                          No saved templates yet.
+                                                      </div>
                                                     )}
 
                                                     {/* Create new template form */}
@@ -8928,21 +9523,52 @@ function CheckpointFormInline({
                                                     {showWaNewTmplForm ? (
                                                         <div style={{ borderTop: waTemplates.length > 0 ? '1px solid #bbf7d0' : 'none' }}>
                                                             {/* Form header with preview toggle */}
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px 6px', background: '#f0fdf4' }}>
-                                                                <div style={{ fontSize: '12px', fontWeight: 700, color: '#166534' }}>➕ New WhatsApp Template</div>
-                                                                <button onClick={() => setWaNewTmplShowPreview(p => !p)}
-                                                                    style={{ background: waNewTmplShowPreview ? '#166534' : 'none', color: waNewTmplShowPreview ? '#fff' : '#166534', border: '1px solid #166534', borderRadius: '5px', padding: '3px 8px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>
+                                                            <div
+                                                              className="dark:bg-green-950 bg-[#f0fdf4]"
+                                                              style={{
+                                                                  display: 'flex',
+                                                                  justifyContent: 'space-between',
+                                                                  alignItems: 'center',
+                                                                  padding: '10px 12px 6px',
+                                                              }}
+                                                            >
+                                                                <div
+                                                                  className="dark:text-green-300 text-[#166534]"
+                                                                  style={{ fontSize: '12px', fontWeight: 700 }}
+                                                                >
+                                                                    ➕ New WhatsApp Template
+                                                                </div>
+
+                                                                <button
+                                                                  onClick={() => setWaNewTmplShowPreview(p => !p)}
+                                                                  className={`dark:border-green-500 dark:text-green-400 ${waNewTmplShowPreview ? "bg-[#166534] text-#fff" : 'none text-#166534'}`}
+                                                                  style={{
+                                                                      border: '1px solid #166534',
+                                                                      borderRadius: '5px',
+                                                                      padding: '3px 8px',
+                                                                      fontSize: '11px',
+                                                                      fontWeight: 600,
+                                                                      cursor: 'pointer'
+                                                                  }}
+                                                                >
                                                                     {waNewTmplShowPreview ? '✕ Hide Preview' : '👁 Preview'}
                                                                 </button>
                                                             </div>
 
                                                             {/* Side-by-side: Form + Preview */}
-                                                            <div style={{ display: 'flex', gap: '0', background: '#f8fffe' }}>
-                                                                {/* ── FORM (left) ── */}
-                                                                <div style={{ flex: 1, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '8px', minWidth: 0 }}>
-                                                                    {/* Template Name */}
-                                                                    <div>
-                                                                        <label style={{ fontSize: '11px', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '3px' }}>Template Name <span style={{ color: '#ef4444' }}>*</span></label>
+                                                            <div
+                                                              className="flex bg-[#f8fffe] dark:bg-[#0f1a18]"
+                                                              style={{ gap: '0' }}
+                                                            >
+                                                                <div
+                                                                  className="flex flex-1 flex-col gap-[8px] min-w-0 p-[10px_12px]"
+                                                                >                                                                    <div>
+                                                                    <label
+                                                                      className="text-[#374151] dark:text-gray-300"
+                                                                      style={{ fontSize: '11px', fontWeight: 600, display: 'block', marginBottom: '3px' }}
+                                                                    >
+                                                                        Template Name <span className="text-[#ef4444] dark:text-red-400">*</span>
+                                                                    </label>
                                                                         <input value={waNewTmplName} onChange={e => setWaNewTmplName(e.target.value)}
                                                                             placeholder="e.g. Intro outreach, Follow-up..."
                                                                             style={{ width: '100%', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '6px 8px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
@@ -9182,12 +9808,18 @@ function CheckpointFormInline({
                                                             </div>
                                                         </div>
                                                     ) : (
-                                                        <div style={{ padding: '8px 12px', borderTop: waTemplates.length > 0 ? '1px solid #bbf7d0' : 'none', background: '#f8fffe' }}>
-                                                            <button onClick={() => setShowWaNewTmplForm(true)}
-                                                                style={{ width: '100%', background: 'none', border: '1px dashed #86efac', borderRadius: '6px', padding: '7px', fontSize: '12px', fontWeight: 600, color: '#166534', cursor: 'pointer', textAlign: 'center' }}>
-                                                                + Create New Template
-                                                            </button>
-                                                        </div>
+                                                      <div
+                                                        className="dark:bg-[#000724] dark:border-emerald-900 text-[#f8fffe]"
+                                                        style={{ padding: '8px 12px', borderTop: waTemplates.length > 0 ? '1px solid #bbf7d0' : 'none'}}
+                                                      >
+                                                          <button
+                                                            onClick={() => setShowWaNewTmplForm(true)}
+                                                            className="dark:border-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-950/30 text-[#166534]"
+                                                            style={{ width: '100%', background: 'none', border: '1px dashed #86efac', borderRadius: '6px', padding: '7px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', textAlign: 'center' }}
+                                                          >
+                                                              + Create New Template
+                                                          </button>
+                                                      </div>
                                                     )}
                                                 </div>
                                             )}
@@ -9198,35 +9830,103 @@ function CheckpointFormInline({
 
                             {/* Voice Agent Config (inline when voice_call selected) */}
                             {nextChannels.includes('voice_call') && (
-                                <div style={{ marginTop: '12px', padding: '14px', background: '#f8faff', border: '1px solid #e0eaf5', borderRadius: '12px' }}>
-                                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#0b1957', marginBottom: '10px' }}>Voice Call Settings</div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                              <div
+                                className="bg-[#f8faff] dark:bg-[#000724] border border-[#e0eaf5] dark:border-[#1e3a8a] rounded-xl"
+                                style={{ marginTop: '12px', padding: '14px', borderRadius: '12px' }}
+                              >
+                                  <div
+                                    className="text-[#0b1957] dark:text-slate-300"
+                                    style={{ fontSize: '13px', fontWeight: 700, marginBottom: '10px' }}
+                                  >
+                                      Voice Call Settings
+                                  </div>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                         <div>
-                                            <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '4px', display: 'block' }}>AI Agent</label>
+                                            <label
+                                              className="text-[#374151] dark:text-gray-300"
+                                              style={{ fontSize: '12px', fontWeight: 600, marginBottom: '4px', display: 'block' }}
+                                            >AI Agent</label>
                                             {voiceAgents.length > 0 ? (
-                                                <select value={selectedAgentId} onChange={e => {
-                                                    setSelectedAgentId(e.target.value);
-                                                    const agent = voiceAgents.find((a: any) => a.id === e.target.value);
+                                              <Select
+                                                value={selectedAgentId}
+                                                onValueChange={(val: string) => {
+                                                    setSelectedAgentId(val);
+                                                    const agent = voiceAgents.find((a: any) => a.id === val);
                                                     if (agent?.voice_id) setSelectedVoiceId(agent.voice_id);
-                                                }} style={{ width: '100%', border: '1px solid #e0eaf5', borderRadius: '8px', padding: '8px 10px', fontSize: '13px', background: '#fff', outline: 'none' }}>
-                                                    {voiceAgents.map((a: any) => <option key={a.id} value={a.id}>{a.name}{a.agent_language ? ` (${a.agent_language})` : ''}</option>)}
-                                                </select>
+                                                }}
+                                              >
+                                                  <SelectTrigger className="flex items-center w-full px-3 bg-white dark:bg-[#000724] border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-[#111c3a] rounded-lg focus:ring-0 shadow-none h-[42px] text-sm">
+                                                      <SelectValue placeholder="Select an AI Agent" />
+                                                  </SelectTrigger>
+                                                  <SelectContent  className="bg-white dark:bg-[#000724] border-slate-200 dark:border-[#262831]">
+                                                      {voiceAgents.map((a: any) => (
+                                                        <SelectItem
+                                                          key={a.id}
+                                                          value={a.id}
+                                                          className="pl-3 pr-6 text-sm justify-start transition-colors cursor-pointer text-slate-800 dark:text-white dark:focus:bg-[#22C55E] dark:focus:text-[#000724] dark:data-[state=checked]:focus:bg-[#22C55E] dark:data-[state=checked]:focus:text-[#000724]">
+
+                                                            {a.name}{a.agent_language ? ` (${a.agent_language})` : ''}
+                                                        </SelectItem>
+                                                      ))}
+                                                  </SelectContent>
+                                              </Select>
                                             ) : (
-                                                <div style={{ fontSize: '12px', color: '#9ca3af' }}>No agents found — <a href="/voice-agent" style={{ color: '#0b1957' }}>set up an agent</a></div>
+                                              <div
+                                                className="text-[12px] text-[#9ca3af] dark:text-slate-300"
+                                              >
+                                                  No agents found —
+                                                  <a
+                                                    href="/voice-agent"
+                                                    className="text-[#0b1957] dark:text-blue-300 underline"
+                                                  >
+                                                      set up an agent
+                                                  </a>
+                                              </div>
                                             )}
                                         </div>
                                         <div>
-                                            <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '4px', display: 'block' }}>From Number</label>
+                                            <label
+                                              className="text-[#374151] dark:text-slate-300"
+                                              style={{ fontSize: '12px', fontWeight: 600, marginBottom: '4px', display: 'block' }}
+                                            >
+                                                From Number
+                                            </label>
                                             {voiceNumbers.length > 0 ? (
-                                                <select value={selectedFromNumber} onChange={e => setSelectedFromNumber(e.target.value)} style={{ width: '100%', border: '1px solid #e0eaf5', borderRadius: '8px', padding: '8px 10px', fontSize: '13px', background: '#fff', outline: 'none' }}>
-                                                    {voiceNumbers.map((n: any) => {
-                                                        const num = n.phone_number || n.number || n.phoneNumber || '';
-                                                        const label = num + (n.number_type ? ` (${n.number_type})` : '') + (n.provider ? ` — ${n.provider}` : '');
-                                                        return <option key={n.id || num} value={num}>{label || n.id || 'Unknown number'}</option>;
-                                                    })}
-                                                </select>
+                                              <Select
+                                                value={selectedFromNumber}
+                                                onValueChange={setSelectedFromNumber}
+                                              >
+                                                  <SelectTrigger className="flex items-center w-full px-3 bg-white dark:bg-[#000724] border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-[#111c3a] rounded-lg focus:ring-0 shadow-none h-[42px] text-sm">
+                                                      <SelectValue placeholder="Select a number" />
+                                                  </SelectTrigger>
+                                                  <SelectContent  className="bg-white dark:bg-[#000724] border-slate-200 dark:border-[#262831]">
+                                                      {voiceNumbers.map((n: any) => {
+                                                          const num = n.phone_number || n.number || n.phoneNumber || '';
+                                                          const label = num + (n.number_type ? ` (${n.number_type})` : '') + (n.provider ? ` — ${n.provider}` : '');
+                                                          return (
+                                                            <SelectItem
+                                                              key={n.id || num}
+                                                              value={num}
+                                                              className="pl-3 pr-6 text-sm justify-start transition-colors cursor-pointer text-slate-800 dark:text-white dark:focus:bg-[#22C55E] dark:focus:text-[#000724] dark:data-[state=checked]:focus:bg-[#22C55E] dark:data-[state=checked]:focus:text-[#000724]">
+
+                                                                {label || n.id || 'Unknown number'}
+                                                            </SelectItem>
+                                                          );
+                                                      })}
+                                                  </SelectContent>
+                                              </Select>
                                             ) : (
-                                                <div style={{ fontSize: '12px', color: '#9ca3af' }}>No phone numbers found — <a href="/voice-agent" style={{ color: '#0b1957' }}>add a number</a></div>
+                                              <div
+                                                className="text-[12px] text-[#9ca3af] dark:text-slate-300"
+                                              >
+                                                  No phone numbers found —
+                                                  <a
+                                                    href="/voice-agent"
+                                                    className="text-[#0b1957] dark:text-blue-300 underline"
+                                                  >
+                                                      add a number
+                                                  </a>
+                                              </div>
                                             )}
                                         </div>
                                     </div>
@@ -9235,11 +9935,23 @@ function CheckpointFormInline({
 
                             {/* LinkedIn Activity Config (inline when linkedin selected as follow-up channel in step 3) */}
                             {nextChannels.includes('linkedin') && (isInChannelConfiguration ? currentChannelBeingConfigured === 'linkedin' : true) && (
-                                <div style={{ marginTop: '12px', padding: '14px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '12px' }}>
-                                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#1e40af', marginBottom: '10px' }}>💼 LinkedIn Activity Settings</div>
-                                    <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>Select LinkedIn actions (multi-select):</div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-
+                              <div
+                                className="bg-[#eff6ff] dark:bg-[#000724] border border-[#bfdbfe] dark:border-[#1e3a8a] rounded-xl"
+                                style={{ marginTop: '12px', padding: '14px', borderRadius: '12px' }}
+                              >
+                                  <div
+                                    className="text-[#1e40af] dark:text-blue-200"
+                                    style={{ fontSize: '13px', fontWeight: 700, marginBottom: '10px' }}
+                                  >
+                                      💼 LinkedIn Activity Settings
+                                  </div>
+                                  <div
+                                    className="text-[#6b7280] dark:text-gray-400"
+                                    style={{ fontSize: '12px', marginBottom: '8px' }}
+                                  >
+                                      Select LinkedIn actions (multi-select):
+                                  </div>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                         {/* ── Option 1: Visit Profile ── */}
                                         {[
                                             { id: 'profile_view', label: 'Visit profile', desc: 'Visit their LinkedIn profile to warm up the connection', icon: '👁️' },
@@ -9251,50 +9963,72 @@ function CheckpointFormInline({
                                                 <div key={opt.id} style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
                                                     {/* Checkbox row */}
                                                     <div
-                                                        onClick={() => toggleLiChannelAction(opt.id)}
-                                                        style={{
-                                                            display: 'flex', alignItems: 'flex-start', gap: '10px',
-                                                            padding: '10px 12px',
-                                                            border: `1.5px solid ${isSelected ? '#3b82f6' : '#bfdbfe'}`,
-                                                            borderRadius: isSelected && (opt.id === 'connect' || opt.id === 'message') ? '10px 10px 0 0' : '10px',
-                                                            cursor: 'pointer',
-                                                            background: isSelected ? '#dbeafe' : '#fff',
-                                                            transition: 'all 0.15s',
-                                                        }}>
-                                                        <div style={{
-                                                            width: '18px', height: '18px', borderRadius: '4px', flexShrink: 0, marginTop: '1px',
-                                                            border: `2px solid ${isSelected ? '#3b82f6' : '#bfdbfe'}`,
-                                                            background: isSelected ? '#3b82f6' : 'transparent',
-                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                        }}>
-                                                            {isSelected && <span style={{ color: '#fff', fontSize: '11px', fontWeight: 700 }}>✓</span>}
+                                                      onClick={() => toggleLiChannelAction(opt.id)}
+                                                      className={`group flex items-start gap-[10px] p-[10px_12px] cursor-pointer transition-all duration-150 border-[1.5px]
+        ${isSelected
+                                                        ? 'bg-[#dbeafe] border-[#3b82f6] dark:bg-blue-900/30 dark:border-blue-500'
+                                                        : 'bg-white border-[#bfdbfe] dark:bg-[#000724] dark:border-blue-900'
+                                                      }`}
+                                                      style={{
+                                                          borderRadius: isSelected && (opt.id === 'connect' || opt.id === 'message') ? '10px 10px 0 0' : '10px',
+                                                      }}
+                                                    >
+                                                        <div className={`w-[18px] h-[18px] rounded-[4px] flex-shrink-0 mt-[1px] flex items-center justify-center border-[2px] transition-colors
+                                                        ${isSelected
+                                                          ? 'bg-[#3b82f6] border-[#3b82f6] dark:border-blue-500'
+                                                          : 'border-[#bfdbfe] dark:border-blue-800'
+                                                        }`}
+                                                        >
+                                                            {isSelected && <span className="text-white text-[11px] font-bold">✓</span>}
                                                         </div>
-                                                        <div style={{ flex: 1 }}>
-                                                            <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e3a8a' }}>{opt.icon} {opt.label}</div>
-                                                            <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>{opt.desc}</div>
+                                                        <div className="flex-1">
+                                                            <div className="text-[13px] font-semibold text-[#1e3a8a] dark:text-blue-100">
+                                                                {opt.icon} {opt.label}
+                                                            </div>
+                                                            <div className="text-[11px] text-[#6b7280] dark:text-slate-300 mt-[2px]">
+                                                                {opt.desc}
+                                                            </div>
                                                         </div>
                                                     </div>
 
                                                     {/* ── Expanded config for 'connect' ── */}
                                                     {opt.id === 'connect' && isSelected && (
-                                                        <div style={{ border: '1.5px solid #3b82f6', borderTop: 'none', borderRadius: '0 0 10px 10px', background: '#f0f6ff', padding: '12px' }}>
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                                                <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151' }}>Connection Message</label>
-                                                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                                                    <button
-                                                                        onClick={() => { setLiNewTmplCategory('linkedin_connection'); setShowLiConnTmplPanel(p => !p); setShowLiFollowTmplPanel(false); setShowLiNewTmplForm(false); }}
-                                                                        style={{ background: 'none', border: 'none', fontSize: '11px', fontWeight: 600, color: '#1e40af', cursor: 'pointer', padding: 0 }}>
-                                                                        {showLiConnTmplPanel ? '✕ Close' : '📋 Templates'}
-                                                                    </button>
-                                                                    <button disabled={liFollowGenLoading} onClick={() => { setShowAiConnPanel(v => !v); setShowAiFollowPanel(false); }}
-                                                                        style={{ background: showAiConnPanel ? '#e8ecfa' : 'none', border: showAiConnPanel ? '1px solid #c2d6eb' : 'none', borderRadius: '6px', padding: showAiConnPanel ? '2px 7px' : 0, fontSize: '11px', fontWeight: 700, color: liFollowGenLoading ? '#9ca3af' : '#0b1957', cursor: liFollowGenLoading ? 'default' : 'pointer' }}>
-                                                                        {liFollowGenLoading ? '⏳ Generating...' : (showAiConnPanel ? '✕ Close' : '✨ AI Generate')}
-                                                                    </button>
+                                                      <div
+                                                        className="border-[1.5px] border-t-0 border-[#3b82f6] bg-[#f0f6ff] dark:bg-[#060b21] dark:border-blue-700 p-3 rounded-b-[10px]"
+                                                        style={{ borderTop: 'none', borderRadius: '0 0 10px 10px', padding: '12px' }}
+                                                      >
+                                                          <div className="flex justify-between items-center mb-2">
+                                                              <label className="text-[12px] font-semibold text-[#374151] dark:text-gray-300">
+                                                                  Connection Message
+                                                              </label>
+                                                              <div className="flex gap-2 items-center">
+                                                                  <button
+                                                                    onClick={() => { setLiNewTmplCategory('linkedin_connection'); setShowLiConnTmplPanel(p => !p); setShowLiFollowTmplPanel(false); setShowLiNewTmplForm(false); }}
+                                                                    className="bg-none border-none text-[#1e40af] dark:text-blue-300 hover:opacity-80 transition-opacity"
+                                                                    style={{ fontSize: '11px', fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                                                                  >
+                                                                      {showLiConnTmplPanel ? '✕ Close' : '📋 Templates'}
+                                                                  </button>
+
+                                                                  <button
+                                                                    disabled={liFollowGenLoading}
+                                                                    onClick={() => { setShowAiConnPanel(v => !v); setShowAiFollowPanel(false); }}
+                                                                    className={`px-2 py-1 rounded-md text-[11px] font-bold transition-all
+                                                                    ${showAiConnPanel
+                                                                      ? 'bg-[#e8ecfa] border border-[#c2d6eb] dark:bg-blue-900/50 dark:border-blue-700 dark:text-blue-200'
+                                                                      : 'bg-none border-none'}
+                                                                        ${liFollowGenLoading
+                                                                      ? 'text-[#9ca3af] dark:text-gray-600 cursor-default'
+                                                                      : 'text-[#0b1957] dark:text-blue-100 cursor-pointer'
+                                                                    }`}
+                                                                  >
+                                                                      {liFollowGenLoading ? '⏳ Generating...' : (showAiConnPanel ? '✕ Close' : '✨ AI Generate')}
+                                                                  </button>
                                                                 </div>
                                                             </div>
                                                             {/* Connection template browser */}
                                                             {showLiConnTmplPanel && (
-                                                                <div style={{ border: '1px solid #bfdbfe', borderRadius: '8px', background: '#fff', marginBottom: '8px', overflow: 'hidden' }}>
+                                                              <div className="border border-[#bfdbfe] dark:border-[#1e3a8a] bg-white dark:bg-[#060b21]" style={{ borderRadius: '8px', marginBottom: '8px', overflow: 'hidden' }}>
                                                                     {liTemplates.filter(t => t.category === 'linkedin_connection').length > 0 && !showLiNewTmplForm ? (
                                                                         <div style={{ maxHeight: '160px', overflowY: 'auto' }}>
                                                                             {liTemplates.filter(t => t.category === 'linkedin_connection').map(tmpl => (
@@ -9315,22 +10049,76 @@ function CheckpointFormInline({
                                                                             ))}
                                                                         </div>
                                                                     ) : !showLiNewTmplForm ? (
-                                                                        <div style={{ padding: '10px', textAlign: 'center', fontSize: '12px', color: '#6b7280' }}>No saved templates.</div>
+                                                                      <div
+                                                                        className="dark:text-slate-300 text-[#6b7280]"
+                                                                        style={{ padding: '16px', textAlign: 'center', fontSize: '12px', color: '' }}
+                                                                      >
+                                                                        No saved templates yet.
+                                                                      </div>
                                                                     ) : null}
                                                                     {/* Create new template form */}
                                                                     {showLiNewTmplForm && liNewTmplCategory === 'linkedin_connection' ? (
                                                                         <div style={{ padding: '10px', borderTop: liTemplates.filter(t => t.category === 'linkedin_connection').length > 0 ? '1px solid #bfdbfe' : 'none' }}>
-                                                                            <input value={liNewTmplName} onChange={e => setLiNewTmplName(e.target.value)} placeholder="Template name..." style={{ width: '100%', border: '1px solid #bfdbfe', borderRadius: '6px', padding: '6px 8px', fontSize: '12px', outline: 'none', marginBottom: '6px', boxSizing: 'border-box', fontFamily: 'inherit' }} />
-                                                                            <textarea value={liNewTmplBody} onChange={e => setLiNewTmplBody(e.target.value)} placeholder="Hi {{first_name}}, I would love to connect..." rows={3} style={{ width: '100%', border: '1px solid #bfdbfe', borderRadius: '6px', padding: '6px 8px', fontSize: '12px', outline: 'none', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: '6px' }} />
+                                                                            <input
+                                                                              value={liNewTmplName}
+                                                                              onChange={e => setLiNewTmplName(e.target.value)}
+                                                                              placeholder="Template name..."
+                                                                              className="w-full border border-[#bfdbfe] dark:border-[#1e3a8a] bg-white dark:bg-[#060b21] text-[#111827] dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-gray-600 outline-none"
+                                                                              style={{
+                                                                                  width: '100%',
+                                                                                  borderRadius: '6px',
+                                                                                  padding: '6px 8px',
+                                                                                  fontSize: '12px',
+                                                                                  marginBottom: '6px',
+                                                                                  boxSizing: 'border-box',
+                                                                                  fontFamily: 'inherit'
+                                                                              }}
+                                                                            />
+                                                                            <textarea
+                                                                              value={liNewTmplBody}
+                                                                              onChange={e => setLiNewTmplBody(e.target.value)}
+                                                                              placeholder="Hi {{first_name}}, I would love to connect..."
+                                                                              rows={3}
+                                                                              className="w-full border border-[#bfdbfe] dark:border-[#1e3a8a] bg-white dark:bg-[#060b21] text-[#111827] dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-gray-600 outline-none"
+                                                                              style={{
+                                                                                  width: '100%',
+                                                                                  borderRadius: '6px',
+                                                                                  padding: '6px 8px',
+                                                                                  fontSize: '12px',
+                                                                                  resize: 'vertical',
+                                                                                  fontFamily: 'inherit',
+                                                                                  boxSizing: 'border-box',
+                                                                                  marginBottom: '6px'
+                                                                              }}
+                                                                            />
                                                                             <div style={{ display: 'flex', gap: '6px' }}>
-                                                                                <button onClick={saveLiTemplate} disabled={liNewTmplSaving} style={{ flex: 1, background: '#1e40af', color: '#fff', border: 'none', borderRadius: '6px', padding: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>{liNewTmplSaving ? 'Saving...' : '💾 Save'}</button>
+                                                                                <button
+                                                                                  onClick={saveLiTemplate}
+                                                                                  disabled={liNewTmplSaving}
+                                                                                  className={`flex-1 rounded-[6px] text-white
+                                                                                ${liNewTmplSaving
+                                                                                    ? 'bg-gray-400 dark:bg-gray-600'
+                                                                                    : 'bg-[#1e40af] dark:bg-blue-600'
+                                                                                  }
+                                                                                `}
+                                                                                  style={{
+                                                                                      border: 'none',
+                                                                                      padding: '6px',
+                                                                                      fontSize: '12px',
+                                                                                      fontWeight: 600,
+                                                                                      cursor: 'pointer'
+                                                                                  }}
+                                                                                >
+                                                                                    {liNewTmplSaving ? 'Saving...' : '💾 Save'}
+                                                                                </button>
                                                                                 <button onClick={() => setShowLiNewTmplForm(false)} style={{ background: '#f3f4f6', border: 'none', borderRadius: '6px', padding: '6px 10px', fontSize: '12px', color: '#6b7280', cursor: 'pointer' }}>Cancel</button>
                                                                             </div>
                                                                         </div>
                                                                     ) : (
                                                                         <div style={{ padding: '6px 10px', borderTop: liTemplates.filter(t => t.category === 'linkedin_connection').length > 0 ? '1px solid #bfdbfe' : 'none' }}>
                                                                             <button onClick={() => { setLiNewTmplCategory('linkedin_connection'); setShowLiNewTmplForm(true); }}
-                                                                                style={{ width: '100%', background: 'none', border: '1px dashed #93c5fd', borderRadius: '6px', padding: '5px', fontSize: '12px', fontWeight: 600, color: '#1e40af', cursor: 'pointer', textAlign: 'center' }}>
+                                                                                    className="dark:border-emerald-700 dark:text-slate-300 text-[#1e40af]"
+                                                                                    style={{ width: '100%', background: 'none', border: '1px dashed #86efac', borderRadius: '6px', padding: '7px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', textAlign: 'center' }}>
                                                                                 + Create New Template
                                                                             </button>
                                                                         </div>
@@ -9347,21 +10135,56 @@ function CheckpointFormInline({
                                                                     </div>
                                                                 ) : null;
                                                             })()}
-                                                            <textarea
-                                                                value={connMsg}
-                                                                onChange={e => setConnMsg(e.target.value.slice(0, 300))}
-                                                                placeholder={'Hi {{first_name}}, I noticed your work at {{company}} and would love to connect...'}
-                                                                rows={3}
-                                                                maxLength={300}
-                                                                style={{ width: '100%', border: `1px solid ${connMsg.length > 270 ? (connMsg.length >= 300 ? '#ef4444' : '#f59e0b') : '#bfdbfe'}`, borderRadius: '8px', padding: '8px 10px', fontSize: '13px', background: '#fff', outline: 'none', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }}
-                                                            />
+                                                        <textarea
+                                                          value={connMsg}
+                                                          onChange={e => setConnMsg(e.target.value.slice(0, 300))}
+                                                          placeholder={'Hi {{first_name}}, I noticed your work at {{company}} and would love to connect...'}
+                                                          rows={3}
+                                                          maxLength={300}
+                                                          className={`w-full rounded-[8px] border transition-colors outline-none
+                                                            ${connMsg.length >= 300
+                                                                                                                ? 'border-[#ef4444]'
+                                                                                                                : connMsg.length > 270
+                                                                                                                  ? 'border-[#f59e0b]'
+                                                                                                                  : 'border-[#bfdbfe] dark:border-[#1e3a8a]'
+                                                                                                              }
+                                                            bg-white dark:bg-[#060b21] text-[#374151] dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:ring-0
+                                                        `}
+                                                          style={{
+                                                            width: '100%',
+                                                            padding: '8px 10px',
+                                                            fontSize: '13px',
+                                                            fontFamily: 'inherit',
+                                                            boxSizing: 'border-box',
+                                                            resize: 'vertical'
+                                                          }}
+                                                        />
                                                             {/* Character counter */}
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '3px' }}>
-                                                                <div style={{ fontSize: '11px', color: '#9ca3af' }}>Placeholders: {'{{first_name}}'} {'{{last_name}}'} {'{{company}}'} {'{{title}}'} <span style={{ color: '#0b1957', fontWeight: 600 }}>{'{{web_insight}}'} {'{{recent_post}}'} {'{{article}}'} {'{{news}}'}</span> <span style={{ color: '#0b1957' }}>← AI-personalised at send time</span></div>
-                                                                <div style={{ fontSize: '11px', fontWeight: 700, flexShrink: 0, marginLeft: '8px', color: connMsg.length >= 300 ? '#ef4444' : connMsg.length > 270 ? '#f59e0b' : '#9ca3af', whiteSpace: 'nowrap' }}>
-                                                                    {connMsg.length}/300{connMsg.length >= 300 && ' ⚠️ limit reached'}
-                                                                </div>
-                                                            </div>
+                                                        <div
+                                                          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '3px' }}
+                                                        >
+                                                          <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-[4px]">
+                                                            Placeholders: {'{{first_name}}'} {'{{last_name}}'} {'{{company}}'} {'{{title}}'}
+                                                            <span className="text-[#0b1957] dark:text-blue-300 font-semibold">
+                                                              {' {{web_insight}}'} {'{{recent_post}}'} {'{{article}}'} {'{{news}}'}
+                                                            </span>
+                                                            <span className="text-[#0b1957] dark:text-blue-400">
+                                                              {' ← AI-personalised at send time'}
+                                                            </span>
+                                                          </div>
+                                                          <div
+                                                            className={`text-[11px] font-bold flex-shrink-0 ml-[8px] whitespace-nowrap
+                                                          ${connMsg.length >= 300
+                                                              ? 'text-[#ef4444]'
+                                                              : connMsg.length > 270
+                                                                ? 'text-[#f59e0b]'
+                                                                : 'text-[#9ca3af] dark:text-gray-500'
+                                                            }
+                                                          `}
+                                                          >
+                                                            {connMsg.length}/300{connMsg.length >= 300 && ' ⚠️ limit reached'}
+                                                          </div>
+                                                        </div>
                                                             {connMsg.length >= 300 && (
                                                                 <div style={{ fontSize: '11px', color: '#ef4444', marginTop: '2px', fontWeight: 500 }}>
                                                                     LinkedIn hard limit is 300 characters. Message will be sent as-is — keep it concise.
@@ -9382,45 +10205,94 @@ function CheckpointFormInline({
 
                                                     {/* ── Expanded config for 'message' ── */}
                                                     {opt.id === 'message' && isSelected && (
-                                                        <div style={{ border: '1.5px solid #3b82f6', borderTop: 'none', borderRadius: '0 0 10px 10px', background: '#f0f6ff', padding: '12px' }}>
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                                                <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151' }}>Follow-up Message</label>
-                                                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                                                    <button
-                                                                        onClick={() => { setLiNewTmplCategory('linkedin_followup'); setShowLiFollowTmplPanel(p => !p); setShowLiConnTmplPanel(false); setShowLiNewTmplForm(false); }}
-                                                                        style={{ background: 'none', border: 'none', fontSize: '11px', fontWeight: 600, color: '#1e40af', cursor: 'pointer', padding: 0 }}>
-                                                                        {showLiFollowTmplPanel ? '✕ Close' : '📋 Templates'}
-                                                                    </button>
-                                                                    <button disabled={liFollowGenLoading} onClick={() => { setShowAiFollowPanel(v => !v); setShowAiConnPanel(false); }}
-                                                                        style={{ background: showAiFollowPanel ? '#e8ecfa' : 'none', border: showAiFollowPanel ? '1px solid #c2d6eb' : 'none', borderRadius: '6px', padding: showAiFollowPanel ? '2px 7px' : 0, fontSize: '11px', fontWeight: 700, color: liFollowGenLoading ? '#9ca3af' : '#0b1957', cursor: liFollowGenLoading ? 'default' : 'pointer' }}>
-                                                                        {liFollowGenLoading ? '⏳ Generating...' : (showAiFollowPanel ? '✕ Close' : '✨ AI Generate')}
-                                                                    </button>
+                                                      <div  className="border-[1.5px] border-t-0 border-[#3b82f6] dark:border-blue-700 bg-[#f0f6ff] dark:bg-[#060b21]" style={{ borderTop: 'none', borderRadius: '0 0 10px 10px', padding: '12px' }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                                          <label className="text-[#374151] dark:text-gray-300" style={{ fontSize: '12px', fontWeight: 600 }}>
+                                                            Follow-up Message
+                                                          </label>
+                                                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                            <button
+                                                              onClick={() => { setLiNewTmplCategory('linkedin_followup'); setShowLiFollowTmplPanel(p => !p); setShowLiConnTmplPanel(false); setShowLiNewTmplForm(false); }}
+                                                              className="text-[#1e40af] dark:text-blue-300 hover:opacity-80 transition-opacity"
+                                                              style={{ background: 'none', border: 'none', fontSize: '11px', fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                                                            >
+                                                              {showLiFollowTmplPanel ? '✕ Close' : '📋 Templates'}
+                                                            </button>
+
+                                                            <button
+                                                              disabled={liFollowGenLoading}
+                                                              onClick={() => { setShowAiFollowPanel(v => !v); setShowAiConnPanel(false); }}
+                                                              className={`rounded-[6px] transition-all
+                                                            ${showAiFollowPanel
+                                                                ? 'bg-[#e8ecfa] dark:bg-blue-900/40 border border-[#c2d6eb] dark:border-blue-700'
+                                                                : 'bg-transparent border-transparent'}
+                                                              ${liFollowGenLoading
+                                                                ? 'text-[#9ca3af] dark:text-gray-600'
+                                                                : 'text-[#0b1957] dark:text-blue-100'
+                                                              }
+                                                        `} style={{
+                                                                padding: showAiFollowPanel ? '2px 7px' : 0,
+                                                                fontSize: '11px',
+                                                                fontWeight: 700,
+                                                                cursor: liFollowGenLoading ? 'default' : 'pointer'
+                                                              }}
+                                                            >
+                                                              {liFollowGenLoading ? '⏳ Generating...' : (showAiFollowPanel ? '✕ Close' : '✨ AI Generate')}
+                                                            </button>
                                                                 </div>
                                                             </div>
                                                             {/* Followup template browser */}
                                                             {showLiFollowTmplPanel && (
-                                                                <div style={{ border: '1px solid #bfdbfe', borderRadius: '8px', background: '#fff', marginBottom: '8px', overflow: 'hidden' }}>
+                                                              <div className="border border-[#bfdbfe] dark:border-[#1e3a8a] bg-white dark:bg-[#060b21]" style={{ borderRadius: '8px', marginBottom: '8px', overflow: 'hidden' }}>
                                                                     {liTemplates.filter(t => t.category === 'linkedin_followup').length > 0 && !showLiNewTmplForm ? (
                                                                         <div style={{ maxHeight: '160px', overflowY: 'auto' }}>
                                                                             {liTemplates.filter(t => t.category === 'linkedin_followup').map(tmpl => (
-                                                                                <div key={tmpl.id}
-                                                                                    onClick={() => { setSelectedLiFollowTmplId(tmpl.id); setFollowMsg(tmpl.content); setShowLiFollowTmplPanel(false); }}
-                                                                                    style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '8px 10px', cursor: 'pointer', borderBottom: '1px solid #eff6ff', background: selectedLiFollowTmplId === tmpl.id ? '#dbeafe' : 'transparent' }}>
-                                                                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                                                                        <div style={{ fontSize: '12px', fontWeight: 600, color: '#1e40af', marginBottom: '2px' }}>{tmpl.name}</div>
-                                                                                        <div style={{ fontSize: '11px', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tmpl.content}</div>
-                                                                                    </div>
-                                                                                    <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                                                                                        <button onClick={e => { e.stopPropagation(); setSelectedLiFollowTmplId(tmpl.id); setFollowMsg(tmpl.content); setShowLiFollowTmplPanel(false); }}
-                                                                                            style={{ background: '#1e40af', color: '#fff', border: 'none', borderRadius: '4px', padding: '3px 8px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>Use</button>
-                                                                                        <button onClick={e => deleteLiTemplate(tmpl.id, e)}
-                                                                                            style={{ background: 'none', border: '1px solid #fca5a5', color: '#dc2626', borderRadius: '4px', padding: '3px 6px', fontSize: '11px', cursor: 'pointer' }}>✕</button>
-                                                                                    </div>
+                                                                              <div key={tmpl.id}
+                                                                                   onClick={() => { setSelectedLiFollowTmplId(tmpl.id); setFollowMsg(tmpl.content); setShowLiFollowTmplPanel(false); }}
+                                                                                   className={`border-b transition-colors ${selectedLiFollowTmplId === tmpl.id ? 'bg-[#dbeafe] dark:bg-blue-900/30' : 'bg-transparent'} border-[#eff6ff] dark:border-[#1e3a8a]`}
+                                                                                   style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '8px 10px', cursor: 'pointer' }}>
+
+                                                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                                                  <div
+                                                                                    className="text-[#1e40af] dark:text-blue-300"
+                                                                                    style={{ fontSize: '12px', fontWeight: 600, marginBottom: '2px' }}
+                                                                                  >
+                                                                                    {tmpl.name}
+                                                                                  </div>
+                                                                                  <div
+                                                                                    className="text-[#374151] dark:text-gray-400"
+                                                                                    style={{ fontSize: '11px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                                                                  >
+                                                                                    {tmpl.content}
+                                                                                  </div>
                                                                                 </div>
+
+                                                                                <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                                                                                  <button
+                                                                                    onClick={e => { e.stopPropagation(); setSelectedLiFollowTmplId(tmpl.id); setFollowMsg(tmpl.content); setShowLiFollowTmplPanel(false); }}
+                                                                                    className="bg-[#1e40af] dark:bg-blue-600 text-white"
+                                                                                    style={{ border: 'none', borderRadius: '4px', padding: '3px 8px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+                                                                                  >
+                                                                                    Use
+                                                                                  </button>
+                                                                                  <button
+                                                                                    onClick={e => deleteLiTemplate(tmpl.id, e)}
+                                                                                    className="bg-transparent border border-[#fca5a5] dark:border-red-900 text-[#dc2626] dark:text-red-400"
+                                                                                    style={{ borderRadius: '4px', padding: '3px 6px', fontSize: '11px', cursor: 'pointer' }}
+                                                                                  >
+                                                                                    ✕
+                                                                                  </button>
+                                                                                </div>
+                                                                              </div>
                                                                             ))}
                                                                         </div>
                                                                     ) : !showLiNewTmplForm ? (
-                                                                        <div style={{ padding: '10px', textAlign: 'center', fontSize: '12px', color: '#6b7280' }}>No saved templates.</div>
+                                                                      <div
+                                                                        className="dark:text-slate-300 text-[#6b7280]"
+                                                                        style={{ padding: '16px', textAlign: 'center', fontSize: '12px', color: '' }}
+                                                                      >
+                                                                        No saved templates yet.
+                                                                      </div>
                                                                     ) : null}
                                                                     {/* Create new template form */}
                                                                     {showLiNewTmplForm && liNewTmplCategory === 'linkedin_followup' ? (
@@ -9428,14 +10300,27 @@ function CheckpointFormInline({
                                                                             <input value={liNewTmplName} onChange={e => setLiNewTmplName(e.target.value)} placeholder="Template name..." style={{ width: '100%', border: '1px solid #bfdbfe', borderRadius: '6px', padding: '6px 8px', fontSize: '12px', outline: 'none', marginBottom: '6px', boxSizing: 'border-box', fontFamily: 'inherit' }} />
                                                                             <textarea value={liNewTmplBody} onChange={e => setLiNewTmplBody(e.target.value)} placeholder={'Hi {{first_name}}, great connecting! I wanted to share...'} rows={3} style={{ width: '100%', border: '1px solid #bfdbfe', borderRadius: '6px', padding: '6px 8px', fontSize: '12px', outline: 'none', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: '6px' }} />
                                                                             <div style={{ display: 'flex', gap: '6px' }}>
-                                                                                <button onClick={saveLiTemplate} disabled={liNewTmplSaving} style={{ flex: 1, background: '#1e40af', color: '#fff', border: 'none', borderRadius: '6px', padding: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>{liNewTmplSaving ? 'Saving...' : '💾 Save'}</button>
+                                                                                <button onClick={saveLiTemplate} disabled={liNewTmplSaving} className={`flex-1 rounded-[6px] text-white
+                                                                                ${liNewTmplSaving
+                                                                                  ? 'bg-gray-400 dark:bg-gray-600'
+                                                                                  : 'bg-[#1e40af] dark:bg-blue-600'
+                                                                                }
+                                                                                `}
+                                                                                        style={{
+                                                                                            border: 'none',
+                                                                                            padding: '6px',
+                                                                                            fontSize: '12px',
+                                                                                            fontWeight: 600,
+                                                                                            cursor: 'pointer'
+                                                                                        }}>{liNewTmplSaving ? 'Saving...' : '💾 Save'}</button>
                                                                                 <button onClick={() => setShowLiNewTmplForm(false)} style={{ background: '#f3f4f6', border: 'none', borderRadius: '6px', padding: '6px 10px', fontSize: '12px', color: '#6b7280', cursor: 'pointer' }}>Cancel</button>
                                                                             </div>
                                                                         </div>
                                                                     ) : (
                                                                         <div style={{ padding: '6px 10px', borderTop: liTemplates.filter(t => t.category === 'linkedin_followup').length > 0 ? '1px solid #bfdbfe' : 'none' }}>
                                                                             <button onClick={() => { setLiNewTmplCategory('linkedin_followup'); setShowLiNewTmplForm(true); }}
-                                                                                style={{ width: '100%', background: 'none', border: '1px dashed #93c5fd', borderRadius: '6px', padding: '5px', fontSize: '12px', fontWeight: 600, color: '#1e40af', cursor: 'pointer', textAlign: 'center' }}>
+                                                                                    className="dark:border-emerald-700 dark:text-slate-300 text-[#1e40af]"
+                                                                                    style={{ width: '100%', background: 'none', border: '1px dashed #86efac', borderRadius: '6px', padding: '7px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', textAlign: 'center' }}>
                                                                                 + Create New Template
                                                                             </button>
                                                                         </div>
@@ -9452,14 +10337,23 @@ function CheckpointFormInline({
                                                                     </div>
                                                                 ) : null;
                                                             })()}
-                                                            <textarea
-                                                                value={followMsg}
-                                                                onChange={e => setFollowMsg(e.target.value)}
-                                                                placeholder={'Hi {{first_name}}, great connecting! I wanted to reach out about how we help companies like {{company}}...'}
-                                                                rows={3}
-                                                                style={{ width: '100%', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '8px 10px', fontSize: '13px', background: '#fff', outline: 'none', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }}
-                                                            />
-                                                            <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '3px' }}>Placeholders: {'{{first_name}}'} {'{{last_name}}'} {'{{company}}'} {'{{title}}'} <span style={{ color: '#0b1957', fontWeight: 600 }}>{'{{web_insight}}'} {'{{recent_post}}'} {'{{article}}'} {'{{news}}'}</span> <span style={{ color: '#0b1957' }}>← AI-personalised at send time</span></div>
+                                                        <textarea
+                                                          value={followMsg}
+                                                          onChange={e => setFollowMsg(e.target.value)}
+                                                          placeholder={'Hi {{first_name}}, great connecting! I wanted to reach out about how we help companies like {{company}}...'}
+                                                          rows={3}
+                                                          className="w-full border border-[#bfdbfe] dark:border-[#1e3a8a] bg-white dark:bg-[#060b21] text-[#374151] dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:ring-0 outline-none"
+                                                          style={{
+                                                            width: '100%',
+                                                            borderRadius: '8px',
+                                                            padding: '8px 10px',
+                                                            fontSize: '13px',
+                                                            resize: 'vertical',
+                                                            fontFamily: 'inherit',
+                                                            boxSizing: 'border-box'
+                                                          }}
+                                                        />
+                                                        <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-[4px]">Placeholders: {'{{first_name}}'} {'{{last_name}}'} {'{{company}}'} {'{{title}}'} <span className="text-[#0b1957] dark:text-blue-300 font-semibold">{'{{web_insight}}'} {'{{recent_post}}'} {'{{article}}'} {'{{news}}'}</span> <span style={{ color: '#0b1957' }}>← AI-personalised at send time</span></div>
 
                                                             {/* ── AI Generate inline panel (follow-up) ── */}
                                                             {showAiFollowPanel && <AiMsgContextPanel
@@ -9562,103 +10456,155 @@ function CheckpointFormInline({
 
                     {/* Step 2: Trigger Condition — options are dynamic based on primary channel */}
                     {step === 2 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {/* Channel sequence badge */}
-                            <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                                {nextChannels.map((ch, idx) => {
-                                    const label = ch === 'voice_call' ? 'Voice Call' : ch === 'linkedin' ? 'LinkedIn' : ch.charAt(0).toUpperCase() + ch.slice(1);
-                                    return (
-                                        <span key={ch} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <span style={{ background: '#e8ecfa', color: '#0b1957', padding: '2px 8px', borderRadius: '99px', fontWeight: 600, fontSize: '11px' }}>{label}</span>
-                                            {idx < nextChannels.length - 1 && <span style={{ color: '#9ca3af' }}>→</span>}
-                                        </span>
-                                    );
-                                })}
-                            </div>
-                            {triggerOptions.map((opt, i) => (
-                                <div key={opt.id} onClick={() => setTriggerCondition(opt.id)} style={optStyle(triggerCondition === opt.id)}>
-                                    <div style={numBadge(i + 1, triggerCondition === opt.id)}>{triggerCondition === opt.id ? '✓' : i + 1}</div>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 600 }}>{opt.label}</div>
-                                        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{opt.desc}</div>
-                                    </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {/* Channel sequence badge */}
+                          <div className="text-slate-500 dark:text-slate-400" style={{ fontSize: '12px', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                              {nextChannels.map((ch, idx) => {
+                                  const label = ch === 'voice_call' ? 'Voice Call' : ch === 'linkedin' ? 'LinkedIn' : ch.charAt(0).toUpperCase() + ch.slice(1);
+                                  return (
+                                    <span key={ch} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span className="bg-[#e8ecfa] dark:bg-blue-950/60 text-[#0b1957] dark:text-blue-300" style={{ padding: '2px 8px', borderRadius: '99px', fontWeight: 600, fontSize: '11px' }}>{label}</span>
+                                        {idx < nextChannels.length - 1 && <span className="text-slate-400 dark:text-slate-600">→</span>}
+                </span>
+                                  );
+                              })}
+                          </div>
+                          {triggerOptions.map((opt, i) => (
+                            <div
+                              key={opt.id}
+                              onClick={() => setTriggerCondition(opt.id)}
+                              style={optStyle(triggerCondition === opt.id)}
+                              className="group"
+                            >
+                                <div style={numBadge(i + 1, triggerCondition === opt.id)}>{triggerCondition === opt.id ? '✓' : i + 1}</div>
+                                <div style={{ flex: 1 }}>
+                                    <div className="text-slate-900 dark:text-white font-semibold transition-colors">{opt.label}</div>
+                                    <div className="text-slate-500 dark:text-slate-400" style={{ fontSize: '12px', marginTop: '2px' }}>{opt.desc}</div>
                                 </div>
-                            ))}
-                        </div>
+                            </div>
+                          ))}
+                      </div>
                     )}
 
                     {/* Step 3: Duration */}
                     {step === 3 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {[
-                                { d: '1', label: 'Once' },
-                                { d: '7', label: '7 days' },
-                                { d: '14', label: '14 days' },
-                                { d: '30', label: '30 days' },
-                                { d: '60', label: '60 days' },
-                            ].map((o, i) => {
-                                const dNum = parseInt(o.d);
-                                const isOnce = dNum <= 1;
-                                const wd = Math.max(1, Math.floor(dNum * 5 / 7));
-                                const perDay = Math.min(LINKEDIN_DAILY_LIMIT, Math.max(1, qualifiedLeadCount));
-                                const totalOverDuration = perDay * wd;
-                                const capped = qualifiedLeadCount > LINKEDIN_DAILY_LIMIT;
-                                const leadWord = `lead${qualifiedLeadCount !== 1 ? 's' : ''}`;
-                                const desc = isOnce
-                                    ? (inboundMode
-                                        ? `One-time send to your ${qualifiedLeadCount} selected ${leadWord} — no drip schedule`
-                                        : `Single-day run — targets up to ${perDay} leads once`)
-                                    : (inboundMode
-                                        ? `Reaches your ${qualifiedLeadCount} selected ${leadWord} over ${wd} working day${wd !== 1 ? 's' : ''}`
-                                        : capped
-                                            ? `Targets ${perDay}/day (capped from ${qualifiedLeadCount}; LinkedIn safe limit), ~${totalOverDuration} new leads over ${wd} working days`
-                                            : `Targets ${perDay} new leads/day via pagination, ~${totalOverDuration} leads over ${wd} working days`);
-                                return (
-                                    <div key={o.d} onClick={() => setDays(o.d)} style={optStyle(days === o.d)}>
-                                        <div style={numBadge(i + 1, days === o.d)}>{days === o.d ? '✓' : i + 1}</div>
-                                        <div style={{ flex: 1 }}>
-                                            <div style={{ fontWeight: 600 }}>{o.label}</div>
-                                            <div style={{ fontSize: '11px', color: capped && !inboundMode ? '#b45309' : '#6b7280', marginTop: '2px' }}>
-                                                {desc}
-                                            </div>
+                      <div
+                        className="flex flex-col gap-2 dark:bg-[#000724]"
+                        style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}
+                      >
+                          {[
+                              { d: '1', label: 'Once' },
+                              { d: '7', label: '7 days' },
+                              { d: '14', label: '14 days' },
+                              { d: '30', label: '30 days' },
+                              { d: '60', label: '60 days' },
+                          ].map((o, i) => {
+                              const dNum = parseInt(o.d);
+                              const isOnce = dNum <= 1;
+                              const wd = Math.max(1, Math.floor(dNum * 5 / 7));
+                              const perDay = Math.min(LINKEDIN_DAILY_LIMIT, Math.max(1, qualifiedLeadCount));
+                              const totalOverDuration = perDay * wd;
+                              const capped = qualifiedLeadCount > LINKEDIN_DAILY_LIMIT;
+                              const leadWord = `lead${qualifiedLeadCount !== 1 ? 's' : ''}`;
+                              const desc = isOnce
+                                  ? (inboundMode
+                                      ? `One-time send to your ${qualifiedLeadCount} selected ${leadWord} — no drip schedule`
+                                      : `Single-day run — targets up to ${perDay} leads once`)
+                                  : (inboundMode
+                                      ? `Reaches your ${qualifiedLeadCount} selected ${leadWord} over ${wd} working day${wd !== 1 ? 's' : ''}`
+                                      : capped
+                                          ? `Targets ${perDay}/day (capped from ${qualifiedLeadCount}; LinkedIn safe limit), ~${totalOverDuration} new leads over ${wd} working days`
+                                          : `Targets ${perDay} new leads/day via pagination, ~${totalOverDuration} leads over ${wd} working days`);
+                              return (
+                                <div
+                                  key={o.d}
+                                  onClick={() => setDays(o.d)}
+                                  className={`${days === o.d ? 'border-indigo-500 bg-indigo-50 dark:bg-[#2563eb]' : 'border-[#e0eaf5] dark:border-gray-800 bg-white dark:bg-[#000724]'} transition-all cursor-pointer`}
+                                  style={{
+                                      display: 'flex', alignItems: 'center', gap: '12px', padding: '12px',
+                                      borderRadius: '12px', border: '1px solid', marginBottom: '8px'
+                                  }}
+                                >
+                                    <div style={numBadge(i + 1, days === o.d)}>{days === o.d ? '✓' : i + 1}</div>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontWeight: 600 }} className="text-gray-900 dark:text-gray-100">
+                                            {o.label}
+                                        </div>
+                                        <div
+                                          style={{ fontSize: '11px', marginTop: '2px' }}
+                                          className={capped && !inboundMode ? 'text-[#b45309] dark:text-amber-500' : 'text-[#6b7280] dark:text-slate-300'}
+                                        >
+                                            {desc}
                                         </div>
                                     </div>
-                                );
-                            })}
-                            <div style={{ marginTop: '8px' }}>
-                                <input type="number" value={days} onChange={e => setDays(e.target.value)}
-                                    placeholder="Or enter custom days..."
-                                    style={{ width: '100%', border: '1px solid #e0eaf5', borderRadius: '10px', padding: '10px 14px', fontSize: '14px', outline: 'none', background: '#fafbff', fontFamily: 'inherit' }}
-                                />
-                            </div>
-                            {/* Warning when prospect-time qualified count exceeds LinkedIn's safe daily limit */}
-                            {exceedsLinkedInLimits && (
-                                <div style={{
-                                    padding: '10px 14px', borderRadius: '10px', fontSize: '12px', lineHeight: 1.5,
-                                    background: '#fef3c7', border: '1px solid #f59e0b', color: '#92400e', marginTop: '4px',
-                                }}>
-                                    <strong>LinkedIn safe-limit cap:</strong> Your ICP threshold matches {qualifiedLeadCount} leads, but LinkedIn&apos;s safe daily action limit is {LINKEDIN_DAILY_LIMIT}.
-                                    The campaign will source {safeLeadsPerDay} new qualified leads/day via pagination, totalling ~{safeLeadsPerDay * workingDays} over {workingDays} working days.
                                 </div>
-                            )}
-                        </div>
+                              );
+                          })}
+                          <div className="mt-2">
+                              <input
+                                type="number"
+                                value={days}
+                                onChange={e => setDays(e.target.value)}
+                                placeholder="Or enter custom days..."
+                                className="w-full rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#000724] px-[14px] py-[10px] text-[14px] text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600 outline-none focus:border-indigo-500 transition-colors"
+                              />
+                          </div>
+                          {/* Warning when prospect-time qualified count exceeds LinkedIn's safe daily limit */}
+                          {exceedsLinkedInLimits && (
+                            <div style={{
+                                padding: '10px 14px', borderRadius: '10px', fontSize: '12px', lineHeight: 1.5,
+                                background: '#fef3c7', border: '1px solid #f59e0b', color: '#92400e', marginTop: '4px',
+                            }}>
+                                <strong>LinkedIn safe-limit cap:</strong> Your ICP threshold matches {qualifiedLeadCount} leads, but LinkedIn&apos;s safe daily action limit is {LINKEDIN_DAILY_LIMIT}.
+                                The campaign will source {safeLeadsPerDay} new qualified leads/day via pagination, totalling ~{safeLeadsPerDay * workingDays} over {workingDays} working days.
+                            </div>
+                          )}
+                      </div>
                     )}
 
                     {/* Step 4: Campaign Name */}
                     {step === 4 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            <div style={{ display: 'flex', gap: '8px' }}>
-                                <input type="text" value={name} onChange={e => setName(e.target.value)}
-                                    placeholder="e.g. Q3 Outreach Strategy"
-                                    style={{ flex: 1, border: '1px solid #e0eaf5', borderRadius: '10px', padding: '10px 14px', fontSize: '14px', outline: 'none', background: '#fafbff', fontFamily: 'inherit', minWidth: 0 }}
-                                />
-                                <button onClick={suggestName} style={{
-                                    background: '#e8ecfa', border: '1.5px solid #0b1957', borderRadius: '10px', padding: '0 14px',
-                                    fontSize: '12px', fontWeight: 700, color: '#0b1957', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
-                                    transition: 'all 0.15s',
-                                }}>✨ Suggest</button>
-                            </div>
-                        </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                              <input
+                                type="text"
+                                value={name}
+                                onChange={e => setName(e.target.value)}
+                                placeholder="e.g. Q3 Outreach Strategy"
+                                className="flex-1 border border-[#e0eaf5] rounded-[10px] px-[14px] py-[10px] text-[14px] outline-none bg-[#fafbff] font-inherit min-w-0
+                       dark:bg-[#060b21] dark:border-[#1e3a8a] dark:text-gray-100 dark:placeholder-gray-600"
+                              />
+                              <button
+                                onClick={suggestName}
+                                className="bg-[#e8ecfa] border-[1.5px] border-[#0b1957] rounded-[10px] px-[14px] text-[12px] font-bold text-[#0b1957] cursor-pointer whitespace-nowrap flex-shrink-0 transition-all
+                       dark:bg-[#2563eb] dark:border-blue-500 dark:text-slate-300 hover:bg-[#dbeafe] dark:hover:bg-blue-900/50"
+                              >
+                                  ✨ Suggest
+                              </button>
+                          </div>
+                          {!creditsOk && (
+                              <div className="dark:bg-amber-900/20 dark:border-amber-700 dark:text-amber-300" style={{
+                                  padding: '10px 14px', borderRadius: '10px', fontSize: '12px', lineHeight: 1.5,
+                                  background: '#fef3c7', border: '1px solid #f59e0b', color: '#92400e',
+                                  display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-start',
+                              }}>
+                                  <div>
+                                      <strong>Not enough credits:</strong> You need {requiredCredits} credits to launch this
+                                      campaign ({enrolledCount} leads × {CREDIT_COST_PER_LEAD}). You have {creditBalance}.
+                                  </div>
+                                  <button onClick={onOpenRecharge} className="dark:bg-blue-700" style={{
+                                      padding: '6px 14px', borderRadius: '8px', border: 'none',
+                                      background: '#0b1957', color: '#fff', fontSize: '12px', fontWeight: 700,
+                                      cursor: 'pointer', transition: 'all 0.15s',
+                                  }}>Add credits</button>
+                              </div>
+                          )}
+                          {creditsOk && creditBalance !== null && enrolledCount > 0 && (
+                              <div className="dark:text-gray-500" style={{ fontSize: '12px', color: '#9ca3af' }}>
+                                  ≈{requiredCredits} credits will be used as this campaign runs
+                              </div>
+                          )}
+                      </div>
                     )}
                 </div>
 
@@ -9699,13 +10645,13 @@ function CheckpointFormInline({
                                     </button>
                                 ) : (
                                     <button
-                                        disabled={!canNext() || launching}
+                                        disabled={!canNext() || launching || !creditsOk}
                                         onClick={launchCampaign}
                                         style={{
                                             padding: '8px 20px', borderRadius: '10px', border: 'none',
-                                            background: canNext() && !launching ? '#10b981' : '#e5e7eb',
-                                            color: canNext() && !launching ? '#fff' : '#9ca3af',
-                                            fontSize: '13px', fontWeight: 700, cursor: canNext() && !launching ? 'pointer' : 'default',
+                                            background: canNext() && !launching && creditsOk ? '#10b981' : '#e5e7eb',
+                                            color: canNext() && !launching && creditsOk ? '#fff' : '#9ca3af',
+                                            fontSize: '13px', fontWeight: 700, cursor: canNext() && !launching && creditsOk ? 'pointer' : 'default',
                                             display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.15s',
                                         }}
                                     >
@@ -10084,50 +11030,98 @@ function AiMsgContextPanel({
     ].filter(Boolean);
 
     return (
-        <div style={{ marginTop: '10px', border: '1.5px solid #c2d6eb', borderRadius: '12px', background: '#f8faff', padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div
+        className="border-[1.5px] border-[#c2d6eb] dark:border-[#1e3a8a] bg-[#f8faff] dark:bg-[#060b21]"
+        style={{
+          marginTop: '10px',
+          borderRadius: '12px',
+          padding: '14px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px'
+        }}
+      >
             {/* Header */}
-            <div style={{ fontSize: '12px', fontWeight: 700, color: '#0b1957', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                ✨ AI Generate — tell us about your offer
-                <span style={{ fontWeight: 400, color: '#9ca3af', fontSize: '11px' }}>Will use lead&apos;s web presence &amp; posts</span>
-            </div>
+        <div className="text-[#0b1957] dark:text-blue-300" style={{ fontSize: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+          ✨ AI Generate — tell us about your offer
+          <span className="text-[#9ca3af] dark:text-slate-300"style={{ fontWeight: 400, fontSize: '11px' }}>
+              Will use lead&apos;s web presence &amp; posts
+          </span>
+        </div>
 
             {/* Value prop */}
-            <div>
-                <label style={{ fontSize: '11px', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '4px' }}>
-                    What do you offer? <span style={{ color: '#9ca3af', fontWeight: 400 }}>product / service / value prop</span>
-                </label>
-                <textarea
-                    value={valueProp}
-                    onChange={e => setValueProp(e.target.value)}
-                    placeholder="e.g. We help SaaS companies reduce churn with AI-powered customer success..."
-                    rows={2}
-                    style={{ width: '100%', border: '1px solid #c2d6eb', borderRadius: '8px', padding: '7px 10px', fontSize: '12px', outline: 'none', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', background: '#fff', color: '#111827' }}
-                />
-            </div>
+          <div>
+              <label
+                className="text-[#374151] dark:text-gray-300"
+                style={{ fontSize: '11px', fontWeight: 600, display: 'block', marginBottom: '4px' }}
+              >
+                  What do you offer? <span className="text-[#9ca3af] dark:text-gray-500" style={{ fontWeight: 400 }}>product / service / value prop</span>
+              </label>
+              <textarea
+                value={valueProp}
+                onChange={e => setValueProp(e.target.value)}
+                placeholder="e.g. We help SaaS companies reduce churn with AI-powered customer success..."
+                rows={2}
+                className="w-full border border-[#c2d6eb] dark:border-[#1e3a8a] bg-white dark:bg-[#060b21] text-[#111827] dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-gray-600 outline-none"
+                style={{
+                    width: '100%',
+                    borderRadius: '8px',
+                    padding: '7px 10px',
+                    fontSize: '12px',
+                    resize: 'vertical',
+                    fontFamily: 'inherit',
+                    boxSizing: 'border-box'
+                }}
+              />
+          </div>
 
             {/* Tone + Goal */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                    <div style={{ fontSize: '11px', fontWeight: 600, color: '#374151', marginBottom: '5px' }}>Tone</div>
+                    <div className="text-[#374151] dark:text-gray-300" style={{ fontSize: '11px', fontWeight: 600, marginBottom: '5px' }}>Tone</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         {tones.map(t => (
-                            <div key={t.id} onClick={() => setTone(t.id)}
-                                style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 8px', border: `1.5px solid ${tone === t.id ? '#0b1957' : '#e5e7eb'}`, borderRadius: '7px', cursor: 'pointer', background: tone === t.id ? '#e8ecfa' : '#fff', fontSize: '12px', fontWeight: tone === t.id ? 600 : 400, color: tone === t.id ? '#0b1957' : '#374151' }}>
-                                {tone === t.id && <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#0b1957', flexShrink: 0 }} />}
-                                {t.label}
-                            </div>
+                          <div
+                            key={t.id}
+                            onClick={() => setTone(t.id)}
+                            className={`flex items-center gap-[6px] px-[8px] py-[6px] border-[1.5px] rounded-[7px] cursor-pointer text-[12px] transition-colors
+                                ${tone === t.id
+                                          ? 'border-[#0b1957] dark:border-blue-400 bg-[#e8ecfa] dark:bg-blue-900/40 text-[#0b1957] dark:text-blue-100 font-semibold'
+                                          : 'border-[#e5e7eb] dark:border-[#1e3a8a] bg-white dark:bg-[#060b21] text-[#374151] dark:text-gray-400 font-normal'
+                                        }
+                            `}
+                                >
+                              {tone === t.id && (
+                                <span
+                                  className="w-[6px] h-[6px] rounded-full bg-[#0b1957] dark:bg-blue-400 flex-shrink-0"
+                                />
+                              )}
+                              {t.label}
+                          </div>
                         ))}
                     </div>
                 </div>
                 <div>
-                    <div style={{ fontSize: '11px', fontWeight: 600, color: '#374151', marginBottom: '5px' }}>Goal</div>
+                    <div className="text-[#374151] dark:text-gray-300" style={{ fontSize: '11px', fontWeight: 600, marginBottom: '5px' }}>Goal</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         {goals.map(g => (
-                            <div key={g.id} onClick={() => setGoal(g.id)}
-                                style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 8px', border: `1.5px solid ${goal === g.id ? '#0b1957' : '#e5e7eb'}`, borderRadius: '7px', cursor: 'pointer', background: goal === g.id ? '#e8ecfa' : '#fff', fontSize: '12px', fontWeight: goal === g.id ? 600 : 400, color: goal === g.id ? '#0b1957' : '#374151' }}>
-                                {goal === g.id && <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#0b1957', flexShrink: 0 }} />}
-                                {g.label}
-                            </div>
+                          <div
+                            key={g.id}
+                            onClick={() => setGoal(g.id)}
+                            className={`flex items-center gap-[6px] px-[8px] py-[6px] border-[1.5px] rounded-[7px] cursor-pointer text-[12px] transition-colors
+                            ${goal === g.id
+                                      ? 'border-[#0b1957] dark:border-blue-400 bg-[#e8ecfa] dark:bg-blue-900/40 text-[#0b1957] dark:text-blue-100 font-semibold'
+                                      : 'border-[#e5e7eb] dark:border-[#1e3a8a] bg-white dark:bg-[#060b21] text-[#374151] dark:text-gray-400 font-normal'
+                                    }
+                        `}
+                            >
+                              {goal === g.id && (
+                                <span
+                                  className="w-[6px] h-[6px] rounded-full bg-[#0b1957] dark:bg-blue-400 flex-shrink-0"
+                                />
+                              )}
+                              {g.label}
+                          </div>
                         ))}
                     </div>
                 </div>
@@ -10135,18 +11129,52 @@ function AiMsgContextPanel({
 
             {/* Targeting badge */}
             {targetingTags.length > 0 && (
-                <div style={{ background: '#e8ecfa', border: '1px solid #c2d6eb', borderRadius: '7px', padding: '6px 10px', fontSize: '11px', color: '#0b1957', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px' }}>
-                    <span style={{ fontWeight: 700 }}>🎯</span>
-                    {targetingTags.join(' · ')}
-                    {leadsCount > 0 && <span style={{ marginLeft: '4px', color: '#0b1957' }}>· {leadsCount} lead{leadsCount !== 1 ? 's' : ''} with live web insights</span>}
-                </div>
+              <div
+                className="bg-[#e8ecfa] dark:bg-blue-900/40 border border-[#c2d6eb] dark:border-blue-700 text-[#0b1957] dark:text-blue-100"
+                style={{
+                    borderRadius: '7px',
+                    padding: '6px 10px',
+                    fontSize: '11px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '4px'
+                }}
+              >
+                  <span style={{ fontWeight: 700 }}>🎯</span>
+                  {targetingTags.join(' · ')}
+                  {leadsCount > 0 && (
+                    <span
+                      className="text-[#0b1957] dark:text-blue-200"
+                      style={{ marginLeft: '4px' }}
+                    >
+                    · {leadsCount} lead{leadsCount !== 1 ? 's' : ''} with live web insights
+                </span>
+                  )}
+              </div>
             )}
 
             {/* Generate button */}
-            <button onClick={onGenerate} disabled={loading}
-                style={{ background: loading ? '#9ca3af' : 'linear-gradient(135deg,#0b1957,#1a3a8f)', color: '#fff', border: 'none', borderRadius: '9px', padding: '10px', fontSize: '13px', fontWeight: 700, cursor: loading ? 'default' : 'pointer', boxShadow: loading ? 'none' : '0 3px 10px rgba(11,25,87,.35)' }}>
-                {loading ? '⏳ Generating...' : '✨ Generate Message'}
-            </button>
+          <button
+            onClick={onGenerate}
+            disabled={loading}
+            className={`rounded-[9px] text-white transition-all
+                ${loading
+                      ? 'bg-[#9ca3af] dark:bg-gray-700'
+                      : 'bg-gradient-to-br from-[#0b1957] to-[#1a3a8f] dark:from-[#1e3a8a] dark:to-[#3b82f6] shadow-[0_3px_10px_rgba(11,25,87,.35)] dark:shadow-none'
+                    }
+            `}
+            style={{
+                border: 'none',
+                padding: '10px',
+                fontSize: '13px',
+                fontWeight: 700,
+                cursor: loading ? 'default' : 'pointer',
+                boxShadow: loading ? 'none' : '0 3px 10px rgba(11,25,87,.35)'
+            }}
+          >
+              {loading ? '⏳ Generating...' : '✨ Generate Message'}
+          </button>
         </div>
     );
 }
@@ -10279,16 +11307,273 @@ function ThinkingIndicator({ generating }: { generating: boolean }) {
     );
 }
 
+function AgentBuilderTrendOptions({
+    title,
+    description,
+    options,
+    onNext,
+    generating,
+    isActive = true,
+    selectionText
+}: {
+    title?: string;
+    description?: string;
+    options: any[];
+    onNext?: (selected: string[]) => void;
+    generating?: boolean;
+    isActive?: boolean;
+    selectionText?: string;
+}) {
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+
+    // Automatically parse selectionText and populate selectedIds when rendering history
+    useEffect(() => {
+        if (!isActive && selectionText) {
+            const selectedTitles = selectionText.split(" | ").map(s => s.trim());
+            const matchedIds: string[] = [];
+            options.forEach(opt => {
+                const text = opt.label || opt.text || "";
+                const firstLine = (text.split("\n")[0] || "").trim();
+                if (selectedTitles.includes(firstLine) || selectedTitles.includes(opt.title)) {
+                    matchedIds.push(opt.id);
+                }
+            });
+            setSelectedIds(matchedIds);
+        }
+    }, [isActive, selectionText, options]);
+
+    const toggleSelect = (id: string, isSkip: boolean) => {
+        if (!isActive) return; // Completely lock selections in history
+
+        if (isSkip) {
+            if (onNext) onNext(["Start Directly (Skip Trends)"]);
+            return;
+        }
+
+        setSelectedIds(prev => {
+            if (prev.includes(id)) {
+                return prev.filter(x => x !== id);
+            } else {
+                return [...prev, id];
+            }
+        });
+    };
+
+    const toggleSection = (optId: string, sectionTitle: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        const key = `${optId}-${sectionTitle}`;
+        setExpandedSections(prev => ({
+            ...prev,
+            [key]: !prev[key]
+        }));
+    };
+
+    const parseSections = (markdownText: string) => {
+        const lines = markdownText.split("\n");
+        const optTitle = lines[0]?.trim() || "Option";
+        
+        const remainingText = lines.slice(1).join("\n").trim();
+        const parts = remainingText.split(/(?=### )/);
+        const sections: { title: string; content: string }[] = [];
+        parts.forEach(part => {
+            const trimmed = part.trim();
+            if (!trimmed) return;
+            if (trimmed.startsWith("### ")) {
+                const partLines = trimmed.split("\n");
+                const titleLine = partLines[0];
+                const secTitle = titleLine.replace("### ", "").trim();
+                const content = partLines.slice(1).join("\n").trim();
+                sections.push({ title: secTitle, content });
+            } else {
+                sections.push({ title: "", content: trimmed });
+            }
+        });
+        return { title: optTitle, sections };
+    };
+
+    const skipOption = options.find(o => {
+        const text = o.label || o.text || "";
+        const firstLine = text.split("\n")[0]?.toLowerCase() || "";
+        return firstLine.includes("skip") || firstLine.includes("start directly");
+    });
+    const mainOptions = options.filter(o => o !== skipOption);
+
+    const handleSubmit = () => {
+        if (onNext && selectedIds.length > 0) {
+            const selectedOptions = options.filter(o => selectedIds.includes(o.id));
+            const selectedTitles = selectedOptions.map(o => {
+                const text = o.label || o.text || "";
+                return (text.split("\n")[0] || "").trim();
+            });
+            onNext(selectedTitles);
+        }
+    };
+
+    return (
+        <div className="w-full max-w-[620px] bg-slate-50/50 border border-slate-200/60 rounded-3xl p-5 shadow-sm mt-3 flex flex-col gap-4">
+            <div className="flex flex-wrap gap-2.5 items-start justify-start w-full">
+                {mainOptions.map((opt) => {
+                    const isSelected = selectedIds.includes(opt.id);
+                    const text = opt.label || opt.text || "";
+                    const { title: optTitle, sections } = parseSections(text);
+                    
+                    if (!isSelected) {
+                        return (
+                            <button
+                                key={opt.id}
+                                onClick={() => toggleSelect(opt.id, false)}
+                                disabled={!isActive}
+                                className={`bg-white border border-slate-200 max-w-[240px] truncate max-h-[36px] text-left rounded-2xl px-4 py-2.5 text-xs font-semibold text-[#0b1957] transition-all duration-300 ease-in-out shadow-sm ${
+                                    isActive 
+                                        ? "hover:border-[#0b1957]/50 hover:-translate-y-[1px] cursor-pointer" 
+                                        : "cursor-default opacity-50"
+                                }`}
+                                title={optTitle}
+                            >
+                                <span className="font-bold truncate text-[12px]">{optTitle}</span>
+                            </button>
+                        );
+                    }
+
+                    return (
+                        <div 
+                            key={opt.id} 
+                            className={`bg-white border border-[#0b1957] bg-blue-50/20 w-full rounded-2xl p-4 shadow-sm text-left flex flex-col gap-3 ${
+                                !isActive ? "opacity-85" : ""
+                            }`}
+                        >
+                            <div 
+                                onClick={() => toggleSelect(opt.id, false)}
+                                className={`flex items-center justify-between gap-2 border-b border-slate-100/80 pb-2.5 ${
+                                    isActive ? "cursor-pointer hover:opacity-80" : "cursor-default"
+                                } transition-opacity`}
+                                title={isActive ? "Click to deselect" : undefined}
+                            >
+                                <span className="font-bold text-[12px] text-[#0b1957]">{optTitle}</span>
+                                <span className="text-[10px] bg-[#0b1957] text-white px-2.5 py-0.5 rounded-full select-none flex items-center gap-1 font-bold">
+                                    <Check className="size-2.5" /> Selected
+                                </span>
+                            </div>
+
+                            <div className="flex flex-col gap-3 w-full">
+                                {sections.map((sec, idx) => {
+                                    const isThemeHook = sec.title.toLowerCase().includes("theme") || sec.title.toLowerCase().includes("hook") || !sec.title;
+                                    const secKey = `${opt.id}-${sec.title}`;
+                                    const isSecExpanded = expandedSections[secKey] || false;
+
+                                    if (isThemeHook) {
+                                        return (
+                                            <div key={idx} className="flex flex-col gap-1 w-full text-xs text-slate-700">
+                                                {sec.title && <h4 className="text-[11px] font-bold text-[#0b1957]">{sec.title}</h4>}
+                                                <div className="text-[11px] text-slate-600 leading-relaxed font-medium markdown-content">
+                                                    <ReactMarkdown
+                                                        components={{
+                                                            h3: ({ ...props }) => <h3 className="text-xs font-bold text-[#0b1957] mt-2 mb-1" {...props} />,
+                                                            p: ({ ...props }) => <p className="text-[11px] text-slate-600 leading-relaxed mb-2" {...props} />,
+                                                            ul: ({ ...props }) => <ul className="list-disc pl-4 mb-2 space-y-1" {...props} />,
+                                                            li: ({ ...props }) => <li className="text-[11px] text-slate-600 leading-relaxed" {...props} />,
+                                                        }}
+                                                    >
+                                                        {sec.content}
+                                                    </ReactMarkdown>
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+
+                                    return (
+                                        <div key={idx} className="w-full border-t border-slate-100/60 pt-2 flex flex-col gap-1.5">
+                                            <div 
+                                                onClick={(e) => toggleSection(opt.id, sec.title, e)}
+                                                className="flex items-center gap-1.5 cursor-pointer text-[#0b1957] hover:text-[#0b1957]/80 select-none w-fit"
+                                            >
+                                                <motion.span 
+                                                    animate={{ rotate: isSecExpanded ? 90 : 0 }}
+                                                    transition={{ duration: 0.15 }}
+                                                    className="flex items-center"
+                                                >
+                                                    <ChevronRight className="size-3 text-[#0b1957]/70" />
+                                                </motion.span>
+                                                <span className="text-[11px] font-bold tracking-wide">{sec.title}</span>
+                                            </div>
+                                            <AnimatePresence initial={false}>
+                                                {isSecExpanded && (
+                                                    <motion.div
+                                                        initial={{ height: 0, opacity: 0 }}
+                                                        animate={{ height: "auto", opacity: 1 }}
+                                                        exit={{ height: 0, opacity: 0 }}
+                                                        transition={{ duration: 0.2, ease: "easeInOut" }}
+                                                        className="overflow-hidden w-full text-[11px] text-slate-600 leading-relaxed font-medium pl-4 markdown-content"
+                                                    >
+                                                        <ReactMarkdown
+                                                            components={{
+                                                                h3: ({ ...props }) => <h3 className="text-xs font-bold text-[#0b1957] mt-2 mb-1" {...props} />,
+                                                                p: ({ ...props }) => <p className="text-[11px] text-slate-600 leading-relaxed mb-2" {...props} />,
+                                                                ul: ({ ...props }) => <ul className="list-disc pl-4 mb-2 space-y-1" {...props} />,
+                                                                li: ({ ...props }) => <li className="text-[11px] text-slate-600 leading-relaxed" {...props} />,
+                                                            }}
+                                                        >
+                                                            {sec.content}
+                                                        </ReactMarkdown>
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center gap-3 border-t border-slate-100 pt-4 mt-1">
+                {onNext && (
+                    <button
+                        onClick={handleSubmit}
+                        disabled={selectedIds.length === 0 || generating}
+                        className="w-full sm:w-auto px-6 bg-[#0b1957] text-white py-2.5 rounded-xl text-xs font-bold transition-all shadow-md hover:shadow-lg disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none cursor-pointer flex items-center justify-center gap-2"
+                    >
+                        {generating && <Loader2 className="size-3.5 animate-spin" />}
+                        Proceed with {selectedIds.length} Selection{selectedIds.length > 1 ? 's' : ''}
+                    </button>
+                )}
+
+                {onNext && (
+                    <button
+                        onClick={() => onNext(["Generate More"])}
+                        disabled={generating}
+                        className="w-full sm:w-auto text-center border border-slate-200 hover:border-slate-300 rounded-xl px-5 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <RefreshCw className="size-3" /> Generate More
+                    </button>
+                )}
+                {skipOption && onNext && (
+                    <button
+                        onClick={() => toggleSelect(skipOption.id, true)}
+                        className="w-full sm:w-auto text-center border border-dashed border-slate-300 hover:border-slate-400 rounded-xl px-5 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50 transition-all cursor-pointer"
+                    >
+                        {(skipOption.label || skipOption.text || "").split("\n")[0] || "Start Directly (Skip Trends)"}
+                    </button>
+                )}
+            </div>
+        </div>
+    );
+}
+
 function MediaStepWidget({ 
     msg, 
     isActive, 
     mb, 
-    submitMediaInput 
+    submitMediaInput,
+    userSelectionText
 }: { 
     msg: any; 
     isActive: boolean; 
     mb: any; 
     submitMediaInput: (text: string, valueToSend?: string | string[]) => void; 
+    userSelectionText?: string;
 }) {
     switch (msg.step) {
         case "builder-image-output":
@@ -10355,6 +11640,7 @@ function MediaStepWidget({
                 </div>
             );
         case "builder-video-progress":
+            if (isActive) return null;
             return (
                 <div className="mt-2 w-[448px] max-w-full bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-md">
                     <AgentBuilderVideoProgress
@@ -10382,6 +11668,20 @@ function MediaStepWidget({
                         hideButtons={true}
                     />
                 </div>
+            );
+        case "builder-trend-options":
+            return (
+                <AgentBuilderTrendOptions
+                    title={isActive ? mb.uiPayload?.title || mb.uiPayload?.question : msg.payload?.title || msg.payload?.question}
+                    description={isActive ? mb.uiPayload?.description : msg.payload?.description}
+                    options={isActive ? mb.uiPayload?.options || [] : msg.payload?.options || []}
+                    onNext={isActive ? (selectedLabels) => {
+                        submitMediaInput(selectedLabels.join(" | "), selectedLabels.join(" | "));
+                    } : undefined}
+                    generating={isActive ? mb.generating : false}
+                    isActive={isActive}
+                    selectionText={userSelectionText}
+                />
             );
         case "gallery":
             return (
@@ -10418,19 +11718,150 @@ function MediaStepWidget({
     }
 }
 
+function SessionSelector({ mb }: { mb: any }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+    const { fetchPastSessions } = mb;
+
+    useEffect(() => {
+        if (isOpen) {
+            fetchPastSessions();
+        }
+    }, [isOpen, fetchPastSessions]);
+
+    // Close on click outside
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    return (
+        <div ref={dropdownRef} style={{ position: 'relative' }}>
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="adv-media-header-exit cursor-pointer"
+                style={{ background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+                <History className="size-4" />
+                Saved Sessions
+            </button>
+
+            {isOpen && (
+                <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    right: 0,
+                    marginTop: '8px',
+                    width: '320px',
+                    maxHeight: '400px',
+                    background: '#fff',
+                    borderRadius: '12px',
+                    border: '1px solid #e5e7eb',
+                    boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+                    zIndex: 1000,
+                    overflowY: 'auto',
+                    padding: '8px 0'
+                }}>
+                    <div style={{ padding: '8px 16px', borderBottom: '1px solid #f3f4f6', fontWeight: 'bold', fontSize: '11px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Saved Sessions
+                    </div>
+                    {mb.loadingSessions ? (
+                        <div style={{ padding: '16px', textAlign: 'center', fontSize: '13px', color: '#9ca3af' }}>
+                            Loading sessions...
+                        </div>
+                    ) : mb.pastSessions?.length === 0 ? (
+                        <div style={{ padding: '16px', textAlign: 'center', fontSize: '13px', color: '#9ca3af' }}>
+                            No saved sessions found.
+                        </div>
+                    ) : (
+                        mb.pastSessions.map((s: any) => {
+                            const isCurrent = s.session_id === mb.sessionId;
+                            return (
+                                <button
+                                    key={s.session_id}
+                                    onClick={() => {
+                                        mb.loadSession(s.session_id);
+                                        setIsOpen(false);
+                                    }}
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px 16px',
+                                        textAlign: 'left',
+                                        background: isCurrent ? '#f1f5f9' : 'transparent',
+                                        border: 'none',
+                                        display: 'block',
+                                        cursor: 'pointer',
+                                        transition: 'background 0.2s',
+                                    }}
+                                    className="hover:bg-slate-50"
+                                >
+                                    <div style={{ fontWeight: 'bold', fontSize: '13px', color: isCurrent ? '#0f172a' : '#334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px' }}>{s.title}</span>
+                                        {isCurrent && <span style={{ fontSize: '10px', background: '#3b82f6', color: '#fff', padding: '1px 5px', borderRadius: '4px' }}>Active</span>}
+                                    </div>
+                                    <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {s.description || 'No description available.'}
+                                    </div>
+                                    <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '4px' }}>
+                                        {s.updated_at ? new Date(s.updated_at).toLocaleString() : 'Date unknown'}
+                                    </div>
+                                </button>
+                            );
+                        })
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
 function MediaBubble({ 
     msg, 
     isActive, 
+    isLastUser,
+    handleMediaBack,
     mb, 
-    submitMediaInput 
+    submitMediaInput,
+    userSelectionText
 }: { 
     msg: any; 
     isActive: boolean; 
+    isLastUser?: boolean;
+    handleMediaBack?: () => void;
     mb: any; 
     submitMediaInput: (text: string, valueToSend?: string | string[]) => void; 
+    userSelectionText?: string;
 }) {
     if (msg.role === 'user') return (
         <div className="adv-bubble adv-bubble-user fadeUp" style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
+            {isLastUser && handleMediaBack && (
+                <button
+                    onClick={handleMediaBack}
+                    title="Undo last message / Revert"
+                    className="adv-bubble-undo-btn"
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: 'none',
+                        background: 'none',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        borderRadius: '4px',
+                        order: 0,
+                        marginRight: '4px',
+                        transition: 'all 0.15s',
+                        alignSelf: 'center',
+                    }}
+                >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+                </button>
+            )}
             <div className="adv-user-msg" style={{ margin: 0, order: 1 }}>
                 <div>{msg.text}</div>
                 {msg.references && msg.references.length > 0 && (
@@ -10528,7 +11959,7 @@ function MediaBubble({
                         )}
 
                         {/* Visual widget/output if applicable */}
-                        <MediaStepWidget msg={msg} isActive={isActive} mb={mb} submitMediaInput={submitMediaInput} />
+                        <MediaStepWidget msg={msg} isActive={isActive} mb={mb} submitMediaInput={submitMediaInput} userSelectionText={userSelectionText} />
                     </div>
                 )}
             </div>
@@ -10550,6 +11981,14 @@ const css = `
             @keyframes slideInRight {from {opacity:0; transform:translateX(100%); } to {opacity:1; transform:translateX(0); } }
             @keyframes spin {to {transform: rotate(360deg); } }
             @keyframes pulse {0 %, 100 % { opacity: .4 } 50% {opacity:1 } }
+            @keyframes recPulse {
+                0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+                70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+                100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+            }
+            .recording-pulse {
+                animation: recPulse 1.5s infinite;
+            }
             .fadeUp {animation: fadeUp .35s ease both; }
 
             /* ── LANDING ── */
@@ -10624,7 +12063,6 @@ const css = `
             .adv-chat-root {height:100vh; display:flex; flex-direction:column; background:#fff; position: relative; }
             .adv-yellow-bar {height:4px; background:linear-gradient(90deg,#0b1957,#1a3a8f,#2563eb); flex-shrink:0; }
             .adv-chat-main {flex:1; display:flex; overflow:hidden; }
-            /* adv-chat-left defined below with split-screen update */
             .adv-chat-back {position:absolute; top:16px; left:20px; z-index:10; width:42px; height:42px; border-radius:50%; border:1px solid #e5e7eb; background:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,.06); transition:all .15s; }
             .adv-chat-back:hover {background:#f3f4f6; }
             .adv-chat-msgs {flex:1; overflow-y:auto; padding:72px 0 8px; display:flex; flex-direction:column; }
@@ -10684,7 +12122,7 @@ const css = `
             .adv-spinner {width:15px; height:15px; border:2px solid #fff; border-top:2px solid transparent; border-radius:50%; animation:spin .8s linear infinite; }
 
             /* ── TARGETING CARD ── */
-            .adv-targeting-card {margin - top:12px; background:linear-gradient(135deg,#f2f6fa,#e0eaf5); border:1px solid #c2d6eb; border-radius:16px; padding:14px 16px; }
+            .adv-targeting-card {margin-top:12px; background:linear-gradient(135deg,#f2f6fa,#e0eaf5); border:1px solid #c2d6eb; border-radius:16px; padding:14px 16px; }
             .adv-tc-header {display:flex; align-items:center; gap:6px; margin-bottom:10px; font-size:13px; color:#0b1957; }
             .adv-tag-row {display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-bottom:6px; }
             .adv-tag-label {font-size:11px; font-weight:600; color:#0b1957; min-width:70px; }
@@ -10709,11 +12147,10 @@ const css = `
                 to { opacity: 1; transform: translateX(0); }
             }
 
-
             /* ── MINI LEADS IN CHAT ── */
-            .adv-mini-leads {margin - top:12px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:16px; padding:12px 14px; }
+            .adv-mini-leads {margin-top:12px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:16px; padding:12px 14px; }
             .adv-ml-header {display:flex; align-items:center; gap:6px; margin-bottom:10px; font-size:12px; font-weight:600; color:#166534; }
-            .adv-ml-count {margin - left:auto; font-size:11px; color:#16a34a; background:#dcfce7; padding:2px 10px; border-radius:20px; font-weight:500; }
+            .adv-ml-count {margin-left:auto; font-size:11px; color:#16a34a; background:#dcfce7; padding:2px 10px; border-radius:20px; font-weight:500; }
             .adv-ml-item {display:flex; align-items:center; gap:10px; padding:8px 0; border-top:1px solid #dcfce7; }
             .adv-ml-item:first-of-type {border-top:none; }
             .adv-ml-avatar {width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-size:10px; font-weight:700; flex-shrink:0; }
@@ -10768,15 +12205,15 @@ const css = `
             .adv-lead-info {flex:1; min-width:0; }
             .adv-lead-name {font-size:14px; font-weight:700; color:#111827; display:flex; align-items:center; gap:4px; }
             .adv-verified {background:#10b981; color:#fff; border-radius:50%; width:16px; height:16px; display:inline-flex; align-items:center; justify-content:center; font-size:9px; font-weight:800; }
-            .adv-lead-title {font-size:12px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+            .adv-lead-title {font-size:12px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:10px}
             .adv-lead-company {font-size:12px; font-weight:600; color:#374151; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-            .adv-lead-platform {margin - top:4px; display:flex; gap:4px; }
+            .adv-lead-platform {margin-top:4px; display:flex; gap:4px; }
             .adv-lead-action {width:36px; height:36px; border-radius:50%; border:1.5px solid #e5e7eb; background:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; transition:all .15s; }
             .adv-lead-action:hover:not(:disabled) {border-color:#0b1957; background:#f2f6fa; }
             .adv-lead-action:disabled {cursor:default; }
             .adv-lead-avatar-img {width:42px; height:42px; border-radius:50%; object-fit:cover; flex-shrink:0; border:1.5px solid #e5e7eb; }
             .adv-lead-location {font-size:11px; color:#9ca3af; margin-top:2px; }
-            .adv-panel-footer {text - align:center; padding:20px 0 8px; font-size:12px; color:#9ca3af; border-top:1px solid #f3f4f6; margin-top:16px; }
+            .adv-panel-footer {text-align:center; padding:20px 0 8px; font-size:12px; color:#9ca3af; border-top:1px solid #f3f4f6; margin-top:16px; }
 
             /* ── GEMINI-STYLE LANDING ── */
             .adv-gemini-hero {
@@ -10815,7 +12252,7 @@ const css = `
             .adv-gemini-sparkle {
                 width: 32px;
                 height: 32px;
-                color: #c2d6eb;
+                color: #1f2937;
                 opacity: 0.7;
                 animation: fadeUp 0.6s ease 0.2s both;
             }
@@ -10825,54 +12262,51 @@ const css = `
                 gap: 10px;
                 padding: 0 20px 20px;
                 width: 100%;
-                max-width: 70%;
-                margin: 0 auto;
-                flex-wrap: wrap;
-                justify-content: center;
+                max-width: 100%;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
                 animation: fadeUp 0.5s ease 0.15s both;
+                justify-content: center;
             }
+            .adv-gemini-chips::-webkit-scrollbar {display:none; }
             .adv-gemini-chip {
                 display: inline-flex;
                 align-items: center;
-                gap: 8px;
-                padding: 10px 20px;
-                border: 1.5px solid transparent;
-                border-radius: 24px;
-                font-size: 13.5px;
+                gap: 9px;
+                padding: 9px 15px 9px 9px;
+                border: 1px solid #e4eaf5;
+                border-radius: 14px;
+                font-size: 13px;
                 font-weight: 500;
-                color: #374151;
+                letter-spacing: -0.006em;
+                color: #55607a;
                 background: #fff;
                 cursor: pointer;
-                transition: all 0.15s;
+                transition: color .2s, border-color .2s, transform .2s cubic-bezier(.2,.7,.2,1), box-shadow .2s;
                 white-space: nowrap;
                 flex: 0 0 auto;
-                position: relative;
-                z-index: 0;
             }
-            .adv-gemini-chip::before {
-                content: '';
-                position: absolute;
-                inset: -1.5px;
-                border-radius: 25.5px;
-                padding: 1.5px;
-                background: linear-gradient(90deg,#0b1957,#1a3a8f,#2563eb,#3b82f6,#0b1957);
-                background-size: 300% 100%;
-                animation: adv-border-move 4s linear infinite;
-                -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-                -webkit-mask-composite: xor;
-                mask-composite: exclude;
-                z-index: -1;
-                pointer-events: none;
-                opacity: 0.5;
-                transition: opacity 0.2s;
-            }
-            .adv-gemini-chip:hover::before {
-                opacity: 1;
+            .adv-gemini-chip svg {
+                width: 26px;
+                height: 26px;
+                padding: 5.5px;
+                box-sizing: border-box;
+                border-radius: 9px;
+                background: #f1f4fc;
+                color: #2563eb;
+                flex: none;
+                transition: background .2s, color .2s;
             }
             .adv-gemini-chip:hover {
-                background: #fafaff;
+                color: #0b1330;
+                border-color: #cfd9ee;
+                transform: translateY(-2px);
+                box-shadow: 0 10px 24px -10px rgba(11,25,87,.22);
+            }
+            .adv-gemini-chip:hover svg {
+                background: #e4ecfb;
                 color: #0b1957;
-                box-shadow: 0 2px 12px rgba(11,25,87,0.1);
             }
             /* ── MOBILE RESPONSIVE ── */
             @media (max-width: 768px) {
@@ -10906,15 +12340,16 @@ const css = `
                     min-height: 64px !important;
                     flex: 0 0 auto !important;
                 }
-                html, body, .adv-landing, .adv-chat-root, main { background: #FFFFFF !important; }
-                .adv-chat-input-box { width: 100% !important; max-width: 100% !important; border-radius: 20px; padding: 16px 18px 12px; border: none !important; box-shadow: none !important; outline: none !important; background: #FFFFFF !important; }
-                .adv-chat-ta { text-align: center; font-size: 15px !important; outline: none !important; border: none !important; background: #FFFFFF !important; }
-                .adv-chat-back { width: 36px; height: 36px; top: 82px; left: 12px; z-index: 2000 !important; }
+                /* FIXED: Extracted background color overrides so dark utility classes do not get blocked by media reset queries */
+                .adv-chat-input-box { width: 100% !important; max-width: 100% !important; border-radius: 20px; padding: 16px 18px 12px; border: none !important; box-shadow: none !important; outline: none !important; }
+                .adv-chat-back { width: 36px; height: 36px; top: 82px; left: 12px; z-index: 10 !important; }
                 .adv-leads-panel {width: 100% !important; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 50; border-left: none; }
-                main { overflow: hidden !important; height: calc(100vh - 64px) !important; padding-top: 0 !important; background: #FFFFFF !important; }
-                .adv-chat-root { height: calc(100vh - 64px) !important; overflow: hidden !important; background: #FFFFFF !important; }
-                .adv-chat-main { background: #FFFFFF !important; }
-                .adv-chat-left { width: 100% !important; max-width: 100vw !important; overflow: hidden !important; display: flex; flex-direction: column; align-items: stretch !important; height: calc(100vh - 64px) !important; position: relative; background: #FFFFFF !important; }
+                
+                /* FIXED: Combined height calculations with fallback thresholds to guarantee absolute full coverage on viewports */
+                main { overflow: hidden !important; padding-top: 0 !important; }
+                .adv-chat-root { height: calc(100vh - 64px) !important; min-height: calc(100vmax - 64px) !important; overflow: hidden !important; }
+                
+                .adv-chat-left { width: 100% !important; max-width: 100vw !important; overflow: hidden !important; display: flex; flex-direction: column; align-items: stretch !important; height: calc(100vh - 64px) !important; min-height: calc(100vmax - 64px) !important; position: relative; }
                 .adv-chat-left-empty { justify-content: center !important; padding-bottom: 40px !important; gap: 20px; }
                 .adv-chat-left-empty .adv-chat-msgs { flex: 0 0 auto !important; display: flex; flex-direction: column; justify-content: center; padding: 0 !important; height: auto !important; margin-bottom: 0 !important; }
                 .adv-chat-left-empty .adv-msgs-inner { display: none !important; }
@@ -10923,14 +12358,13 @@ const css = `
                 .adv-chat-left-empty .adv-chat-ta { font-size: 20px !important; }
                 .adv-mobile-icp-box { display: flex; width: auto !important; left: auto !important; right: 12px !important; top: 82px !important; }
                 /* Decrease width for a more contained look on mobile */
-                .adv-chat-msgs { flex: 1 !important; overflow-y: auto !important; padding: 72px 0 10px !important; width: 100% !important; display: flex; flex-direction: column; overflow-x: hidden !important; border: none !important; background: #FFFFFF !important; }
+                .adv-chat-msgs { flex: 1 !important; overflow-y: auto !important; padding: 72px 0 10px !important; width: 100% !important; display: flex; flex-direction: column; overflow-x: hidden !important; border: none !important; }
                 .adv-msgs-inner { width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 0 20px !important; box-sizing: border-box !important; }
-                .adv-chat-input-wrap { width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 1px 16px 20px !important; box-sizing: border-box !important; background: #FFFFFF !important; border-top: none !important; flex: 0 0 auto !important; position: relative; z-index: 10; }
-                .adv-mobile-footer { background: #FFFFFF !important; }
-                .adv-chat-input-box { width: 100% !important; max-width: 88% !important; margin: 0 auto !important; border-radius: 16px; padding: 10px 14px; background: #FFFFFF !important; border: 1.5px solid #e5e7eb !important; }
+                .adv-chat-input-wrap { width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 1px 16px 20px !important; box-sizing: border-box !important; border-top: none !important; flex: 0 0 auto !important; position: relative; z-index: 10; }
+                .adv-chat-input-box { width: 100% !important; max-width: 88% !important; margin: 0 auto !important; border-radius: 16px; padding: 10px 14px; }
                 .adv-input-central-group { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; }
-                  .adv-chat-ta { width: 100% !important; border: none !important; background: none !important; font-size: 14px !important; text-align: center !important; padding: 2px 0 !important; min-height: 24px !important; height: 24px !important; line-height: 24px !important; }
-                .adv-chat-input-foot { padding: 4px 0 2px !important; margin-top: 4px !important; border: none !important; background: none !important; justify-content: center !important; gap: 10px !important; }
+                .adv-chat-ta { width: 100% !important; border: none !important; background: none !important; font-size: 11px !important; text-align: left !important; padding: 2px 0 !important; min-height: 24px !important; height: 24px !important; line-height: 24px !important; }
+                .adv-chat-input-foot { padding: 4px 0 2px !important; margin-top: 4px !important; border: none !important; background: none !important; justify-content: space-between !important; gap: 10px !important; }
                 .adv-premium-btn { width: auto !important; min-width: 95px !important; justify-content: center !important; padding: 3px 10px !important; margin: 0 !important; font-size: 10px !important; }
                 .adv-chat-attach-btn, .adv-send-sm { width: 28px !important; height: 28px !important; }
                 .adv-chat-attach-btn svg, .adv-send-sm svg { width: 13px !important; height: 13px !important; }
@@ -10992,7 +12426,6 @@ const css = `
                 .adv-result-cards { display: flex !important; flex-wrap: wrap !important; visibility: visible !important; opacity: 1 !important; justify-content: center !important; }
                 .adv-rc { display: flex !important; width: 100% !important; }
                 .adv-rc-leads { display: none !important; }
-                .adv-rc-leads { display: none !important; }
                 .adv-icp-discover-btn { display: none !important; }
                 .adv-mobile-icp-box { top: 90px !important; }
                 .adv-mobile-icp-btn {
@@ -11021,7 +12454,7 @@ const css = `
                 /* MOBILE FOOTER */
                 .adv-mobile-footer {
                     display: flex; position: fixed; bottom: 10px; left: 6%; right: 6%;
-                    height: 60px; background: #FFFFFF !important; border-radius: 40px; z-index: 1000;
+                    height: 60px; border-radius: 40px; z-index: 1000;
                     box-shadow: 0 8px 24px rgba(0,0,0,0.12);
                     justify-content: space-around; align-items: center;
                     padding: 0 10px; border: none;
@@ -11083,21 +12516,52 @@ const css = `
                     min-height: 64px !important;
                 }
                 .adv-recent-wrap { width: 90% !important; margin: 16px auto 0 !important; }
+
+                /* ── MOBILE LIGHT THEME DEFAULTS ── */
+                html, body, main, .adv-landing, .adv-chat-root, .adv-chat-main, .adv-chat-left, .adv-mobile-footer, .adv-chat-msgs, .adv-chat-input-wrap { background: #FFFFFF; }
+                .adv-chat-input-box { background: #FFFFFF; border: 1.5px solid #e5e7eb; }
+                .adv-chat-ta { background: transparent; }
+
+                /* ── MOBILE DARK MODE OVERRIDES ── */
+                .dark html, .dark body, .dark main, .dark #__next, .dark [data-reactroot], .dark .adv-landing, .dark .adv-chat-root, .dark .adv-chat-main, .dark .adv-chat-left { background: #000724 !important; }
+                .dark .adv-chat-input-box { background: #1A2A43 !important; border: 1.5px solid #1e293b !important; }
+                .dark .adv-chat-ta { background: transparent !important; }
+                .dark .adv-chat-input-wrap { background: #000724 !important; }
+                .dark .adv-mobile-footer { background: #000724 !important; border-top: 1px solid #1e293b !important; box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4) !important; }
+                .dark .adv-footer-btn.active .adv-footer-btn-icon { background: #2B7CFF !important; color: #000724 !important; }
+                .dark .adv-footer-btn { color: #7a8ba3; }
+                .dark .adv-footer-btn-icon { color: #cbd5e1; }
+                .dark .adv-footer-btn.active { color: #ffffff; }
+                .dark .adv-mobile-add-btn { background: #1A2A43 !important; border-color: #1e293b !important; color: #ffffff !important; }
+                .dark .adv-mobile-send-btn { background: #2B7CFF !important; border-color: #2B7CFF !important; color: #000724 !important; }
+                .dark .adv-mobile-send-btn:disabled { background: #1A2A43 !important; border-color: #1e293b !important; color: #7a8ba3 !important; }
+                .dark .adv-opt-btn { background: #1A2A43 !important; border-color: #1e293b !important; color: #ffffff !important; }
+                .dark .adv-opt-btn:first-child { background: #2B7CFF !important; color: #000724 !important; border: none !important; }
+                .dark .adv-mobile-chip { border-color: #1e293b !important; }
+                .dark .adv-chip-primary { background: #1A2A43 !important; color: #ffffff !important; }
+                .dark .adv-chip-navy { background: #2B7CFF !important; color: #000724 !important; }
+                .dark .adv-chat-msgs { background: #000724 !important; }
             }
             @media (max-width: 480px) {
                 .adv-gemini-title {font-size: 18px; margin-bottom: 20px; }
                 .adv-gemini-chips { gap: 8px !important; padding: 0 12px 12px !important; }
                 .adv-gemini-chip { padding: 10px 8px !important; font-size: 11px !important; gap: 6px !important; min-height: 56px !important; }
 
+                /* ── MOBILE DARK MODE OVERRIDES (EXTRA SMALL DEVICES) ── */
+                .dark .adv-gemini-chip { background: #0e1834 !important; border-color: #1e2a4a !important; }
             }
 
             /* Dark Mode Styling - uses .dark class on <html> */
             .dark .adv-landing { background: #000724; color: #ffffff; }
-            .dark .adv-chat-root { background: #000724; color: #ffffff; }
+            .dark .adv-chat-root { background: #000724 !important; color: #ffffff; }
             .dark .adv-chat-body { background: #000724; }
             .dark .adv-chat-left { background: #000724; }
             .dark .adv-chat-left-empty .adv-chat-input-wrap { background: transparent; }
-
+            /* ── Chat Input Wrap ── */
+            .dark .adv-chat-input-wrap { 
+                background: #000724; 
+                border-top: 1px solid #000724; /* Prevents a light line appearing above the input */
+            }
             /* Text & Titles */
             .dark .adv-title { color: #ffffff; }
             .dark .adv-gemini-title { color: #ffffff; }
@@ -11111,8 +12575,10 @@ const css = `
             /* Chips & Interactive Elements */
             .dark .adv-chip { background: #1A2A43; color: #ffffff; border: 1px solid #000724; }
             .dark .adv-chip:hover { background: #2B7CFF; color: #ffffff; }
-            .dark .adv-gemini-chip { background: #1A2A43; color: #ffffff; border: 1px solid #000724; }
-            .dark .adv-gemini-chip:hover { background: #2B7CFF; color: #ffffff; }
+            .dark .adv-gemini-chip { background: #0e1834; color: #9aa6c4; border: 1px solid #1e2a4a; }
+            .dark .adv-gemini-chip svg { background: #131f3d; color: #5b8def; }
+            .dark .adv-gemini-chip:hover { background: #0e1834; color: #eaeffb; border-color: #2c3b63; transform: translateY(-2px); box-shadow: 0 14px 30px -12px rgba(0,0,0,.6); }
+            .dark .adv-gemini-chip:hover svg { background: #16234a; color: #7ba4f5; }
 
             /* Options & Dropdowns */
             .dark .adv-close-btn { color: #ffffff; }
@@ -11137,7 +12603,7 @@ const css = `
             .dark .adv-chat-input-box input { color: #ffffff; }
             .dark .adv-chat-input-foot { border-top: none; }
             .dark .adv-chat-ta { color: #ffffff; }
-            .dark .adv-chat-ta::placeholder { color: #7a8ba3; }
+            .dark .adv-chat-ta::placeholder { color: #cbd5e1; }
 
             /* Recent Items */
             .dark .adv-recent-item { color: #ffffff; background: #1A2A43; }
@@ -11149,11 +12615,22 @@ const css = `
 
             /* CHAT BUBBLES & MESSAGES */
             .dark .adv-user-msg { background: #2563eb; color: #ffffff; box-shadow: 0 2px 14px rgba(37, 99, 235, 0.3); }
-            .dark .adv-ai-avatar { background: linear-gradient(135deg, #2563eb, #1e40af); box-shadow: 0 3px 10px rgba(37, 99, 235, 0.3); }
+ 
             .dark .adv-ai-name { color: #60a5fa; }
             .dark .adv-ai-text { color: #e5e7eb; }
             .dark .adv-ai-h3 { color: #f3f4f6; }
-            .dark .adv-ai-bullet-dot { background: #2B7CFF; }
+            .dark .adv-ai-bullet {
+                color: #e5e7eb; 
+            }
+            .dark .adv-ai-bullet-dot {
+                background: #60a5fa; 
+                opacity: 1;
+            }
+            /* Dark Mode Override */
+            .dark .adv-ai-text strong {
+                color: #ffffff; 
+                font-weight: 600;
+            }
             .dark .adv-ai-num-badge { background: linear-gradient(135deg, #253456, #1A2A43); color: #60a5fa; }
 
             /* LEADS PANEL */
@@ -11161,7 +12638,7 @@ const css = `
             .dark .adv-panel-header { background: #0f1629; border-bottom-color: #000724; }
             .dark .adv-panel-body { background: #000724; }
             .dark .adv-panel-title { color: #ffffff; }
-            .dark .adv-panel-desc { background: #1A2A43; color: #7a8ba3; border-color: #000724; }
+            .dark .adv-panel-desc { background: #1A2A43; color: #e5e7eb; border-color: #000724; }
             .dark .adv-lead-card { background: transparent; }
             .dark .adv-lead-card:hover { background: #253456; }
             .dark .adv-lead-name { color: #ffffff; }
@@ -11181,7 +12658,7 @@ const css = `
 
             /* MINI LEADS */
             .dark .adv-mini-leads { background: #1A2A43; border-color: #000724; }
-            .dark .adv-ml-header { color: #60a5fa; }
+            .dark .dark .adv-ml-header { color: #60a5fa; }
             .dark .adv-ml-count { background: #253456; color: #60a5fa; }
             .dark .adv-ml-item { border-top-color: #000724; }
             .dark .adv-ml-name { color: #ffffff; }
@@ -11222,10 +12699,172 @@ const css = `
             .dark .adv-tag { background: #253456; color: #ffffff; border-color: #000724; }
 
             /* MISC ELEMENTS */
-            .dark .adv-gemini-sparkle { color: #2B7CFF; }
+            .dark .adv-gemini-sparkle { color: white; }
             .dark .adv-web-searched { background: #1A2A43; border-color: #000724; color: #7a8ba3; }
-            .dark .adv-thinking-wrap { color: #60a5fa; }
+            .dark .adv-thinking-wrap,
+            .dark .adv-thinking-word {
+              color: #ffffff !important;
+            }
             .dark .adv-gemini-logo { filter: brightness(0) invert(1); }
+            :root { --header-start: #f0f3ff; --header-end: #e8ecfa; }
+            .dark { --header-start: #000c3b; --header-end: #000724; }
+                        
+            .dark .adv-attach-menu {
+                background: #000724;
+                border: 1px solid #1e293b;
+                box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+            }
+            
+            .dark .adv-attach-item:hover {
+                background: #1e293b;
+            }
+            
+            .dark .adv-attach-label {
+                color: #f3f4f6;
+            }
+            
+            .dark .adv-attach-sub {
+                color: #94a3b8;
+            }
+            
+            .dark .adv-attach-divider {
+                background: #1e293b;
+            }
+            .dark .adv-ai-body {
+                background-color: #000724; 
+                border-color: #1e293b;     
+                color: #e5e7eb;            
+            }
+            
+            .dark .adv-ta,
+            .dark .adv-chat-ta {
+                color: #f9fafb !important;
+            }
+            
+            .dark .adv-ta::placeholder,
+            .dark .adv-chat-ta::placeholder {
+                color: #cbd5e1 !important;
+            }
+            
+            .dark ::-webkit-scrollbar {
+                width: 8px;
+                height: 8px;
+            }
+            .dark ::-webkit-scrollbar-track {
+                background: #000724;
+            }
+            .dark ::-webkit-scrollbar-thumb {
+                background: #1e293b;
+                border-radius: 4px;
+            }
+            .dark ::-webkit-scrollbar-thumb:hover {
+                background: #334155;
+            }
+            
+            .dark .adv-ai-text a {
+                color: #60a5fa !important;
+                text-decoration: underline;
+                text-decoration-color: rgba(96, 165, 250, 0.3);
+            }
+            .dark .adv-ai-text a:hover {
+                color: #93c5fd !important;
+            }
+            
+            .dark .adv-ai-hr {
+                border-top: 1px solid #1e293b;
+            }
+            
+            .dark .adv-chat-input-foot {
+                border-top: 1px solid #1e293b !important;
+            }
+            
+            .dark .journey-tip {
+                background: #1e293b !important;
+                color: #f1f5f9 !important;
+                border: 1px solid #334155 !important;
+            }
+            .dark .journey-tip div {
+                border-top-color: #1e293b !important;
+            }
+            
+            .dark .adv-ai-body a[target="_blank"] {
+                background: #0f172a !important;
+                border: 1px solid #1e293b !important;
+                color: #94a3b8 !important;
+            }
+            .dark .adv-ai-body a[target="_blank"]:hover {
+                background: #1e293b !important;
+                color: #f8fafc !important;
+            }
+            
+            .dark .adv-ai-text code {
+                background: #1e293b !important;
+                color: #cbd5e1 !important;
+            }
+            
+            .dark .adv-ai-name {
+                color: #60a5fa !important;
+            }
+            
+.dark .adv-ai-avatar {
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0px;
+}
+
+.dark .adv-ai-avatar-viz svg,
+.dark .adv-ai-avatar-viz img,
+.dark .adv-ai-avatar-viz * {
+  fill: #ffffff !important;
+  stroke: #ffffff !important;
+  color: #ffffff !important;
+}
+
+.dark .agent-avatar-wrapper {
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+.dark .agent-avatar-wrapper * {
+  fill: #ffffff !important;
+  stroke: #ffffff !important;
+  color: #ffffff !important;
+}
+            .dark .adv-chat-root { background: #000724 !important; }
+:root {
+  /* Light mode variables matching image_d9ace3.png */
+  --box-bg: #ffffff;
+  --box-border: #e2e8f0; /* Soft border color */
+  --box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+}
+
+.dark            {
+  /* Keep your dark mode variables here */
+  --box-bg: #000724;
+  --box-border: #1e293b;
+  --box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+:root {
+  /* Light Mode */
+  --opt-border: #e5e7eb;
+  --opt-selected-border: #0b1957;
+  --opt-bg: #fff;
+  --opt-selected-bg: #e8ecfa;
+  --opt-text: #374151;
+  --opt-selected-text: #0b1957;
+}
+
+.dark {
+  /* Dark Mode */
+  --opt-border: #1e293b;
+  --opt-selected-border: #6366f1; /* Indigo-500 */
+  --opt-bg: #000724;
+  --opt-selected-bg: #2563eb; /* Indigo-900/30 */
+  --opt-text: #9ca3af;
+  --opt-selected-text: #e2e8f0;
+}
 
             /* ── MEDIA GENERATION CONNECTED OPTIONS PANEL ── */
             .adv-options-extension {
@@ -11325,8 +12964,10 @@ const css = `
                 font-size: 15px;
                 font-weight: 600;
                 color: #0b1957;
-                text-align: center;
-                flex-grow: 1;
+                position: absolute;
+                left: 50%;
+                transform: translateX(-50%);
+                pointer-events: none;
             }
             .dark .adv-media-header-title {
                 color: #60a5fa;
@@ -11350,6 +12991,110 @@ const css = `
             .dark .adv-media-header-exit {
                 background: rgba(239,68,68,0.1);
                 border-color: #ef4444;
+            }
+            .adv-media-header-exit-btn {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 0px;
+                padding: 7px;
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                border: 1.5px solid #ef4444;
+                background: #fef2f2;
+                color: #ef4444;
+                font-size: 12px;
+                font-weight: 600;
+                overflow: hidden;
+                white-space: nowrap;
+                transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-radius 0.25s, padding 0.25s, gap 0.25s;
+                cursor: pointer;
+            }
+            .adv-media-header-exit-btn span {
+                opacity: 0;
+                max-width: 0;
+                transition: opacity 0.15s ease, max-width 0.25s ease;
+                display: inline-block;
+            }
+            .adv-media-header-exit-btn:hover {
+                width: 125px;
+                border-radius: 20px;
+                padding: 7px 14px;
+                gap: 6px;
+                background: #fee2e2;
+                justify-content: flex-start;
+            }
+            .adv-media-header-exit-btn:hover span {
+                opacity: 1;
+                max-width: 100px;
+            }
+            .dark .adv-media-header-exit-btn {
+                background: rgba(239,68,68,0.1);
+                border-color: #ef4444;
+            }
+            .adv-media-header-back-btn {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 0px;
+                padding: 7px;
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                border: 1.5px solid #cbd5e1;
+                background: #ffffff;
+                color: #475569;
+                font-size: 11px;
+                font-weight: 600;
+                overflow: hidden;
+                white-space: nowrap;
+                transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-radius 0.25s, padding 0.25s, gap 0.25s;
+                cursor: pointer;
+            }
+            .adv-media-header-back-btn span {
+                opacity: 0;
+                max-width: 0;
+                transition: opacity 0.15s ease, max-width 0.25s ease;
+                display: inline-block;
+            }
+            .adv-media-header-back-btn:hover {
+                width: 155px;
+                border-radius: 20px;
+                padding: 7px 12px;
+                gap: 6px;
+                background: #f1f5f9;
+                border-color: #64748b;
+                color: #1e293b;
+                justify-content: flex-start;
+            }
+            .adv-media-header-back-btn:hover span {
+                opacity: 1;
+                max-width: 110px;
+            }
+            .dark .adv-media-header-back-btn {
+                background: #1a2a43;
+                border-color: #253456;
+                color: #cbd5e1;
+            }
+            .dark .adv-media-header-back-btn:hover {
+                background: #253456;
+                border-color: #475569;
+                color: #f8fafc;
+            }
+
+            .adv-bubble-undo-btn {
+                color: #94a3b8;
+                border-radius: 4px;
+                transition: all 0.15s;
+            }
+            .adv-bubble-undo-btn:hover {
+                color: #ef4444 !important;
+                background: #fef2f2 !important;
+                transform: scale(1.1);
+            }
+            .dark .adv-bubble-undo-btn:hover {
+                background: rgba(239, 68, 68, 0.15) !important;
             }
             /* transparency fade overlay */
             .adv-media-header-fade {

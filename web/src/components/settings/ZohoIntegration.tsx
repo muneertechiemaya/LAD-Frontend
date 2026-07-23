@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import Link from 'next/link';
 import {
   CheckCircle2,
   AlertCircle,
@@ -512,11 +513,11 @@ export const ZohoIntegration: React.FC = () => {
               Your Zoho Contacts, Leads, Deals, and Tasks are on the CRM page.
             </p>
           </div>
-          <a href="/crm/zoho">
+          <Link href="/crm/zoho">
             <Button variant="outline">
               Open Zoho CRM <ChevronRight className="h-4 w-4 ml-2" />
             </Button>
-          </a>
+          </Link>
         </CardContent>
       </Card>
     </div>

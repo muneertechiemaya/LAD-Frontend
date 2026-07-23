@@ -1013,7 +1013,7 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
                   className="hover:bg-gray-50 dark:hover:bg-[#253456] transition-colors"
                 >
                   <TableCell className="w-[110px]">
-                    <p className="text-sm text-[#64748B]">
+                    <p className="text-sm text-[#64748B] dark:text-slate-300">
                       {formatDateTimeUnified(lead.latestTimestamp)}
                     </p>
                   </TableCell>
@@ -1375,29 +1375,43 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
       {/* Pagination Controls */}
       {totalLeads > 0 && (
         <div className="flex items-center justify-between px-2 xs:px-4 py-3 gap-2 border-t border-[#E2E8F0] dark:border-[#262831] bg-[#F8FAFC] dark:bg-[#000724]">
-          <div className="flex items-center gap-2 text-xs xs:text-sm text-[#64748B]">
-            <span>Show</span>
-            <select
-              value={currentPageSize}
-              onChange={(e) => {
-                setCurrentPageSize(Number(e.target.value));
+          <div className="flex items-center gap-2 text-xs xs:text-sm text-[#64748B] dark:text-slate-300">
+              <span>Show</span>
+            <Select
+              value={String(currentPageSize)}
+                onValueChange={(value) => {
+                setCurrentPageSize(Number(value));
                 setCurrentPage(1);
               }}
-              className="border border-[#E2E8F0] rounded px-2 py-1 text-sm bg-transparent"
             >
-              {[10, 20, 50, 100].map((size) => (
-                <option key={size} value={size}>
+              <SelectTrigger className="w-[75px] h-8 text-xs bg-transparent border-slate-200 dark:border-[#262831] text-slate-800 dark:text-white">
+                <SelectValue placeholder={currentPageSize} />
+              </SelectTrigger>
+
+              {/* Apply strict minimum/maximum width parameters directly to the content card wrapper */}
+              <SelectContent className="bg-white dark:bg-[#000724] border-slate-200 dark:border-[#262831] min-w-[75px] max-w-[75px] w-[75px] p-0">
+                {/* Explicitly target the underlying Radix Viewport container element to prevent hidden stretching padding metrics */}
+                <div className="*:data-[slot=select-viewport]:min-w-[75px] *:data-[slot=select-viewport]:w-[75px] *:data-[slot=select-viewport]:p-1">
+                  {[10, 20, 50, 100].map((size) => (
+                      <SelectItem
+                          key={size}
+                          value={String(size)}
+                          // Keep your clean custom hover matrix settings intact
+                          className="dark:focus:bg-[#22C55E] dark:focus:text-[#000724] dark:data-[state=checked]:focus:bg-[#22C55E] dark:data-[state=checked]:focus:text-[#000724] pl-3 pr-6 text-xs justify-start"
+                      >
                   {size}
-                </option>
+                </SelectItem>
               ))}
-            </select>
+            </div>
+              </SelectContent>
+            </Select>
             <span className="whitespace-nowrap">
               of {totalLeads} leads
             </span>
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="text-[10px] xs:text-xs sm:text-sm text-[#64748B] whitespace-nowrap">
+            <div className="text-[10px] xs:text-xs sm:text-sm text-[#64748B] dark:text-slate-300 whitespace-nowrap">
               Page {currentPage} of {totalPages}
             </div>
 

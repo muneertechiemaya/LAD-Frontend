@@ -19,6 +19,7 @@ export type StepType =
   | 'instagram_comment_reply'
   | 'instagram_story_view'
   | 'lead_generation'
+  | 'media_generation'
   | 'delay'
   | 'condition'
   | 'start'
@@ -26,7 +27,9 @@ export type StepType =
   // Custom Workflow Builder macro nodes (visual-only; expanded/stripped at launch)
   | 'followup_sequence'
   | 'analytics_report'
-  | 'zoho_update';
+  | 'zoho_update'
+  | 'switch'
+  | 'ai_parse';
 export type ConditionType = 
   | 'connected'           // LinkedIn: if connected
   | 'linkedin_replied'     // LinkedIn: if replied to message
@@ -117,4 +120,4 @@ export interface StepDefinition {
   description: string;
   category: 'linkedin' | 'email' | 'whatsapp' | 'voice' | 'instagram' | 'utility' | 'leads';
   defaultData: Partial<StepData>;
-}
+}

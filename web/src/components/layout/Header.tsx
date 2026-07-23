@@ -51,8 +51,10 @@ export function NavbarDemo() {
           <NavbarLogo />
           <NavItems items={navItems} activePath={pathname} />
           <div className="flex items-center gap-4">
-            <ThemeToggle />
-            <NavbarButton variant="secondary" onClick={login}>Login</NavbarButton>
+            <ThemeToggle/>
+            {!isLoginPage ? (
+              <NavbarButton variant="secondary" onClick={login}>Login</NavbarButton>
+            ) : ''}
             <NavbarButton variant="primary" onClick={handleGetStarted}>Get Started</NavbarButton>
           </div>
         </NavBody>

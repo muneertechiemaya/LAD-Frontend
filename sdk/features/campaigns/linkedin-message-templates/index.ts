@@ -12,6 +12,7 @@ export type {
   TemplateFilters,
   PersonalizedTemplate,
   TemplateCategory,
+  TemplateType,
   TemplateMedia,
   TemplateMediaType,
   TemplateMediaUploadResult,
@@ -19,6 +20,8 @@ export type {
 
 export {
   TEMPLATE_CATEGORIES,
+  TEMPLATE_TYPES,
+  templateTypeLabel,
   MESSAGE_VARIABLES,
   CONNECTION_MESSAGE_MAX_LENGTH,
 } from './types';

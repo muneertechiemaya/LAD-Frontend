@@ -53,27 +53,26 @@ export const MicrosoftAuthIntegration: React.FC = () => {
   const busy = isLoading || isActing;
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50">
-            <Calendar className="h-5 w-5 text-blue-600" />
+    <section className="rounded-2xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#000724] p-5 sm:p-6 shadow-sm space-y-5">
+        <div className="flex items-center gap-3 pb-1">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-950/40 shrink-0">
+            <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           </div>
           <div>
-            <CardTitle>Microsoft Calendar Integration</CardTitle>
-            <CardDescription>
+            <h2 className="text-xl font-bold text-slate-800 dark:text-white">Microsoft Calendar Integration</h2>
+            <p className="text-sm text-slate-400 dark:text-slate-300 mt-1 leading-relaxed">
               Connect your Microsoft account for Calendar and Contacts access
-            </CardDescription>
+            </p>
           </div>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center justify-between rounded-lg border p-4">
+
+      <div className="space-y-4">
+        <div className="flex items-center justify-between rounded-xl border border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-[#00051d]/40 p-4">
           <div className="flex items-center gap-3">
             <Mail className="h-5 w-5 text-gray-500" />
             <div>
               <p className="text-sm font-medium">Connection Status</p>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 dark:text-slate-300">
                 {isConnected && email
                   ? `Connected as ${email}`
                   : 'Microsoft account is not connected'}
@@ -87,12 +86,14 @@ export const MicrosoftAuthIntegration: React.FC = () => {
           )}
         </div>
 
+          <div className="flex gap-3 w-full">
         {isConnected ? (
           <Button
-            variant="outline"
-            className="w-full"
+            type="button"
             onClick={handleDisconnect}
             disabled={busy}
+            variant="destructive"
+            className="flex-1"
           >
             {busy ? (
               <>
@@ -105,9 +106,10 @@ export const MicrosoftAuthIntegration: React.FC = () => {
           </Button>
         ) : (
           <Button
-            className="w-full bg-blue-600 hover:bg-blue-700"
-            onClick={connectMicrosoft}
-            disabled={busy}
+              type="button"
+              onClick={connectMicrosoft}
+              disabled={busy}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white"
           >
             {busy ? (
               <>
@@ -122,11 +124,13 @@ export const MicrosoftAuthIntegration: React.FC = () => {
             )}
           </Button>
         )}
+          </div>
 
-        <p className="text-xs text-gray-500">
-          <strong>Note:</strong> We only access the data you explicitly grant permission for. You can revoke access at any time.
-        </p>
-      </CardContent>
-    </Card>
+        <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-300 leading-normal pt-1">
+          <strong className="text-slate-500 dark:text-slate-400 uppercase tracking-wide mr-1">Note:</strong>
+            We only access the data you explicitly grant permission for. You can revoke access at any time.
+          </p>
+        </div>
+      </section>
   );
 };

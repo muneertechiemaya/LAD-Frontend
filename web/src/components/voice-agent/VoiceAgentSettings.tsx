@@ -388,11 +388,27 @@ export function VoiceAgentSettings() {
     <div className="min-h-screen p-2 md:p-2 lg:p-2">
       <div className="mx-auto">
         <Tabs defaultValue="agents" className="w-full">
-          <div className="flex justify-between items-center mb-6">
+          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 md:gap-0 mb-6">
             <h1 className="text-2xl font-bold font-display">Voice Agents Workspace</h1>
-            <TabsList>
-              <TabsTrigger value="agents">Agent Configuration</TabsTrigger>
-              <TabsTrigger value="library">Voice Library</TabsTrigger>
+            {/* FIXED:
+   - dark:bg-[#00051d] locks the background container track color in dark mode.
+   - data-[state=active]:dark:bg-blue-650 makes the active tab pop in a clean blue layout.
+   - data-[state=active]:dark:text-white ensures maximum text clarity.
+   - dark:text-slate-400 protects unselected tab visibility.
+*/}
+            <TabsList className="w-full grid grid-cols-2 md:w-auto md:flex dark:bg-[#00051d] p-1 rounded-xl border dark:border-slate-800/60">
+              <TabsTrigger
+                value="agents"
+                className="rounded-lg transition-all dark:text-slate-400 data-[state=active]:dark:bg-[#2563eb] data-[state=active]:dark:text-white shadow-sm"
+              >
+                Agent Configuration
+              </TabsTrigger>
+              <TabsTrigger
+                value="library"
+                className="rounded-lg transition-all dark:text-slate-400 data-[state=active]:dark:bg-[#2563eb] data-[state=active]:dark:text-white shadow-sm"
+              >
+                Voice Library
+              </TabsTrigger>
             </TabsList>
           </div>
 

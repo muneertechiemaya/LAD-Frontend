@@ -147,7 +147,14 @@ const Login: React.FC = () => {
                   text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500
                   focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400
                   transition shadow-sm
-                "
+
+                    /* ── FIXES FOR DARK MODE AUTOFILL ── */
+                    dark:autofill:bg-[#0e1a3a]
+                    dark:autofill:text-white
+                    dark:[&:-webkit-autofill]:shadow-[0_0_0_1000px_#0e1a3a_inset]
+                    dark:[&:-webkit-autofill]:[text-fill-color:white]
+                    dark:[&:-webkit-autofill]:[-webkit-text-fill-color:white]
+                  "
               />
             </div>
             {formErrors.email && (
@@ -172,7 +179,13 @@ const Login: React.FC = () => {
                   text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500
                   focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400
                   transition shadow-sm
-                "
+                  /* ── FIXES FOR DARK MODE AUTOFILL ── */
+                    dark:autofill:bg-[#0e1a3a]
+                    dark:autofill:text-white
+                    dark:[&:-webkit-autofill]:shadow-[0_0_0_1000px_#0e1a3a_inset]
+                    dark:[&:-webkit-autofill]:[text-fill-color:white]
+                    dark:[&:-webkit-autofill]:[-webkit-text-fill-color:white]
+                  "
               />
               <button
                 type="button"

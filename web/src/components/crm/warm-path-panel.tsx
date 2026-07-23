@@ -33,6 +33,7 @@ interface MatchDef {
   route: RouteKind;
   routeLabel: string;
   color: string;
+  darkColor?: string; // dark-mode override token for node legibility on the deep navy canvas
   big?: boolean;
   confidence?: number;
   /** Real identity — only surfaced to the UI once this member accepts. */
@@ -86,7 +87,7 @@ export default function WarmPathPanel({
     const out: MatchDef[] = [];
     out.push({
       id: 'm-strong', x: 150, y: 150, route: 'primary', routeLabel: ROUTE_LABEL.primary,
-      color: T.primary, big: true, confidence: wp.top_connection.confidence,
+      color: T.primary, darkColor: '#3b82f6', big: true, confidence: wp.top_connection.confidence,
       reveal: { name: wp.top_connection.name, sub: wp.top_connection.headline.split(',')[0] },
     });
     (wp.mutual_connections || []).slice(0, 3).forEach((m, i, arr) => {
@@ -96,21 +97,21 @@ export default function WarmPathPanel({
         id: `m-mutual-${i}`,
         x: CENTER.x + Math.cos(ang) * 250,
         y: CENTER.y + Math.sin(ang) * 90,
-        route: 'mutual', routeLabel: ROUTE_LABEL.mutual, color: T.linkedin, confidence: m.confidence,
+        route: 'mutual', routeLabel: ROUTE_LABEL.mutual, color: T.linkedin, darkColor: '#60a5fa', confidence: m.confidence,
         reveal: { name: m.name, sub: m.title },
       });
     });
     if (wp.customer_reference) {
       out.push({
         id: 'm-customer', x: CENTER.x, y: 44, route: 'customer', routeLabel: ROUTE_LABEL.customer,
-        color: T.success, confidence: wp.customer_reference.confidence,
+        color: T.success, darkColor: '#4ade80', confidence: wp.customer_reference.confidence,
         reveal: { name: wp.customer_reference.via, sub: 'Mr LAD customer' },
       });
     }
     if (wp.shared_employer) {
       out.push({
         id: 'm-employer', x: 150, y: 260, route: 'employer', routeLabel: ROUTE_LABEL.employer,
-        color: EMPLOYER_COLOR, confidence: wp.shared_employer.confidence,
+        color: EMPLOYER_COLOR, darkColor: '#38bdf8', confidence: wp.shared_employer.confidence,
         reveal: { name: wp.shared_employer.company, sub: wp.shared_employer.overlap },
       });
     }
@@ -237,15 +238,14 @@ export default function WarmPathPanel({
             {open && Object.keys(positions).length > 0 && (
               <button
                 onClick={() => setPositions({})}
-                className="h-7 px-2.5 rounded-full text-[11.5px] font-medium text-slate-600 dark:text-[#7a8ba3] hover:bg-slate-100 dark:hover:bg-[#1a2a43] inline-flex items-center gap-1"
+                className="h-7 px-2.5 rounded-full text-[11.5px] font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#1a2a43] inline-flex items-center gap-1"
               >
                 <RotateCcw className="w-3.5 h-3.5" /> Reset
               </button>
             )}
             <button
               onClick={onToggle}
-              className="h-7 px-2.5 rounded-full text-[11.5px] font-semibold inline-flex items-center gap-1"
-              style={{ color: T.primary, background: T.badgeBg }}
+              className="inline-flex items-center justify-center gap-1 whitespace-nowrap text-[11.5px] transition-all disabled:pointer-events-none disabled:opacity-50 active:scale-95 select-none h-7 px-2.5 rounded-full font-semibold shadow-sm bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-blue-600 dark:text-white dark:hover:bg-blue-700 outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
             >
               {open ? 'Collapse' : 'Open graph'}
               {open ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -257,8 +257,7 @@ export default function WarmPathPanel({
       {!open ? (
         <button
           onClick={onToggle}
-          className="w-full text-left rounded-2xl ring-1 ring-slate-200 dark:ring-[#262831] hover:ring-[#0B1957]/40 transition p-4 flex items-center gap-4"
-          style={{ background: 'linear-gradient(90deg, #f1f3fb 0%, #ffffff 100%)' }}
+          className="w-full text-left rounded-2xl ring-1 ring-slate-200 dark:ring-[#262831] hover:ring-[#0B1957]/40 dark:hover:ring-[#3b4b7a] transition p-4 flex items-center gap-4 bg-gradient-to-r from-[#f1f3fb] to-white dark:from-[#0b142e] dark:to-[#040a1f]"
         >
           <div className="shrink-0 w-10 h-10 rounded-xl grid place-items-center" style={{ background: T.badgeBg }}>
             <Route className="w-5 h-5" style={{ color: T.primary }} />
@@ -346,7 +345,8 @@ export default function WarmPathPanel({
                           x={(p.x + CENTER.x) / 2}
                           y={(p.y + CENTER.y) / 2 - 2}
                           textAnchor="middle"
-                          style={{ fontSize: 11, fontWeight: 600, fill: T.primary, pointerEvents: 'none' }}
+                          className="fill-[#0B1957] dark:fill-[#60a5fa]"
+                          style={{ fontSize: 11, fontWeight: 600, pointerEvents: 'none' }}
                         >
                           {Math.round(def.confidence * 100)}%
                         </text>
@@ -367,6 +367,7 @@ export default function WarmPathPanel({
                       x={p.x}
                       y={p.y}
                       color={def.color}
+                      darkColor={def.darkColor}
                       big={!!def.big}
                       draggable
                       isHover={hoverId === def.id}
@@ -501,6 +502,7 @@ interface GraphNodeProps {
   name: string;
   sub?: string;
   color: string;
+  darkColor?: string;
   big?: boolean;
   isProspect?: boolean;
   badge: string;
@@ -519,7 +521,7 @@ interface GraphNodeProps {
 }
 
 function GraphNode({
-  x, y, name, sub, color, big = false, isProspect = false, badge, state,
+  x, y, name, sub, color, darkColor, big = false, isProspect = false, badge, state,
   draggable, clickable, collapsed, isHover,
   onPointerDown, onPointerMove, onPointerUp, onPointerCancel, onPointerEnter, onPointerLeave, onClick,
 }: GraphNodeProps) {
@@ -527,6 +529,11 @@ function GraphNode({
   const cursor = draggable ? 'grab' : clickable ? 'pointer' : 'default';
   const showLock = state === 'locked';
   const ls = big ? 1.15 : 0.9; // lock scale
+  // Prefer the brighter dark-mode token for foreground legibility on the deep navy canvas.
+  const nodeColor =
+    typeof window !== 'undefined' && document.documentElement.classList.contains('dark')
+      ? darkColor || color
+      : color;
   return (
     <g
       transform={`translate(${x} ${y})`}
@@ -541,29 +548,29 @@ function GraphNode({
     >
       <circle r={r + 14} fill="transparent" />
       <circle r={r + 4} fill="white" className="dark:fill-[#000724]" />
-      <circle r={r} fill={color} opacity={isHover ? 0.22 : 0.12} style={{ transition: 'opacity 150ms' }} />
+      <circle r={r} fill={color} className="dark:!fill-[var(--node-color)]" style={{ transition: 'opacity 150ms', ['--node-color' as any]: darkColor || color}}  opacity={isHover ? 0.22 : 0.12}/>
       <circle
         r={r}
         fill="white"
         className="dark:fill-[#0e1a3a]"
         stroke={color}
         strokeWidth={isProspect ? 2.5 : isHover ? 2 : 1.5}
-        style={{ transition: 'stroke-width 150ms' }}
+        style={{ transition: 'stroke-width 150ms', stroke: typeof window !== 'undefined' && document.documentElement.classList.contains('dark') ? (darkColor || color) : color}}
       />
 
       {showLock ? (
         <g transform="translate(0 -1)" style={{ pointerEvents: 'none' }}>
           <path
             d={`M${-5 * ls},0 v${-3.4 * ls} a${5 * ls},${5 * ls} 0 0 1 ${10 * ls},0 v${3.4 * ls}`}
-            fill="none" stroke={color} strokeWidth={2 * ls} strokeLinecap="round"
+            fill="none" stroke={nodeColor} strokeWidth={2 * ls} strokeLinecap="round"
           />
-          <rect x={-7 * ls} y={0} width={14 * ls} height={10 * ls} rx={2.6 * ls} fill={color} />
+          <rect x={-7 * ls} y={0} width={14 * ls} height={10 * ls} rx={2.6 * ls} fill={nodeColor} />
         </g>
       ) : (
         <text
           textAnchor="middle"
           y={4}
-          style={{ fontSize: big ? 13 : 10, fontWeight: 700, pointerEvents: 'none', fill: color, fontFamily: '"Space Grotesk", system-ui' }}
+          style={{ fontSize: big ? 13 : 10, fontWeight: 700, pointerEvents: 'none', fill: nodeColor, fontFamily: '"Space Grotesk", system-ui' }}
         >
           {badge}
         </text>

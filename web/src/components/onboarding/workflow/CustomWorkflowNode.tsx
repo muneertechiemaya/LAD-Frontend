@@ -12,6 +12,7 @@ function getBrandConfig(type: string) {
   if (type === 'start')            return { bg: '#22c55e', border: '#16a34a', glow: 'rgba(34,197,94,0.25)' };
   if (type === 'end')              return { bg: '#ef4444', border: '#dc2626', glow: 'rgba(239,68,68,0.25)' };
   if (type === 'lead_generation')  return { bg: '#f59e0b', border: '#d97706', glow: 'rgba(245,158,11,0.25)' };
+  if (type === 'media_generation') return { bg: '#d946ef', border: '#c026d3', glow: 'rgba(217,70,239,0.25)' };
   if (type === 'linkedin_connect') return { bg: '#3b82f6', border: '#2563eb', glow: 'rgba(59,130,246,0.25)' };
   if (type === 'linkedin_message') return { bg: '#8b5cf6', border: '#7c3aed', glow: 'rgba(139,92,246,0.25)' };
   if (type === 'linkedin_visit')   return { bg: '#0ea5e9', border: '#0284c7', glow: 'rgba(14,165,233,0.25)' };
@@ -25,6 +26,8 @@ function getBrandConfig(type: string) {
   if (type === 'followup_sequence') return { bg: '#6366f1', border: '#4f46e5', glow: 'rgba(99,102,241,0.25)' };
   if (type === 'analytics_report') return { bg: '#06b6d4', border: '#0891b2', glow: 'rgba(6,182,212,0.25)' };
   if (type === 'zoho_update') return { bg: '#dc2626', border: '#b91c1c', glow: 'rgba(220,38,38,0.25)' };
+  if (type === 'switch') return { bg: '#d97706', border: '#b45309', glow: 'rgba(217,119,6,0.25)' };
+  if (type === 'ai_parse') return { bg: '#7c3aed', border: '#6d28d9', glow: 'rgba(124,58,237,0.25)' };
   return                                  { bg: '#6366f1', border: '#4f46e5', glow: 'rgba(99,102,241,0.25)' };
 }
 
