@@ -256,7 +256,7 @@ export default function CampaignsListPage() {
               Campaigns
             </h1>
           </div>
-          <p className="text-sm text-[#64748B] dark:text-[#7a8ba3] ml-2">
+          <p className="text-sm text-[#64748B] dark:text-slate-300 ml-2">
             Manage your multi-channel outreach campaigns
           </p>
         </div>
@@ -266,7 +266,7 @@ export default function CampaignsListPage() {
             onClick={handleRefreshConnections}
             disabled={syncing}
             variant="outline"
-            className="rounded-xl font-semibold px-3 py-1.5 w-full sm:w-auto border-[#0A66C2] text-[#0A66C2] hover:bg-[#0A66C2]/10 hover:cursor-pointer disabled:opacity-60"
+            className="bg-[#0b1957] text-white rounded-xl font-semibold px-3 py-1.5 shadow-[0_4px_20px_rgba(11,25,87,0.3)] flex-1 sm:w-auto hover:bg-[#0a1540] hover:shadow-[0_8px_30px_rgba(11,25,87,0.5)] hover:cursor-pointer"
           >
             <RefreshCw className={`w-4 h-4 mr-1 ${syncing ? "animate-spin" : ""}`} />
             {syncing ? "Syncing..." : "Refresh Connections"}
@@ -287,6 +287,16 @@ export default function CampaignsListPage() {
             >
               <Plus className="w-4 h-4 mr-1" />
               Campaign
+            </Button>
+
+            {/* n8n-style custom workflow builder: source node → outreach nodes */}
+            <Button
+              onClick={() => router.push("/campaigns/workflow")}
+              variant="outline"
+              className="rounded-xl font-semibold px-3 py-1.5 flex-1 sm:w-auto border-[#0b1957] text-[#0b1957] hover:bg-[#0b1957]/10 hover:cursor-pointer"
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              Custom workflow
             </Button>
           </div>
         </div>
@@ -309,7 +319,7 @@ export default function CampaignsListPage() {
               <h6 className="text-lg font-bold text-[#1E293B] dark:text-white">
                 LinkedIn Rate Limits
               </h6>
-              <p className="text-sm text-[#64748B] dark:text-[#7a8ba3]">
+              <p className="text-sm text-[#64748B] dark:text-slate-300">
                 Weekly connection limits and usage tracking
               </p>
             </div>
@@ -334,7 +344,7 @@ export default function CampaignsListPage() {
                       <p className="text-sm font-semibold text-[#1E293B] dark:text-white">
                         Daily Limit
                       </p>
-                      <p className="text-xs text-[#64748B] dark:text-[#7a8ba3]">
+                      <p className="text-xs text-[#64748B] dark:text-slate-300">
                         Per account maximum
                       </p>
                     </div>
@@ -347,7 +357,7 @@ export default function CampaignsListPage() {
                   <p className="text-sm text-[#64748B] dark:text-white">connections/day</p>
                 </div>
                 <div className="pt-4 border-t border-[#E2E8F0] dark:border-[#262831]">
-                  <p className="text-xs text-[#64748B] dark:text-[#7a8ba3] mb-1">
+                  <p className="text-xs text-[#64748B] dark:text-slate-300 mb-1">
                     Total accounts:{" "}
                     {linkedinStats.daily.account_count}
                   </p>
@@ -373,7 +383,7 @@ export default function CampaignsListPage() {
                       <p className="text-sm font-semibold text-[#1E293B] dark:text-white">
                         Weekly Limit
                       </p>
-                      <p className="text-xs text-[#64748B] dark:text-[#7a8ba3]">
+                      <p className="text-xs text-[#64748B] dark:text-slate-300">
                         7-day rolling window
                       </p>
                     </div>
@@ -386,7 +396,7 @@ export default function CampaignsListPage() {
                   <p className="text-sm text-[#64748B] dark:text-white">connections/week</p>
                 </div>
                 <div className="pt-4 border-t border-[#E2E8F0] dark:border-[#262831]">
-                  <p className="text-xs text-[#64748B] dark:text-[#7a8ba3] mb-1">
+                  <p className="text-xs text-[#64748B] dark:text-slate-300 mb-1">
                     Total capacity: {linkedinStats.weekly.total}
                   </p>
                   <p className="text-xs font-medium text-[#0b1957] dark:text-white">
@@ -410,7 +420,7 @@ export default function CampaignsListPage() {
                     <p className="text-sm font-semibold text-[#1E293B] dark:text-white">
                       7-Day Connection Activity
                     </p>
-                    <p className="text-xs text-[#64748B] dark:text-[#7a8ba3]">
+                    <p className="text-xs text-[#64748B] dark:text-slate-300">
                       Daily breakdown of sent connections
                     </p>
                   </div>
@@ -445,10 +455,10 @@ export default function CampaignsListPage() {
                           return (
                             <div key={idx} className="space-y-1">
                               <div className="flex justify-between items-center text-xs">
-                                <span className="text-[#64748B] dark:text-[#7a8ba3]">
+                                <span className="text-[#64748B] dark:text-slate-300">
                                   {dayName}
                                 </span>
-                                <span className="font-semibold text-[#0b1957]">
+                                <span className="font-semibold text-[#0b1957] dark:text-blue-400">
                                   {day.sent} sent
                                 </span>
                               </div>
@@ -466,7 +476,7 @@ export default function CampaignsListPage() {
                       );
                     })()
                   ) : (
-                    <p className="text-sm text-[#64748B] dark:text-[#7a8ba3] py-4 text-center">
+                    <p className="text-sm text-[#64748B] dark:text-slate-300 py-4 text-center">
                       No activity in the last 7 days
                     </p>
                   )}
@@ -475,20 +485,20 @@ export default function CampaignsListPage() {
                 {/* Weekly Usage Summary */}
                 <div className="mt-6 pt-6 border-t border-[#E2E8F0] dark:border-[#262831] grid grid-cols-3 gap-4">
                   <div className="text-center">
-                    <p className="text-xs text-[#64748B] dark:text-[#7a8ba3] mb-1">Total Sent</p>
+                    <p className="text-xs text-[#64748B] dark:text-slate-300 mb-1">Total Sent</p>
                     <p className="text-2xl font-bold text-green-600">
                       {linkedinStats?.usage?.sent_last_7_days ??
                         0}
                     </p>
                   </div>
                   <div className="text-center">
-                    <p className="text-xs text-[#64748B] dark:text-[#7a8ba3] mb-1">Weekly Limit</p>
+                    <p className="text-xs text-[#64748B] dark:text-slate-300 mb-1">Weekly Limit</p>
                     <p className="text-2xl font-bold text-[#0b1957] dark:text-white">
                       {linkedinStats?.weekly?.total ?? 0}
                     </p>
                   </div>
                   <div className="text-center">
-                    <p className="text-xs text-[#64748B] dark:text-[#7a8ba3] mb-1">Capacity Used</p>
+                    <p className="text-xs text-[#64748B] dark:text-slate-300 mb-1">Capacity Used</p>
                     <p
                       className={`text-2xl font-bold ${
                         parseInt(
@@ -533,7 +543,7 @@ export default function CampaignsListPage() {
               setStatusFilter("all");
               router.push("/campaigns");
             }}
-            className="ml-auto text-xs text-slate-500 dark:text-[#7a8ba3] hover:text-red-500 underline"
+            className="ml-auto text-xs text-slate-500 dark:text-slate-300 hover:text-red-500 underline"
           >
             Clear filter
           </button>

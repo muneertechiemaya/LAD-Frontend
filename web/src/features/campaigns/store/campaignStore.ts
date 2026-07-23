@@ -44,6 +44,13 @@ const defaultStepData: Record<StepType, Partial<StepData>> = {
   condition: { title: 'Condition', conditionType: 'connected' },
   start: { title: 'Start' },
   end: { title: 'End' },
+  // Custom Workflow Builder macro nodes (visual-only; not executed directly).
+  media_generation: { title: 'Media generation' },
+  followup_sequence: { title: 'Follow-up sequence' },
+  analytics_report: { title: 'Analytics report' },
+  zoho_update: { title: 'Update Zoho record' },
+  switch: { title: 'Multi-condition' },
+  ai_parse: { title: 'AI Agent' },
 };
 export const useCampaignStore = create<CampaignState>((set, get) => ({
   name: '',

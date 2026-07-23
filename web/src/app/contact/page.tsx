@@ -205,7 +205,7 @@ const ContactPage = memo(function ContactPage() {
                 whileTap={{ scale: 0.98 }}
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full px-8 py-3 bg-[#0b1957] text-white font-bold rounded-lg hover:shadow-lg transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full px-8 py-3 bg-[#0b1957] text-white font-bold rounded-lg hover:shadow-lg transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 dark:bg-[#2563eb] dark:hover:bg-blue-700"
               >
                 <Send className="w-5 h-5" />
                 {isSubmitting ? 'Sending...' : 'Send Message'}

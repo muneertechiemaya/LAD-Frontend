@@ -131,7 +131,7 @@ function SectionHeader({ icon: Icon, label, count }: { icon: React.ElementType; 
     <div className="flex items-center gap-2 mb-3">
       <Icon className="w-4 h-4 text-[#0b1957] dark:text-blue-400" />
       <h6 className="font-semibold text-[#1E293B] dark:text-white text-sm uppercase tracking-wide">{label}</h6>
-      <span className="ml-auto text-xs text-[#94A3B8] bg-[#F1F5F9] dark:bg-[#253456] dark:text-[#7a8ba3] px-2 py-0.5 rounded-full">{count}</span>
+      <span className="ml-auto text-xs text-[#94A3B8] bg-[#F1F5F9] dark:bg-[#253456] dark:text-slate-300 px-2 py-0.5 rounded-full">{count}</span>
     </div>
   );
 }
@@ -321,7 +321,7 @@ export default function ProfileSummaryDialog({
               {summary && (
                 <section>
                   <h6 className="font-semibold text-[#1E293B] dark:text-white mb-3 text-base">Profile Summary</h6>
-                  <p className="text-[#475569] dark:text-[#7a8ba3] leading-relaxed whitespace-pre-wrap text-[15px]">
+                  <p className="text-[#475569] dark:text-slate-300 leading-relaxed whitespace-pre-wrap text-[15px]">
                     {summary}
                   </p>
                 </section>
@@ -332,7 +332,7 @@ export default function ProfileSummaryDialog({
                 <section>
                   <div className="rounded-xl bg-[#F8FAFF] dark:bg-[#0d1b3e] border border-[#E2E8F0] dark:border-[#262831] p-4 space-y-2">
                     {kg?.description && (
-                      <p className="text-sm text-[#475569] dark:text-[#7a8ba3] leading-relaxed">{kg.description}</p>
+                      <p className="text-sm text-[#475569] dark:text-slate-300 leading-relaxed">{kg.description}</p>
                     )}
                     {kg?.attributes && Object.keys(kg.attributes).length > 0 && (
                       <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 pt-2 border-t border-[#E2E8F0] dark:border-[#262831]">

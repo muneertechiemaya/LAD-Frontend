@@ -187,14 +187,14 @@ export const VoiceAgentsWidget: React.FC<VoiceAgentsWidgetProps> = ({ id }) => {
                   </div>
                   <div className="flex items-center gap-4 text-right">
                     <div>
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <p className="text-xs text-muted-foreground flex items-center gap-1 dark:text-slate-300">
                         <Phone className="h-3 w-3" />
                         Today
                       </p>
                       <p className="font-semibold text-sm">{agent.callsToday}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <p className="text-xs text-muted-foreground flex items-center gap-1  dark:text-slate-300">
                         <Activity className="h-3 w-3" />
                         Success
                       </p>

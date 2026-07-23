@@ -51,7 +51,7 @@ export default function KanbanBoard({ stages, leads, selectedLeadId, onSelectLea
                 </button>
               </div>
               {stageLeads.length > 0 && (
-                <p className="text-[11px] text-slate-500 dark:text-[#7a8ba3] px-1 mb-2">
+                <p className="text-[11px] text-slate-500 dark:text-slate-300 px-1 mb-2">
                   {fmtCurrency(pipelineValue)} pipeline
                 </p>
               )}
@@ -65,7 +65,7 @@ export default function KanbanBoard({ stages, leads, selectedLeadId, onSelectLea
                   />
                 ))}
                 {stageLeads.length === 0 && (
-                  <div className="rounded-lg border border-dashed border-slate-200 dark:border-[#262831] p-3 text-[11.5px] text-slate-400 dark:text-[#7a8ba3] text-center">
+                  <div className="rounded-lg border border-dashed border-slate-200 dark:border-[#262831] p-3 text-[11.5px] text-slate-400 dark:text-slate-300 text-center">
                     No deals here
                   </div>
                 )}
@@ -106,7 +106,7 @@ function LeadCard({
               </span>
             )}
           </div>
-          <p className="text-[11.5px] text-slate-500 dark:text-[#7a8ba3] truncate">{lead.company}</p>
+          <p className="text-[11.5px] text-slate-500 dark:text-slate-300 truncate">{lead.company}</p>
         </div>
       </div>
       <div className="mt-2.5 flex items-center justify-between gap-2">

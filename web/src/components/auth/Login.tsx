@@ -107,10 +107,16 @@ const Login: React.FC = () => {
         {/* Logo */}
         <picture>
           <source media="(prefers-color-scheme: dark)" srcSet="/MrLAD-logo-white.svg" />
+          {/* The dark:block helper combined with a light-only counter-class ensures compliance in app-level toggles */}
           <img
-            src="/MrLAD-logo.svg"
-            className="w-24 mx-auto mb-2 opacity-100 drop-shadow-md"
-            alt="logo"
+              src="/MrLAD-logo-white.svg"
+              className="hidden dark:block w-24 mx-auto mb-2 opacity-100 drop-shadow-md"
+              alt="logo"
+          />
+          <img
+              src="/MrLAD-logo.svg"
+              className="dark:hidden w-24 mx-auto mb-2 opacity-100 drop-shadow-md"
+              alt="logo"
           />
         </picture>
         {/* Title */}
@@ -144,7 +150,14 @@ const Login: React.FC = () => {
                   text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500
                   focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400
                   transition shadow-sm
-                "
+
+                    /* ── FIXES FOR DARK MODE AUTOFILL ── */
+                    dark:autofill:bg-[#0e1a3a]
+                    dark:autofill:text-white
+                    dark:[&:-webkit-autofill]:shadow-[0_0_0_1000px_#0e1a3a_inset]
+                    dark:[&:-webkit-autofill]:[text-fill-color:white]
+                    dark:[&:-webkit-autofill]:[-webkit-text-fill-color:white]
+                  "
               />
             </div>
             {formErrors.email && (
@@ -169,7 +182,13 @@ const Login: React.FC = () => {
                   text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500
                   focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400
                   transition shadow-sm
-                "
+                  /* ── FIXES FOR DARK MODE AUTOFILL ── */
+                    dark:autofill:bg-[#0e1a3a]
+                    dark:autofill:text-white
+                    dark:[&:-webkit-autofill]:shadow-[0_0_0_1000px_#0e1a3a_inset]
+                    dark:[&:-webkit-autofill]:[text-fill-color:white]
+                    dark:[&:-webkit-autofill]:[-webkit-text-fill-color:white]
+                  "
               />
               <button
                 type="button"
