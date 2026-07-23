@@ -107,14 +107,14 @@ function SelectItem({
         "relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-none select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2 transition-colors duration-150 group [&_.text-muted-foreground]:group-focus:text-current [&_.text-muted-foreground]:group-focus:opacity-75",
 
                 // --- LIGHT MODE HOVER & TICK MATRIX ---
-                // Unhovered State
-                "data-[state=checked]:bg-white data-[state=checked]:text-[#000724]",
-                // Hovered State (Deep Navy background, White text)
-                "focus:bg-[#0A1957] focus:text-white data-[state=checked]:focus:bg-[#0A1957] data-[state=checked]:focus:text-white",
+                // Selected (Checked) State (Standard Blue background, White text)
+                "data-[state=checked]:bg-blue-600 data-[state=checked]:text-white",
+                // Hovered State (Blue background, White text)
+                "focus:bg-blue-700 focus:text-white data-[state=checked]:focus:bg-blue-700 data-[state=checked]:focus:text-white",
 
                 // --- DARK MODE HOVER & TICK MATRIX ---
-                // Unhovered State
-                "dark:data-[state=checked]:bg-[#1A2A43]/50 dark:data-[state=checked]:text-white",
+                // Selected (Checked) State (Standard Green background, Dark Blue slate text)
+                "dark:data-[state=checked]:bg-[#22C55E] dark:data-[state=checked]:text-[#000724]",
                 // Hovered State (Vibrant Green background, Dark Blue slate text)
                 "dark:focus:bg-[#22C55E] dark:focus:text-[#000724] dark:data-[state=checked]:focus:bg-[#22C55E] dark:data-[state=checked]:focus:text-[#000724]",
         className
@@ -124,15 +124,8 @@ function SelectItem({
       <span className="absolute right-2 flex size-3.5 items-center justify-center">
         <SelectPrimitive.ItemIndicator>
           <CheckIcon className={cn("size-4 transition-colors duration-150",
-                  // --- BASE MODE COLOR RULES (UNHOVERED STATES) ---
-                  // Light Mode Unhovered: Brand Navy | Dark Mode Unhovered: Clean White
-                  "text-[#0B1957] dark:text-white",
-
-                  // --- ACTIVE FOCUS HOVER TRANSFORM HOOKS ---
-                  // Light Mode Hover: Tick turns crisp white over navy background bar
-                  "group-focus:text-white",
-                  // Dark Mode Hover: Tick transitions to dark blue slate over green background bar
-                  "dark:group-focus:text-[#000724]"
+                  "text-white group-data-[state=checked]:text-white dark:text-[#000724] dark:group-data-[state=checked]:text-[#000724]",
+                  "group-focus:text-white dark:group-focus:text-[#000724]"
               )}
           />
         </SelectPrimitive.ItemIndicator>

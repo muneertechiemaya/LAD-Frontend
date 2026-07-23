@@ -100,14 +100,16 @@ function SelectItem({
     <SelectPrimitive.Item
       data-slot="select-item"
       className={cn(
-        "focus:bg-accent focus:text-accent-foreground [&_svg:not([class*='text-'])]:text-muted-foreground relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
+        "relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-none select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2 transition-colors duration-150 group",
+        "data-[state=checked]:bg-blue-600 data-[state=checked]:text-white focus:bg-blue-700 focus:text-white data-[state=checked]:focus:bg-blue-700 data-[state=checked]:focus:text-white",
+        "dark:data-[state=checked]:bg-[#22C55E] dark:data-[state=checked]:text-[#000724] dark:focus:bg-[#22C55E] dark:focus:text-[#000724] dark:data-[state=checked]:focus:bg-[#22C55E] dark:data-[state=checked]:focus:text-[#000724]",
         className
       )}
       {...props}
     >
       <span className="absolute right-2 flex size-3.5 items-center justify-center">
         <SelectPrimitive.ItemIndicator>
-          <CheckIcon className="size-4" />
+          <CheckIcon className="size-4 transition-colors duration-150 text-white dark:text-[#000724]" />
         </SelectPrimitive.ItemIndicator>
       </span>
       <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
