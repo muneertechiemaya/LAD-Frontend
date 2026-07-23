@@ -6,7 +6,7 @@
 import * as React from 'react';
 import {
   BriefcaseBusiness, MessageCircle, Mail, Phone, Camera, Radio, Settings2,
-  BadgeCheck,
+  BadgeCheck, ChevronLeft, ChevronRight,
   type LucideIcon,
 } from 'lucide-react';
 import { type ChannelKey } from './data';
@@ -158,6 +158,66 @@ export function ChannelChips({ channels }: { channels?: ChannelKey[] }) {
           </span>
         );
       })}
+    </div>
+  );
+}
+
+// ── Pagination ───────────────────────────────────────────────────────────
+/** Server-side pagination state shared by the CRM board + table views. */
+export interface CrmPagination {
+  page: number;        // 1-indexed current page
+  pageCount: number;   // total number of pages (>= 1)
+  total: number;       // total matching rows across all pages
+  pageSize: number;    // rows per page
+  onPageChange: (page: number) => void; // 1-indexed target page
+  loading?: boolean;   // a page fetch is in flight
+}
+
+/**
+ * Prev / "Page X of Y" / Next control driven by real server-side pagination.
+ * The "Showing a–b of N" range is derived from the pagination window alone
+ * (the last page may be short), so it stays consistent across the board and
+ * every table tab regardless of client-side filtering within the page.
+ */
+export function Pager({ pagination }: { pagination: CrmPagination }) {
+  const { page, pageCount, total, pageSize, onPageChange, loading } = pagination;
+  const start = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const windowSize = Math.max(0, Math.min(pageSize, total - (page - 1) * pageSize));
+  const end = total === 0 ? 0 : start + windowSize - 1;
+  const canPrev = page > 1 && !loading;
+  const canNext = page < pageCount && !loading;
+  return (
+    <div className="flex items-center justify-between gap-3 text-[12px] text-slate-500 dark:text-[#7a8ba3]">
+      <span>
+        Showing{' '}
+        <span className="font-semibold text-[#172560] dark:text-white tabular-nums">
+          {start}{end !== start ? `–${end}` : ''}
+        </span>{' '}
+        of <span className="tabular-nums">{total.toLocaleString()}</span>
+      </span>
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => canPrev && onPageChange(page - 1)}
+          disabled={!canPrev}
+          aria-label="Previous page"
+          className="h-8 px-2.5 rounded-md hover:bg-slate-100 dark:hover:bg-[#1a2a43] disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <ChevronLeft className="w-3.5 h-3.5" />
+        </button>
+        <span className="text-[12px] text-[#172560] dark:text-white font-medium tabular-nums">
+          Page {page} of {pageCount}
+        </span>
+        <button
+          type="button"
+          onClick={() => canNext && onPageChange(page + 1)}
+          disabled={!canNext}
+          aria-label="Next page"
+          className="h-8 px-2.5 rounded-md hover:bg-slate-100 dark:hover:bg-[#1a2a43] disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <ChevronRight className="w-3.5 h-3.5" />
+        </button>
+      </div>
     </div>
   );
 }

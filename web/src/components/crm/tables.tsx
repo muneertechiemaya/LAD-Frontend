@@ -5,12 +5,12 @@
 import * as React from 'react';
 import { useCallback, useMemo, useState } from 'react';
 import {
-  Search, Download, Plus, MoreVertical, ChevronsUpDown, ChevronLeft, ChevronRight,
+  Search, Download, Plus, MoreVertical, ChevronsUpDown,
   ChevronDown, Inbox, Radio, Route, BadgeCheck, Trash2,
 } from 'lucide-react';
 import {
   CrmAvatar, ChannelChips, LadCard, T, fmtCurrency, fmtDate, rel,
-  VerifiedTag,
+  VerifiedTag, Pager, type CrmPagination,
 } from './shared';
 import { CRM_OWNERS, NOW, type CrmContact } from './data';
 
@@ -233,10 +233,13 @@ interface CrmTableProps<R extends CrmContact> {
   filters?: FilterDef<R>[];
   onRowClick?: (row: R) => void;
   onRemove?: (row: R) => void;
+  /** Server-side pagination. When present, the footer renders a live pager.
+   *  Note: search/column filters below apply to the CURRENT page only. */
+  pagination?: CrmPagination;
 }
 
 function CrmTable<R extends CrmContact>({
-  title, subtitle, count, columns, rows, filters, onRowClick, onRemove,
+  title, subtitle, count, columns, rows, filters, onRowClick, onRemove, pagination,
 }: CrmTableProps<R>) {
   const [q, setQ] = useState('');
   const [activeFilters, setActiveFilters] = useState<Record<string, string | null>>({});
@@ -395,27 +398,14 @@ function CrmTable<R extends CrmContact>({
         </table>
       </div>
 
-      <footer className="px-5 py-3 border-t border-slate-100 dark:border-[#262831] flex items-center justify-between text-[12px] text-slate-500 dark:text-[#7a8ba3]">
-        <span>
-          Showing <span className="font-semibold text-[#172560] dark:text-white">{filtered.length}</span> of {count}
-        </span>
-        <div className="flex items-center gap-1.5">
-          <button
-            className="h-8 px-2.5 rounded-md hover:bg-slate-100 dark:hover:bg-[#1a2a43] disabled:opacity-40"
-            disabled
-            aria-label="Previous page"
-          >
-            <ChevronLeft className="w-3.5 h-3.5" />
-          </button>
-          <span className="text-[12px] text-[#172560] dark:text-white font-medium">Page 1 of 1</span>
-          <button
-            className="h-8 px-2.5 rounded-md hover:bg-slate-100 dark:hover:bg-[#1a2a43] disabled:opacity-40"
-            disabled
-            aria-label="Next page"
-          >
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
+      <footer className="px-5 py-3 border-t border-slate-100 dark:border-[#262831] text-[12px] text-slate-500 dark:text-[#7a8ba3]">
+        {pagination ? (
+          <Pager pagination={pagination} />
+        ) : (
+          <span>
+            Showing <span className="font-semibold text-[#172560] dark:text-white">{filtered.length}</span> of {count}
+          </span>
+        )}
       </footer>
     </section>
   );
@@ -468,8 +458,8 @@ function NameCell({ row, withCompany = false }: { row: CrmContact; withCompany?:
 
 // ── ALL CONTACTS ────────────────────────────────────────────────────────
 export function AllContactsTable({
-  rows, onSelect, onRemove,
-}: { rows: CrmContact[]; onSelect: (c: CrmContact) => void; onRemove?: (c: CrmContact) => void }) {
+  rows, onSelect, onRemove, pagination,
+}: { rows: CrmContact[]; onSelect: (c: CrmContact) => void; onRemove?: (c: CrmContact) => void; pagination?: CrmPagination }) {
   const columns: Column<CrmContact>[] = [
     { label: 'Contact', nowrap: true, render: (r) => <NameCell row={r} /> },
     { label: 'Type',    render: (r) => <TypePill type={r.type} /> },
@@ -522,14 +512,15 @@ export function AllContactsTable({
       filters={filters}
       onRowClick={onSelect}
       onRemove={onRemove}
+      pagination={pagination}
     />
   );
 }
 
 // ── PROSPECTS ───────────────────────────────────────────────────────────
 export function ProspectsTable({
-  rows, onSelect, onRemove,
-}: { rows: CrmContact[]; onSelect: (c: CrmContact) => void; onRemove?: (c: CrmContact) => void }) {
+  rows, onSelect, onRemove, pagination,
+}: { rows: CrmContact[]; onSelect: (c: CrmContact) => void; onRemove?: (c: CrmContact) => void; pagination?: CrmPagination }) {
   const columns: Column<CrmContact>[] = [
     { label: 'Prospect', nowrap: true, render: (r) => <NameCell row={r} withCompany /> },
     { label: 'Industry', render: (r) => <span className="text-[12px] text-[#172560] dark:text-white">{r.industry}</span> },
@@ -600,14 +591,15 @@ export function ProspectsTable({
       filters={filters}
       onRowClick={onSelect}
       onRemove={onRemove}
+      pagination={pagination}
     />
   );
 }
 
 // ── LEADS ───────────────────────────────────────────────────────────────
 export function LeadsTable({
-  rows, onSelect, onRemove,
-}: { rows: CrmContact[]; onSelect: (c: CrmContact) => void; onRemove?: (c: CrmContact) => void }) {
+  rows, onSelect, onRemove, pagination,
+}: { rows: CrmContact[]; onSelect: (c: CrmContact) => void; onRemove?: (c: CrmContact) => void; pagination?: CrmPagination }) {
   const totalPipeline = rows.reduce((a, r) => a + (r.value || 0), 0);
   const weighted = rows.reduce((a, r) => a + (r.value || 0) * (r.probability || 0), 0);
   const columns: Column<CrmContact>[] = [
@@ -682,14 +674,15 @@ export function LeadsTable({
       filters={filters}
       onRowClick={onSelect}
       onRemove={onRemove}
+      pagination={pagination}
     />
   );
 }
 
 // ── CLIENTS ─────────────────────────────────────────────────────────────
 export function ClientsTable({
-  rows, onSelect, onRemove,
-}: { rows: CrmContact[]; onSelect: (c: CrmContact) => void; onRemove?: (c: CrmContact) => void }) {
+  rows, onSelect, onRemove, pagination,
+}: { rows: CrmContact[]; onSelect: (c: CrmContact) => void; onRemove?: (c: CrmContact) => void; pagination?: CrmPagination }) {
   const totalMrr = rows.reduce((a, r) => a + (r.mrr || 0), 0);
   const totalArr = totalMrr * 12;
   const columns: Column<CrmContact>[] = [
@@ -817,6 +810,7 @@ export function ClientsTable({
       filters={filters}
       onRowClick={onSelect}
       onRemove={onRemove}
+      pagination={pagination}
     />
   );
 }

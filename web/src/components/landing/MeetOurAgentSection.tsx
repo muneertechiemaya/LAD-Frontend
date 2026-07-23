@@ -1,6 +1,7 @@
 "use client";
 
 import { Zap, MessageSquare, TrendingUp } from "lucide-react";
+import Link from "next/link";
 import { CometCard } from "@/components/ui/comet-card";
 import { useRef } from "react";
 
@@ -45,13 +46,15 @@ function AgentCard({ agent, index }: { agent: Agent; index: number }) {
         {/* Card */}
         <div className="bg-background border-2 border-primary/20 rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl hover:border-primary/40 transition-all duration-300 flex flex-col h-full backdrop-blur-sm">
           {/* Video Container with Colored Border Frame */}
-          <div className="relative h-80 md:h-96 overflow-hidden bg-white dark:bg-gray-900 flex items-center justify-center">
+          <div className="relative h-80 md:h-96 overflow-hidden bg-white dark:bg-gray-900">
             <video
               ref={videoRef}
               loop
               muted
               playsInline
-              className="object-contain transition-transform duration-500"
+              preload="none"
+              poster={agent.videoSrc.replace(/\.mp4$/, "-poster.jpg")}
+              className="w-full h-full object-cover object-top transition-transform duration-500"
             >
               <source src={agent.videoSrc} type="video/mp4" />
             </video>
@@ -80,9 +83,12 @@ function AgentCard({ agent, index }: { agent: Agent; index: number }) {
             </p>
 
             {/* Action Button with Glow */}
-            <button className="w-full bg-primary hover:shadow-lg hover:shadow-primary/50 text-white font-bold py-3 px-4 rounded-xl transition-all duration-300 transform uppercase text-sm tracking-wide border border-white/20">
+            <Link
+              href="/contact"
+              className="block w-full text-center bg-primary hover:shadow-lg hover:shadow-primary/50 text-white font-bold py-3 px-4 rounded-xl transition-all duration-300 transform uppercase text-sm tracking-wide border border-white/20"
+            >
               See him in action
-            </button>
+            </Link>
           </div>
         </div>
       </div>

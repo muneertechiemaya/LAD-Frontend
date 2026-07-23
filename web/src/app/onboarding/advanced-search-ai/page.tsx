@@ -23,6 +23,7 @@ import { AgentBuilderVideoProgress } from "@/components/voice-agent/playground/b
 import { AgentBuilderKeyframesConfirm } from "@/components/voice-agent/playground/builder-steps/AgentBuilderKeyframesConfirm";
 import { AgentBuilderBrandDNA } from "@/components/voice-agent/playground/builder-steps/AgentBuilderBrandDNA";
 import { useAuth } from '@/contexts/AuthContext';
+import CustomWorkflowBuilder from '@/components/campaigns/CustomWorkflowBuilder';
 import { useEmailTemplates, useCreateEmailTemplate } from '@lad/frontend-features/email-templates';
 import { useConnectedEmailSenders } from '@lad/frontend-features/email-senders';
 import {
@@ -830,6 +831,14 @@ export default function AdvancedSearchAIPage() {
             }
         },
         {
+            key: 'zoho', label: 'Zoho CRM', color: '#e42527', icon: 'zoho', fetchContacts: async (search: string) => {
+                const params = new URLSearchParams({ type: 'contacts', page: '1', limit: '100' }); if (search) params.set('search', search);
+                const res = await fetch(`/api/social-integration/zoho/records/local?${params}`, { credentials: 'include' });
+                const data = await res.json();
+                return (data.data || []).map((c: any, i: number) => ({ id: String(c.id || c.source_id || `zoho-${i}`), name: c.name || [c.first_name, c.last_name].filter(Boolean).join(' ') || '', phone: c.phone || '', email: c.email || '', company: c.company_name || '' }));
+            }
+        },
+        {
             key: 'personal_wa', label: 'WAPA', color: '#25D366', icon: 'personal_wa', fetchContacts: async (search: string) => {
                 const params = new URLSearchParams({ page: '1', limit: '100' }); if (search) params.set('search', search);
                 const res = await fetch(`/api/personal-whatsapp/contacts?${params}`, { credentials: 'include' });
@@ -863,6 +872,8 @@ export default function AdvancedSearchAIPage() {
     }, []);
 
     const [showMediaModal, setShowMediaModal] = useState(false);
+    // Custom Workflow Builder (n8n-style) — full-screen takeover opened from the "+" menu.
+    const [showCustomWorkflow, setShowCustomWorkflow] = useState(false);
 
     interface MediaChatMsg {
         id: string;
@@ -2471,42 +2482,6 @@ export default function AdvancedSearchAIPage() {
         );
     }, [cpContacts]);
 
-    const confirmContactPicker = useCallback(async () => {
-        const selected = cpContacts.filter((c: any) => cpSelected.has(c.id));
-        if (!selected.length) return;
-
-        const asInbound: ParsedInboundLead[] = selected.map((c: any) => ({
-            firstName: c.first_name || (typeof c.name === 'string' ? c.name.split(' ')[0] : '') || '',
-            lastName: c.last_name || (typeof c.name === 'string' ? c.name.split(' ').slice(1).join(' ') : '') || '',
-            companyName: c.company || c.company_name || '',
-            linkedinProfile: c.linkedin_url || '',
-            email: c.email || '',
-            whatsapp: c.phone || '',
-            phone: c.phone || '',
-            website: c.website || '',
-            notes: c.notes || '',
-            title: c.title || c.job_title || c.headline || '',
-            location: c.location || '',
-            profilePicture: c.profile_picture || c.photo || '',
-        }));
-
-        setInboundLeads(asInbound);
-        setInboundMode(true);
-        setShowContactPicker(false);
-
-        const counts = computeInboundCounts(asInbound);
-
-        const sourceName = CP_SOURCES.find(s => s.key === cpSourceKey)?.label || 'Contacts';
-        setMessages(p => [...p,
-        { id: `u-${Date.now()}`, role: 'user', text: `👥 Selected ${asInbound.length} contact${asInbound.length !== 1 ? 's' : ''} from ${sourceName}`, ts: new Date() },
-        { id: `a-${Date.now()}`, role: 'ai', text: '', ts: new Date(), inboundAction: 'summary', inboundSummary: counts },
-        ]);
-
-        // Auto-start campaign checkpoint flow
-        setTimeout(() => setCpStep(0), 300);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [cpContacts, cpSelected, cpSourceKey]);
-
     /* ── Finish an inbound import: save (+ role discovery) → enrich → summary ──
        Split out of handleInboundFile so the import can PAUSE on an in-chat location
        question (role-based sheets with no location column) and resume here with the
@@ -2729,6 +2704,49 @@ export default function AdvancedSearchAIPage() {
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [businessProfile]);
+
+    /* ── Contact-picker confirm: route picked contacts (Zoho/GHL/WA/…) through
+       the SAME inbound-import pipeline as file uploads. That saves them to the
+       leads table and runs enrichment — including Unipile LinkedIn profile
+       resolution from name+company — so CRM contacts without a stored LinkedIn
+       URL still light up the LinkedIn channel. (Defined AFTER finishInboundImport
+       to avoid a TDZ reference.) ── */
+    const confirmContactPicker = useCallback(async () => {
+        const selected = cpContacts.filter((c: any) => cpSelected.has(c.id));
+        if (!selected.length) return;
+
+        const asInbound: ParsedInboundLead[] = selected.map((c: any) => ({
+            firstName: c.first_name || (typeof c.name === 'string' ? c.name.split(' ')[0] : '') || '',
+            lastName: c.last_name || (typeof c.name === 'string' ? c.name.split(' ').slice(1).join(' ') : '') || '',
+            companyName: c.company || c.company_name || '',
+            linkedinProfile: c.linkedin_url || '',
+            email: c.email || '',
+            whatsapp: c.phone || '',
+            phone: c.phone || '',
+            website: c.website || '',
+            notes: c.notes || '',
+            title: c.title || c.job_title || c.headline || '',
+            location: c.location || '',
+            profilePicture: c.profile_picture || c.photo || '',
+        }));
+
+        setInboundLeads(asInbound);
+        setInboundMode(true);
+        setShowContactPicker(false);
+
+        const sourceName = CP_SOURCES.find(s => s.key === cpSourceKey)?.label || 'Contacts';
+        setMessages(p => [...p,
+        { id: `u-${Date.now()}`, role: 'user', text: `👥 Selected ${asInbound.length} contact${asInbound.length !== 1 ? 's' : ''} from ${sourceName}`, ts: new Date() },
+        ]);
+
+        // Save + enrich (LinkedIn waterfall) — posts its own summary bubble with
+        // the resolved channel counts when done.
+        await finishInboundImport(asInbound, '');
+
+        // Auto-start campaign checkpoint flow with the enriched channel set.
+        setTimeout(() => setCpStep(0), 300);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [cpContacts, cpSelected, cpSourceKey, finishInboundImport]);
 
     /* ── Core send logic ── */
     /* ── Inbound file handler ── */
@@ -3589,6 +3607,13 @@ export default function AdvancedSearchAIPage() {
             let rawSearchResults: any[] = [];
             let searchTotal = 0;
             let icpWasApplied = false;
+            // Count of matches the backend found but hid because they were already
+            // contacted in a prior campaign. Used to explain an otherwise-confusing
+            // "0 results" empty state (search worked; the leads were just filtered).
+            let excludedAlreadyContacted = 0;
+            // True when 0 results is a transient provider rate-limit (HTTP 429),
+            // not an empty match set — surfaced so we tell the user to retry.
+            let searchRateLimited = false;
 
             // Determine effective search query for confirmed searches.
             // When user confirms a preview with "yes", "ok", etc., always use the pre-extracted intent
@@ -3730,6 +3755,8 @@ export default function AdvancedSearchAIPage() {
                     setSearchCursor(nextCursor);
                     setCursorHistory([null, nextCursor]); // page1=null(start), page2=nextCursor
                     icpWasApplied = !!d.icp_applied;
+                    excludedAlreadyContacted = Number(d.excluded_already_contacted) || 0;
+                    searchRateLimited = !!d.rate_limited;
                     if (Array.isArray(d.results) && d.results.length > 0) {
                         rawSearchResults = d.results;
                         realLeads = d.results.map((item: any, idx: number) => {
@@ -3893,6 +3920,19 @@ export default function AdvancedSearchAIPage() {
                 // lead-chat triggered a search and got results
                 finalText += `\n\n🔍 **Found ${searchTotal} leads** matching your criteria.`;
                 setTimeout(() => setShowPanel('leads'), 500);
+            }
+
+            // ── Explain an "empty" result truthfully instead of a bare "0 records" ──
+            // Two very different causes look identical without this: (a) LinkedIn
+            // temporarily rate-limited the search (transient — retry works), or
+            // (b) the search DID find people but all were hidden by the
+            // already-contacted filter. Either way a bare summary reads as
+            // "nothing found / broken search", so say what actually happened.
+            if (realLeads.length === 0 && searchRateLimited && !searchErrorMessage) {
+                finalText += `\n\n⏳ **LinkedIn is temporarily rate-limiting searches** on this account — this is not a problem with your search terms or your account. Please wait a minute and run the same search again.`;
+            } else if (realLeads.length === 0 && excludedAlreadyContacted > 0 && !searchErrorMessage) {
+                const n = excludedAlreadyContacted;
+                finalText += `\n\n🔎 **${n} matching ${n === 1 ? 'lead was' : 'leads were'} found but hidden** — you already sent ${n === 1 ? 'them a' : 'them'} connection request${n === 1 ? '' : 's'} in a previous campaign, so they're not shown again. Try a different search, or a lead you haven't contacted yet.`;
             }
 
             const journey = realLeads.length > 0 ? buildOutreachJourney(realLeads, ext) : undefined;
@@ -4520,6 +4560,15 @@ export default function AdvancedSearchAIPage() {
                                             <div className="adv-attach-sub">Pick from your existing contacts</div>
                                         </div>
                                     </div>
+                                    <div className="adv-attach-item" onClick={() => { setShowAttachMenu(false); setShowCustomWorkflow(true); }}>
+                                        <div className="adv-attach-icon" style={{ background: '#ede9fe' }}>
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round"><circle cx="5" cy="6" r="3" /><circle cx="19" cy="6" r="3" /><circle cx="12" cy="18" r="3" /><path d="M7.5 8L10 15M16.5 8L14 15" /></svg>
+                                        </div>
+                                        <div>
+                                            <div className="adv-attach-label">Custom workflow</div>
+                                            <div className="adv-attach-sub">Source → outreach nodes, n8n-style</div>
+                                        </div>
+                                    </div>
                                     <div className={`adv-attach-item${webSearchEnabled ? ' adv-attach-active' : ''}`} onClick={() => { setWebSearchEnabled(!webSearchEnabled); setShowAttachMenu(false); }}>
                                         <div className="adv-attach-icon" style={{ background: webSearchEnabled ? '#dbeafe' : '#e0f2fe' }}>
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={webSearchEnabled ? '#2563eb' : '#0284c7'} strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
@@ -5059,6 +5108,15 @@ export default function AdvancedSearchAIPage() {
                                                             <div>
                                                                 <div className="adv-attach-label">Select contacts</div>
                                                                 <div className="adv-attach-sub">Pick from your existing contacts</div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="adv-attach-item" onClick={() => { setShowChatAttachMenu(false); setShowCustomWorkflow(true); }}>
+                                                            <div className="adv-attach-icon" style={{ background: '#ede9fe' }}>
+                                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round"><circle cx="5" cy="6" r="3" /><circle cx="19" cy="6" r="3" /><circle cx="12" cy="18" r="3" /><path d="M7.5 8L10 15M16.5 8L14 15" /></svg>
+                                                            </div>
+                                                            <div>
+                                                                <div className="adv-attach-label">Custom workflow</div>
+                                                                <div className="adv-attach-sub">Source → outreach nodes, n8n-style</div>
                                                             </div>
                                                         </div>
                                                         <div className="adv-attach-divider" />
@@ -6656,6 +6714,13 @@ export default function AdvancedSearchAIPage() {
             )}
 
             {/* ── Contact Picker Modal ── */}
+            {/* ── Custom Workflow Builder (n8n-style) — full-screen takeover from the "+" menu ── */}
+            {showCustomWorkflow && (
+                <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: '#F8F9FE' }}>
+                    <CustomWorkflowBuilder onClose={() => setShowCustomWorkflow(false)} />
+                </div>
+            )}
+
             {showContactPicker && (
                 <div
                     style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '16px' }}

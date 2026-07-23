@@ -19,10 +19,14 @@ export type StepType =
   | 'instagram_comment_reply'
   | 'instagram_story_view'
   | 'lead_generation'
-  | 'delay' 
-  | 'condition' 
-  | 'start' 
-  | 'end';
+  | 'delay'
+  | 'condition'
+  | 'start'
+  | 'end'
+  // Custom Workflow Builder macro nodes (visual-only; expanded/stripped at launch)
+  | 'followup_sequence'
+  | 'analytics_report'
+  | 'zoho_update';
 export type ConditionType = 
   | 'connected'           // LinkedIn: if connected
   | 'linkedin_replied'     // LinkedIn: if replied to message

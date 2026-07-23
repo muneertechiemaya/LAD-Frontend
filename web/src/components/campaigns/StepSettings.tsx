@@ -67,6 +67,10 @@ const getRequiredFields = (stepType: StepType): string[] => {
     linkedin_follow: [],
     start: [],
     end: [],
+    // Custom Workflow Builder macro nodes — expanded/stripped before execution.
+    followup_sequence: [],
+    analytics_report: [],
+    zoho_update: [],
   };
   return required[stepType] || [];
 };

@@ -13,6 +13,7 @@ import { PersonalWaTemplateManager } from '../conversations/PersonalWaTemplateMa
 import { LinkedInIntegration } from './LinkedInIntegration';
 import { TenantOnboarding } from './TenantOnboarding';
 import { GoHighLevelIntegration } from './GoHighLevelIntegration';
+import { ZohoIntegration } from './ZohoIntegration';
 import { useTenant } from '@/contexts/TenantContext';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
 
@@ -153,6 +154,16 @@ const INTEGRATIONS: IntegrationCard[] = [
       </svg>
     ),
     iconBg: 'bg-white',
+    category: 'CRM',
+  },
+  {
+    id: 'zoho',
+    name: 'Zoho CRM',
+    description: 'Connect Zoho CRM to sync Contacts, Leads, and Deals — and push Mr LAD leads back into Zoho.',
+    icon: (
+      <span className="text-lg font-bold text-red-600 select-none leading-none" aria-label="Zoho">Z</span>
+    ),
+    iconBg: 'bg-red-50',
     category: 'CRM',
   },
   {
@@ -408,6 +419,17 @@ export const IntegrationsSettings: React.FC = () => {
         }
       } catch { setStatus('gohighlevel', 'disconnected'); }
 
+      // Zoho CRM
+      setStatus('zoho', 'loading');
+      try {
+        const res = await fetchWithTenant('/api/social-integration/zoho/status');
+        if (!res.ok) { setStatus('zoho', 'disconnected'); }
+        else {
+          const data = await res.json();
+          setStatus('zoho', data?.data?.connected ? 'connected' : 'disconnected');
+        }
+      } catch { setStatus('zoho', 'disconnected'); }
+
       // MindBody
       try {
         setStatus('mindbody', 'loading');
@@ -450,6 +472,14 @@ export const IntegrationsSettings: React.FC = () => {
   useEffect(() => {
     refreshStatuses();
   }, [tenantId, refreshStatuses]);
+
+  // Returning from the Zoho OAuth redirect (/settings?tab=integrations&zoho=...)
+  // → open the Zoho detail view so its success/error banner + status show.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const zoho = new URLSearchParams(window.location.search).get('zoho');
+    if (zoho) setActiveView('zoho');
+  }, []);
 
   // Flip a WhatsApp channel's tenant-level "AI Replies" master switch. Optimistic UI;
   // revert + toast on failure. Both calls go through the shared chat-settings proxy:
@@ -576,6 +606,7 @@ export const IntegrationsSettings: React.FC = () => {
           )}
           {activeView === 'linkedin' && <LinkedInIntegration />}
           {activeView === 'gohighlevel' && <GoHighLevelIntegration />}
+          {activeView === 'zoho' && <ZohoIntegration />}
           {activeView === 'slack' && (
             <div className="rounded-xl border border-border bg-card p-8 text-center text-muted-foreground">
               Slack integration coming soon.

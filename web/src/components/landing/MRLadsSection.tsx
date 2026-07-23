@@ -105,7 +105,7 @@ export default function MRLadsSection() {
           style={{ y: contentY }}
         >
           <p className="text-center text-muted-foreground mb-12 text-sm">
-            More than 12,000 teams have put Mr LAD to work and close deals with companies like:
+            More than 12,000 teams have put Mr LAD to work to close deals faster.
           </p>
         </motion.div>
       </div>
