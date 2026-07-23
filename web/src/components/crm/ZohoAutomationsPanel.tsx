@@ -163,7 +163,7 @@ export const ZohoAutomationsPanel: React.FC = () => {
 
   const visibleProposals = useMemo(() => {
     const q = search.trim().toLowerCase();
-    let list = q ? proposals.filter((a) => matchesSearch(a, q)) : proposals;
+    const list = q ? proposals.filter((a) => matchesSearch(a, q)) : proposals;
     const sorted = [...list];
     if (sortBy === 'contact') sorted.sort((a, b) => (a.contact_name || '').localeCompare(b.contact_name || ''));
     else if (sortBy === 'subject') sorted.sort((a, b) => (a.subject || '').localeCompare(b.subject || ''));
