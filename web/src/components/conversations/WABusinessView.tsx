@@ -3379,7 +3379,7 @@ function WABASidebar({
                   >
                     <Tag className="h-3.5 w-3.5 shrink-0" fill={tagColor} style={{ color: tagColor }} />
                     <span className="truncate flex-1">{label}</span>
-                    {count > 0 && <span className="text-[10px] text-muted-foreground">{count}</span>}
+                    {count > 0 && <span className="text-[10px] !hover:text-muted-foreground">{count}</span>}
                   </DropdownMenuItem>
                 );
               })}
