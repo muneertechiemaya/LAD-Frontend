@@ -1851,8 +1851,8 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
 
   if (!conversation) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-[#f0f2f5] dark:bg-[#222e35] border-l border-border dark:border-[#222d34]">
-        <div className="bg-white dark:bg-[#111b21] p-8 rounded-2xl max-w-sm w-full flex flex-col items-center text-center shadow-sm">
+      <div className="flex-1 flex flex-col items-center justify-center bg-[#f0f2f5] dark:bg-[#161717] border-l border-border dark:border-[#222d34]">
+        <div className="bg-white dark:bg-[#161717] p-8 rounded-2xl max-w-sm w-full flex flex-col items-center text-center shadow-sm">
           <div className="mb-6 relative">
             <div className="w-32 h-24 relative flex items-center justify-center">
               <svg viewBox="0 0 200 150" className="w-full h-full text-[#00a884]">
@@ -1876,19 +1876,19 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
 
         <div className="flex gap-6 mt-8">
           <div className="flex flex-col items-center gap-2">
-            <div className="w-14 h-14 bg-white dark:bg-[#111b21] rounded-2xl flex items-center justify-center shadow-sm cursor-pointer hover:bg-muted dark:hover:bg-[#202c33]">
+            <div className="w-14 h-14 bg-white dark:bg-[#161717] rounded-2xl flex items-center justify-center shadow-sm cursor-pointer hover:bg-muted dark:hover:bg-[#202c33]">
               <FileText className="w-6 h-6 text-muted-foreground dark:text-[#8696a0]" />
             </div>
             <span className="text-[13px] text-muted-foreground dark:text-[#8696a0]">Send document</span>
           </div>
           <div className="flex flex-col items-center gap-2">
-            <div className="w-14 h-14 bg-white dark:bg-[#111b21] rounded-2xl flex items-center justify-center shadow-sm cursor-pointer hover:bg-muted dark:hover:bg-[#202c33]">
+            <div className="w-14 h-14 bg-white dark:bg-[#161717] rounded-2xl flex items-center justify-center shadow-sm cursor-pointer hover:bg-muted dark:hover:bg-[#202c33]">
               <UserPlus className="w-6 h-6 text-muted-foreground dark:text-[#8696a0]" />
             </div>
             <span className="text-[13px] text-muted-foreground dark:text-[#8696a0]">Add contact</span>
           </div>
           <div className="flex flex-col items-center gap-2">
-            <div className="w-14 h-14 bg-white dark:bg-[#111b21] rounded-2xl flex items-center justify-center shadow-sm cursor-pointer hover:bg-muted dark:hover:bg-[#202c33]">
+            <div className="w-14 h-14 bg-white dark:bg-[#161717] rounded-2xl flex items-center justify-center shadow-sm cursor-pointer hover:bg-muted dark:hover:bg-[#202c33]">
               <svg className="w-6 h-6 text-muted-foreground dark:text-[#8696a0]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" />
               </svg>
@@ -4998,7 +4998,7 @@ const handleFavorite = useCallback(
 
       {/* Main Chat Area — hidden on mobile when no conversation selected */}
       <div className={cn(
-        "flex-1 overflow-hidden min-w-0",
+        "flex-1 overflow-hidden min-w-0 dark:bg-[#161717]",
         (!typedSelectedConversation && multiSelectGroupIds.length === 0) ? "hidden lg:flex" : "flex"
       )}>
         {multiSelectGroupIds.length > 0 ? (
