@@ -855,7 +855,7 @@ export function CallOptions(props: CallOptionsProps) {
                         type="button"
                         aria-label={`View summary for row ${idx}`}
                         onClick={() => selectedSummaryIndex === idx ? onRadioChange(null) : onRadioChange(idx)}
-                        className={`inline-flex items-center justify-center h-8 w-8 rounded border hover:bg-gray-50
+                        className={`inline-flex items-center justify-center h-8 w-8 rounded border hover:bg-gray-50 dark:hover:bg-[#0A123C]
                         ${selectedSummaryIndex === idx ? "bg-gray-100 border-gray-400" : ""}`}
                       >
                         {selectedSummaryIndex === idx ? (
@@ -868,7 +868,7 @@ export function CallOptions(props: CallOptionsProps) {
                         type="button"
                         aria-label={`Edit summary for row ${idx}`}
                         onClick={() => openEditorFor(idx)}
-                        className="inline-flex items-center justify-center h-8 w-8 rounded border hover:bg-gray-50"
+                        className="inline-flex items-center justify-center h-8 w-8 rounded border hover:bg-gray-50 dark:hover:bg-[#0A123C]"
                       >
                         <SquarePen className="w-4 h-4" />
                       </button>
