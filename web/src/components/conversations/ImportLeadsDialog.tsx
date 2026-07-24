@@ -936,7 +936,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:w-[90vw] sm:max-w-5xl h-auto max-h-[90vh] flex flex-col p-0 gap-0 border bg-white dark:bg-[#000724] border-slate-200 dark:border-slate-800">
+      <DialogContent className="z-[6000] sm:w-[90vw] sm:max-w-5xl h-auto max-h-[90vh] flex flex-col p-0 gap-0 border bg-white dark:bg-[#000724] border-slate-200 dark:border-slate-800">
         <DialogHeader className="border-b bg-white dark:bg-[#000724] border-gray-100 dark:border-slate-800/80">
           <DialogTitle className="flex items-center gap-3">
             <div className="p-2 rounded-full bg-orange-50 text-orange-600 border border-orange-100 shadow-sm flex items-center justify-center w-10 h-10">
