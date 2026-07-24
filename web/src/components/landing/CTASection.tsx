@@ -44,9 +44,9 @@ export default function CTASection() {
     {
       type: 'secondary',
       label: 'See him in action',
-      description: 'Watch a 15 min demo',
+      description: 'Book a live demo',
       icon: <Calendar className="w-6 h-6" />,
-      action: '/demo',
+      action: '/contact',
       highlight: false
     },
     {

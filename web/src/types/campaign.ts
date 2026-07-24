@@ -120,4 +120,4 @@ export interface StepDefinition {
   description: string;
   category: 'linkedin' | 'email' | 'whatsapp' | 'voice' | 'instagram' | 'utility' | 'leads';
   defaultData: Partial<StepData>;
-}
+}
