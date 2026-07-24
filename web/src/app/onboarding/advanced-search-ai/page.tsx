@@ -1582,6 +1582,9 @@ export default function AdvancedSearchAIPage() {
     const [deleteConfirmation, setDeleteConfirmation] = useState<{ index: number; name: string } | null>(null);
     const [deletingLead, setDeletingLead] = useState(false);
 
+    // Which imported-lead card is expanded to show the full profile summary
+    const [expandedInboundIdx, setExpandedInboundIdx] = useState<number | null>(null);
+
     // ── Restore persisted targeting_filters from localStorage (saved up to 7 days) ─
     useEffect(() => {
         try {

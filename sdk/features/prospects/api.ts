@@ -25,13 +25,25 @@ function buildQuery(params?: object): string {
   return s ? `?${s}` : '';
 }
 
+/** A page of prospects plus the total count of all matching rows (for pagination). */
+export interface ListProspectsResult {
+  items: ProspectState[];
+  total: number;
+}
+
 export async function listProspects(
   params?: ListProspectsParams,
-): Promise<ProspectState[]> {
+): Promise<ListProspectsResult> {
   const response = await apiGet<ProspectState[]>(
     `/api/prospects${buildQuery(params)}`,
   );
-  return response.data;
+  const items = response.data ?? [];
+  // Prefer the server's X-Total-Count; fall back to the page length if the
+  // header is missing (older backend) so paging degrades to a single page.
+  const header = response.headers?.get('x-total-count');
+  const parsed = header != null ? Number(header) : NaN;
+  const total = Number.isFinite(parsed) ? parsed : items.length;
+  return { items, total };
 }
 
 export async function getProspect(id: string): Promise<ProspectState> {
