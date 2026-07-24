@@ -74,6 +74,7 @@ const getRequiredFields = (stepType: StepType): string[] => {
     zoho_update: [],
     switch: [],
     ai_parse: [],
+    data_enrich: [],
   };
   return required[stepType] || [];
 };
