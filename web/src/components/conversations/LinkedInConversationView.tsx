@@ -13,7 +13,8 @@
  *   active   → automated follow-up sent     → chat enabled
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Send, RefreshCw, Loader2, MessageSquare, Linkedin, Clock, CheckCircle, Zap, Lock, ChevronLeft, Search, MoreVertical, Trash2, X, Film, Music, FileText, Image as ImageIcon } from 'lucide-react';
+import { Send, RefreshCw, Loader2, MessageSquare, Linkedin, Clock, CheckCircle, Zap, Lock, ChevronLeft, Search, MoreVertical, Trash2, X, Film, Music, FileText, Image as ImageIcon, Megaphone } from 'lucide-react';
+import LinkedInBroadcastModal from './LinkedInBroadcastModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -430,6 +431,7 @@ export function LinkedInConversationView({
   const [selectedId, setSelectedId]       = useState<string | null>(null);
   const [messages, setMessages]           = useState<LinkedInMessage[]>([]);
   const [searchQuery, setSearchQuery]     = useState('');
+  const [broadcastOpen, setBroadcastOpen] = useState(false);
   // Sidebar status filter — null shows everything, otherwise narrows to that status.
   // Toggled by the chips at the top of the conversation list.
   const [statusFilter, setStatusFilter]   = useState<ConnectionStatus | null>(null);
@@ -686,6 +688,16 @@ export function LinkedInConversationView({
             variant="ghost"
             size="icon"
             className="h-8 w-8 rounded-full"
+            onClick={() => setBroadcastOpen(true)}
+            title="New Broadcast"
+          >
+            <Megaphone className="h-3.5 w-3.5" />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-full"
             onClick={loadConversations}
             disabled={loadingConvs}
             title="Refresh"
@@ -693,6 +705,8 @@ export function LinkedInConversationView({
             <RefreshCw className={cn('h-3.5 w-3.5', loadingConvs && 'animate-spin')} />
           </Button>
         </div>
+
+        {broadcastOpen && <LinkedInBroadcastModal onClose={() => setBroadcastOpen(false)} />}
 
         {/* Status summary pills — clickable: tap to filter the list to that status,
             tap the same chip again (or "All") to clear the filter. */}

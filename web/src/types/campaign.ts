@@ -26,7 +26,10 @@ export type StepType =
   | 'end'
   // Custom Workflow Builder macro nodes (visual-only; expanded/stripped at launch)
   | 'followup_sequence'
-  | 'analytics_report';
+  | 'analytics_report'
+  | 'zoho_update'
+  | 'switch'
+  | 'ai_parse';
 export type ConditionType = 
   | 'connected'           // LinkedIn: if connected
   | 'linkedin_replied'     // LinkedIn: if replied to message
@@ -117,4 +120,4 @@ export interface StepDefinition {
   description: string;
   category: 'linkedin' | 'email' | 'whatsapp' | 'voice' | 'instagram' | 'utility' | 'leads';
   defaultData: Partial<StepData>;
-}
+}

@@ -48,6 +48,9 @@ const defaultStepData: Record<StepType, Partial<StepData>> = {
   media_generation: { title: 'Media generation' },
   followup_sequence: { title: 'Follow-up sequence' },
   analytics_report: { title: 'Analytics report' },
+  zoho_update: { title: 'Update Zoho record' },
+  switch: { title: 'Multi-condition' },
+  ai_parse: { title: 'AI Agent' },
 };
 export const useCampaignStore = create<CampaignState>((set, get) => ({
   name: '',
@@ -316,4 +319,4 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
       selectedNodeId: null,
     });
   },
-}));
+}));

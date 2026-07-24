@@ -196,9 +196,17 @@ function isPlaceholderName(s?: string | null): boolean {
  *  snake_case. The import/save (and enrichment) responses carry a mix — reading
  *  both is what stops the resolved name being dropped on a casing mismatch. */
 function readLeadName(r: any): { firstName: string; lastName: string; name: string } {
-    const firstName = String(r?.firstName ?? r?.first_name ?? '').trim();
-    const lastName = String(r?.lastName ?? r?.last_name ?? '').trim();
+    let firstName = String(r?.firstName ?? r?.first_name ?? '').trim();
+    let lastName = String(r?.lastName ?? r?.last_name ?? '').trim();
     const name = String(r?.name ?? `${firstName} ${lastName}`).trim();
+    // Fall back to splitting a combined `name` when first/last aren't provided
+    // (e.g. enrich-inbound results carry only `name`) — otherwise the panel,
+    // which renders `[firstName, lastName]`, shows "Unknown" despite a real name.
+    if (!firstName && !lastName && name) {
+        const parts = name.split(/\s+/).filter(Boolean);
+        firstName = parts[0] || '';
+        lastName = parts.slice(1).join(' ') || '';
+    }
     return { firstName, lastName, name };
 }
 
@@ -1574,6 +1582,9 @@ export default function AdvancedSearchAIPage() {
     const [deleteConfirmation, setDeleteConfirmation] = useState<{ index: number; name: string } | null>(null);
     const [deletingLead, setDeletingLead] = useState(false);
 
+    // Which imported-lead card is expanded to show the full profile summary
+    const [expandedInboundIdx, setExpandedInboundIdx] = useState<number | null>(null);
+
     // ── Restore persisted targeting_filters from localStorage (saved up to 7 days) ─
     useEffect(() => {
         try {
@@ -2766,11 +2777,14 @@ export default function AdvancedSearchAIPage() {
                         // Fan-out branches below re-seed with the discovered ids.
                         setSelectedLeadIds(new Set(saveData.leadIds));
 
-                        // If the backend fanned out a company+title row into multiple DISCOVERED
-                        // people, show them right away from the save response (the created leads
-                        // carry the real names + LinkedIn URLs) — no need to wait for enrichment.
+                        // Use the backend's saved/discovered leads as the source of truth for
+                        // BOTH the panel and enrollment whenever it returns any — the created
+                        // leads carry the real names + LinkedIn URLs (and their real UUIDs, kept
+                        // index-aligned below). Gating on `> parsed.length` silently kept the
+                        // client-parsed "Unknown" rows whenever discovery returned the same count
+                        // or fewer (e.g. a throttled company+title run that fell back to placeholders).
                         const savedLeads: any[] = Array.isArray(saveData.leads) ? saveData.leads : [];
-                        if (savedLeads.length > parsed.length) {
+                        if (savedLeads.length > 0) {
                             const rebuiltInbound: ParsedInboundLead[] = savedLeads.map((r) => {
                                 const { firstName, lastName } = readLeadName(r);
                                 return {

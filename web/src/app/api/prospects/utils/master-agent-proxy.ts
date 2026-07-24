@@ -134,7 +134,11 @@ export async function proxyToMasterAgent(
     const contentType = response.headers.get('content-type') || '';
     if (contentType.includes('application/json')) {
       const body = await response.json();
-      return NextResponse.json(body, { status: response.status });
+      const res = NextResponse.json(body, { status: response.status });
+      // Forward pagination total (list endpoints) so the client can page.
+      const totalCount = response.headers.get('x-total-count');
+      if (totalCount !== null) res.headers.set('X-Total-Count', totalCount);
+      return res;
     }
     const text = await response.text();
     return new NextResponse(text, {

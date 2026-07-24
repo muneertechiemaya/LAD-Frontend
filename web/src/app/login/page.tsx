@@ -3,10 +3,18 @@ import React from 'react';
 import Login from '../../components/auth/Login';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
-import Image from 'next/image';
 import { motion } from 'framer-motion';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export default function LoginPage() {
+  const { isDark } = useTheme();
+  // Same hero character used on the home page, theme-aware so its baked
+  // background blends with the login screen's light/dark background.
+  const videoSrc = isDark ? '/hero-character-dark.mp4' : '/hero-character.mp4';
+  const posterSrc = isDark
+    ? '/hero-character-dark-poster.jpg'
+    : '/hero-character-poster.jpg';
+
   return (
     <div className="min-h-screen py-20 relative bg-gradient-to-b from-background via-background to-background flex flex-col">
       <main className="flex-1 flex items-start pt-8 md:pt-0 md:items-center justify-center">
@@ -19,7 +27,18 @@ export default function LoginPage() {
             className="hidden md:flex flex-col gap-6 items-start justify-center"
           >
             <div className="relative w-full h-[720px]">
-              <Image src="/LAD-Image.svg" alt="LAD hero" fill style={{ objectFit: 'cover' }} priority={false} />
+              <video
+                key={videoSrc}
+                src={videoSrc}
+                poster={posterSrc}
+                autoPlay
+                loop
+                muted
+                playsInline
+                preload="metadata"
+                aria-hidden="true"
+                className="w-full h-full object-contain mix-blend-multiply dark:mix-blend-screen"
+              />
             </div>
 
             {/* <h2 className="text-4xl font-bold text-[#0b1957] dark:text-white">LAD — Let Agent Deal</h2> */}

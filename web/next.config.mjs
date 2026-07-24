@@ -107,6 +107,14 @@ const nextConfig = {
         destination: '/conversations/templates/:path*',
         permanent: false,
       },
+      // "/landing" is an exact duplicate of "/" (page.tsx renders the same
+      // landing component). Redirect it so search engines don't index two URLs
+      // for the home page. Nothing internal links to /landing.
+      {
+        source: '/landing',
+        destination: '/',
+        permanent: true,
+      },
     ];
   },
 
@@ -119,6 +127,20 @@ const nextConfig = {
             key: "Cache-Control",
             value:
               "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+          },
+        ],
+      },
+      // Static media in /public (videos, images, fonts) is immutable content —
+      // let the browser and CDN cache it instead of re-downloading it on every
+      // visit. This rule comes after the blanket no-store above and, matching
+      // the same Cache-Control key, overrides it for these file types only.
+      {
+        source:
+          "/:path*.:ext(mp4|webm|mov|png|jpg|jpeg|gif|svg|ico|webp|avif|woff|woff2|ttf|otf)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=86400, stale-while-revalidate=604800",
           },
         ],
       },
