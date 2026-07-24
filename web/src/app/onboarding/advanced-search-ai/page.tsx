@@ -196,9 +196,17 @@ function isPlaceholderName(s?: string | null): boolean {
  *  snake_case. The import/save (and enrichment) responses carry a mix — reading
  *  both is what stops the resolved name being dropped on a casing mismatch. */
 function readLeadName(r: any): { firstName: string; lastName: string; name: string } {
-    const firstName = String(r?.firstName ?? r?.first_name ?? '').trim();
-    const lastName = String(r?.lastName ?? r?.last_name ?? '').trim();
+    let firstName = String(r?.firstName ?? r?.first_name ?? '').trim();
+    let lastName = String(r?.lastName ?? r?.last_name ?? '').trim();
     const name = String(r?.name ?? `${firstName} ${lastName}`).trim();
+    // Fall back to splitting a combined `name` when first/last aren't provided
+    // (e.g. enrich-inbound results carry only `name`) — otherwise the panel,
+    // which renders `[firstName, lastName]`, shows "Unknown" despite a real name.
+    if (!firstName && !lastName && name) {
+        const parts = name.split(/\s+/).filter(Boolean);
+        firstName = parts[0] || '';
+        lastName = parts.slice(1).join(' ') || '';
+    }
     return { firstName, lastName, name };
 }
 
