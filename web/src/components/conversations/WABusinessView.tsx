@@ -3274,7 +3274,7 @@ function WABASidebar({
             className={cn(
               'px-3 py-1.5 rounded-full text-[14px] font-medium whitespace-nowrap shrink-0 transition-colors border',
               filterTab === tab
-                ? 'bg-[#0a332c] dark:bg-[#1a342a] text-[#00a884] border-transparent'
+                ? 'bg-[#d9fdd3] text-[#008069] border-border dark:bg-[#1a342a] dark:text-[#00a884] dark:border-[#00a884]/40'
                 : 'bg-muted/50 dark:bg-[#161717] dark:border-[#2e2f2f] text-muted-foreground dark:text-[#a2a2a2] hover:bg-muted dark:hover:bg-[#2a3942]'
             )}
           >
@@ -3290,7 +3290,7 @@ function WABASidebar({
             className={cn(
               'px-3 py-1.5 rounded-full text-[14px] font-medium whitespace-nowrap shrink-0 transition-colors border flex items-center gap-1',
               hideEmpty
-                ? 'bg-[#0a332c] dark:bg-[#1a342a] text-[#00a884] border-transparent'
+                ? 'bg-[#d9fdd3] text-[#008069] border-border dark:bg-[#1a342a] dark:text-[#00a884] dark:border-[#00a884]/40'
                 : 'bg-muted/50 dark:bg-[#161717] dark:border-[#2e2f2f] text-muted-foreground dark:text-[#a2a2a2] hover:bg-muted dark:hover:bg-[#2a3942]'
             )}
           >
@@ -3306,7 +3306,7 @@ function WABASidebar({
               <button className={cn(
                 'px-3 py-1.5 rounded-full text-[14px] font-medium whitespace-nowrap shrink-0 transition-colors border flex items-center gap-1',
                 selectedLabelIds.length > 0
-                  ? 'bg-[#0a332c] dark:bg-[#1a342a] text-[#00a884] border-transparent'
+                  ? 'bg-[#d9fdd3] text-[#008069] border-border dark:bg-[#1a342a] dark:text-[#00a884] dark:border-[#00a884]/40'
                   : 'bg-muted/50 dark:bg-[#161717] dark:border-[#2e2f2f] text-muted-foreground dark:text-[#a2a2a2] hover:bg-muted dark:hover:bg-[#2a3942]'
               )}>
                 <Tag className="h-3.5 w-3.5" />
@@ -3367,7 +3367,7 @@ function WABASidebar({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => onContextStatusFilterChange('all')}
-                className={cn('text-xs cursor-pointer', (!contextStatusFilter || contextStatusFilter === 'all') && 'bg-[#0a332c] dark:bg-[#1a342a] text-[#00a884]')}
+                className={cn('text-xs cursor-pointer', (!contextStatusFilter || contextStatusFilter === 'all') && 'bg-[#e7fce3] text-[#008069] dark:bg-[#1a342a] dark:text-[#00a884]')}
               >
                 All stages
               </DropdownMenuItem>
@@ -3377,7 +3377,7 @@ function WABASidebar({
                   <DropdownMenuItem
                     key={value}
                     onClick={() => onContextStatusFilterChange(value)}
-                    className={cn('text-xs cursor-pointer flex items-center gap-2', contextStatusFilter === value && 'bg-[#0a332c] dark:bg-[#1a342a] text-[#00a884]')}
+                    className={cn('text-xs cursor-pointer flex items-center gap-2', contextStatusFilter === value && 'bg-[#e7fce3] text-[#008069] dark:bg-[#1a342a] dark:text-[#00a884]')}
                   >
                     <Tag className="h-3.5 w-3.5 shrink-0" fill={tagColor} style={{ color: tagColor }} />
                     <span className="truncate flex-1">{label}</span>
@@ -3405,13 +3405,13 @@ function WABASidebar({
             <DropdownMenuContent align="end" className="w-44 bg-white dark:bg-[#161717] border border-border dark:border-0 shadow-lg text-foreground dark:text-[#d1d7db]">
               <DropdownMenuLabel className="text-xs">Sort by</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => onSortByChange('date')} className={cn('text-xs cursor-pointer', sortBy === 'date' && 'bg-[#0a332c] dark:bg-[#1a342a] text-[#00a884]')}>
+              <DropdownMenuItem onClick={() => onSortByChange('date')} className={cn('text-xs cursor-pointer', sortBy === 'date' && 'bg-[#e7fce3] text-[#008069] dark:bg-[#1a342a] dark:text-[#00a884]')}>
                 <Calendar className="h-3.5 w-3.5 mr-2" /> Date (most recent)
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onSortByChange('message_count')} className={cn('text-xs cursor-pointer', sortBy === 'message_count' && 'bg-[#0a332c] dark:bg-[#1a342a] text-[#00a884]')}>
+              <DropdownMenuItem onClick={() => onSortByChange('message_count')} className={cn('text-xs cursor-pointer', sortBy === 'message_count' && 'bg-[#e7fce3] text-[#008069] dark:bg-[#1a342a] dark:text-[#00a884]')}>
                 <Hash className="h-3.5 w-3.5 mr-2" /> Size (most messages)
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onSortByChange('name')} className={cn('text-xs cursor-pointer', sortBy === 'name' && 'bg-[#0a332c] dark:bg-[#1a342a] text-[#00a884]')}>
+              <DropdownMenuItem onClick={() => onSortByChange('name')} className={cn('text-xs cursor-pointer', sortBy === 'name' && 'bg-[#e7fce3] text-[#008069] dark:bg-[#1a342a] dark:text-[#00a884]')}>
                 <ArrowDownUp className="h-3.5 w-3.5 mr-2" /> Name (A → Z)
               </DropdownMenuItem>
             </DropdownMenuContent>
