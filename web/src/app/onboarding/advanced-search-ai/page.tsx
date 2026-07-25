@@ -4922,6 +4922,10 @@ export default function AdvancedSearchAIPage() {
 
                     {/* Input bottom row */}
                     <div className="adv-input-foot">
+                      {/* Left cluster — keeps Roles pinned beside the + button
+                          (the foot is space-between, so ungrouped children
+                          would spread across the whole bar). */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         {/* + button with dropdown */}
                         <div style={{ position: 'relative' }}>
                             <button
@@ -4986,6 +4990,7 @@ export default function AdvancedSearchAIPage() {
 
                         {/* Roles — prebuilt pipeline templates, configured via chat wizard */}
                         <RolesLauncher onPick={startRole} />
+                      </div>
 
                         {/* Send button */}
                         <button
@@ -5003,6 +5008,9 @@ export default function AdvancedSearchAIPage() {
                 </div>
 
                 {/* Suggestion chips */}
+                {/* Suggestion chips — split into two explicit rows (3 + 2) so the
+                    layout is two lines at any width, not dependent on wrapping. */}
+                <div className="adv-chips-stack">
                 <div className="adv-chips-row">
                     <button className="adv-chip" onClick={() => { setInput('Connect me with founders in trading companies in UAE'); taRef.current?.focus(); }}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
@@ -5016,6 +5024,8 @@ export default function AdvancedSearchAIPage() {
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /></svg>
                         VP of Sales in UK SaaS
                     </button>
+                </div>
+                <div className="adv-chips-row adv-chips-row-2">
                     <button className="adv-chip" onClick={() => { setInput(ICP_LEADS_PROMPT); taRef.current?.focus(); }}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" /></svg>
                         Get leads from my active ICP
@@ -5024,6 +5034,7 @@ export default function AdvancedSearchAIPage() {
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
                         Media Generation
                     </button>
+                </div>
                 </div>
 
                 {/* Recent searches */}
@@ -5582,6 +5593,8 @@ export default function AdvancedSearchAIPage() {
                                     placeholder={mediaMode ? (mb.step === 'builder-image-output' ? 'Type feedback to refine generated images...' : mediaPlaceholder) : (creditBalance !== null && creditBalance <= 0 && msgCount >= 10 ? 'Message limit reached — add credits to continue' : (typedPlaceholder || 'Ask Mr LAD...'))}
                                     className="adv-chat-ta" />
                                 <div className="adv-chat-input-foot">
+                                  {/* Left cluster — Roles sits beside + (foot is space-between). */}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                     <div style={{ position: 'relative' }}>
                                         {mediaMode ? (
                                             <button 
@@ -5643,6 +5656,7 @@ export default function AdvancedSearchAIPage() {
                                     {!mediaMode && (
                                         <RolesLauncher onPick={startRole} />
                                     )}
+                                  </div>
                                     {/* Premium Search or Mic Button based on mediaMode */}
                                     {mediaMode ? (
                                         <button
@@ -12320,7 +12334,9 @@ const css = `
             .adv-send-circle {width:40px; height:40px; border-radius:50%; border:none; display:flex; align-items:center; justify-content:center; transition:all .15s; flex-shrink:0; cursor:pointer; }
             .adv-send-circle:disabled {cursor:default; }
             /* ── SUGGESTION CHIPS ── */
+            .adv-chips-stack {display:flex; flex-direction:column; align-items:center; width:100%; }
             .adv-chips-row {display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-top:20px; max-width:680px; animation:fadeUp .4s ease .24s both; }
+            .adv-chips-row-2 {margin-top:10px; animation-delay:.3s; }
             .adv-chip {display:flex; align-items:center; gap:6px; border:1px solid #c2d6eb; border-radius:22px; padding:8px 16px; font-size:13px; font-weight:500; color:#0b1957; background:rgba(255,255,255,.75); cursor:pointer; transition:all .15s; }
             .adv-chip:hover {background:#e0eaf5; border-color:#0b1957; }
             /* ── RECENT SEARCHES ── */
@@ -12767,6 +12783,7 @@ const css = `
                 .adv-center { padding: 0 0 60px !important; align-items: center !important; }
                 .adv-input-outer { width: 92% !important; max-width: 92% !important; margin: 0 auto 40px !important; }
                 .adv-title { font-size: 24px !important; width: 88%; margin: 0 auto 24px !important; text-align: center; }
+                .adv-chips-row-2 { margin-top: 0 !important; }
                 .adv-chips-row { 
                     display: grid !important; 
                     grid-template-columns: repeat(2, 1fr) !important; 
