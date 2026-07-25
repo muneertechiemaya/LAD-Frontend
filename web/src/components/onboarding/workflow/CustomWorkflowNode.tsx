@@ -28,6 +28,7 @@ function getBrandConfig(type: string) {
   if (type === 'zoho_update') return { bg: '#dc2626', border: '#b91c1c', glow: 'rgba(220,38,38,0.25)' };
   if (type === 'switch') return { bg: '#d97706', border: '#b45309', glow: 'rgba(217,119,6,0.25)' };
   if (type === 'ai_parse') return { bg: '#7c3aed', border: '#6d28d9', glow: 'rgba(124,58,237,0.25)' };
+  if (type === 'data_enrich') return { bg: '#0d9488', border: '#0f766e', glow: 'rgba(13,148,136,0.25)' };
   return                                  { bg: '#6366f1', border: '#4f46e5', glow: 'rgba(99,102,241,0.25)' };
 }
 

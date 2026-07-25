@@ -26,7 +26,7 @@ import 'reactflow/dist/style.css';
 import {
   Rocket, Loader2, Linkedin, Mail, MessageCircle, Phone, Clock,
   Users, Repeat, Search, X, HardDrive, Inbox, ListOrdered, BarChart3, GitFork, DatabaseZap,
-  Wand2, Trash2, Radar, Split, Plus, Upload, FileSpreadsheet, Sparkles,
+  Wand2, Trash2, Radar, Split, Plus, Upload, FileSpreadsheet, Sparkles, Contact,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -206,6 +206,14 @@ const MULTICOND_STEP_ID = 'multicond-node';
 // field, split name, tidy company) before the outreach/LinkedIn steps run.
 const AI_STEP_ID = 'ai-agent-node';
 const AI_DEFAULT_INSTRUCTION = 'If the job title has multiple or mixed roles, keep the single best-fit, most senior title. Split the full name into first/last and tidy the company name.';
+
+// "Enrich contact" node — reveals email/phone via FullEnrich; user multi-selects.
+const ENRICH_STEP_ID = 'data-enrich-node';
+const ENRICH_OPTIONS: { key: string; label: string; sub: string }[] = [
+  { key: 'official_email', label: 'Official email', sub: 'work / business email' },
+  { key: 'personal_email', label: 'Personal email', sub: 'private email' },
+  { key: 'phone', label: 'Phone number', sub: 'mobile number' },
+];
 
 const SWITCH_FIELDS = [
   { value: 'tag', label: 'Tag' },
@@ -486,6 +494,14 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     setEditingId(AI_STEP_ID);
   };
 
+  const addDataEnrich = () => {
+    if (!workflowPreview.some((s) => s.id === ENRICH_STEP_ID)) {
+      addWorkflowStep({ id: ENRICH_STEP_ID, type: 'data_enrich', channel: 'email', title: 'Enrich contact', description: 'Official email · Phone' });
+      setCfg(ENRICH_STEP_ID, { enrich: ['official_email', 'phone'] });
+    }
+    setEditingId(ENRICH_STEP_ID);
+  };
+
   const setCfg = useCallback((id: string, patch: any) => {
     setConfigs((c) => ({ ...c, [id]: { ...(c[id] || {}), ...patch } }));
   }, []);
@@ -620,9 +636,10 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     if (!name.trim()) { setError('Name your workflow.'); return; }
     if (!source) { setError('Pick a contact source (first node).'); return; }
     const outreachSteps = workflowPreview.filter(
-      (s) => s.id !== SOURCE_STEP_ID && s.id !== FOLLOWUP_STEP_ID && s.id !== ANALYTICS_STEP_ID && s.id !== ZOHO_UPDATE_STEP_ID && s.id !== MEDIA_STEP_ID && s.id !== MULTICOND_STEP_ID && s.id !== AI_STEP_ID
+      (s) => s.id !== SOURCE_STEP_ID && s.id !== FOLLOWUP_STEP_ID && s.id !== ANALYTICS_STEP_ID && s.id !== ZOHO_UPDATE_STEP_ID && s.id !== MEDIA_STEP_ID && s.id !== MULTICOND_STEP_ID && s.id !== AI_STEP_ID && s.id !== ENRICH_STEP_ID
     );
     const aiNode = workflowPreview.find((s) => s.id === AI_STEP_ID);
+    const enrichNode = workflowPreview.find((s) => s.id === ENRICH_STEP_ID);
     const mediaNode = workflowPreview.find((s) => s.id === MEDIA_STEP_ID);
     const multiCondNode = workflowPreview.find((s) => s.id === MULTICOND_STEP_ID);
     const followupNode = workflowPreview.find((s) => s.id === FOLLOWUP_STEP_ID);
@@ -749,6 +766,18 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
           type: 'ai_parse', title: 'AI Agent', channel: 'linkedin', order_index: order++,
           config: { instruction: (configs[AI_STEP_ID]?.instruction || AI_DEFAULT_INSTRUCTION).trim() },
         });
+      }
+
+      // Data Enrichment → a data_enrich step (after AI cleanup, before outreach)
+      // so the email/WhatsApp/voice steps have the revealed email/phone.
+      if (enrichNode) {
+        const sel: string[] = Array.isArray(configs[ENRICH_STEP_ID]?.enrich) ? configs[ENRICH_STEP_ID].enrich : ['official_email', 'phone'];
+        if (sel.length) {
+          steps.push({
+            type: 'data_enrich', title: 'Enrich contact', channel: 'email', order_index: order++,
+            config: { enrich: sel },
+          });
+        }
       }
 
       // Outreach nodes in canvas order.
@@ -941,7 +970,8 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     const isMedia = editingId === MEDIA_STEP_ID;
     const isMultiCond = editingId === MULTICOND_STEP_ID;
     const isAiParse = editingId === AI_STEP_ID;
-    const isMacro = isFollowup || isAnalytics || isZohoUpdate || isMedia || isMultiCond || isAiParse;
+    const isDataEnrich = editingId === ENRICH_STEP_ID;
+    const isMacro = isFollowup || isAnalytics || isZohoUpdate || isMedia || isMultiCond || isAiParse || isDataEnrich;
     const visual = isSource
       ? SOURCES.find((s) => s.key === source)
       : isFollowup
@@ -956,6 +986,8 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
             ? { icon: <Split className="h-4 w-4 text-amber-600" />, chip: 'bg-amber-50 dark:bg-amber-950/30' }
           : isAiParse
             ? { icon: <Sparkles className="h-4 w-4 text-violet-600" />, chip: 'bg-violet-50 dark:bg-violet-950/30' }
+          : isDataEnrich
+            ? { icon: <Contact className="h-4 w-4 text-teal-600" />, chip: 'bg-teal-50 dark:bg-teal-950/30' }
           : isRouter
             ? { icon: <GitFork className="h-4 w-4 text-rose-600" />, chip: 'bg-rose-50 dark:bg-rose-950/30' }
             : OUTREACH.find((o) => o.type === editingStep.type && !o.router);
@@ -966,7 +998,7 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
           <div className="min-w-0 flex-1">
             <div className="text-sm font-semibold text-foreground truncate">{editingStep.title}</div>
             <div className="text-xs text-muted-foreground">
-              {isSource ? 'Contact source settings' : isFollowup ? 'Follow-up sequence settings' : isAnalytics ? 'Report settings' : isZohoUpdate ? 'Field mapping' : isMedia ? 'AI media' : isMultiCond ? 'Branch by condition' : isAiParse ? 'AI data cleanup' : isRouter ? 'Fallback routing settings' : 'Step settings'}
+              {isSource ? 'Contact source settings' : isFollowup ? 'Follow-up sequence settings' : isAnalytics ? 'Report settings' : isZohoUpdate ? 'Field mapping' : isMedia ? 'AI media' : isMultiCond ? 'Branch by condition' : isAiParse ? 'AI data cleanup' : isDataEnrich ? 'Data to enrich' : isRouter ? 'Fallback routing settings' : 'Step settings'}
             </div>
           </div>
           <button onClick={() => setEditingId(null)} className="h-7 w-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors flex-shrink-0">
@@ -1294,6 +1326,32 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
             <p className="text-[11px] leading-snug text-muted-foreground">Runs on each lead before the outreach steps. It normalises the data — e.g. picks the single best job title when the column has a mix — and writes it back so the LinkedIn node resolves the right person. Uses your tenant&apos;s AI model.</p>
           </>)}
 
+          {isDataEnrich && (() => {
+            const eid = editingId!;
+            const sel: string[] = Array.isArray(cfg.enrich) ? cfg.enrich : ['official_email', 'phone'];
+            const toggle = (key: string) => {
+              const next = sel.includes(key) ? sel.filter((k) => k !== key) : [...sel, key];
+              setCfg(eid, { enrich: next });
+              const labels = ENRICH_OPTIONS.filter((o) => next.includes(o.key)).map((o) => o.label.replace(' email', '').replace(' number', ''));
+              updateWorkflowStep(eid, { description: labels.length ? labels.join(' · ') : 'nothing selected' });
+            };
+            return (<>
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-foreground">Data to enrich</label>
+                {ENRICH_OPTIONS.map((o) => (
+                  <label key={o.key} className="flex items-start gap-2.5 rounded-lg border border-border p-2.5 cursor-pointer hover:bg-muted/30 transition-colors">
+                    <input type="checkbox" className="mt-0.5 h-4 w-4" checked={sel.includes(o.key)} onChange={() => toggle(o.key)} />
+                    <span className="min-w-0">
+                      <span className="block text-sm text-foreground">{o.label}</span>
+                      <span className="block text-[11px] text-muted-foreground">{o.sub}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <p className="text-[11px] leading-snug text-muted-foreground">Reveals the selected data via FullEnrich (name + company/LinkedIn → contact). Runs before outreach so email/WhatsApp/voice steps use the enriched values. Costs FullEnrich credits per lead (work email 2 · personal 4 · mobile 12).</p>
+            </>);
+          })()}
+
           {!isSource && (editingStep.type === 'linkedin_connect' || editingStep.type === 'linkedin_message') && (<>
             {res.liTemplates.length > 0 && (
               <div className="space-y-1"><label className="text-xs font-medium text-foreground">LinkedIn template (optional)</label>
@@ -1549,6 +1607,27 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-semibold text-foreground truncate">AI Agent</span>
                     <span className="block text-xs text-muted-foreground truncate">Clean messy titles / names before LinkedIn</span>
+                  </span>
+                  {added && (
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    </span>
+                  )}
+                </button>
+              );
+            })()}
+            {/* Data enrichment — reveal email/phone via FullEnrich. */}
+            {(() => {
+              const added = workflowPreview.some((s) => s.id === ENRICH_STEP_ID);
+              return (
+                <button onClick={addDataEnrich}
+                  className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
+                    added ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20' : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                  }`}>
+                  <IconChip icon={<Contact className="h-4 w-4 text-teal-600" />} chip="bg-teal-50 dark:bg-teal-950/30" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold text-foreground truncate">Enrich contact</span>
+                    <span className="block text-xs text-muted-foreground truncate">Reveal email &amp; phone (FullEnrich)</span>
                   </span>
                   {added && (
                     <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">

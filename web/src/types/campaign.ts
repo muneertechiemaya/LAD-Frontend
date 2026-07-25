@@ -29,7 +29,8 @@ export type StepType =
   | 'analytics_report'
   | 'zoho_update'
   | 'switch'
-  | 'ai_parse';
+  | 'ai_parse'
+  | 'data_enrich';
 export type ConditionType = 
   | 'connected'           // LinkedIn: if connected
   | 'linkedin_replied'     // LinkedIn: if replied to message
