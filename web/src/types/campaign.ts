@@ -28,6 +28,7 @@ export type StepType =
   // Custom Workflow Builder macro nodes (visual-only; expanded/stripped at launch)
   | 'followup_sequence'
   | 'analytics_report'
+  | 'export_results'
   | 'zoho_update'
   | 'switch'
   | 'ai_parse'

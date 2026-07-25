@@ -72,6 +72,7 @@ const getRequiredFields = (stepType: StepType): string[] => {
     media_generation: [],
     followup_sequence: [],
     analytics_report: [],
+    export_results: [],
     zoho_update: [],
     switch: [],
     ai_parse: [],

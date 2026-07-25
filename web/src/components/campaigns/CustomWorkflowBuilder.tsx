@@ -26,7 +26,7 @@ import 'reactflow/dist/style.css';
 import {
   Rocket, Loader2, Linkedin, Mail, MailPlus, MessageCircle, Phone, Clock,
   Users, Repeat, Search, X, HardDrive, Inbox, ListOrdered, BarChart3, GitFork, DatabaseZap,
-  Wand2, Trash2, Radar, Split, Plus, Upload, FileSpreadsheet, Sparkles, Contact,
+  Wand2, Trash2, Radar, Split, Plus, Upload, FileSpreadsheet, Sparkles, Contact, Download,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -216,6 +216,43 @@ const ENRICH_OPTIONS: { key: string; label: string; sub: string }[] = [
   { key: 'phone', label: 'Phone number', sub: 'mobile number' },
 ];
 
+// "Export results" node — ships the campaign's result set to one or more
+// destinations. Config-only (like the analytics digest): stored on
+// campaigns.config.export_results and run on completion / on demand.
+const EXPORT_STEP_ID = 'export-results-node';
+const EXPORT_FORMATS = [
+  { value: 'csv', label: 'CSV (.csv)' },
+  { value: 'xlsx', label: 'Excel (.xlsx)' },
+  { value: 'json', label: 'JSON (.json)' },
+];
+const EXPORT_DESTINATIONS: { key: string; label: string; sub: string }[] = [
+  { key: 'file',          label: 'Download file',   sub: 'CSV / Excel / JSON link' },
+  { key: 'database',      label: 'Database table',  sub: 'append to campaign_export_results' },
+  { key: 'email',         label: 'Email',           sub: 'send file as an attachment' },
+  { key: 'whatsapp',      label: 'WhatsApp',        sub: 'send file as a document' },
+  { key: 'webhook',       label: 'Webhook',         sub: 'POST JSON to a URL' },
+  { key: 'google_sheets', label: 'Google Sheets',   sub: 'append rows to a sheet' },
+  { key: 'slack',         label: 'Slack',           sub: 'post summary + link' },
+  { key: 'cloud_storage', label: 'Cloud storage',   sub: 'drop file in a bucket' },
+];
+const EXPORT_COLUMN_OPTIONS: { value: string; label: string }[] = [
+  { value: 'full_name', label: 'Full name' },
+  { value: 'first_name', label: 'First name' },
+  { value: 'last_name', label: 'Last name' },
+  { value: 'title', label: 'Title' },
+  { value: 'company_name', label: 'Company' },
+  { value: 'email', label: 'Email' },
+  { value: 'personal_email', label: 'Personal email' },
+  { value: 'phone', label: 'Phone' },
+  { value: 'linkedin_url', label: 'LinkedIn URL' },
+  { value: 'status', label: 'Status' },
+  { value: 'last_action', label: 'Last action' },
+  { value: 'last_action_at', label: 'Last action at' },
+  { value: 'replied', label: 'Replied' },
+  { value: 'created_at', label: 'Added on' },
+];
+const EXPORT_DEFAULT_COLUMNS = ['full_name', 'title', 'company_name', 'email', 'phone', 'linkedin_url', 'status', 'last_action', 'last_action_at'];
+
 const SWITCH_FIELDS = [
   { value: 'tag', label: 'Tag' },
   { value: 'title', label: 'Job title' },
@@ -385,6 +422,9 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
   const [mediaGalleryOpen, setMediaGalleryOpen] = useState(false);
   const [mediaImporting, setMediaImporting] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
+  // "Export now" (builder test run) state.
+  const [exportRunning, setExportRunning] = useState(false);
+  const [exportResult, setExportResult] = useState<any>(null);
   // Multi-condition node: fields of the connected source (dynamic dropdown).
   const [mcFields, setMcFields] = useState<{ value: string; label: string }[]>(SWITCH_FIELDS);
   const [mcFieldsLoading, setMcFieldsLoading] = useState(false);
@@ -501,6 +541,64 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
       setCfg(ENRICH_STEP_ID, { enrich: ['official_email', 'phone'] });
     }
     setEditingId(ENRICH_STEP_ID);
+  };
+
+  /** Map the parsed file grid + header mapping into lead objects. Shared by the
+   *  launch payload and the "Export now" test run. */
+  const buildLeadsFromFile = useCallback(() => {
+    const colOf = (f: string) => { const e = Object.entries(fileMapping).find(([, v]) => v === f); return e ? Number(e[0]) : -1; };
+    const idx = { full_name: colOf('full_name'), first_name: colOf('first_name'), last_name: colOf('last_name'), company: colOf('company'), title: colOf('title'), location: colOf('location'), email: colOf('email'), phone: colOf('phone'), linkedin_url: colOf('linkedin_url'), website: colOf('website') };
+    const val = (r: string[], i: number) => (i >= 0 ? (r[i] || '').trim() : '');
+    return fileRows.map((r) => {
+      const first = val(r, idx.first_name), last = val(r, idx.last_name);
+      const full = val(r, idx.full_name) || [first, last].filter(Boolean).join(' ');
+      return {
+        name: full || undefined,
+        first_name: first || (full ? full.split(' ')[0] : undefined),
+        last_name: last || (full ? full.split(' ').slice(1).join(' ') || undefined : undefined),
+        company_name: val(r, idx.company) || undefined,
+        title: val(r, idx.title) || undefined,
+        location: val(r, idx.location) || undefined,
+        email: val(r, idx.email) || undefined,
+        phone: val(r, idx.phone) || undefined,
+        linkedin_url: val(r, idx.linkedin_url) || undefined,
+      };
+    });
+  }, [fileRows, fileMapping]);
+
+  /** "Export now" — test the configured export against the leads loaded in the
+   *  builder, so destinations (email / webhook / Slack …) are proven before launch. */
+  const runExportNow = async () => {
+    const cfg = configs[EXPORT_STEP_ID] || {};
+    const leads = source === 'file_import' ? buildLeadsFromFile() : [];
+    setExportRunning(true);
+    setExportResult(null);
+    try {
+      const res = await fetchWithTenant('/api/campaigns/export/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ config: cfg, leads, campaign_name: name.trim() || 'Workflow preview' }),
+      });
+      const data = await res.json();
+      setExportResult(data);
+    } catch (e: any) {
+      setExportResult({ success: false, error: e?.message || 'Export failed' });
+    } finally {
+      setExportRunning(false);
+    }
+  };
+
+  const addExport = () => {
+    if (!workflowPreview.some((s) => s.id === EXPORT_STEP_ID)) {
+      addWorkflowStep({ id: EXPORT_STEP_ID, type: 'export_results', channel: 'email', title: 'Export results', description: 'CSV · Download' });
+      setCfg(EXPORT_STEP_ID, {
+        format: 'csv',
+        destinations: ['file'],
+        columns: EXPORT_DEFAULT_COLUMNS,
+        run_on_completion: true,
+      });
+    }
+    setEditingId(EXPORT_STEP_ID);
   };
 
   const setCfg = useCallback((id: string, patch: any) => {
@@ -637,7 +735,7 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     if (!name.trim()) { setError('Name your workflow.'); return; }
     if (!source) { setError('Pick a contact source (first node).'); return; }
     const outreachSteps = workflowPreview.filter(
-      (s) => s.id !== SOURCE_STEP_ID && s.id !== FOLLOWUP_STEP_ID && s.id !== ANALYTICS_STEP_ID && s.id !== ZOHO_UPDATE_STEP_ID && s.id !== MEDIA_STEP_ID && s.id !== MULTICOND_STEP_ID && s.id !== AI_STEP_ID && s.id !== ENRICH_STEP_ID
+      (s) => s.id !== SOURCE_STEP_ID && s.id !== FOLLOWUP_STEP_ID && s.id !== ANALYTICS_STEP_ID && s.id !== ZOHO_UPDATE_STEP_ID && s.id !== MEDIA_STEP_ID && s.id !== MULTICOND_STEP_ID && s.id !== AI_STEP_ID && s.id !== ENRICH_STEP_ID && s.id !== EXPORT_STEP_ID
     );
     const aiNode = workflowPreview.find((s) => s.id === AI_STEP_ID);
     const enrichNode = workflowPreview.find((s) => s.id === ENRICH_STEP_ID);
@@ -645,6 +743,7 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     const multiCondNode = workflowPreview.find((s) => s.id === MULTICOND_STEP_ID);
     const followupNode = workflowPreview.find((s) => s.id === FOLLOWUP_STEP_ID);
     const analyticsNode = workflowPreview.find((s) => s.id === ANALYTICS_STEP_ID);
+    const exportNode = workflowPreview.find((s) => s.id === EXPORT_STEP_ID);
     const zohoUpdateNode = workflowPreview.find((s) => s.id === ZOHO_UPDATE_STEP_ID);
     if (!outreachSteps.length && !followupNode && !multiCondNode) { setError('Add at least one outreach step.'); return; }
     if (multiCondNode) {
@@ -930,6 +1029,25 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
           ...(followupNode ? {
             followup_sequence: { touches: fuTouchList.length, channel: fuChannel, timeline_hours: fuTouchList.map((t) => t.hours || 24), human_approval: !!fc.human_approval },
           } : {}),
+          ...(exportNode ? (() => {
+            const ec = configs[EXPORT_STEP_ID] || {};
+            return {
+              // Read by CampaignExportService — on completion and from "Export now".
+              export_results: {
+                format: ec.format || 'csv',
+                destinations: Array.isArray(ec.destinations) && ec.destinations.length ? ec.destinations : ['file'],
+                columns: Array.isArray(ec.columns) && ec.columns.length ? ec.columns : EXPORT_DEFAULT_COLUMNS,
+                run_on_completion: ec.run_on_completion !== false,
+                email_to: (ec.email_to || '').trim() || undefined,
+                whatsapp_to: (ec.whatsapp_to || '').trim() || undefined,
+                webhook_url: (ec.webhook_url || '').trim() || undefined,
+                sheet_id: (ec.sheet_id || '').trim() || undefined,
+                slack_webhook_url: (ec.slack_webhook_url || '').trim() || undefined,
+                bucket: (ec.bucket || '').trim() || undefined,
+                bucket_prefix: (ec.bucket_prefix || '').trim() || undefined,
+              },
+            };
+          })() : {}),
           ...(analyticsNode ? {
             // Read by core/cron/campaignDigestCron.js — daily 08:00 GST (weekly = Mondays).
             analytics_notifications: {
@@ -973,7 +1091,8 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     const isMultiCond = editingId === MULTICOND_STEP_ID;
     const isAiParse = editingId === AI_STEP_ID;
     const isDataEnrich = editingId === ENRICH_STEP_ID;
-    const isMacro = isFollowup || isAnalytics || isZohoUpdate || isMedia || isMultiCond || isAiParse || isDataEnrich;
+    const isExport = editingId === EXPORT_STEP_ID;
+    const isMacro = isFollowup || isAnalytics || isZohoUpdate || isMedia || isMultiCond || isAiParse || isDataEnrich || isExport;
     const visual = isSource
       ? SOURCES.find((s) => s.key === source)
       : isFollowup
@@ -990,6 +1109,8 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
             ? { icon: <Sparkles className="h-4 w-4 text-violet-600" />, chip: 'bg-violet-50 dark:bg-violet-950/30' }
           : isDataEnrich
             ? { icon: <Contact className="h-4 w-4 text-teal-600" />, chip: 'bg-teal-50 dark:bg-teal-950/30' }
+          : isExport
+            ? { icon: <Download className="h-4 w-4 text-cyan-700" />, chip: 'bg-cyan-50 dark:bg-cyan-950/30' }
           : isRouter
             ? { icon: <GitFork className="h-4 w-4 text-rose-600" />, chip: 'bg-rose-50 dark:bg-rose-950/30' }
             : OUTREACH.find((o) => o.type === editingStep.type && !o.router);
@@ -1000,7 +1121,7 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
           <div className="min-w-0 flex-1">
             <div className="text-sm font-semibold text-foreground truncate">{editingStep.title}</div>
             <div className="text-xs text-muted-foreground">
-              {isSource ? 'Contact source settings' : isFollowup ? 'Follow-up sequence settings' : isAnalytics ? 'Report settings' : isZohoUpdate ? 'Field mapping' : isMedia ? 'AI media' : isMultiCond ? 'Branch by condition' : isAiParse ? 'AI data cleanup' : isDataEnrich ? 'Data to enrich' : isRouter ? 'Fallback routing settings' : 'Step settings'}
+              {isSource ? 'Contact source settings' : isFollowup ? 'Follow-up sequence settings' : isAnalytics ? 'Report settings' : isZohoUpdate ? 'Field mapping' : isMedia ? 'AI media' : isMultiCond ? 'Branch by condition' : isAiParse ? 'AI data cleanup' : isDataEnrich ? 'Data to enrich' : isExport ? 'Export destinations' : isRouter ? 'Fallback routing settings' : 'Step settings'}
             </div>
           </div>
           <button onClick={() => setEditingId(null)} className="h-7 w-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors flex-shrink-0">
@@ -1354,6 +1475,125 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
             </>);
           })()}
 
+          {isExport && (() => {
+            const eid = editingId!;
+            const dests: string[] = Array.isArray(cfg.destinations) ? cfg.destinations : ['file'];
+            const cols: string[] = Array.isArray(cfg.columns) ? cfg.columns : EXPORT_DEFAULT_COLUMNS;
+            const fmt = cfg.format || 'csv';
+            const describe = (d: string[], f: string) => {
+              const names = EXPORT_DESTINATIONS.filter((x) => d.includes(x.key)).map((x) => x.label);
+              return `${String(f).toUpperCase()} · ${names.length ? names.join(' · ') : 'no destination'}`;
+            };
+            const toggleDest = (key: string) => {
+              const next = dests.includes(key) ? dests.filter((k) => k !== key) : [...dests, key];
+              setCfg(eid, { destinations: next });
+              updateWorkflowStep(eid, { description: describe(next, fmt) });
+            };
+            const toggleCol = (value: string) => {
+              const next = cols.includes(value) ? cols.filter((c) => c !== value) : [...cols, value];
+              setCfg(eid, { columns: next });
+            };
+            const has = (k: string) => dests.includes(k);
+            return (<>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">File format</label>
+                <select className={field} value={fmt} onChange={(e) => { setCfg(eid, { format: e.target.value }); updateWorkflowStep(eid, { description: describe(dests, e.target.value) }); }}>
+                  {EXPORT_FORMATS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-foreground">Where to send the results</label>
+                {EXPORT_DESTINATIONS.map((o) => (
+                  <label key={o.key} className="flex items-start gap-2.5 rounded-lg border border-border p-2.5 cursor-pointer hover:bg-muted/30 transition-colors">
+                    <input type="checkbox" className="mt-0.5 h-4 w-4" checked={has(o.key)} onChange={() => toggleDest(o.key)} />
+                    <span className="min-w-0">
+                      <span className="block text-sm text-foreground">{o.label}</span>
+                      <span className="block text-[11px] text-muted-foreground">{o.sub}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+
+              {/* Per-destination inputs — only shown for the ones selected. */}
+              {has('email') && (
+                <div className="space-y-1"><label className="text-xs font-medium text-foreground">Email to</label>
+                  <input className={field} value={cfg.email_to || ''} onChange={(e) => setCfg(eid, { email_to: e.target.value })} placeholder="you@company.com" /></div>
+              )}
+              {has('whatsapp') && (
+                <div className="space-y-1"><label className="text-xs font-medium text-foreground">WhatsApp number</label>
+                  <input className={field} value={cfg.whatsapp_to || ''} onChange={(e) => setCfg(eid, { whatsapp_to: e.target.value })} placeholder="+971500000000" /></div>
+              )}
+              {has('webhook') && (
+                <div className="space-y-1"><label className="text-xs font-medium text-foreground">Webhook URL</label>
+                  <input className={field} value={cfg.webhook_url || ''} onChange={(e) => setCfg(eid, { webhook_url: e.target.value })} placeholder="https://hooks.example.com/…" /></div>
+              )}
+              {has('google_sheets') && (
+                <div className="space-y-1"><label className="text-xs font-medium text-foreground">Google Sheet ID</label>
+                  <input className={field} value={cfg.sheet_id || ''} onChange={(e) => setCfg(eid, { sheet_id: e.target.value })} placeholder="1AbC…xyz (from the sheet URL)" />
+                  <p className="text-[11px] text-muted-foreground">Uses your connected Google account — the Sheets scope must be granted.</p></div>
+              )}
+              {has('slack') && (
+                <div className="space-y-1"><label className="text-xs font-medium text-foreground">Slack incoming webhook</label>
+                  <input className={field} value={cfg.slack_webhook_url || ''} onChange={(e) => setCfg(eid, { slack_webhook_url: e.target.value })} placeholder="https://hooks.slack.com/services/…" /></div>
+              )}
+              {has('cloud_storage') && (<>
+                <div className="space-y-1"><label className="text-xs font-medium text-foreground">Bucket</label>
+                  <input className={field} value={cfg.bucket || ''} onChange={(e) => setCfg(eid, { bucket: e.target.value })} placeholder="Leave blank for the default bucket" /></div>
+                <div className="space-y-1"><label className="text-xs font-medium text-foreground">Folder prefix</label>
+                  <input className={field} value={cfg.bucket_prefix || ''} onChange={(e) => setCfg(eid, { bucket_prefix: e.target.value })} placeholder="campaign-exports" /></div>
+              </>)}
+
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-foreground">Columns to include</label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {EXPORT_COLUMN_OPTIONS.map((c) => (
+                    <label key={c.value} className="flex items-center gap-2 text-[12px] text-foreground cursor-pointer">
+                      <input type="checkbox" className="h-3.5 w-3.5" checked={cols.includes(c.value)} onChange={() => toggleCol(c.value)} />
+                      <span className="truncate">{c.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <label className="flex items-start gap-2.5 rounded-lg border border-border p-2.5 cursor-pointer hover:bg-muted/30 transition-colors">
+                <input type="checkbox" className="mt-0.5 h-4 w-4" checked={cfg.run_on_completion !== false}
+                  onChange={(e) => setCfg(eid, { run_on_completion: e.target.checked })} />
+                <span className="min-w-0">
+                  <span className="block text-sm text-foreground">Export automatically when the campaign finishes</span>
+                  <span className="block text-[11px] text-muted-foreground">You can also export any time from the campaign page.</span>
+                </span>
+              </label>
+
+              {/* Execute now — proves the destinations work before launch. */}
+              <div className="space-y-2 pt-1">
+                <button type="button" onClick={runExportNow} disabled={exportRunning}
+                  className="w-full rounded-md bg-[#0b1957] text-white text-sm font-medium py-2 disabled:opacity-60 flex items-center justify-center gap-2">
+                  {exportRunning ? <><Loader2 className="h-4 w-4 animate-spin" /> Exporting…</> : <><Download className="h-4 w-4" /> Export now</>}
+                </button>
+                <p className="text-[11px] leading-snug text-muted-foreground">
+                  {source === 'file_import'
+                    ? 'Runs the export against the leads loaded above, so you can check the file and confirm your destinations work.'
+                    : 'Sends a test export (no leads are loaded yet for this source) — useful to confirm the destination settings are valid.'}
+                </p>
+                {exportResult && (
+                  <div className={`rounded-md border p-2.5 text-[11px] ${exportResult.success ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/30' : 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30'}`}>
+                    {exportResult.error && <p className="text-red-700 dark:text-red-300">{exportResult.error}</p>}
+                    {typeof exportResult.count === 'number' && <p className="text-foreground font-medium">{exportResult.count} row{exportResult.count !== 1 ? 's' : ''} exported</p>}
+                    {exportResult.results && Object.entries(exportResult.results).map(([k, v]: any) => (
+                      <p key={k} className={v.ok ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}>
+                        {v.ok ? '✓' : '✕'} {k}{v.error ? ` — ${v.error}` : ''}{v.skipped ? ` — ${v.skipped}` : ''}
+                      </p>
+                    ))}
+                    {exportResult.file_url && (
+                      <a href={exportResult.file_url} target="_blank" rel="noreferrer" className="inline-block mt-1 underline text-[#0b1957] dark:text-sky-300">Download file</a>
+                    )}
+                  </div>
+                )}
+              </div>
+            </>);
+          })()}
+
           {!isSource && (editingStep.type === 'linkedin_connect' || editingStep.type === 'linkedin_message') && (<>
             {res.liTemplates.length > 0 && (
               <div className="space-y-1"><label className="text-xs font-medium text-foreground">LinkedIn template (optional)</label>
@@ -1654,6 +1894,27 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-semibold text-foreground truncate">Enrich contact</span>
                     <span className="block text-xs text-muted-foreground truncate">Reveal email &amp; phone (FullEnrich)</span>
+                  </span>
+                  {added && (
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    </span>
+                  )}
+                </button>
+              );
+            })()}
+            {/* Export results — ship the final result set to files / DB / channels. */}
+            {(() => {
+              const added = workflowPreview.some((s) => s.id === EXPORT_STEP_ID);
+              return (
+                <button onClick={addExport}
+                  className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
+                    added ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20' : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                  }`}>
+                  <IconChip icon={<Download className="h-4 w-4 text-cyan-700" />} chip="bg-cyan-50 dark:bg-cyan-950/30" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold text-foreground truncate">Export results</span>
+                    <span className="block text-xs text-muted-foreground truncate">File · DB · Email · WhatsApp · more</span>
                   </span>
                   {added && (
                     <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">

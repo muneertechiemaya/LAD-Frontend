@@ -26,6 +26,7 @@ function getBrandConfig(type: string) {
   if (type === 'condition')        return { bg: '#8b5cf6', border: '#7c3aed', glow: 'rgba(139,92,246,0.25)' };
   if (type === 'followup_sequence') return { bg: '#6366f1', border: '#4f46e5', glow: 'rgba(99,102,241,0.25)' };
   if (type === 'analytics_report') return { bg: '#06b6d4', border: '#0891b2', glow: 'rgba(6,182,212,0.25)' };
+  if (type === 'export_results')   return { bg: '#0891b2', border: '#0e7490', glow: 'rgba(8,145,178,0.25)' };
   if (type === 'zoho_update') return { bg: '#dc2626', border: '#b91c1c', glow: 'rgba(220,38,38,0.25)' };
   if (type === 'switch') return { bg: '#d97706', border: '#b45309', glow: 'rgba(217,119,6,0.25)' };
   if (type === 'ai_parse') return { bg: '#7c3aed', border: '#6d28d9', glow: 'rgba(124,58,237,0.25)' };
