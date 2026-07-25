@@ -20,13 +20,13 @@
 // visual step list.
 
 import * as React from 'react';
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, Fragment } from 'react';
 import ReactFlow, { ReactFlowProvider, useNodesState, useEdgesState } from 'reactflow';
 import 'reactflow/dist/style.css';
 import {
   Rocket, Loader2, Linkedin, Mail, MailPlus, MessageCircle, Phone, Clock,
   Users, Repeat, Search, X, HardDrive, Inbox, ListOrdered, BarChart3, GitFork, DatabaseZap,
-  Wand2, Trash2, Radar, Split, Plus, Upload, FileSpreadsheet, Sparkles, Contact, Download, Megaphone,
+  Wand2, Trash2, Radar, Split, Plus, Upload, FileSpreadsheet, Sparkles, Contact, Download, Megaphone, Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -265,6 +265,123 @@ const AUTOPOST_DAYS = [
   { value: 1, label: 'Mon' }, { value: 2, label: 'Tue' }, { value: 3, label: 'Wed' },
   { value: 4, label: 'Thu' }, { value: 5, label: 'Fri' }, { value: 6, label: 'Sat' },
   { value: 0, label: 'Sun' },
+];
+
+// ── Workflow templates ──────────────────────────────────────────────────────
+// One-click pipeline recipes. Each node is either an OUTREACH step (gets a
+// generated id) or a single-instance macro (uses its fixed *_STEP_ID so the
+// drawers and launch emit find its config). `cfg` seeds the node's drawer —
+// users edit everything after applying.
+type TemplateNode = {
+  type: StepType;
+  /** Fixed macro id (MEDIA_STEP_ID, AUTOPOST_STEP_ID, …); omit for outreach steps. */
+  macroId?: string;
+  title: string;
+  description: string;
+  cfg?: any;
+};
+type WorkflowTemplate = {
+  key: string;
+  name: string;
+  tagline: string;
+  /** Chip labels shown on the card so users see the pipeline before applying. */
+  chain: string[];
+  source: { key: SourceKey; cfg?: any; title: string; description: string };
+  nodes: TemplateNode[];
+};
+
+const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
+  {
+    key: 'linkedin_accelerator',
+    name: 'LinkedIn Accelerator',
+    tagline: 'Warm up, connect, message — while daily AI posts build your presence',
+    chain: ['LinkedIn Search', 'Profile visit', 'Connect', 'Wait: accepted', 'Message', 'AI Media', 'Daily auto-post'],
+    source: {
+      key: 'linkedin_search',
+      title: 'LinkedIn Search', description: 'Industry · title · location',
+      cfg: { job_titles: '', industries: '', locations: '' },
+    },
+    nodes: [
+      { type: 'linkedin_visit', title: 'Profile visit', description: 'Warm up before connecting' },
+      { type: 'linkedin_connect', title: 'Connection request', description: 'AI-personalised note', cfg: { message: '' } },
+      { type: 'condition', title: 'Wait for condition', description: 'Connection accepted', cfg: { condition: 'connection_accepted' } },
+      { type: 'linkedin_message', title: 'Message', description: 'First message after acceptance', cfg: { message: 'Hi {{first_name}}, thanks for connecting! I noticed you lead {{title}} at {{company_name}} — curious how you\'re approaching outbound this quarter?' } },
+      { type: 'media_generation', macroId: MEDIA_STEP_ID, title: 'AI Media', description: 'Generate an image for your posts' },
+      {
+        type: 'linkedin_post', macroId: AUTOPOST_STEP_ID, title: 'LinkedIn auto-post', description: 'Daily · 09:00 · AI-written',
+        cfg: {
+          content: 'Share one practical, non-salesy insight for leaders in the industry I target — what top performers do differently in outbound this year.',
+          ai_generate: true, frequency: 'daily', days: [1, 2, 3, 4, 5], time: '09:00', post_as: 'personal',
+        },
+      },
+    ],
+  },
+  {
+    key: 'cold_list_outreach',
+    name: 'Cold List Outreach',
+    tagline: 'Upload a list, clean + enrich it, connect and follow up, export results',
+    chain: ['File import', 'AI Agent', 'Enrich', 'Connect', 'Wait: accepted', 'Message', 'Export'],
+    source: { key: 'file_import', title: 'File import (CSV / Excel)', description: 'Upload a list and map columns' },
+    nodes: [
+      { type: 'ai_parse', macroId: AI_STEP_ID, title: 'AI Agent', description: 'Clean & normalise lead data', cfg: { instruction: AI_DEFAULT_INSTRUCTION } },
+      { type: 'data_enrich', macroId: ENRICH_STEP_ID, title: 'Enrich contact', description: 'Official email · Phone', cfg: { enrich: ['official_email', 'phone'] } },
+      { type: 'linkedin_connect', title: 'Connection request', description: 'AI-personalised note', cfg: { message: '' } },
+      { type: 'condition', title: 'Wait for condition', description: 'Connection accepted', cfg: { condition: 'connection_accepted' } },
+      { type: 'linkedin_message', title: 'Message', description: 'First message after acceptance', cfg: { message: 'Hi {{first_name}}, thanks for connecting! Would love to hear how things are going at {{company_name}}.' } },
+      { type: 'export_results', macroId: EXPORT_STEP_ID, title: 'Export results', description: 'CSV · Download', cfg: { format: 'csv', destinations: ['file'], columns: EXPORT_DEFAULT_COLUMNS, run_on_completion: true } },
+    ],
+  },
+  {
+    key: 'inmail_blitz',
+    name: 'InMail Blitz',
+    tagline: 'Premium InMail to non-connections, with automatic follow-ups',
+    chain: ['LinkedIn Search', 'Profile visit', 'InMail', 'Follow-ups'],
+    source: {
+      key: 'linkedin_search',
+      title: 'LinkedIn Search', description: 'Industry · title · location',
+      cfg: { job_titles: '', industries: '', locations: '' },
+    },
+    nodes: [
+      { type: 'linkedin_visit', title: 'Profile visit', description: 'Warm up before the InMail' },
+      { type: 'linkedin_inmail', title: 'InMail (Premium)', description: 'Cold InMail to non-connections', cfg: { message: 'Hi {{first_name}}, I came across your profile — I work with {{title}}s on outbound and thought this was worth a short note. Open to a quick exchange?' } },
+      { type: 'followup_sequence', macroId: FOLLOWUP_STEP_ID, title: 'Follow-up sequence', description: '3 touches · LinkedIn', cfg: { channel: 'linkedin', touches: [{ hours: 48 }, { hours: 120 }, { hours: 240 }] } },
+    ],
+  },
+  {
+    key: 'signal_hunter',
+    name: 'Signal Hunter',
+    tagline: 'Catch companies showing buying signals and reach the decision maker',
+    chain: ['Signal Search', 'Profile visit', 'Connect', 'Wait: accepted', 'Message'],
+    source: {
+      key: 'linkedin_signal',
+      title: 'LinkedIn Signal Search', description: 'Hiring / buying signals · daily',
+      cfg: { signal_query: 'companies hiring for revenue operations or sales development roles', decision_maker_titles: 'VP Sales, Head of Sales, CRO' },
+    },
+    nodes: [
+      { type: 'linkedin_visit', title: 'Profile visit', description: 'Warm up before connecting' },
+      { type: 'linkedin_connect', title: 'Connection request', description: 'AI-personalised note', cfg: { message: '' } },
+      { type: 'condition', title: 'Wait for condition', description: 'Connection accepted', cfg: { condition: 'connection_accepted' } },
+      { type: 'linkedin_message', title: 'Message', description: 'Signal-aware first message', cfg: { message: 'Hi {{first_name}}, saw {{company_name}} is growing the team — usually a sign outbound is about to scale. Happy to share what\'s working for similar teams if useful.' } },
+    ],
+  },
+  {
+    key: 'crm_reengage',
+    name: 'CRM Re-Engage',
+    tagline: 'Pull new Zoho contacts daily, reach out on LinkedIn, write results back',
+    chain: ['Zoho daily', 'AI Agent', 'Connect', 'Wait: accepted', 'Message', 'Zoho write-back'],
+    source: {
+      key: 'zoho_recurring',
+      title: 'Zoho CRM — recurring', description: 'Import new contacts daily',
+      cfg: { zoho_modules: 'contacts' },
+    },
+    nodes: [
+      { type: 'ai_parse', macroId: AI_STEP_ID, title: 'AI Agent', description: 'Clean & normalise lead data', cfg: { instruction: AI_DEFAULT_INSTRUCTION } },
+      { type: 'linkedin_connect', title: 'Connection request', description: 'AI-personalised note', cfg: { message: '' } },
+      { type: 'condition', title: 'Wait for condition', description: 'Connection accepted', cfg: { condition: 'connection_accepted' } },
+      { type: 'linkedin_message', title: 'Message', description: 'First message after acceptance', cfg: { message: 'Hi {{first_name}}, great to connect! We already have you in our network — wanted to reach out personally.' } },
+      { type: 'zoho_update', macroId: ZOHO_UPDATE_STEP_ID, title: 'Update Zoho record', description: 'Write back to Contacts', cfg: { module: 'Contacts', map: {} } },
+    ],
+  },
 ];
 
 const SWITCH_FIELDS = [
@@ -681,6 +798,46 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     }
   };
 
+  /**
+   * Apply a template: replaces the canvas with the recipe's source + nodes and
+   * seeds every drawer config in one shot. Opens the source drawer afterwards
+   * so the user lands on the targeting fields they still need to fill.
+   */
+  const applyTemplate = (t: WorkflowTemplate) => {
+    if (workflowPreview.length > 0 &&
+        !window.confirm(`Replace the current workflow with the "${t.name}" template?`)) {
+      return;
+    }
+    const srcDef = SOURCES.find((s) => s.key === t.source.key)!;
+    const steps: WorkflowPreviewStep[] = [{
+      id: SOURCE_STEP_ID, type: 'lead_generation',
+      channel: t.source.key.startsWith('linkedin') ? 'linkedin' : 'email',
+      title: t.source.title || srcDef.label,
+      description: t.source.description || srcDef.sub,
+    }];
+    const cfgs: Record<string, any> = {};
+    if (t.source.cfg) cfgs[SOURCE_STEP_ID] = { ...t.source.cfg };
+
+    for (const n of t.nodes) {
+      const id = n.macroId || nextId();
+      const channel = n.type.startsWith('linkedin') ? 'linkedin'
+        : n.type.startsWith('email') ? 'email'
+        : n.type.startsWith('whatsapp') ? 'whatsapp'
+        : n.type === 'voice_agent_call' ? 'voice'
+        : n.type === 'condition' ? 'linkedin'
+        : 'email';
+      steps.push({ id, type: n.type, channel, title: n.title, description: n.description } as WorkflowPreviewStep);
+      if (n.cfg) cfgs[id] = { ...n.cfg };
+    }
+
+    setSource(t.source.key);
+    setWorkflowPreview(steps);
+    setConfigs(cfgs);
+    if (!name.trim()) setName(t.name);
+    setError(null);
+    setEditingId(SOURCE_STEP_ID);
+  };
+
   const addExport = () => {
     if (!workflowPreview.some((s) => s.id === EXPORT_STEP_ID)) {
       addWorkflowStep({ id: EXPORT_STEP_ID, type: 'export_results', channel: 'email', title: 'Export results', description: 'CSV · Download' });
@@ -839,6 +996,18 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     setError(null);
     if (!name.trim()) { setError('Name your workflow.'); return; }
     if (!source) { setError('Pick a contact source (first node).'); return; }
+    // LinkedIn Search needs at least one criterion — templates seed these empty
+    // on purpose, so catch it here with a pointer instead of a backend 400.
+    if (source === 'linkedin_search') {
+      const sc = configs[SOURCE_STEP_ID] || {};
+      const any = [sc.keywords, sc.job_titles, sc.industries, sc.locations]
+        .some((v) => String(v || '').trim());
+      if (!any) {
+        setError('Fill the LinkedIn Search targeting — at least one of job title, industry, location, or keywords.');
+        setEditingId(SOURCE_STEP_ID);
+        return;
+      }
+    }
     const outreachSteps = workflowPreview.filter(
       (s) => s.id !== SOURCE_STEP_ID && s.id !== FOLLOWUP_STEP_ID && s.id !== ANALYTICS_STEP_ID && s.id !== ZOHO_UPDATE_STEP_ID && s.id !== MEDIA_STEP_ID && s.id !== MULTICOND_STEP_ID && s.id !== AI_STEP_ID && s.id !== ENRICH_STEP_ID && s.id !== EXPORT_STEP_ID && s.id !== AUTOPOST_STEP_ID
     );
@@ -894,11 +1063,20 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
           },
         });
       } else if (source === 'linkedin_search') {
+        // Structured targeting — the backend normalises job_titles → roles,
+        // locations → location, industries as-is (LeadGenerationService).
+        const csv = (v: any) => String(v || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+        const jt = csv(srcCfg.job_titles), ind = csv(srcCfg.industries), loc = csv(srcCfg.locations);
         steps.push({
           type: 'lead_generation', title: 'LinkedIn Lead Search', channel: 'linkedin', order_index: order++,
           config: {
             source: 'linkedin_search',
-            leadGenerationFilters: { keywords: (srcCfg.keywords || '').trim() },
+            leadGenerationFilters: {
+              keywords: (srcCfg.keywords || '').trim(),
+              ...(jt.length ? { job_titles: jt } : {}),
+              ...(ind.length ? { industries: ind } : {}),
+              ...(loc.length ? { locations: loc } : {}),
+            },
             leadGenerationLimit: perDayN,
           },
         });
@@ -1121,6 +1299,20 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
         config: {
           data_source: source === 'zoho_recurring' ? 'zoho_contacts' : source === 'linkedin_search' ? 'linkedin_search' : 'direct_contact',
           builder: 'custom_workflow',
+          // Search targeting, surfaced at campaign level so AI features ground
+          // on it — notably the auto-post generator (LinkedInPostContentService
+          // reads config.targeting), making "daily post about the industry you
+          // target" actually track the industry you searched.
+          ...(source === 'linkedin_search' ? (() => {
+            const sc = configs[SOURCE_STEP_ID] || {};
+            const csv = (v: any) => String(v || '').split(',').map((x: string) => x.trim()).filter(Boolean);
+            const tgt: any = {};
+            if (csv(sc.job_titles).length) tgt.job_titles = csv(sc.job_titles);
+            if (csv(sc.industries).length) tgt.industries = csv(sc.industries);
+            if (csv(sc.locations).length) tgt.locations = csv(sc.locations);
+            if ((sc.keywords || '').trim()) tgt.keywords = sc.keywords.trim();
+            return Object.keys(tgt).length ? { targeting: tgt } : {};
+          })() : {}),
           leads_per_day: perDayN,
           campaign_days: daysN,
           working_days: 'monday-friday',
@@ -1318,10 +1510,21 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
               <p className="text-[11px] leading-snug text-muted-foreground">Any combination works (name + company, company + title + location, name + location…). When a LinkedIn step runs, Unipile resolves each lead&apos;s LinkedIn profile from the mapped name + company.</p>
             </>)}
           </>)}
-          {isSource && source === 'linkedin_search' && (
-            <div className="space-y-1"><label className="text-xs font-medium text-foreground">Search keywords</label>
-              <Input value={cfg.keywords || ''} onChange={(e) => setCfg(editingId, { keywords: e.target.value })} placeholder="e.g. VP Sales SaaS UAE" /></div>
-          )}
+          {isSource && source === 'linkedin_search' && (<>
+            {/* Structured targeting — the backend normalises job_titles → roles,
+                locations → location, and matches industries against the lead's
+                company industry. Comma-separate to search several at once. */}
+            <div className="space-y-1"><label className="text-xs font-medium text-foreground">Job titles</label>
+              <Input value={cfg.job_titles || ''} onChange={(e) => setCfg(editingId, { job_titles: e.target.value })} placeholder="e.g. VP Sales, Head of Revenue" />
+              <p className="text-[11px] text-muted-foreground">Comma-separate to target several titles.</p></div>
+            <div className="space-y-1"><label className="text-xs font-medium text-foreground">Industries</label>
+              <Input value={cfg.industries || ''} onChange={(e) => setCfg(editingId, { industries: e.target.value })} placeholder="e.g. SaaS, Fintech" /></div>
+            <div className="space-y-1"><label className="text-xs font-medium text-foreground">Location</label>
+              <Input value={cfg.locations || ''} onChange={(e) => setCfg(editingId, { locations: e.target.value })} placeholder="e.g. Dubai, United Arab Emirates" /></div>
+            <div className="space-y-1"><label className="text-xs font-medium text-foreground">Extra keywords (optional)</label>
+              <Input value={cfg.keywords || ''} onChange={(e) => setCfg(editingId, { keywords: e.target.value })} placeholder="Anything else to match on" />
+              <p className="text-[11px] text-muted-foreground">Fill at least one field above — the search needs a title, industry, location, or keyword.</p></div>
+          </>)}
           {isSource && source === 'linkedin_signal' && (<>
             <div className="space-y-1">
               <label className="text-xs font-medium text-foreground">Signal</label>
@@ -2001,6 +2204,32 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
       <div className="flex-1 flex min-h-0">
         {/* Palette */}
         <div className="w-[19rem] border-r border-border bg-card overflow-y-auto p-4 space-y-6">
+          {/* 0 · Templates — one-click pipeline recipes */}
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="h-5 w-5 rounded-full bg-amber-500 text-white flex items-center justify-center flex-shrink-0"><Zap className="h-3 w-3" /></span>
+              <span className="text-sm font-semibold text-foreground">Start from a template</span>
+            </div>
+            <p className="text-xs text-muted-foreground mb-2.5 ml-7">Builds the whole pipeline — then tune each node</p>
+            <div className="space-y-2">
+              {WORKFLOW_TEMPLATES.map((t) => (
+                <button key={t.key} onClick={() => applyTemplate(t)}
+                  className="relative w-full rounded-xl border border-border hover:border-amber-500/50 hover:bg-amber-50/40 dark:hover:bg-amber-950/10 p-3 text-left transition-all group">
+                  <span className="block text-sm font-semibold text-foreground">{t.name}</span>
+                  <span className="block text-xs text-muted-foreground mt-0.5">{t.tagline}</span>
+                  <span className="flex flex-wrap items-center gap-1 mt-2">
+                    {t.chain.map((c, i) => (
+                      <Fragment key={i}>
+                        {i > 0 && <span className="text-[9px] text-muted-foreground/60">→</span>}
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground group-hover:bg-amber-100 group-hover:text-amber-900 dark:group-hover:bg-amber-950/40 dark:group-hover:text-amber-300 transition-colors">{c}</span>
+                      </Fragment>
+                    ))}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* 1 · Contact source */}
           <div>
             <div className="flex items-center gap-2 mb-1">
