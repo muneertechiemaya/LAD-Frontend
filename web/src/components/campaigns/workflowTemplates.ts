@@ -66,11 +66,14 @@ export type WorkflowTemplate = {
   inputs: TemplateInput[];
   /** Needs a file upload (chat routes these to the builder instead of launching directly). */
   requiresFile?: boolean;
+  /** Brand accent used by the chat Roles UI (cards, chips, CTAs). */
+  accent: string;
 };
 
 export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
   {
     key: 'linkedin_accelerator',
+    accent: '#0A66C2',
     name: 'LinkedIn Accelerator',
     tagline: 'Warm up, connect, message — while daily AI posts build your presence',
     chain: ['LinkedIn Search', 'Profile visit', 'Connect', 'Wait: accepted', 'Message', 'AI Media', 'Daily auto-post'],
@@ -101,6 +104,7 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
   },
   {
     key: 'cold_list_outreach',
+    accent: '#059669',
     name: 'Cold List Outreach',
     tagline: 'Upload a list, clean + enrich it, connect and follow up, export results',
     chain: ['File import', 'AI Agent', 'Enrich', 'Connect', 'Wait: accepted', 'Message', 'Export'],
@@ -118,6 +122,7 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
   },
   {
     key: 'inmail_blitz',
+    accent: '#7C3AED',
     name: 'InMail Blitz',
     tagline: 'Premium InMail to non-connections, with automatic follow-ups',
     chain: ['LinkedIn Search', 'Profile visit', 'InMail', 'Follow-ups'],
@@ -139,6 +144,7 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
   },
   {
     key: 'signal_hunter',
+    accent: '#D97706',
     name: 'Signal Hunter',
     tagline: 'Catch companies showing buying signals and reach the decision maker',
     chain: ['Signal Search', 'Profile visit', 'Connect', 'Wait: accepted', 'Message'],
@@ -160,6 +166,7 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
   },
   {
     key: 'crm_reengage',
+    accent: '#DC2626',
     name: 'CRM Re-Engage',
     tagline: 'Pull new Zoho contacts daily, reach out on LinkedIn, write results back',
     chain: ['Zoho daily', 'AI Agent', 'Connect', 'Wait: accepted', 'Message', 'Zoho write-back'],
