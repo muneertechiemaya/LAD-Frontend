@@ -7316,7 +7316,7 @@ function RoleCardView({ card, onOpt }: { card: NonNullable<ChatMsg['roleCard']>;
     const q = tpl.inputs[qIdx];
     // Tiny **bold** renderer — questions carry markdown-style emphasis.
     const md = (t: string) => t.split('**').map((part, i) => (i % 2
-        ? <strong key={i} className="font-semibold text-slate-900 dark:text-white">{part}</strong>
+        ? <strong key={i} className="adv-role-q-strong">{part}</strong>
         : <React.Fragment key={i}>{part}</React.Fragment>));
     const isQuestionStage = card.stage === 'intro' || card.stage === 'question';
 
@@ -7357,7 +7357,12 @@ function RoleCardView({ card, onOpt }: { card: NonNullable<ChatMsg['roleCard']>;
                             This one&apos;s required to launch the Role
                         </div>
                     )}
-                    <div className="text-[13.5px] text-slate-700 dark:text-slate-200 leading-relaxed">{md(q?.question || '')}</div>
+                    {/* The question itself — highlighted in the same navy as the
+                        user's own replies, with a pulsing "?" to pull the eye. */}
+                    <div className="adv-role-q">
+                        <span className="adv-role-q-mark" aria-hidden="true">?</span>
+                        <span className="adv-role-q-text">{md(q?.question || '')}</span>
+                    </div>
                     <div className="flex items-center gap-1.5 mt-2.5 text-[11px] text-slate-400 dark:text-slate-500">
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 4v7a4 4 0 0 1-4 4H4" /><path d="m9 10-5 5 5 5" /></svg>
                         Type your answer below{q?.optional ? ' — or say "skip"' : ''}
@@ -7473,7 +7478,6 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                 <AgentVisualizer state="idle" size={36} />
             </div>
             <div className="adv-ai-body">
-                {msg.roleCard && <RoleCardView card={msg.roleCard} onOpt={onOpt} />}
                 {msg.webSearchResult && (
                     <div className="adv-web-searched">
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
@@ -7485,8 +7489,11 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                     <span className="adv-ai-name-dot" />
                 </div>
 
+                {/* Roles wizard card — rendered under the LAD in Action label. */}
+                {msg.roleCard && <RoleCardView card={msg.roleCard} onOpt={onOpt} />}
+
                 {/* ── Rich markdown-aware renderer ── */}
-                <div className="adv-ai-text" style={{ marginBottom: msg.targeting ? "16px" : "0" }}>
+                <div className="adv-ai-text" style={{ marginBottom: msg.targeting ? "16px" : "0", display: msg.roleCard && !msg.text ? 'none' : undefined }}>
                     {msg.text.split('\n').map((line, i) => {
                         // ── Inline rich text parser: **bold**, *italic*, `code` ──────
                         const renderInline = (raw: string) => {
@@ -12374,6 +12381,21 @@ const css = `
             .adv-bubble {padding:6px 0; }
             .adv-bubble-user {display:flex; justify-content:flex-end; margin-bottom:4px; }
             .adv-user-msg {background:#0b1957; color:#fff; border-radius:20px 20px 4px 20px; padding:12px 18px; max-width:72%; font-size:14.5px; line-height:1.65; box-shadow:0 2px 14px rgba(11,25,87,.2); font-weight:450; }
+            /* ── Roles wizard: highlighted question ──────────────────────────
+               Same #0b1957 navy as .adv-user-msg so the question reads as the
+               other half of the conversation, with a pulsing "?" badge. */
+            .adv-role-q {display:flex; align-items:flex-start; gap:10px; background:#0b1957; color:#fff; border-radius:14px; padding:12px 14px; margin-top:2px; box-shadow:0 2px 14px rgba(11,25,87,.2); font-size:13.5px; line-height:1.6; font-weight:450; }
+            .adv-role-q-text {min-width:0; flex:1; }
+            .adv-role-q-strong {font-weight:700; color:#fff; }
+            .adv-role-q-mark {flex-shrink:0; width:22px; height:22px; border-radius:50%; background:rgba(255,255,255,.16); color:#fff; font-size:13px; font-weight:800; line-height:22px; text-align:center; margin-top:1px; animation:advRoleQPulse 1.8s ease-in-out infinite; }
+            @keyframes advRoleQPulse {
+                0%, 100% {transform:scale(1); box-shadow:0 0 0 0 rgba(255,255,255,.34); }
+                50%      {transform:scale(1.12); box-shadow:0 0 0 7px rgba(255,255,255,0); }
+            }
+            @media (prefers-reduced-motion: reduce) {
+                .adv-role-q-mark {animation:none; }
+            }
+            .dark .adv-role-q {background:#16305e; }
             .adv-bubble-ai {display:flex; gap:12px; align-items:flex-start; margin-bottom:4px; }
             .adv-ai-avatar {width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,#0b1957 0%,#1a3a8f 100%); display:flex; align-items:center; justify-content:center; flex-shrink:0; color:#fff; font-size:15px; box-shadow:0 3px 10px rgba(11,25,87,.28); }
             .adv-ai-avatar-viz {background:transparent; box-shadow:none; overflow:visible; }
