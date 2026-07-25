@@ -29,6 +29,7 @@ export type StepType =
   | 'followup_sequence'
   | 'analytics_report'
   | 'export_results'
+  | 'linkedin_post'
   | 'zoho_update'
   | 'switch'
   | 'ai_parse'
@@ -123,4 +124,4 @@ export interface StepDefinition {
   description: string;
   category: 'linkedin' | 'email' | 'whatsapp' | 'voice' | 'instagram' | 'utility' | 'leads';
   defaultData: Partial<StepData>;
-}
+}

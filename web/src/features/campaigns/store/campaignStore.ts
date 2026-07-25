@@ -50,6 +50,7 @@ const defaultStepData: Record<StepType, Partial<StepData>> = {
   followup_sequence: { title: 'Follow-up sequence' },
   analytics_report: { title: 'Analytics report' },
   export_results: { title: 'Export results' },
+  linkedin_post: { title: 'LinkedIn auto-post' },
   zoho_update: { title: 'Update Zoho record' },
   switch: { title: 'Multi-condition' },
   ai_parse: { title: 'AI Agent' },

@@ -26,7 +26,7 @@ import 'reactflow/dist/style.css';
 import {
   Rocket, Loader2, Linkedin, Mail, MailPlus, MessageCircle, Phone, Clock,
   Users, Repeat, Search, X, HardDrive, Inbox, ListOrdered, BarChart3, GitFork, DatabaseZap,
-  Wand2, Trash2, Radar, Split, Plus, Upload, FileSpreadsheet, Sparkles, Contact, Download,
+  Wand2, Trash2, Radar, Split, Plus, Upload, FileSpreadsheet, Sparkles, Contact, Download, Megaphone,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -253,6 +253,20 @@ const EXPORT_COLUMN_OPTIONS: { value: string; label: string }[] = [
 ];
 const EXPORT_DEFAULT_COLUMNS = ['full_name', 'title', 'company_name', 'email', 'phone', 'linkedin_url', 'status', 'last_action', 'last_action_at'];
 
+// "LinkedIn auto-post" node — posts to the tenant's OWN feed on a recurring
+// schedule while the campaign runs (social-selling warm-up). Campaign-level,
+// NOT per-lead: a per-lead post would fire once per enrolled lead.
+const AUTOPOST_STEP_ID = 'linkedin-post-node';
+const AUTOPOST_FREQUENCIES = [
+  { value: 'daily', label: 'Every day' },
+  { value: 'weekly', label: 'On selected days' },
+];
+const AUTOPOST_DAYS = [
+  { value: 1, label: 'Mon' }, { value: 2, label: 'Tue' }, { value: 3, label: 'Wed' },
+  { value: 4, label: 'Thu' }, { value: 5, label: 'Fri' }, { value: 6, label: 'Sat' },
+  { value: 0, label: 'Sun' },
+];
+
 const SWITCH_FIELDS = [
   { value: 'tag', label: 'Tag' },
   { value: 'title', label: 'Job title' },
@@ -425,6 +439,11 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
   // "Export now" (builder test run) state.
   const [exportRunning, setExportRunning] = useState(false);
   const [exportResult, setExportResult] = useState<any>(null);
+  // LinkedIn auto-post state.
+  const [autopostGenerating, setAutopostGenerating] = useState(false);
+  const [autopostPosting, setAutopostPosting] = useState(false);
+  const [autopostMsg, setAutopostMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [liOrganizations, setLiOrganizations] = useState<{ id: string; name: string }[]>([]);
   // Multi-condition node: fields of the connected source (dynamic dropdown).
   const [mcFields, setMcFields] = useState<{ value: string; label: string }[]>(SWITCH_FIELDS);
   const [mcFieldsLoading, setMcFieldsLoading] = useState(false);
@@ -588,6 +607,80 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     }
   };
 
+  const addAutopost = () => {
+    if (!workflowPreview.some((s) => s.id === AUTOPOST_STEP_ID)) {
+      addWorkflowStep({ id: AUTOPOST_STEP_ID, type: 'linkedin_post', channel: 'linkedin', title: 'LinkedIn auto-post', description: 'Weekly · Mon' });
+      setCfg(AUTOPOST_STEP_ID, {
+        content: '',
+        frequency: 'weekly',
+        days: [1],
+        time: '09:00',
+        ai_generate: false,
+        post_as: 'personal',
+      });
+    }
+    setEditingId(AUTOPOST_STEP_ID);
+  };
+
+  /** "Generate with AI" — drafts the post from ICP + campaign context. */
+  const generateAutopost = async () => {
+    const eid = AUTOPOST_STEP_ID;
+    const c = configs[eid] || {};
+    setAutopostGenerating(true);
+    setAutopostMsg(null);
+    try {
+      const res = await fetchWithTenant('/api/campaigns/linkedin-post/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seed: c.content || '', instruction: c.ai_instruction || '' }),
+      });
+      const data = await res.json();
+      if (data?.success && data.content) {
+        setCfg(eid, { content: data.content });
+        updateWorkflowStep(eid, { description: data.content.slice(0, 40) });
+        setAutopostMsg({ ok: true, text: 'Draft generated — edit it below before posting.' });
+      } else {
+        setAutopostMsg({ ok: false, text: data?.error || 'Could not generate a post.' });
+      }
+    } catch (e: any) {
+      setAutopostMsg({ ok: false, text: e?.message || 'Could not generate a post.' });
+    } finally {
+      setAutopostGenerating(false);
+    }
+  };
+
+  /** "Post now" — publishes immediately so the user can see it land. */
+  const postAutopostNow = async () => {
+    const c = configs[AUTOPOST_STEP_ID] || {};
+    if (!(c.content || '').trim()) {
+      setAutopostMsg({ ok: false, text: 'Write or generate the post content first.' });
+      return;
+    }
+    setAutopostPosting(true);
+    setAutopostMsg(null);
+    try {
+      const res = await fetchWithTenant('/api/campaigns/linkedin-post/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: c.content,
+          media_url: c.media_url || undefined,
+          media_filename: c.media_filename || undefined,
+          external_link: c.external_link || undefined,
+          as_organization: c.post_as && c.post_as !== 'personal' ? c.post_as : undefined,
+        }),
+      });
+      const data = await res.json();
+      setAutopostMsg(data?.success
+        ? { ok: true, text: 'Posted to LinkedIn.' }
+        : { ok: false, text: data?.error || 'Could not post.' });
+    } catch (e: any) {
+      setAutopostMsg({ ok: false, text: e?.message || 'Could not post.' });
+    } finally {
+      setAutopostPosting(false);
+    }
+  };
+
   const addExport = () => {
     if (!workflowPreview.some((s) => s.id === EXPORT_STEP_ID)) {
       addWorkflowStep({ id: EXPORT_STEP_ID, type: 'export_results', channel: 'email', title: 'Export results', description: 'CSV · Download' });
@@ -657,6 +750,18 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setCfg, updateWorkflowStep]);
+
+  // Lazy-load the LinkedIn company pages the account may post as. Fails soft —
+  // an empty list simply leaves "personal profile" as the only option.
+  useEffect(() => {
+    if (editingId !== AUTOPOST_STEP_ID || liOrganizations.length) return;
+    let cancelled = false;
+    fetchWithTenant('/api/campaigns/linkedin-post/organizations')
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && Array.isArray(d?.data)) setLiOrganizations(d.data); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [editingId, liOrganizations.length]);
 
   // Lazy-load Zoho field metadata when the write-back node is open, per module.
   const zohoModule = configs[ZOHO_UPDATE_STEP_ID]?.module === 'Leads' ? 'Leads' : 'Contacts';
@@ -735,7 +840,7 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     if (!name.trim()) { setError('Name your workflow.'); return; }
     if (!source) { setError('Pick a contact source (first node).'); return; }
     const outreachSteps = workflowPreview.filter(
-      (s) => s.id !== SOURCE_STEP_ID && s.id !== FOLLOWUP_STEP_ID && s.id !== ANALYTICS_STEP_ID && s.id !== ZOHO_UPDATE_STEP_ID && s.id !== MEDIA_STEP_ID && s.id !== MULTICOND_STEP_ID && s.id !== AI_STEP_ID && s.id !== ENRICH_STEP_ID && s.id !== EXPORT_STEP_ID
+      (s) => s.id !== SOURCE_STEP_ID && s.id !== FOLLOWUP_STEP_ID && s.id !== ANALYTICS_STEP_ID && s.id !== ZOHO_UPDATE_STEP_ID && s.id !== MEDIA_STEP_ID && s.id !== MULTICOND_STEP_ID && s.id !== AI_STEP_ID && s.id !== ENRICH_STEP_ID && s.id !== EXPORT_STEP_ID && s.id !== AUTOPOST_STEP_ID
     );
     const aiNode = workflowPreview.find((s) => s.id === AI_STEP_ID);
     const enrichNode = workflowPreview.find((s) => s.id === ENRICH_STEP_ID);
@@ -744,6 +849,7 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     const followupNode = workflowPreview.find((s) => s.id === FOLLOWUP_STEP_ID);
     const analyticsNode = workflowPreview.find((s) => s.id === ANALYTICS_STEP_ID);
     const exportNode = workflowPreview.find((s) => s.id === EXPORT_STEP_ID);
+    const autopostNode = workflowPreview.find((s) => s.id === AUTOPOST_STEP_ID);
     const zohoUpdateNode = workflowPreview.find((s) => s.id === ZOHO_UPDATE_STEP_ID);
     if (!outreachSteps.length && !followupNode && !multiCondNode) { setError('Add at least one outreach step.'); return; }
     if (multiCondNode) {
@@ -1029,6 +1135,26 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
           ...(followupNode ? {
             followup_sequence: { touches: fuTouchList.length, channel: fuChannel, timeline_hours: fuTouchList.map((t) => t.hours || 24), human_approval: !!fc.human_approval },
           } : {}),
+          ...(autopostNode ? (() => {
+            const pc = configs[AUTOPOST_STEP_ID] || {};
+            const content = (pc.content || '').trim();
+            if (!content) return {};
+            return {
+              // Read by LinkedInAutopostScheduleService at launch → drives
+              // linkedinAutopostCron. Campaign-level (one post per schedule).
+              autopost: {
+                content,
+                ai_generate: !!pc.ai_generate,
+                media_url: (pc.media_url || '').trim() || undefined,
+                external_link: (pc.external_link || '').trim() || undefined,
+                as_organization: pc.post_as && pc.post_as !== 'personal' ? pc.post_as : undefined,
+                frequency: pc.frequency === 'daily' ? 'daily' : 'weekly',
+                days: Array.isArray(pc.days) ? pc.days : [1],
+                time: pc.time || '09:00',
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || undefined,
+              },
+            };
+          })() : {}),
           ...(exportNode ? (() => {
             const ec = configs[EXPORT_STEP_ID] || {};
             return {
@@ -1092,7 +1218,8 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     const isAiParse = editingId === AI_STEP_ID;
     const isDataEnrich = editingId === ENRICH_STEP_ID;
     const isExport = editingId === EXPORT_STEP_ID;
-    const isMacro = isFollowup || isAnalytics || isZohoUpdate || isMedia || isMultiCond || isAiParse || isDataEnrich || isExport;
+    const isAutopost = editingId === AUTOPOST_STEP_ID;
+    const isMacro = isFollowup || isAnalytics || isZohoUpdate || isMedia || isMultiCond || isAiParse || isDataEnrich || isExport || isAutopost;
     const visual = isSource
       ? SOURCES.find((s) => s.key === source)
       : isFollowup
@@ -1111,6 +1238,8 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
             ? { icon: <Contact className="h-4 w-4 text-teal-600" />, chip: 'bg-teal-50 dark:bg-teal-950/30' }
           : isExport
             ? { icon: <Download className="h-4 w-4 text-cyan-700" />, chip: 'bg-cyan-50 dark:bg-cyan-950/30' }
+          : isAutopost
+            ? { icon: <Megaphone className="h-4 w-4 text-[#0077B5]" />, chip: 'bg-sky-50 dark:bg-sky-950/30' }
           : isRouter
             ? { icon: <GitFork className="h-4 w-4 text-rose-600" />, chip: 'bg-rose-50 dark:bg-rose-950/30' }
             : OUTREACH.find((o) => o.type === editingStep.type && !o.router);
@@ -1121,7 +1250,7 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
           <div className="min-w-0 flex-1">
             <div className="text-sm font-semibold text-foreground truncate">{editingStep.title}</div>
             <div className="text-xs text-muted-foreground">
-              {isSource ? 'Contact source settings' : isFollowup ? 'Follow-up sequence settings' : isAnalytics ? 'Report settings' : isZohoUpdate ? 'Field mapping' : isMedia ? 'AI media' : isMultiCond ? 'Branch by condition' : isAiParse ? 'AI data cleanup' : isDataEnrich ? 'Data to enrich' : isExport ? 'Export destinations' : isRouter ? 'Fallback routing settings' : 'Step settings'}
+              {isSource ? 'Contact source settings' : isFollowup ? 'Follow-up sequence settings' : isAnalytics ? 'Report settings' : isZohoUpdate ? 'Field mapping' : isMedia ? 'AI media' : isMultiCond ? 'Branch by condition' : isAiParse ? 'AI data cleanup' : isDataEnrich ? 'Data to enrich' : isExport ? 'Export destinations' : isAutopost ? 'Post content & schedule' : isRouter ? 'Fallback routing settings' : 'Step settings'}
             </div>
           </div>
           <button onClick={() => setEditingId(null)} className="h-7 w-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors flex-shrink-0">
@@ -1472,6 +1601,112 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
                 ))}
               </div>
               <p className="text-[11px] leading-snug text-muted-foreground">Reveals the selected data via FullEnrich (name + company/LinkedIn → contact). Runs before outreach so email/WhatsApp/voice steps use the enriched values. Costs FullEnrich credits per lead (work email 2 · personal 4 · mobile 12).</p>
+            </>);
+          })()}
+
+          {isAutopost && (() => {
+            const eid = editingId!;
+            const freq = cfg.frequency === 'daily' ? 'daily' : 'weekly';
+            const days: number[] = Array.isArray(cfg.days) ? cfg.days : [1];
+            const describe = (f: string, d: number[]) => {
+              if (f === 'daily') return 'Daily · ' + (cfg.time || '09:00');
+              const names = AUTOPOST_DAYS.filter((x) => d.includes(x.value)).map((x) => x.label);
+              return (names.length ? names.join(', ') : 'no days') + ' · ' + (cfg.time || '09:00');
+            };
+            const toggleDay = (v: number) => {
+              const next = days.includes(v) ? days.filter((x) => x !== v) : [...days, v];
+              setCfg(eid, { days: next });
+              updateWorkflowStep(eid, { description: describe(freq, next) });
+            };
+            return (<>
+              <div className="rounded-md border border-sky-200 bg-sky-50 dark:border-sky-900 dark:bg-sky-950/30 px-3 py-2">
+                <p className="text-[11px] text-sky-800 dark:text-sky-300">
+                  Posts to your own LinkedIn feed on a schedule while the campaign runs — it warms
+                  your profile so the people you reach out to see recent activity. This posts
+                  <strong> once per schedule</strong>, not once per lead.
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium text-foreground">Post content</label>
+                  <button type="button" onClick={generateAutopost} disabled={autopostGenerating}
+                    className="text-[11px] font-medium text-[#0b1957] dark:text-sky-300 hover:underline disabled:opacity-60 flex items-center gap-1">
+                    {autopostGenerating ? <><Loader2 className="h-3 w-3 animate-spin" /> Generating…</> : <><Sparkles className="h-3 w-3" /> Generate with AI</>}
+                  </button>
+                </div>
+                <textarea className={`${field} min-h-[140px]`} value={cfg.content || ''}
+                  onChange={(e) => { setCfg(eid, { content: e.target.value }); updateWorkflowStep(eid, { description: e.target.value.slice(0, 40) || describe(freq, days) }); }}
+                  placeholder="Write your post, or add a topic and hit Generate with AI…" />
+                <p className="text-[11px] text-muted-foreground">{(cfg.content || '').length}/3000 characters</p>
+              </div>
+
+              <label className="flex items-start gap-2.5 rounded-lg border border-border p-2.5 cursor-pointer hover:bg-muted/30 transition-colors">
+                <input type="checkbox" className="mt-0.5 h-4 w-4" checked={!!cfg.ai_generate}
+                  onChange={(e) => setCfg(eid, { ai_generate: e.target.checked })} />
+                <span className="min-w-0">
+                  <span className="block text-sm text-foreground">Write a fresh post with AI each time</span>
+                  <span className="block text-[11px] text-muted-foreground">Uses the text above as the topic, so a recurring series doesn&apos;t repeat itself.</span>
+                </span>
+              </label>
+
+              <div className="space-y-1"><label className="text-xs font-medium text-foreground">Link (optional)</label>
+                <input className={field} value={cfg.external_link || ''} onChange={(e) => setCfg(eid, { external_link: e.target.value })}
+                  placeholder="https://… (shown as a preview card)" /></div>
+
+              <div className="space-y-1"><label className="text-xs font-medium text-foreground">Image / video URL (optional)</label>
+                <input className={field} value={cfg.media_url || ''} onChange={(e) => setCfg(eid, { media_url: e.target.value })}
+                  placeholder="Paste a URL, or add the AI Media node to generate one" /></div>
+
+              <div className="space-y-1"><label className="text-xs font-medium text-foreground">Post as</label>
+                <select className={field} value={cfg.post_as || 'personal'} onChange={(e) => setCfg(eid, { post_as: e.target.value })}>
+                  <option value="personal">My personal profile</option>
+                  {liOrganizations.map((o) => <option key={o.id} value={o.id}>{o.name} (company page)</option>)}
+                </select>
+                {liOrganizations.length === 0 && (
+                  <p className="text-[11px] text-muted-foreground">No company pages found for this account — posting to your personal profile.</p>
+                )}</div>
+
+              <div className="space-y-1"><label className="text-xs font-medium text-foreground">How often</label>
+                <select className={field} value={freq} onChange={(e) => { setCfg(eid, { frequency: e.target.value }); updateWorkflowStep(eid, { description: describe(e.target.value, days) }); }}>
+                  {AUTOPOST_FREQUENCIES.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
+                </select></div>
+
+              {freq === 'weekly' && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">Days</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {AUTOPOST_DAYS.map((d) => (
+                      <button key={d.value} type="button" onClick={() => toggleDay(d.value)}
+                        className={`px-2.5 py-1 rounded-md border text-[12px] transition-colors ${
+                          days.includes(d.value)
+                            ? 'border-[#0b1957] bg-[#0b1957] text-white'
+                            : 'border-border text-foreground hover:bg-muted/40'
+                        }`}>{d.label}</button>
+                    ))}
+                  </div>
+                  {days.length === 0 && <p className="text-[11px] text-amber-600">Pick at least one day, or it posts every day.</p>}
+                </div>
+              )}
+
+              <div className="space-y-1"><label className="text-xs font-medium text-foreground">Time</label>
+                <input type="time" className={field} value={cfg.time || '09:00'}
+                  onChange={(e) => { setCfg(eid, { time: e.target.value }); updateWorkflowStep(eid, { description: describe(freq, days) }); }} />
+                <p className="text-[11px] text-muted-foreground">Your local timezone. Posting stops when the campaign is paused or finishes.</p></div>
+
+              <div className="space-y-2 pt-1">
+                <button type="button" onClick={postAutopostNow} disabled={autopostPosting}
+                  className="w-full rounded-md bg-[#0077B5] text-white text-sm font-medium py-2 disabled:opacity-60 flex items-center justify-center gap-2">
+                  {autopostPosting ? <><Loader2 className="h-4 w-4 animate-spin" /> Posting…</> : <><Megaphone className="h-4 w-4" /> Post now</>}
+                </button>
+                {autopostMsg && (
+                  <div className={`rounded-md border p-2.5 text-[11px] ${autopostMsg.ok
+                    ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300'
+                    : 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30 text-red-700 dark:text-red-300'}`}>
+                    {autopostMsg.text}
+                  </div>
+                )}
+              </div>
             </>);
           })()}
 
@@ -1915,6 +2150,27 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-semibold text-foreground truncate">Export results</span>
                     <span className="block text-xs text-muted-foreground truncate">File · DB · Email · WhatsApp · more</span>
+                  </span>
+                  {added && (
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    </span>
+                  )}
+                </button>
+              );
+            })()}
+            {/* LinkedIn auto-post — recurring posts to the tenant's own feed. */}
+            {(() => {
+              const added = workflowPreview.some((s) => s.id === AUTOPOST_STEP_ID);
+              return (
+                <button onClick={addAutopost}
+                  className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
+                    added ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20' : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                  }`}>
+                  <IconChip icon={<Megaphone className="h-4 w-4 text-[#0077B5]" />} chip="bg-sky-50 dark:bg-sky-950/30" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold text-foreground truncate">LinkedIn auto-post</span>
+                    <span className="block text-xs text-muted-foreground truncate">Recurring posts to your own feed</span>
                   </span>
                   {added && (
                     <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">

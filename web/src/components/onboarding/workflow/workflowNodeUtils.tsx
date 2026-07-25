@@ -1,5 +1,5 @@
 import React from 'react';
-import { Linkedin, Mail, MailPlus, MessageCircle, Phone, ArrowRight, Clock, Filter, Play, Square, Users, Search, Send, UserPlus, Eye, Zap, Wand2, ListOrdered, BarChart3, DatabaseZap, Split, Sparkles, Contact, Download } from 'lucide-react';
+import { Linkedin, Mail, MailPlus, MessageCircle, Phone, ArrowRight, Clock, Filter, Play, Square, Users, Search, Send, UserPlus, Eye, Zap, Wand2, ListOrdered, BarChart3, DatabaseZap, Split, Sparkles, Contact, Download, Megaphone } from 'lucide-react';
 import { StepType } from '@/types/campaign';
 
 export interface NodeClasses {
@@ -132,6 +132,7 @@ export function getNodeIcon(type: StepType, size: string = 'w-5 h-5'): React.Rea
   if (type === 'followup_sequence') return <ListOrdered className={size} />;
   if (type === 'analytics_report') return <BarChart3 className={size} />;
   if (type === 'export_results') return <Download className={size} />;
+  if (type === 'linkedin_post') return <Megaphone className={size} />;
   if (type === 'zoho_update') return <DatabaseZap className={size} />;
   if (type === 'switch') return <Split className={size} />;
   if (type === 'ai_parse') return <Sparkles className={size} />;
