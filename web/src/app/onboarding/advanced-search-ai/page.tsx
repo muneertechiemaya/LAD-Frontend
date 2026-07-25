@@ -30,6 +30,8 @@ import { AgentBuilderKeyframesConfirm } from "@/components/voice-agent/playgroun
 import { AgentBuilderBrandDNA } from "@/components/voice-agent/playground/builder-steps/AgentBuilderBrandDNA";
 import { useAuth } from '@/contexts/AuthContext';
 import CustomWorkflowBuilder from '@/components/campaigns/CustomWorkflowBuilder';
+import { WORKFLOW_TEMPLATES, WorkflowTemplate } from '@/components/campaigns/workflowTemplates';
+import { TemplateIcon } from '@/components/campaigns/TemplateIcon';
 import { useEmailTemplates, useCreateEmailTemplate } from '@lad/frontend-features/email-templates';
 import { useConnectedEmailSenders } from '@lad/frontend-features/email-senders';
 import {
@@ -152,6 +154,8 @@ interface ChatMsg {
     targeting?: LeadTargeting;
     loading?: boolean;
     options?: { label: string; value: string }[];
+    /** Rich "Roles" wizard card (template pipelines launched from chat). */
+    roleCard?: { key: string; stage: 'intro' | 'question' | 'summary' | 'file'; qIdx?: number; nudge?: boolean; answers?: Record<string, string> };
     leads?: LeadProfile[];
     inboundAction?: 'download' | 'upload' | 'summary';
     inboundSummary?: { total: number; linkedin: number; email: number; whatsapp: number; phone: number; website: number };
@@ -956,6 +960,12 @@ export default function AdvancedSearchAIPage() {
     const [showMediaModal, setShowMediaModal] = useState(false);
     // Custom Workflow Builder (n8n-style) — full-screen takeover opened from the "+" menu.
     const [showCustomWorkflow, setShowCustomWorkflow] = useState(false);
+    // "Roles" — prebuilt pipeline templates launched from chat. The wizard asks
+    // each template's inputs in the chat thread, then hands off to the embedded
+    // CustomWorkflowBuilder (initialTemplateKey/initialSourceCfg/autoLaunch) so
+    // the launch path is the builder's own — no duplicated payload logic.
+    const [builderTemplate, setBuilderTemplate] = useState<{ key: string; sourceCfg: Record<string, string>; autoLaunch: boolean } | null>(null);
+    const roleWizardRef = useRef<{ key: string; idx: number; answers: Record<string, string> } | null>(null);
 
     interface MediaChatMsg {
         id: string;
@@ -4302,13 +4312,89 @@ export default function AdvancedSearchAIPage() {
         } finally { setBusy(false); }
     }, [busy, messages, convId, targeting, pendingIntent, pendingSearchConfirmation, pendingLocationRequest, pendingImportLocation, finishInboundImport, webSearchEnabled]);
 
+    // ── Roles wizard ───────────────────────────────────────────────────────
+    const rolePushAi = useCallback((text: string, options?: { label: string; value: string }[]) => {
+        setMessages(p => [...p, { id: `a-role-${Date.now()}-${p.length}`, role: 'ai', text, ts: new Date(), options }]);
+    }, []);
+
+    const pushRoleCard = useCallback((card: NonNullable<ChatMsg['roleCard']>) => {
+        setMessages(p => [...p, { id: `a-role-${Date.now()}-${p.length}`, role: 'ai', text: '', ts: new Date(), roleCard: card }]);
+    }, []);
+
+    const startRole = useCallback((t: WorkflowTemplate) => {
+        setMessages(p => [...p, { id: `u-role-${Date.now()}`, role: 'user', text: `Role: ${t.name}`, ts: new Date() }]);
+        if (t.requiresFile) {
+            roleWizardRef.current = null;
+            pushRoleCard({ key: t.key, stage: 'file' });
+            return;
+        }
+        roleWizardRef.current = { key: t.key, idx: 0, answers: {} };
+        if (!t.inputs.length) {
+            pushRoleCard({ key: t.key, stage: 'summary', answers: {} });
+            return;
+        }
+        pushRoleCard({ key: t.key, stage: 'intro', qIdx: 0 });
+    }, [pushRoleCard]);
+
+    const handleRoleAnswer = useCallback((text: string) => {
+        const wiz = roleWizardRef.current;
+        if (!wiz) return;
+        const tpl = WORKFLOW_TEMPLATES.find(t => t.key === wiz.key);
+        if (!tpl) { roleWizardRef.current = null; return; }
+        setMessages(p => [...p, { id: `u-role-${Date.now()}`, role: 'user', text, ts: new Date() }]);
+        const inp = tpl.inputs[wiz.idx];
+        const skipped = !!inp.optional && /^(skip|no|none|-)$/i.test(text.trim());
+        const val = skipped ? '' : text.trim();
+        if (!val && !inp.optional) {
+            pushRoleCard({ key: tpl.key, stage: 'question', qIdx: wiz.idx, nudge: true });
+            return;
+        }
+        if (val) wiz.answers[inp.key] = val;
+        wiz.idx += 1;
+        if (wiz.idx < tpl.inputs.length) {
+            pushRoleCard({ key: tpl.key, stage: 'question', qIdx: wiz.idx });
+            return;
+        }
+        pushRoleCard({ key: tpl.key, stage: 'summary', answers: { ...wiz.answers } });
+    }, [pushRoleCard]);
+
     const onChatSend = useCallback(() => {
         if (!input.trim() || busy) return;
+        if (roleWizardRef.current) {
+            const t = input.trim();
+            setInput('');
+            if (taRef.current) taRef.current.style.height = 'auto';
+            handleRoleAnswer(t);
+            return;
+        }
         doSend(input.trim()); setInput('');
         if (taRef.current) taRef.current.style.height = 'auto';
-    }, [input, busy, doSend]);
+    }, [input, busy, doSend, handleRoleAnswer]);
 
     const onOptClick = useCallback(async (v: string) => {
+        // ── Roles wizard actions ──────────────────────────────────────────
+        if (v === '__role_cancel__') {
+            roleWizardRef.current = null;
+            rolePushAi('No problem — Role setup cancelled. Pick another from the **Roles** menu any time.');
+            return;
+        }
+        if (v.startsWith('__role_builder__:')) {
+            const key = v.slice('__role_builder__:'.length);
+            setBuilderTemplate({ key, sourceCfg: {}, autoLaunch: false });
+            setShowCustomWorkflow(true);
+            return;
+        }
+        if (v === '__role_launch__' || v === '__role_review__') {
+            const wiz = roleWizardRef.current;
+            if (!wiz) return;
+            roleWizardRef.current = null;
+            setBuilderTemplate({ key: wiz.key, sourceCfg: wiz.answers, autoLaunch: v === '__role_launch__' });
+            setShowCustomWorkflow(true);
+            rolePushAi(v === '__role_launch__'
+                ? '🚀 Building and launching your Role — you\'ll land on the campaigns page when it\'s live.'
+                : 'Opening the workflow builder with your Role pre-built — review each node and hit Launch.');
+            return;
+        }
         // Special action: submit lead detail form data
         if (v.startsWith('__submit_lead_details__:')) {
             try {
@@ -4850,6 +4936,10 @@ export default function AdvancedSearchAIPage() {
 
                     {/* Input bottom row */}
                     <div className="adv-input-foot">
+                      {/* Left cluster — keeps Roles pinned beside the + button
+                          (the foot is space-between, so ungrouped children
+                          would spread across the whole bar). */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         {/* + button with dropdown */}
                         <div style={{ position: 'relative' }}>
                             <button
@@ -4912,6 +5002,10 @@ export default function AdvancedSearchAIPage() {
                             )}
                         </div>
 
+                        {/* Roles — prebuilt pipeline templates, configured via chat wizard */}
+                        <RolesLauncher onPick={startRole} />
+                      </div>
+
                         {/* Send button */}
                         <button
                             className="adv-send-circle"
@@ -4928,6 +5022,9 @@ export default function AdvancedSearchAIPage() {
                 </div>
 
                 {/* Suggestion chips */}
+                {/* Suggestion chips — split into two explicit rows (3 + 2) so the
+                    layout is two lines at any width, not dependent on wrapping. */}
+                <div className="adv-chips-stack">
                 <div className="adv-chips-row">
                     <button className="adv-chip" onClick={() => { setInput('Connect me with founders in trading companies in UAE'); taRef.current?.focus(); }}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
@@ -4941,6 +5038,8 @@ export default function AdvancedSearchAIPage() {
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /></svg>
                         VP of Sales in UK SaaS
                     </button>
+                </div>
+                <div className="adv-chips-row adv-chips-row-2">
                     <button className="adv-chip" onClick={() => { setInput(ICP_LEADS_PROMPT); taRef.current?.focus(); }}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" /></svg>
                         Get leads from my active ICP
@@ -4949,6 +5048,7 @@ export default function AdvancedSearchAIPage() {
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
                         Media Generation
                     </button>
+                </div>
                 </div>
 
                 {/* Recent searches */}
@@ -5507,6 +5607,8 @@ export default function AdvancedSearchAIPage() {
                                     placeholder={mediaMode ? (mb.step === 'builder-image-output' ? 'Type feedback to refine generated images...' : mediaPlaceholder) : (creditBalance !== null && creditBalance <= 0 && msgCount >= 10 ? 'Message limit reached — add credits to continue' : (typedPlaceholder || 'Ask Mr LAD...'))}
                                     className="adv-chat-ta" />
                                 <div className="adv-chat-input-foot">
+                                  {/* Left cluster — Roles sits beside + (foot is space-between). */}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                     <div style={{ position: 'relative' }}>
                                         {mediaMode ? (
                                             <button 
@@ -5565,6 +5667,10 @@ export default function AdvancedSearchAIPage() {
                                             </>
                                         )}
                                     </div>
+                                    {!mediaMode && (
+                                        <RolesLauncher onPick={startRole} />
+                                    )}
+                                  </div>
                                     {/* Premium Search or Mic Button based on mediaMode */}
                                     {mediaMode ? (
                                         <button
@@ -6964,7 +7070,12 @@ export default function AdvancedSearchAIPage() {
             {/* ── Custom Workflow Builder (n8n-style) — full-screen takeover from the "+" menu ── */}
             {showCustomWorkflow && (
                 <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: '#F8F9FE' }}>
-                    <CustomWorkflowBuilder onClose={() => setShowCustomWorkflow(false)} />
+                    <CustomWorkflowBuilder
+                        onClose={() => { setShowCustomWorkflow(false); setBuilderTemplate(null); }}
+                        initialTemplateKey={builderTemplate?.key}
+                        initialSourceCfg={builderTemplate?.sourceCfg}
+                        autoLaunch={builderTemplate?.autoLaunch}
+                    />
                 </div>
             )}
 
@@ -7130,6 +7241,186 @@ export default function AdvancedSearchAIPage() {
    CHAT BUBBLE
    ═══════════════════════════════════════════════ */
 
+
+// ── "Roles" — template pipelines launched from chat ─────────────────────────
+/** Pipeline chips row: step chips in the template's accent, joined by arrows. */
+function RoleChain({ tpl, compact = false }: { tpl: WorkflowTemplate; compact?: boolean }) {
+    const items = compact ? tpl.chain.slice(0, 3) : tpl.chain;
+    return (
+        <div className="flex flex-wrap items-center gap-y-1.5" style={{ columnGap: 4 }}>
+            {items.map((c, i) => (
+                <React.Fragment key={i}>
+                    {i > 0 && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>}
+                    <span className={`${compact ? 'text-[9.5px]' : 'text-[10.5px]'} font-semibold px-2 py-[3px] rounded-full whitespace-nowrap`}
+                        style={{ background: `${tpl.accent}12`, color: tpl.accent }}>{c}</span>
+                </React.Fragment>
+            ))}
+            {compact && tpl.chain.length > 3 && (
+                <span className="text-[9.5px] font-semibold text-slate-400 pl-0.5">+{tpl.chain.length - 3}</span>
+            )}
+        </div>
+    );
+}
+
+/** "Roles" pill + dropdown of template cards. Self-contained open/close state. */
+function RolesLauncher({ onPick }: { onPick: (t: WorkflowTemplate) => void }) {
+    const [open, setOpen] = React.useState(false);
+    React.useEffect(() => {
+        if (!open) return;
+        const h = () => setOpen(false);
+        document.addEventListener('click', h);
+        return () => document.removeEventListener('click', h);
+    }, [open]);
+    return (
+        <div style={{ position: 'relative' }}>
+            <button type="button" className="adv-roles-btn" title="Roles — hire a prebuilt AI pipeline"
+                onClick={(e) => { e.stopPropagation(); setOpen(!open); }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>
+                Roles
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ opacity: .55, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}><path d="m6 9 6 6 6-6" /></svg>
+            </button>
+            {open && (
+                <div className="adv-roles-menu" onClick={(e) => e.stopPropagation()}>
+                    <div className="px-2.5 pt-1.5 pb-2 flex items-center justify-between">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Hire a Role</span>
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">{WORKFLOW_TEMPLATES.length} pipelines</span>
+                    </div>
+                    {WORKFLOW_TEMPLATES.map((t) => (
+                        <button key={t.key} type="button"
+                            className="w-full text-left rounded-xl p-2.5 flex gap-2.5 items-start transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60 border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
+                            onClick={() => { setOpen(false); onPick(t); }}>
+                            <span className="h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: `${t.accent}14` }}>
+                                <TemplateIcon tplKey={t.key} color={t.accent} size={15} />
+                            </span>
+                            <span className="min-w-0 flex-1">
+                                <span className="block text-[13px] font-semibold text-slate-900 dark:text-white leading-tight">{t.name}</span>
+                                <span className="block text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">{t.tagline}</span>
+                                <span className="block mt-1.5"><RoleChain tpl={t} compact /></span>
+                            </span>
+                            <svg className="mt-2 flex-shrink-0 text-slate-300 dark:text-slate-600" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m9 18 6-6-6-6" /></svg>
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+/** Rich wizard card rendered inside AI bubbles (msg.roleCard). */
+function RoleCardView({ card, onOpt }: { card: NonNullable<ChatMsg['roleCard']>; onOpt: (v: string) => void }) {
+    const tpl = WORKFLOW_TEMPLATES.find((t) => t.key === card.key);
+    if (!tpl) return null;
+    const accent = tpl.accent;
+    const total = tpl.inputs.length;
+    const qIdx = Math.min(card.qIdx ?? 0, Math.max(0, total - 1));
+    const q = tpl.inputs[qIdx];
+    // Tiny **bold** renderer — questions carry markdown-style emphasis.
+    const md = (t: string) => t.split('**').map((part, i) => (i % 2
+        ? <strong key={i} className="font-semibold text-slate-900 dark:text-white">{part}</strong>
+        : <React.Fragment key={i}>{part}</React.Fragment>));
+    const isQuestionStage = card.stage === 'intro' || card.stage === 'question';
+
+    return (
+        <div className="mt-1 w-full max-w-[540px] rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-[0_2px_16px_rgba(15,23,42,0.06)] overflow-hidden">
+            {/* Accent hairline */}
+            <div style={{ height: 3, background: `linear-gradient(90deg, ${accent}, ${accent}55)` }} />
+            {/* Header */}
+            <div className="flex items-start gap-3 px-4 pt-3.5 pb-3">
+                <span className="h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${accent}14` }}>
+                    <TemplateIcon tplKey={tpl.key} color={accent} size={17} />
+                </span>
+                <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                        <span className="text-[14px] font-bold text-slate-900 dark:text-white leading-tight">{tpl.name}</span>
+                        <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full" style={{ background: `${accent}14`, color: accent }}>Role</span>
+                    </div>
+                    <div className="text-[11.5px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">{tpl.tagline}</div>
+                </div>
+            </div>
+            {/* Pipeline */}
+            {(card.stage === 'intro' || card.stage === 'summary' || card.stage === 'file') && (
+                <div className="px-4 pb-3"><RoleChain tpl={tpl} /></div>
+            )}
+
+            {/* Question stages */}
+            {isQuestionStage && (
+                <div className="px-4 pb-4 pt-1 border-t border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-2.5 mt-2.5 mb-2">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 whitespace-nowrap">Step {qIdx + 1} of {total}</span>
+                        <div className="flex-1 h-1 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                            <div className="h-full rounded-full transition-all" style={{ width: `${(qIdx / Math.max(1, total)) * 100}%`, background: accent }} />
+                        </div>
+                    </div>
+                    {card.nudge && (
+                        <div className="flex items-center gap-1.5 text-[11.5px] font-medium text-amber-600 dark:text-amber-400 mb-1.5">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 9v4M12 17h.01" /><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /></svg>
+                            This one&apos;s required to launch the Role
+                        </div>
+                    )}
+                    <div className="text-[13.5px] text-slate-700 dark:text-slate-200 leading-relaxed">{md(q?.question || '')}</div>
+                    <div className="flex items-center gap-1.5 mt-2.5 text-[11px] text-slate-400 dark:text-slate-500">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 4v7a4 4 0 0 1-4 4H4" /><path d="m9 10-5 5 5 5" /></svg>
+                        Type your answer below{q?.optional ? ' — or say "skip"' : ''}
+                    </div>
+                </div>
+            )}
+
+            {/* File hand-off */}
+            {card.stage === 'file' && (
+                <div className="px-4 pb-4 pt-3 border-t border-slate-100 dark:border-slate-800">
+                    <div className="text-[13px] text-slate-700 dark:text-slate-200 leading-relaxed">
+                        This Role starts from a <strong className="font-semibold">file upload</strong>. I&apos;ll open the workflow builder with the whole pipeline pre-built — upload your CSV/Excel in the source node and hit Launch.
+                    </div>
+                    <div className="flex items-center gap-2 mt-3.5">
+                        <button type="button" onClick={() => onOpt(`__role_builder__:${tpl.key}`)}
+                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12.5px] font-semibold text-white transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                            style={{ background: accent, boxShadow: `0 4px 14px ${accent}40` }}>
+                            Open builder
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                        </button>
+                        <button type="button" onClick={() => onOpt('__role_cancel__')}
+                            className="px-3.5 py-2 rounded-xl text-[12.5px] font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Cancel</button>
+                    </div>
+                </div>
+            )}
+
+            {/* Summary + launch CTAs */}
+            {card.stage === 'summary' && (
+                <div className="px-4 pb-4 pt-3 border-t border-slate-100 dark:border-slate-800">
+                    {Object.keys(card.answers || {}).length > 0 ? (
+                        <div className="space-y-1.5 mb-3">
+                            {tpl.inputs.filter((i) => (card.answers || {})[i.key]).map((i) => (
+                                <div key={i.key} className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 px-3 py-2">
+                                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 whitespace-nowrap">{i.key.replace(/_/g, ' ')}</span>
+                                    <span className="text-[12.5px] font-medium text-slate-800 dark:text-slate-100 text-right truncate">{(card.answers || {})[i.key]}</span>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-[13px] text-slate-600 dark:text-slate-300 mb-3">Nothing to configure — this Role is ready to go.</div>
+                    )}
+                    <div className="flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500 mb-3.5">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
+                        Defaults: 25 leads/day · 30 days — adjustable in the builder
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <button type="button" onClick={() => onOpt('__role_launch__')}
+                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12.5px] font-semibold text-white transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                            style={{ background: accent, boxShadow: `0 4px 14px ${accent}40` }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" /><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" /></svg>
+                            Activate &amp; launch
+                        </button>
+                        <button type="button" onClick={() => onOpt('__role_review__')}
+                            className="px-3.5 py-2 rounded-xl text-[12.5px] font-semibold border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">Review in builder</button>
+                        <button type="button" onClick={() => onOpt('__role_cancel__')}
+                            className="px-3 py-2 rounded-xl text-[12.5px] font-medium text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Cancel</button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
 function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, agentDealLoading, onStartTargeting, hasPanel, leadsCount, filteredLeadsCount, onUploadClick, useSalesNav, isMobile }: { msg: ChatMsg; onOpt: (v: string) => void; onShowPanel: (panel: 'leads' | 'workflow') => void; onStartCheckpoints: () => void; onLetAgentDeal?: () => void; agentDealLoading?: boolean; onStartTargeting: () => void; hasPanel: boolean; leadsCount: number; filteredLeadsCount?: number; onUploadClick?: () => void; useSalesNav?: boolean; isMobile?: boolean }) {
     const user = useSelector((state: any) => state.auth?.user);
     const displayName = user?.name || "User";
@@ -7182,6 +7473,7 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                 <AgentVisualizer state="idle" size={36} />
             </div>
             <div className="adv-ai-body">
+                {msg.roleCard && <RoleCardView card={msg.roleCard} onOpt={onOpt} />}
                 {msg.webSearchResult && (
                     <div className="adv-web-searched">
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
@@ -12056,7 +12348,9 @@ const css = `
             .adv-send-circle {width:40px; height:40px; border-radius:50%; border:none; display:flex; align-items:center; justify-content:center; transition:all .15s; flex-shrink:0; cursor:pointer; }
             .adv-send-circle:disabled {cursor:default; }
             /* ── SUGGESTION CHIPS ── */
+            .adv-chips-stack {display:flex; flex-direction:column; align-items:center; width:100%; }
             .adv-chips-row {display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-top:20px; max-width:680px; animation:fadeUp .4s ease .24s both; }
+            .adv-chips-row-2 {margin-top:10px; animation-delay:.3s; }
             .adv-chip {display:flex; align-items:center; gap:6px; border:1px solid #c2d6eb; border-radius:22px; padding:8px 16px; font-size:13px; font-weight:500; color:#0b1957; background:rgba(255,255,255,.75); cursor:pointer; transition:all .15s; }
             .adv-chip:hover {background:#e0eaf5; border-color:#0b1957; }
             /* ── RECENT SEARCHES ── */
@@ -12124,6 +12418,9 @@ const css = `
             .adv-chat-input-foot {display:flex; align-items:center; justify-content:space-between; margin-top:10px; padding-top:8px; border-top:1px solid #f3f4f6; }
             .adv-chat-attach-btn {width:32px; height:32px; border-radius:50%; border:1.5px solid #e5e7eb; background:#fff; color:#374151; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .15s; }
             .adv-chat-attach-btn:hover {background:#e0eaf5; border-color:#c2d6eb; color:#0b1957; }
+            .adv-roles-btn {display:inline-flex; align-items:center; gap:6px; white-space:nowrap; padding:7px 14px; border-radius:999px; border:1.5px solid #e5e7eb; background:#fff; color:#0b1957; font-size:12px; font-weight:600; cursor:pointer; transition:all .15s ease; }
+            .adv-roles-btn:hover {border-color:#0b1957; box-shadow:0 4px 14px rgba(11,25,87,.14); transform:translateY(-1px); }
+            .adv-roles-menu {position:absolute; bottom:calc(100% + 10px); left:50%; transform:translateX(-50%); background:#fff; border:1px solid #e5e7eb; border-radius:18px; padding:8px; width:370px; max-width:calc(100vw - 32px); max-height:440px; overflow-y:auto; box-shadow:0 16px 48px rgba(15,23,42,.16); z-index:100; animation:fadeUp .15s ease both; }
             .adv-model-label {display:flex; align-items:center; gap:4px; font-size:12px; color:#9ca3af; font-weight:500; cursor:pointer; }
             .adv-model-label:hover {color:#374151; }
             .adv-send-sm {width:34px!important; height:34px!important; }
@@ -12267,11 +12564,14 @@ const css = `
             /* ── GEMINI SUGGESTION CHIPS ── */
             .adv-gemini-chips {
                 display: flex;
+                flex-wrap: wrap;              /* multi-line instead of a 1-line scroller */
                 gap: 10px;
                 padding: 0 20px 20px;
                 width: 100%;
-                max-width: 100%;
-                overflow-x: auto;
+                /* Cap the row so the 6 chips break over 2-3 centred lines instead
+                   of stretching edge-to-edge on wide screens. */
+                max-width: 880px;
+                margin: 0 auto;
                 -webkit-overflow-scrolling: touch;
                 scrollbar-width: none;
                 animation: fadeUp 0.5s ease 0.15s both;
@@ -12293,7 +12593,8 @@ const css = `
                 cursor: pointer;
                 transition: color .2s, border-color .2s, transform .2s cubic-bezier(.2,.7,.2,1), box-shadow .2s;
                 white-space: nowrap;
-                flex: 0 0 auto;
+                flex: 0 1 auto;               /* allow the row to break between chips */
+                max-width: 100%;
             }
             .adv-gemini-chip svg {
                 width: 26px;
@@ -12500,6 +12801,7 @@ const css = `
                 .adv-center { padding: 0 0 60px !important; align-items: center !important; }
                 .adv-input-outer { width: 92% !important; max-width: 92% !important; margin: 0 auto 40px !important; }
                 .adv-title { font-size: 24px !important; width: 88%; margin: 0 auto 24px !important; text-align: center; }
+                .adv-chips-row-2 { margin-top: 0 !important; }
                 .adv-chips-row { 
                     display: grid !important; 
                     grid-template-columns: repeat(2, 1fr) !important; 
@@ -12695,6 +12997,9 @@ const css = `
 
             /* ATTACH & UNLOCK BUTTONS */
             .dark .adv-chat-attach-btn { background: #1A2A43; border: 1px solid #484b4f; color: #ffffff; box-shadow: none; }
+            .dark .adv-roles-btn { background: #1A2A43; border-color: #484b4f; color: #ffffff; }
+            .dark .adv-roles-btn:hover { border-color: #5b7cff; box-shadow: 0 4px 14px rgba(43,124,255,.18); }
+            .dark .adv-roles-menu { background: #0f1b33; border-color: #31415f; }
             .dark .adv-chat-attach-btn svg { stroke: #ffffff; }
             .dark .adv-chat-attach-btn:hover { background: #253456; border-color: #484b4f; }
             .dark .adv-unlock-btn { background: #2B7CFF; color: #000724; }

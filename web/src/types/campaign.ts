@@ -3,6 +3,7 @@ export type StepType =
   | 'linkedin_follow' 
   | 'linkedin_connect' 
   | 'linkedin_message'
+  | 'linkedin_inmail'
   | 'linkedin_scrape_profile'
   | 'linkedin_company_search'
   | 'linkedin_employee_list'
@@ -27,6 +28,8 @@ export type StepType =
   // Custom Workflow Builder macro nodes (visual-only; expanded/stripped at launch)
   | 'followup_sequence'
   | 'analytics_report'
+  | 'export_results'
+  | 'linkedin_post'
   | 'zoho_update'
   | 'switch'
   | 'ai_parse'

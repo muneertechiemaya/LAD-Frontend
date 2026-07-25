@@ -20,17 +20,24 @@
 // visual step list.
 
 import * as React from 'react';
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef, Fragment } from 'react';
 import ReactFlow, { ReactFlowProvider, useNodesState, useEdgesState } from 'reactflow';
 import 'reactflow/dist/style.css';
 import {
-  Rocket, Loader2, Linkedin, Mail, MessageCircle, Phone, Clock,
+  Rocket, Loader2, Linkedin, Mail, MailPlus, MessageCircle, Phone, Clock,
   Users, Repeat, Search, X, HardDrive, Inbox, ListOrdered, BarChart3, GitFork, DatabaseZap,
-  Wand2, Trash2, Radar, Split, Plus, Upload, FileSpreadsheet, Sparkles, Contact,
+  Wand2, Trash2, Radar, Split, Plus, Upload, FileSpreadsheet, Sparkles, Contact, Download, Megaphone, Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
+import {
+  WORKFLOW_TEMPLATES, WorkflowTemplate,
+  SOURCE_STEP_ID, FOLLOWUP_STEP_ID, ANALYTICS_STEP_ID, ZOHO_UPDATE_STEP_ID,
+  MEDIA_STEP_ID, MULTICOND_STEP_ID, AI_STEP_ID, ENRICH_STEP_ID, EXPORT_STEP_ID,
+  AUTOPOST_STEP_ID, AI_DEFAULT_INSTRUCTION, EXPORT_DEFAULT_COLUMNS,
+} from './workflowTemplates';
+import { TemplateIcon, stepCategory } from './TemplateIcon';
 import { useMediaBuilder } from '@/hooks/voice-agent/useMediaBuilder';
 import { MediaGenerationModal } from '@/components/voice-agent/MediaGenerationModal';
 import { useOnboardingStore, type WorkflowPreviewStep } from '@/store/onboardingStore';
@@ -143,6 +150,7 @@ type Channel = 'linkedin' | 'email' | 'whatsapp' | 'voice' | 'instagram';
 const OUTREACH: { type: StepType; label: string; group: string; channel: Channel; icon: React.ReactNode; chip: string; router?: boolean }[] = [
   { type: 'linkedin_connect', label: 'Connection request', group: 'LinkedIn', channel: 'linkedin', icon: <Linkedin className="h-4 w-4 text-[#0077B5]" />, chip: 'bg-sky-50 dark:bg-sky-950/30' },
   { type: 'linkedin_message', label: 'Message', group: 'LinkedIn', channel: 'linkedin', icon: <Linkedin className="h-4 w-4 text-[#0077B5]" />, chip: 'bg-sky-50 dark:bg-sky-950/30' },
+  { type: 'linkedin_inmail', label: 'InMail (Premium)', group: 'LinkedIn', channel: 'linkedin', icon: <MailPlus className="h-4 w-4 text-[#7C3AED]" />, chip: 'bg-violet-50 dark:bg-violet-950/30' },
   { type: 'linkedin_visit', label: 'Profile visit', group: 'LinkedIn', channel: 'linkedin', icon: <Linkedin className="h-4 w-4 text-[#0077B5]" />, chip: 'bg-sky-50 dark:bg-sky-950/30' },
   { type: 'email_send', label: 'Send email', group: 'Email', channel: 'email', icon: <Mail className="h-4 w-4 text-amber-600" />, chip: 'bg-amber-50 dark:bg-amber-950/30' },
   { type: 'whatsapp_send', label: 'Send WhatsApp', group: 'WhatsApp', channel: 'whatsapp', icon: <MessageCircle className="h-4 w-4 text-green-600" />, chip: 'bg-green-50 dark:bg-green-950/30' },
@@ -172,12 +180,9 @@ const CONDITIONS = [
   { value: 'wa_replied', label: 'WhatsApp replied', action: 'WA_REPLIED' },
 ];
 
-const SOURCE_STEP_ID = 'src-node';
 // "Macro" nodes (single-instance): follow-ups EXPAND into real engine steps at
 // launch; analytics becomes campaign config read by the digest cron — it is
 // NOT an engine step.
-const FOLLOWUP_STEP_ID = 'followup-node';
-const ANALYTICS_STEP_ID = 'analytics-node';
 let stepSeq = 0;
 const nextId = () => `wf-${Date.now()}-${stepSeq++}`;
 
@@ -190,30 +195,73 @@ const FU_CHANNELS = [
 // "Update Zoho record" write-back node (single-instance) — maps workflow data
 // back onto the lead's Zoho record. Keys MUST match the backend
 // ZohoWritebackService.SOURCE_RESOLVERS.
-const ZOHO_UPDATE_STEP_ID = 'zoho-update-node';
 
 // "AI Media" node (single-instance) — generate a brand image/video at design
 // time; the media_generation step records it and the asset is attached to the
 // workflow's email/WhatsApp outreach at launch.
-const MEDIA_STEP_ID = 'media-gen-node';
 
 // "Multi-condition" (switch) node — routes each lead down one of N branches by
 // a lead field (if/elseif/else). Expands at launch into a `switch` step + one
 // guarded message step per branch (backend prunes the non-chosen branches).
-const MULTICOND_STEP_ID = 'multicond-node';
 
 // "AI Agent" node — LLM-normalises each lead (clean single title from a mixed
 // field, split name, tidy company) before the outreach/LinkedIn steps run.
-const AI_STEP_ID = 'ai-agent-node';
-const AI_DEFAULT_INSTRUCTION = 'If the job title has multiple or mixed roles, keep the single best-fit, most senior title. Split the full name into first/last and tidy the company name.';
 
 // "Enrich contact" node — reveals email/phone via FullEnrich; user multi-selects.
-const ENRICH_STEP_ID = 'data-enrich-node';
 const ENRICH_OPTIONS: { key: string; label: string; sub: string }[] = [
   { key: 'official_email', label: 'Official email', sub: 'work / business email' },
   { key: 'personal_email', label: 'Personal email', sub: 'private email' },
   { key: 'phone', label: 'Phone number', sub: 'mobile number' },
 ];
+
+// "Export results" node — ships the campaign's result set to one or more
+// destinations. Config-only (like the analytics digest): stored on
+// campaigns.config.export_results and run on completion / on demand.
+const EXPORT_FORMATS = [
+  { value: 'csv', label: 'CSV (.csv)' },
+  { value: 'xlsx', label: 'Excel (.xlsx)' },
+  { value: 'json', label: 'JSON (.json)' },
+];
+const EXPORT_DESTINATIONS: { key: string; label: string; sub: string }[] = [
+  { key: 'file',          label: 'Download file',   sub: 'CSV / Excel / JSON link' },
+  { key: 'database',      label: 'Database table',  sub: 'append to campaign_export_results' },
+  { key: 'email',         label: 'Email',           sub: 'send file as an attachment' },
+  { key: 'whatsapp',      label: 'WhatsApp',        sub: 'send file as a document' },
+  { key: 'webhook',       label: 'Webhook',         sub: 'POST JSON to a URL' },
+  { key: 'google_sheets', label: 'Google Sheets',   sub: 'append rows to a sheet' },
+  { key: 'slack',         label: 'Slack',           sub: 'post summary + link' },
+  { key: 'cloud_storage', label: 'Cloud storage',   sub: 'drop file in a bucket' },
+];
+const EXPORT_COLUMN_OPTIONS: { value: string; label: string }[] = [
+  { value: 'full_name', label: 'Full name' },
+  { value: 'first_name', label: 'First name' },
+  { value: 'last_name', label: 'Last name' },
+  { value: 'title', label: 'Title' },
+  { value: 'company_name', label: 'Company' },
+  { value: 'email', label: 'Email' },
+  { value: 'personal_email', label: 'Personal email' },
+  { value: 'phone', label: 'Phone' },
+  { value: 'linkedin_url', label: 'LinkedIn URL' },
+  { value: 'status', label: 'Status' },
+  { value: 'last_action', label: 'Last action' },
+  { value: 'last_action_at', label: 'Last action at' },
+  { value: 'replied', label: 'Replied' },
+  { value: 'created_at', label: 'Added on' },
+];
+
+// "LinkedIn auto-post" node — posts to the tenant's OWN feed on a recurring
+// schedule while the campaign runs (social-selling warm-up). Campaign-level,
+// NOT per-lead: a per-lead post would fire once per enrolled lead.
+const AUTOPOST_FREQUENCIES = [
+  { value: 'daily', label: 'Every day' },
+  { value: 'weekly', label: 'On selected days' },
+];
+const AUTOPOST_DAYS = [
+  { value: 1, label: 'Mon' }, { value: 2, label: 'Tue' }, { value: 3, label: 'Wed' },
+  { value: 4, label: 'Thu' }, { value: 5, label: 'Fri' }, { value: 6, label: 'Sat' },
+  { value: 0, label: 'Sun' },
+];
+
 
 const SWITCH_FIELDS = [
   { value: 'tag', label: 'Tag' },
@@ -361,7 +409,15 @@ function useBuilderResources() {
   };
 }
 
-export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
+export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSourceCfg, autoLaunch }: {
+  onClose: () => void;
+  /** Apply this template on mount (chat "Roles" wizard hands off here). */
+  initialTemplateKey?: string;
+  /** Answers collected in chat — merged into the source node's config. */
+  initialSourceCfg?: Record<string, any>;
+  /** Fire launch() automatically once the template is applied. */
+  autoLaunch?: boolean;
+}) {
   const { workflowPreview, setWorkflowPreview, addWorkflowStep, updateWorkflowStep } = useOnboardingStore();
   const res = useBuilderResources();
 
@@ -384,6 +440,21 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
   const [mediaGalleryOpen, setMediaGalleryOpen] = useState(false);
   const [mediaImporting, setMediaImporting] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
+  // Left-panel tabs + template browsing state (Templates | Build from steps).
+  const [paletteTab, setPaletteTab] = useState<'templates' | 'steps'>('templates');
+  const [tplSearch, setTplSearch] = useState('');
+  const [expandedTpl, setExpandedTpl] = useState<string | null>(WORKFLOW_TEMPLATES[0]?.key || null);
+  /** Template shown in the right-hand overview drawer (null = show node editor). */
+  const [overviewTpl, setOverviewTpl] = useState<string | null>(null);
+
+  // "Export now" (builder test run) state.
+  const [exportRunning, setExportRunning] = useState(false);
+  const [exportResult, setExportResult] = useState<any>(null);
+  // LinkedIn auto-post state.
+  const [autopostGenerating, setAutopostGenerating] = useState(false);
+  const [autopostPosting, setAutopostPosting] = useState(false);
+  const [autopostMsg, setAutopostMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [liOrganizations, setLiOrganizations] = useState<{ id: string; name: string }[]>([]);
   // Multi-condition node: fields of the connected source (dynamic dropdown).
   const [mcFields, setMcFields] = useState<{ value: string; label: string }[]>(SWITCH_FIELDS);
   const [mcFieldsLoading, setMcFieldsLoading] = useState(false);
@@ -409,6 +480,7 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     const onEdit = (e: any) => {
       const id: string = e.detail?.stepId || '';
       // Clicking a fanned-out branch node opens the Multi-condition editor.
+      setOverviewTpl(null); // node editor wins over the template overview
       setEditingId(id.startsWith(`${MULTICOND_STEP_ID}-`) ? MULTICOND_STEP_ID : (id || null));
     };
     window.addEventListener('openStepEditor', onEdit);
@@ -502,6 +574,181 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     setEditingId(ENRICH_STEP_ID);
   };
 
+  /** Map the parsed file grid + header mapping into lead objects. Shared by the
+   *  launch payload and the "Export now" test run. */
+  const buildLeadsFromFile = useCallback(() => {
+    const colOf = (f: string) => { const e = Object.entries(fileMapping).find(([, v]) => v === f); return e ? Number(e[0]) : -1; };
+    const idx = { full_name: colOf('full_name'), first_name: colOf('first_name'), last_name: colOf('last_name'), company: colOf('company'), title: colOf('title'), location: colOf('location'), email: colOf('email'), phone: colOf('phone'), linkedin_url: colOf('linkedin_url'), website: colOf('website') };
+    const val = (r: string[], i: number) => (i >= 0 ? (r[i] || '').trim() : '');
+    return fileRows.map((r) => {
+      const first = val(r, idx.first_name), last = val(r, idx.last_name);
+      const full = val(r, idx.full_name) || [first, last].filter(Boolean).join(' ');
+      return {
+        name: full || undefined,
+        first_name: first || (full ? full.split(' ')[0] : undefined),
+        last_name: last || (full ? full.split(' ').slice(1).join(' ') || undefined : undefined),
+        company_name: val(r, idx.company) || undefined,
+        title: val(r, idx.title) || undefined,
+        location: val(r, idx.location) || undefined,
+        email: val(r, idx.email) || undefined,
+        phone: val(r, idx.phone) || undefined,
+        linkedin_url: val(r, idx.linkedin_url) || undefined,
+      };
+    });
+  }, [fileRows, fileMapping]);
+
+  /** "Export now" — test the configured export against the leads loaded in the
+   *  builder, so destinations (email / webhook / Slack …) are proven before launch. */
+  const runExportNow = async () => {
+    const cfg = configs[EXPORT_STEP_ID] || {};
+    const leads = source === 'file_import' ? buildLeadsFromFile() : [];
+    setExportRunning(true);
+    setExportResult(null);
+    try {
+      const res = await fetchWithTenant('/api/campaigns/export/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ config: cfg, leads, campaign_name: name.trim() || 'Workflow preview' }),
+      });
+      const data = await res.json();
+      setExportResult(data);
+    } catch (e: any) {
+      setExportResult({ success: false, error: e?.message || 'Export failed' });
+    } finally {
+      setExportRunning(false);
+    }
+  };
+
+  const addAutopost = () => {
+    if (!workflowPreview.some((s) => s.id === AUTOPOST_STEP_ID)) {
+      addWorkflowStep({ id: AUTOPOST_STEP_ID, type: 'linkedin_post', channel: 'linkedin', title: 'LinkedIn auto-post', description: 'Weekly · Mon' });
+      setCfg(AUTOPOST_STEP_ID, {
+        content: '',
+        frequency: 'weekly',
+        days: [1],
+        time: '09:00',
+        ai_generate: false,
+        post_as: 'personal',
+      });
+    }
+    setEditingId(AUTOPOST_STEP_ID);
+  };
+
+  /** "Generate with AI" — drafts the post from ICP + campaign context. */
+  const generateAutopost = async () => {
+    const eid = AUTOPOST_STEP_ID;
+    const c = configs[eid] || {};
+    setAutopostGenerating(true);
+    setAutopostMsg(null);
+    try {
+      const res = await fetchWithTenant('/api/campaigns/linkedin-post/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seed: c.content || '', instruction: c.ai_instruction || '' }),
+      });
+      const data = await res.json();
+      if (data?.success && data.content) {
+        setCfg(eid, { content: data.content });
+        updateWorkflowStep(eid, { description: data.content.slice(0, 40) });
+        setAutopostMsg({ ok: true, text: 'Draft generated — edit it below before posting.' });
+      } else {
+        setAutopostMsg({ ok: false, text: data?.error || 'Could not generate a post.' });
+      }
+    } catch (e: any) {
+      setAutopostMsg({ ok: false, text: e?.message || 'Could not generate a post.' });
+    } finally {
+      setAutopostGenerating(false);
+    }
+  };
+
+  /** "Post now" — publishes immediately so the user can see it land. */
+  const postAutopostNow = async () => {
+    const c = configs[AUTOPOST_STEP_ID] || {};
+    if (!(c.content || '').trim()) {
+      setAutopostMsg({ ok: false, text: 'Write or generate the post content first.' });
+      return;
+    }
+    setAutopostPosting(true);
+    setAutopostMsg(null);
+    try {
+      const res = await fetchWithTenant('/api/campaigns/linkedin-post/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: c.content,
+          media_url: c.media_url || undefined,
+          media_filename: c.media_filename || undefined,
+          external_link: c.external_link || undefined,
+          as_organization: c.post_as && c.post_as !== 'personal' ? c.post_as : undefined,
+        }),
+      });
+      const data = await res.json();
+      setAutopostMsg(data?.success
+        ? { ok: true, text: 'Posted to LinkedIn.' }
+        : { ok: false, text: data?.error || 'Could not post.' });
+    } catch (e: any) {
+      setAutopostMsg({ ok: false, text: e?.message || 'Could not post.' });
+    } finally {
+      setAutopostPosting(false);
+    }
+  };
+
+  /**
+   * Apply a template: replaces the canvas with the recipe's source + nodes and
+   * seeds every drawer config in one shot. Opens the source drawer afterwards
+   * so the user lands on the targeting fields they still need to fill.
+   */
+  const applyTemplate = (t: WorkflowTemplate, opts?: { silent?: boolean; sourceCfgOverride?: Record<string, any> }) => {
+    setOverviewTpl(null);
+    if (!opts?.silent && workflowPreview.length > 0 &&
+        !window.confirm(`Replace the current workflow with the "${t.name}" template?`)) {
+      return;
+    }
+    const srcDef = SOURCES.find((s) => s.key === t.source.key)!;
+    const steps: WorkflowPreviewStep[] = [{
+      id: SOURCE_STEP_ID, type: 'lead_generation',
+      channel: t.source.key.startsWith('linkedin') ? 'linkedin' : 'email',
+      title: t.source.title || srcDef.label,
+      description: t.source.description || srcDef.sub,
+    }];
+    const cfgs: Record<string, any> = {};
+    if (t.source.cfg || opts?.sourceCfgOverride) {
+      cfgs[SOURCE_STEP_ID] = { ...(t.source.cfg || {}), ...(opts?.sourceCfgOverride || {}) };
+    }
+
+    for (const n of t.nodes) {
+      const id = n.macroId || nextId();
+      const channel = n.type.startsWith('linkedin') ? 'linkedin'
+        : n.type.startsWith('email') ? 'email'
+        : n.type.startsWith('whatsapp') ? 'whatsapp'
+        : n.type === 'voice_agent_call' ? 'voice'
+        : n.type === 'condition' ? 'linkedin'
+        : 'email';
+      steps.push({ id, type: n.type, channel, title: n.title, description: n.description } as WorkflowPreviewStep);
+      if (n.cfg) cfgs[id] = { ...n.cfg };
+    }
+
+    setSource(t.source.key);
+    setWorkflowPreview(steps);
+    setConfigs(cfgs);
+    if (!name.trim()) setName(t.name);
+    setError(null);
+    setEditingId(SOURCE_STEP_ID);
+  };
+
+  const addExport = () => {
+    if (!workflowPreview.some((s) => s.id === EXPORT_STEP_ID)) {
+      addWorkflowStep({ id: EXPORT_STEP_ID, type: 'export_results', channel: 'email', title: 'Export results', description: 'CSV · Download' });
+      setCfg(EXPORT_STEP_ID, {
+        format: 'csv',
+        destinations: ['file'],
+        columns: EXPORT_DEFAULT_COLUMNS,
+        run_on_completion: true,
+      });
+    }
+    setEditingId(EXPORT_STEP_ID);
+  };
+
   const setCfg = useCallback((id: string, patch: any) => {
     setConfigs((c) => ({ ...c, [id]: { ...(c[id] || {}), ...patch } }));
   }, []);
@@ -558,6 +805,18 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setCfg, updateWorkflowStep]);
+
+  // Lazy-load the LinkedIn company pages the account may post as. Fails soft —
+  // an empty list simply leaves "personal profile" as the only option.
+  useEffect(() => {
+    if (editingId !== AUTOPOST_STEP_ID || liOrganizations.length) return;
+    let cancelled = false;
+    fetchWithTenant('/api/campaigns/linkedin-post/organizations')
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && Array.isArray(d?.data)) setLiOrganizations(d.data); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [editingId, liOrganizations.length]);
 
   // Lazy-load Zoho field metadata when the write-back node is open, per module.
   const zohoModule = configs[ZOHO_UPDATE_STEP_ID]?.module === 'Leads' ? 'Leads' : 'Contacts';
@@ -635,8 +894,20 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     setError(null);
     if (!name.trim()) { setError('Name your workflow.'); return; }
     if (!source) { setError('Pick a contact source (first node).'); return; }
+    // LinkedIn Search needs at least one criterion — templates seed these empty
+    // on purpose, so catch it here with a pointer instead of a backend 400.
+    if (source === 'linkedin_search') {
+      const sc = configs[SOURCE_STEP_ID] || {};
+      const any = [sc.keywords, sc.job_titles, sc.industries, sc.locations]
+        .some((v) => String(v || '').trim());
+      if (!any) {
+        setError('Fill the LinkedIn Search targeting — at least one of job title, industry, location, or keywords.');
+        setEditingId(SOURCE_STEP_ID);
+        return;
+      }
+    }
     const outreachSteps = workflowPreview.filter(
-      (s) => s.id !== SOURCE_STEP_ID && s.id !== FOLLOWUP_STEP_ID && s.id !== ANALYTICS_STEP_ID && s.id !== ZOHO_UPDATE_STEP_ID && s.id !== MEDIA_STEP_ID && s.id !== MULTICOND_STEP_ID && s.id !== AI_STEP_ID && s.id !== ENRICH_STEP_ID
+      (s) => s.id !== SOURCE_STEP_ID && s.id !== FOLLOWUP_STEP_ID && s.id !== ANALYTICS_STEP_ID && s.id !== ZOHO_UPDATE_STEP_ID && s.id !== MEDIA_STEP_ID && s.id !== MULTICOND_STEP_ID && s.id !== AI_STEP_ID && s.id !== ENRICH_STEP_ID && s.id !== EXPORT_STEP_ID && s.id !== AUTOPOST_STEP_ID
     );
     const aiNode = workflowPreview.find((s) => s.id === AI_STEP_ID);
     const enrichNode = workflowPreview.find((s) => s.id === ENRICH_STEP_ID);
@@ -644,6 +915,8 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     const multiCondNode = workflowPreview.find((s) => s.id === MULTICOND_STEP_ID);
     const followupNode = workflowPreview.find((s) => s.id === FOLLOWUP_STEP_ID);
     const analyticsNode = workflowPreview.find((s) => s.id === ANALYTICS_STEP_ID);
+    const exportNode = workflowPreview.find((s) => s.id === EXPORT_STEP_ID);
+    const autopostNode = workflowPreview.find((s) => s.id === AUTOPOST_STEP_ID);
     const zohoUpdateNode = workflowPreview.find((s) => s.id === ZOHO_UPDATE_STEP_ID);
     if (!outreachSteps.length && !followupNode && !multiCondNode) { setError('Add at least one outreach step.'); return; }
     if (multiCondNode) {
@@ -688,11 +961,20 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
           },
         });
       } else if (source === 'linkedin_search') {
+        // Structured targeting — the backend normalises job_titles → roles,
+        // locations → location, industries as-is (LeadGenerationService).
+        const csv = (v: any) => String(v || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+        const jt = csv(srcCfg.job_titles), ind = csv(srcCfg.industries), loc = csv(srcCfg.locations);
         steps.push({
           type: 'lead_generation', title: 'LinkedIn Lead Search', channel: 'linkedin', order_index: order++,
           config: {
             source: 'linkedin_search',
-            leadGenerationFilters: { keywords: (srcCfg.keywords || '').trim() },
+            leadGenerationFilters: {
+              keywords: (srcCfg.keywords || '').trim(),
+              ...(jt.length ? { job_titles: jt } : {}),
+              ...(ind.length ? { industries: ind } : {}),
+              ...(loc.length ? { locations: loc } : {}),
+            },
             leadGenerationLimit: perDayN,
           },
         });
@@ -804,6 +1086,7 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
         const delay = { delayDays: Math.max(0, parseInt(c.delayDays, 10) || 0), delayHours: 0 };
         if (s.type === 'linkedin_connect') steps.push({ type: s.type, title: 'Send Connection Request', channel: 'linkedin', order_index: order++, config: { message: (c.message || '').trim(), template_id: c.linkedin_template_id || undefined, ...delay } });
         else if (s.type === 'linkedin_message') steps.push({ type: s.type, title: 'Send LinkedIn Message', channel: 'linkedin', order_index: order++, config: { message: (c.message || '').trim(), template_id: c.linkedin_template_id || undefined, ...delay } });
+        else if (s.type === 'linkedin_inmail') steps.push({ type: s.type, title: 'Send LinkedIn InMail', channel: 'linkedin', order_index: order++, config: { message: (c.message || '').trim(), subject: (c.subject || '').trim() || undefined, template_id: c.linkedin_template_id || undefined, ...delay } });
         else if (s.type === 'linkedin_visit') steps.push({ type: s.type, title: 'Visit LinkedIn Profile', channel: 'linkedin', order_index: order++, config: { ...delay } });
         else if (s.type === 'email_send') steps.push({ type: s.type, title: 'Send Email', channel: 'email', order_index: order++, config: { subject: (c.subject || '').trim(), body: (c.body || '').trim(), from_email: c.from_email || undefined, email_provider: c.email_provider || undefined, template_id: c.template_id || undefined, ...delay } });
         else if (s.type === 'whatsapp_send') steps.push({ type: s.type, title: 'Send WhatsApp Message', channel: 'whatsapp', order_index: order++, config: { whatsappMessage: (c.message || '').trim(), whatsapp_account_id: c.whatsapp_account_id || undefined, whatsapp_template_id: c.whatsapp_template_id || undefined, ...delay } });
@@ -914,6 +1197,20 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
         config: {
           data_source: source === 'zoho_recurring' ? 'zoho_contacts' : source === 'linkedin_search' ? 'linkedin_search' : 'direct_contact',
           builder: 'custom_workflow',
+          // Search targeting, surfaced at campaign level so AI features ground
+          // on it — notably the auto-post generator (LinkedInPostContentService
+          // reads config.targeting), making "daily post about the industry you
+          // target" actually track the industry you searched.
+          ...(source === 'linkedin_search' ? (() => {
+            const sc = configs[SOURCE_STEP_ID] || {};
+            const csv = (v: any) => String(v || '').split(',').map((x: string) => x.trim()).filter(Boolean);
+            const tgt: any = {};
+            if (csv(sc.job_titles).length) tgt.job_titles = csv(sc.job_titles);
+            if (csv(sc.industries).length) tgt.industries = csv(sc.industries);
+            if (csv(sc.locations).length) tgt.locations = csv(sc.locations);
+            if ((sc.keywords || '').trim()) tgt.keywords = sc.keywords.trim();
+            return Object.keys(tgt).length ? { targeting: tgt } : {};
+          })() : {}),
           leads_per_day: perDayN,
           campaign_days: daysN,
           working_days: 'monday-friday',
@@ -928,6 +1225,45 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
           ...(followupNode ? {
             followup_sequence: { touches: fuTouchList.length, channel: fuChannel, timeline_hours: fuTouchList.map((t) => t.hours || 24), human_approval: !!fc.human_approval },
           } : {}),
+          ...(autopostNode ? (() => {
+            const pc = configs[AUTOPOST_STEP_ID] || {};
+            const content = (pc.content || '').trim();
+            if (!content) return {};
+            return {
+              // Read by LinkedInAutopostScheduleService at launch → drives
+              // linkedinAutopostCron. Campaign-level (one post per schedule).
+              autopost: {
+                content,
+                ai_generate: !!pc.ai_generate,
+                media_url: (pc.media_url || '').trim() || undefined,
+                external_link: (pc.external_link || '').trim() || undefined,
+                as_organization: pc.post_as && pc.post_as !== 'personal' ? pc.post_as : undefined,
+                frequency: pc.frequency === 'daily' ? 'daily' : 'weekly',
+                days: Array.isArray(pc.days) ? pc.days : [1],
+                time: pc.time || '09:00',
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || undefined,
+              },
+            };
+          })() : {}),
+          ...(exportNode ? (() => {
+            const ec = configs[EXPORT_STEP_ID] || {};
+            return {
+              // Read by CampaignExportService — on completion and from "Export now".
+              export_results: {
+                format: ec.format || 'csv',
+                destinations: Array.isArray(ec.destinations) && ec.destinations.length ? ec.destinations : ['file'],
+                columns: Array.isArray(ec.columns) && ec.columns.length ? ec.columns : EXPORT_DEFAULT_COLUMNS,
+                run_on_completion: ec.run_on_completion !== false,
+                email_to: (ec.email_to || '').trim() || undefined,
+                whatsapp_to: (ec.whatsapp_to || '').trim() || undefined,
+                webhook_url: (ec.webhook_url || '').trim() || undefined,
+                sheet_id: (ec.sheet_id || '').trim() || undefined,
+                slack_webhook_url: (ec.slack_webhook_url || '').trim() || undefined,
+                bucket: (ec.bucket || '').trim() || undefined,
+                bucket_prefix: (ec.bucket_prefix || '').trim() || undefined,
+              },
+            };
+          })() : {}),
           ...(analyticsNode ? {
             // Read by core/cron/campaignDigestCron.js — daily 08:00 GST (weekly = Mondays).
             analytics_notifications: {
@@ -958,6 +1294,116 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     }
   };
 
+  // ── Programmatic template launch (chat "Roles" wizard hand-off) ───────────
+  // Effect 1 applies the template once on mount (silently — no confirm) with
+  // the wizard's answers merged into the source config. Effect 2 fires launch()
+  // exactly once, on the render AFTER the applied state has committed (the
+  // !source guard skips the same-commit run where state is still stale).
+  const appliedTplRef = useRef(false);
+  const autoLaunchedRef = useRef(false);
+  useEffect(() => {
+    if (!initialTemplateKey || appliedTplRef.current) return;
+    const tpl = WORKFLOW_TEMPLATES.find((t) => t.key === initialTemplateKey);
+    if (!tpl) return;
+    appliedTplRef.current = true;
+    applyTemplate(tpl, { silent: true, sourceCfgOverride: initialSourceCfg });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialTemplateKey]);
+  useEffect(() => {
+    if (!autoLaunch || !appliedTplRef.current || autoLaunchedRef.current) return;
+    if (!source || launching) return;
+    autoLaunchedRef.current = true;
+    launch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoLaunch, source, workflowPreview, configs]);
+
+  /**
+   * Right-hand "Template overview" drawer — full pipeline breakdown before you
+   * commit. Applying from here routes through the same applyTemplate() the
+   * gallery uses, so there is one code path for building a template.
+   */
+  const renderTemplateOverview = () => {
+    const t = WORKFLOW_TEMPLATES.find((x) => x.key === overviewTpl);
+    if (!t) return null;
+    const steps = [
+      { title: t.source.title, category: 'Contact source' },
+      ...t.nodes.map((n) => ({ title: n.title, category: stepCategory(n.type) })),
+    ];
+    const use = () => { applyTemplate(t); setOverviewTpl(null); };
+    return (
+      <div className="absolute right-0 top-0 h-full w-[22rem] bg-card border-l border-border shadow-2xl z-10 flex flex-col">
+        {/* Header */}
+        <div className="flex items-start gap-3 p-4 border-b border-border">
+          <span className="h-11 w-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${t.accent}14` }}>
+            <TemplateIcon tplKey={t.key} color={t.accent} size={20} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-[15px] font-bold text-foreground truncate">{t.name}</div>
+            <div className="text-xs text-muted-foreground">Template overview</div>
+          </div>
+          <button onClick={() => setOverviewTpl(null)}
+            className="h-8 w-8 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors flex-shrink-0">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-4">
+          <p className="text-[13.5px] text-foreground leading-relaxed">{t.tagline}.</p>
+
+          <div className="grid grid-cols-3 gap-2 mt-4">
+            {[
+              { n: steps.length, l: 'steps' },
+              { n: t.meta.cycleDays, l: 'day cycle' },
+              { n: t.meta.channels, l: 'channels' },
+            ].map((st) => (
+              <div key={st.l} className="rounded-xl border border-border bg-muted/30 dark:bg-slate-800/30 px-3 py-3 text-center">
+                <div className="text-[19px] font-bold text-foreground leading-none">{st.n}</div>
+                <div className="text-[11px] text-muted-foreground mt-1">{st.l}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-5">
+            <div className="text-[13px] font-semibold text-foreground mb-2.5">Pipeline</div>
+            <div className="relative">
+              {steps.map((st, i) => (
+                <div key={i} className="relative flex items-start gap-3 pb-3.5 last:pb-0">
+                  {i < steps.length - 1 && (
+                    <span className="absolute left-[13px] top-7 bottom-0 w-px bg-border" />
+                  )}
+                  <span className="relative z-[1] h-[26px] w-[26px] rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-bold"
+                    style={{ background: `${t.accent}14`, color: t.accent }}>{i + 1}</span>
+                  <span className="min-w-0 flex-1 pt-0.5">
+                    <span className="block text-[13.5px] font-semibold text-foreground leading-tight">{st.title}</span>
+                    <span className="block text-[11.5px] text-muted-foreground mt-0.5">{st.category}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <button type="button" onClick={use}
+            className="mt-5 w-full rounded-xl bg-[#0b1957] text-white text-[13.5px] font-semibold py-3 hover:bg-[#0b1957]/90 transition-colors">
+            Use this template
+          </button>
+        </div>
+
+        {/* Footer */}
+        <div className="p-3 border-t border-border flex items-center gap-2">
+          <button type="button" onClick={() => setOverviewTpl(null)}
+            className="px-4 py-2.5 rounded-xl bg-muted text-foreground text-[13px] font-semibold hover:bg-muted/70 transition-colors">
+            Preview
+          </button>
+          <button type="button" onClick={() => { use(); setPaletteTab('steps'); }}
+            className="flex-1 px-4 py-2.5 rounded-xl bg-[#0b1957] text-white text-[13px] font-semibold hover:bg-[#0b1957]/90 transition-colors">
+            Customize steps
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   // ── Config drawer fields per node type ────────────────────────────────────
   const field = 'w-full rounded-md border border-input bg-background px-3 py-2 text-sm';
   const renderEditor = () => {
@@ -971,7 +1417,9 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     const isMultiCond = editingId === MULTICOND_STEP_ID;
     const isAiParse = editingId === AI_STEP_ID;
     const isDataEnrich = editingId === ENRICH_STEP_ID;
-    const isMacro = isFollowup || isAnalytics || isZohoUpdate || isMedia || isMultiCond || isAiParse || isDataEnrich;
+    const isExport = editingId === EXPORT_STEP_ID;
+    const isAutopost = editingId === AUTOPOST_STEP_ID;
+    const isMacro = isFollowup || isAnalytics || isZohoUpdate || isMedia || isMultiCond || isAiParse || isDataEnrich || isExport || isAutopost;
     const visual = isSource
       ? SOURCES.find((s) => s.key === source)
       : isFollowup
@@ -988,6 +1436,10 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
             ? { icon: <Sparkles className="h-4 w-4 text-violet-600" />, chip: 'bg-violet-50 dark:bg-violet-950/30' }
           : isDataEnrich
             ? { icon: <Contact className="h-4 w-4 text-teal-600" />, chip: 'bg-teal-50 dark:bg-teal-950/30' }
+          : isExport
+            ? { icon: <Download className="h-4 w-4 text-cyan-700" />, chip: 'bg-cyan-50 dark:bg-cyan-950/30' }
+          : isAutopost
+            ? { icon: <Megaphone className="h-4 w-4 text-[#0077B5]" />, chip: 'bg-sky-50 dark:bg-sky-950/30' }
           : isRouter
             ? { icon: <GitFork className="h-4 w-4 text-rose-600" />, chip: 'bg-rose-50 dark:bg-rose-950/30' }
             : OUTREACH.find((o) => o.type === editingStep.type && !o.router);
@@ -998,7 +1450,7 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
           <div className="min-w-0 flex-1">
             <div className="text-sm font-semibold text-foreground truncate">{editingStep.title}</div>
             <div className="text-xs text-muted-foreground">
-              {isSource ? 'Contact source settings' : isFollowup ? 'Follow-up sequence settings' : isAnalytics ? 'Report settings' : isZohoUpdate ? 'Field mapping' : isMedia ? 'AI media' : isMultiCond ? 'Branch by condition' : isAiParse ? 'AI data cleanup' : isDataEnrich ? 'Data to enrich' : isRouter ? 'Fallback routing settings' : 'Step settings'}
+              {isSource ? 'Contact source settings' : isFollowup ? 'Follow-up sequence settings' : isAnalytics ? 'Report settings' : isZohoUpdate ? 'Field mapping' : isMedia ? 'AI media' : isMultiCond ? 'Branch by condition' : isAiParse ? 'AI data cleanup' : isDataEnrich ? 'Data to enrich' : isExport ? 'Export destinations' : isAutopost ? 'Post content & schedule' : isRouter ? 'Fallback routing settings' : 'Step settings'}
             </div>
           </div>
           <button onClick={() => setEditingId(null)} className="h-7 w-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors flex-shrink-0">
@@ -1066,10 +1518,21 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
               <p className="text-[11px] leading-snug text-muted-foreground">Any combination works (name + company, company + title + location, name + location…). When a LinkedIn step runs, Unipile resolves each lead&apos;s LinkedIn profile from the mapped name + company.</p>
             </>)}
           </>)}
-          {isSource && source === 'linkedin_search' && (
-            <div className="space-y-1"><label className="text-xs font-medium text-foreground">Search keywords</label>
-              <Input value={cfg.keywords || ''} onChange={(e) => setCfg(editingId, { keywords: e.target.value })} placeholder="e.g. VP Sales SaaS UAE" /></div>
-          )}
+          {isSource && source === 'linkedin_search' && (<>
+            {/* Structured targeting — the backend normalises job_titles → roles,
+                locations → location, and matches industries against the lead's
+                company industry. Comma-separate to search several at once. */}
+            <div className="space-y-1"><label className="text-xs font-medium text-foreground">Job titles</label>
+              <Input value={cfg.job_titles || ''} onChange={(e) => setCfg(editingId, { job_titles: e.target.value })} placeholder="e.g. VP Sales, Head of Revenue" />
+              <p className="text-[11px] text-muted-foreground">Comma-separate to target several titles.</p></div>
+            <div className="space-y-1"><label className="text-xs font-medium text-foreground">Industries</label>
+              <Input value={cfg.industries || ''} onChange={(e) => setCfg(editingId, { industries: e.target.value })} placeholder="e.g. SaaS, Fintech" /></div>
+            <div className="space-y-1"><label className="text-xs font-medium text-foreground">Location</label>
+              <Input value={cfg.locations || ''} onChange={(e) => setCfg(editingId, { locations: e.target.value })} placeholder="e.g. Dubai, United Arab Emirates" /></div>
+            <div className="space-y-1"><label className="text-xs font-medium text-foreground">Extra keywords (optional)</label>
+              <Input value={cfg.keywords || ''} onChange={(e) => setCfg(editingId, { keywords: e.target.value })} placeholder="Anything else to match on" />
+              <p className="text-[11px] text-muted-foreground">Fill at least one field above — the search needs a title, industry, location, or keyword.</p></div>
+          </>)}
           {isSource && source === 'linkedin_signal' && (<>
             <div className="space-y-1">
               <label className="text-xs font-medium text-foreground">Signal</label>
@@ -1352,6 +1815,231 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
             </>);
           })()}
 
+          {isAutopost && (() => {
+            const eid = editingId!;
+            const freq = cfg.frequency === 'daily' ? 'daily' : 'weekly';
+            const days: number[] = Array.isArray(cfg.days) ? cfg.days : [1];
+            const describe = (f: string, d: number[]) => {
+              if (f === 'daily') return 'Daily · ' + (cfg.time || '09:00');
+              const names = AUTOPOST_DAYS.filter((x) => d.includes(x.value)).map((x) => x.label);
+              return (names.length ? names.join(', ') : 'no days') + ' · ' + (cfg.time || '09:00');
+            };
+            const toggleDay = (v: number) => {
+              const next = days.includes(v) ? days.filter((x) => x !== v) : [...days, v];
+              setCfg(eid, { days: next });
+              updateWorkflowStep(eid, { description: describe(freq, next) });
+            };
+            return (<>
+              <div className="rounded-md border border-sky-200 bg-sky-50 dark:border-sky-900 dark:bg-sky-950/30 px-3 py-2">
+                <p className="text-[11px] text-sky-800 dark:text-sky-300">
+                  Posts to your own LinkedIn feed on a schedule while the campaign runs — it warms
+                  your profile so the people you reach out to see recent activity. This posts
+                  <strong> once per schedule</strong>, not once per lead.
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium text-foreground">Post content</label>
+                  <button type="button" onClick={generateAutopost} disabled={autopostGenerating}
+                    className="text-[11px] font-medium text-[#0b1957] dark:text-sky-300 hover:underline disabled:opacity-60 flex items-center gap-1">
+                    {autopostGenerating ? <><Loader2 className="h-3 w-3 animate-spin" /> Generating…</> : <><Sparkles className="h-3 w-3" /> Generate with AI</>}
+                  </button>
+                </div>
+                <textarea className={`${field} min-h-[140px]`} value={cfg.content || ''}
+                  onChange={(e) => { setCfg(eid, { content: e.target.value }); updateWorkflowStep(eid, { description: e.target.value.slice(0, 40) || describe(freq, days) }); }}
+                  placeholder="Write your post, or add a topic and hit Generate with AI…" />
+                <p className="text-[11px] text-muted-foreground">{(cfg.content || '').length}/3000 characters</p>
+              </div>
+
+              <label className="flex items-start gap-2.5 rounded-lg border border-border p-2.5 cursor-pointer hover:bg-muted/30 transition-colors">
+                <input type="checkbox" className="mt-0.5 h-4 w-4" checked={!!cfg.ai_generate}
+                  onChange={(e) => setCfg(eid, { ai_generate: e.target.checked })} />
+                <span className="min-w-0">
+                  <span className="block text-sm text-foreground">Write a fresh post with AI each time</span>
+                  <span className="block text-[11px] text-muted-foreground">Uses the text above as the topic, so a recurring series doesn&apos;t repeat itself.</span>
+                </span>
+              </label>
+
+              <div className="space-y-1"><label className="text-xs font-medium text-foreground">Link (optional)</label>
+                <input className={field} value={cfg.external_link || ''} onChange={(e) => setCfg(eid, { external_link: e.target.value })}
+                  placeholder="https://… (shown as a preview card)" /></div>
+
+              <div className="space-y-1"><label className="text-xs font-medium text-foreground">Image / video URL (optional)</label>
+                <input className={field} value={cfg.media_url || ''} onChange={(e) => setCfg(eid, { media_url: e.target.value })}
+                  placeholder="Paste a URL, or add the AI Media node to generate one" /></div>
+
+              <div className="space-y-1"><label className="text-xs font-medium text-foreground">Post as</label>
+                <select className={field} value={cfg.post_as || 'personal'} onChange={(e) => setCfg(eid, { post_as: e.target.value })}>
+                  <option value="personal">My personal profile</option>
+                  {liOrganizations.map((o) => <option key={o.id} value={o.id}>{o.name} (company page)</option>)}
+                </select>
+                {liOrganizations.length === 0 && (
+                  <p className="text-[11px] text-muted-foreground">No company pages found for this account — posting to your personal profile.</p>
+                )}</div>
+
+              <div className="space-y-1"><label className="text-xs font-medium text-foreground">How often</label>
+                <select className={field} value={freq} onChange={(e) => { setCfg(eid, { frequency: e.target.value }); updateWorkflowStep(eid, { description: describe(e.target.value, days) }); }}>
+                  {AUTOPOST_FREQUENCIES.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
+                </select></div>
+
+              {freq === 'weekly' && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">Days</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {AUTOPOST_DAYS.map((d) => (
+                      <button key={d.value} type="button" onClick={() => toggleDay(d.value)}
+                        className={`px-2.5 py-1 rounded-md border text-[12px] transition-colors ${
+                          days.includes(d.value)
+                            ? 'border-[#0b1957] bg-[#0b1957] text-white'
+                            : 'border-border text-foreground hover:bg-muted/40'
+                        }`}>{d.label}</button>
+                    ))}
+                  </div>
+                  {days.length === 0 && <p className="text-[11px] text-amber-600">Pick at least one day, or it posts every day.</p>}
+                </div>
+              )}
+
+              <div className="space-y-1"><label className="text-xs font-medium text-foreground">Time</label>
+                <input type="time" className={field} value={cfg.time || '09:00'}
+                  onChange={(e) => { setCfg(eid, { time: e.target.value }); updateWorkflowStep(eid, { description: describe(freq, days) }); }} />
+                <p className="text-[11px] text-muted-foreground">Your local timezone. Posting stops when the campaign is paused or finishes.</p></div>
+
+              <div className="space-y-2 pt-1">
+                <button type="button" onClick={postAutopostNow} disabled={autopostPosting}
+                  className="w-full rounded-md bg-[#0077B5] text-white text-sm font-medium py-2 disabled:opacity-60 flex items-center justify-center gap-2">
+                  {autopostPosting ? <><Loader2 className="h-4 w-4 animate-spin" /> Posting…</> : <><Megaphone className="h-4 w-4" /> Post now</>}
+                </button>
+                {autopostMsg && (
+                  <div className={`rounded-md border p-2.5 text-[11px] ${autopostMsg.ok
+                    ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300'
+                    : 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30 text-red-700 dark:text-red-300'}`}>
+                    {autopostMsg.text}
+                  </div>
+                )}
+              </div>
+            </>);
+          })()}
+
+          {isExport && (() => {
+            const eid = editingId!;
+            const dests: string[] = Array.isArray(cfg.destinations) ? cfg.destinations : ['file'];
+            const cols: string[] = Array.isArray(cfg.columns) ? cfg.columns : EXPORT_DEFAULT_COLUMNS;
+            const fmt = cfg.format || 'csv';
+            const describe = (d: string[], f: string) => {
+              const names = EXPORT_DESTINATIONS.filter((x) => d.includes(x.key)).map((x) => x.label);
+              return `${String(f).toUpperCase()} · ${names.length ? names.join(' · ') : 'no destination'}`;
+            };
+            const toggleDest = (key: string) => {
+              const next = dests.includes(key) ? dests.filter((k) => k !== key) : [...dests, key];
+              setCfg(eid, { destinations: next });
+              updateWorkflowStep(eid, { description: describe(next, fmt) });
+            };
+            const toggleCol = (value: string) => {
+              const next = cols.includes(value) ? cols.filter((c) => c !== value) : [...cols, value];
+              setCfg(eid, { columns: next });
+            };
+            const has = (k: string) => dests.includes(k);
+            return (<>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">File format</label>
+                <select className={field} value={fmt} onChange={(e) => { setCfg(eid, { format: e.target.value }); updateWorkflowStep(eid, { description: describe(dests, e.target.value) }); }}>
+                  {EXPORT_FORMATS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-foreground">Where to send the results</label>
+                {EXPORT_DESTINATIONS.map((o) => (
+                  <label key={o.key} className="flex items-start gap-2.5 rounded-lg border border-border p-2.5 cursor-pointer hover:bg-muted/30 transition-colors">
+                    <input type="checkbox" className="mt-0.5 h-4 w-4" checked={has(o.key)} onChange={() => toggleDest(o.key)} />
+                    <span className="min-w-0">
+                      <span className="block text-sm text-foreground">{o.label}</span>
+                      <span className="block text-[11px] text-muted-foreground">{o.sub}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+
+              {/* Per-destination inputs — only shown for the ones selected. */}
+              {has('email') && (
+                <div className="space-y-1"><label className="text-xs font-medium text-foreground">Email to</label>
+                  <input className={field} value={cfg.email_to || ''} onChange={(e) => setCfg(eid, { email_to: e.target.value })} placeholder="you@company.com" /></div>
+              )}
+              {has('whatsapp') && (
+                <div className="space-y-1"><label className="text-xs font-medium text-foreground">WhatsApp number</label>
+                  <input className={field} value={cfg.whatsapp_to || ''} onChange={(e) => setCfg(eid, { whatsapp_to: e.target.value })} placeholder="+971500000000" /></div>
+              )}
+              {has('webhook') && (
+                <div className="space-y-1"><label className="text-xs font-medium text-foreground">Webhook URL</label>
+                  <input className={field} value={cfg.webhook_url || ''} onChange={(e) => setCfg(eid, { webhook_url: e.target.value })} placeholder="https://hooks.example.com/…" /></div>
+              )}
+              {has('google_sheets') && (
+                <div className="space-y-1"><label className="text-xs font-medium text-foreground">Google Sheet ID</label>
+                  <input className={field} value={cfg.sheet_id || ''} onChange={(e) => setCfg(eid, { sheet_id: e.target.value })} placeholder="1AbC…xyz (from the sheet URL)" />
+                  <p className="text-[11px] text-muted-foreground">Uses your connected Google account — the Sheets scope must be granted.</p></div>
+              )}
+              {has('slack') && (
+                <div className="space-y-1"><label className="text-xs font-medium text-foreground">Slack incoming webhook</label>
+                  <input className={field} value={cfg.slack_webhook_url || ''} onChange={(e) => setCfg(eid, { slack_webhook_url: e.target.value })} placeholder="https://hooks.slack.com/services/…" /></div>
+              )}
+              {has('cloud_storage') && (<>
+                <div className="space-y-1"><label className="text-xs font-medium text-foreground">Bucket</label>
+                  <input className={field} value={cfg.bucket || ''} onChange={(e) => setCfg(eid, { bucket: e.target.value })} placeholder="Leave blank for the default bucket" /></div>
+                <div className="space-y-1"><label className="text-xs font-medium text-foreground">Folder prefix</label>
+                  <input className={field} value={cfg.bucket_prefix || ''} onChange={(e) => setCfg(eid, { bucket_prefix: e.target.value })} placeholder="campaign-exports" /></div>
+              </>)}
+
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-foreground">Columns to include</label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {EXPORT_COLUMN_OPTIONS.map((c) => (
+                    <label key={c.value} className="flex items-center gap-2 text-[12px] text-foreground cursor-pointer">
+                      <input type="checkbox" className="h-3.5 w-3.5" checked={cols.includes(c.value)} onChange={() => toggleCol(c.value)} />
+                      <span className="truncate">{c.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <label className="flex items-start gap-2.5 rounded-lg border border-border p-2.5 cursor-pointer hover:bg-muted/30 transition-colors">
+                <input type="checkbox" className="mt-0.5 h-4 w-4" checked={cfg.run_on_completion !== false}
+                  onChange={(e) => setCfg(eid, { run_on_completion: e.target.checked })} />
+                <span className="min-w-0">
+                  <span className="block text-sm text-foreground">Export automatically when the campaign finishes</span>
+                  <span className="block text-[11px] text-muted-foreground">You can also export any time from the campaign page.</span>
+                </span>
+              </label>
+
+              {/* Execute now — proves the destinations work before launch. */}
+              <div className="space-y-2 pt-1">
+                <button type="button" onClick={runExportNow} disabled={exportRunning}
+                  className="w-full rounded-md bg-[#0b1957] text-white text-sm font-medium py-2 disabled:opacity-60 flex items-center justify-center gap-2">
+                  {exportRunning ? <><Loader2 className="h-4 w-4 animate-spin" /> Exporting…</> : <><Download className="h-4 w-4" /> Export now</>}
+                </button>
+                <p className="text-[11px] leading-snug text-muted-foreground">
+                  {source === 'file_import'
+                    ? 'Runs the export against the leads loaded above, so you can check the file and confirm your destinations work.'
+                    : 'Sends a test export (no leads are loaded yet for this source) — useful to confirm the destination settings are valid.'}
+                </p>
+                {exportResult && (
+                  <div className={`rounded-md border p-2.5 text-[11px] ${exportResult.success ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/30' : 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30'}`}>
+                    {exportResult.error && <p className="text-red-700 dark:text-red-300">{exportResult.error}</p>}
+                    {typeof exportResult.count === 'number' && <p className="text-foreground font-medium">{exportResult.count} row{exportResult.count !== 1 ? 's' : ''} exported</p>}
+                    {exportResult.results && Object.entries(exportResult.results).map(([k, v]: any) => (
+                      <p key={k} className={v.ok ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}>
+                        {v.ok ? '✓' : '✕'} {k}{v.error ? ` — ${v.error}` : ''}{v.skipped ? ` — ${v.skipped}` : ''}
+                      </p>
+                    ))}
+                    {exportResult.file_url && (
+                      <a href={exportResult.file_url} target="_blank" rel="noreferrer" className="inline-block mt-1 underline text-[#0b1957] dark:text-sky-300">Download file</a>
+                    )}
+                  </div>
+                )}
+              </div>
+            </>);
+          })()}
+
           {!isSource && (editingStep.type === 'linkedin_connect' || editingStep.type === 'linkedin_message') && (<>
             {res.liTemplates.length > 0 && (
               <div className="space-y-1"><label className="text-xs font-medium text-foreground">LinkedIn template (optional)</label>
@@ -1366,6 +2054,30 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Message {editingStep.type === 'linkedin_connect' ? '(optional note)' : ''}</label>
               <textarea className={`${field} min-h-[90px]`} value={cfg.message || ''} onChange={(e) => { setCfg(editingId, { message: e.target.value }); updateWorkflowStep(editingId, { description: e.target.value.slice(0, 40) }); }}
                 placeholder="Leave blank to let Mr LAD draft it" /></div>
+          </>)}
+          {!isSource && editingStep.type === 'linkedin_inmail' && (<>
+            <div className="rounded-md border border-violet-200 bg-violet-50 dark:border-violet-900 dark:bg-violet-950/30 px-3 py-2">
+              <p className="text-[11px] text-violet-700 dark:text-violet-300">
+                InMail reaches prospects you are <strong>not connected to</strong>. Requires a Premium /
+                Sales Navigator / Recruiter LinkedIn account and consumes one InMail credit per send.
+              </p>
+            </div>
+            {res.liTemplates.length > 0 && (
+              <div className="space-y-1"><label className="text-xs font-medium text-foreground">LinkedIn template (optional)</label>
+                <select className={field} value={cfg.linkedin_template_id || ''} onChange={(e) => {
+                  const t = res.liTemplates.find((x: any) => String(x.id) === e.target.value);
+                  setCfg(editingId!, { linkedin_template_id: e.target.value || undefined, message: t?.content ?? t?.message ?? cfg.message });
+                }}>
+                  <option value="">— None (write below / AI-drafted) —</option>
+                  {res.liTemplates.map((t: any) => <option key={t.id} value={t.id}>{t.name || t.title || 'Template'}</option>)}
+                </select></div>
+            )}
+            <div className="space-y-1"><label className="text-xs font-medium text-foreground">Subject (optional)</label>
+              <input className={field} value={cfg.subject || ''} onChange={(e) => setCfg(editingId!, { subject: e.target.value })}
+                placeholder="e.g. Quick question about {{company_name}}" /></div>
+            <div className="space-y-1"><label className="text-xs font-medium text-foreground">Message</label>
+              <textarea className={`${field} min-h-[90px]`} value={cfg.message || ''} onChange={(e) => { setCfg(editingId!, { message: e.target.value }); updateWorkflowStep(editingId!, { description: e.target.value.slice(0, 40) }); }}
+                placeholder="Hi {{first_name}}, I came across your profile…" /></div>
           </>)}
           {!isSource && editingStep.type === 'whatsapp_send' && (<>
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">WhatsApp account</label>
@@ -1500,6 +2212,119 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
       <div className="flex-1 flex min-h-0">
         {/* Palette */}
         <div className="w-[19rem] border-r border-border bg-card overflow-y-auto p-4 space-y-6">
+          {/* Tabs — Templates | Build from steps */}
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-muted/60 dark:bg-slate-800/60">
+            {([['templates', 'Templates'], ['steps', 'Build from steps']] as const).map(([k, label]) => (
+              <button key={k} type="button" onClick={() => setPaletteTab(k)}
+                className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold transition-all ${
+                  paletteTab === k
+                    ? 'bg-card text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}>
+                {k === 'templates'
+                  ? <Zap className="h-3.5 w-3.5" />
+                  : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M4 6h16M4 12h10M4 18h13" /></svg>}
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {paletteTab === 'templates' && (<>
+            {/* Search */}
+            <div className="relative">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+              <input value={tplSearch} onChange={(e) => setTplSearch(e.target.value)} placeholder="Search templates…"
+                className="w-full rounded-xl border border-input bg-muted/40 dark:bg-slate-800/40 pl-9 pr-3 py-2.5 text-[13px] outline-none focus:bg-background focus:border-[#0b1957]/40 transition-colors" />
+            </div>
+
+            <div>
+              <div className="text-[15px] font-bold text-foreground">Start from a template</div>
+              <p className="text-[12.5px] text-muted-foreground mt-0.5 mb-3">Builds the whole pipeline — then tune each node</p>
+
+              <div className="space-y-2.5">
+                {(() => {
+                  const q = tplSearch.trim().toLowerCase();
+                  const list = q
+                    ? WORKFLOW_TEMPLATES.filter((t) =>
+                        (t.name + ' ' + t.tagline + ' ' + t.chain.join(' ')).toLowerCase().includes(q))
+                    : WORKFLOW_TEMPLATES;
+                  if (!list.length) return (
+                    <p className="text-[12.5px] text-muted-foreground py-6 text-center">No templates match “{tplSearch}”.</p>
+                  );
+                  return list.map((t) => {
+                    const open = expandedTpl === t.key;
+                    return (
+                      <div key={t.key}
+                        className={`rounded-2xl border bg-card transition-all ${
+                          open ? 'border-[#0b1957]/40 shadow-[0_2px_16px_rgba(11,25,87,0.08)]' : 'border-border hover:border-[#0b1957]/25'
+                        }`}>
+                        <button type="button" onClick={() => setExpandedTpl(open ? null : t.key)}
+                          className="w-full flex items-start gap-3 p-3 text-left">
+                          <span className="h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${t.accent}14` }}>
+                            <TemplateIcon tplKey={t.key} color={t.accent} size={18} />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="flex items-start gap-1.5 flex-wrap">
+                              <span className="text-[14px] font-bold text-foreground leading-tight">{t.name}</span>
+                              {t.badge && (
+                                <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md mt-0.5 ${
+                                  t.badge.tone === 'violet'
+                                    ? 'bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300'
+                                    : 'bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300'
+                                }`}>{t.badge.label}</span>
+                              )}
+                            </span>
+                            <span className="block text-[12px] text-muted-foreground mt-1 leading-snug">{t.tagline}</span>
+                          </span>
+                          <span className="flex flex-col items-center flex-shrink-0 pl-1">
+                            <span className="text-[15px] font-bold text-foreground leading-none">{t.nodes.length + 1}</span>
+                            <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground mt-0.5">Steps</span>
+                          </span>
+                          <svg className={`text-muted-foreground flex-shrink-0 mt-2.5 transition-transform ${open ? 'rotate-90' : ''}`}
+                            width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m9 18 6-6-6-6" /></svg>
+                        </button>
+
+                        {open && (
+                          <div className="px-3 pb-3">
+                            <div className="border-t border-border pt-3 flex flex-wrap items-center gap-y-1.5" style={{ columnGap: 4 }}>
+                              {t.chain.map((c, i) => (
+                                <Fragment key={i}>
+                                  {i > 0 && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>}
+                                  <span className="text-[10.5px] font-semibold px-2 py-[3px] rounded-full whitespace-nowrap"
+                                    style={{ background: `${t.accent}12`, color: t.accent }}>{c}</span>
+                                </Fragment>
+                              ))}
+                            </div>
+                            <div className="flex items-center gap-3 mt-3">
+                              <span className="inline-flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
+                                <strong className="font-semibold text-foreground">{t.meta.cycleDays}-day</strong> cycle
+                              </span>
+                              <span className="h-3 w-px bg-border" />
+                              <span className="text-[11.5px] text-muted-foreground">
+                                <strong className="font-semibold text-foreground">{t.meta.channels}</strong> channels
+                              </span>
+                              <button type="button" onClick={(e) => { e.stopPropagation(); setOverviewTpl(t.key); setEditingId(null); }}
+                                className="ml-auto px-3.5 py-2 rounded-xl bg-[#0b1957] text-white text-[12.5px] font-semibold hover:bg-[#0b1957]/90 transition-colors">
+                                Use template
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+
+              <button type="button" onClick={() => setPaletteTab('steps')}
+                className="mt-3 w-full rounded-2xl border border-dashed border-border hover:border-[#0b1957]/40 hover:bg-muted/40 py-3 text-[13px] font-semibold text-muted-foreground hover:text-foreground transition-colors inline-flex items-center justify-center gap-2">
+                <Plus className="h-4 w-4" /> Or build from scratch with steps
+              </button>
+            </div>
+          </>)}
+
+          {paletteTab === 'steps' && (<>
           {/* 1 · Contact source */}
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -1637,6 +2462,48 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
                 </button>
               );
             })()}
+            {/* Export results — ship the final result set to files / DB / channels. */}
+            {(() => {
+              const added = workflowPreview.some((s) => s.id === EXPORT_STEP_ID);
+              return (
+                <button onClick={addExport}
+                  className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
+                    added ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20' : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                  }`}>
+                  <IconChip icon={<Download className="h-4 w-4 text-cyan-700" />} chip="bg-cyan-50 dark:bg-cyan-950/30" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold text-foreground truncate">Export results</span>
+                    <span className="block text-xs text-muted-foreground truncate">File · DB · Email · WhatsApp · more</span>
+                  </span>
+                  {added && (
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    </span>
+                  )}
+                </button>
+              );
+            })()}
+            {/* LinkedIn auto-post — recurring posts to the tenant's own feed. */}
+            {(() => {
+              const added = workflowPreview.some((s) => s.id === AUTOPOST_STEP_ID);
+              return (
+                <button onClick={addAutopost}
+                  className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
+                    added ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20' : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                  }`}>
+                  <IconChip icon={<Megaphone className="h-4 w-4 text-[#0077B5]" />} chip="bg-sky-50 dark:bg-sky-950/30" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold text-foreground truncate">LinkedIn auto-post</span>
+                    <span className="block text-xs text-muted-foreground truncate">Recurring posts to your own feed</span>
+                  </span>
+                  {added && (
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    </span>
+                  )}
+                </button>
+              );
+            })()}
           </div>
 
           {/* 3 · Follow-ups */}
@@ -1754,6 +2621,7 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
               );
             })()}
           </div>
+          </>)}
         </div>
 
         {/* Canvas */}
@@ -1767,7 +2635,7 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
               <BuilderCanvas steps={workflowPreview} branches={mcBranches} switchId={MULTICOND_STEP_ID} />
             </ReactFlowProvider>
           )}
-          {renderEditor()}
+          {overviewTpl ? renderTemplateOverview() : renderEditor()}
         </div>
       </div>
 

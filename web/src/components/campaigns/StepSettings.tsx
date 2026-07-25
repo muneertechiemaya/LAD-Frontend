@@ -45,6 +45,7 @@ const getRequiredFields = (stepType: StepType): string[] => {
   const required: Record<StepType, string[]> = {
     linkedin_connect: [], // Message is optional due to LinkedIn's 4-5 connection messages/month limit
     linkedin_message: ['message'],
+    linkedin_inmail: ['message'],
     email_send: ['subject', 'body'],
     email_followup: ['subject', 'body'],
     whatsapp_send: ['whatsappAccountId', 'whatsappMessage'],
@@ -71,6 +72,8 @@ const getRequiredFields = (stepType: StepType): string[] => {
     media_generation: [],
     followup_sequence: [],
     analytics_report: [],
+    export_results: [],
+    linkedin_post: [],
     zoho_update: [],
     switch: [],
     ai_parse: [],
@@ -229,7 +232,7 @@ export default function StepSettings({
         
         <Separator className="my-4" />
       {/* LinkedIn Steps */}
-      {(resolvedStepTypeSafe === 'linkedin_connect' || resolvedStepTypeSafe === 'linkedin_message') && (
+      {(resolvedStepTypeSafe === 'linkedin_connect' || resolvedStepTypeSafe === 'linkedin_message' || resolvedStepTypeSafe === 'linkedin_inmail') && (
         <>
           <div className="mb-4">
             <h4 className="text-sm font-semibold text-[#0077B5] mb-2 flex items-center">
@@ -252,7 +255,7 @@ export default function StepSettings({
                 }
                 className={requiredFields.includes('message') && !isFieldValid('message', data.message) ? 'border-red-500' : ''}
               />
-              {resolvedStepTypeSafe === 'linkedin_message' && renderRequiredIndicator('message')}
+              {(resolvedStepTypeSafe === 'linkedin_message' || resolvedStepTypeSafe === 'linkedin_inmail') && renderRequiredIndicator('message')}
             </div>
             <p className="text-xs text-slate-500 mt-1">
               {requiredFields.includes('message') && !isFieldValid('message', data.message)
