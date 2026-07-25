@@ -12550,11 +12550,14 @@ const css = `
             /* ── GEMINI SUGGESTION CHIPS ── */
             .adv-gemini-chips {
                 display: flex;
+                flex-wrap: wrap;              /* multi-line instead of a 1-line scroller */
                 gap: 10px;
                 padding: 0 20px 20px;
                 width: 100%;
-                max-width: 100%;
-                overflow-x: auto;
+                /* Cap the row so the 6 chips break over 2-3 centred lines instead
+                   of stretching edge-to-edge on wide screens. */
+                max-width: 880px;
+                margin: 0 auto;
                 -webkit-overflow-scrolling: touch;
                 scrollbar-width: none;
                 animation: fadeUp 0.5s ease 0.15s both;
@@ -12576,7 +12579,8 @@ const css = `
                 cursor: pointer;
                 transition: color .2s, border-color .2s, transform .2s cubic-bezier(.2,.7,.2,1), box-shadow .2s;
                 white-space: nowrap;
-                flex: 0 0 auto;
+                flex: 0 1 auto;               /* allow the row to break between chips */
+                max-width: 100%;
             }
             .adv-gemini-chip svg {
                 width: 26px;
