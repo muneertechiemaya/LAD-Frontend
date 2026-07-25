@@ -68,11 +68,17 @@ export type WorkflowTemplate = {
   requiresFile?: boolean;
   /** Brand accent used by the chat Roles UI (cards, chips, CTAs). */
   accent: string;
+  /** Small card badge (e.g. Popular / Daily). */
+  badge?: { label: string; tone: 'blue' | 'violet' };
+  /** Overview stats shown on template cards and the overview drawer. */
+  meta: { cycleDays: number; channels: number };
 };
 
 export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
   {
     key: 'linkedin_accelerator',
+    badge: { label: 'Popular', tone: 'blue' },
+    meta: { cycleDays: 14, channels: 3 },
     accent: '#0A66C2',
     name: 'LinkedIn Accelerator',
     tagline: 'Warm up, connect, message — while daily AI posts build your presence',
@@ -104,6 +110,7 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
   },
   {
     key: 'cold_list_outreach',
+    meta: { cycleDays: 10, channels: 2 },
     accent: '#059669',
     name: 'Cold List Outreach',
     tagline: 'Upload a list, clean + enrich it, connect and follow up, export results',
@@ -122,6 +129,7 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
   },
   {
     key: 'inmail_blitz',
+    meta: { cycleDays: 12, channels: 1 },
     accent: '#7C3AED',
     name: 'InMail Blitz',
     tagline: 'Premium InMail to non-connections, with automatic follow-ups',
@@ -144,6 +152,8 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
   },
   {
     key: 'signal_hunter',
+    badge: { label: 'Daily', tone: 'violet' },
+    meta: { cycleDays: 7, channels: 1 },
     accent: '#D97706',
     name: 'Signal Hunter',
     tagline: 'Catch companies showing buying signals and reach the decision maker',
@@ -166,6 +176,7 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
   },
   {
     key: 'crm_reengage',
+    meta: { cycleDays: 30, channels: 2 },
     accent: '#DC2626',
     name: 'CRM Re-Engage',
     tagline: 'Pull new Zoho contacts daily, reach out on LinkedIn, write results back',

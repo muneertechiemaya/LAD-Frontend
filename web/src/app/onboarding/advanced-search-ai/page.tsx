@@ -31,6 +31,7 @@ import { AgentBuilderBrandDNA } from "@/components/voice-agent/playground/builde
 import { useAuth } from '@/contexts/AuthContext';
 import CustomWorkflowBuilder from '@/components/campaigns/CustomWorkflowBuilder';
 import { WORKFLOW_TEMPLATES, WorkflowTemplate } from '@/components/campaigns/workflowTemplates';
+import { TemplateIcon } from '@/components/campaigns/TemplateIcon';
 import { useEmailTemplates, useCreateEmailTemplate } from '@lad/frontend-features/email-templates';
 import { useConnectedEmailSenders } from '@lad/frontend-features/email-senders';
 import {
@@ -7214,28 +7215,6 @@ export default function AdvancedSearchAIPage() {
 
 
 // ── "Roles" — template pipelines launched from chat ─────────────────────────
-function RoleIcon({ tplKey, color, size = 16 }: { tplKey: string; color: string; size?: number }) {
-    const common = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: color, strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
-    if (tplKey === 'linkedin_accelerator') return (
-        <svg {...common}><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" /><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" /><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" /><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" /></svg>
-    );
-    if (tplKey === 'cold_list_outreach') return (
-        <svg {...common}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
-    );
-    if (tplKey === 'inmail_blitz') return (
-        <svg {...common}><path d="M22 13V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12c0 1.1.9 2 2 2h8" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /><path d="M19 16v6" /><path d="M16 19h6" /></svg>
-    );
-    if (tplKey === 'signal_hunter') return (
-        <svg {...common}><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></svg>
-    );
-    if (tplKey === 'crm_reengage') return (
-        <svg {...common}><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /><path d="M3 21v-5h5" /></svg>
-    );
-    return (
-        <svg {...common}><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>
-    );
-}
-
 /** Pipeline chips row: step chips in the template's accent, joined by arrows. */
 function RoleChain({ tpl, compact = false }: { tpl: WorkflowTemplate; compact?: boolean }) {
     const items = compact ? tpl.chain.slice(0, 3) : tpl.chain;
@@ -7283,7 +7262,7 @@ function RolesLauncher({ onPick }: { onPick: (t: WorkflowTemplate) => void }) {
                             className="w-full text-left rounded-xl p-2.5 flex gap-2.5 items-start transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60 border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
                             onClick={() => { setOpen(false); onPick(t); }}>
                             <span className="h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: `${t.accent}14` }}>
-                                <RoleIcon tplKey={t.key} color={t.accent} size={15} />
+                                <TemplateIcon tplKey={t.key} color={t.accent} size={15} />
                             </span>
                             <span className="min-w-0 flex-1">
                                 <span className="block text-[13px] font-semibold text-slate-900 dark:text-white leading-tight">{t.name}</span>
@@ -7320,7 +7299,7 @@ function RoleCardView({ card, onOpt }: { card: NonNullable<ChatMsg['roleCard']>;
             {/* Header */}
             <div className="flex items-start gap-3 px-4 pt-3.5 pb-3">
                 <span className="h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${accent}14` }}>
-                    <RoleIcon tplKey={tpl.key} color={accent} size={17} />
+                    <TemplateIcon tplKey={tpl.key} color={accent} size={17} />
                 </span>
                 <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">

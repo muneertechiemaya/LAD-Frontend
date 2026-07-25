@@ -37,6 +37,7 @@ import {
   MEDIA_STEP_ID, MULTICOND_STEP_ID, AI_STEP_ID, ENRICH_STEP_ID, EXPORT_STEP_ID,
   AUTOPOST_STEP_ID, AI_DEFAULT_INSTRUCTION, EXPORT_DEFAULT_COLUMNS,
 } from './workflowTemplates';
+import { TemplateIcon, stepCategory } from './TemplateIcon';
 import { useMediaBuilder } from '@/hooks/voice-agent/useMediaBuilder';
 import { MediaGenerationModal } from '@/components/voice-agent/MediaGenerationModal';
 import { useOnboardingStore, type WorkflowPreviewStep } from '@/store/onboardingStore';
@@ -439,6 +440,13 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   const [mediaGalleryOpen, setMediaGalleryOpen] = useState(false);
   const [mediaImporting, setMediaImporting] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
+  // Left-panel tabs + template browsing state (Templates | Build from steps).
+  const [paletteTab, setPaletteTab] = useState<'templates' | 'steps'>('templates');
+  const [tplSearch, setTplSearch] = useState('');
+  const [expandedTpl, setExpandedTpl] = useState<string | null>(WORKFLOW_TEMPLATES[0]?.key || null);
+  /** Template shown in the right-hand overview drawer (null = show node editor). */
+  const [overviewTpl, setOverviewTpl] = useState<string | null>(null);
+
   // "Export now" (builder test run) state.
   const [exportRunning, setExportRunning] = useState(false);
   const [exportResult, setExportResult] = useState<any>(null);
@@ -472,6 +480,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     const onEdit = (e: any) => {
       const id: string = e.detail?.stepId || '';
       // Clicking a fanned-out branch node opens the Multi-condition editor.
+      setOverviewTpl(null); // node editor wins over the template overview
       setEditingId(id.startsWith(`${MULTICOND_STEP_ID}-`) ? MULTICOND_STEP_ID : (id || null));
     };
     window.addEventListener('openStepEditor', onEdit);
@@ -690,6 +699,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
    * so the user lands on the targeting fields they still need to fill.
    */
   const applyTemplate = (t: WorkflowTemplate, opts?: { silent?: boolean; sourceCfgOverride?: Record<string, any> }) => {
+    setOverviewTpl(null);
     if (!opts?.silent && workflowPreview.length > 0 &&
         !window.confirm(`Replace the current workflow with the "${t.name}" template?`)) {
       return;
@@ -1306,6 +1316,93 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     launch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoLaunch, source, workflowPreview, configs]);
+
+  /**
+   * Right-hand "Template overview" drawer — full pipeline breakdown before you
+   * commit. Applying from here routes through the same applyTemplate() the
+   * gallery uses, so there is one code path for building a template.
+   */
+  const renderTemplateOverview = () => {
+    const t = WORKFLOW_TEMPLATES.find((x) => x.key === overviewTpl);
+    if (!t) return null;
+    const steps = [
+      { title: t.source.title, category: 'Contact source' },
+      ...t.nodes.map((n) => ({ title: n.title, category: stepCategory(n.type) })),
+    ];
+    const use = () => { applyTemplate(t); setOverviewTpl(null); };
+    return (
+      <div className="absolute right-0 top-0 h-full w-[22rem] bg-card border-l border-border shadow-2xl z-10 flex flex-col">
+        {/* Header */}
+        <div className="flex items-start gap-3 p-4 border-b border-border">
+          <span className="h-11 w-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${t.accent}14` }}>
+            <TemplateIcon tplKey={t.key} color={t.accent} size={20} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-[15px] font-bold text-foreground truncate">{t.name}</div>
+            <div className="text-xs text-muted-foreground">Template overview</div>
+          </div>
+          <button onClick={() => setOverviewTpl(null)}
+            className="h-8 w-8 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors flex-shrink-0">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-4">
+          <p className="text-[13.5px] text-foreground leading-relaxed">{t.tagline}.</p>
+
+          <div className="grid grid-cols-3 gap-2 mt-4">
+            {[
+              { n: steps.length, l: 'steps' },
+              { n: t.meta.cycleDays, l: 'day cycle' },
+              { n: t.meta.channels, l: 'channels' },
+            ].map((st) => (
+              <div key={st.l} className="rounded-xl border border-border bg-muted/30 dark:bg-slate-800/30 px-3 py-3 text-center">
+                <div className="text-[19px] font-bold text-foreground leading-none">{st.n}</div>
+                <div className="text-[11px] text-muted-foreground mt-1">{st.l}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-5">
+            <div className="text-[13px] font-semibold text-foreground mb-2.5">Pipeline</div>
+            <div className="relative">
+              {steps.map((st, i) => (
+                <div key={i} className="relative flex items-start gap-3 pb-3.5 last:pb-0">
+                  {i < steps.length - 1 && (
+                    <span className="absolute left-[13px] top-7 bottom-0 w-px bg-border" />
+                  )}
+                  <span className="relative z-[1] h-[26px] w-[26px] rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-bold"
+                    style={{ background: `${t.accent}14`, color: t.accent }}>{i + 1}</span>
+                  <span className="min-w-0 flex-1 pt-0.5">
+                    <span className="block text-[13.5px] font-semibold text-foreground leading-tight">{st.title}</span>
+                    <span className="block text-[11.5px] text-muted-foreground mt-0.5">{st.category}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <button type="button" onClick={use}
+            className="mt-5 w-full rounded-xl bg-[#0b1957] text-white text-[13.5px] font-semibold py-3 hover:bg-[#0b1957]/90 transition-colors">
+            Use this template
+          </button>
+        </div>
+
+        {/* Footer */}
+        <div className="p-3 border-t border-border flex items-center gap-2">
+          <button type="button" onClick={() => setOverviewTpl(null)}
+            className="px-4 py-2.5 rounded-xl bg-muted text-foreground text-[13px] font-semibold hover:bg-muted/70 transition-colors">
+            Preview
+          </button>
+          <button type="button" onClick={() => { use(); setPaletteTab('steps'); }}
+            className="flex-1 px-4 py-2.5 rounded-xl bg-[#0b1957] text-white text-[13px] font-semibold hover:bg-[#0b1957]/90 transition-colors">
+            Customize steps
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   // ── Config drawer fields per node type ────────────────────────────────────
   const field = 'w-full rounded-md border border-input bg-background px-3 py-2 text-sm';
@@ -2115,32 +2212,119 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       <div className="flex-1 flex min-h-0">
         {/* Palette */}
         <div className="w-[19rem] border-r border-border bg-card overflow-y-auto p-4 space-y-6">
-          {/* 0 · Templates — one-click pipeline recipes */}
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="h-5 w-5 rounded-full bg-amber-500 text-white flex items-center justify-center flex-shrink-0"><Zap className="h-3 w-3" /></span>
-              <span className="text-sm font-semibold text-foreground">Start from a template</span>
-            </div>
-            <p className="text-xs text-muted-foreground mb-2.5 ml-7">Builds the whole pipeline — then tune each node</p>
-            <div className="space-y-2">
-              {WORKFLOW_TEMPLATES.map((t) => (
-                <button key={t.key} onClick={() => applyTemplate(t)}
-                  className="relative w-full rounded-xl border border-border hover:border-amber-500/50 hover:bg-amber-50/40 dark:hover:bg-amber-950/10 p-3 text-left transition-all group">
-                  <span className="block text-sm font-semibold text-foreground">{t.name}</span>
-                  <span className="block text-xs text-muted-foreground mt-0.5">{t.tagline}</span>
-                  <span className="flex flex-wrap items-center gap-1 mt-2">
-                    {t.chain.map((c, i) => (
-                      <Fragment key={i}>
-                        {i > 0 && <span className="text-[9px] text-muted-foreground/60">→</span>}
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground group-hover:bg-amber-100 group-hover:text-amber-900 dark:group-hover:bg-amber-950/40 dark:group-hover:text-amber-300 transition-colors">{c}</span>
-                      </Fragment>
-                    ))}
-                  </span>
-                </button>
-              ))}
-            </div>
+          {/* Tabs — Templates | Build from steps */}
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-muted/60 dark:bg-slate-800/60">
+            {([['templates', 'Templates'], ['steps', 'Build from steps']] as const).map(([k, label]) => (
+              <button key={k} type="button" onClick={() => setPaletteTab(k)}
+                className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold transition-all ${
+                  paletteTab === k
+                    ? 'bg-card text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}>
+                {k === 'templates'
+                  ? <Zap className="h-3.5 w-3.5" />
+                  : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M4 6h16M4 12h10M4 18h13" /></svg>}
+                {label}
+              </button>
+            ))}
           </div>
 
+          {paletteTab === 'templates' && (<>
+            {/* Search */}
+            <div className="relative">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+              <input value={tplSearch} onChange={(e) => setTplSearch(e.target.value)} placeholder="Search templates…"
+                className="w-full rounded-xl border border-input bg-muted/40 dark:bg-slate-800/40 pl-9 pr-3 py-2.5 text-[13px] outline-none focus:bg-background focus:border-[#0b1957]/40 transition-colors" />
+            </div>
+
+            <div>
+              <div className="text-[15px] font-bold text-foreground">Start from a template</div>
+              <p className="text-[12.5px] text-muted-foreground mt-0.5 mb-3">Builds the whole pipeline — then tune each node</p>
+
+              <div className="space-y-2.5">
+                {(() => {
+                  const q = tplSearch.trim().toLowerCase();
+                  const list = q
+                    ? WORKFLOW_TEMPLATES.filter((t) =>
+                        (t.name + ' ' + t.tagline + ' ' + t.chain.join(' ')).toLowerCase().includes(q))
+                    : WORKFLOW_TEMPLATES;
+                  if (!list.length) return (
+                    <p className="text-[12.5px] text-muted-foreground py-6 text-center">No templates match “{tplSearch}”.</p>
+                  );
+                  return list.map((t) => {
+                    const open = expandedTpl === t.key;
+                    return (
+                      <div key={t.key}
+                        className={`rounded-2xl border bg-card transition-all ${
+                          open ? 'border-[#0b1957]/40 shadow-[0_2px_16px_rgba(11,25,87,0.08)]' : 'border-border hover:border-[#0b1957]/25'
+                        }`}>
+                        <button type="button" onClick={() => setExpandedTpl(open ? null : t.key)}
+                          className="w-full flex items-start gap-3 p-3 text-left">
+                          <span className="h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${t.accent}14` }}>
+                            <TemplateIcon tplKey={t.key} color={t.accent} size={18} />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="flex items-start gap-1.5 flex-wrap">
+                              <span className="text-[14px] font-bold text-foreground leading-tight">{t.name}</span>
+                              {t.badge && (
+                                <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md mt-0.5 ${
+                                  t.badge.tone === 'violet'
+                                    ? 'bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300'
+                                    : 'bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300'
+                                }`}>{t.badge.label}</span>
+                              )}
+                            </span>
+                            <span className="block text-[12px] text-muted-foreground mt-1 leading-snug">{t.tagline}</span>
+                          </span>
+                          <span className="flex flex-col items-center flex-shrink-0 pl-1">
+                            <span className="text-[15px] font-bold text-foreground leading-none">{t.nodes.length + 1}</span>
+                            <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground mt-0.5">Steps</span>
+                          </span>
+                          <svg className={`text-muted-foreground flex-shrink-0 mt-2.5 transition-transform ${open ? 'rotate-90' : ''}`}
+                            width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m9 18 6-6-6-6" /></svg>
+                        </button>
+
+                        {open && (
+                          <div className="px-3 pb-3">
+                            <div className="border-t border-border pt-3 flex flex-wrap items-center gap-y-1.5" style={{ columnGap: 4 }}>
+                              {t.chain.map((c, i) => (
+                                <Fragment key={i}>
+                                  {i > 0 && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>}
+                                  <span className="text-[10.5px] font-semibold px-2 py-[3px] rounded-full whitespace-nowrap"
+                                    style={{ background: `${t.accent}12`, color: t.accent }}>{c}</span>
+                                </Fragment>
+                              ))}
+                            </div>
+                            <div className="flex items-center gap-3 mt-3">
+                              <span className="inline-flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
+                                <strong className="font-semibold text-foreground">{t.meta.cycleDays}-day</strong> cycle
+                              </span>
+                              <span className="h-3 w-px bg-border" />
+                              <span className="text-[11.5px] text-muted-foreground">
+                                <strong className="font-semibold text-foreground">{t.meta.channels}</strong> channels
+                              </span>
+                              <button type="button" onClick={(e) => { e.stopPropagation(); setOverviewTpl(t.key); setEditingId(null); }}
+                                className="ml-auto px-3.5 py-2 rounded-xl bg-[#0b1957] text-white text-[12.5px] font-semibold hover:bg-[#0b1957]/90 transition-colors">
+                                Use template
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+
+              <button type="button" onClick={() => setPaletteTab('steps')}
+                className="mt-3 w-full rounded-2xl border border-dashed border-border hover:border-[#0b1957]/40 hover:bg-muted/40 py-3 text-[13px] font-semibold text-muted-foreground hover:text-foreground transition-colors inline-flex items-center justify-center gap-2">
+                <Plus className="h-4 w-4" /> Or build from scratch with steps
+              </button>
+            </div>
+          </>)}
+
+          {paletteTab === 'steps' && (<>
           {/* 1 · Contact source */}
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -2437,6 +2621,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               );
             })()}
           </div>
+          </>)}
         </div>
 
         {/* Canvas */}
@@ -2450,7 +2635,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               <BuilderCanvas steps={workflowPreview} branches={mcBranches} switchId={MULTICOND_STEP_ID} />
             </ReactFlowProvider>
           )}
-          {renderEditor()}
+          {overviewTpl ? renderTemplateOverview() : renderEditor()}
         </div>
       </div>
 
