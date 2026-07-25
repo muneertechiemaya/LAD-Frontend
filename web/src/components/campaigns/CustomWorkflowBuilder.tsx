@@ -2251,7 +2251,9 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   if (!list.length) return (
                     <p className="text-[12.5px] text-muted-foreground py-6 text-center">No templates match “{tplSearch}”.</p>
                   );
-                  return list.map((t) => {
+                  // 13 templates is a lot for one flat list — split general
+                  // pipelines from the industry-tuned ones.
+                  const renderCard = (t: typeof WORKFLOW_TEMPLATES[number]) => {
                     const open = expandedTpl === t.key;
                     return (
                       <div key={t.key}
@@ -2313,7 +2315,22 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                         )}
                       </div>
                     );
-                  });
+                  };
+                  const general = list.filter((t) => t.category === 'general');
+                  const industry = list.filter((t) => t.category === 'industry');
+                  const heading = (label: string, count: number) => (
+                    <div className="flex items-center gap-2 pt-1 pb-0.5">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{label}</span>
+                      <span className="text-[10px] font-semibold text-muted-foreground/70">{count}</span>
+                      <span className="flex-1 h-px bg-border" />
+                    </div>
+                  );
+                  return (<>
+                    {general.length > 0 && heading('General', general.length)}
+                    {general.map(renderCard)}
+                    {industry.length > 0 && heading('By industry', industry.length)}
+                    {industry.map(renderCard)}
+                  </>);
                 })()}
               </div>
 

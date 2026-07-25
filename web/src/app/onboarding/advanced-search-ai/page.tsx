@@ -7271,21 +7271,37 @@ function RolesLauncher({ onPick }: { onPick: (t: WorkflowTemplate) => void }) {
                         <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Hire a Role</span>
                         <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">{WORKFLOW_TEMPLATES.length} pipelines</span>
                     </div>
-                    {WORKFLOW_TEMPLATES.map((t) => (
-                        <button key={t.key} type="button"
-                            className="w-full text-left rounded-xl p-2.5 flex gap-2.5 items-start transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60 border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
-                            onClick={() => { setOpen(false); onPick(t); }}>
-                            <span className="h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: `${t.accent}14` }}>
-                                <TemplateIcon tplKey={t.key} color={t.accent} size={15} />
-                            </span>
-                            <span className="min-w-0 flex-1">
-                                <span className="block text-[13px] font-semibold text-slate-900 dark:text-white leading-tight">{t.name}</span>
-                                <span className="block text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">{t.tagline}</span>
-                                <span className="block mt-1.5"><RoleChain tpl={t} compact /></span>
-                            </span>
-                            <svg className="mt-2 flex-shrink-0 text-slate-300 dark:text-slate-600" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m9 18 6-6-6-6" /></svg>
-                        </button>
-                    ))}
+                    {(() => {
+                        const card = (t: WorkflowTemplate) => (
+                            <button key={t.key} type="button"
+                                className="w-full text-left rounded-xl p-2.5 flex gap-2.5 items-start transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60 border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
+                                onClick={() => { setOpen(false); onPick(t); }}>
+                                <span className="h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: `${t.accent}14` }}>
+                                    <TemplateIcon tplKey={t.key} color={t.accent} size={15} />
+                                </span>
+                                <span className="min-w-0 flex-1">
+                                    <span className="block text-[13px] font-semibold text-slate-900 dark:text-white leading-tight">{t.name}</span>
+                                    <span className="block text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">{t.tagline}</span>
+                                    <span className="block mt-1.5"><RoleChain tpl={t} compact /></span>
+                                </span>
+                                <svg className="mt-2 flex-shrink-0 text-slate-300 dark:text-slate-600" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m9 18 6-6-6-6" /></svg>
+                            </button>
+                        );
+                        const sec = (label: string) => (
+                            <div className="flex items-center gap-2 px-2.5 pt-2 pb-1">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">{label}</span>
+                                <span className="flex-1 h-px bg-slate-100 dark:bg-slate-800" />
+                            </div>
+                        );
+                        const general = WORKFLOW_TEMPLATES.filter((t) => t.category === 'general');
+                        const industry = WORKFLOW_TEMPLATES.filter((t) => t.category === 'industry');
+                        return (<>
+                            {sec('General')}
+                            {general.map(card)}
+                            {sec('By industry')}
+                            {industry.map(card)}
+                        </>);
+                    })()}
                 </div>
             )}
         </div>
