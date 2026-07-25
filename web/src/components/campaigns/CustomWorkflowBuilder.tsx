@@ -20,7 +20,7 @@
 // visual step list.
 
 import * as React from 'react';
-import { useState, useMemo, useEffect, useCallback, Fragment } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef, Fragment } from 'react';
 import ReactFlow, { ReactFlowProvider, useNodesState, useEdgesState } from 'reactflow';
 import 'reactflow/dist/style.css';
 import {
@@ -31,6 +31,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
+import {
+  WORKFLOW_TEMPLATES, WorkflowTemplate,
+  SOURCE_STEP_ID, FOLLOWUP_STEP_ID, ANALYTICS_STEP_ID, ZOHO_UPDATE_STEP_ID,
+  MEDIA_STEP_ID, MULTICOND_STEP_ID, AI_STEP_ID, ENRICH_STEP_ID, EXPORT_STEP_ID,
+  AUTOPOST_STEP_ID, AI_DEFAULT_INSTRUCTION, EXPORT_DEFAULT_COLUMNS,
+} from './workflowTemplates';
 import { useMediaBuilder } from '@/hooks/voice-agent/useMediaBuilder';
 import { MediaGenerationModal } from '@/components/voice-agent/MediaGenerationModal';
 import { useOnboardingStore, type WorkflowPreviewStep } from '@/store/onboardingStore';
@@ -173,12 +179,9 @@ const CONDITIONS = [
   { value: 'wa_replied', label: 'WhatsApp replied', action: 'WA_REPLIED' },
 ];
 
-const SOURCE_STEP_ID = 'src-node';
 // "Macro" nodes (single-instance): follow-ups EXPAND into real engine steps at
 // launch; analytics becomes campaign config read by the digest cron — it is
 // NOT an engine step.
-const FOLLOWUP_STEP_ID = 'followup-node';
-const ANALYTICS_STEP_ID = 'analytics-node';
 let stepSeq = 0;
 const nextId = () => `wf-${Date.now()}-${stepSeq++}`;
 
@@ -191,25 +194,19 @@ const FU_CHANNELS = [
 // "Update Zoho record" write-back node (single-instance) — maps workflow data
 // back onto the lead's Zoho record. Keys MUST match the backend
 // ZohoWritebackService.SOURCE_RESOLVERS.
-const ZOHO_UPDATE_STEP_ID = 'zoho-update-node';
 
 // "AI Media" node (single-instance) — generate a brand image/video at design
 // time; the media_generation step records it and the asset is attached to the
 // workflow's email/WhatsApp outreach at launch.
-const MEDIA_STEP_ID = 'media-gen-node';
 
 // "Multi-condition" (switch) node — routes each lead down one of N branches by
 // a lead field (if/elseif/else). Expands at launch into a `switch` step + one
 // guarded message step per branch (backend prunes the non-chosen branches).
-const MULTICOND_STEP_ID = 'multicond-node';
 
 // "AI Agent" node — LLM-normalises each lead (clean single title from a mixed
 // field, split name, tidy company) before the outreach/LinkedIn steps run.
-const AI_STEP_ID = 'ai-agent-node';
-const AI_DEFAULT_INSTRUCTION = 'If the job title has multiple or mixed roles, keep the single best-fit, most senior title. Split the full name into first/last and tidy the company name.';
 
 // "Enrich contact" node — reveals email/phone via FullEnrich; user multi-selects.
-const ENRICH_STEP_ID = 'data-enrich-node';
 const ENRICH_OPTIONS: { key: string; label: string; sub: string }[] = [
   { key: 'official_email', label: 'Official email', sub: 'work / business email' },
   { key: 'personal_email', label: 'Personal email', sub: 'private email' },
@@ -219,7 +216,6 @@ const ENRICH_OPTIONS: { key: string; label: string; sub: string }[] = [
 // "Export results" node — ships the campaign's result set to one or more
 // destinations. Config-only (like the analytics digest): stored on
 // campaigns.config.export_results and run on completion / on demand.
-const EXPORT_STEP_ID = 'export-results-node';
 const EXPORT_FORMATS = [
   { value: 'csv', label: 'CSV (.csv)' },
   { value: 'xlsx', label: 'Excel (.xlsx)' },
@@ -251,12 +247,10 @@ const EXPORT_COLUMN_OPTIONS: { value: string; label: string }[] = [
   { value: 'replied', label: 'Replied' },
   { value: 'created_at', label: 'Added on' },
 ];
-const EXPORT_DEFAULT_COLUMNS = ['full_name', 'title', 'company_name', 'email', 'phone', 'linkedin_url', 'status', 'last_action', 'last_action_at'];
 
 // "LinkedIn auto-post" node — posts to the tenant's OWN feed on a recurring
 // schedule while the campaign runs (social-selling warm-up). Campaign-level,
 // NOT per-lead: a per-lead post would fire once per enrolled lead.
-const AUTOPOST_STEP_ID = 'linkedin-post-node';
 const AUTOPOST_FREQUENCIES = [
   { value: 'daily', label: 'Every day' },
   { value: 'weekly', label: 'On selected days' },
@@ -267,122 +261,6 @@ const AUTOPOST_DAYS = [
   { value: 0, label: 'Sun' },
 ];
 
-// ── Workflow templates ──────────────────────────────────────────────────────
-// One-click pipeline recipes. Each node is either an OUTREACH step (gets a
-// generated id) or a single-instance macro (uses its fixed *_STEP_ID so the
-// drawers and launch emit find its config). `cfg` seeds the node's drawer —
-// users edit everything after applying.
-type TemplateNode = {
-  type: StepType;
-  /** Fixed macro id (MEDIA_STEP_ID, AUTOPOST_STEP_ID, …); omit for outreach steps. */
-  macroId?: string;
-  title: string;
-  description: string;
-  cfg?: any;
-};
-type WorkflowTemplate = {
-  key: string;
-  name: string;
-  tagline: string;
-  /** Chip labels shown on the card so users see the pipeline before applying. */
-  chain: string[];
-  source: { key: SourceKey; cfg?: any; title: string; description: string };
-  nodes: TemplateNode[];
-};
-
-const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
-  {
-    key: 'linkedin_accelerator',
-    name: 'LinkedIn Accelerator',
-    tagline: 'Warm up, connect, message — while daily AI posts build your presence',
-    chain: ['LinkedIn Search', 'Profile visit', 'Connect', 'Wait: accepted', 'Message', 'AI Media', 'Daily auto-post'],
-    source: {
-      key: 'linkedin_search',
-      title: 'LinkedIn Search', description: 'Industry · title · location',
-      cfg: { job_titles: '', industries: '', locations: '' },
-    },
-    nodes: [
-      { type: 'linkedin_visit', title: 'Profile visit', description: 'Warm up before connecting' },
-      { type: 'linkedin_connect', title: 'Connection request', description: 'AI-personalised note', cfg: { message: '' } },
-      { type: 'condition', title: 'Wait for condition', description: 'Connection accepted', cfg: { condition: 'connection_accepted' } },
-      { type: 'linkedin_message', title: 'Message', description: 'First message after acceptance', cfg: { message: 'Hi {{first_name}}, thanks for connecting! I noticed you lead {{title}} at {{company_name}} — curious how you\'re approaching outbound this quarter?' } },
-      { type: 'media_generation', macroId: MEDIA_STEP_ID, title: 'AI Media', description: 'Generate an image for your posts' },
-      {
-        type: 'linkedin_post', macroId: AUTOPOST_STEP_ID, title: 'LinkedIn auto-post', description: 'Daily · 09:00 · AI-written',
-        cfg: {
-          content: 'Share one practical, non-salesy insight for leaders in the industry I target — what top performers do differently in outbound this year.',
-          ai_generate: true, frequency: 'daily', days: [1, 2, 3, 4, 5], time: '09:00', post_as: 'personal',
-        },
-      },
-    ],
-  },
-  {
-    key: 'cold_list_outreach',
-    name: 'Cold List Outreach',
-    tagline: 'Upload a list, clean + enrich it, connect and follow up, export results',
-    chain: ['File import', 'AI Agent', 'Enrich', 'Connect', 'Wait: accepted', 'Message', 'Export'],
-    source: { key: 'file_import', title: 'File import (CSV / Excel)', description: 'Upload a list and map columns' },
-    nodes: [
-      { type: 'ai_parse', macroId: AI_STEP_ID, title: 'AI Agent', description: 'Clean & normalise lead data', cfg: { instruction: AI_DEFAULT_INSTRUCTION } },
-      { type: 'data_enrich', macroId: ENRICH_STEP_ID, title: 'Enrich contact', description: 'Official email · Phone', cfg: { enrich: ['official_email', 'phone'] } },
-      { type: 'linkedin_connect', title: 'Connection request', description: 'AI-personalised note', cfg: { message: '' } },
-      { type: 'condition', title: 'Wait for condition', description: 'Connection accepted', cfg: { condition: 'connection_accepted' } },
-      { type: 'linkedin_message', title: 'Message', description: 'First message after acceptance', cfg: { message: 'Hi {{first_name}}, thanks for connecting! Would love to hear how things are going at {{company_name}}.' } },
-      { type: 'export_results', macroId: EXPORT_STEP_ID, title: 'Export results', description: 'CSV · Download', cfg: { format: 'csv', destinations: ['file'], columns: EXPORT_DEFAULT_COLUMNS, run_on_completion: true } },
-    ],
-  },
-  {
-    key: 'inmail_blitz',
-    name: 'InMail Blitz',
-    tagline: 'Premium InMail to non-connections, with automatic follow-ups',
-    chain: ['LinkedIn Search', 'Profile visit', 'InMail', 'Follow-ups'],
-    source: {
-      key: 'linkedin_search',
-      title: 'LinkedIn Search', description: 'Industry · title · location',
-      cfg: { job_titles: '', industries: '', locations: '' },
-    },
-    nodes: [
-      { type: 'linkedin_visit', title: 'Profile visit', description: 'Warm up before the InMail' },
-      { type: 'linkedin_inmail', title: 'InMail (Premium)', description: 'Cold InMail to non-connections', cfg: { message: 'Hi {{first_name}}, I came across your profile — I work with {{title}}s on outbound and thought this was worth a short note. Open to a quick exchange?' } },
-      { type: 'followup_sequence', macroId: FOLLOWUP_STEP_ID, title: 'Follow-up sequence', description: '3 touches · LinkedIn', cfg: { channel: 'linkedin', touches: [{ hours: 48 }, { hours: 120 }, { hours: 240 }] } },
-    ],
-  },
-  {
-    key: 'signal_hunter',
-    name: 'Signal Hunter',
-    tagline: 'Catch companies showing buying signals and reach the decision maker',
-    chain: ['Signal Search', 'Profile visit', 'Connect', 'Wait: accepted', 'Message'],
-    source: {
-      key: 'linkedin_signal',
-      title: 'LinkedIn Signal Search', description: 'Hiring / buying signals · daily',
-      cfg: { signal_query: 'companies hiring for revenue operations or sales development roles', decision_maker_titles: 'VP Sales, Head of Sales, CRO' },
-    },
-    nodes: [
-      { type: 'linkedin_visit', title: 'Profile visit', description: 'Warm up before connecting' },
-      { type: 'linkedin_connect', title: 'Connection request', description: 'AI-personalised note', cfg: { message: '' } },
-      { type: 'condition', title: 'Wait for condition', description: 'Connection accepted', cfg: { condition: 'connection_accepted' } },
-      { type: 'linkedin_message', title: 'Message', description: 'Signal-aware first message', cfg: { message: 'Hi {{first_name}}, saw {{company_name}} is growing the team — usually a sign outbound is about to scale. Happy to share what\'s working for similar teams if useful.' } },
-    ],
-  },
-  {
-    key: 'crm_reengage',
-    name: 'CRM Re-Engage',
-    tagline: 'Pull new Zoho contacts daily, reach out on LinkedIn, write results back',
-    chain: ['Zoho daily', 'AI Agent', 'Connect', 'Wait: accepted', 'Message', 'Zoho write-back'],
-    source: {
-      key: 'zoho_recurring',
-      title: 'Zoho CRM — recurring', description: 'Import new contacts daily',
-      cfg: { zoho_modules: 'contacts' },
-    },
-    nodes: [
-      { type: 'ai_parse', macroId: AI_STEP_ID, title: 'AI Agent', description: 'Clean & normalise lead data', cfg: { instruction: AI_DEFAULT_INSTRUCTION } },
-      { type: 'linkedin_connect', title: 'Connection request', description: 'AI-personalised note', cfg: { message: '' } },
-      { type: 'condition', title: 'Wait for condition', description: 'Connection accepted', cfg: { condition: 'connection_accepted' } },
-      { type: 'linkedin_message', title: 'Message', description: 'First message after acceptance', cfg: { message: 'Hi {{first_name}}, great to connect! We already have you in our network — wanted to reach out personally.' } },
-      { type: 'zoho_update', macroId: ZOHO_UPDATE_STEP_ID, title: 'Update Zoho record', description: 'Write back to Contacts', cfg: { module: 'Contacts', map: {} } },
-    ],
-  },
-];
 
 const SWITCH_FIELDS = [
   { value: 'tag', label: 'Tag' },
@@ -530,7 +408,15 @@ function useBuilderResources() {
   };
 }
 
-export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
+export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSourceCfg, autoLaunch }: {
+  onClose: () => void;
+  /** Apply this template on mount (chat "Roles" wizard hands off here). */
+  initialTemplateKey?: string;
+  /** Answers collected in chat — merged into the source node's config. */
+  initialSourceCfg?: Record<string, any>;
+  /** Fire launch() automatically once the template is applied. */
+  autoLaunch?: boolean;
+}) {
   const { workflowPreview, setWorkflowPreview, addWorkflowStep, updateWorkflowStep } = useOnboardingStore();
   const res = useBuilderResources();
 
@@ -803,8 +689,8 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
    * seeds every drawer config in one shot. Opens the source drawer afterwards
    * so the user lands on the targeting fields they still need to fill.
    */
-  const applyTemplate = (t: WorkflowTemplate) => {
-    if (workflowPreview.length > 0 &&
+  const applyTemplate = (t: WorkflowTemplate, opts?: { silent?: boolean; sourceCfgOverride?: Record<string, any> }) => {
+    if (!opts?.silent && workflowPreview.length > 0 &&
         !window.confirm(`Replace the current workflow with the "${t.name}" template?`)) {
       return;
     }
@@ -816,7 +702,9 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
       description: t.source.description || srcDef.sub,
     }];
     const cfgs: Record<string, any> = {};
-    if (t.source.cfg) cfgs[SOURCE_STEP_ID] = { ...t.source.cfg };
+    if (t.source.cfg || opts?.sourceCfgOverride) {
+      cfgs[SOURCE_STEP_ID] = { ...(t.source.cfg || {}), ...(opts?.sourceCfgOverride || {}) };
+    }
 
     for (const n of t.nodes) {
       const id = n.macroId || nextId();
@@ -1395,6 +1283,29 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
       setLaunching(false);
     }
   };
+
+  // ── Programmatic template launch (chat "Roles" wizard hand-off) ───────────
+  // Effect 1 applies the template once on mount (silently — no confirm) with
+  // the wizard's answers merged into the source config. Effect 2 fires launch()
+  // exactly once, on the render AFTER the applied state has committed (the
+  // !source guard skips the same-commit run where state is still stale).
+  const appliedTplRef = useRef(false);
+  const autoLaunchedRef = useRef(false);
+  useEffect(() => {
+    if (!initialTemplateKey || appliedTplRef.current) return;
+    const tpl = WORKFLOW_TEMPLATES.find((t) => t.key === initialTemplateKey);
+    if (!tpl) return;
+    appliedTplRef.current = true;
+    applyTemplate(tpl, { silent: true, sourceCfgOverride: initialSourceCfg });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialTemplateKey]);
+  useEffect(() => {
+    if (!autoLaunch || !appliedTplRef.current || autoLaunchedRef.current) return;
+    if (!source || launching) return;
+    autoLaunchedRef.current = true;
+    launch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoLaunch, source, workflowPreview, configs]);
 
   // ── Config drawer fields per node type ────────────────────────────────────
   const field = 'w-full rounded-md border border-input bg-background px-3 py-2 text-sm';

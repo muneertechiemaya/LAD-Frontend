@@ -30,6 +30,7 @@ import { AgentBuilderKeyframesConfirm } from "@/components/voice-agent/playgroun
 import { AgentBuilderBrandDNA } from "@/components/voice-agent/playground/builder-steps/AgentBuilderBrandDNA";
 import { useAuth } from '@/contexts/AuthContext';
 import CustomWorkflowBuilder from '@/components/campaigns/CustomWorkflowBuilder';
+import { WORKFLOW_TEMPLATES, WorkflowTemplate } from '@/components/campaigns/workflowTemplates';
 import { useEmailTemplates, useCreateEmailTemplate } from '@lad/frontend-features/email-templates';
 import { useConnectedEmailSenders } from '@lad/frontend-features/email-senders';
 import {
@@ -948,6 +949,13 @@ export default function AdvancedSearchAIPage() {
     const [showMediaModal, setShowMediaModal] = useState(false);
     // Custom Workflow Builder (n8n-style) — full-screen takeover opened from the "+" menu.
     const [showCustomWorkflow, setShowCustomWorkflow] = useState(false);
+    // "Roles" — prebuilt pipeline templates launched from chat. The wizard asks
+    // each template's inputs in the chat thread, then hands off to the embedded
+    // CustomWorkflowBuilder (initialTemplateKey/initialSourceCfg/autoLaunch) so
+    // the launch path is the builder's own — no duplicated payload logic.
+    const [showRolesMenu, setShowRolesMenu] = useState(false);
+    const [builderTemplate, setBuilderTemplate] = useState<{ key: string; sourceCfg: Record<string, string>; autoLaunch: boolean } | null>(null);
+    const roleWizardRef = useRef<{ key: string; idx: number; answers: Record<string, string> } | null>(null);
 
     interface MediaChatMsg {
         id: string;
@@ -1342,6 +1350,14 @@ export default function AdvancedSearchAIPage() {
         document.addEventListener('click', handler);
         return () => document.removeEventListener('click', handler);
     }, [showChatAttachMenu]);
+
+    // Close the Roles menu when clicking outside
+    useEffect(() => {
+        if (!showRolesMenu) return;
+        const handler = () => setShowRolesMenu(false);
+        document.addEventListener('click', handler);
+        return () => document.removeEventListener('click', handler);
+    }, [showRolesMenu]);
 
     // Search history (persisted in localStorage)
     const [searchHistory, setSearchHistory] = useState<string[]>([]);
@@ -4288,13 +4304,100 @@ export default function AdvancedSearchAIPage() {
         } finally { setBusy(false); }
     }, [busy, messages, convId, targeting, pendingIntent, pendingSearchConfirmation, pendingLocationRequest, pendingImportLocation, finishInboundImport, webSearchEnabled]);
 
+    // ── Roles wizard ───────────────────────────────────────────────────────
+    const rolePushAi = useCallback((text: string, options?: { label: string; value: string }[]) => {
+        setMessages(p => [...p, { id: `a-role-${Date.now()}-${p.length}`, role: 'ai', text, ts: new Date(), options }]);
+    }, []);
+
+    const startRole = useCallback((t: WorkflowTemplate) => {
+        setShowRolesMenu(false);
+        setMessages(p => [...p, { id: `u-role-${Date.now()}`, role: 'user', text: `Role: ${t.name}`, ts: new Date() }]);
+        const chain = t.chain.join(' → ');
+        if (t.requiresFile) {
+            roleWizardRef.current = null;
+            rolePushAi(
+                `**${t.name}** — ${t.tagline}\n\n${chain}\n\nThis Role starts from a **file upload**, so I'll open the workflow builder with the whole pipeline pre-built — upload your CSV/Excel in the source node and hit Launch.`,
+                [{ label: '🔧 Open builder', value: `__role_builder__:${t.key}` }, { label: 'Cancel', value: '__role_cancel__' }]
+            );
+            return;
+        }
+        if (!t.inputs.length) {
+            roleWizardRef.current = { key: t.key, idx: 0, answers: {} };
+            rolePushAi(
+                `**${t.name}** — ${t.tagline}\n\n${chain}\n\nNothing to configure — ready when you are.`,
+                [{ label: '🚀 Activate & launch', value: '__role_launch__' }, { label: '🔧 Review in builder first', value: '__role_review__' }, { label: 'Cancel', value: '__role_cancel__' }]
+            );
+            return;
+        }
+        roleWizardRef.current = { key: t.key, idx: 0, answers: {} };
+        rolePushAi(`**${t.name}** — ${t.tagline}\n\n${chain}\n\nA few questions to activate this Role:\n\n${t.inputs[0].question}`);
+    }, [rolePushAi]);
+
+    const handleRoleAnswer = useCallback((text: string) => {
+        const wiz = roleWizardRef.current;
+        if (!wiz) return;
+        const tpl = WORKFLOW_TEMPLATES.find(t => t.key === wiz.key);
+        if (!tpl) { roleWizardRef.current = null; return; }
+        setMessages(p => [...p, { id: `u-role-${Date.now()}`, role: 'user', text, ts: new Date() }]);
+        const inp = tpl.inputs[wiz.idx];
+        const skipped = !!inp.optional && /^(skip|no|none|-)$/i.test(text.trim());
+        const val = skipped ? '' : text.trim();
+        if (!val && !inp.optional) {
+            rolePushAi(`I need this one to launch the Role — ${inp.question}`);
+            return;
+        }
+        if (val) wiz.answers[inp.key] = val;
+        wiz.idx += 1;
+        if (wiz.idx < tpl.inputs.length) {
+            rolePushAi(tpl.inputs[wiz.idx].question);
+            return;
+        }
+        const answerLines = tpl.inputs
+            .filter(i => wiz.answers[i.key])
+            .map(i => `• **${i.key.replace(/_/g, ' ')}:** ${wiz.answers[i.key]}`);
+        rolePushAi(
+            `Here's your **${tpl.name}** Role:\n\n${tpl.chain.join(' → ')}\n\n${answerLines.join('\n')}\n\nDefaults: 25 leads/day · 30 days (adjustable in the builder). Ready?`,
+            [{ label: '🚀 Activate & launch', value: '__role_launch__' }, { label: '🔧 Review in builder first', value: '__role_review__' }, { label: 'Cancel', value: '__role_cancel__' }]
+        );
+    }, [rolePushAi]);
+
     const onChatSend = useCallback(() => {
         if (!input.trim() || busy) return;
+        if (roleWizardRef.current) {
+            const t = input.trim();
+            setInput('');
+            if (taRef.current) taRef.current.style.height = 'auto';
+            handleRoleAnswer(t);
+            return;
+        }
         doSend(input.trim()); setInput('');
         if (taRef.current) taRef.current.style.height = 'auto';
-    }, [input, busy, doSend]);
+    }, [input, busy, doSend, handleRoleAnswer]);
 
     const onOptClick = useCallback(async (v: string) => {
+        // ── Roles wizard actions ──────────────────────────────────────────
+        if (v === '__role_cancel__') {
+            roleWizardRef.current = null;
+            rolePushAi('No problem — Role setup cancelled. Pick another from the **Roles** menu any time.');
+            return;
+        }
+        if (v.startsWith('__role_builder__:')) {
+            const key = v.slice('__role_builder__:'.length);
+            setBuilderTemplate({ key, sourceCfg: {}, autoLaunch: false });
+            setShowCustomWorkflow(true);
+            return;
+        }
+        if (v === '__role_launch__' || v === '__role_review__') {
+            const wiz = roleWizardRef.current;
+            if (!wiz) return;
+            roleWizardRef.current = null;
+            setBuilderTemplate({ key: wiz.key, sourceCfg: wiz.answers, autoLaunch: v === '__role_launch__' });
+            setShowCustomWorkflow(true);
+            rolePushAi(v === '__role_launch__'
+                ? '🚀 Building and launching your Role — you\'ll land on the campaigns page when it\'s live.'
+                : 'Opening the workflow builder with your Role pre-built — review each node and hit Launch.');
+            return;
+        }
         // Special action: submit lead detail form data
         if (v.startsWith('__submit_lead_details__:')) {
             try {
@@ -4894,6 +4997,29 @@ export default function AdvancedSearchAIPage() {
                                             <div className="adv-attach-sub">LinkedIn, HubSpot, Salesforce</div>
                                         </div>
                                     </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Roles — prebuilt pipeline templates, configured via chat wizard */}
+                        <div style={{ position: 'relative' }}>
+                            <button className="adv-premium-btn" title="Roles — prebuilt AI pipelines, configured in chat" onClick={(e) => { e.stopPropagation(); setShowRolesMenu(!showRolesMenu); }}>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16" /></svg>
+                                Roles
+                            </button>
+                            {showRolesMenu && (
+                                <div className="adv-attach-menu" style={{ minWidth: 320 }} onClick={e => e.stopPropagation()}>
+                                    {WORKFLOW_TEMPLATES.map(t => (
+                                        <div key={t.key} className="adv-attach-item" onClick={() => startRole(t)}>
+                                            <div className="adv-attach-icon" style={{ background: '#e0eaf5' }}>
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0b1957" strokeWidth="2" strokeLinecap="round"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16" /></svg>
+                                            </div>
+                                            <div>
+                                                <div className="adv-attach-label">{t.name}</div>
+                                                <div className="adv-attach-sub">{t.tagline}</div>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
                         </div>
@@ -5551,6 +5677,29 @@ export default function AdvancedSearchAIPage() {
                                             </>
                                         )}
                                     </div>
+                                    {!mediaMode && (
+                                        <div style={{ position: 'relative' }}>
+                            <button className="adv-premium-btn" title="Roles — prebuilt AI pipelines, configured in chat" onClick={(e) => { e.stopPropagation(); setShowRolesMenu(!showRolesMenu); }}>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16" /></svg>
+                                Roles
+                            </button>
+                            {showRolesMenu && (
+                                <div className="adv-attach-menu" style={{ minWidth: 320 }} onClick={e => e.stopPropagation()}>
+                                    {WORKFLOW_TEMPLATES.map(t => (
+                                        <div key={t.key} className="adv-attach-item" onClick={() => startRole(t)}>
+                                            <div className="adv-attach-icon" style={{ background: '#e0eaf5' }}>
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0b1957" strokeWidth="2" strokeLinecap="round"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16" /></svg>
+                                            </div>
+                                            <div>
+                                                <div className="adv-attach-label">{t.name}</div>
+                                                <div className="adv-attach-sub">{t.tagline}</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                                    )}
                                     {/* Premium Search or Mic Button based on mediaMode */}
                                     {mediaMode ? (
                                         <button
@@ -6950,7 +7099,12 @@ export default function AdvancedSearchAIPage() {
             {/* ── Custom Workflow Builder (n8n-style) — full-screen takeover from the "+" menu ── */}
             {showCustomWorkflow && (
                 <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: '#F8F9FE' }}>
-                    <CustomWorkflowBuilder onClose={() => setShowCustomWorkflow(false)} />
+                    <CustomWorkflowBuilder
+                        onClose={() => { setShowCustomWorkflow(false); setBuilderTemplate(null); }}
+                        initialTemplateKey={builderTemplate?.key}
+                        initialSourceCfg={builderTemplate?.sourceCfg}
+                        autoLaunch={builderTemplate?.autoLaunch}
+                    />
                 </div>
             )}
 
