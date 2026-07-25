@@ -62,6 +62,10 @@
       "types": "./features/lad-monitor/index.ts",
       "default": "./features/lad-monitor/index.ts"
     },
+    "./lead-appreciation": {
+      "types": "./features/lead-appreciation/index.ts",
+      "default": "./features/lead-appreciation/index.ts"
+    },
     "./mindbody": {
       "types": "./features/mindbody/index.ts",
       "default": "./features/mindbody/index.ts"
