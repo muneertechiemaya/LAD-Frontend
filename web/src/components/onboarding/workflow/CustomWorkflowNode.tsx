@@ -15,6 +15,7 @@ function getBrandConfig(type: string) {
   if (type === 'media_generation') return { bg: '#d946ef', border: '#c026d3', glow: 'rgba(217,70,239,0.25)' };
   if (type === 'linkedin_connect') return { bg: '#3b82f6', border: '#2563eb', glow: 'rgba(59,130,246,0.25)' };
   if (type === 'linkedin_message') return { bg: '#8b5cf6', border: '#7c3aed', glow: 'rgba(139,92,246,0.25)' };
+  if (type === 'linkedin_inmail')  return { bg: '#7C3AED', border: '#6d28d9', glow: 'rgba(124,58,237,0.25)' };
   if (type === 'linkedin_visit')   return { bg: '#0ea5e9', border: '#0284c7', glow: 'rgba(14,165,233,0.25)' };
   if (type.includes('linkedin'))   return { bg: '#0a66c2', border: '#004182', glow: 'rgba(10,102,194,0.25)' };
   if (type.includes('email'))      return { bg: '#ea4335', border: '#c5221f', glow: 'rgba(234,67,53,0.25)' };

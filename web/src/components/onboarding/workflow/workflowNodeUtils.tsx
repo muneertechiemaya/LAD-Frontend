@@ -1,5 +1,5 @@
 import React from 'react';
-import { Linkedin, Mail, MessageCircle, Phone, ArrowRight, Clock, Filter, Play, Square, Users, Search, Send, UserPlus, Eye, Zap, Wand2, ListOrdered, BarChart3, DatabaseZap, Split, Sparkles, Contact } from 'lucide-react';
+import { Linkedin, Mail, MailPlus, MessageCircle, Phone, ArrowRight, Clock, Filter, Play, Square, Users, Search, Send, UserPlus, Eye, Zap, Wand2, ListOrdered, BarChart3, DatabaseZap, Split, Sparkles, Contact } from 'lucide-react';
 import { StepType } from '@/types/campaign';
 
 export interface NodeClasses {
@@ -121,6 +121,7 @@ export function getNodeIcon(type: StepType, size: string = 'w-5 h-5'): React.Rea
   if (type === 'media_generation') return <Wand2 className={size} />;
   if (type === 'linkedin_connect') return <UserPlus className={size} />;
   if (type === 'linkedin_message') return <Send className={size} />;
+  if (type === 'linkedin_inmail') return <MailPlus className={size} />;
   if (type === 'linkedin_visit') return <Eye className={size} />;
   if (type.includes('linkedin')) return <Linkedin className={size} />;
   if (type.includes('email')) return <Mail className={size} />;

@@ -24,6 +24,7 @@ const defaultStepData: Record<StepType, Partial<StepData>> = {
   linkedin_follow: { title: 'LinkedIn Follow' },
   linkedin_connect: { title: 'LinkedIn Connection Request', message: 'Hi {{first_name}}, I\'d like to connect with you.' },
   linkedin_message: { title: 'LinkedIn Message', message: 'Hi {{first_name}}, I noticed...' },
+  linkedin_inmail: { title: 'LinkedIn InMail', message: 'Hi {{first_name}}, I came across your profile...' },
   linkedin_scrape_profile: { title: 'Scrape LinkedIn Profile', linkedinScrapeFields: ['name', 'title', 'company', 'location'] },
   linkedin_company_search: { title: 'LinkedIn Company Search', linkedinCompanyName: '{{company_name}}' },
   linkedin_employee_list: { title: 'Get Employee List', linkedinCompanyUrl: '' },

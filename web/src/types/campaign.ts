@@ -3,6 +3,7 @@ export type StepType =
   | 'linkedin_follow' 
   | 'linkedin_connect' 
   | 'linkedin_message'
+  | 'linkedin_inmail'
   | 'linkedin_scrape_profile'
   | 'linkedin_company_search'
   | 'linkedin_employee_list'
