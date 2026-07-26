@@ -1,5 +1,5 @@
 import React from 'react';
-import { Linkedin, Mail, MailPlus, MessageCircle, Phone, ArrowRight, Clock, Filter, Play, Square, Users, Search, Send, UserPlus, Eye, Zap, Wand2, ListOrdered, BarChart3, DatabaseZap, Split, Sparkles, Contact, Download, Megaphone, Globe, Telescope, Gauge } from 'lucide-react';
+import { Linkedin, Mail, MailPlus, MessageCircle, Phone, ArrowRight, Clock, Filter, Play, Square, Users, Search, Send, UserPlus, Eye, Zap, Wand2, ListOrdered, BarChart3, DatabaseZap, Split, Sparkles, Contact, Download, Megaphone, Globe, Telescope, Gauge, Shuffle, PenLine, Webhook } from 'lucide-react';
 import { StepType } from '@/types/campaign';
 
 export interface NodeClasses {
@@ -136,6 +136,9 @@ export function getNodeIcon(type: StepType, size: string = 'w-5 h-5'): React.Rea
   if (type === 'web_scrape') return <Globe className={size} />;
   if (type === 'web_research') return <Telescope className={size} />;
   if (type === 'lead_score') return <Gauge className={size} />;
+  if (type === 'split_test') return <Shuffle className={size} />;
+  if (type === 'set_field') return <PenLine className={size} />;
+  if (type === 'http_request') return <Webhook className={size} />;
   if (type === 'zoho_update') return <DatabaseZap className={size} />;
   if (type === 'switch') return <Split className={size} />;
   if (type === 'ai_parse') return <Sparkles className={size} />;

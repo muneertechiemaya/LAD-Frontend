@@ -26,7 +26,7 @@ import 'reactflow/dist/style.css';
 import {
   Rocket, Loader2, Linkedin, Mail, MailPlus, MessageCircle, Phone, Clock,
   Users, Repeat, Search, X, HardDrive, Inbox, ListOrdered, BarChart3, GitFork, DatabaseZap,
-  Wand2, Trash2, Radar, Split, Plus, Upload, FileSpreadsheet, Sparkles, Contact, Download, Megaphone, Zap, Globe, Telescope, Gauge,
+  Wand2, Trash2, Radar, Split, Plus, Upload, FileSpreadsheet, Sparkles, Contact, Download, Megaphone, Zap, Globe, Telescope, Gauge, Shuffle, PenLine, Webhook,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -255,6 +255,12 @@ const EXPORT_COLUMN_OPTIONS: { value: string; label: string }[] = [
 // NOT per-lead: a per-lead post would fire once per enrolled lead.
 // Web-intel nodes — per-lead steps that enrich from the open web before
 // outreach. Each is single-instance (fixed id) like the other AI/data nodes.
+// Logic / data nodes. split_test reuses the switch machinery on the backend
+// (stamps an outcome, prunes the losing variant) — see WorkflowProcessor.
+const SPLIT_STEP_ID = 'split-test-node';
+const SETFIELD_STEP_ID = 'set-field-node';
+const HTTP_STEP_ID = 'http-request-node';
+
 const SCRAPE_STEP_ID = 'web-scrape-node';
 const RESEARCH_STEP_ID = 'web-research-node';
 const SCORE_STEP_ID = 'lead-score-node';
@@ -743,6 +749,34 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     setEditingId(SOURCE_STEP_ID);
   };
 
+  const addSplitTest = () => {
+    if (!workflowPreview.some((s) => s.id === SPLIT_STEP_ID)) {
+      addWorkflowStep({ id: SPLIT_STEP_ID, type: 'split_test', channel: 'linkedin', title: 'A/B split test', description: '50 / 50' });
+      setCfg(SPLIT_STEP_ID, {
+        split_pct: 50,
+        a: { channel: 'linkedin', body: '' },
+        b: { channel: 'linkedin', body: '' },
+      });
+    }
+    setEditingId(SPLIT_STEP_ID);
+  };
+
+  const addSetField = () => {
+    if (!workflowPreview.some((s) => s.id === SETFIELD_STEP_ID)) {
+      addWorkflowStep({ id: SETFIELD_STEP_ID, type: 'set_field', channel: 'email', title: 'Set field', description: 'Tag / write a value' });
+      setCfg(SETFIELD_STEP_ID, { fields: [{ key: '', value: '' }], tags: '' });
+    }
+    setEditingId(SETFIELD_STEP_ID);
+  };
+
+  const addHttpRequest = () => {
+    if (!workflowPreview.some((s) => s.id === HTTP_STEP_ID)) {
+      addWorkflowStep({ id: HTTP_STEP_ID, type: 'http_request', channel: 'email', title: 'HTTP request', description: 'Call any API' });
+      setCfg(HTTP_STEP_ID, { method: 'POST', url: '', headers: [{ key: '', value: '' }], body: '', save_as: 'http_response', timeout_ms: 15000 });
+    }
+    setEditingId(HTTP_STEP_ID);
+  };
+
   const addWebScrape = () => {
     if (!workflowPreview.some((s) => s.id === SCRAPE_STEP_ID)) {
       addWorkflowStep({ id: SCRAPE_STEP_ID, type: 'web_scrape', channel: 'email', title: 'Webpage scraper', description: "Read the lead's website" });
@@ -938,7 +972,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       }
     }
     const outreachSteps = workflowPreview.filter(
-      (s) => s.id !== SOURCE_STEP_ID && s.id !== FOLLOWUP_STEP_ID && s.id !== ANALYTICS_STEP_ID && s.id !== ZOHO_UPDATE_STEP_ID && s.id !== MEDIA_STEP_ID && s.id !== MULTICOND_STEP_ID && s.id !== AI_STEP_ID && s.id !== ENRICH_STEP_ID && s.id !== EXPORT_STEP_ID && s.id !== AUTOPOST_STEP_ID && s.id !== SCRAPE_STEP_ID && s.id !== RESEARCH_STEP_ID && s.id !== SCORE_STEP_ID
+      (s) => s.id !== SOURCE_STEP_ID && s.id !== FOLLOWUP_STEP_ID && s.id !== ANALYTICS_STEP_ID && s.id !== ZOHO_UPDATE_STEP_ID && s.id !== MEDIA_STEP_ID && s.id !== MULTICOND_STEP_ID && s.id !== AI_STEP_ID && s.id !== ENRICH_STEP_ID && s.id !== EXPORT_STEP_ID && s.id !== AUTOPOST_STEP_ID && s.id !== SCRAPE_STEP_ID && s.id !== RESEARCH_STEP_ID && s.id !== SCORE_STEP_ID && s.id !== SPLIT_STEP_ID && s.id !== SETFIELD_STEP_ID && s.id !== HTTP_STEP_ID
     );
     const aiNode = workflowPreview.find((s) => s.id === AI_STEP_ID);
     const enrichNode = workflowPreview.find((s) => s.id === ENRICH_STEP_ID);
@@ -954,6 +988,15 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       const mcCases: any[] = (configs[MULTICOND_STEP_ID]?.cases) || [];
       const validCases = mcCases.filter((c) => (c.value || '').trim() && (c.body || c.subject || '').trim());
       if (!validCases.length) { setError('Add at least one condition (value + message) in the Multi-condition node.'); setEditingId(MULTICOND_STEP_ID); return; }
+    }
+    // A split test with only one variant filled would emit nothing at all —
+    // tell the user rather than silently dropping the node.
+    if (workflowPreview.some((s) => s.id === SPLIT_STEP_ID)) {
+      const spc = configs[SPLIT_STEP_ID] || {};
+      if (!(spc.a?.body || '').trim() || !(spc.b?.body || '').trim()) {
+        setError('Write a message for BOTH variants in the A/B split test — otherwise there is nothing to compare.');
+        setEditingId(SPLIT_STEP_ID); return;
+      }
     }
     if (analyticsNode && !(configs[ANALYTICS_STEP_ID]?.recipient || '').trim()) {
       setError('Add a recipient (email or WhatsApp number) in the Analytics report node.'); setEditingId(ANALYTICS_STEP_ID); return;
@@ -1118,6 +1161,35 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         });
       }
 
+      // Set field / HTTP request → per-lead steps before outreach, so the
+      // message generators can use whatever they wrote onto the lead.
+      if (workflowPreview.some((s) => s.id === SETFIELD_STEP_ID)) {
+        const sc = configs[SETFIELD_STEP_ID] || {};
+        const fields = (Array.isArray(sc.fields) ? sc.fields : [])
+          .filter((f: any) => (f?.key || '').trim())
+          .map((f: any) => ({ key: f.key.trim(), value: String(f.value ?? '') }));
+        const tags = csvList(sc.tags);
+        if (fields.length || tags.length) {
+          steps.push({ type: 'set_field', title: 'Set field', channel: 'email', order_index: order++, config: { fields, tags } });
+        }
+      }
+      if (workflowPreview.some((s) => s.id === HTTP_STEP_ID)) {
+        const hc = configs[HTTP_STEP_ID] || {};
+        if ((hc.url || '').trim()) {
+          steps.push({
+            type: 'http_request', title: 'HTTP request', channel: 'email', order_index: order++,
+            config: {
+              url: hc.url.trim(),
+              method: hc.method || 'POST',
+              headers: (Array.isArray(hc.headers) ? hc.headers : []).filter((h: any) => (h?.key || '').trim()),
+              body: (hc.body || '').trim() || undefined,
+              save_as: (hc.save_as || 'http_response').trim(),
+              timeout_ms: Math.max(1000, Math.min(30000, parseInt(hc.timeout_ms, 10) || 15000)),
+            },
+          });
+        }
+      }
+
       // Outreach nodes in canvas order.
       for (const s of outreachSteps) {
         const c = configs[s.id] || {};
@@ -1219,6 +1291,30 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           if ((sc.default?.body || sc.default?.subject || '').trim()) {
             steps.push(buildBranchStep(sc.default, 'else', 'Otherwise'));
           }
+        }
+      }
+
+      // "A/B split test" → a split_test step + one guarded message step per
+      // variant. The backend stamps the variant into switch_outcomes and prunes
+      // the losing branch, exactly as the multi-condition node does.
+      if (workflowPreview.some((s) => s.id === SPLIT_STEP_ID)) {
+        const spc = configs[SPLIT_STEP_ID] || {};
+        const splitId = `sp-${SPLIT_STEP_ID}`;
+        const buildVariant = (v: any, branchKey: string, label: string) => {
+          const guard = { run_if_branch: { switch_id: splitId, branch: branchKey } };
+          const ch = v?.channel === 'email' ? 'email' : v?.channel === 'whatsapp' ? 'whatsapp' : 'linkedin';
+          if (ch === 'email') return { type: 'email_send', title: `${label} (email)`, channel: 'email', order_index: order++, config: { subject: (v?.subject || '').trim(), body: (v?.body || '').trim(), ...guard } };
+          if (ch === 'whatsapp') return { type: 'whatsapp_send', title: `${label} (WhatsApp)`, channel: 'whatsapp', order_index: order++, config: { whatsappMessage: (v?.body || '').trim(), ...guard } };
+          return { type: 'linkedin_message', title: `${label} (LinkedIn)`, channel: 'linkedin', order_index: order++, config: { message: (v?.body || '').trim(), ...guard } };
+        };
+        const aBody = (spc.a?.body || '').trim(), bBody = (spc.b?.body || '').trim();
+        if (aBody && bBody) {
+          steps.push({
+            type: 'split_test', title: 'A/B split test', channel: 'linkedin', order_index: order++,
+            config: { split_id: splitId, split_pct: Math.min(100, Math.max(0, parseInt(spc.split_pct, 10) || 50)) },
+          });
+          steps.push(buildVariant(spc.a, 'a', 'Variant A'));
+          steps.push(buildVariant(spc.b, 'b', 'Variant B'));
         }
       }
 
@@ -1478,7 +1574,10 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     const isScrape = editingId === SCRAPE_STEP_ID;
     const isResearch = editingId === RESEARCH_STEP_ID;
     const isScore = editingId === SCORE_STEP_ID;
-    const isMacro = isFollowup || isAnalytics || isZohoUpdate || isMedia || isMultiCond || isAiParse || isDataEnrich || isExport || isAutopost || isScrape || isResearch || isScore;
+    const isSplit = editingId === SPLIT_STEP_ID;
+    const isSetField = editingId === SETFIELD_STEP_ID;
+    const isHttp = editingId === HTTP_STEP_ID;
+    const isMacro = isFollowup || isAnalytics || isZohoUpdate || isMedia || isMultiCond || isAiParse || isDataEnrich || isExport || isAutopost || isScrape || isResearch || isScore || isSplit || isSetField || isHttp;
     const visual = isSource
       ? SOURCES.find((s) => s.key === source)
       : isFollowup
@@ -1505,6 +1604,12 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             ? { icon: <Telescope className="h-4 w-4 text-indigo-600" />, chip: 'bg-indigo-50 dark:bg-indigo-950/30' }
           : isScore
             ? { icon: <Gauge className="h-4 w-4 text-yellow-600" />, chip: 'bg-yellow-50 dark:bg-yellow-950/30' }
+          : isSplit
+            ? { icon: <Shuffle className="h-4 w-4 text-pink-600" />, chip: 'bg-pink-50 dark:bg-pink-950/30' }
+          : isSetField
+            ? { icon: <PenLine className="h-4 w-4 text-lime-600" />, chip: 'bg-lime-50 dark:bg-lime-950/30' }
+          : isHttp
+            ? { icon: <Webhook className="h-4 w-4 text-slate-600" />, chip: 'bg-slate-100 dark:bg-slate-800/50' }
           : isRouter
             ? { icon: <GitFork className="h-4 w-4 text-rose-600" />, chip: 'bg-rose-50 dark:bg-rose-950/30' }
             : OUTREACH.find((o) => o.type === editingStep.type && !o.router);
@@ -1515,7 +1620,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           <div className="min-w-0 flex-1">
             <div className="text-sm font-semibold text-foreground truncate">{editingStep.title}</div>
             <div className="text-xs text-muted-foreground">
-              {isSource ? 'Contact source settings' : isFollowup ? 'Follow-up sequence settings' : isAnalytics ? 'Report settings' : isZohoUpdate ? 'Field mapping' : isMedia ? 'AI media' : isMultiCond ? 'Branch by condition' : isAiParse ? 'AI data cleanup' : isDataEnrich ? 'Data to enrich' : isExport ? 'Export destinations' : isAutopost ? 'Post content & schedule' : isScrape ? 'Page to read' : isResearch ? 'What gets researched' : isScore ? 'Scoring signals' : isRouter ? 'Fallback routing settings' : 'Step settings'}
+              {isSource ? 'Contact source settings' : isFollowup ? 'Follow-up sequence settings' : isAnalytics ? 'Report settings' : isZohoUpdate ? 'Field mapping' : isMedia ? 'AI media' : isMultiCond ? 'Branch by condition' : isAiParse ? 'AI data cleanup' : isDataEnrich ? 'Data to enrich' : isExport ? 'Export destinations' : isAutopost ? 'Post content & schedule' : isScrape ? 'Page to read' : isResearch ? 'What gets researched' : isScore ? 'Scoring signals' : isSplit ? 'Variants & split' : isSetField ? 'Fields to write' : isHttp ? 'Request' : isRouter ? 'Fallback routing settings' : 'Step settings'}
             </div>
           </div>
           <button onClick={() => setEditingId(null)} className="h-7 w-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors flex-shrink-0">
@@ -1982,6 +2087,128 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     {autopostMsg.text}
                   </div>
                 )}
+              </div>
+            </>);
+          })()}
+
+          {isSplit && (() => {
+            const eid = editingId!;
+            const pct = Math.min(100, Math.max(0, parseInt(cfg.split_pct, 10) || 50));
+            const setV = (k: 'a' | 'b', patch: any) => setCfg(eid, { [k]: { ...(cfg[k] || {}), ...patch } });
+            const variant = (k: 'a' | 'b', label: string) => (
+              <div className="rounded-lg border border-border p-2.5 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[12px] font-semibold text-foreground">Variant {label}</span>
+                  <span className="text-[11px] text-muted-foreground">{k === 'a' ? pct : 100 - pct}% of leads</span>
+                </div>
+                <select className={field} value={(cfg[k] || {}).channel || 'linkedin'} onChange={(e) => setV(k, { channel: e.target.value })}>
+                  {ROUTER_CHANNELS.filter((c) => c.value !== 'voice').map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
+                {((cfg[k] || {}).channel === 'email') && (
+                  <input className={field} value={(cfg[k] || {}).subject || ''} onChange={(e) => setV(k, { subject: e.target.value })} placeholder="Subject" />
+                )}
+                <textarea className={`${field} min-h-[70px]`} value={(cfg[k] || {}).body || ''} onChange={(e) => setV(k, { body: e.target.value })}
+                  placeholder={`Message for variant ${label}…`} />
+              </div>
+            );
+            return (<>
+              <div className="rounded-md border border-pink-200 bg-pink-50 dark:border-pink-900 dark:bg-pink-950/30 px-3 py-2">
+                <p className="text-[11px] text-pink-800 dark:text-pink-300">
+                  Randomly sends each lead <strong>one</strong> of two variants, so you can compare openers
+                  in a single campaign. The assignment sticks — a lead never receives both.
+                </p>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">Split — {pct}% A / {100 - pct}% B</label>
+                <input type="range" min={10} max={90} step={5} value={pct} className="w-full"
+                  onChange={(e) => { setCfg(eid, { split_pct: parseInt(e.target.value, 10) }); updateWorkflowStep(eid, { description: `${e.target.value} / ${100 - parseInt(e.target.value, 10)}` }); }} />
+              </div>
+              {variant('a', 'A')}
+              {variant('b', 'B')}
+              <p className="text-[11px] leading-snug text-muted-foreground">
+                Results show up per variant in campaign analytics (SPLIT_ASSIGNED records which one each lead got).
+              </p>
+            </>);
+          })()}
+
+          {isSetField && (() => {
+            const eid = editingId!;
+            const rows: any[] = Array.isArray(cfg.fields) ? cfg.fields : [{ key: '', value: '' }];
+            const setRow = (i: number, patch: any) => setCfg(eid, { fields: rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)) });
+            return (<>
+              <div className="rounded-md border border-lime-200 bg-lime-50 dark:border-lime-900 dark:bg-lime-950/30 px-3 py-2">
+                <p className="text-[11px] text-lime-800 dark:text-lime-300">
+                  Writes values onto the lead. Pair it with <strong>Multi-condition</strong> to branch on
+                  something you set yourself.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-foreground">Fields</label>
+                {rows.map((r, i) => (
+                  <div key={i} className="flex items-center gap-1.5">
+                    <input className={`${field} flex-1`} value={r.key || ''} onChange={(e) => setRow(i, { key: e.target.value })} placeholder="field name" />
+                    <input className={`${field} flex-1`} value={r.value || ''} onChange={(e) => setRow(i, { value: e.target.value })} placeholder="value or {{token}}" />
+                    <button type="button" onClick={() => setCfg(eid, { fields: rows.filter((_, idx) => idx !== i) })}
+                      className="h-8 w-8 rounded-md hover:bg-muted flex items-center justify-center text-muted-foreground flex-shrink-0"><Trash2 className="h-3.5 w-3.5" /></button>
+                  </div>
+                ))}
+                <button type="button" onClick={() => setCfg(eid, { fields: [...rows, { key: '', value: '' }] })}
+                  className="text-[12px] font-medium text-[#0b1957] dark:text-sky-300 hover:underline inline-flex items-center gap-1">
+                  <Plus className="h-3 w-3" /> Add field
+                </button>
+              </div>
+              <div className="space-y-1"><label className="text-xs font-medium text-foreground">Tags</label>
+                <input className={field} value={cfg.tags || ''} onChange={(e) => setCfg(eid, { tags: e.target.value })} placeholder="hot-lead, webinar — comma separated" />
+                <p className="text-[11px] text-muted-foreground">Added to any tags the lead already has.</p></div>
+            </>);
+          })()}
+
+          {isHttp && (() => {
+            const eid = editingId!;
+            const hdrs: any[] = Array.isArray(cfg.headers) ? cfg.headers : [{ key: '', value: '' }];
+            const setH = (i: number, patch: any) => setCfg(eid, { headers: hdrs.map((h, idx) => (idx === i ? { ...h, ...patch } : h)) });
+            return (<>
+              <div className="rounded-md border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50 px-3 py-2">
+                <p className="text-[11px] text-slate-700 dark:text-slate-300">
+                  Calls any API for each lead and stores the response on them, so a later
+                  Multi-condition can branch on it. Use <code className="text-[10px]">{'{{first_name}}'}</code>-style
+                  tokens anywhere below.
+                </p>
+              </div>
+              <div className="flex gap-1.5">
+                <select className={`${field} w-28`} value={cfg.method || 'POST'} onChange={(e) => setCfg(eid, { method: e.target.value })}>
+                  {['POST', 'GET', 'PUT', 'PATCH', 'DELETE'].map((m) => <option key={m} value={m}>{m}</option>)}
+                </select>
+                <input className={`${field} flex-1`} value={cfg.url || ''} onChange={(e) => { setCfg(eid, { url: e.target.value }); updateWorkflowStep(eid, { description: (e.target.value || 'Call any API').slice(0, 40) }); }}
+                  placeholder="https://api.example.com/leads" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-foreground">Headers</label>
+                {hdrs.map((h, i) => (
+                  <div key={i} className="flex items-center gap-1.5">
+                    <input className={`${field} flex-1`} value={h.key || ''} onChange={(e) => setH(i, { key: e.target.value })} placeholder="Authorization" />
+                    <input className={`${field} flex-1`} value={h.value || ''} onChange={(e) => setH(i, { value: e.target.value })} placeholder="Bearer …" />
+                    <button type="button" onClick={() => setCfg(eid, { headers: hdrs.filter((_, idx) => idx !== i) })}
+                      className="h-8 w-8 rounded-md hover:bg-muted flex items-center justify-center text-muted-foreground flex-shrink-0"><Trash2 className="h-3.5 w-3.5" /></button>
+                  </div>
+                ))}
+                <button type="button" onClick={() => setCfg(eid, { headers: [...hdrs, { key: '', value: '' }] })}
+                  className="text-[12px] font-medium text-[#0b1957] dark:text-sky-300 hover:underline inline-flex items-center gap-1">
+                  <Plus className="h-3 w-3" /> Add header
+                </button>
+              </div>
+              {(cfg.method || 'POST') !== 'GET' && (
+                <div className="space-y-1"><label className="text-xs font-medium text-foreground">Body</label>
+                  <textarea className={`${field} min-h-[90px] font-mono text-[12px]`} value={cfg.body || ''} onChange={(e) => setCfg(eid, { body: e.target.value })}
+                    placeholder={'{"email": "{{email}}", "company": "{{company_name}}"}'} /></div>
+              )}
+              <div className="space-y-1"><label className="text-xs font-medium text-foreground">Save response as</label>
+                <input className={field} value={cfg.save_as || ''} onChange={(e) => setCfg(eid, { save_as: e.target.value })} placeholder="http_response" />
+                <p className="text-[11px] text-muted-foreground">Stored on the lead under this name.</p></div>
+              <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30 px-3 py-2">
+                <p className="text-[11px] text-amber-800 dark:text-amber-300">
+                  Public http/https addresses only — private, loopback and cloud-metadata hosts are refused.
+                </p>
               </div>
             </>);
           })()}
@@ -2629,6 +2856,9 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               { id: SCRAPE_STEP_ID, on: addWebScrape, icon: <Globe className="h-4 w-4 text-sky-600" />, chip: 'bg-sky-50 dark:bg-sky-950/30', label: 'Webpage scraper', sub: "Read the lead's website" },
               { id: RESEARCH_STEP_ID, on: addWebResearch, icon: <Telescope className="h-4 w-4 text-indigo-600" />, chip: 'bg-indigo-50 dark:bg-indigo-950/30', label: 'Web research', sub: 'AI company intel from the web' },
               { id: SCORE_STEP_ID, on: addLeadScore, icon: <Gauge className="h-4 w-4 text-yellow-600" />, chip: 'bg-yellow-50 dark:bg-yellow-950/30', label: 'Lead scoring', sub: 'Buy-intent 0-100 · hot/warm/cold' },
+              { id: SPLIT_STEP_ID, on: addSplitTest, icon: <Shuffle className="h-4 w-4 text-pink-600" />, chip: 'bg-pink-50 dark:bg-pink-950/30', label: 'A/B split test', sub: 'Compare two openers' },
+              { id: SETFIELD_STEP_ID, on: addSetField, icon: <PenLine className="h-4 w-4 text-lime-600" />, chip: 'bg-lime-50 dark:bg-lime-950/30', label: 'Set field', sub: 'Tag or write a value' },
+              { id: HTTP_STEP_ID, on: addHttpRequest, icon: <Webhook className="h-4 w-4 text-slate-600" />, chip: 'bg-slate-100 dark:bg-slate-800/50', label: 'HTTP request', sub: 'Call any API per lead' },
             ]).map((b) => {
               const added2 = workflowPreview.some((s) => s.id === b.id);
               return (
