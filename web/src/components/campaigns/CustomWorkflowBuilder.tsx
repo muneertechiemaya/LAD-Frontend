@@ -468,6 +468,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   const [autopostPosting, setAutopostPosting] = useState(false);
   const [autopostMsg, setAutopostMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [liOrganizations, setLiOrganizations] = useState<{ id: string; name: string }[]>([]);
+  const autopostFileRef = useRef<HTMLInputElement | null>(null);
   // Multi-condition node: fields of the connected source (dynamic dropdown).
   const [mcFields, setMcFields] = useState<{ value: string; label: string }[]>(SWITCH_FIELDS);
   const [mcFieldsLoading, setMcFieldsLoading] = useState(false);
@@ -845,7 +846,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
 
   // Re-home a generated asset (MAGe 7-day signed URL) into the permanent
   // campaign bucket and attach it to the AI Media node.
-  const importGenerated = useCallback(async (sourceUrl: string) => {
+  const importGenerated = useCallback(async (sourceUrl: string, targetStepId: string = MEDIA_STEP_ID) => {
     if (!sourceUrl) return;
     setMediaImporting(true); setMediaError(null);
     try {
@@ -856,12 +857,15 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       });
       const d = await res.json();
       if (!res.ok || !d?.url) throw new Error(d?.error || `Import failed (${res.status})`);
-      setCfg(MEDIA_STEP_ID, {
+      setCfg(targetStepId, {
         media_url: d.url,
         media_type: d.media_type || mediaTypeFromName(d.filename || filename),
         media_filename: d.filename || filename,
       });
-      updateWorkflowStep(MEDIA_STEP_ID, { description: `${d.media_type || mediaTypeFromName(filename)} attached` });
+      // The auto-post node keeps its own schedule summary as the description.
+      if (targetStepId === MEDIA_STEP_ID) {
+        updateWorkflowStep(MEDIA_STEP_ID, { description: `${d.media_type || mediaTypeFromName(filename)} attached` });
+      }
       setMediaGalleryOpen(false);
     } catch (e: any) {
       setMediaError(e?.message || 'Failed to import media');
@@ -870,6 +874,30 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setCfg, updateWorkflowStep]);
+
+  /** Upload a local image/video and attach it to a node (reuses the LinkedIn
+   *  template media endpoint, which stores to GCP and returns a stable URL). */
+  const uploadMediaFor = useCallback(async (file: File, targetStepId: string) => {
+    if (!file) return;
+    setMediaImporting(true); setMediaError(null);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetchWithTenant('/api/campaigns/linkedin-templates/media-upload', { method: 'POST', body: fd });
+      const d = await res.json();
+      if (!res.ok || !d?.url) throw new Error(d?.error || `Upload failed (${res.status})`);
+      setCfg(targetStepId, {
+        media_url: d.url,
+        media_type: d.media_type || mediaTypeFromName(d.filename || file.name),
+        media_filename: d.filename || file.name,
+      });
+    } catch (e: any) {
+      setMediaError(e?.message || 'Failed to upload media');
+    } finally {
+      setMediaImporting(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setCfg]);
 
   // Lazy-load the LinkedIn company pages the account may post as. Fails soft —
   // an empty list simply leaves "personal profile" as the only option.
@@ -1388,6 +1416,10 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 content,
                 ai_generate: !!pc.ai_generate,
                 media_url: (pc.media_url || '').trim() || undefined,
+                // The cron passes this to publishPost, which derives the MIME
+                // type from the extension — without it the filename is guessed
+                // from the URL, which loses it for signed/query-string URLs.
+                media_filename: (pc.media_filename || '').trim() || undefined,
                 external_link: (pc.external_link || '').trim() || undefined,
                 as_organization: pc.post_as && pc.post_as !== 'personal' ? pc.post_as : undefined,
                 frequency: pc.frequency === 'daily' ? 'daily' : 'weekly',
@@ -2035,9 +2067,84 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 <input className={field} value={cfg.external_link || ''} onChange={(e) => setCfg(eid, { external_link: e.target.value })}
                   placeholder="https://… (shown as a preview card)" /></div>
 
-              <div className="space-y-1"><label className="text-xs font-medium text-foreground">Image / video URL (optional)</label>
-                <input className={field} value={cfg.media_url || ''} onChange={(e) => setCfg(eid, { media_url: e.target.value })}
-                  placeholder="Paste a URL, or add the AI Media node to generate one" /></div>
+              {/* ── Media: generate with AI, pick from the gallery, upload, or paste ── */}
+              {(() => {
+                const imgs = mediaBuilder.galleryImages || [];
+                const vids = mediaBuilder.galleryVideos || [];
+                const openGallery = () => { setMediaGalleryOpen((o) => !o); if (!mediaGalleryOpen) mediaBuilder.fetchGallery?.().catch(() => {}); };
+                // The studio's wizard starts from a blank prompt, so copy the
+                // post text over — it's the description the image should match.
+                const openStudio = () => {
+                  const topic = (cfg.content || '').trim();
+                  if (topic) { try { navigator.clipboard?.writeText(topic); } catch { /* clipboard is best-effort */ } }
+                  setAutopostMsg(topic
+                    ? { ok: true, text: 'Post text copied — paste it as the image prompt in the studio.' }
+                    : { ok: true, text: 'Describe the image you want in the studio.' });
+                  setShowMediaStudio(true);
+                };
+                return (
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-foreground">Image / video (optional)</label>
+
+                    {cfg.media_url ? (
+                      <div className="space-y-2">
+                        {cfg.media_type === 'video'
+                          ? <video src={cfg.media_url} controls className="w-full max-h-44 rounded-md bg-black" />
+                          : <img src={cfg.media_url} alt={cfg.media_filename || 'media'} className="w-full max-h-44 object-contain rounded-md border border-border" />}
+                        <button type="button" onClick={() => setCfg(eid, { media_url: '', media_type: '', media_filename: '' })}
+                          className="inline-flex items-center gap-1.5 text-xs text-red-600 hover:underline">
+                          <Trash2 className="h-3.5 w-3.5" /> Remove
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-muted-foreground">Posts with an image get noticeably more reach than text alone.</p>
+                    )}
+
+                    {mediaError && <p className="text-xs text-red-600">{mediaError}</p>}
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <button type="button" onClick={openStudio}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-fuchsia-300 bg-fuchsia-50 dark:bg-fuchsia-950/30 px-2.5 py-2 text-[12.5px] font-medium text-fuchsia-700 dark:text-fuchsia-300 hover:bg-fuchsia-100 dark:hover:bg-fuchsia-900/40">
+                        <Wand2 className="h-3.5 w-3.5" /> Generate with AI
+                      </button>
+                      <button type="button" onClick={() => autopostFileRef.current?.click()} disabled={mediaImporting}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border px-2.5 py-2 text-[12.5px] font-medium text-foreground hover:bg-muted/50 disabled:opacity-60">
+                        {mediaImporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />} Upload
+                      </button>
+                    </div>
+                    <input ref={autopostFileRef} type="file" accept="image/*,video/*" className="hidden"
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadMediaFor(f, AUTOPOST_STEP_ID); e.target.value = ''; }} />
+
+                    <button type="button" onClick={openGallery} className="text-[12px] font-medium text-[#0b1957] dark:text-sky-300 hover:underline">
+                      {mediaGalleryOpen ? 'Hide generated media' : 'Pick from generated media'}
+                    </button>
+
+                    {mediaGalleryOpen && (
+                      <div className="rounded-lg border border-border p-2 bg-muted/20">
+                        {mediaBuilder.loadingGallery ? (
+                          <p className="py-3 text-center text-xs text-muted-foreground flex items-center justify-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</p>
+                        ) : (!imgs.length && !vids.length) ? (
+                          <p className="py-3 text-center text-xs text-muted-foreground">Nothing generated yet — use Generate with AI first.</p>
+                        ) : (
+                          <div className="grid grid-cols-3 gap-2 max-h-52 overflow-y-auto">
+                            {imgs.map((it: any, i: number) => { const u = it?.url || it?.signed_url || (typeof it === 'string' ? it : ''); return u ? (
+                              <img key={`ai-${i}`} src={u} alt="generated" onClick={() => importGenerated(u, AUTOPOST_STEP_ID)}
+                                className="h-16 w-full object-cover rounded cursor-pointer hover:ring-2 ring-fuchsia-400" />
+                            ) : null; })}
+                            {vids.map((it: any, i: number) => { const u = it?.url || it?.signed_url || (typeof it === 'string' ? it : ''); return u ? (
+                              <video key={`av-${i}`} src={u} onClick={() => importGenerated(u, AUTOPOST_STEP_ID)}
+                                className="h-16 w-full object-cover rounded cursor-pointer hover:ring-2 ring-fuchsia-400" />
+                            ) : null; })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <input className={field} value={cfg.media_url || ''} onChange={(e) => setCfg(eid, { media_url: e.target.value })}
+                      placeholder="…or paste an image / video URL" />
+                  </div>
+                );
+              })()}
 
               <div className="space-y-1"><label className="text-xs font-medium text-foreground">Post as</label>
                 <select className={field} value={cfg.post_as || 'personal'} onChange={(e) => setCfg(eid, { post_as: e.target.value })}>
