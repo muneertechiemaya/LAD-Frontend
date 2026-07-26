@@ -26,7 +26,7 @@ import 'reactflow/dist/style.css';
 import {
   Rocket, Loader2, Linkedin, Mail, MailPlus, MessageCircle, Phone, Clock,
   Users, Repeat, Search, X, HardDrive, Inbox, ListOrdered, BarChart3, GitFork, DatabaseZap,
-  Wand2, Trash2, Radar, Split, Plus, Upload, FileSpreadsheet, Sparkles, Contact, Download, Megaphone, Zap,
+  Wand2, Trash2, Radar, Split, Plus, Upload, FileSpreadsheet, Sparkles, Contact, Download, Megaphone, Zap, Globe, Telescope, Gauge,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -152,6 +152,7 @@ const OUTREACH: { type: StepType; label: string; group: string; channel: Channel
   { type: 'linkedin_message', label: 'Message', group: 'LinkedIn', channel: 'linkedin', icon: <Linkedin className="h-4 w-4 text-[#0077B5]" />, chip: 'bg-sky-50 dark:bg-sky-950/30' },
   { type: 'linkedin_inmail', label: 'InMail (Premium)', group: 'LinkedIn', channel: 'linkedin', icon: <MailPlus className="h-4 w-4 text-[#7C3AED]" />, chip: 'bg-violet-50 dark:bg-violet-950/30' },
   { type: 'linkedin_visit', label: 'Profile visit', group: 'LinkedIn', channel: 'linkedin', icon: <Linkedin className="h-4 w-4 text-[#0077B5]" />, chip: 'bg-sky-50 dark:bg-sky-950/30' },
+  { type: 'linkedin_follow', label: 'Follow profile', group: 'LinkedIn', channel: 'linkedin', icon: <Linkedin className="h-4 w-4 text-[#0077B5]" />, chip: 'bg-sky-50 dark:bg-sky-950/30' },
   { type: 'email_send', label: 'Send email', group: 'Email', channel: 'email', icon: <Mail className="h-4 w-4 text-amber-600" />, chip: 'bg-amber-50 dark:bg-amber-950/30' },
   { type: 'whatsapp_send', label: 'Send WhatsApp', group: 'WhatsApp', channel: 'whatsapp', icon: <MessageCircle className="h-4 w-4 text-green-600" />, chip: 'bg-green-50 dark:bg-green-950/30' },
   { type: 'voice_agent_call', label: 'AI voice call', group: 'Voice', channel: 'voice', icon: <Phone className="h-4 w-4 text-violet-600" />, chip: 'bg-violet-50 dark:bg-violet-950/30' },
@@ -252,6 +253,12 @@ const EXPORT_COLUMN_OPTIONS: { value: string; label: string }[] = [
 // "LinkedIn auto-post" node — posts to the tenant's OWN feed on a recurring
 // schedule while the campaign runs (social-selling warm-up). Campaign-level,
 // NOT per-lead: a per-lead post would fire once per enrolled lead.
+// Web-intel nodes — per-lead steps that enrich from the open web before
+// outreach. Each is single-instance (fixed id) like the other AI/data nodes.
+const SCRAPE_STEP_ID = 'web-scrape-node';
+const RESEARCH_STEP_ID = 'web-research-node';
+const SCORE_STEP_ID = 'lead-score-node';
+
 const AUTOPOST_FREQUENCIES = [
   { value: 'daily', label: 'Every day' },
   { value: 'weekly', label: 'On selected days' },
@@ -736,6 +743,30 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     setEditingId(SOURCE_STEP_ID);
   };
 
+  const addWebScrape = () => {
+    if (!workflowPreview.some((s) => s.id === SCRAPE_STEP_ID)) {
+      addWorkflowStep({ id: SCRAPE_STEP_ID, type: 'web_scrape', channel: 'email', title: 'Webpage scraper', description: "Read the lead's website" });
+      setCfg(SCRAPE_STEP_ID, { url: '', max_chars: 1500 });
+    }
+    setEditingId(SCRAPE_STEP_ID);
+  };
+
+  const addWebResearch = () => {
+    if (!workflowPreview.some((s) => s.id === RESEARCH_STEP_ID)) {
+      addWorkflowStep({ id: RESEARCH_STEP_ID, type: 'web_research', channel: 'email', title: 'Web research', description: 'AI company intel' });
+      setCfg(RESEARCH_STEP_ID, {});
+    }
+    setEditingId(RESEARCH_STEP_ID);
+  };
+
+  const addLeadScore = () => {
+    if (!workflowPreview.some((s) => s.id === SCORE_STEP_ID)) {
+      addWorkflowStep({ id: SCORE_STEP_ID, type: 'lead_score', channel: 'email', title: 'Lead scoring', description: 'Buy-intent 0-100' });
+      setCfg(SCORE_STEP_ID, { hiring_companies: '', funding_companies: '', competitor_companies: '' });
+    }
+    setEditingId(SCORE_STEP_ID);
+  };
+
   const addExport = () => {
     if (!workflowPreview.some((s) => s.id === EXPORT_STEP_ID)) {
       addWorkflowStep({ id: EXPORT_STEP_ID, type: 'export_results', channel: 'email', title: 'Export results', description: 'CSV · Download' });
@@ -907,7 +938,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       }
     }
     const outreachSteps = workflowPreview.filter(
-      (s) => s.id !== SOURCE_STEP_ID && s.id !== FOLLOWUP_STEP_ID && s.id !== ANALYTICS_STEP_ID && s.id !== ZOHO_UPDATE_STEP_ID && s.id !== MEDIA_STEP_ID && s.id !== MULTICOND_STEP_ID && s.id !== AI_STEP_ID && s.id !== ENRICH_STEP_ID && s.id !== EXPORT_STEP_ID && s.id !== AUTOPOST_STEP_ID
+      (s) => s.id !== SOURCE_STEP_ID && s.id !== FOLLOWUP_STEP_ID && s.id !== ANALYTICS_STEP_ID && s.id !== ZOHO_UPDATE_STEP_ID && s.id !== MEDIA_STEP_ID && s.id !== MULTICOND_STEP_ID && s.id !== AI_STEP_ID && s.id !== ENRICH_STEP_ID && s.id !== EXPORT_STEP_ID && s.id !== AUTOPOST_STEP_ID && s.id !== SCRAPE_STEP_ID && s.id !== RESEARCH_STEP_ID && s.id !== SCORE_STEP_ID
     );
     const aiNode = workflowPreview.find((s) => s.id === AI_STEP_ID);
     const enrichNode = workflowPreview.find((s) => s.id === ENRICH_STEP_ID);
@@ -1060,6 +1091,31 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             config: { enrich: sel },
           });
         }
+      }
+
+      // Web-intel nodes → per-lead steps that run before outreach, so the
+      // message generators can use what they gathered.
+      const csvList = (v: any) => String(v || '').split(',').map((x: string) => x.trim()).filter(Boolean);
+      if (workflowPreview.some((s) => s.id === SCRAPE_STEP_ID)) {
+        const sc = configs[SCRAPE_STEP_ID] || {};
+        steps.push({
+          type: 'web_scrape', title: 'Webpage scraper', channel: 'email', order_index: order++,
+          config: { url: (sc.url || '').trim() || undefined, max_chars: Math.max(200, Math.min(5000, parseInt(sc.max_chars, 10) || 1500)) },
+        });
+      }
+      if (workflowPreview.some((s) => s.id === RESEARCH_STEP_ID)) {
+        steps.push({ type: 'web_research', title: 'Web research', channel: 'email', order_index: order++, config: {} });
+      }
+      if (workflowPreview.some((s) => s.id === SCORE_STEP_ID)) {
+        const sc = configs[SCORE_STEP_ID] || {};
+        steps.push({
+          type: 'lead_score', title: 'Lead scoring', channel: 'email', order_index: order++,
+          config: {
+            hiring_companies: csvList(sc.hiring_companies),
+            funding_companies: csvList(sc.funding_companies),
+            competitor_companies: csvList(sc.competitor_companies),
+          },
+        });
       }
 
       // Outreach nodes in canvas order.
@@ -1419,7 +1475,10 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     const isDataEnrich = editingId === ENRICH_STEP_ID;
     const isExport = editingId === EXPORT_STEP_ID;
     const isAutopost = editingId === AUTOPOST_STEP_ID;
-    const isMacro = isFollowup || isAnalytics || isZohoUpdate || isMedia || isMultiCond || isAiParse || isDataEnrich || isExport || isAutopost;
+    const isScrape = editingId === SCRAPE_STEP_ID;
+    const isResearch = editingId === RESEARCH_STEP_ID;
+    const isScore = editingId === SCORE_STEP_ID;
+    const isMacro = isFollowup || isAnalytics || isZohoUpdate || isMedia || isMultiCond || isAiParse || isDataEnrich || isExport || isAutopost || isScrape || isResearch || isScore;
     const visual = isSource
       ? SOURCES.find((s) => s.key === source)
       : isFollowup
@@ -1440,6 +1499,12 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             ? { icon: <Download className="h-4 w-4 text-cyan-700" />, chip: 'bg-cyan-50 dark:bg-cyan-950/30' }
           : isAutopost
             ? { icon: <Megaphone className="h-4 w-4 text-[#0077B5]" />, chip: 'bg-sky-50 dark:bg-sky-950/30' }
+          : isScrape
+            ? { icon: <Globe className="h-4 w-4 text-sky-600" />, chip: 'bg-sky-50 dark:bg-sky-950/30' }
+          : isResearch
+            ? { icon: <Telescope className="h-4 w-4 text-indigo-600" />, chip: 'bg-indigo-50 dark:bg-indigo-950/30' }
+          : isScore
+            ? { icon: <Gauge className="h-4 w-4 text-yellow-600" />, chip: 'bg-yellow-50 dark:bg-yellow-950/30' }
           : isRouter
             ? { icon: <GitFork className="h-4 w-4 text-rose-600" />, chip: 'bg-rose-50 dark:bg-rose-950/30' }
             : OUTREACH.find((o) => o.type === editingStep.type && !o.router);
@@ -1450,7 +1515,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           <div className="min-w-0 flex-1">
             <div className="text-sm font-semibold text-foreground truncate">{editingStep.title}</div>
             <div className="text-xs text-muted-foreground">
-              {isSource ? 'Contact source settings' : isFollowup ? 'Follow-up sequence settings' : isAnalytics ? 'Report settings' : isZohoUpdate ? 'Field mapping' : isMedia ? 'AI media' : isMultiCond ? 'Branch by condition' : isAiParse ? 'AI data cleanup' : isDataEnrich ? 'Data to enrich' : isExport ? 'Export destinations' : isAutopost ? 'Post content & schedule' : isRouter ? 'Fallback routing settings' : 'Step settings'}
+              {isSource ? 'Contact source settings' : isFollowup ? 'Follow-up sequence settings' : isAnalytics ? 'Report settings' : isZohoUpdate ? 'Field mapping' : isMedia ? 'AI media' : isMultiCond ? 'Branch by condition' : isAiParse ? 'AI data cleanup' : isDataEnrich ? 'Data to enrich' : isExport ? 'Export destinations' : isAutopost ? 'Post content & schedule' : isScrape ? 'Page to read' : isResearch ? 'What gets researched' : isScore ? 'Scoring signals' : isRouter ? 'Fallback routing settings' : 'Step settings'}
             </div>
           </div>
           <button onClick={() => setEditingId(null)} className="h-7 w-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors flex-shrink-0">
@@ -1920,6 +1985,65 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               </div>
             </>);
           })()}
+
+          {isScrape && (<>
+            <div className="rounded-md border border-sky-200 bg-sky-50 dark:border-sky-900 dark:bg-sky-950/30 px-3 py-2">
+              <p className="text-[11px] text-sky-800 dark:text-sky-300">
+                Reads each lead&apos;s company website and stores the page text on the lead, so later
+                steps can reference something concrete. Runs before outreach.
+              </p>
+            </div>
+            <div className="space-y-1"><label className="text-xs font-medium text-foreground">Page to read</label>
+              <input className={field} value={cfg.url || ''} onChange={(e) => setCfg(editingId!, { url: e.target.value })}
+                placeholder="Leave blank to use each lead's own website" />
+              <p className="text-[11px] text-muted-foreground">Blank = the lead&apos;s website field, else the domain from their work email. Free mailboxes (gmail, outlook…) are skipped.</p></div>
+            <div className="space-y-1"><label className="text-xs font-medium text-foreground">Characters to keep</label>
+              <input type="number" className={field} value={cfg.max_chars ?? 1500}
+                onChange={(e) => setCfg(editingId!, { max_chars: e.target.value })} min={200} max={5000} />
+              <p className="text-[11px] text-muted-foreground">200-5000. Kept small so it doesn&apos;t bloat every later step.</p></div>
+          </>)}
+
+          {isResearch && (<>
+            <div className="rounded-md border border-indigo-200 bg-indigo-50 dark:border-indigo-900 dark:bg-indigo-950/30 px-3 py-2">
+              <p className="text-[11px] text-indigo-800 dark:text-indigo-300">
+                Finds the company&apos;s website, reads it, and runs an <strong>AI extraction</strong> into
+                structured intel stored on the lead.
+              </p>
+            </div>
+            <p className="text-[12px] text-muted-foreground leading-snug">
+              Nothing to configure — the company name comes from each lead. Leads without a company are
+              skipped automatically.
+            </p>
+            <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30 px-3 py-2">
+              <p className="text-[11px] text-amber-800 dark:text-amber-300">
+                Costs LLM credits per lead and takes several seconds each — best paired with a lead-scoring
+                step so you only research leads worth the spend.
+              </p>
+            </div>
+          </>)}
+
+          {isScore && (<>
+            <div className="rounded-md border border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950/30 px-3 py-2">
+              <p className="text-[11px] text-yellow-800 dark:text-yellow-300">
+                Scores each lead <strong>0-100</strong> on buy intent (ICP fit + seniority + signals) and tags
+                them <strong>hot / warm / cold</strong>. Free — no external calls.
+              </p>
+            </div>
+            <p className="text-[12px] text-muted-foreground leading-snug">
+              Add a Multi-condition node after this one and branch on <code className="text-[11px]">intent_band</code> to
+              treat hot leads differently.
+            </p>
+            <div className="space-y-1"><label className="text-xs font-medium text-foreground">Companies hiring (optional)</label>
+              <input className={field} value={cfg.hiring_companies || ''} onChange={(e) => setCfg(editingId!, { hiring_companies: e.target.value })}
+                placeholder="Acme, Globex — comma separated" /></div>
+            <div className="space-y-1"><label className="text-xs font-medium text-foreground">Recently funded (optional)</label>
+              <input className={field} value={cfg.funding_companies || ''} onChange={(e) => setCfg(editingId!, { funding_companies: e.target.value })}
+                placeholder="Comma separated" /></div>
+            <div className="space-y-1"><label className="text-xs font-medium text-foreground">Using a competitor (optional)</label>
+              <input className={field} value={cfg.competitor_companies || ''} onChange={(e) => setCfg(editingId!, { competitor_companies: e.target.value })}
+                placeholder="Comma separated" />
+              <p className="text-[11px] text-muted-foreground">Leads at these companies score higher.</p></div>
+          </>)}
 
           {isExport && (() => {
             const eid = editingId!;
@@ -2500,6 +2624,31 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 </button>
               );
             })()}
+            {/* Web intelligence — enrich each lead from the open web. */}
+            {([
+              { id: SCRAPE_STEP_ID, on: addWebScrape, icon: <Globe className="h-4 w-4 text-sky-600" />, chip: 'bg-sky-50 dark:bg-sky-950/30', label: 'Webpage scraper', sub: "Read the lead's website" },
+              { id: RESEARCH_STEP_ID, on: addWebResearch, icon: <Telescope className="h-4 w-4 text-indigo-600" />, chip: 'bg-indigo-50 dark:bg-indigo-950/30', label: 'Web research', sub: 'AI company intel from the web' },
+              { id: SCORE_STEP_ID, on: addLeadScore, icon: <Gauge className="h-4 w-4 text-yellow-600" />, chip: 'bg-yellow-50 dark:bg-yellow-950/30', label: 'Lead scoring', sub: 'Buy-intent 0-100 · hot/warm/cold' },
+            ]).map((b) => {
+              const added2 = workflowPreview.some((s) => s.id === b.id);
+              return (
+                <button key={b.id} onClick={b.on}
+                  className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
+                    added2 ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20' : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                  }`}>
+                  <IconChip icon={b.icon} chip={b.chip} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold text-foreground truncate">{b.label}</span>
+                    <span className="block text-xs text-muted-foreground truncate">{b.sub}</span>
+                  </span>
+                  {added2 && (
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    </span>
+                  )}
+                </button>
+              );
+            })}
             {/* LinkedIn auto-post — recurring posts to the tenant's own feed. */}
             {(() => {
               const added = workflowPreview.some((s) => s.id === AUTOPOST_STEP_ID);
