@@ -30,6 +30,8 @@ export type StepType =
   | 'analytics_report'
   | 'export_results'
   | 'linkedin_post'
+  | 'linkedin_content'
+  | 'post_approval'
   | 'web_scrape'
   | 'web_research'
   | 'lead_score'

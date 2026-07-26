@@ -26,7 +26,7 @@ import 'reactflow/dist/style.css';
 import {
   Rocket, Loader2, Linkedin, Mail, MailPlus, MessageCircle, Phone, Clock,
   Users, Repeat, Search, X, HardDrive, Inbox, ListOrdered, BarChart3, GitFork, DatabaseZap,
-  Wand2, Trash2, Radar, Split, Plus, Upload, FileSpreadsheet, Sparkles, Contact, Download, Megaphone, Zap, Globe, Telescope, Gauge, Shuffle, PenLine, Webhook,
+  Wand2, Trash2, Radar, Split, Plus, Upload, FileSpreadsheet, Sparkles, Contact, Download, Megaphone, Zap, Globe, Telescope, Gauge, Shuffle, PenLine, Webhook, PenTool, ShieldCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,7 +35,7 @@ import {
   WORKFLOW_TEMPLATES, WorkflowTemplate,
   SOURCE_STEP_ID, FOLLOWUP_STEP_ID, ANALYTICS_STEP_ID, ZOHO_UPDATE_STEP_ID,
   MEDIA_STEP_ID, MULTICOND_STEP_ID, AI_STEP_ID, ENRICH_STEP_ID, EXPORT_STEP_ID,
-  AUTOPOST_STEP_ID, AI_DEFAULT_INSTRUCTION, EXPORT_DEFAULT_COLUMNS,
+  AUTOPOST_STEP_ID, CONTENT_STEP_ID, APPROVAL_STEP_ID, AI_DEFAULT_INSTRUCTION, EXPORT_DEFAULT_COLUMNS,
 } from './workflowTemplates';
 import { TemplateIcon, stepCategory } from './TemplateIcon';
 import { useMediaBuilder } from '@/hooks/voice-agent/useMediaBuilder';
@@ -807,6 +807,22 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     setEditingId(SCORE_STEP_ID);
   };
 
+  const addLinkedInContent = () => {
+    if (!workflowPreview.some((s) => s.id === CONTENT_STEP_ID)) {
+      addWorkflowStep({ id: CONTENT_STEP_ID, type: 'linkedin_content', channel: 'linkedin', title: 'LinkedIn content', description: 'What the post says' });
+      setCfg(CONTENT_STEP_ID, { content: '', ai_generate: false });
+    }
+    setEditingId(CONTENT_STEP_ID);
+  };
+
+  const addPostApproval = () => {
+    if (!workflowPreview.some((s) => s.id === APPROVAL_STEP_ID)) {
+      addWorkflowStep({ id: APPROVAL_STEP_ID, type: 'post_approval', channel: 'whatsapp', title: 'Approval', description: 'WhatsApp · before posting' });
+      setCfg(APPROVAL_STEP_ID, { approval_channel: 'whatsapp', approval_to: '' });
+    }
+    setEditingId(APPROVAL_STEP_ID);
+  };
+
   const addExport = () => {
     if (!workflowPreview.some((s) => s.id === EXPORT_STEP_ID)) {
       addWorkflowStep({ id: EXPORT_STEP_ID, type: 'export_results', channel: 'email', title: 'Export results', description: 'CSV · Download' });
@@ -1005,7 +1021,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       }
     }
     const outreachSteps = workflowPreview.filter(
-      (s) => s.id !== SOURCE_STEP_ID && s.id !== FOLLOWUP_STEP_ID && s.id !== ANALYTICS_STEP_ID && s.id !== ZOHO_UPDATE_STEP_ID && s.id !== MEDIA_STEP_ID && s.id !== MULTICOND_STEP_ID && s.id !== AI_STEP_ID && s.id !== ENRICH_STEP_ID && s.id !== EXPORT_STEP_ID && s.id !== AUTOPOST_STEP_ID && s.id !== SCRAPE_STEP_ID && s.id !== RESEARCH_STEP_ID && s.id !== SCORE_STEP_ID && s.id !== SPLIT_STEP_ID && s.id !== SETFIELD_STEP_ID && s.id !== HTTP_STEP_ID
+      (s) => s.id !== SOURCE_STEP_ID && s.id !== FOLLOWUP_STEP_ID && s.id !== ANALYTICS_STEP_ID && s.id !== ZOHO_UPDATE_STEP_ID && s.id !== MEDIA_STEP_ID && s.id !== MULTICOND_STEP_ID && s.id !== AI_STEP_ID && s.id !== ENRICH_STEP_ID && s.id !== EXPORT_STEP_ID && s.id !== AUTOPOST_STEP_ID && s.id !== SCRAPE_STEP_ID && s.id !== RESEARCH_STEP_ID && s.id !== SCORE_STEP_ID && s.id !== SPLIT_STEP_ID && s.id !== SETFIELD_STEP_ID && s.id !== HTTP_STEP_ID && s.id !== CONTENT_STEP_ID && s.id !== APPROVAL_STEP_ID
     );
     const aiNode = workflowPreview.find((s) => s.id === AI_STEP_ID);
     const enrichNode = workflowPreview.find((s) => s.id === ENRICH_STEP_ID);
@@ -1029,6 +1045,26 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       if (!(spc.a?.body || '').trim() || !(spc.b?.body || '').trim()) {
         setError('Write a message for BOTH variants in the A/B split test — otherwise there is nothing to compare.');
         setEditingId(SPLIT_STEP_ID); return;
+      }
+    }
+    // A post node with nothing to say, or an approval gate with nobody to ask,
+    // would launch silently doing nothing — point at the offending node instead.
+    if (workflowPreview.some((s) => s.id === AUTOPOST_STEP_ID)) {
+      const hasContent = ((configs[CONTENT_STEP_ID]?.content ?? configs[AUTOPOST_STEP_ID]?.content) || '').trim();
+      if (!hasContent) {
+        setError('Add the LinkedIn content node and write what the post should say.');
+        setEditingId(workflowPreview.some((s) => s.id === CONTENT_STEP_ID) ? CONTENT_STEP_ID : AUTOPOST_STEP_ID);
+        return;
+      }
+    }
+    if (workflowPreview.some((s) => s.id === APPROVAL_STEP_ID)) {
+      if (!(configs[APPROVAL_STEP_ID]?.approval_to || '').trim()) {
+        setError('Add the WhatsApp number (or email) that should approve each post.');
+        setEditingId(APPROVAL_STEP_ID); return;
+      }
+      if (!workflowPreview.some((s) => s.id === AUTOPOST_STEP_ID)) {
+        setError('The Approval node needs a LinkedIn post node — it gates what that node publishes.');
+        setEditingId(APPROVAL_STEP_ID); return;
       }
     }
     if (analyticsNode && !(configs[ANALYTICS_STEP_ID]?.recipient || '').trim()) {
@@ -1411,8 +1447,15 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             followup_sequence: { touches: fuTouchList.length, channel: fuChannel, timeline_hours: fuTouchList.map((t) => t.hours || 24), human_approval: !!fc.human_approval },
           } : {}),
           ...(autopostNode ? (() => {
-            const pc = configs[AUTOPOST_STEP_ID] || {};
-            const content = (pc.content || '').trim();
+            // The three nodes merge here: content node supplies the copy/media,
+            // the approval node the gate, the post node the schedule. Falling
+            // back to the post node's own config keeps campaigns built before
+            // the split working unchanged.
+            const sc = configs[AUTOPOST_STEP_ID] || {};
+            const cc = configs[CONTENT_STEP_ID] || {};
+            const ac = workflowPreview.some((s) => s.id === APPROVAL_STEP_ID) ? (configs[APPROVAL_STEP_ID] || {}) : null;
+            const pc = { ...sc, ...cc };   // content-node values win for copy/media
+            const content = ((cc.content ?? sc.content) || '').trim();
             if (!content) return {};
             return {
               // Read by LinkedInAutopostScheduleService at launch → drives
@@ -1431,6 +1474,11 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 days: Array.isArray(pc.days) ? pc.days : [1],
                 time: pc.time || '09:00',
                 timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || undefined,
+                // Approval node present → the cron drafts and asks instead of
+                // publishing. Absent → unchanged auto-post behaviour.
+                require_approval: !!ac,
+                approval_channel: ac ? (ac.approval_channel || 'whatsapp') : undefined,
+                approval_to: ac ? ((ac.approval_to || '').trim() || undefined) : undefined,
               },
             };
           })() : {}),
@@ -1608,13 +1656,15 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     const isDataEnrich = editingId === ENRICH_STEP_ID;
     const isExport = editingId === EXPORT_STEP_ID;
     const isAutopost = editingId === AUTOPOST_STEP_ID;
+    const isContent = editingId === CONTENT_STEP_ID;
+    const isApproval = editingId === APPROVAL_STEP_ID;
     const isScrape = editingId === SCRAPE_STEP_ID;
     const isResearch = editingId === RESEARCH_STEP_ID;
     const isScore = editingId === SCORE_STEP_ID;
     const isSplit = editingId === SPLIT_STEP_ID;
     const isSetField = editingId === SETFIELD_STEP_ID;
     const isHttp = editingId === HTTP_STEP_ID;
-    const isMacro = isFollowup || isAnalytics || isZohoUpdate || isMedia || isMultiCond || isAiParse || isDataEnrich || isExport || isAutopost || isScrape || isResearch || isScore || isSplit || isSetField || isHttp;
+    const isMacro = isFollowup || isAnalytics || isZohoUpdate || isMedia || isMultiCond || isAiParse || isDataEnrich || isExport || isAutopost || isScrape || isResearch || isScore || isSplit || isSetField || isHttp || isContent || isApproval;
     const visual = isSource
       ? SOURCES.find((s) => s.key === source)
       : isFollowup
@@ -1635,6 +1685,10 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             ? { icon: <Download className="h-4 w-4 text-cyan-700" />, chip: 'bg-cyan-50 dark:bg-cyan-950/30' }
           : isAutopost
             ? { icon: <Megaphone className="h-4 w-4 text-[#0077B5]" />, chip: 'bg-sky-50 dark:bg-sky-950/30' }
+          : isContent
+            ? { icon: <PenTool className="h-4 w-4 text-violet-600" />, chip: 'bg-violet-50 dark:bg-violet-950/30' }
+          : isApproval
+            ? { icon: <ShieldCheck className="h-4 w-4 text-green-600" />, chip: 'bg-green-50 dark:bg-green-950/30' }
           : isScrape
             ? { icon: <Globe className="h-4 w-4 text-sky-600" />, chip: 'bg-sky-50 dark:bg-sky-950/30' }
           : isResearch
@@ -1657,7 +1711,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           <div className="min-w-0 flex-1">
             <div className="text-sm font-semibold text-foreground truncate">{editingStep.title}</div>
             <div className="text-xs text-muted-foreground">
-              {isSource ? 'Contact source settings' : isFollowup ? 'Follow-up sequence settings' : isAnalytics ? 'Report settings' : isZohoUpdate ? 'Field mapping' : isMedia ? 'AI media' : isMultiCond ? 'Branch by condition' : isAiParse ? 'AI data cleanup' : isDataEnrich ? 'Data to enrich' : isExport ? 'Export destinations' : isAutopost ? 'Post content & schedule' : isScrape ? 'Page to read' : isResearch ? 'What gets researched' : isScore ? 'Scoring signals' : isSplit ? 'Variants & split' : isSetField ? 'Fields to write' : isHttp ? 'Request' : isRouter ? 'Fallback routing settings' : 'Step settings'}
+              {isSource ? 'Contact source settings' : isFollowup ? 'Follow-up sequence settings' : isAnalytics ? 'Report settings' : isZohoUpdate ? 'Field mapping' : isMedia ? 'AI media' : isMultiCond ? 'Branch by condition' : isAiParse ? 'AI data cleanup' : isDataEnrich ? 'Data to enrich' : isExport ? 'Export destinations' : isAutopost ? 'Where & when' : isContent ? 'What the post says' : isApproval ? 'Who approves' : isScrape ? 'Page to read' : isResearch ? 'What gets researched' : isScore ? 'Scoring signals' : isSplit ? 'Variants & split' : isSetField ? 'Fields to write' : isHttp ? 'Request' : isRouter ? 'Fallback routing settings' : 'Step settings'}
             </div>
           </div>
           <button onClick={() => setEditingId(null)} className="h-7 w-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors flex-shrink-0">
@@ -2022,20 +2076,8 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             </>);
           })()}
 
-          {isAutopost && (() => {
+          {isContent && (() => {
             const eid = editingId!;
-            const freq = cfg.frequency === 'daily' ? 'daily' : 'weekly';
-            const days: number[] = Array.isArray(cfg.days) ? cfg.days : [1];
-            const describe = (f: string, d: number[]) => {
-              if (f === 'daily') return 'Daily · ' + (cfg.time || '09:00');
-              const names = AUTOPOST_DAYS.filter((x) => d.includes(x.value)).map((x) => x.label);
-              return (names.length ? names.join(', ') : 'no days') + ' · ' + (cfg.time || '09:00');
-            };
-            const toggleDay = (v: number) => {
-              const next = days.includes(v) ? days.filter((x) => x !== v) : [...days, v];
-              setCfg(eid, { days: next });
-              updateWorkflowStep(eid, { description: describe(freq, next) });
-            };
             return (<>
               <div className="rounded-md border border-sky-200 bg-sky-50 dark:border-sky-900 dark:bg-sky-950/30 px-3 py-2">
                 <p className="text-[11px] text-sky-800 dark:text-sky-300">
@@ -2054,7 +2096,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   </button>
                 </div>
                 <textarea className={`${field} min-h-[140px]`} value={cfg.content || ''}
-                  onChange={(e) => { setCfg(eid, { content: e.target.value }); updateWorkflowStep(eid, { description: e.target.value.slice(0, 40) || describe(freq, days) }); }}
+                  onChange={(e) => { setCfg(eid, { content: e.target.value }); updateWorkflowStep(eid, { description: e.target.value.slice(0, 40) || 'What the post says' }); }}
                   placeholder="Write your post, or add a topic and hit Generate with AI…" />
                 <p className="text-[11px] text-muted-foreground">{(cfg.content || '').length}/3000 characters</p>
               </div>
@@ -2276,6 +2318,59 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 );
               })()}
 
+            </>);
+          })()}
+
+          {isApproval && (() => {
+            const eid = editingId!;
+            return (<>
+              <div className="rounded-md border border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30 px-3 py-2">
+                <p className="text-[11px] text-green-800 dark:text-green-300">
+                  Nothing is published until you approve it. At each scheduled slot the post is
+                  drafted and sent to you — tap <strong>Approve</strong> and it goes out immediately.
+                </p>
+              </div>
+              <div className="space-y-1"><label className="text-xs font-medium text-foreground">Send the draft to</label>
+                <select className={field} value={cfg.approval_channel || 'whatsapp'}
+                  onChange={(e) => { setCfg(eid, { approval_channel: e.target.value }); updateWorkflowStep(eid, { description: `${e.target.value === 'email' ? 'Email' : 'WhatsApp'} · before posting` }); }}>
+                  <option value="whatsapp">WhatsApp</option>
+                  <option value="email">Email</option>
+                </select></div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">
+                  {(cfg.approval_channel || 'whatsapp') === 'email' ? 'Approver email' : 'Approver WhatsApp number'}
+                </label>
+                <input className={field} value={cfg.approval_to || ''} onChange={(e) => setCfg(eid, { approval_to: e.target.value })}
+                  placeholder={(cfg.approval_channel || 'whatsapp') === 'email' ? 'you@company.com' : '+971500000000'} />
+              </div>
+              <p className="text-[11px] leading-snug text-muted-foreground">
+                A draft nobody answers is released after 48 hours so the schedule keeps running —
+                that slot is skipped, not posted.
+              </p>
+            </>);
+          })()}
+
+          {isAutopost && (() => {
+            const eid = editingId!;
+            const freq = cfg.frequency === 'daily' ? 'daily' : 'weekly';
+            const days: number[] = Array.isArray(cfg.days) ? cfg.days : [1];
+            const describe = (f: string, d: number[]) => {
+              if (f === 'daily') return 'Daily · ' + (cfg.time || '09:00');
+              const names = AUTOPOST_DAYS.filter((x) => d.includes(x.value)).map((x) => x.label);
+              return (names.length ? names.join(', ') : 'no days') + ' · ' + (cfg.time || '09:00');
+            };
+            const toggleDay = (v: number) => {
+              const next = days.includes(v) ? days.filter((x) => x !== v) : [...days, v];
+              setCfg(eid, { days: next });
+              updateWorkflowStep(eid, { description: describe(freq, next) });
+            };
+            return (<>
+              <div className="rounded-md border border-sky-200 bg-sky-50 dark:border-sky-900 dark:bg-sky-950/30 px-3 py-2">
+                <p className="text-[11px] text-sky-800 dark:text-sky-300">
+                  Publishes the content from the <strong>LinkedIn content</strong> node to your own
+                  feed on this schedule. Posts <strong>once per schedule</strong>, not once per lead.
+                </p>
+              </div>
               <div className="space-y-1"><label className="text-xs font-medium text-foreground">Post as</label>
                 <select className={field} value={cfg.post_as || 'personal'} onChange={(e) => setCfg(eid, { post_as: e.target.value })}>
                   <option value="personal">My personal profile</option>
@@ -2326,7 +2421,9 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 )}
               </div>
             </>);
+
           })()}
+
 
           {isSplit && (() => {
             const eid = editingId!;
@@ -3096,6 +3193,8 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               { id: SPLIT_STEP_ID, on: addSplitTest, icon: <Shuffle className="h-4 w-4 text-pink-600" />, chip: 'bg-pink-50 dark:bg-pink-950/30', label: 'A/B split test', sub: 'Compare two openers' },
               { id: SETFIELD_STEP_ID, on: addSetField, icon: <PenLine className="h-4 w-4 text-lime-600" />, chip: 'bg-lime-50 dark:bg-lime-950/30', label: 'Set field', sub: 'Tag or write a value' },
               { id: HTTP_STEP_ID, on: addHttpRequest, icon: <Webhook className="h-4 w-4 text-slate-600" />, chip: 'bg-slate-100 dark:bg-slate-800/50', label: 'HTTP request', sub: 'Call any API per lead' },
+              { id: CONTENT_STEP_ID, on: addLinkedInContent, icon: <PenTool className="h-4 w-4 text-violet-600" />, chip: 'bg-violet-50 dark:bg-violet-950/30', label: 'LinkedIn content', sub: 'Write or AI-generate the post' },
+              { id: APPROVAL_STEP_ID, on: addPostApproval, icon: <ShieldCheck className="h-4 w-4 text-green-600" />, chip: 'bg-green-50 dark:bg-green-950/30', label: 'Approval', sub: 'Approve on WhatsApp before posting' },
             ]).map((b) => {
               const added2 = workflowPreview.some((s) => s.id === b.id);
               return (
