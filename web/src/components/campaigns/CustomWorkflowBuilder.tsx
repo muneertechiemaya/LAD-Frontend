@@ -3147,6 +3147,11 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         <MediaGenerationModal
           isOpen={showMediaStudio}
           onClose={() => { setShowMediaStudio(false); setMediaGalleryOpen(true); mediaBuilder.fetchGallery?.().catch(() => {}); }}
+          // The builder is hosted in a fixed z-index:10000 overlay and the
+          // dialog portals to <body>, so without these it opens BEHIND the
+          // builder — invisible, and closed by the next click.
+          className="z-[10050]"
+          overlayClassName="z-[10040]"
         />
       )}
     </div>
