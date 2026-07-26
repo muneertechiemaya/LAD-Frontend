@@ -469,6 +469,11 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   const [autopostMsg, setAutopostMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [liOrganizations, setLiOrganizations] = useState<{ id: string; name: string }[]>([]);
   const autopostFileRef = useRef<HTMLInputElement | null>(null);
+  // Inline AI-media wizard for the auto-post node — runs the media builder's
+  // Q&A inside the drawer instead of the full-screen studio modal.
+  const [inlineMedia, setInlineMedia] = useState(false);
+  const [inlineAnswer, setInlineAnswer] = useState('');
+  const inlinePrefilledRef = useRef<string | null>(null);
   // Multi-condition node: fields of the connected source (dynamic dropdown).
   const [mcFields, setMcFields] = useState<{ value: string; label: string }[]>(SWITCH_FIELDS);
   const [mcFieldsLoading, setMcFieldsLoading] = useState(false);
@@ -2072,15 +2077,16 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 const imgs = mediaBuilder.galleryImages || [];
                 const vids = mediaBuilder.galleryVideos || [];
                 const openGallery = () => { setMediaGalleryOpen((o) => !o); if (!mediaGalleryOpen) mediaBuilder.fetchGallery?.().catch(() => {}); };
-                // The studio's wizard starts from a blank prompt, so copy the
-                // post text over — it's the description the image should match.
+                // Run the wizard inline in this drawer. selectImageCreation
+                // skips the image/video choice — an auto-post wants an image —
+                // and the describe-image phase is pre-filled with the post text.
                 const openStudio = () => {
-                  const topic = (cfg.content || '').trim();
-                  if (topic) { try { navigator.clipboard?.writeText(topic); } catch { /* clipboard is best-effort */ } }
-                  setAutopostMsg(topic
-                    ? { ok: true, text: 'Post text copied — paste it as the image prompt in the studio.' }
-                    : { ok: true, text: 'Describe the image you want in the studio.' });
-                  setShowMediaStudio(true);
+                  setAutopostMsg(null);
+                  inlinePrefilledRef.current = null;
+                  setInlineAnswer('');
+                  setInlineMedia(true);
+                  mediaBuilder.startFlow?.();
+                  Promise.resolve(mediaBuilder.selectImageCreation?.()).catch(() => {});
                 };
                 return (
                   <div className="space-y-2">
@@ -2102,9 +2108,133 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
 
                     {mediaError && <p className="text-xs text-red-600">{mediaError}</p>}
 
+                    {/* ── Inline AI-media wizard ─────────────────────────────
+                        The media builder is a multi-phase Q&A. Rather than the
+                        full-screen studio, render each phase compactly here and
+                        pre-fill the image description with the post text. */}
+                    {inlineMedia && (() => {
+                      const mb = mediaBuilder;
+                      const step = mb.step as string;
+                      const p: any = mb.uiPayload || {};
+                      const phase: string = p.phase || '';
+                      const busy = step === 'loading' || mb.generating;
+                      const cancel = () => { setInlineMedia(false); setInlineAnswer(''); mb.closeFlow?.(); };
+
+                      // The prompt phase — seed it with the post content once.
+                      const isDescribe = /describe image/i.test(phase) || /describe.*image/i.test(p.question || '');
+                      if (step === 'builder-text' && isDescribe && inlinePrefilledRef.current !== phase) {
+                        inlinePrefilledRef.current = phase;
+                        const seed = (cfg.content || '').trim();
+                        if (seed) setTimeout(() => setInlineAnswer(seed.slice(0, 900)), 0);
+                      }
+
+                      // NOTE: a plain function, NOT a component. Declaring a
+                      // component inside render gives it a new type every pass,
+                      // so React remounts the subtree and the textarea loses
+                      // focus on each keystroke.
+                      const shell = (children: React.ReactNode) => (
+                        <div className="rounded-xl border border-fuchsia-200 dark:border-fuchsia-900 bg-fuchsia-50/50 dark:bg-fuchsia-950/20 p-3 space-y-2.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-fuchsia-700 dark:text-fuchsia-300">
+                              <Wand2 className="h-3.5 w-3.5" /> AI image
+                            </span>
+                            <button type="button" onClick={cancel} className="text-[11px] text-muted-foreground hover:text-foreground">Cancel</button>
+                          </div>
+                          {phase && <div className="text-[10.5px] font-medium text-fuchsia-600/80 dark:text-fuchsia-400/80">{phase}</div>}
+                          {children}
+                        </div>
+                      );
+
+                      if (busy) return (
+                        shell(<><p className="py-3 text-center text-[12px] text-muted-foreground flex items-center justify-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" /> Working…
+                        </p></>)
+                      );
+
+                      if (mb.error) return (
+                        shell(<>
+                          <p className="text-[12px] text-red-600">{String(mb.error)}</p>
+                          <button type="button" onClick={() => { cancel(); setShowMediaStudio(true); }}
+                            className="text-[12px] font-medium text-[#0b1957] dark:text-sky-300 hover:underline">Open the full studio instead</button>
+                        </>)
+                      );
+
+                      // Multiple-choice phase
+                      if (step === 'builder-mcq-few') return (
+                        shell(<>
+                          <p className="text-[13px] font-medium text-foreground leading-snug">{p.question}</p>
+                          {p.description && <p className="text-[11.5px] text-muted-foreground leading-snug">{p.description}</p>}
+                          <div className="flex flex-col gap-1.5">
+                            {(p.options || []).map((o: any, i: number) => (
+                              <button key={i} type="button"
+                                onClick={() => { setInlineAnswer(''); mb.advanceStep?.(o?.label ?? String(o)); }}
+                                className="w-full text-left rounded-lg border border-border bg-card px-2.5 py-2 text-[12.5px] text-foreground hover:border-fuchsia-400 hover:bg-fuchsia-50 dark:hover:bg-fuchsia-950/30 transition-colors">
+                                {o?.label ?? String(o)}
+                              </button>
+                            ))}
+                          </div>
+                        </>)
+                      );
+
+                      // Free-text phase (the image description lands here)
+                      if (step === 'builder-text') return (
+                        shell(<>
+                          <p className="text-[13px] font-medium text-foreground leading-snug">{p.question}</p>
+                          {p.description && <p className="text-[11.5px] text-muted-foreground leading-snug">{p.description}</p>}
+                          {isDescribe && (
+                            <p className="text-[11px] text-fuchsia-700 dark:text-fuchsia-300">Pre-filled from your post — edit if you want a different image.</p>
+                          )}
+                          <textarea className={`${field} min-h-[80px]`} value={inlineAnswer}
+                            onChange={(e) => setInlineAnswer(e.target.value)} placeholder="Type your answer…" />
+                          <div className="flex items-center gap-2">
+                            <button type="button" disabled={!inlineAnswer.trim()}
+                              onClick={() => { const v = inlineAnswer.trim(); setInlineAnswer(''); mb.advanceStep?.(v); }}
+                              className="px-3 py-1.5 rounded-lg bg-fuchsia-600 text-white text-[12.5px] font-semibold disabled:opacity-50">Send</button>
+                            <button type="button" onClick={() => { setInlineAnswer(''); mb.advanceStep?.(''); }}
+                              className="text-[12px] text-muted-foreground hover:text-foreground">Skip</button>
+                          </div>
+                        </>)
+                      );
+
+                      // Generated images — click one to attach it to the post
+                      if (step === 'builder-image-output') {
+                        const outImgs: any[] = p.images || [];
+                        return (
+                          shell(<>
+                            <p className="text-[13px] font-medium text-foreground leading-snug">{p.question || 'Pick an image for your post'}</p>
+                            {!outImgs.length ? (
+                              <p className="text-[12px] text-muted-foreground">No images came back — try the full studio.</p>
+                            ) : (
+                              <div className="grid grid-cols-2 gap-2">
+                                {outImgs.map((im: any, i: number) => {
+                                  const u = im?.url || im?.signed_url || (typeof im === 'string' ? im : '');
+                                  return u ? (
+                                    <img key={i} src={u} alt="generated"
+                                      onClick={() => { importGenerated(u, AUTOPOST_STEP_ID); setInlineMedia(false); mb.closeFlow?.(); }}
+                                      className="h-20 w-full object-cover rounded-md cursor-pointer hover:ring-2 ring-fuchsia-500" />
+                                  ) : null;
+                                })}
+                              </div>
+                            )}
+                            <p className="text-[11px] text-muted-foreground">Click an image to attach it.</p>
+                          </>)
+                        );
+                      }
+
+                      // Video / keyframe phases aren't worth reproducing in a
+                      // 22rem drawer — hand off to the studio.
+                      return (
+                        shell(<>
+                          <p className="text-[12.5px] text-muted-foreground leading-snug">This part of the wizard needs more room.</p>
+                          <button type="button" onClick={() => { setInlineMedia(false); setShowMediaStudio(true); }}
+                            className="px-3 py-1.5 rounded-lg bg-fuchsia-600 text-white text-[12.5px] font-semibold">Continue in the full studio</button>
+                        </>)
+                      );
+                    })()}
+
                     <div className="grid grid-cols-2 gap-2">
-                      <button type="button" onClick={openStudio}
-                        className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-fuchsia-300 bg-fuchsia-50 dark:bg-fuchsia-950/30 px-2.5 py-2 text-[12.5px] font-medium text-fuchsia-700 dark:text-fuchsia-300 hover:bg-fuchsia-100 dark:hover:bg-fuchsia-900/40">
+                      <button type="button" onClick={openStudio} disabled={inlineMedia}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-fuchsia-300 bg-fuchsia-50 dark:bg-fuchsia-950/30 px-2.5 py-2 text-[12.5px] font-medium text-fuchsia-700 dark:text-fuchsia-300 hover:bg-fuchsia-100 dark:hover:bg-fuchsia-900/40 disabled:opacity-50">
                         <Wand2 className="h-3.5 w-3.5" /> Generate with AI
                       </button>
                       <button type="button" onClick={() => autopostFileRef.current?.click()} disabled={mediaImporting}
