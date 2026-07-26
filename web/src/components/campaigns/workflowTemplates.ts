@@ -26,6 +26,10 @@ export const AI_STEP_ID = 'ai-agent-node';
 export const ENRICH_STEP_ID = 'data-enrich-node';
 export const EXPORT_STEP_ID = 'export-results-node';
 export const AUTOPOST_STEP_ID = 'linkedin-post-node';
+// The posting strategy is three composable nodes: content -> (approval) -> post.
+// All three merge into ONE campaigns.config.autopost object at launch.
+export const CONTENT_STEP_ID = 'linkedin-content-node';
+export const APPROVAL_STEP_ID = 'post-approval-node';
 
 export const AI_DEFAULT_INSTRUCTION =
   'If the job title has multiple or mixed roles, keep the single best-fit, most senior title. Split the full name into first/last and tidy the company name.';
