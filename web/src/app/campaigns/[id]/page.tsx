@@ -8,6 +8,7 @@ import { useCampaignStore } from '@/store/campaignStore';
 import { useCampaign, updateCampaign, createCampaign, pauseCampaign } from '@lad/frontend-features/campaigns';
 import { useToast } from '@/components/ui/app-toaster';
 import { StepLibrary, FlowCanvas, StepSettings } from '@/components/campaigns';
+import LinkedInApprovalsPanel from '@/components/campaigns/LinkedInApprovalsPanel';
 export default function CampaignDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -241,6 +242,9 @@ export default function CampaignDetailPage() {
         {/* Center - Flow Canvas */}
         <div className="flex-1 relative">
           <FlowCanvas />
+          {/* Approval node read-back. Renders nothing unless this campaign has
+              an auto-post schedule with the approval gate switched on. */}
+          <LinkedInApprovalsPanel campaignId={campaignId} />
         </div>
         {/* Right Sidebar - Step Settings */}
         <StepSettings />
