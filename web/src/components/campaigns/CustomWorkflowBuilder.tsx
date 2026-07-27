@@ -707,15 +707,17 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         !window.confirm(`Replace the current workflow with the "${t.name}" template?`)) {
       return;
     }
-    const srcDef = SOURCES.find((s) => s.key === t.source.key)!;
-    const steps: WorkflowPreviewStep[] = [{
+    // Publisher-only templates have no source: they enrol nobody, so a contact
+    // source would be a step the user configures and then never uses.
+    const srcDef = t.source ? SOURCES.find((s) => s.key === t.source!.key) : undefined;
+    const steps: WorkflowPreviewStep[] = t.source ? [{
       id: SOURCE_STEP_ID, type: 'lead_generation',
       channel: t.source.key.startsWith('linkedin') ? 'linkedin' : 'email',
-      title: t.source.title || srcDef.label,
-      description: t.source.description || srcDef.sub,
-    }];
+      title: t.source.title || srcDef?.label || 'Contact source',
+      description: t.source.description || srcDef?.sub || '',
+    }] : [];
     const cfgs: Record<string, any> = {};
-    if (t.source.cfg || opts?.sourceCfgOverride) {
+    if (t.source && (t.source.cfg || opts?.sourceCfgOverride)) {
       cfgs[SOURCE_STEP_ID] = { ...(t.source.cfg || {}), ...(opts?.sourceCfgOverride || {}) };
     }
 
@@ -731,12 +733,13 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       if (n.cfg) cfgs[id] = { ...n.cfg };
     }
 
-    setSource(t.source.key);
+    setSource(t.source ? t.source.key : null);
     setWorkflowPreview(steps);
     setConfigs(cfgs);
     if (!name.trim()) setName(t.name);
     setError(null);
-    setEditingId(SOURCE_STEP_ID);
+    // With no source, open the first real node instead of a step that isn't there.
+    setEditingId(t.source ? SOURCE_STEP_ID : (steps[0]?.id ?? null));
   };
 
   const addSplitTest = () => {
@@ -1560,6 +1563,9 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               autopost: {
                 content,
                 ai_generate: !!pc.ai_generate,
+                // Read by LinkedInPostContentService — 'structured' switches the
+                // generator to the heading + numbered-list shape AI search cites.
+                post_format: pc.post_format === 'structured' ? 'structured' : undefined,
                 media_url: (pc.media_url || '').trim() || undefined,
                 // The cron passes this to publishPost, which derives the MIME
                 // type from the extension — without it the filename is guessed
@@ -1663,7 +1669,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     const t = WORKFLOW_TEMPLATES.find((x) => x.key === overviewTpl);
     if (!t) return null;
     const steps = [
-      { title: t.source.title, category: 'Contact source' },
+      ...(t.source ? [{ title: t.source.title, category: 'Contact source' }] : []),
       ...t.nodes.map((n) => ({ title: n.title, category: stepCategory(n.type) })),
     ];
     const use = () => { applyTemplate(t); setOverviewTpl(null); };
@@ -2218,6 +2224,24 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   <span className="block text-[11px] text-muted-foreground">Uses the text above as the topic, so a recurring series doesn&apos;t repeat itself.</span>
                 </span>
               </label>
+
+              {/* Shape of the post. Only meaningful when AI writes it — a post
+                  typed by hand is already whatever shape it is. */}
+              {!!cfg.ai_generate && (
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-foreground">Post shape</label>
+                  <select className={field} value={cfg.post_format || 'insight'}
+                    onChange={(e) => setCfg(eid, { post_format: e.target.value })}>
+                    <option value="insight">Short insight post (80-150 words)</option>
+                    <option value="structured">Structured list (200-400 words)</option>
+                  </select>
+                  <p className="text-[11px] text-muted-foreground">
+                    {(cfg.post_format || 'insight') === 'structured'
+                      ? 'A heading and 3-6 numbered points. This is the shape AI search engines cite most: LinkedIn found headings in 92% of cited posts, and a list in every top-cited article.'
+                      : 'A single hook and a short story. Good for reach and replies.'}
+                  </p>
+                </div>
+              )}
 
               <div className="space-y-1"><label className="text-xs font-medium text-foreground">Link (optional)</label>
                 <input className={field} value={cfg.external_link || ''} onChange={(e) => setCfg(eid, { external_link: e.target.value })}

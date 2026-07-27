@@ -64,7 +64,12 @@ export type WorkflowTemplate = {
   tagline: string;
   /** Chip labels shown on cards / in chat so users see the pipeline up front. */
   chain: string[];
-  source: { key: TemplateSourceKey; cfg?: any; title: string; description: string };
+  /**
+   * Omitted for publisher-only pipelines (content -> approval -> post).
+   * Those enrol nobody, so asking for a contact source would be noise the
+   * user has to configure and then ignore.
+   */
+  source?: { key: TemplateSourceKey; cfg?: any; title: string; description: string };
   nodes: TemplateNode[];
   /** Chat-wizard questions; empty means nothing to collect conversationally. */
   inputs: TemplateInput[];
@@ -451,6 +456,54 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
       { type: 'linkedin_message', title: 'Message', description: 'Operations opener', cfg: { message: 'Hi {{first_name}}, thanks for connecting. Most teams I speak with in this space are still absorbing rate volatility and tighter delivery windows. Is that shaping planning at {{company_name}} right now?' } },
       { type: 'data_enrich', macroId: ENRICH_STEP_ID, title: 'Enrich contact', description: 'Phone number', cfg: { enrich: ['phone'] } },
       { type: 'whatsapp_send', title: 'WhatsApp', description: 'Follow up on mobile', cfg: { message: 'Hi {{first_name}}, following up from LinkedIn on freight capacity and lead times. Happy to share options if it is useful.', delayDays: 3 } },
+    ],
+  },
+  {
+    // Built from LinkedIn/Meltwater's "5 Takeaways from 9.5 Million Citations":
+    // LinkedIn is the #2 most-cited source for AI models, 75% of those citations
+    // come from individual member profiles rather than Company Pages, 92% of
+    // cited posts use clear headings, every top-cited article used a list, and
+    // 48% of cited content was published within the last three months.
+    //
+    // So: post as a PERSON not a page, three times a week, in the structured
+    // list shape, with fresh copy every run.
+    key: 'ai_search_authority',
+    category: 'general',
+    badge: { label: 'Publisher', tone: 'violet' },
+    meta: { cycleDays: 30, channels: 1 },
+    accent: '#7C3AED',
+    name: 'AI Search Authority',
+    tagline: 'Get cited by ChatGPT and Google AI — structured posts, three times a week, from your own profile',
+    chain: ['AI writes a listicle', 'You approve it', 'Posts Mon / Wed / Fri'],
+    // No source: this pipeline publishes, it does not enrol anyone.
+    inputs: [],
+    nodes: [
+      {
+        type: 'linkedin_content', macroId: CONTENT_STEP_ID,
+        title: 'LinkedIn content', description: 'Structured listicle, AI-written',
+        cfg: {
+          // The seed is the standing brief, rewritten fresh each run. Phrased as
+          // the citation research prescribes: answer a real buyer question, with
+          // specific names and numbers, as a numbered list.
+          content: 'Answer one real question my buyers ask before they choose a vendor. Make it a numbered list of 4 to 6 points, each naming a specific tool, threshold, number, or worked example. Practical enough that someone could act on it today, and useful even to a reader who never buys from us.',
+          ai_generate: true,
+          post_format: 'structured',
+        },
+      },
+      {
+        type: 'post_approval', macroId: APPROVAL_STEP_ID,
+        title: 'Approval', description: 'WhatsApp · before posting',
+        cfg: { approval_channel: 'whatsapp', approval_to: '' },
+      },
+      {
+        type: 'linkedin_post', macroId: AUTOPOST_STEP_ID,
+        title: 'LinkedIn auto-post', description: 'Mon / Wed / Fri · 09:00',
+        cfg: {
+          // Personal profile, deliberately: 75% of LinkedIn's AI citations come
+          // from member profiles, only 25% from Company Pages.
+          ai_generate: true, frequency: 'weekly', days: [1, 3, 5], time: '09:00', post_as: 'personal',
+        },
+      },
     ],
   },
 ];
