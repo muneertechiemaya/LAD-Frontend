@@ -1,7 +1,7 @@
 /**
- * Workflow templates ("Roles") — one-click pipeline recipes shared by:
+ * Workflow templates ("Accelerators") — one-click pipeline recipes shared by:
  *   - CustomWorkflowBuilder's "Start from a template" gallery
- *   - the advanced-search chat panel's Roles dropdown (conversational wizard)
+ *   - the advanced-search chat panel's Accelerators dropdown (conversational wizard)
  *
  * Each node is either an OUTREACH step (the builder assigns a generated id) or
  * a single-instance macro (uses its fixed *_STEP_ID so the builder's drawers
@@ -75,7 +75,7 @@ export type WorkflowTemplate = {
   inputs: TemplateInput[];
   /** Needs a file upload (chat routes these to the builder instead of launching directly). */
   requiresFile?: boolean;
-  /** Brand accent used by the chat Roles UI (cards, chips, CTAs). */
+  /** Brand accent used by the chat Accelerators UI (cards, chips, CTAs). */
   accent: string;
   /** Small card badge (e.g. Popular / Daily). */
   badge?: { label: string; tone: 'blue' | 'violet' };
@@ -213,7 +213,7 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
       { type: 'zoho_update', macroId: ZOHO_UPDATE_STEP_ID, title: 'Update Zoho record', description: 'Write back to Contacts', cfg: { module: 'Contacts', map: {} } },
     ],
   },
-  // ── Industry Roles ────────────────────────────────────────────────────────
+  // ── Industry Accelerators ─────────────────────────────────────────────────
   // Titles + industries are pre-filled, so activating one only needs a
   // location. The wizard still offers a title override for anyone who wants
   // to narrow it further.

@@ -450,7 +450,7 @@ function useBuilderResources() {
 
 export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSourceCfg, autoLaunch, editCampaignId }: {
   onClose: () => void;
-  /** Apply this template on mount (chat "Roles" wizard hands off here). */
+  /** Apply this template on mount (chat "Accelerators" wizard hands off here). */
   initialTemplateKey?: string;
   /** Answers collected in chat — merged into the source node's config. */
   initialSourceCfg?: Record<string, any>;
@@ -1734,7 +1734,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     }
   };
 
-  // ── Programmatic template launch (chat "Roles" wizard hand-off) ───────────
+  // ── Programmatic template launch (chat "Accelerators" wizard hand-off) ────
   // Effect 1 applies the template once on mount (silently — no confirm) with
   // the wizard's answers merged into the source config. Effect 2 fires launch()
   // exactly once, on the render AFTER the applied state has committed (the
