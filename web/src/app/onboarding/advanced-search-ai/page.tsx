@@ -7297,7 +7297,7 @@ function RolesLauncher({ onPick }: { onPick: (t: WorkflowTemplate) => void }) {
             {open && (
                 <div className="adv-roles-menu" onClick={(e) => e.stopPropagation()}>
                     <div className="px-2.5 pt-1.5 pb-2 flex items-center justify-between">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Hire an Accelerator</span>
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Pick an Accelerator</span>
                         <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">{WORKFLOW_TEMPLATES.length} pipelines</span>
                     </div>
                     {(() => {
