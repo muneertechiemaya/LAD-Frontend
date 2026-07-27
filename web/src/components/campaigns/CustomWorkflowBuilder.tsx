@@ -474,6 +474,14 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   const [inlineMedia, setInlineMedia] = useState(false);
   const [inlineAnswer, setInlineAnswer] = useState('');
   const inlinePrefilledRef = useRef<string | null>(null);
+  // Agent-driven mode: the wizard still runs, but each question is answered
+  // from the post copy instead of being shown. See autoMediaLog for what it
+  // decided — silent automation the user can't inspect is worse than a form.
+  const [autoMedia, setAutoMedia] = useState(false);
+  const [autoMediaLog, setAutoMediaLog] = useState<{ phase: string; answer: string }[]>([]);
+  const autoBusyRef = useRef(false);
+  const autoKeyRef = useRef<string | null>(null);
+  const autoCountRef = useRef(0);
   const inlineStartedRef = useRef(false);
   // Multi-condition node: fields of the connected source (dynamic dropdown).
   const [mcFields, setMcFields] = useState<{ value: string; label: string }[]>(SWITCH_FIELDS);
@@ -937,6 +945,61 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inlineMedia, mediaBuilder.step, mediaBuilder.sessionId]);
+
+  // ── Agent-driven media configuration ──────────────────────────────────────
+  // Answer each wizard question from the post copy instead of asking the user.
+  // The wizard is the media worker's own state machine, so this drives it the
+  // same way a human would — one answer at a time — rather than trying to
+  // shortcut it. It deliberately STOPS at the image grid: picking the picture
+  // is a real choice worth keeping, and it isn't the part that was tedious.
+  const AUTO_MEDIA_MAX_PHASES = 30;
+  useEffect(() => {
+    if (!inlineMedia || !autoMedia) return;
+    const mb = mediaBuilder;
+    const step = mb.step as string;
+    const p: any = mb.uiPayload || {};
+    if (step === 'loading' || mb.generating) return;
+    // Hand back to the manual UI on anything we can't answer — an error, or a
+    // video/keyframe phase that has no question to answer.
+    if (mb.error) { setAutoMedia(false); return; }
+    if (step !== 'builder-mcq-few' && step !== 'builder-text') return;
+
+    const key = `${step}|${p.phase || ''}|${p.question || ''}`;
+    if (autoBusyRef.current || autoKeyRef.current === key) return;
+    // A wizard that loops would otherwise burn model calls forever.
+    if (autoCountRef.current >= AUTO_MEDIA_MAX_PHASES) { setAutoMedia(false); return; }
+
+    autoBusyRef.current = true;
+    autoKeyRef.current = key;
+    autoCountRef.current += 1;
+
+    (async () => {
+      const post = (configs[CONTENT_STEP_ID]?.content || configs[AUTOPOST_STEP_ID]?.content || '').trim();
+      let answer = '';
+      try {
+        const res = await fetchWithTenant('/api/campaigns/linkedin-post/media-answer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            question: p.question || '',
+            description: p.description || '',
+            options: step === 'builder-mcq-few' ? (p.options || []) : null,
+            phase: p.phase || '',
+            post_content: post,
+          }),
+        });
+        const data = await res.json();
+        if (data?.success) answer = String(data.answer ?? '');
+      } catch {
+        // Leave the answer empty — the wizard treats that as a skip, which is
+        // better than abandoning a run half-way through.
+      }
+      setAutoMediaLog((l) => [...l, { phase: p.phase || p.question || 'Step', answer }]);
+      try { await mb.advanceStep?.(answer); } catch { /* surfaced via mb.error */ }
+      autoBusyRef.current = false;
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inlineMedia, autoMedia, mediaBuilder.step, mediaBuilder.uiPayload, mediaBuilder.generating, mediaBuilder.error]);
 
   // Lazy-load the LinkedIn company pages the account may post as. Fails soft —
   // an empty list simply leaves "personal profile" as the only option.
@@ -2158,10 +2221,15 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 // Run the wizard inline in this drawer. selectImageCreation
                 // skips the image/video choice — an auto-post wants an image —
                 // and the describe-image phase is pre-filled with the post text.
-                const openStudio = () => {
+                const openStudio = (auto = false) => {
                   setAutopostMsg(null);
                   inlinePrefilledRef.current = null;
                   setInlineAnswer('');
+                  autoBusyRef.current = false;
+                  autoKeyRef.current = null;
+                  autoCountRef.current = 0;
+                  setAutoMediaLog([]);
+                  setAutoMedia(auto);
                   setInlineMedia(true);
                   // Only start the flow here. selectImageCreation closes over
                   // the sessionId STATE, which startFlow has just queued —
@@ -2200,7 +2268,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                       const p: any = mb.uiPayload || {};
                       const phase: string = p.phase || '';
                       const busy = step === 'loading' || mb.generating;
-                      const cancel = () => { setInlineMedia(false); setInlineAnswer(''); mb.closeFlow?.(); };
+                      const cancel = () => { setInlineMedia(false); setInlineAnswer(''); setAutoMedia(false); mb.closeFlow?.(); };
 
                       // The prompt phase — seed it with the post content once.
                       const isDescribe = /describe image/i.test(phase) || /describe.*image/i.test(p.question || '');
@@ -2225,6 +2293,34 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                           {phase && <div className="text-[10.5px] font-medium text-fuchsia-600/80 dark:text-fuchsia-400/80">{phase}</div>}
                           {children}
                         </div>
+                      );
+
+                      // Agent-driven: never show the questionnaire. Show what it
+                      // has decided instead — automation you can't inspect is
+                      // worse than the form it replaced. Stops at the image
+                      // grid, which is a real choice and was never the tedious
+                      // part.
+                      if (autoMedia && !mb.error && step !== 'builder-image-output') return (
+                        shell(<>
+                          <p className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin text-fuchsia-600" />
+                            Setting the image up from your post…
+                          </p>
+                          {autoMediaLog.length > 0 && (
+                            <ul className="space-y-1 max-h-40 overflow-y-auto">
+                              {autoMediaLog.map((e, i) => (
+                                <li key={i} className="text-[11px] leading-snug">
+                                  <span className="text-muted-foreground">{e.phase}: </span>
+                                  <span className="text-foreground font-medium">{e.answer || 'skipped'}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                          <button type="button" onClick={() => setAutoMedia(false)}
+                            className="text-[11.5px] text-muted-foreground hover:text-foreground underline">
+                            Take over and answer the rest myself
+                          </button>
+                        </>)
                       );
 
                       if (busy) return (
@@ -2283,7 +2379,9 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                         const outImgs: any[] = p.images || [];
                         return (
                           shell(<>
-                            <p className="text-[13px] font-medium text-foreground leading-snug">{p.question || 'Pick an image for your post'}</p>
+                            <p className="text-[13px] font-medium text-foreground leading-snug">
+                              {autoMedia ? 'Configured from your post — pick your favourite' : (p.question || 'Pick an image for your post')}
+                            </p>
                             {!outImgs.length ? (
                               <p className="text-[12px] text-muted-foreground">No images came back — try the full studio.</p>
                             ) : (
@@ -2315,7 +2413,11 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     })()}
 
                     <div className="grid grid-cols-2 gap-2">
-                      <button type="button" onClick={openStudio} disabled={inlineMedia}
+                      {/* Default to the agent doing the setup: the post copy is
+                          already the brief, so making everyone sit through the
+                          questionnaire to restate it is the wrong default. */}
+                      <button type="button" onClick={() => openStudio(true)} disabled={inlineMedia || !(cfg.content || '').trim()}
+                        title={!(cfg.content || '').trim() ? 'Write or generate the post first — the copy is what the image is based on' : undefined}
                         className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-fuchsia-300 bg-fuchsia-50 dark:bg-fuchsia-950/30 px-2.5 py-2 text-[12.5px] font-medium text-fuchsia-700 dark:text-fuchsia-300 hover:bg-fuchsia-100 dark:hover:bg-fuchsia-900/40 disabled:opacity-50">
                         <Wand2 className="h-3.5 w-3.5" /> Generate with AI
                       </button>
@@ -2324,6 +2426,12 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                         {mediaImporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />} Upload
                       </button>
                     </div>
+                    {!inlineMedia && (
+                      <button type="button" onClick={() => openStudio(false)}
+                        className="text-[11.5px] text-muted-foreground hover:text-foreground underline">
+                        Set the image up myself instead
+                      </button>
+                    )}
                     <input ref={autopostFileRef} type="file" accept="image/*,video/*" className="hidden"
                       onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadMediaFor(f, CONTENT_STEP_ID); e.target.value = ''; }} />
 
