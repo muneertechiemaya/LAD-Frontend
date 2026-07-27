@@ -81,6 +81,12 @@ export interface EmbeddedSignupResult {
 
 export interface ExchangeSignupRequest extends EmbeddedSignupResult {
   ai_model?: string;
+  /**
+   * The literal Embedded Signup completion event, e.g. 'FINISH' or
+   * 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING'. The backend uses it to detect a
+   * coexistence onboarding, which must skip phone-number registration.
+   */
+  onboarding_event?: string;
 }
 
 /**

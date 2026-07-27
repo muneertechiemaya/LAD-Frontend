@@ -34,10 +34,26 @@ const META_ORIGINS = ['https://www.facebook.com', 'https://web.facebook.com'];
 
 const SDK_SCRIPT_ID = 'facebook-jssdk';
 
+/**
+ * Events that mean "the user finished and we have an account".
+ *
+ * FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING is the COEXISTENCE completion — Meta
+ * emits a different event name for that flow, so treating only FINISH* as
+ * success would silently drop every coexistence signup: the popup closes, the
+ * user believes it worked, and nothing is ever persisted.
+ */
+const FINISH_EVENTS = [
+  'FINISH',
+  'FINISH_ONLY_WABA',
+  'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING',
+];
+
 interface SessionInfo {
   waba_id: string;
   phone_number_id: string;
   business_id?: string;
+  /** Literal completion event — the backend uses it to detect coexistence. */
+  onboarding_event: string;
 }
 
 export interface UseWhatsAppEmbeddedSignupOptions {
@@ -146,9 +162,13 @@ export function useWhatsAppEmbeddedSignup(options: UseWhatsAppEmbeddedSignupOpti
     setIsDialogOpen(false);
     mutateRef.current({
       code,
-      waba_id:         session.waba_id,
-      phone_number_id: session.phone_number_id,
-      business_id:     session.business_id,
+      waba_id:          session.waba_id,
+      phone_number_id:  session.phone_number_id,
+      business_id:      session.business_id,
+      // Which flow actually completed. More reliable than inferring coexistence
+      // from our own config: the popup knows what it ran, our env only knows
+      // what we asked for.
+      onboarding_event: session.onboarding_event,
     });
     clearHandshake();
   }, [clearHandshake]);
@@ -181,13 +201,14 @@ export function useWhatsAppEmbeddedSignup(options: UseWhatsAppEmbeddedSignupOpti
       }
       if (payload?.type !== 'WA_EMBEDDED_SIGNUP') return;
 
-      if (payload.event === 'FINISH' || payload.event === 'FINISH_ONLY_WABA') {
+      if (FINISH_EVENTS.includes(payload.event)) {
         const data = payload.data || {};
         if (data.waba_id && data.phone_number_id) {
           sessionRef.current = {
             waba_id:         String(data.waba_id),
             phone_number_id: String(data.phone_number_id),
             business_id:     data.business_id ? String(data.business_id) : undefined,
+            onboarding_event: String(payload.event),
           };
           tryExchange();
         } else {
