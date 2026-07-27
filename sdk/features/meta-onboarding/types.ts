@@ -19,6 +19,29 @@ export interface WhatsAppSignupConfig {
   /** e.g. "v23.0" — must match what the JS SDK is initialised with. */
   graphVersion: string;
   /**
+   * Embedded Signup flow version, passed to FB.login as `extras.version`
+   * (e.g. "v4"). Distinct from `graphVersion` — conflating the two produces a
+   * dialog that fails inside Meta's popup. Server-supplied so a Meta-side
+   * version bump is a config change, not a frontend redeploy.
+   */
+  esVersion: string;
+  /**
+   * Optional Embedded Signup flow selector, passed through as
+   * `extras.featureType`. Its main use is COEXISTENCE — letting a number keep
+   * running on the WhatsApp Business App while also reachable over Cloud API.
+   *
+   * null means "omit the key entirely" and run Meta's DEFAULT onboarding flow,
+   * which requires the number not to be on WhatsApp at all and otherwise fails
+   * with "#2655122 already registered to a WhatsApp account".
+   */
+  featureType: string | null;
+  /**
+   * A SEPARATE extras key from featureType — the dashboard's "Features"
+   * multi-select, where coexistence lives as `app_only_install`. Forwarded
+   * verbatim because Meta owns the element shape; null omits the key.
+   */
+  features: unknown[] | null;
+  /**
    * False when the environment is missing app ID, config ID, or app secret.
    * The connect button stays disabled: a dialog opened without a config_id
    * fails inside Meta's popup with an error the tenant cannot act on.
@@ -58,6 +81,12 @@ export interface EmbeddedSignupResult {
 
 export interface ExchangeSignupRequest extends EmbeddedSignupResult {
   ai_model?: string;
+  /**
+   * The literal Embedded Signup completion event, e.g. 'FINISH' or
+   * 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING'. The backend uses it to detect a
+   * coexistence onboarding, which must skip phone-number registration.
+   */
+  onboarding_event?: string;
 }
 
 /**
