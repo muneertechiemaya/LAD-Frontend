@@ -260,6 +260,7 @@ export function useWhatsAppEmbeddedSignup(options: UseWhatsAppEmbeddedSignupOpti
         extras: {
           version: config.esVersion,
           ...(config.featureType ? { featureType: config.featureType } : {}),
+          ...(config.features ? { features: config.features } : {}),
         },
       }
     );

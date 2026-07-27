@@ -42,7 +42,10 @@ export async function getWhatsAppSignupConfig(): Promise<WhatsAppSignupConfig> {
   // to omit `extras.featureType` entirely, which Meta treats differently
   // from an empty string.
   const featureType = res.data.featureType?.trim() || null;
-  return { appId, configId, graphVersion, esVersion, featureType, configured };
+  const features = Array.isArray(res.data.features) && res.data.features.length
+    ? res.data.features
+    : null;
+  return { appId, configId, graphVersion, esVersion, featureType, features, configured };
 }
 
 export const getWhatsAppSignupConfigOptions = () =>

@@ -36,6 +36,12 @@ export interface WhatsAppSignupConfig {
    */
   featureType: string | null;
   /**
+   * A SEPARATE extras key from featureType — the dashboard's "Features"
+   * multi-select, where coexistence lives as `app_only_install`. Forwarded
+   * verbatim because Meta owns the element shape; null omits the key.
+   */
+  features: unknown[] | null;
+  /**
    * False when the environment is missing app ID, config ID, or app secret.
    * The connect button stays disabled: a dialog opened without a config_id
    * fails inside Meta's popup with an error the tenant cannot act on.
