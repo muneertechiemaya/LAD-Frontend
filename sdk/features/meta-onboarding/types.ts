@@ -26,6 +26,16 @@ export interface WhatsAppSignupConfig {
    */
   esVersion: string;
   /**
+   * Optional Embedded Signup flow selector, passed through as
+   * `extras.featureType`. Its main use is COEXISTENCE — letting a number keep
+   * running on the WhatsApp Business App while also reachable over Cloud API.
+   *
+   * null means "omit the key entirely" and run Meta's DEFAULT onboarding flow,
+   * which requires the number not to be on WhatsApp at all and otherwise fails
+   * with "#2655122 already registered to a WhatsApp account".
+   */
+  featureType: string | null;
+  /**
    * False when the environment is missing app ID, config ID, or app secret.
    * The connect button stays disabled: a dialog opened without a config_id
    * fails inside Meta's popup with an error the tenant cannot act on.

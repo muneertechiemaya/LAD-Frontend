@@ -250,7 +250,17 @@ export function useWhatsAppEmbeddedSignup(options: UseWhatsAppEmbeddedSignupOpti
         // version. NOT the pre-v4 `{ setup, featureType, sessionInfoVersion }`
         // shape, and NOT the Graph API version — the backend supplies the value
         // so a Meta-side bump is a config change rather than a redeploy.
-        extras: { version: config.esVersion },
+        //
+        // featureType selects a non-default flow (coexistence, which lets a
+        // number stay on the WhatsApp Business App while also reachable over
+        // Cloud API). The key is OMITTED when unset rather than sent empty:
+        // Meta distinguishes the two, and an unrecognised value makes it reject
+        // the dialog. Absent → default onboarding, which rejects any number
+        // already on WhatsApp with error #2655122.
+        extras: {
+          version: config.esVersion,
+          ...(config.featureType ? { featureType: config.featureType } : {}),
+        },
       }
     );
   }, [isSdkReady, config?.configId, tryExchange, clearHandshake]);
