@@ -465,7 +465,6 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   const [exportResult, setExportResult] = useState<any>(null);
   // LinkedIn auto-post state.
   const [autopostGenerating, setAutopostGenerating] = useState(false);
-  const [autopostPosting, setAutopostPosting] = useState(false);
   const [autopostMsg, setAutopostMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [liOrganizations, setLiOrganizations] = useState<{ id: string; name: string }[]>([]);
   const autopostFileRef = useRef<HTMLInputElement | null>(null);
@@ -680,39 +679,6 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       setAutopostMsg({ ok: false, text: e?.message || 'Could not generate a post.' });
     } finally {
       setAutopostGenerating(false);
-    }
-  };
-
-  /** "Post now" — publishes immediately so the user can see it land. */
-  const postAutopostNow = async () => {
-    // Copy + media come from the content node, identity from the post node.
-    const c = { ...(configs[AUTOPOST_STEP_ID] || {}), ...(configs[CONTENT_STEP_ID] || {}) };
-    if (!(c.content || '').trim()) {
-      setAutopostMsg({ ok: false, text: 'Write or generate the post content first.' });
-      return;
-    }
-    setAutopostPosting(true);
-    setAutopostMsg(null);
-    try {
-      const res = await fetchWithTenant('/api/campaigns/linkedin-post/publish', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          content: c.content,
-          media_url: c.media_url || undefined,
-          media_filename: c.media_filename || undefined,
-          external_link: c.external_link || undefined,
-          as_organization: c.post_as && c.post_as !== 'personal' ? c.post_as : undefined,
-        }),
-      });
-      const data = await res.json();
-      setAutopostMsg(data?.success
-        ? { ok: true, text: 'Posted to LinkedIn.' }
-        : { ok: false, text: data?.error || 'Could not post.' });
-    } catch (e: any) {
-      setAutopostMsg({ ok: false, text: e?.message || 'Could not post.' });
-    } finally {
-      setAutopostPosting(false);
     }
   };
 
@@ -2437,20 +2403,6 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 <input type="time" className={field} value={cfg.time || '09:00'}
                   onChange={(e) => { setCfg(eid, { time: e.target.value }); updateWorkflowStep(eid, { description: describe(freq, days) }); }} />
                 <p className="text-[11px] text-muted-foreground">Your local timezone. Posting stops when the campaign is paused or finishes.</p></div>
-
-              <div className="space-y-2 pt-1">
-                <button type="button" onClick={postAutopostNow} disabled={autopostPosting}
-                  className="w-full rounded-md bg-[#0077B5] text-white text-sm font-medium py-2 disabled:opacity-60 flex items-center justify-center gap-2">
-                  {autopostPosting ? <><Loader2 className="h-4 w-4 animate-spin" /> Posting…</> : <><Megaphone className="h-4 w-4" /> Post now</>}
-                </button>
-                {autopostMsg && (
-                  <div className={`rounded-md border p-2.5 text-[11px] ${autopostMsg.ok
-                    ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300'
-                    : 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30 text-red-700 dark:text-red-300'}`}>
-                    {autopostMsg.text}
-                  </div>
-                )}
-              </div>
             </>);
 
           })()}
