@@ -1697,6 +1697,17 @@ export default function AdvancedSearchAIPage() {
             try {
                 const camp: any = await getCampaign(cid);
                 const cfg = camp?.config || {};
+                // Campaigns built in the Custom Workflow Builder are not
+                // expressible in the chat checkpoint form — its fields cover the
+                // guided flow's steps, not arbitrary builder nodes. Hydrating
+                // them here left the user on the search screen with the campaign
+                // apparently gone, so hand straight over to the builder instead.
+                if (cfg.builder === 'custom_workflow') {
+                    setEditingCampaignId(cid);
+                    setBuilderTemplate(null);
+                    setShowCustomWorkflow(true);
+                    return;
+                }
                 const cs = cfg.checkpoint_selections || {};
                 // Restore the chat thread.
                 const hist = Array.isArray(cfg.conversation_history) ? cfg.conversation_history : [];
@@ -7071,10 +7082,11 @@ export default function AdvancedSearchAIPage() {
             {showCustomWorkflow && (
                 <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: '#F8F9FE' }}>
                     <CustomWorkflowBuilder
-                        onClose={() => { setShowCustomWorkflow(false); setBuilderTemplate(null); }}
+                        onClose={() => { setShowCustomWorkflow(false); setBuilderTemplate(null); setEditingCampaignId(null); }}
                         initialTemplateKey={builderTemplate?.key}
                         initialSourceCfg={builderTemplate?.sourceCfg}
                         autoLaunch={builderTemplate?.autoLaunch}
+                        editCampaignId={editingCampaignId || undefined}
                     />
                 </div>
             )}
