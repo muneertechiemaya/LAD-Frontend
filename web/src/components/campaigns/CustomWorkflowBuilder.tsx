@@ -892,7 +892,12 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       const fd = new FormData();
       fd.append('file', file);
       const res = await fetchWithTenant('/api/campaigns/linkedin-templates/media-upload', { method: 'POST', body: fd });
-      const d = await res.json();
+      // A failing upload can answer with an HTML error page rather than JSON.
+      // res.json() would then either throw or, worse, the page ends up rendered
+      // as the error text — a stack trace in the drawer tells the user nothing.
+      const raw = await res.text();
+      let d: any = null;
+      try { d = raw ? JSON.parse(raw) : null; } catch { /* not JSON — keep the status instead */ }
       if (!res.ok || !d?.url) throw new Error(d?.error || `Upload failed (${res.status})`);
       setCfg(targetStepId, {
         media_url: d.url,
