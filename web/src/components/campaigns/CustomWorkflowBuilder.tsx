@@ -422,7 +422,7 @@ function useBuilderResources() {
   };
 }
 
-export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSourceCfg, autoLaunch }: {
+export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSourceCfg, autoLaunch, editCampaignId }: {
   onClose: () => void;
   /** Apply this template on mount (chat "Roles" wizard hands off here). */
   initialTemplateKey?: string;
@@ -430,6 +430,8 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   initialSourceCfg?: Record<string, any>;
   /** Fire launch() automatically once the template is applied. */
   autoLaunch?: boolean;
+  /** Reopen an existing custom workflow for editing; launch updates it in place. */
+  editCampaignId?: string;
 }) {
   const { workflowPreview, setWorkflowPreview, addWorkflowStep, updateWorkflowStep } = useOnboardingStore();
   const res = useBuilderResources();
@@ -442,6 +444,10 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   const [configs, setConfigs] = useState<Record<string, any>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
   const [launching, setLaunching] = useState(false);
+  // Edit mode: block the canvas until the saved state is back, so a stray click
+  // can't launch a half-restored workflow over the real one.
+  const [hydrating, setHydrating] = useState(!!editCampaignId);
+  const hydratedRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   // Zoho write-back node: the target module's field metadata (fetched lazily).
   const [zohoFields, setZohoFields] = useState<any[]>([]);
@@ -1090,6 +1096,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   // ── Launch ────────────────────────────────────────────────────────────────
   const launch = async () => {
     setError(null);
+    if (hydrating) return;   // never launch over a workflow that is still loading
     if (!name.trim()) { setError('Name your workflow.'); return; }
     // A publisher-only workflow (content → approval → post) never touches a
     // lead: all three nodes compile into campaigns.config.autopost, a
@@ -1523,6 +1530,21 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         config: {
           data_source: source === 'zoho_recurring' ? 'zoho_contacts' : source === 'linkedin_search' ? 'linkedin_search' : 'direct_contact',
           builder: 'custom_workflow',
+          // The builder's own state, stored so "Edit Workflow" can reopen it
+          // exactly as it was. Launch flattens these nodes into config.* and
+          // steps, and that flattening is lossy — reversing it would be guesswork.
+          // Mirrors how the chat flow persists checkpoint_selections.
+          builder_state: {
+            version: 1,
+            source,
+            name: name.trim(),
+            per_day: perDayN,
+            days: daysN,
+            steps: workflowPreview.map((s: any) => ({
+              id: s.id, type: s.type, channel: s.channel, title: s.title, description: s.description,
+            })),
+            configs,
+          },
           // Search targeting, surfaced at campaign level so AI features ground
           // on it — notably the auto-post generator (LinkedInPostContentService
           // reads config.targeting), making "daily post about the industry you
@@ -1630,9 +1652,15 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         ...(initialLeads?.length ? { initial_leads: initialLeads, campaign_type: 'direct_outreach' } : {}),
       };
 
-      const res = await fetchWithTenant('/api/campaigns', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
-      });
+      // Editing updates THIS campaign. Posting again would leave the original
+      // running alongside a duplicate, both posting to the same feed.
+      const res = editCampaignId
+        ? await fetchWithTenant(`/api/campaigns/${editCampaignId}`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+          })
+        : await fetchWithTenant('/api/campaigns', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+          });
       const data = await res.json();
       if (res.ok && (data?.success || data?.id || data?.data?.id)) window.location.href = '/campaigns';
       else { setError(data?.error || 'Failed to launch workflow'); setLaunching(false); }
@@ -1647,6 +1675,42 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   // the wizard's answers merged into the source config. Effect 2 fires launch()
   // exactly once, on the render AFTER the applied state has committed (the
   // !source guard skips the same-commit run where state is still stale).
+  // ── Edit mode ─────────────────────────────────────────────────────────────
+  // Restore from config.builder_state, written at launch. Reversing the
+  // flattened config.* + steps back into builder nodes would be guesswork, so
+  // the builder stores its own state and reads it straight back.
+  useEffect(() => {
+    if (!editCampaignId || hydratedRef.current) return;
+    hydratedRef.current = true;
+    (async () => {
+      try {
+        const res = await fetchWithTenant(`/api/campaigns/${editCampaignId}`);
+        const json = await res.json();
+        const camp = json?.data || json;
+        const bs = camp?.config?.builder_state;
+        if (bs?.steps) {
+          setSource(bs.source ?? null);
+          setWorkflowPreview(bs.steps as any);
+          setConfigs(bs.configs || {});
+          setName(bs.name || camp?.name || '');
+          if (bs.per_day) setPerDay(String(bs.per_day));
+          if (bs.days) setDays(String(bs.days));
+        } else {
+          // Launched before builder_state existed. Rather than silently opening
+          // an empty canvas over a live campaign, say so — the nodes cannot be
+          // recovered and overwriting would delete the workflow.
+          setName(camp?.name || '');
+          setError('This workflow was created before edits were supported, so its steps cannot be reopened. Relaunching here would replace it — build it again, or leave it running.');
+        }
+      } catch {
+        setError('Could not load this workflow for editing.');
+      } finally {
+        setHydrating(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editCampaignId]);
+
   const appliedTplRef = useRef(false);
   const autoLaunchedRef = useRef(false);
   useEffect(() => {
@@ -3082,9 +3146,9 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             <span>Leads/day</span><Input type="number" className="w-16 h-8" value={perDay} onChange={(e) => setPerDay(e.target.value)} />
             <span>Days</span><Input type="number" className="w-16 h-8" value={days} onChange={(e) => setDays(e.target.value)} />
           </div>
-          <Button onClick={launch} disabled={launching}>
-            {launching ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Rocket className="h-4 w-4 mr-2" />}
-            Launch workflow
+          <Button onClick={launch} disabled={launching || hydrating}>
+            {(launching || hydrating) ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Rocket className="h-4 w-4 mr-2" />}
+            {hydrating ? 'Loading…' : editCampaignId ? 'Save changes' : 'Launch workflow'}
           </Button>
         </div>
       </div>
