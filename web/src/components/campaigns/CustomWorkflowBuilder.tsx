@@ -481,6 +481,12 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   const autoBusyRef = useRef(false);
   const autoKeyRef = useRef<string | null>(null);
   const autoCountRef = useRef(0);
+  // Stall guard. The media worker's hold can be torn down mid-run, after which
+  // no further phase ever arrives — the loop simply waits, and the user watches
+  // a spinner indefinitely (observed: 10 minutes on Brand DNA). Nothing here
+  // can keep the worker alive, but it can stop pretending work is happening.
+  const autoProgressAtRef = useRef(0);
+  const [autoStalled, setAutoStalled] = useState(false);
   const inlineStartedRef = useRef(false);
   // Multi-condition node: fields of the connected source (dynamic dropdown).
   const [mcFields, setMcFields] = useState<{ value: string; label: string }[]>(SWITCH_FIELDS);
@@ -919,6 +925,29 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   // shortcut it. It deliberately STOPS at the image grid: picking the picture
   // is a real choice worth keeping, and it isn't the part that was tedious.
   const AUTO_MEDIA_MAX_PHASES = 30;
+  // Brand DNA extraction is genuinely slow, so this is deliberately generous:
+  // long enough that a working run is never interrupted, short enough that a
+  // dead one doesn't cost ten minutes.
+  const AUTO_MEDIA_STALL_MS = 3 * 60 * 1000;
+
+  // Any movement from the worker counts as progress.
+  useEffect(() => {
+    if (!inlineMedia || !autoMedia) return;
+    autoProgressAtRef.current = Date.now();
+    setAutoStalled(false);
+  }, [inlineMedia, autoMedia, mediaBuilder.step, mediaBuilder.uiPayload]);
+
+  useEffect(() => {
+    if (!inlineMedia || !autoMedia) return;
+    const t = setInterval(() => {
+      if (!autoProgressAtRef.current) return;
+      if (Date.now() - autoProgressAtRef.current < AUTO_MEDIA_STALL_MS) return;
+      setAutoStalled(true);
+      setAutoMedia(false);   // stop answering into a run that is no longer there
+    }, 15000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inlineMedia, autoMedia]);
   useEffect(() => {
     if (!inlineMedia || !autoMedia) return;
     const mb = mediaBuilder;
@@ -2209,6 +2238,8 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   autoBusyRef.current = false;
                   autoKeyRef.current = null;
                   autoCountRef.current = 0;
+                  autoProgressAtRef.current = Date.now();
+                  setAutoStalled(false);
                   setAutoMediaLog([]);
                   setAutoMedia(auto);
                   setInlineMedia(true);
@@ -2274,6 +2305,27 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                           {phase && <div className="text-[10.5px] font-medium text-fuchsia-600/80 dark:text-fuchsia-400/80">{phase}</div>}
                           {children}
                         </div>
+                      );
+
+                      // The run stopped responding. Say so plainly rather than
+                      // spinning: the copy is safe, and both ways forward are
+                      // one click away.
+                      if (autoStalled) return (
+                        shell(<>
+                          <p className="text-[12.5px] font-medium text-foreground">The image service stopped responding.</p>
+                          <p className="text-[11.5px] text-muted-foreground leading-snug">
+                            Your post copy is safe. You can try again, or attach an image yourself with Upload.
+                          </p>
+                          {autoMediaLog.length > 0 && (
+                            <p className="text-[11px] text-muted-foreground">Got as far as: {autoMediaLog[autoMediaLog.length - 1].phase}</p>
+                          )}
+                          <div className="flex items-center gap-2">
+                            <button type="button" onClick={() => { cancel(); openStudio(true); }}
+                              className="px-3 py-1.5 rounded-lg bg-fuchsia-600 text-white text-[12.5px] font-semibold">Try again</button>
+                            <button type="button" onClick={cancel}
+                              className="text-[12px] text-muted-foreground hover:text-foreground">Close</button>
+                          </div>
+                        </>)
                       );
 
                       // Agent-driven: never show the questionnaire. Show what it
