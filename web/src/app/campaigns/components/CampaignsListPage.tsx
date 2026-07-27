@@ -289,14 +289,14 @@ export default function CampaignsListPage() {
               Campaign
             </Button>
 
-            {/* n8n-style custom workflow builder: source node → outreach nodes */}
+            {/* Custom Accelerator builder: source node → outreach nodes */}
             <Button
               onClick={() => router.push("/campaigns/workflow")}
               variant="outline"
               className="rounded-xl font-semibold px-3 py-1.5 flex-1 sm:w-auto border-[#0b1957] text-[#0b1957] hover:bg-[#0b1957]/10 hover:cursor-pointer"
             >
               <Plus className="w-4 h-4 mr-1" />
-              Custom workflow
+              Custom Accelerator
             </Button>
           </div>
         </div>

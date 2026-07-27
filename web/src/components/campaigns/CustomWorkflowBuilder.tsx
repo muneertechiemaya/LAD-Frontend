@@ -1,5 +1,5 @@
 'use client';
-// Custom Workflow Builder (n8n/Zapier-style) — embeddable component.
+// Custom Accelerator builder (node graph) — embeddable component.
 //
 // Pick a contact SOURCE node (Zoho CRM recurring/one-time, GoHighLevel,
 // LinkedIn Search), chain OUTREACH nodes (LinkedIn / Email / WhatsApp / Voice /

@@ -958,7 +958,7 @@ export default function AdvancedSearchAIPage() {
     }, []);
 
     const [showMediaModal, setShowMediaModal] = useState(false);
-    // Custom Workflow Builder (n8n-style) — full-screen takeover opened from the "+" menu.
+    // Custom Accelerator builder (node graph) — full-screen takeover opened from the "+" menu.
     const [showCustomWorkflow, setShowCustomWorkflow] = useState(false);
     // "Roles" — prebuilt pipeline templates launched from chat. The wizard asks
     // each template's inputs in the chat thread, then hands off to the embedded
@@ -4986,8 +4986,8 @@ export default function AdvancedSearchAIPage() {
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round"><circle cx="5" cy="6" r="3" /><circle cx="19" cy="6" r="3" /><circle cx="12" cy="18" r="3" /><path d="M7.5 8L10 15M16.5 8L14 15" /></svg>
                                         </div>
                                         <div>
-                                            <div className="adv-attach-label">Custom workflow</div>
-                                            <div className="adv-attach-sub">Source → outreach nodes, n8n-style</div>
+                                            <div className="adv-attach-label">Custom Accelerator</div>
+                                            <div className="adv-attach-sub">Source → outreach nodes</div>
                                         </div>
                                     </div>
                                     <div className={`adv-attach-item${webSearchEnabled ? ' adv-attach-active' : ''}`} onClick={() => { setWebSearchEnabled(!webSearchEnabled); setShowAttachMenu(false); }}>
@@ -5659,8 +5659,8 @@ export default function AdvancedSearchAIPage() {
                                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round"><circle cx="5" cy="6" r="3" /><circle cx="19" cy="6" r="3" /><circle cx="12" cy="18" r="3" /><path d="M7.5 8L10 15M16.5 8L14 15" /></svg>
                                                             </div>
                                                             <div>
-                                                                <div className="adv-attach-label">Custom workflow</div>
-                                                                <div className="adv-attach-sub">Source → outreach nodes, n8n-style</div>
+                                                                <div className="adv-attach-label">Custom Accelerator</div>
+                                                                <div className="adv-attach-sub">Source → outreach nodes</div>
                                                             </div>
                                                         </div>
                                                         <div className="adv-attach-divider" />
@@ -7078,7 +7078,7 @@ export default function AdvancedSearchAIPage() {
             )}
 
             {/* ── Contact Picker Modal ── */}
-            {/* ── Custom Workflow Builder (n8n-style) — full-screen takeover from the "+" menu ── */}
+            {/* ── Custom Accelerator builder (node graph) — full-screen takeover from the "+" menu ── */}
             {showCustomWorkflow && (
                 <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: '#F8F9FE' }}>
                     <CustomWorkflowBuilder
