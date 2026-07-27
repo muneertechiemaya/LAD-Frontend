@@ -340,7 +340,7 @@ const WORKFLOW_DATA_POINTS: DataPoint[] = [
 ];
 
 /** Suggest a data-point for a Zoho field, sequence-aware (only maps a channel
- *  source when that channel is actually in the workflow). Returns key or ''. */
+ *  source when that channel is actually in the Accelerator). Returns key or ''. */
 function suggestDataPoint(field: { api_name: string; field_label: string }, channels: Set<Channel>): string {
   const hay = `${field.field_label || ''} ${field.api_name || ''}`;
   for (const dp of WORKFLOW_DATA_POINTS) {
@@ -673,7 +673,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       const res = await fetchWithTenant('/api/campaigns/export/preview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ config: cfg, leads, campaign_name: name.trim() || 'Workflow preview' }),
+        body: JSON.stringify({ config: cfg, leads, campaign_name: name.trim() || 'Accelerator preview' }),
       });
       const data = await res.json();
       setExportResult(data);
@@ -736,7 +736,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   const applyTemplate = (t: WorkflowTemplate, opts?: { silent?: boolean; sourceCfgOverride?: Record<string, any> }) => {
     setOverviewTpl(null);
     if (!opts?.silent && workflowPreview.length > 0 &&
-        !window.confirm(`Replace the current workflow with the "${t.name}" template?`)) {
+        !window.confirm(`Replace the current Accelerator with the "${t.name}" template?`)) {
       return;
     }
     // Publisher-only templates have no source: they enrol nobody, so a contact
@@ -1123,7 +1123,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   const launch = async () => {
     setError(null);
     if (hydrating) return;   // never launch over a workflow that is still loading
-    if (!name.trim()) { setError('Name your workflow.'); return; }
+    if (!name.trim()) { setError('Name your Accelerator.'); return; }
     // A publisher-only workflow (content → approval → post) never touches a
     // lead: all three nodes compile into campaigns.config.autopost, a
     // campaign-level macro that linkedinAutopostCron fires on a schedule. There
@@ -1556,7 +1556,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         config: {
           data_source: source === 'zoho_recurring' ? 'zoho_contacts' : source === 'linkedin_search' ? 'linkedin_search' : 'direct_contact',
           builder: 'custom_workflow',
-          // The builder's own state, stored so "Edit Workflow" can reopen it
+          // The builder's own state, stored so "Edit Accelerator" can reopen it
           // exactly as it was. Launch flattens these nodes into config.* and
           // steps, and that flattening is lossy — reversing it would be guesswork.
           // Mirrors how the chat flow persists checkpoint_selections.
@@ -1725,11 +1725,11 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       try { data = raw ? JSON.parse(raw) : null; } catch { /* not JSON */ }
       if (res.ok && (data?.success || data?.id || data?.data?.id)) window.location.href = '/campaigns';
       else {
-        setError(data?.error || `${editCampaignId ? 'Could not save changes' : 'Failed to launch workflow'} (${res.status})`);
+        setError(data?.error || `${editCampaignId ? 'Could not save changes' : 'Failed to launch Accelerator'} (${res.status})`);
         setLaunching(false);
       }
     } catch (e: any) {
-      setError(e?.message || 'Failed to launch workflow');
+      setError(e?.message || 'Failed to launch Accelerator');
       setLaunching(false);
     }
   };
@@ -1764,10 +1764,10 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           // an empty canvas over a live campaign, say so — the nodes cannot be
           // recovered and overwriting would delete the workflow.
           setName(camp?.name || '');
-          setError('This workflow was created before edits were supported, so its steps cannot be reopened. Relaunching here would replace it — build it again, or leave it running.');
+          setError('This Accelerator was created before edits were supported, so its steps cannot be reopened. Relaunching here would replace it — build it again, or leave it running.');
         }
       } catch {
-        setError('Could not load this workflow for editing.');
+        setError('Could not load this Accelerator for editing.');
       } finally {
         setHydrating(false);
       }
@@ -3231,8 +3231,8 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           <button onClick={onClose} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground" title="Close builder">
             <X className="h-4 w-4" /> Close
           </button>
-          <span className="text-sm font-semibold text-foreground hidden sm:block">Custom Workflow</span>
-          <Input className="w-64" value={name} onChange={(e) => setName(e.target.value)} placeholder="Workflow name…" />
+          <span className="text-sm font-semibold text-foreground hidden sm:block">Custom Accelerator</span>
+          <Input className="w-64" value={name} onChange={(e) => setName(e.target.value)} placeholder="Accelerator name…" />
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -3241,7 +3241,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           </div>
           <Button onClick={launch} disabled={launching || hydrating}>
             {(launching || hydrating) ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Rocket className="h-4 w-4 mr-2" />}
-            {hydrating ? 'Loading…' : editCampaignId ? 'Save changes' : 'Launch workflow'}
+            {hydrating ? 'Loading…' : editCampaignId ? 'Save changes' : 'Launch Accelerator'}
           </Button>
         </div>
       </div>
@@ -3386,7 +3386,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               <span className="h-5 w-5 rounded-full bg-[#0b1957] text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">1</span>
               <span className="text-sm font-semibold text-foreground">Contact source</span>
             </div>
-            <p className="text-xs text-muted-foreground mb-2.5 ml-7">Where leads enter this workflow</p>
+            <p className="text-xs text-muted-foreground mb-2.5 ml-7">Where leads enter this Accelerator</p>
             <div className="space-y-2">
               {SOURCES.map((s) => {
                 const active = source === s.key;

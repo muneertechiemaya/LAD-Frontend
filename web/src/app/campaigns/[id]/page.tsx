@@ -205,7 +205,7 @@ export default function CampaignDetailPage() {
               onClick={() => router.push(`/onboarding/advanced-search-ai?campaignId=${campaignId}`)}
               disabled={saving}
             >
-              Edit Workflow
+              Edit Accelerator
             </Button>
             <Button
               variant="outline"

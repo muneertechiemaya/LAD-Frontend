@@ -614,7 +614,7 @@ export default function AdvancedSearchAIPage() {
     // Unified single-screen mode - always show chat interface
     // const [screen, setScreen] = useState<'landing' | 'chat'>('landing');
     const [messages, setMessages] = useState<ChatMsg[]>([]);
-    // Edit mode: set when "Edit Workflow" routes here with ?campaignId=<id>.
+    // Edit mode: set when "Edit Accelerator" routes here with ?campaignId=<id>.
     const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
     const editHydratedRef = useRef(false);
     const [input, setInput] = useState('');
@@ -1680,7 +1680,7 @@ export default function AdvancedSearchAIPage() {
     useEffect(() => { if (tgStep >= 0) endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [tgStep]);
 
     // ── Edit mode: hydrate the setup flow from an existing campaign ──────────────
-    // "Edit Workflow" routes here with ?campaignId=<id>. The setup flow already
+    // "Edit Accelerator" routes here with ?campaignId=<id>. The setup flow already
     // persists the chat (config.conversation_history) and the config-step
     // selections (config.checkpoint_selections), so we reload them and open the
     // checkpoint form pre-filled. Saving then updates THIS campaign (gated in
@@ -4403,7 +4403,7 @@ export default function AdvancedSearchAIPage() {
             setShowCustomWorkflow(true);
             rolePushAi(v === '__role_launch__'
                 ? '🚀 Building and launching your Accelerator — you\'ll land on the campaigns page when it\'s live.'
-                : 'Opening the workflow builder with your Accelerator pre-built — review each node and hit Launch.');
+                : 'Opening the Accelerator builder with your Accelerator pre-built — review each node and hit Launch.');
             return;
         }
         // Special action: submit lead detail form data
@@ -6336,7 +6336,7 @@ export default function AdvancedSearchAIPage() {
                               {/* Workflow panel header */}
                               <div className="flex-shrink-0 border-b border-gray-200 bg-white px-5 py-4 dark:border-gray-800 dark:bg-[#000724]">
                                   <div className="mb-1 text-[17px] font-extrabold text-gray-900 dark:text-slate-300">
-                                      Campaign Workflow
+                                      Campaign Accelerator
                                   </div>
                                   <div className="text-[12.5px] text-gray-500 dark:text-slate-300">
                                       Live preview of your outreach sequence
@@ -7675,7 +7675,7 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-indigo-900 dark:text-blue-300" strokeWidth="2"><circle cx="12" cy="5" r="2" /><circle cx="5" cy="19" r="2" /><circle cx="19" cy="19" r="2" /><path d="M12 7v4M9.5 17.5L12 11l2.5 6.5" /></svg>
                           </div>
                           <div className="flex-1">
-                              <div className="text-[13px] font-bold text-gray-900 dark:text-gray-100">Workflow</div>
+                              <div className="text-[13px] font-bold text-gray-900 dark:text-gray-100">Accelerator</div>
                               <div className="text-[11px] text-indigo-900 dark:text-blue-300 font-medium">Live preview</div>
                           </div>
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-gray-400 dark:text-gray-500" strokeWidth="2"><path d="M9 18l6-6-6-6" /></svg>
