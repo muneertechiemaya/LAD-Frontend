@@ -1025,7 +1025,16 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   const launch = async () => {
     setError(null);
     if (!name.trim()) { setError('Name your workflow.'); return; }
-    if (!source) { setError('Pick a contact source (first node).'); return; }
+    // A publisher-only workflow (content → approval → post) never touches a
+    // lead: all three nodes compile into campaigns.config.autopost, a
+    // campaign-level macro that linkedinAutopostCron fires on a schedule. There
+    // is nobody to enrol, so demanding a contact source — or an outreach step —
+    // would block a perfectly valid pipeline. Any other node present means the
+    // workflow does operate on leads, and the normal guards apply again.
+    const publisherOnly =
+      workflowPreview.some((s) => s.id === AUTOPOST_STEP_ID) &&
+      workflowPreview.every((s) => s.id === AUTOPOST_STEP_ID || s.id === CONTENT_STEP_ID || s.id === APPROVAL_STEP_ID);
+    if (!source && !publisherOnly) { setError('Pick a contact source (first node).'); return; }
     // LinkedIn Search needs at least one criterion — templates seed these empty
     // on purpose, so catch it here with a pointer instead of a backend 400.
     if (source === 'linkedin_search') {
@@ -1050,7 +1059,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     const exportNode = workflowPreview.find((s) => s.id === EXPORT_STEP_ID);
     const autopostNode = workflowPreview.find((s) => s.id === AUTOPOST_STEP_ID);
     const zohoUpdateNode = workflowPreview.find((s) => s.id === ZOHO_UPDATE_STEP_ID);
-    if (!outreachSteps.length && !followupNode && !multiCondNode) { setError('Add at least one outreach step.'); return; }
+    if (!outreachSteps.length && !followupNode && !multiCondNode && !publisherOnly) { setError('Add at least one outreach step.'); return; }
     if (multiCondNode) {
       const mcCases: any[] = (configs[MULTICOND_STEP_ID]?.cases) || [];
       const validCases = mcCases.filter((c) => (c.value || '').trim() && (c.body || c.subject || '').trim());
