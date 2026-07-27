@@ -133,7 +133,7 @@ export default function CampaignBuilder() {
     }
     toast({
       title: 'Step Added',
-      description: `${stepType.replace(/_/g, ' ')} step added to workflow`
+      description: `${stepType.replace(/_/g, ' ')} step added to Accelerator`
     });
   }, [nodes, setNodes, setEdges, toast]);
   const onUpdateStep = useCallback((nodeId: string, data: any) => {
@@ -152,7 +152,7 @@ export default function CampaignBuilder() {
     setSelectedNode(null);
     toast({
       title: 'Step Deleted',
-      description: 'Step removed from workflow'
+      description: 'Step removed from Accelerator'
     });
   }, [selectedNode, setNodes, setEdges, toast]);
   const handleSave = async () => {
@@ -167,7 +167,7 @@ export default function CampaignBuilder() {
     if (nodes.length === 0) {
       toast({
         title: 'Validation Error',
-        description: 'Please add at least one step to the workflow',
+        description: 'Please add at least one step to the Accelerator',
         variant: 'destructive'
       });
       return;

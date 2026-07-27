@@ -93,7 +93,7 @@ export default function CampaignActionsMenu({
       <DropdownMenuContent align="end">
         {/* Always visible */}
         <DropdownMenuItem onClick={() => { router.push(`/onboarding/advanced-search-ai?campaignId=${selectedCampaign.id}`); onClose(); }}>
-          <Edit className="mr-2 h-4 w-4" /> Edit Workflow
+          <Edit className="mr-2 h-4 w-4" /> Edit Accelerator
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => { router.push(`/campaigns/${selectedCampaign.id}/analytics`); onClose(); }}>
           <Eye className="mr-2 h-4 w-4" /> View Analytics

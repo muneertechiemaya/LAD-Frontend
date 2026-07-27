@@ -933,10 +933,10 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
         </div>
       </div>
 
-      {/* Campaign Workflow Stepper - Display if steps are configured */}
+      {/* Campaign Accelerator Stepper - Display if steps are configured */}
       {workflowSteps.length > 0 && (
         <div className="px-4 py-4 border-b border-[#E2E8F0] dark:border-[#262831] bg-[#F8FAFC] dark:bg-[#000724]">
-          <p className="text-xs font-semibold text-[#64748B] dark:text-slate-400 mb-3 uppercase tracking-wide">Campaign Workflow</p>
+          <p className="text-xs font-semibold text-[#64748B] dark:text-slate-400 mb-3 uppercase tracking-wide">Campaign Accelerator</p>
           <div className="bg-white dark:bg-[#000724] rounded-lg p-4 border border-[#E2E8F0] dark:border-[#262831]">
             <StatusStepper
               currentStep={

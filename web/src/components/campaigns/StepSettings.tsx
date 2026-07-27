@@ -460,7 +460,7 @@ export default function StepSettings({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Define a condition to check before proceeding. The workflow will check if the previous step met this condition. If true, continue to next step; if false, the workflow may skip or take alternative path.</p>
+                  <p>Define a condition to check before proceeding. The Accelerator will check if the previous step met this condition. If true, continue to next step; if false, the workflow may skip or take alternative path.</p>
                 </TooltipContent>
               </Tooltip>
             </h4>
@@ -519,18 +519,18 @@ export default function StepSettings({
               📋 How Conditions Work:
             </span>
             <span className="text-[11px] text-blue-900 block mb-1">
-              1. The system checks the status of the <strong>previous step</strong> in the workflow
+              1. The system checks the status of the <strong>previous step</strong> in the Accelerator
             </span>
             <span className="text-[11px] text-blue-900 block mb-1">
-              2. If the condition is <strong>met</strong> (e.g., &quot;If Connected on LinkedIn&quot; = true), the workflow continues to the next step
+              2. If the condition is <strong>met</strong> (e.g., &quot;If Connected on LinkedIn&quot; = true), the Accelerator continues to the next step
             </span>
             <span className="text-[11px] text-blue-900 block">
-              3. If the condition is <strong>not met</strong>, the workflow may skip steps or take an alternative path
+              3. If the condition is <strong>not met</strong>, the Accelerator may skip steps or take an alternative path
             </span>
           </div>
           <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 mt-2">
             <span className="text-[11px] text-amber-900">
-              <strong>⚠️ Important:</strong> Make sure the previous step in your workflow can produce the result you&apos;re checking for. For example, if checking &quot;If Connected on LinkedIn&quot;, ensure there&apos;s a LinkedIn connection step before this condition.
+              <strong>⚠️ Important:</strong> Make sure the previous step in your Accelerator can produce the result you&apos;re checking for. For example, if checking &quot;If Connected on LinkedIn&quot;, ensure there&apos;s a LinkedIn connection step before this condition.
             </span>
           </div>
         </>
