@@ -19,6 +19,13 @@ export interface WhatsAppSignupConfig {
   /** e.g. "v23.0" — must match what the JS SDK is initialised with. */
   graphVersion: string;
   /**
+   * Embedded Signup flow version, passed to FB.login as `extras.version`
+   * (e.g. "v4"). Distinct from `graphVersion` — conflating the two produces a
+   * dialog that fails inside Meta's popup. Server-supplied so a Meta-side
+   * version bump is a config change, not a frontend redeploy.
+   */
+  esVersion: string;
+  /**
    * False when the environment is missing app ID, config ID, or app secret.
    * The connect button stays disabled: a dialog opened without a config_id
    * fails inside Meta's popup with an error the tenant cannot act on.

@@ -242,14 +242,15 @@ export function useWhatsAppEmbeddedSignup(options: UseWhatsAppEmbeddedSignupOpti
       },
       {
         config_id: config.configId,
+        // Must be 'code' — the System User access token is minted server-side
+        // by exchanging this code, never handed to the browser.
         response_type: 'code',
         override_default_response_type: true,
-        extras: {
-          setup: {},
-          featureType: '',
-          // v3 is what emits business_id in the session-info message.
-          sessionInfoVersion: '3',
-        },
+        // Matches the snippet Meta's App Dashboard generates for our app's flow
+        // version. NOT the pre-v4 `{ setup, featureType, sessionInfoVersion }`
+        // shape, and NOT the Graph API version — the backend supplies the value
+        // so a Meta-side bump is a config change rather than a redeploy.
+        extras: { version: config.esVersion },
       }
     );
   }, [isSdkReady, config?.configId, tryExchange, clearHandshake]);

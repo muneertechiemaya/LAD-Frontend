@@ -37,8 +37,8 @@ export async function getWhatsAppSignupConfig(): Promise<WhatsAppSignupConfig> {
   const res = await apiClient.get<{ success: boolean } & WhatsAppSignupConfig>(
     `${BASE}/whatsapp/config`
   );
-  const { appId, configId, graphVersion, configured } = res.data;
-  return { appId, configId, graphVersion, configured };
+  const { appId, configId, graphVersion, esVersion, configured } = res.data;
+  return { appId, configId, graphVersion, esVersion, configured };
 }
 
 export const getWhatsAppSignupConfigOptions = () =>
