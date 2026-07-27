@@ -330,7 +330,7 @@ export function CreateWabaTemplateModal({ open, onOpenChange, onCreated }: Creat
         <DialogHeader className="px-6 pt-6 pb-4 border-b flex-col items-start gap-1">
           <DialogTitle className="flex items-center gap-2">
             Create WhatsApp Template
-            <Badge variant="outline" className="text-[10px]">WABA</Badge>
+            <Badge variant="outline" className="hidden sm:inline-flex text-[10px]">WABA</Badge>
           </DialogTitle>
           <p className="text-xs text-muted-foreground mt-1">
             Templates must be approved by Meta before use. Approval usually takes a few minutes.
