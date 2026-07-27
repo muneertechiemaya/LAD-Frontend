@@ -74,7 +74,12 @@ export interface WhatsAppAccount {
 export interface EmbeddedSignupResult {
   code: string;
   waba_id: string;
-  phone_number_id: string;
+  /**
+   * Absent on the coexistence flow — Meta's
+   * FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING payload carries only `waba_id`.
+   * The backend resolves the number from the WABA in that case.
+   */
+  phone_number_id?: string;
   /** Meta Business portfolio id — display only, absent on older session versions. */
   business_id?: string;
 }
