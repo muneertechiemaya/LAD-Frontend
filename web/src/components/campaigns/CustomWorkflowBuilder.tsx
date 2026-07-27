@@ -1060,9 +1060,20 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     // is nobody to enrol, so demanding a contact source — or an outreach step —
     // would block a perfectly valid pipeline. Any other node present means the
     // workflow does operate on leads, and the normal guards apply again.
+    const outreachSteps = workflowPreview.filter(
+      (s) => s.id !== SOURCE_STEP_ID && s.id !== FOLLOWUP_STEP_ID && s.id !== ANALYTICS_STEP_ID && s.id !== ZOHO_UPDATE_STEP_ID && s.id !== MEDIA_STEP_ID && s.id !== MULTICOND_STEP_ID && s.id !== AI_STEP_ID && s.id !== ENRICH_STEP_ID && s.id !== EXPORT_STEP_ID && s.id !== AUTOPOST_STEP_ID && s.id !== SCRAPE_STEP_ID && s.id !== RESEARCH_STEP_ID && s.id !== SCORE_STEP_ID && s.id !== SPLIT_STEP_ID && s.id !== SETFIELD_STEP_ID && s.id !== HTTP_STEP_ID && s.id !== CONTENT_STEP_ID && s.id !== APPROVAL_STEP_ID
+    );
+    const multiCondNode = workflowPreview.find((s) => s.id === MULTICOND_STEP_ID);
+    const followupNode = workflowPreview.find((s) => s.id === FOLLOWUP_STEP_ID);
+    // Publisher-only is about what CONSUMES leads, not about which nodes are on
+    // the canvas. A contact source on its own consumes nothing: with no per-lead
+    // step the imported contacts have nowhere to go, so a workflow whose only
+    // real work is the scheduled post stays publisher-only even with a source
+    // attached. Defining it by node identity instead meant picking a source
+    // silently turned the exemption off.
     const publisherOnly =
       workflowPreview.some((s) => s.id === AUTOPOST_STEP_ID) &&
-      workflowPreview.every((s) => s.id === AUTOPOST_STEP_ID || s.id === CONTENT_STEP_ID || s.id === APPROVAL_STEP_ID);
+      !outreachSteps.length && !followupNode && !multiCondNode;
     if (!source && !publisherOnly) { setError('Pick a contact source (first node).'); return; }
     // LinkedIn Search needs at least one criterion — templates seed these empty
     // on purpose, so catch it here with a pointer instead of a backend 400.
@@ -1076,14 +1087,9 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         return;
       }
     }
-    const outreachSteps = workflowPreview.filter(
-      (s) => s.id !== SOURCE_STEP_ID && s.id !== FOLLOWUP_STEP_ID && s.id !== ANALYTICS_STEP_ID && s.id !== ZOHO_UPDATE_STEP_ID && s.id !== MEDIA_STEP_ID && s.id !== MULTICOND_STEP_ID && s.id !== AI_STEP_ID && s.id !== ENRICH_STEP_ID && s.id !== EXPORT_STEP_ID && s.id !== AUTOPOST_STEP_ID && s.id !== SCRAPE_STEP_ID && s.id !== RESEARCH_STEP_ID && s.id !== SCORE_STEP_ID && s.id !== SPLIT_STEP_ID && s.id !== SETFIELD_STEP_ID && s.id !== HTTP_STEP_ID && s.id !== CONTENT_STEP_ID && s.id !== APPROVAL_STEP_ID
-    );
     const aiNode = workflowPreview.find((s) => s.id === AI_STEP_ID);
     const enrichNode = workflowPreview.find((s) => s.id === ENRICH_STEP_ID);
     const mediaNode = workflowPreview.find((s) => s.id === MEDIA_STEP_ID);
-    const multiCondNode = workflowPreview.find((s) => s.id === MULTICOND_STEP_ID);
-    const followupNode = workflowPreview.find((s) => s.id === FOLLOWUP_STEP_ID);
     const analyticsNode = workflowPreview.find((s) => s.id === ANALYTICS_STEP_ID);
     const exportNode = workflowPreview.find((s) => s.id === EXPORT_STEP_ID);
     const autopostNode = workflowPreview.find((s) => s.id === AUTOPOST_STEP_ID);
@@ -1227,7 +1233,13 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         const res = await fetchWithTenant(url);
         const data = await res.json();
         const rows = data?.data || [];
-        if (!rows.length) throw new Error('No synced contacts found for this source — sync it first.');
+        // A publisher workflow has nobody to enrol, so an empty import is not a
+        // failure — it only means the source was pointless, not that the
+        // scheduled post can't run. Blocking here stopped a post-only workflow
+        // from launching just because a source had been picked.
+        if (!rows.length && !publisherOnly) {
+          throw new Error('No synced contacts found for this source — sync it first.');
+        }
         initialLeads = rows.map((c: any, i: number) => ({
           id: String(c.source_id || c.id || i),
           first_name: c.first_name || undefined,
@@ -1572,7 +1584,10 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         // leads as source='direct_contact' (NOT 'linkedin_search') — otherwise
         // the LinkedIn step treats the row id as a Unipile provider_id and
         // skips the name+company resolution waterfall.
-        ...(initialLeads ? { initial_leads: initialLeads, campaign_type: 'direct_outreach' } : {}),
+        // `.length`, not just truthiness — an empty import (allowed for a
+        // publisher workflow) would otherwise send initial_leads: [] and mark
+        // the campaign direct_outreach with nobody in it.
+        ...(initialLeads?.length ? { initial_leads: initialLeads, campaign_type: 'direct_outreach' } : {}),
       };
 
       const res = await fetchWithTenant('/api/campaigns', {
