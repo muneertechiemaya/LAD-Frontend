@@ -3,6 +3,7 @@ export type StepType =
   | 'linkedin_follow' 
   | 'linkedin_connect' 
   | 'linkedin_message'
+  | 'linkedin_inmail'
   | 'linkedin_scrape_profile'
   | 'linkedin_company_search'
   | 'linkedin_employee_list'
@@ -27,9 +28,20 @@ export type StepType =
   // Custom Workflow Builder macro nodes (visual-only; expanded/stripped at launch)
   | 'followup_sequence'
   | 'analytics_report'
+  | 'export_results'
+  | 'linkedin_post'
+  | 'linkedin_content'
+  | 'post_approval'
+  | 'web_scrape'
+  | 'web_research'
+  | 'lead_score'
+  | 'split_test'
+  | 'set_field'
+  | 'http_request'
   | 'zoho_update'
   | 'switch'
-  | 'ai_parse';
+  | 'ai_parse'
+  | 'data_enrich';
 export type ConditionType = 
   | 'connected'           // LinkedIn: if connected
   | 'linkedin_replied'     // LinkedIn: if replied to message

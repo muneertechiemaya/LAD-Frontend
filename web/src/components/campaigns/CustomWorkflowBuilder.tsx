@@ -20,17 +20,24 @@
 // visual step list.
 
 import * as React from 'react';
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef, Fragment } from 'react';
 import ReactFlow, { ReactFlowProvider, useNodesState, useEdgesState } from 'reactflow';
 import 'reactflow/dist/style.css';
 import {
-  Rocket, Loader2, Linkedin, Mail, MessageCircle, Phone, Clock,
+  Rocket, Loader2, Linkedin, Mail, MailPlus, MessageCircle, Phone, Clock,
   Users, Repeat, Search, X, HardDrive, Inbox, ListOrdered, BarChart3, GitFork, DatabaseZap,
-  Wand2, Trash2, Radar, Split, Plus, Upload, FileSpreadsheet, Sparkles,
+  Wand2, Trash2, Radar, Split, Plus, Upload, FileSpreadsheet, Sparkles, Contact, Download, Megaphone, Zap, Globe, Telescope, Gauge, Shuffle, PenLine, Webhook, PenTool, ShieldCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
+import {
+  WORKFLOW_TEMPLATES, WorkflowTemplate,
+  SOURCE_STEP_ID, FOLLOWUP_STEP_ID, ANALYTICS_STEP_ID, ZOHO_UPDATE_STEP_ID,
+  MEDIA_STEP_ID, MULTICOND_STEP_ID, AI_STEP_ID, ENRICH_STEP_ID, EXPORT_STEP_ID,
+  AUTOPOST_STEP_ID, CONTENT_STEP_ID, APPROVAL_STEP_ID, AI_DEFAULT_INSTRUCTION, EXPORT_DEFAULT_COLUMNS,
+} from './workflowTemplates';
+import { TemplateIcon, stepCategory } from './TemplateIcon';
 import { useMediaBuilder } from '@/hooks/voice-agent/useMediaBuilder';
 import { MediaGenerationModal } from '@/components/voice-agent/MediaGenerationModal';
 import { useOnboardingStore, type WorkflowPreviewStep } from '@/store/onboardingStore';
@@ -143,7 +150,9 @@ type Channel = 'linkedin' | 'email' | 'whatsapp' | 'voice' | 'instagram';
 const OUTREACH: { type: StepType; label: string; group: string; channel: Channel; icon: React.ReactNode; chip: string; router?: boolean }[] = [
   { type: 'linkedin_connect', label: 'Connection request', group: 'LinkedIn', channel: 'linkedin', icon: <Linkedin className="h-4 w-4 text-[#0077B5]" />, chip: 'bg-sky-50 dark:bg-sky-950/30' },
   { type: 'linkedin_message', label: 'Message', group: 'LinkedIn', channel: 'linkedin', icon: <Linkedin className="h-4 w-4 text-[#0077B5]" />, chip: 'bg-sky-50 dark:bg-sky-950/30' },
+  { type: 'linkedin_inmail', label: 'InMail (Premium)', group: 'LinkedIn', channel: 'linkedin', icon: <MailPlus className="h-4 w-4 text-[#7C3AED]" />, chip: 'bg-violet-50 dark:bg-violet-950/30' },
   { type: 'linkedin_visit', label: 'Profile visit', group: 'LinkedIn', channel: 'linkedin', icon: <Linkedin className="h-4 w-4 text-[#0077B5]" />, chip: 'bg-sky-50 dark:bg-sky-950/30' },
+  { type: 'linkedin_follow', label: 'Follow profile', group: 'LinkedIn', channel: 'linkedin', icon: <Linkedin className="h-4 w-4 text-[#0077B5]" />, chip: 'bg-sky-50 dark:bg-sky-950/30' },
   { type: 'email_send', label: 'Send email', group: 'Email', channel: 'email', icon: <Mail className="h-4 w-4 text-amber-600" />, chip: 'bg-amber-50 dark:bg-amber-950/30' },
   { type: 'whatsapp_send', label: 'Send WhatsApp', group: 'WhatsApp', channel: 'whatsapp', icon: <MessageCircle className="h-4 w-4 text-green-600" />, chip: 'bg-green-50 dark:bg-green-950/30' },
   { type: 'voice_agent_call', label: 'AI voice call', group: 'Voice', channel: 'voice', icon: <Phone className="h-4 w-4 text-violet-600" />, chip: 'bg-violet-50 dark:bg-violet-950/30' },
@@ -172,12 +181,9 @@ const CONDITIONS = [
   { value: 'wa_replied', label: 'WhatsApp replied', action: 'WA_REPLIED' },
 ];
 
-const SOURCE_STEP_ID = 'src-node';
 // "Macro" nodes (single-instance): follow-ups EXPAND into real engine steps at
 // launch; analytics becomes campaign config read by the digest cron — it is
 // NOT an engine step.
-const FOLLOWUP_STEP_ID = 'followup-node';
-const ANALYTICS_STEP_ID = 'analytics-node';
 let stepSeq = 0;
 const nextId = () => `wf-${Date.now()}-${stepSeq++}`;
 
@@ -190,22 +196,85 @@ const FU_CHANNELS = [
 // "Update Zoho record" write-back node (single-instance) — maps workflow data
 // back onto the lead's Zoho record. Keys MUST match the backend
 // ZohoWritebackService.SOURCE_RESOLVERS.
-const ZOHO_UPDATE_STEP_ID = 'zoho-update-node';
 
 // "AI Media" node (single-instance) — generate a brand image/video at design
 // time; the media_generation step records it and the asset is attached to the
 // workflow's email/WhatsApp outreach at launch.
-const MEDIA_STEP_ID = 'media-gen-node';
 
 // "Multi-condition" (switch) node — routes each lead down one of N branches by
 // a lead field (if/elseif/else). Expands at launch into a `switch` step + one
 // guarded message step per branch (backend prunes the non-chosen branches).
-const MULTICOND_STEP_ID = 'multicond-node';
 
 // "AI Agent" node — LLM-normalises each lead (clean single title from a mixed
 // field, split name, tidy company) before the outreach/LinkedIn steps run.
-const AI_STEP_ID = 'ai-agent-node';
-const AI_DEFAULT_INSTRUCTION = 'If the job title has multiple or mixed roles, keep the single best-fit, most senior title. Split the full name into first/last and tidy the company name.';
+
+// "Enrich contact" node — reveals email/phone via FullEnrich; user multi-selects.
+const ENRICH_OPTIONS: { key: string; label: string; sub: string }[] = [
+  { key: 'official_email', label: 'Official email', sub: 'work / business email' },
+  { key: 'personal_email', label: 'Personal email', sub: 'private email' },
+  { key: 'phone', label: 'Phone number', sub: 'mobile number' },
+];
+
+// "Export results" node — ships the campaign's result set to one or more
+// destinations. Config-only (like the analytics digest): stored on
+// campaigns.config.export_results and run on completion / on demand.
+const EXPORT_FORMATS = [
+  { value: 'csv', label: 'CSV (.csv)' },
+  { value: 'xlsx', label: 'Excel (.xlsx)' },
+  { value: 'json', label: 'JSON (.json)' },
+];
+const EXPORT_DESTINATIONS: { key: string; label: string; sub: string }[] = [
+  { key: 'file',          label: 'Download file',   sub: 'CSV / Excel / JSON link' },
+  { key: 'database',      label: 'Database table',  sub: 'append to campaign_export_results' },
+  { key: 'email',         label: 'Email',           sub: 'send file as an attachment' },
+  { key: 'whatsapp',      label: 'WhatsApp',        sub: 'send file as a document' },
+  { key: 'webhook',       label: 'Webhook',         sub: 'POST JSON to a URL' },
+  { key: 'google_sheets', label: 'Google Sheets',   sub: 'append rows to a sheet' },
+  { key: 'slack',         label: 'Slack',           sub: 'post summary + link' },
+  { key: 'cloud_storage', label: 'Cloud storage',   sub: 'drop file in a bucket' },
+];
+const EXPORT_COLUMN_OPTIONS: { value: string; label: string }[] = [
+  { value: 'full_name', label: 'Full name' },
+  { value: 'first_name', label: 'First name' },
+  { value: 'last_name', label: 'Last name' },
+  { value: 'title', label: 'Title' },
+  { value: 'company_name', label: 'Company' },
+  { value: 'email', label: 'Email' },
+  { value: 'personal_email', label: 'Personal email' },
+  { value: 'phone', label: 'Phone' },
+  { value: 'linkedin_url', label: 'LinkedIn URL' },
+  { value: 'status', label: 'Status' },
+  { value: 'last_action', label: 'Last action' },
+  { value: 'last_action_at', label: 'Last action at' },
+  { value: 'replied', label: 'Replied' },
+  { value: 'created_at', label: 'Added on' },
+];
+
+// "LinkedIn auto-post" node — posts to the tenant's OWN feed on a recurring
+// schedule while the campaign runs (social-selling warm-up). Campaign-level,
+// NOT per-lead: a per-lead post would fire once per enrolled lead.
+// Web-intel nodes — per-lead steps that enrich from the open web before
+// outreach. Each is single-instance (fixed id) like the other AI/data nodes.
+// Logic / data nodes. split_test reuses the switch machinery on the backend
+// (stamps an outcome, prunes the losing variant) — see WorkflowProcessor.
+const SPLIT_STEP_ID = 'split-test-node';
+const SETFIELD_STEP_ID = 'set-field-node';
+const HTTP_STEP_ID = 'http-request-node';
+
+const SCRAPE_STEP_ID = 'web-scrape-node';
+const RESEARCH_STEP_ID = 'web-research-node';
+const SCORE_STEP_ID = 'lead-score-node';
+
+const AUTOPOST_FREQUENCIES = [
+  { value: 'daily', label: 'Every day' },
+  { value: 'weekly', label: 'On selected days' },
+];
+const AUTOPOST_DAYS = [
+  { value: 1, label: 'Mon' }, { value: 2, label: 'Tue' }, { value: 3, label: 'Wed' },
+  { value: 4, label: 'Thu' }, { value: 5, label: 'Fri' }, { value: 6, label: 'Sat' },
+  { value: 0, label: 'Sun' },
+];
+
 
 const SWITCH_FIELDS = [
   { value: 'tag', label: 'Tag' },
@@ -353,7 +422,15 @@ function useBuilderResources() {
   };
 }
 
-export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
+export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSourceCfg, autoLaunch }: {
+  onClose: () => void;
+  /** Apply this template on mount (chat "Roles" wizard hands off here). */
+  initialTemplateKey?: string;
+  /** Answers collected in chat — merged into the source node's config. */
+  initialSourceCfg?: Record<string, any>;
+  /** Fire launch() automatically once the template is applied. */
+  autoLaunch?: boolean;
+}) {
   const { workflowPreview, setWorkflowPreview, addWorkflowStep, updateWorkflowStep } = useOnboardingStore();
   const res = useBuilderResources();
 
@@ -376,6 +453,35 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
   const [mediaGalleryOpen, setMediaGalleryOpen] = useState(false);
   const [mediaImporting, setMediaImporting] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
+  // Left-panel tabs + template browsing state (Templates | Build from steps).
+  const [paletteTab, setPaletteTab] = useState<'templates' | 'steps'>('templates');
+  const [tplSearch, setTplSearch] = useState('');
+  const [expandedTpl, setExpandedTpl] = useState<string | null>(WORKFLOW_TEMPLATES[0]?.key || null);
+  /** Template shown in the right-hand overview drawer (null = show node editor). */
+  const [overviewTpl, setOverviewTpl] = useState<string | null>(null);
+
+  // "Export now" (builder test run) state.
+  const [exportRunning, setExportRunning] = useState(false);
+  const [exportResult, setExportResult] = useState<any>(null);
+  // LinkedIn auto-post state.
+  const [autopostGenerating, setAutopostGenerating] = useState(false);
+  const [autopostMsg, setAutopostMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [liOrganizations, setLiOrganizations] = useState<{ id: string; name: string }[]>([]);
+  const autopostFileRef = useRef<HTMLInputElement | null>(null);
+  // Inline AI-media wizard for the auto-post node — runs the media builder's
+  // Q&A inside the drawer instead of the full-screen studio modal.
+  const [inlineMedia, setInlineMedia] = useState(false);
+  const [inlineAnswer, setInlineAnswer] = useState('');
+  const inlinePrefilledRef = useRef<string | null>(null);
+  // Agent-driven mode: the wizard still runs, but each question is answered
+  // from the post copy instead of being shown. See autoMediaLog for what it
+  // decided — silent automation the user can't inspect is worse than a form.
+  const [autoMedia, setAutoMedia] = useState(false);
+  const [autoMediaLog, setAutoMediaLog] = useState<{ phase: string; answer: string }[]>([]);
+  const autoBusyRef = useRef(false);
+  const autoKeyRef = useRef<string | null>(null);
+  const autoCountRef = useRef(0);
+  const inlineStartedRef = useRef(false);
   // Multi-condition node: fields of the connected source (dynamic dropdown).
   const [mcFields, setMcFields] = useState<{ value: string; label: string }[]>(SWITCH_FIELDS);
   const [mcFieldsLoading, setMcFieldsLoading] = useState(false);
@@ -401,6 +507,7 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     const onEdit = (e: any) => {
       const id: string = e.detail?.stepId || '';
       // Clicking a fanned-out branch node opens the Multi-condition editor.
+      setOverviewTpl(null); // node editor wins over the template overview
       setEditingId(id.startsWith(`${MULTICOND_STEP_ID}-`) ? MULTICOND_STEP_ID : (id || null));
     };
     window.addEventListener('openStepEditor', onEdit);
@@ -486,6 +593,227 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     setEditingId(AI_STEP_ID);
   };
 
+  const addDataEnrich = () => {
+    if (!workflowPreview.some((s) => s.id === ENRICH_STEP_ID)) {
+      addWorkflowStep({ id: ENRICH_STEP_ID, type: 'data_enrich', channel: 'email', title: 'Enrich contact', description: 'Official email · Phone' });
+      setCfg(ENRICH_STEP_ID, { enrich: ['official_email', 'phone'] });
+    }
+    setEditingId(ENRICH_STEP_ID);
+  };
+
+  /** Map the parsed file grid + header mapping into lead objects. Shared by the
+   *  launch payload and the "Export now" test run. */
+  const buildLeadsFromFile = useCallback(() => {
+    const colOf = (f: string) => { const e = Object.entries(fileMapping).find(([, v]) => v === f); return e ? Number(e[0]) : -1; };
+    const idx = { full_name: colOf('full_name'), first_name: colOf('first_name'), last_name: colOf('last_name'), company: colOf('company'), title: colOf('title'), location: colOf('location'), email: colOf('email'), phone: colOf('phone'), linkedin_url: colOf('linkedin_url'), website: colOf('website') };
+    const val = (r: string[], i: number) => (i >= 0 ? (r[i] || '').trim() : '');
+    return fileRows.map((r) => {
+      const first = val(r, idx.first_name), last = val(r, idx.last_name);
+      const full = val(r, idx.full_name) || [first, last].filter(Boolean).join(' ');
+      return {
+        name: full || undefined,
+        first_name: first || (full ? full.split(' ')[0] : undefined),
+        last_name: last || (full ? full.split(' ').slice(1).join(' ') || undefined : undefined),
+        company_name: val(r, idx.company) || undefined,
+        title: val(r, idx.title) || undefined,
+        location: val(r, idx.location) || undefined,
+        email: val(r, idx.email) || undefined,
+        phone: val(r, idx.phone) || undefined,
+        linkedin_url: val(r, idx.linkedin_url) || undefined,
+      };
+    });
+  }, [fileRows, fileMapping]);
+
+  /** "Export now" — test the configured export against the leads loaded in the
+   *  builder, so destinations (email / webhook / Slack …) are proven before launch. */
+  const runExportNow = async () => {
+    const cfg = configs[EXPORT_STEP_ID] || {};
+    const leads = source === 'file_import' ? buildLeadsFromFile() : [];
+    setExportRunning(true);
+    setExportResult(null);
+    try {
+      const res = await fetchWithTenant('/api/campaigns/export/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ config: cfg, leads, campaign_name: name.trim() || 'Workflow preview' }),
+      });
+      const data = await res.json();
+      setExportResult(data);
+    } catch (e: any) {
+      setExportResult({ success: false, error: e?.message || 'Export failed' });
+    } finally {
+      setExportRunning(false);
+    }
+  };
+
+  const addAutopost = () => {
+    if (!workflowPreview.some((s) => s.id === AUTOPOST_STEP_ID)) {
+      addWorkflowStep({ id: AUTOPOST_STEP_ID, type: 'linkedin_post', channel: 'linkedin', title: 'LinkedIn auto-post', description: 'Weekly · Mon' });
+      setCfg(AUTOPOST_STEP_ID, {
+        content: '',
+        frequency: 'weekly',
+        days: [1],
+        time: '09:00',
+        ai_generate: false,
+        post_as: 'personal',
+      });
+    }
+    setEditingId(AUTOPOST_STEP_ID);
+  };
+
+  /** "Generate with AI" — drafts the post from ICP + campaign context. */
+  const generateAutopost = async () => {
+    // Copy lives on the content node since the split — writing to the post
+    // node here meant a successful generate updated nothing the user could see.
+    const eid = CONTENT_STEP_ID;
+    const c = configs[eid] || {};
+    setAutopostGenerating(true);
+    setAutopostMsg(null);
+    try {
+      const res = await fetchWithTenant('/api/campaigns/linkedin-post/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seed: c.content || '', instruction: c.ai_instruction || '' }),
+      });
+      const data = await res.json();
+      if (data?.success && data.content) {
+        setCfg(eid, { content: data.content });
+        updateWorkflowStep(eid, { description: data.content.slice(0, 40) });
+        setAutopostMsg({ ok: true, text: 'Draft generated — edit it below before posting.' });
+      } else {
+        setAutopostMsg({ ok: false, text: data?.error || 'Could not generate a post.' });
+      }
+    } catch (e: any) {
+      setAutopostMsg({ ok: false, text: e?.message || 'Could not generate a post.' });
+    } finally {
+      setAutopostGenerating(false);
+    }
+  };
+
+  /**
+   * Apply a template: replaces the canvas with the recipe's source + nodes and
+   * seeds every drawer config in one shot. Opens the source drawer afterwards
+   * so the user lands on the targeting fields they still need to fill.
+   */
+  const applyTemplate = (t: WorkflowTemplate, opts?: { silent?: boolean; sourceCfgOverride?: Record<string, any> }) => {
+    setOverviewTpl(null);
+    if (!opts?.silent && workflowPreview.length > 0 &&
+        !window.confirm(`Replace the current workflow with the "${t.name}" template?`)) {
+      return;
+    }
+    const srcDef = SOURCES.find((s) => s.key === t.source.key)!;
+    const steps: WorkflowPreviewStep[] = [{
+      id: SOURCE_STEP_ID, type: 'lead_generation',
+      channel: t.source.key.startsWith('linkedin') ? 'linkedin' : 'email',
+      title: t.source.title || srcDef.label,
+      description: t.source.description || srcDef.sub,
+    }];
+    const cfgs: Record<string, any> = {};
+    if (t.source.cfg || opts?.sourceCfgOverride) {
+      cfgs[SOURCE_STEP_ID] = { ...(t.source.cfg || {}), ...(opts?.sourceCfgOverride || {}) };
+    }
+
+    for (const n of t.nodes) {
+      const id = n.macroId || nextId();
+      const channel = n.type.startsWith('linkedin') ? 'linkedin'
+        : n.type.startsWith('email') ? 'email'
+        : n.type.startsWith('whatsapp') ? 'whatsapp'
+        : n.type === 'voice_agent_call' ? 'voice'
+        : n.type === 'condition' ? 'linkedin'
+        : 'email';
+      steps.push({ id, type: n.type, channel, title: n.title, description: n.description } as WorkflowPreviewStep);
+      if (n.cfg) cfgs[id] = { ...n.cfg };
+    }
+
+    setSource(t.source.key);
+    setWorkflowPreview(steps);
+    setConfigs(cfgs);
+    if (!name.trim()) setName(t.name);
+    setError(null);
+    setEditingId(SOURCE_STEP_ID);
+  };
+
+  const addSplitTest = () => {
+    if (!workflowPreview.some((s) => s.id === SPLIT_STEP_ID)) {
+      addWorkflowStep({ id: SPLIT_STEP_ID, type: 'split_test', channel: 'linkedin', title: 'A/B split test', description: '50 / 50' });
+      setCfg(SPLIT_STEP_ID, {
+        split_pct: 50,
+        a: { channel: 'linkedin', body: '' },
+        b: { channel: 'linkedin', body: '' },
+      });
+    }
+    setEditingId(SPLIT_STEP_ID);
+  };
+
+  const addSetField = () => {
+    if (!workflowPreview.some((s) => s.id === SETFIELD_STEP_ID)) {
+      addWorkflowStep({ id: SETFIELD_STEP_ID, type: 'set_field', channel: 'email', title: 'Set field', description: 'Tag / write a value' });
+      setCfg(SETFIELD_STEP_ID, { fields: [{ key: '', value: '' }], tags: '' });
+    }
+    setEditingId(SETFIELD_STEP_ID);
+  };
+
+  const addHttpRequest = () => {
+    if (!workflowPreview.some((s) => s.id === HTTP_STEP_ID)) {
+      addWorkflowStep({ id: HTTP_STEP_ID, type: 'http_request', channel: 'email', title: 'HTTP request', description: 'Call any API' });
+      setCfg(HTTP_STEP_ID, { method: 'POST', url: '', headers: [{ key: '', value: '' }], body: '', save_as: 'http_response', timeout_ms: 15000 });
+    }
+    setEditingId(HTTP_STEP_ID);
+  };
+
+  const addWebScrape = () => {
+    if (!workflowPreview.some((s) => s.id === SCRAPE_STEP_ID)) {
+      addWorkflowStep({ id: SCRAPE_STEP_ID, type: 'web_scrape', channel: 'email', title: 'Webpage scraper', description: "Read the lead's website" });
+      setCfg(SCRAPE_STEP_ID, { url: '', max_chars: 1500 });
+    }
+    setEditingId(SCRAPE_STEP_ID);
+  };
+
+  const addWebResearch = () => {
+    if (!workflowPreview.some((s) => s.id === RESEARCH_STEP_ID)) {
+      addWorkflowStep({ id: RESEARCH_STEP_ID, type: 'web_research', channel: 'email', title: 'Web research', description: 'AI company intel' });
+      setCfg(RESEARCH_STEP_ID, {});
+    }
+    setEditingId(RESEARCH_STEP_ID);
+  };
+
+  const addLeadScore = () => {
+    if (!workflowPreview.some((s) => s.id === SCORE_STEP_ID)) {
+      addWorkflowStep({ id: SCORE_STEP_ID, type: 'lead_score', channel: 'email', title: 'Lead scoring', description: 'Buy-intent 0-100' });
+      setCfg(SCORE_STEP_ID, { hiring_companies: '', funding_companies: '', competitor_companies: '' });
+    }
+    setEditingId(SCORE_STEP_ID);
+  };
+
+  const addLinkedInContent = () => {
+    if (!workflowPreview.some((s) => s.id === CONTENT_STEP_ID)) {
+      addWorkflowStep({ id: CONTENT_STEP_ID, type: 'linkedin_content', channel: 'linkedin', title: 'LinkedIn content', description: 'What the post says' });
+      setCfg(CONTENT_STEP_ID, { content: '', ai_generate: false });
+    }
+    setEditingId(CONTENT_STEP_ID);
+  };
+
+  const addPostApproval = () => {
+    if (!workflowPreview.some((s) => s.id === APPROVAL_STEP_ID)) {
+      addWorkflowStep({ id: APPROVAL_STEP_ID, type: 'post_approval', channel: 'whatsapp', title: 'Approval', description: 'WhatsApp · before posting' });
+      setCfg(APPROVAL_STEP_ID, { approval_channel: 'whatsapp', approval_to: '' });
+    }
+    setEditingId(APPROVAL_STEP_ID);
+  };
+
+  const addExport = () => {
+    if (!workflowPreview.some((s) => s.id === EXPORT_STEP_ID)) {
+      addWorkflowStep({ id: EXPORT_STEP_ID, type: 'export_results', channel: 'email', title: 'Export results', description: 'CSV · Download' });
+      setCfg(EXPORT_STEP_ID, {
+        format: 'csv',
+        destinations: ['file'],
+        columns: EXPORT_DEFAULT_COLUMNS,
+        run_on_completion: true,
+      });
+    }
+    setEditingId(EXPORT_STEP_ID);
+  };
+
   const setCfg = useCallback((id: string, patch: any) => {
     setConfigs((c) => ({ ...c, [id]: { ...(c[id] || {}), ...patch } }));
   }, []);
@@ -517,7 +845,7 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
 
   // Re-home a generated asset (MAGe 7-day signed URL) into the permanent
   // campaign bucket and attach it to the AI Media node.
-  const importGenerated = useCallback(async (sourceUrl: string) => {
+  const importGenerated = useCallback(async (sourceUrl: string, targetStepId: string = MEDIA_STEP_ID) => {
     if (!sourceUrl) return;
     setMediaImporting(true); setMediaError(null);
     try {
@@ -528,12 +856,15 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
       });
       const d = await res.json();
       if (!res.ok || !d?.url) throw new Error(d?.error || `Import failed (${res.status})`);
-      setCfg(MEDIA_STEP_ID, {
+      setCfg(targetStepId, {
         media_url: d.url,
         media_type: d.media_type || mediaTypeFromName(d.filename || filename),
         media_filename: d.filename || filename,
       });
-      updateWorkflowStep(MEDIA_STEP_ID, { description: `${d.media_type || mediaTypeFromName(filename)} attached` });
+      // The auto-post node keeps its own schedule summary as the description.
+      if (targetStepId === MEDIA_STEP_ID) {
+        updateWorkflowStep(MEDIA_STEP_ID, { description: `${d.media_type || mediaTypeFromName(filename)} attached` });
+      }
       setMediaGalleryOpen(false);
     } catch (e: any) {
       setMediaError(e?.message || 'Failed to import media');
@@ -542,6 +873,111 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setCfg, updateWorkflowStep]);
+
+  /** Upload a local image/video and attach it to a node (reuses the LinkedIn
+   *  template media endpoint, which stores to GCP and returns a stable URL). */
+  const uploadMediaFor = useCallback(async (file: File, targetStepId: string) => {
+    if (!file) return;
+    setMediaImporting(true); setMediaError(null);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetchWithTenant('/api/campaigns/linkedin-templates/media-upload', { method: 'POST', body: fd });
+      const d = await res.json();
+      if (!res.ok || !d?.url) throw new Error(d?.error || `Upload failed (${res.status})`);
+      setCfg(targetStepId, {
+        media_url: d.url,
+        media_type: d.media_type || mediaTypeFromName(d.filename || file.name),
+        media_filename: d.filename || file.name,
+      });
+    } catch (e: any) {
+      setMediaError(e?.message || 'Failed to upload media');
+    } finally {
+      setMediaImporting(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setCfg]);
+
+  // Kick the image flow off only after startFlow's sessionId has committed.
+  // selectImageCreation is memoised on `sessionId`, so calling it in the same
+  // tick as startFlow captures the previous (empty) value — the worker then
+  // fails with "Session not found: " and returns 500.
+  useEffect(() => {
+    if (!inlineMedia) { inlineStartedRef.current = false; return; }
+    if (inlineStartedRef.current) return;
+    if (mediaBuilder.step === 'welcome' && mediaBuilder.sessionId) {
+      inlineStartedRef.current = true;
+      Promise.resolve(mediaBuilder.selectImageCreation?.()).catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inlineMedia, mediaBuilder.step, mediaBuilder.sessionId]);
+
+  // ── Agent-driven media configuration ──────────────────────────────────────
+  // Answer each wizard question from the post copy instead of asking the user.
+  // The wizard is the media worker's own state machine, so this drives it the
+  // same way a human would — one answer at a time — rather than trying to
+  // shortcut it. It deliberately STOPS at the image grid: picking the picture
+  // is a real choice worth keeping, and it isn't the part that was tedious.
+  const AUTO_MEDIA_MAX_PHASES = 30;
+  useEffect(() => {
+    if (!inlineMedia || !autoMedia) return;
+    const mb = mediaBuilder;
+    const step = mb.step as string;
+    const p: any = mb.uiPayload || {};
+    if (step === 'loading' || mb.generating) return;
+    // Hand back to the manual UI on anything we can't answer — an error, or a
+    // video/keyframe phase that has no question to answer.
+    if (mb.error) { setAutoMedia(false); return; }
+    if (step !== 'builder-mcq-few' && step !== 'builder-text') return;
+
+    const key = `${step}|${p.phase || ''}|${p.question || ''}`;
+    if (autoBusyRef.current || autoKeyRef.current === key) return;
+    // A wizard that loops would otherwise burn model calls forever.
+    if (autoCountRef.current >= AUTO_MEDIA_MAX_PHASES) { setAutoMedia(false); return; }
+
+    autoBusyRef.current = true;
+    autoKeyRef.current = key;
+    autoCountRef.current += 1;
+
+    (async () => {
+      const post = (configs[CONTENT_STEP_ID]?.content || configs[AUTOPOST_STEP_ID]?.content || '').trim();
+      let answer = '';
+      try {
+        const res = await fetchWithTenant('/api/campaigns/linkedin-post/media-answer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            question: p.question || '',
+            description: p.description || '',
+            options: step === 'builder-mcq-few' ? (p.options || []) : null,
+            phase: p.phase || '',
+            post_content: post,
+          }),
+        });
+        const data = await res.json();
+        if (data?.success) answer = String(data.answer ?? '');
+      } catch {
+        // Leave the answer empty — the wizard treats that as a skip, which is
+        // better than abandoning a run half-way through.
+      }
+      setAutoMediaLog((l) => [...l, { phase: p.phase || p.question || 'Step', answer }]);
+      try { await mb.advanceStep?.(answer); } catch { /* surfaced via mb.error */ }
+      autoBusyRef.current = false;
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inlineMedia, autoMedia, mediaBuilder.step, mediaBuilder.uiPayload, mediaBuilder.generating, mediaBuilder.error]);
+
+  // Lazy-load the LinkedIn company pages the account may post as. Fails soft —
+  // an empty list simply leaves "personal profile" as the only option.
+  useEffect(() => {
+    if (editingId !== AUTOPOST_STEP_ID || liOrganizations.length) return;
+    let cancelled = false;
+    fetchWithTenant('/api/campaigns/linkedin-post/organizations')
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && Array.isArray(d?.data)) setLiOrganizations(d.data); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [editingId, liOrganizations.length]);
 
   // Lazy-load Zoho field metadata when the write-back node is open, per module.
   const zohoModule = configs[ZOHO_UPDATE_STEP_ID]?.module === 'Leads' ? 'Leads' : 'Contacts';
@@ -618,21 +1054,80 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
   const launch = async () => {
     setError(null);
     if (!name.trim()) { setError('Name your workflow.'); return; }
-    if (!source) { setError('Pick a contact source (first node).'); return; }
+    // A publisher-only workflow (content → approval → post) never touches a
+    // lead: all three nodes compile into campaigns.config.autopost, a
+    // campaign-level macro that linkedinAutopostCron fires on a schedule. There
+    // is nobody to enrol, so demanding a contact source — or an outreach step —
+    // would block a perfectly valid pipeline. Any other node present means the
+    // workflow does operate on leads, and the normal guards apply again.
     const outreachSteps = workflowPreview.filter(
-      (s) => s.id !== SOURCE_STEP_ID && s.id !== FOLLOWUP_STEP_ID && s.id !== ANALYTICS_STEP_ID && s.id !== ZOHO_UPDATE_STEP_ID && s.id !== MEDIA_STEP_ID && s.id !== MULTICOND_STEP_ID && s.id !== AI_STEP_ID
+      (s) => s.id !== SOURCE_STEP_ID && s.id !== FOLLOWUP_STEP_ID && s.id !== ANALYTICS_STEP_ID && s.id !== ZOHO_UPDATE_STEP_ID && s.id !== MEDIA_STEP_ID && s.id !== MULTICOND_STEP_ID && s.id !== AI_STEP_ID && s.id !== ENRICH_STEP_ID && s.id !== EXPORT_STEP_ID && s.id !== AUTOPOST_STEP_ID && s.id !== SCRAPE_STEP_ID && s.id !== RESEARCH_STEP_ID && s.id !== SCORE_STEP_ID && s.id !== SPLIT_STEP_ID && s.id !== SETFIELD_STEP_ID && s.id !== HTTP_STEP_ID && s.id !== CONTENT_STEP_ID && s.id !== APPROVAL_STEP_ID
     );
-    const aiNode = workflowPreview.find((s) => s.id === AI_STEP_ID);
-    const mediaNode = workflowPreview.find((s) => s.id === MEDIA_STEP_ID);
     const multiCondNode = workflowPreview.find((s) => s.id === MULTICOND_STEP_ID);
     const followupNode = workflowPreview.find((s) => s.id === FOLLOWUP_STEP_ID);
+    // Publisher-only is about what CONSUMES leads, not about which nodes are on
+    // the canvas. A contact source on its own consumes nothing: with no per-lead
+    // step the imported contacts have nowhere to go, so a workflow whose only
+    // real work is the scheduled post stays publisher-only even with a source
+    // attached. Defining it by node identity instead meant picking a source
+    // silently turned the exemption off.
+    const publisherOnly =
+      workflowPreview.some((s) => s.id === AUTOPOST_STEP_ID) &&
+      !outreachSteps.length && !followupNode && !multiCondNode;
+    if (!source && !publisherOnly) { setError('Pick a contact source (first node).'); return; }
+    // LinkedIn Search needs at least one criterion — templates seed these empty
+    // on purpose, so catch it here with a pointer instead of a backend 400.
+    if (source === 'linkedin_search') {
+      const sc = configs[SOURCE_STEP_ID] || {};
+      const any = [sc.keywords, sc.job_titles, sc.industries, sc.locations]
+        .some((v) => String(v || '').trim());
+      if (!any) {
+        setError('Fill the LinkedIn Search targeting — at least one of job title, industry, location, or keywords.');
+        setEditingId(SOURCE_STEP_ID);
+        return;
+      }
+    }
+    const aiNode = workflowPreview.find((s) => s.id === AI_STEP_ID);
+    const enrichNode = workflowPreview.find((s) => s.id === ENRICH_STEP_ID);
+    const mediaNode = workflowPreview.find((s) => s.id === MEDIA_STEP_ID);
     const analyticsNode = workflowPreview.find((s) => s.id === ANALYTICS_STEP_ID);
+    const exportNode = workflowPreview.find((s) => s.id === EXPORT_STEP_ID);
+    const autopostNode = workflowPreview.find((s) => s.id === AUTOPOST_STEP_ID);
     const zohoUpdateNode = workflowPreview.find((s) => s.id === ZOHO_UPDATE_STEP_ID);
-    if (!outreachSteps.length && !followupNode && !multiCondNode) { setError('Add at least one outreach step.'); return; }
+    if (!outreachSteps.length && !followupNode && !multiCondNode && !publisherOnly) { setError('Add at least one outreach step.'); return; }
     if (multiCondNode) {
       const mcCases: any[] = (configs[MULTICOND_STEP_ID]?.cases) || [];
       const validCases = mcCases.filter((c) => (c.value || '').trim() && (c.body || c.subject || '').trim());
       if (!validCases.length) { setError('Add at least one condition (value + message) in the Multi-condition node.'); setEditingId(MULTICOND_STEP_ID); return; }
+    }
+    // A split test with only one variant filled would emit nothing at all —
+    // tell the user rather than silently dropping the node.
+    if (workflowPreview.some((s) => s.id === SPLIT_STEP_ID)) {
+      const spc = configs[SPLIT_STEP_ID] || {};
+      if (!(spc.a?.body || '').trim() || !(spc.b?.body || '').trim()) {
+        setError('Write a message for BOTH variants in the A/B split test — otherwise there is nothing to compare.');
+        setEditingId(SPLIT_STEP_ID); return;
+      }
+    }
+    // A post node with nothing to say, or an approval gate with nobody to ask,
+    // would launch silently doing nothing — point at the offending node instead.
+    if (workflowPreview.some((s) => s.id === AUTOPOST_STEP_ID)) {
+      const hasContent = ((configs[CONTENT_STEP_ID]?.content ?? configs[AUTOPOST_STEP_ID]?.content) || '').trim();
+      if (!hasContent) {
+        setError('Add the LinkedIn content node and write what the post should say.');
+        setEditingId(workflowPreview.some((s) => s.id === CONTENT_STEP_ID) ? CONTENT_STEP_ID : AUTOPOST_STEP_ID);
+        return;
+      }
+    }
+    if (workflowPreview.some((s) => s.id === APPROVAL_STEP_ID)) {
+      if (!(configs[APPROVAL_STEP_ID]?.approval_to || '').trim()) {
+        setError('Add the WhatsApp number (or email) that should approve each post.');
+        setEditingId(APPROVAL_STEP_ID); return;
+      }
+      if (!workflowPreview.some((s) => s.id === AUTOPOST_STEP_ID)) {
+        setError('The Approval node needs a LinkedIn post node — it gates what that node publishes.');
+        setEditingId(APPROVAL_STEP_ID); return;
+      }
     }
     if (analyticsNode && !(configs[ANALYTICS_STEP_ID]?.recipient || '').trim()) {
       setError('Add a recipient (email or WhatsApp number) in the Analytics report node.'); setEditingId(ANALYTICS_STEP_ID); return;
@@ -671,11 +1166,20 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
           },
         });
       } else if (source === 'linkedin_search') {
+        // Structured targeting — the backend normalises job_titles → roles,
+        // locations → location, industries as-is (LeadGenerationService).
+        const csv = (v: any) => String(v || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+        const jt = csv(srcCfg.job_titles), ind = csv(srcCfg.industries), loc = csv(srcCfg.locations);
         steps.push({
           type: 'lead_generation', title: 'LinkedIn Lead Search', channel: 'linkedin', order_index: order++,
           config: {
             source: 'linkedin_search',
-            leadGenerationFilters: { keywords: (srcCfg.keywords || '').trim() },
+            leadGenerationFilters: {
+              keywords: (srcCfg.keywords || '').trim(),
+              ...(jt.length ? { job_titles: jt } : {}),
+              ...(ind.length ? { industries: ind } : {}),
+              ...(loc.length ? { locations: loc } : {}),
+            },
             leadGenerationLimit: perDayN,
           },
         });
@@ -729,7 +1233,13 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
         const res = await fetchWithTenant(url);
         const data = await res.json();
         const rows = data?.data || [];
-        if (!rows.length) throw new Error('No synced contacts found for this source — sync it first.');
+        // A publisher workflow has nobody to enrol, so an empty import is not a
+        // failure — it only means the source was pointless, not that the
+        // scheduled post can't run. Blocking here stopped a post-only workflow
+        // from launching just because a source had been picked.
+        if (!rows.length && !publisherOnly) {
+          throw new Error('No synced contacts found for this source — sync it first.');
+        }
         initialLeads = rows.map((c: any, i: number) => ({
           id: String(c.source_id || c.id || i),
           first_name: c.first_name || undefined,
@@ -749,6 +1259,72 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
           type: 'ai_parse', title: 'AI Agent', channel: 'linkedin', order_index: order++,
           config: { instruction: (configs[AI_STEP_ID]?.instruction || AI_DEFAULT_INSTRUCTION).trim() },
         });
+      }
+
+      // Data Enrichment → a data_enrich step (after AI cleanup, before outreach)
+      // so the email/WhatsApp/voice steps have the revealed email/phone.
+      if (enrichNode) {
+        const sel: string[] = Array.isArray(configs[ENRICH_STEP_ID]?.enrich) ? configs[ENRICH_STEP_ID].enrich : ['official_email', 'phone'];
+        if (sel.length) {
+          steps.push({
+            type: 'data_enrich', title: 'Enrich contact', channel: 'email', order_index: order++,
+            config: { enrich: sel },
+          });
+        }
+      }
+
+      // Web-intel nodes → per-lead steps that run before outreach, so the
+      // message generators can use what they gathered.
+      const csvList = (v: any) => String(v || '').split(',').map((x: string) => x.trim()).filter(Boolean);
+      if (workflowPreview.some((s) => s.id === SCRAPE_STEP_ID)) {
+        const sc = configs[SCRAPE_STEP_ID] || {};
+        steps.push({
+          type: 'web_scrape', title: 'Webpage scraper', channel: 'email', order_index: order++,
+          config: { url: (sc.url || '').trim() || undefined, max_chars: Math.max(200, Math.min(5000, parseInt(sc.max_chars, 10) || 1500)) },
+        });
+      }
+      if (workflowPreview.some((s) => s.id === RESEARCH_STEP_ID)) {
+        steps.push({ type: 'web_research', title: 'Web research', channel: 'email', order_index: order++, config: {} });
+      }
+      if (workflowPreview.some((s) => s.id === SCORE_STEP_ID)) {
+        const sc = configs[SCORE_STEP_ID] || {};
+        steps.push({
+          type: 'lead_score', title: 'Lead scoring', channel: 'email', order_index: order++,
+          config: {
+            hiring_companies: csvList(sc.hiring_companies),
+            funding_companies: csvList(sc.funding_companies),
+            competitor_companies: csvList(sc.competitor_companies),
+          },
+        });
+      }
+
+      // Set field / HTTP request → per-lead steps before outreach, so the
+      // message generators can use whatever they wrote onto the lead.
+      if (workflowPreview.some((s) => s.id === SETFIELD_STEP_ID)) {
+        const sc = configs[SETFIELD_STEP_ID] || {};
+        const fields = (Array.isArray(sc.fields) ? sc.fields : [])
+          .filter((f: any) => (f?.key || '').trim())
+          .map((f: any) => ({ key: f.key.trim(), value: String(f.value ?? '') }));
+        const tags = csvList(sc.tags);
+        if (fields.length || tags.length) {
+          steps.push({ type: 'set_field', title: 'Set field', channel: 'email', order_index: order++, config: { fields, tags } });
+        }
+      }
+      if (workflowPreview.some((s) => s.id === HTTP_STEP_ID)) {
+        const hc = configs[HTTP_STEP_ID] || {};
+        if ((hc.url || '').trim()) {
+          steps.push({
+            type: 'http_request', title: 'HTTP request', channel: 'email', order_index: order++,
+            config: {
+              url: hc.url.trim(),
+              method: hc.method || 'POST',
+              headers: (Array.isArray(hc.headers) ? hc.headers : []).filter((h: any) => (h?.key || '').trim()),
+              body: (hc.body || '').trim() || undefined,
+              save_as: (hc.save_as || 'http_response').trim(),
+              timeout_ms: Math.max(1000, Math.min(30000, parseInt(hc.timeout_ms, 10) || 15000)),
+            },
+          });
+        }
       }
 
       // Outreach nodes in canvas order.
@@ -775,6 +1351,7 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
         const delay = { delayDays: Math.max(0, parseInt(c.delayDays, 10) || 0), delayHours: 0 };
         if (s.type === 'linkedin_connect') steps.push({ type: s.type, title: 'Send Connection Request', channel: 'linkedin', order_index: order++, config: { message: (c.message || '').trim(), template_id: c.linkedin_template_id || undefined, ...delay } });
         else if (s.type === 'linkedin_message') steps.push({ type: s.type, title: 'Send LinkedIn Message', channel: 'linkedin', order_index: order++, config: { message: (c.message || '').trim(), template_id: c.linkedin_template_id || undefined, ...delay } });
+        else if (s.type === 'linkedin_inmail') steps.push({ type: s.type, title: 'Send LinkedIn InMail', channel: 'linkedin', order_index: order++, config: { message: (c.message || '').trim(), subject: (c.subject || '').trim() || undefined, template_id: c.linkedin_template_id || undefined, ...delay } });
         else if (s.type === 'linkedin_visit') steps.push({ type: s.type, title: 'Visit LinkedIn Profile', channel: 'linkedin', order_index: order++, config: { ...delay } });
         else if (s.type === 'email_send') steps.push({ type: s.type, title: 'Send Email', channel: 'email', order_index: order++, config: { subject: (c.subject || '').trim(), body: (c.body || '').trim(), from_email: c.from_email || undefined, email_provider: c.email_provider || undefined, template_id: c.template_id || undefined, ...delay } });
         else if (s.type === 'whatsapp_send') steps.push({ type: s.type, title: 'Send WhatsApp Message', channel: 'whatsapp', order_index: order++, config: { whatsappMessage: (c.message || '').trim(), whatsapp_account_id: c.whatsapp_account_id || undefined, whatsapp_template_id: c.whatsapp_template_id || undefined, ...delay } });
@@ -854,6 +1431,30 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
         }
       }
 
+      // "A/B split test" → a split_test step + one guarded message step per
+      // variant. The backend stamps the variant into switch_outcomes and prunes
+      // the losing branch, exactly as the multi-condition node does.
+      if (workflowPreview.some((s) => s.id === SPLIT_STEP_ID)) {
+        const spc = configs[SPLIT_STEP_ID] || {};
+        const splitId = `sp-${SPLIT_STEP_ID}`;
+        const buildVariant = (v: any, branchKey: string, label: string) => {
+          const guard = { run_if_branch: { switch_id: splitId, branch: branchKey } };
+          const ch = v?.channel === 'email' ? 'email' : v?.channel === 'whatsapp' ? 'whatsapp' : 'linkedin';
+          if (ch === 'email') return { type: 'email_send', title: `${label} (email)`, channel: 'email', order_index: order++, config: { subject: (v?.subject || '').trim(), body: (v?.body || '').trim(), ...guard } };
+          if (ch === 'whatsapp') return { type: 'whatsapp_send', title: `${label} (WhatsApp)`, channel: 'whatsapp', order_index: order++, config: { whatsappMessage: (v?.body || '').trim(), ...guard } };
+          return { type: 'linkedin_message', title: `${label} (LinkedIn)`, channel: 'linkedin', order_index: order++, config: { message: (v?.body || '').trim(), ...guard } };
+        };
+        const aBody = (spc.a?.body || '').trim(), bBody = (spc.b?.body || '').trim();
+        if (aBody && bBody) {
+          steps.push({
+            type: 'split_test', title: 'A/B split test', channel: 'linkedin', order_index: order++,
+            config: { split_id: splitId, split_pct: Math.min(100, Math.max(0, parseInt(spc.split_pct, 10) || 50)) },
+          });
+          steps.push(buildVariant(spc.a, 'a', 'Variant A'));
+          steps.push(buildVariant(spc.b, 'b', 'Variant B'));
+        }
+      }
+
       // "AI Media" node → records a media_generation step AND attaches the
       // generated asset to every email/WhatsApp step that has no media of its
       // own (the engine's email/whatsapp executors read config.media_url).
@@ -885,6 +1486,20 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
         config: {
           data_source: source === 'zoho_recurring' ? 'zoho_contacts' : source === 'linkedin_search' ? 'linkedin_search' : 'direct_contact',
           builder: 'custom_workflow',
+          // Search targeting, surfaced at campaign level so AI features ground
+          // on it — notably the auto-post generator (LinkedInPostContentService
+          // reads config.targeting), making "daily post about the industry you
+          // target" actually track the industry you searched.
+          ...(source === 'linkedin_search' ? (() => {
+            const sc = configs[SOURCE_STEP_ID] || {};
+            const csv = (v: any) => String(v || '').split(',').map((x: string) => x.trim()).filter(Boolean);
+            const tgt: any = {};
+            if (csv(sc.job_titles).length) tgt.job_titles = csv(sc.job_titles);
+            if (csv(sc.industries).length) tgt.industries = csv(sc.industries);
+            if (csv(sc.locations).length) tgt.locations = csv(sc.locations);
+            if ((sc.keywords || '').trim()) tgt.keywords = sc.keywords.trim();
+            return Object.keys(tgt).length ? { targeting: tgt } : {};
+          })() : {}),
           leads_per_day: perDayN,
           campaign_days: daysN,
           working_days: 'monday-friday',
@@ -899,6 +1514,61 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
           ...(followupNode ? {
             followup_sequence: { touches: fuTouchList.length, channel: fuChannel, timeline_hours: fuTouchList.map((t) => t.hours || 24), human_approval: !!fc.human_approval },
           } : {}),
+          ...(autopostNode ? (() => {
+            // The three nodes merge here: content node supplies the copy/media,
+            // the approval node the gate, the post node the schedule. Falling
+            // back to the post node's own config keeps campaigns built before
+            // the split working unchanged.
+            const sc = configs[AUTOPOST_STEP_ID] || {};
+            const cc = configs[CONTENT_STEP_ID] || {};
+            const ac = workflowPreview.some((s) => s.id === APPROVAL_STEP_ID) ? (configs[APPROVAL_STEP_ID] || {}) : null;
+            const pc = { ...sc, ...cc };   // content-node values win for copy/media
+            const content = ((cc.content ?? sc.content) || '').trim();
+            if (!content) return {};
+            return {
+              // Read by LinkedInAutopostScheduleService at launch → drives
+              // linkedinAutopostCron. Campaign-level (one post per schedule).
+              autopost: {
+                content,
+                ai_generate: !!pc.ai_generate,
+                media_url: (pc.media_url || '').trim() || undefined,
+                // The cron passes this to publishPost, which derives the MIME
+                // type from the extension — without it the filename is guessed
+                // from the URL, which loses it for signed/query-string URLs.
+                media_filename: (pc.media_filename || '').trim() || undefined,
+                external_link: (pc.external_link || '').trim() || undefined,
+                as_organization: pc.post_as && pc.post_as !== 'personal' ? pc.post_as : undefined,
+                frequency: pc.frequency === 'daily' ? 'daily' : 'weekly',
+                days: Array.isArray(pc.days) ? pc.days : [1],
+                time: pc.time || '09:00',
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || undefined,
+                // Approval node present → the cron drafts and asks instead of
+                // publishing. Absent → unchanged auto-post behaviour.
+                require_approval: !!ac,
+                approval_channel: ac ? (ac.approval_channel || 'whatsapp') : undefined,
+                approval_to: ac ? ((ac.approval_to || '').trim() || undefined) : undefined,
+              },
+            };
+          })() : {}),
+          ...(exportNode ? (() => {
+            const ec = configs[EXPORT_STEP_ID] || {};
+            return {
+              // Read by CampaignExportService — on completion and from "Export now".
+              export_results: {
+                format: ec.format || 'csv',
+                destinations: Array.isArray(ec.destinations) && ec.destinations.length ? ec.destinations : ['file'],
+                columns: Array.isArray(ec.columns) && ec.columns.length ? ec.columns : EXPORT_DEFAULT_COLUMNS,
+                run_on_completion: ec.run_on_completion !== false,
+                email_to: (ec.email_to || '').trim() || undefined,
+                whatsapp_to: (ec.whatsapp_to || '').trim() || undefined,
+                webhook_url: (ec.webhook_url || '').trim() || undefined,
+                sheet_id: (ec.sheet_id || '').trim() || undefined,
+                slack_webhook_url: (ec.slack_webhook_url || '').trim() || undefined,
+                bucket: (ec.bucket || '').trim() || undefined,
+                bucket_prefix: (ec.bucket_prefix || '').trim() || undefined,
+              },
+            };
+          })() : {}),
           ...(analyticsNode ? {
             // Read by core/cron/campaignDigestCron.js — daily 08:00 GST (weekly = Mondays).
             analytics_notifications: {
@@ -914,7 +1584,10 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
         // leads as source='direct_contact' (NOT 'linkedin_search') — otherwise
         // the LinkedIn step treats the row id as a Unipile provider_id and
         // skips the name+company resolution waterfall.
-        ...(initialLeads ? { initial_leads: initialLeads, campaign_type: 'direct_outreach' } : {}),
+        // `.length`, not just truthiness — an empty import (allowed for a
+        // publisher workflow) would otherwise send initial_leads: [] and mark
+        // the campaign direct_outreach with nobody in it.
+        ...(initialLeads?.length ? { initial_leads: initialLeads, campaign_type: 'direct_outreach' } : {}),
       };
 
       const res = await fetchWithTenant('/api/campaigns', {
@@ -929,6 +1602,116 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     }
   };
 
+  // ── Programmatic template launch (chat "Roles" wizard hand-off) ───────────
+  // Effect 1 applies the template once on mount (silently — no confirm) with
+  // the wizard's answers merged into the source config. Effect 2 fires launch()
+  // exactly once, on the render AFTER the applied state has committed (the
+  // !source guard skips the same-commit run where state is still stale).
+  const appliedTplRef = useRef(false);
+  const autoLaunchedRef = useRef(false);
+  useEffect(() => {
+    if (!initialTemplateKey || appliedTplRef.current) return;
+    const tpl = WORKFLOW_TEMPLATES.find((t) => t.key === initialTemplateKey);
+    if (!tpl) return;
+    appliedTplRef.current = true;
+    applyTemplate(tpl, { silent: true, sourceCfgOverride: initialSourceCfg });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialTemplateKey]);
+  useEffect(() => {
+    if (!autoLaunch || !appliedTplRef.current || autoLaunchedRef.current) return;
+    if (!source || launching) return;
+    autoLaunchedRef.current = true;
+    launch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoLaunch, source, workflowPreview, configs]);
+
+  /**
+   * Right-hand "Template overview" drawer — full pipeline breakdown before you
+   * commit. Applying from here routes through the same applyTemplate() the
+   * gallery uses, so there is one code path for building a template.
+   */
+  const renderTemplateOverview = () => {
+    const t = WORKFLOW_TEMPLATES.find((x) => x.key === overviewTpl);
+    if (!t) return null;
+    const steps = [
+      { title: t.source.title, category: 'Contact source' },
+      ...t.nodes.map((n) => ({ title: n.title, category: stepCategory(n.type) })),
+    ];
+    const use = () => { applyTemplate(t); setOverviewTpl(null); };
+    return (
+      <div className="absolute right-0 top-0 h-full w-[22rem] bg-card border-l border-border shadow-2xl z-10 flex flex-col">
+        {/* Header */}
+        <div className="flex items-start gap-3 p-4 border-b border-border">
+          <span className="h-11 w-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${t.accent}14` }}>
+            <TemplateIcon tplKey={t.key} color={t.accent} size={20} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-[15px] font-bold text-foreground truncate">{t.name}</div>
+            <div className="text-xs text-muted-foreground">Template overview</div>
+          </div>
+          <button onClick={() => setOverviewTpl(null)}
+            className="h-8 w-8 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors flex-shrink-0">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-4">
+          <p className="text-[13.5px] text-foreground leading-relaxed">{t.tagline}.</p>
+
+          <div className="grid grid-cols-3 gap-2 mt-4">
+            {[
+              { n: steps.length, l: 'steps' },
+              { n: t.meta.cycleDays, l: 'day cycle' },
+              { n: t.meta.channels, l: 'channels' },
+            ].map((st) => (
+              <div key={st.l} className="rounded-xl border border-border bg-muted/30 dark:bg-slate-800/30 px-3 py-3 text-center">
+                <div className="text-[19px] font-bold text-foreground leading-none">{st.n}</div>
+                <div className="text-[11px] text-muted-foreground mt-1">{st.l}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-5">
+            <div className="text-[13px] font-semibold text-foreground mb-2.5">Pipeline</div>
+            <div className="relative">
+              {steps.map((st, i) => (
+                <div key={i} className="relative flex items-start gap-3 pb-3.5 last:pb-0">
+                  {i < steps.length - 1 && (
+                    <span className="absolute left-[13px] top-7 bottom-0 w-px bg-border" />
+                  )}
+                  <span className="relative z-[1] h-[26px] w-[26px] rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-bold"
+                    style={{ background: `${t.accent}14`, color: t.accent }}>{i + 1}</span>
+                  <span className="min-w-0 flex-1 pt-0.5">
+                    <span className="block text-[13.5px] font-semibold text-foreground leading-tight">{st.title}</span>
+                    <span className="block text-[11.5px] text-muted-foreground mt-0.5">{st.category}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <button type="button" onClick={use}
+            className="mt-5 w-full rounded-xl bg-[#0b1957] text-white text-[13.5px] font-semibold py-3 hover:bg-[#0b1957]/90 transition-colors">
+            Use this template
+          </button>
+        </div>
+
+        {/* Footer */}
+        <div className="p-3 border-t border-border flex items-center gap-2">
+          <button type="button" onClick={() => setOverviewTpl(null)}
+            className="px-4 py-2.5 rounded-xl bg-muted text-foreground text-[13px] font-semibold hover:bg-muted/70 transition-colors">
+            Preview
+          </button>
+          <button type="button" onClick={() => { use(); setPaletteTab('steps'); }}
+            className="flex-1 px-4 py-2.5 rounded-xl bg-[#0b1957] text-white text-[13px] font-semibold hover:bg-[#0b1957]/90 transition-colors">
+            Customize steps
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   // ── Config drawer fields per node type ────────────────────────────────────
   const field = 'w-full rounded-md border border-input bg-background px-3 py-2 text-sm';
   const renderEditor = () => {
@@ -941,7 +1724,18 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
     const isMedia = editingId === MEDIA_STEP_ID;
     const isMultiCond = editingId === MULTICOND_STEP_ID;
     const isAiParse = editingId === AI_STEP_ID;
-    const isMacro = isFollowup || isAnalytics || isZohoUpdate || isMedia || isMultiCond || isAiParse;
+    const isDataEnrich = editingId === ENRICH_STEP_ID;
+    const isExport = editingId === EXPORT_STEP_ID;
+    const isAutopost = editingId === AUTOPOST_STEP_ID;
+    const isContent = editingId === CONTENT_STEP_ID;
+    const isApproval = editingId === APPROVAL_STEP_ID;
+    const isScrape = editingId === SCRAPE_STEP_ID;
+    const isResearch = editingId === RESEARCH_STEP_ID;
+    const isScore = editingId === SCORE_STEP_ID;
+    const isSplit = editingId === SPLIT_STEP_ID;
+    const isSetField = editingId === SETFIELD_STEP_ID;
+    const isHttp = editingId === HTTP_STEP_ID;
+    const isMacro = isFollowup || isAnalytics || isZohoUpdate || isMedia || isMultiCond || isAiParse || isDataEnrich || isExport || isAutopost || isScrape || isResearch || isScore || isSplit || isSetField || isHttp || isContent || isApproval;
     const visual = isSource
       ? SOURCES.find((s) => s.key === source)
       : isFollowup
@@ -956,6 +1750,28 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
             ? { icon: <Split className="h-4 w-4 text-amber-600" />, chip: 'bg-amber-50 dark:bg-amber-950/30' }
           : isAiParse
             ? { icon: <Sparkles className="h-4 w-4 text-violet-600" />, chip: 'bg-violet-50 dark:bg-violet-950/30' }
+          : isDataEnrich
+            ? { icon: <Contact className="h-4 w-4 text-teal-600" />, chip: 'bg-teal-50 dark:bg-teal-950/30' }
+          : isExport
+            ? { icon: <Download className="h-4 w-4 text-cyan-700" />, chip: 'bg-cyan-50 dark:bg-cyan-950/30' }
+          : isAutopost
+            ? { icon: <Megaphone className="h-4 w-4 text-[#0077B5]" />, chip: 'bg-sky-50 dark:bg-sky-950/30' }
+          : isContent
+            ? { icon: <PenTool className="h-4 w-4 text-violet-600" />, chip: 'bg-violet-50 dark:bg-violet-950/30' }
+          : isApproval
+            ? { icon: <ShieldCheck className="h-4 w-4 text-green-600" />, chip: 'bg-green-50 dark:bg-green-950/30' }
+          : isScrape
+            ? { icon: <Globe className="h-4 w-4 text-sky-600" />, chip: 'bg-sky-50 dark:bg-sky-950/30' }
+          : isResearch
+            ? { icon: <Telescope className="h-4 w-4 text-indigo-600" />, chip: 'bg-indigo-50 dark:bg-indigo-950/30' }
+          : isScore
+            ? { icon: <Gauge className="h-4 w-4 text-yellow-600" />, chip: 'bg-yellow-50 dark:bg-yellow-950/30' }
+          : isSplit
+            ? { icon: <Shuffle className="h-4 w-4 text-pink-600" />, chip: 'bg-pink-50 dark:bg-pink-950/30' }
+          : isSetField
+            ? { icon: <PenLine className="h-4 w-4 text-lime-600" />, chip: 'bg-lime-50 dark:bg-lime-950/30' }
+          : isHttp
+            ? { icon: <Webhook className="h-4 w-4 text-slate-600" />, chip: 'bg-slate-100 dark:bg-slate-800/50' }
           : isRouter
             ? { icon: <GitFork className="h-4 w-4 text-rose-600" />, chip: 'bg-rose-50 dark:bg-rose-950/30' }
             : OUTREACH.find((o) => o.type === editingStep.type && !o.router);
@@ -966,7 +1782,7 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
           <div className="min-w-0 flex-1">
             <div className="text-sm font-semibold text-foreground truncate">{editingStep.title}</div>
             <div className="text-xs text-muted-foreground">
-              {isSource ? 'Contact source settings' : isFollowup ? 'Follow-up sequence settings' : isAnalytics ? 'Report settings' : isZohoUpdate ? 'Field mapping' : isMedia ? 'AI media' : isMultiCond ? 'Branch by condition' : isAiParse ? 'AI data cleanup' : isRouter ? 'Fallback routing settings' : 'Step settings'}
+              {isSource ? 'Contact source settings' : isFollowup ? 'Follow-up sequence settings' : isAnalytics ? 'Report settings' : isZohoUpdate ? 'Field mapping' : isMedia ? 'AI media' : isMultiCond ? 'Branch by condition' : isAiParse ? 'AI data cleanup' : isDataEnrich ? 'Data to enrich' : isExport ? 'Export destinations' : isAutopost ? 'Where & when' : isContent ? 'What the post says' : isApproval ? 'Who approves' : isScrape ? 'Page to read' : isResearch ? 'What gets researched' : isScore ? 'Scoring signals' : isSplit ? 'Variants & split' : isSetField ? 'Fields to write' : isHttp ? 'Request' : isRouter ? 'Fallback routing settings' : 'Step settings'}
             </div>
           </div>
           <button onClick={() => setEditingId(null)} className="h-7 w-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors flex-shrink-0">
@@ -1034,10 +1850,21 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
               <p className="text-[11px] leading-snug text-muted-foreground">Any combination works (name + company, company + title + location, name + location…). When a LinkedIn step runs, Unipile resolves each lead&apos;s LinkedIn profile from the mapped name + company.</p>
             </>)}
           </>)}
-          {isSource && source === 'linkedin_search' && (
-            <div className="space-y-1"><label className="text-xs font-medium text-foreground">Search keywords</label>
-              <Input value={cfg.keywords || ''} onChange={(e) => setCfg(editingId, { keywords: e.target.value })} placeholder="e.g. VP Sales SaaS UAE" /></div>
-          )}
+          {isSource && source === 'linkedin_search' && (<>
+            {/* Structured targeting — the backend normalises job_titles → roles,
+                locations → location, and matches industries against the lead's
+                company industry. Comma-separate to search several at once. */}
+            <div className="space-y-1"><label className="text-xs font-medium text-foreground">Job titles</label>
+              <Input value={cfg.job_titles || ''} onChange={(e) => setCfg(editingId, { job_titles: e.target.value })} placeholder="e.g. VP Sales, Head of Revenue" />
+              <p className="text-[11px] text-muted-foreground">Comma-separate to target several titles.</p></div>
+            <div className="space-y-1"><label className="text-xs font-medium text-foreground">Industries</label>
+              <Input value={cfg.industries || ''} onChange={(e) => setCfg(editingId, { industries: e.target.value })} placeholder="e.g. SaaS, Fintech" /></div>
+            <div className="space-y-1"><label className="text-xs font-medium text-foreground">Location</label>
+              <Input value={cfg.locations || ''} onChange={(e) => setCfg(editingId, { locations: e.target.value })} placeholder="e.g. Dubai, United Arab Emirates" /></div>
+            <div className="space-y-1"><label className="text-xs font-medium text-foreground">Extra keywords (optional)</label>
+              <Input value={cfg.keywords || ''} onChange={(e) => setCfg(editingId, { keywords: e.target.value })} placeholder="Anything else to match on" />
+              <p className="text-[11px] text-muted-foreground">Fill at least one field above — the search needs a title, industry, location, or keyword.</p></div>
+          </>)}
           {isSource && source === 'linkedin_signal' && (<>
             <div className="space-y-1">
               <label className="text-xs font-medium text-foreground">Signal</label>
@@ -1294,6 +2121,725 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
             <p className="text-[11px] leading-snug text-muted-foreground">Runs on each lead before the outreach steps. It normalises the data — e.g. picks the single best job title when the column has a mix — and writes it back so the LinkedIn node resolves the right person. Uses your tenant&apos;s AI model.</p>
           </>)}
 
+          {isDataEnrich && (() => {
+            const eid = editingId!;
+            const sel: string[] = Array.isArray(cfg.enrich) ? cfg.enrich : ['official_email', 'phone'];
+            const toggle = (key: string) => {
+              const next = sel.includes(key) ? sel.filter((k) => k !== key) : [...sel, key];
+              setCfg(eid, { enrich: next });
+              const labels = ENRICH_OPTIONS.filter((o) => next.includes(o.key)).map((o) => o.label.replace(' email', '').replace(' number', ''));
+              updateWorkflowStep(eid, { description: labels.length ? labels.join(' · ') : 'nothing selected' });
+            };
+            return (<>
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-foreground">Data to enrich</label>
+                {ENRICH_OPTIONS.map((o) => (
+                  <label key={o.key} className="flex items-start gap-2.5 rounded-lg border border-border p-2.5 cursor-pointer hover:bg-muted/30 transition-colors">
+                    <input type="checkbox" className="mt-0.5 h-4 w-4" checked={sel.includes(o.key)} onChange={() => toggle(o.key)} />
+                    <span className="min-w-0">
+                      <span className="block text-sm text-foreground">{o.label}</span>
+                      <span className="block text-[11px] text-muted-foreground">{o.sub}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <p className="text-[11px] leading-snug text-muted-foreground">Reveals the selected data via FullEnrich (name + company/LinkedIn → contact). Runs before outreach so email/WhatsApp/voice steps use the enriched values. Costs FullEnrich credits per lead (work email 2 · personal 4 · mobile 12).</p>
+            </>);
+          })()}
+
+          {isContent && (() => {
+            const eid = editingId!;
+            return (<>
+              <div className="rounded-md border border-sky-200 bg-sky-50 dark:border-sky-900 dark:bg-sky-950/30 px-3 py-2">
+                <p className="text-[11px] text-sky-800 dark:text-sky-300">
+                  Posts to your own LinkedIn feed on a schedule while the campaign runs — it warms
+                  your profile so the people you reach out to see recent activity. This posts
+                  <strong> once per schedule</strong>, not once per lead.
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium text-foreground">Post content</label>
+                  <button type="button" onClick={generateAutopost} disabled={autopostGenerating}
+                    className="text-[11px] font-medium text-[#0b1957] dark:text-sky-300 hover:underline disabled:opacity-60 flex items-center gap-1">
+                    {autopostGenerating ? <><Loader2 className="h-3 w-3 animate-spin" /> Generating…</> : <><Sparkles className="h-3 w-3" /> Generate with AI</>}
+                  </button>
+                </div>
+                <textarea className={`${field} min-h-[140px]`} value={cfg.content || ''}
+                  onChange={(e) => { setCfg(eid, { content: e.target.value }); updateWorkflowStep(eid, { description: e.target.value.slice(0, 40) || 'What the post says' }); }}
+                  placeholder="Write your post, or add a topic and hit Generate with AI…" />
+                <p className="text-[11px] text-muted-foreground">{(cfg.content || '').length}/3000 characters</p>
+                {/* Generation feedback belongs here — the shared status line is
+                    rendered in the post drawer, which isn't visible from here. */}
+                {autopostMsg && (
+                  <div className={`rounded-md border p-2 text-[11px] ${autopostMsg.ok
+                    ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300'
+                    : 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30 text-red-700 dark:text-red-300'}`}>
+                    {autopostMsg.text}
+                  </div>
+                )}
+              </div>
+
+              <label className="flex items-start gap-2.5 rounded-lg border border-border p-2.5 cursor-pointer hover:bg-muted/30 transition-colors">
+                <input type="checkbox" className="mt-0.5 h-4 w-4" checked={!!cfg.ai_generate}
+                  onChange={(e) => setCfg(eid, { ai_generate: e.target.checked })} />
+                <span className="min-w-0">
+                  <span className="block text-sm text-foreground">Write a fresh post with AI each time</span>
+                  <span className="block text-[11px] text-muted-foreground">Uses the text above as the topic, so a recurring series doesn&apos;t repeat itself.</span>
+                </span>
+              </label>
+
+              <div className="space-y-1"><label className="text-xs font-medium text-foreground">Link (optional)</label>
+                <input className={field} value={cfg.external_link || ''} onChange={(e) => setCfg(eid, { external_link: e.target.value })}
+                  placeholder="https://… (shown as a preview card)" /></div>
+
+              {/* ── Media: generate with AI, pick from the gallery, upload, or paste ── */}
+              {(() => {
+                const imgs = mediaBuilder.galleryImages || [];
+                const vids = mediaBuilder.galleryVideos || [];
+                const openGallery = () => { setMediaGalleryOpen((o) => !o); if (!mediaGalleryOpen) mediaBuilder.fetchGallery?.().catch(() => {}); };
+                // Run the wizard inline in this drawer. selectImageCreation
+                // skips the image/video choice — an auto-post wants an image —
+                // and the describe-image phase is pre-filled with the post text.
+                const openStudio = (auto = false) => {
+                  setAutopostMsg(null);
+                  inlinePrefilledRef.current = null;
+                  setInlineAnswer('');
+                  autoBusyRef.current = false;
+                  autoKeyRef.current = null;
+                  autoCountRef.current = 0;
+                  setAutoMediaLog([]);
+                  setAutoMedia(auto);
+                  setInlineMedia(true);
+                  // Only start the flow here. selectImageCreation closes over
+                  // the sessionId STATE, which startFlow has just queued —
+                  // calling it in this tick sends an empty session id and the
+                  // worker 500s with "Session not found". The effect below
+                  // fires it once the id has actually committed.
+                  mediaBuilder.startFlow?.();
+                };
+                return (
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-foreground">Image / video (optional)</label>
+
+                    {cfg.media_url ? (
+                      <div className="space-y-2">
+                        {cfg.media_type === 'video'
+                          ? <video src={cfg.media_url} controls className="w-full max-h-44 rounded-md bg-black" />
+                          : <img src={cfg.media_url} alt={cfg.media_filename || 'media'} className="w-full max-h-44 object-contain rounded-md border border-border" />}
+                        <button type="button" onClick={() => setCfg(eid, { media_url: '', media_type: '', media_filename: '' })}
+                          className="inline-flex items-center gap-1.5 text-xs text-red-600 hover:underline">
+                          <Trash2 className="h-3.5 w-3.5" /> Remove
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-muted-foreground">Posts with an image get noticeably more reach than text alone.</p>
+                    )}
+
+                    {mediaError && <p className="text-xs text-red-600">{mediaError}</p>}
+
+                    {/* ── Inline AI-media wizard ─────────────────────────────
+                        The media builder is a multi-phase Q&A. Rather than the
+                        full-screen studio, render each phase compactly here and
+                        pre-fill the image description with the post text. */}
+                    {inlineMedia && (() => {
+                      const mb = mediaBuilder;
+                      const step = mb.step as string;
+                      const p: any = mb.uiPayload || {};
+                      const phase: string = p.phase || '';
+                      const busy = step === 'loading' || mb.generating;
+                      const cancel = () => { setInlineMedia(false); setInlineAnswer(''); setAutoMedia(false); mb.closeFlow?.(); };
+
+                      // The prompt phase — seed it with the post content once.
+                      const isDescribe = /describe image/i.test(phase) || /describe.*image/i.test(p.question || '');
+                      if (step === 'builder-text' && isDescribe && inlinePrefilledRef.current !== phase) {
+                        inlinePrefilledRef.current = phase;
+                        const seed = (cfg.content || '').trim();
+                        if (seed) setTimeout(() => setInlineAnswer(seed.slice(0, 900)), 0);
+                      }
+
+                      // NOTE: a plain function, NOT a component. Declaring a
+                      // component inside render gives it a new type every pass,
+                      // so React remounts the subtree and the textarea loses
+                      // focus on each keystroke.
+                      const shell = (children: React.ReactNode) => (
+                        <div className="rounded-xl border border-fuchsia-200 dark:border-fuchsia-900 bg-fuchsia-50/50 dark:bg-fuchsia-950/20 p-3 space-y-2.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-fuchsia-700 dark:text-fuchsia-300">
+                              <Wand2 className="h-3.5 w-3.5" /> AI image
+                            </span>
+                            <button type="button" onClick={cancel} className="text-[11px] text-muted-foreground hover:text-foreground">Cancel</button>
+                          </div>
+                          {phase && <div className="text-[10.5px] font-medium text-fuchsia-600/80 dark:text-fuchsia-400/80">{phase}</div>}
+                          {children}
+                        </div>
+                      );
+
+                      // Agent-driven: never show the questionnaire. Show what it
+                      // has decided instead — automation you can't inspect is
+                      // worse than the form it replaced. Stops at the image
+                      // grid, which is a real choice and was never the tedious
+                      // part.
+                      if (autoMedia && !mb.error && step !== 'builder-image-output') return (
+                        shell(<>
+                          <p className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin text-fuchsia-600" />
+                            Setting the image up from your post…
+                          </p>
+                          {autoMediaLog.length > 0 && (
+                            <ul className="space-y-1 max-h-40 overflow-y-auto">
+                              {autoMediaLog.map((e, i) => (
+                                <li key={i} className="text-[11px] leading-snug">
+                                  <span className="text-muted-foreground">{e.phase}: </span>
+                                  <span className="text-foreground font-medium">{e.answer || 'skipped'}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                          <button type="button" onClick={() => setAutoMedia(false)}
+                            className="text-[11.5px] text-muted-foreground hover:text-foreground underline">
+                            Take over and answer the rest myself
+                          </button>
+                        </>)
+                      );
+
+                      if (busy) return (
+                        shell(<><p className="py-3 text-center text-[12px] text-muted-foreground flex items-center justify-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" /> Working…
+                        </p></>)
+                      );
+
+                      if (mb.error) return (
+                        shell(<>
+                          <p className="text-[12px] text-red-600">{String(mb.error)}</p>
+                          <button type="button" onClick={() => { cancel(); setShowMediaStudio(true); }}
+                            className="text-[12px] font-medium text-[#0b1957] dark:text-sky-300 hover:underline">Open the full studio instead</button>
+                        </>)
+                      );
+
+                      // Multiple-choice phase
+                      if (step === 'builder-mcq-few') return (
+                        shell(<>
+                          <p className="text-[13px] font-medium text-foreground leading-snug">{p.question}</p>
+                          {p.description && <p className="text-[11.5px] text-muted-foreground leading-snug">{p.description}</p>}
+                          <div className="flex flex-col gap-1.5">
+                            {(p.options || []).map((o: any, i: number) => (
+                              <button key={i} type="button"
+                                onClick={() => { setInlineAnswer(''); mb.advanceStep?.(o?.label ?? String(o)); }}
+                                className="w-full text-left rounded-lg border border-border bg-card px-2.5 py-2 text-[12.5px] text-foreground hover:border-fuchsia-400 hover:bg-fuchsia-50 dark:hover:bg-fuchsia-950/30 transition-colors">
+                                {o?.label ?? String(o)}
+                              </button>
+                            ))}
+                          </div>
+                        </>)
+                      );
+
+                      // Free-text phase (the image description lands here)
+                      if (step === 'builder-text') return (
+                        shell(<>
+                          <p className="text-[13px] font-medium text-foreground leading-snug">{p.question}</p>
+                          {p.description && <p className="text-[11.5px] text-muted-foreground leading-snug">{p.description}</p>}
+                          {isDescribe && (
+                            <p className="text-[11px] text-fuchsia-700 dark:text-fuchsia-300">Pre-filled from your post — edit if you want a different image.</p>
+                          )}
+                          <textarea className={`${field} min-h-[80px]`} value={inlineAnswer}
+                            onChange={(e) => setInlineAnswer(e.target.value)} placeholder="Type your answer…" />
+                          <div className="flex items-center gap-2">
+                            <button type="button" disabled={!inlineAnswer.trim()}
+                              onClick={() => { const v = inlineAnswer.trim(); setInlineAnswer(''); mb.advanceStep?.(v); }}
+                              className="px-3 py-1.5 rounded-lg bg-fuchsia-600 text-white text-[12.5px] font-semibold disabled:opacity-50">Send</button>
+                            <button type="button" onClick={() => { setInlineAnswer(''); mb.advanceStep?.(''); }}
+                              className="text-[12px] text-muted-foreground hover:text-foreground">Skip</button>
+                          </div>
+                        </>)
+                      );
+
+                      // Generated images — click one to attach it to the post
+                      if (step === 'builder-image-output') {
+                        const outImgs: any[] = p.images || [];
+                        return (
+                          shell(<>
+                            <p className="text-[13px] font-medium text-foreground leading-snug">
+                              {autoMedia ? 'Configured from your post — pick your favourite' : (p.question || 'Pick an image for your post')}
+                            </p>
+                            {!outImgs.length ? (
+                              <p className="text-[12px] text-muted-foreground">No images came back — try the full studio.</p>
+                            ) : (
+                              <div className="grid grid-cols-2 gap-2">
+                                {outImgs.map((im: any, i: number) => {
+                                  const u = im?.url || im?.signed_url || (typeof im === 'string' ? im : '');
+                                  return u ? (
+                                    <img key={i} src={u} alt="generated"
+                                      onClick={() => { importGenerated(u, CONTENT_STEP_ID); setInlineMedia(false); mb.closeFlow?.(); }}
+                                      className="h-20 w-full object-cover rounded-md cursor-pointer hover:ring-2 ring-fuchsia-500" />
+                                  ) : null;
+                                })}
+                              </div>
+                            )}
+                            <p className="text-[11px] text-muted-foreground">Click an image to attach it.</p>
+                          </>)
+                        );
+                      }
+
+                      // Video / keyframe phases aren't worth reproducing in a
+                      // 22rem drawer — hand off to the studio.
+                      return (
+                        shell(<>
+                          <p className="text-[12.5px] text-muted-foreground leading-snug">This part of the wizard needs more room.</p>
+                          <button type="button" onClick={() => { setInlineMedia(false); setShowMediaStudio(true); }}
+                            className="px-3 py-1.5 rounded-lg bg-fuchsia-600 text-white text-[12.5px] font-semibold">Continue in the full studio</button>
+                        </>)
+                      );
+                    })()}
+
+                    <div className="grid grid-cols-2 gap-2">
+                      {/* Default to the agent doing the setup: the post copy is
+                          already the brief, so making everyone sit through the
+                          questionnaire to restate it is the wrong default. */}
+                      <button type="button" onClick={() => openStudio(true)} disabled={inlineMedia || !(cfg.content || '').trim()}
+                        title={!(cfg.content || '').trim() ? 'Write or generate the post first — the copy is what the image is based on' : undefined}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-fuchsia-300 bg-fuchsia-50 dark:bg-fuchsia-950/30 px-2.5 py-2 text-[12.5px] font-medium text-fuchsia-700 dark:text-fuchsia-300 hover:bg-fuchsia-100 dark:hover:bg-fuchsia-900/40 disabled:opacity-50">
+                        <Wand2 className="h-3.5 w-3.5" /> Generate with AI
+                      </button>
+                      <button type="button" onClick={() => autopostFileRef.current?.click()} disabled={mediaImporting}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border px-2.5 py-2 text-[12.5px] font-medium text-foreground hover:bg-muted/50 disabled:opacity-60">
+                        {mediaImporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />} Upload
+                      </button>
+                    </div>
+                    {!inlineMedia && (
+                      <button type="button" onClick={() => openStudio(false)}
+                        className="text-[11.5px] text-muted-foreground hover:text-foreground underline">
+                        Set the image up myself instead
+                      </button>
+                    )}
+                    <input ref={autopostFileRef} type="file" accept="image/*,video/*" className="hidden"
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadMediaFor(f, CONTENT_STEP_ID); e.target.value = ''; }} />
+
+                    <button type="button" onClick={openGallery} className="text-[12px] font-medium text-[#0b1957] dark:text-sky-300 hover:underline">
+                      {mediaGalleryOpen ? 'Hide generated media' : 'Pick from generated media'}
+                    </button>
+
+                    {mediaGalleryOpen && (
+                      <div className="rounded-lg border border-border p-2 bg-muted/20">
+                        {mediaBuilder.loadingGallery ? (
+                          <p className="py-3 text-center text-xs text-muted-foreground flex items-center justify-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</p>
+                        ) : (!imgs.length && !vids.length) ? (
+                          <p className="py-3 text-center text-xs text-muted-foreground">Nothing generated yet — use Generate with AI first.</p>
+                        ) : (
+                          <div className="grid grid-cols-3 gap-2 max-h-52 overflow-y-auto">
+                            {imgs.map((it: any, i: number) => { const u = it?.url || it?.signed_url || (typeof it === 'string' ? it : ''); return u ? (
+                              <img key={`ai-${i}`} src={u} alt="generated" onClick={() => importGenerated(u, CONTENT_STEP_ID)}
+                                className="h-16 w-full object-cover rounded cursor-pointer hover:ring-2 ring-fuchsia-400" />
+                            ) : null; })}
+                            {vids.map((it: any, i: number) => { const u = it?.url || it?.signed_url || (typeof it === 'string' ? it : ''); return u ? (
+                              <video key={`av-${i}`} src={u} onClick={() => importGenerated(u, CONTENT_STEP_ID)}
+                                className="h-16 w-full object-cover rounded cursor-pointer hover:ring-2 ring-fuchsia-400" />
+                            ) : null; })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <input className={field} value={cfg.media_url || ''} onChange={(e) => setCfg(eid, { media_url: e.target.value })}
+                      placeholder="…or paste an image / video URL" />
+                  </div>
+                );
+              })()}
+
+            </>);
+          })()}
+
+          {isApproval && (() => {
+            const eid = editingId!;
+            return (<>
+              <div className="rounded-md border border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30 px-3 py-2">
+                <p className="text-[11px] text-green-800 dark:text-green-300">
+                  Nothing is published until you approve it. At each scheduled slot the post is
+                  drafted and sent to you — tap <strong>Approve</strong> and it goes out immediately.
+                </p>
+              </div>
+              <div className="space-y-1"><label className="text-xs font-medium text-foreground">Send the draft to</label>
+                <select className={field} value={cfg.approval_channel || 'whatsapp'}
+                  onChange={(e) => { setCfg(eid, { approval_channel: e.target.value }); updateWorkflowStep(eid, { description: `${e.target.value === 'email' ? 'Email' : 'WhatsApp'} · before posting` }); }}>
+                  <option value="whatsapp">WhatsApp</option>
+                  <option value="email">Email</option>
+                </select></div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">
+                  {(cfg.approval_channel || 'whatsapp') === 'email' ? 'Approver email' : 'Approver WhatsApp number'}
+                </label>
+                <input className={field} value={cfg.approval_to || ''} onChange={(e) => setCfg(eid, { approval_to: e.target.value })}
+                  placeholder={(cfg.approval_channel || 'whatsapp') === 'email' ? 'you@company.com' : '+971500000000'} />
+              </div>
+              <p className="text-[11px] leading-snug text-muted-foreground">
+                A draft nobody answers is released after 48 hours so the schedule keeps running —
+                that slot is skipped, not posted.
+              </p>
+            </>);
+          })()}
+
+          {isAutopost && (() => {
+            const eid = editingId!;
+            const freq = cfg.frequency === 'daily' ? 'daily' : 'weekly';
+            const days: number[] = Array.isArray(cfg.days) ? cfg.days : [1];
+            const describe = (f: string, d: number[]) => {
+              if (f === 'daily') return 'Daily · ' + (cfg.time || '09:00');
+              const names = AUTOPOST_DAYS.filter((x) => d.includes(x.value)).map((x) => x.label);
+              return (names.length ? names.join(', ') : 'no days') + ' · ' + (cfg.time || '09:00');
+            };
+            const toggleDay = (v: number) => {
+              const next = days.includes(v) ? days.filter((x) => x !== v) : [...days, v];
+              setCfg(eid, { days: next });
+              updateWorkflowStep(eid, { description: describe(freq, next) });
+            };
+            return (<>
+              <div className="rounded-md border border-sky-200 bg-sky-50 dark:border-sky-900 dark:bg-sky-950/30 px-3 py-2">
+                <p className="text-[11px] text-sky-800 dark:text-sky-300">
+                  Publishes the content from the <strong>LinkedIn content</strong> node to your own
+                  feed on this schedule. Posts <strong>once per schedule</strong>, not once per lead.
+                </p>
+              </div>
+              <div className="space-y-1"><label className="text-xs font-medium text-foreground">Post as</label>
+                <select className={field} value={cfg.post_as || 'personal'} onChange={(e) => setCfg(eid, { post_as: e.target.value })}>
+                  <option value="personal">My personal profile</option>
+                  {liOrganizations.map((o) => <option key={o.id} value={o.id}>{o.name} (company page)</option>)}
+                </select>
+                {liOrganizations.length === 0 && (
+                  <p className="text-[11px] text-muted-foreground">No company pages found for this account — posting to your personal profile.</p>
+                )}</div>
+
+              <div className="space-y-1"><label className="text-xs font-medium text-foreground">How often</label>
+                <select className={field} value={freq} onChange={(e) => { setCfg(eid, { frequency: e.target.value }); updateWorkflowStep(eid, { description: describe(e.target.value, days) }); }}>
+                  {AUTOPOST_FREQUENCIES.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
+                </select></div>
+
+              {freq === 'weekly' && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">Days</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {AUTOPOST_DAYS.map((d) => (
+                      <button key={d.value} type="button" onClick={() => toggleDay(d.value)}
+                        className={`px-2.5 py-1 rounded-md border text-[12px] transition-colors ${
+                          days.includes(d.value)
+                            ? 'border-[#0b1957] bg-[#0b1957] text-white'
+                            : 'border-border text-foreground hover:bg-muted/40'
+                        }`}>{d.label}</button>
+                    ))}
+                  </div>
+                  {days.length === 0 && <p className="text-[11px] text-amber-600">Pick at least one day, or it posts every day.</p>}
+                </div>
+              )}
+
+              <div className="space-y-1"><label className="text-xs font-medium text-foreground">Time</label>
+                <input type="time" className={field} value={cfg.time || '09:00'}
+                  onChange={(e) => { setCfg(eid, { time: e.target.value }); updateWorkflowStep(eid, { description: describe(freq, days) }); }} />
+                <p className="text-[11px] text-muted-foreground">Your local timezone. Posting stops when the campaign is paused or finishes.</p></div>
+            </>);
+
+          })()}
+
+
+          {isSplit && (() => {
+            const eid = editingId!;
+            const pct = Math.min(100, Math.max(0, parseInt(cfg.split_pct, 10) || 50));
+            const setV = (k: 'a' | 'b', patch: any) => setCfg(eid, { [k]: { ...(cfg[k] || {}), ...patch } });
+            const variant = (k: 'a' | 'b', label: string) => (
+              <div className="rounded-lg border border-border p-2.5 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[12px] font-semibold text-foreground">Variant {label}</span>
+                  <span className="text-[11px] text-muted-foreground">{k === 'a' ? pct : 100 - pct}% of leads</span>
+                </div>
+                <select className={field} value={(cfg[k] || {}).channel || 'linkedin'} onChange={(e) => setV(k, { channel: e.target.value })}>
+                  {ROUTER_CHANNELS.filter((c) => c.value !== 'voice').map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
+                {((cfg[k] || {}).channel === 'email') && (
+                  <input className={field} value={(cfg[k] || {}).subject || ''} onChange={(e) => setV(k, { subject: e.target.value })} placeholder="Subject" />
+                )}
+                <textarea className={`${field} min-h-[70px]`} value={(cfg[k] || {}).body || ''} onChange={(e) => setV(k, { body: e.target.value })}
+                  placeholder={`Message for variant ${label}…`} />
+              </div>
+            );
+            return (<>
+              <div className="rounded-md border border-pink-200 bg-pink-50 dark:border-pink-900 dark:bg-pink-950/30 px-3 py-2">
+                <p className="text-[11px] text-pink-800 dark:text-pink-300">
+                  Randomly sends each lead <strong>one</strong> of two variants, so you can compare openers
+                  in a single campaign. The assignment sticks — a lead never receives both.
+                </p>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">Split — {pct}% A / {100 - pct}% B</label>
+                <input type="range" min={10} max={90} step={5} value={pct} className="w-full"
+                  onChange={(e) => { setCfg(eid, { split_pct: parseInt(e.target.value, 10) }); updateWorkflowStep(eid, { description: `${e.target.value} / ${100 - parseInt(e.target.value, 10)}` }); }} />
+              </div>
+              {variant('a', 'A')}
+              {variant('b', 'B')}
+              <p className="text-[11px] leading-snug text-muted-foreground">
+                Results show up per variant in campaign analytics (SPLIT_ASSIGNED records which one each lead got).
+              </p>
+            </>);
+          })()}
+
+          {isSetField && (() => {
+            const eid = editingId!;
+            const rows: any[] = Array.isArray(cfg.fields) ? cfg.fields : [{ key: '', value: '' }];
+            const setRow = (i: number, patch: any) => setCfg(eid, { fields: rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)) });
+            return (<>
+              <div className="rounded-md border border-lime-200 bg-lime-50 dark:border-lime-900 dark:bg-lime-950/30 px-3 py-2">
+                <p className="text-[11px] text-lime-800 dark:text-lime-300">
+                  Writes values onto the lead. Pair it with <strong>Multi-condition</strong> to branch on
+                  something you set yourself.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-foreground">Fields</label>
+                {rows.map((r, i) => (
+                  <div key={i} className="flex items-center gap-1.5">
+                    <input className={`${field} flex-1`} value={r.key || ''} onChange={(e) => setRow(i, { key: e.target.value })} placeholder="field name" />
+                    <input className={`${field} flex-1`} value={r.value || ''} onChange={(e) => setRow(i, { value: e.target.value })} placeholder="value or {{token}}" />
+                    <button type="button" onClick={() => setCfg(eid, { fields: rows.filter((_, idx) => idx !== i) })}
+                      className="h-8 w-8 rounded-md hover:bg-muted flex items-center justify-center text-muted-foreground flex-shrink-0"><Trash2 className="h-3.5 w-3.5" /></button>
+                  </div>
+                ))}
+                <button type="button" onClick={() => setCfg(eid, { fields: [...rows, { key: '', value: '' }] })}
+                  className="text-[12px] font-medium text-[#0b1957] dark:text-sky-300 hover:underline inline-flex items-center gap-1">
+                  <Plus className="h-3 w-3" /> Add field
+                </button>
+              </div>
+              <div className="space-y-1"><label className="text-xs font-medium text-foreground">Tags</label>
+                <input className={field} value={cfg.tags || ''} onChange={(e) => setCfg(eid, { tags: e.target.value })} placeholder="hot-lead, webinar — comma separated" />
+                <p className="text-[11px] text-muted-foreground">Added to any tags the lead already has.</p></div>
+            </>);
+          })()}
+
+          {isHttp && (() => {
+            const eid = editingId!;
+            const hdrs: any[] = Array.isArray(cfg.headers) ? cfg.headers : [{ key: '', value: '' }];
+            const setH = (i: number, patch: any) => setCfg(eid, { headers: hdrs.map((h, idx) => (idx === i ? { ...h, ...patch } : h)) });
+            return (<>
+              <div className="rounded-md border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50 px-3 py-2">
+                <p className="text-[11px] text-slate-700 dark:text-slate-300">
+                  Calls any API for each lead and stores the response on them, so a later
+                  Multi-condition can branch on it. Use <code className="text-[10px]">{'{{first_name}}'}</code>-style
+                  tokens anywhere below.
+                </p>
+              </div>
+              <div className="flex gap-1.5">
+                <select className={`${field} w-28`} value={cfg.method || 'POST'} onChange={(e) => setCfg(eid, { method: e.target.value })}>
+                  {['POST', 'GET', 'PUT', 'PATCH', 'DELETE'].map((m) => <option key={m} value={m}>{m}</option>)}
+                </select>
+                <input className={`${field} flex-1`} value={cfg.url || ''} onChange={(e) => { setCfg(eid, { url: e.target.value }); updateWorkflowStep(eid, { description: (e.target.value || 'Call any API').slice(0, 40) }); }}
+                  placeholder="https://api.example.com/leads" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-foreground">Headers</label>
+                {hdrs.map((h, i) => (
+                  <div key={i} className="flex items-center gap-1.5">
+                    <input className={`${field} flex-1`} value={h.key || ''} onChange={(e) => setH(i, { key: e.target.value })} placeholder="Authorization" />
+                    <input className={`${field} flex-1`} value={h.value || ''} onChange={(e) => setH(i, { value: e.target.value })} placeholder="Bearer …" />
+                    <button type="button" onClick={() => setCfg(eid, { headers: hdrs.filter((_, idx) => idx !== i) })}
+                      className="h-8 w-8 rounded-md hover:bg-muted flex items-center justify-center text-muted-foreground flex-shrink-0"><Trash2 className="h-3.5 w-3.5" /></button>
+                  </div>
+                ))}
+                <button type="button" onClick={() => setCfg(eid, { headers: [...hdrs, { key: '', value: '' }] })}
+                  className="text-[12px] font-medium text-[#0b1957] dark:text-sky-300 hover:underline inline-flex items-center gap-1">
+                  <Plus className="h-3 w-3" /> Add header
+                </button>
+              </div>
+              {(cfg.method || 'POST') !== 'GET' && (
+                <div className="space-y-1"><label className="text-xs font-medium text-foreground">Body</label>
+                  <textarea className={`${field} min-h-[90px] font-mono text-[12px]`} value={cfg.body || ''} onChange={(e) => setCfg(eid, { body: e.target.value })}
+                    placeholder={'{"email": "{{email}}", "company": "{{company_name}}"}'} /></div>
+              )}
+              <div className="space-y-1"><label className="text-xs font-medium text-foreground">Save response as</label>
+                <input className={field} value={cfg.save_as || ''} onChange={(e) => setCfg(eid, { save_as: e.target.value })} placeholder="http_response" />
+                <p className="text-[11px] text-muted-foreground">Stored on the lead under this name.</p></div>
+              <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30 px-3 py-2">
+                <p className="text-[11px] text-amber-800 dark:text-amber-300">
+                  Public http/https addresses only — private, loopback and cloud-metadata hosts are refused.
+                </p>
+              </div>
+            </>);
+          })()}
+
+          {isScrape && (<>
+            <div className="rounded-md border border-sky-200 bg-sky-50 dark:border-sky-900 dark:bg-sky-950/30 px-3 py-2">
+              <p className="text-[11px] text-sky-800 dark:text-sky-300">
+                Reads each lead&apos;s company website and stores the page text on the lead, so later
+                steps can reference something concrete. Runs before outreach.
+              </p>
+            </div>
+            <div className="space-y-1"><label className="text-xs font-medium text-foreground">Page to read</label>
+              <input className={field} value={cfg.url || ''} onChange={(e) => setCfg(editingId!, { url: e.target.value })}
+                placeholder="Leave blank to use each lead's own website" />
+              <p className="text-[11px] text-muted-foreground">Blank = the lead&apos;s website field, else the domain from their work email. Free mailboxes (gmail, outlook…) are skipped.</p></div>
+            <div className="space-y-1"><label className="text-xs font-medium text-foreground">Characters to keep</label>
+              <input type="number" className={field} value={cfg.max_chars ?? 1500}
+                onChange={(e) => setCfg(editingId!, { max_chars: e.target.value })} min={200} max={5000} />
+              <p className="text-[11px] text-muted-foreground">200-5000. Kept small so it doesn&apos;t bloat every later step.</p></div>
+          </>)}
+
+          {isResearch && (<>
+            <div className="rounded-md border border-indigo-200 bg-indigo-50 dark:border-indigo-900 dark:bg-indigo-950/30 px-3 py-2">
+              <p className="text-[11px] text-indigo-800 dark:text-indigo-300">
+                Finds the company&apos;s website, reads it, and runs an <strong>AI extraction</strong> into
+                structured intel stored on the lead.
+              </p>
+            </div>
+            <p className="text-[12px] text-muted-foreground leading-snug">
+              Nothing to configure — the company name comes from each lead. Leads without a company are
+              skipped automatically.
+            </p>
+            <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30 px-3 py-2">
+              <p className="text-[11px] text-amber-800 dark:text-amber-300">
+                Costs LLM credits per lead and takes several seconds each — best paired with a lead-scoring
+                step so you only research leads worth the spend.
+              </p>
+            </div>
+          </>)}
+
+          {isScore && (<>
+            <div className="rounded-md border border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950/30 px-3 py-2">
+              <p className="text-[11px] text-yellow-800 dark:text-yellow-300">
+                Scores each lead <strong>0-100</strong> on buy intent (ICP fit + seniority + signals) and tags
+                them <strong>hot / warm / cold</strong>. Free — no external calls.
+              </p>
+            </div>
+            <p className="text-[12px] text-muted-foreground leading-snug">
+              Add a Multi-condition node after this one and branch on <code className="text-[11px]">intent_band</code> to
+              treat hot leads differently.
+            </p>
+            <div className="space-y-1"><label className="text-xs font-medium text-foreground">Companies hiring (optional)</label>
+              <input className={field} value={cfg.hiring_companies || ''} onChange={(e) => setCfg(editingId!, { hiring_companies: e.target.value })}
+                placeholder="Acme, Globex — comma separated" /></div>
+            <div className="space-y-1"><label className="text-xs font-medium text-foreground">Recently funded (optional)</label>
+              <input className={field} value={cfg.funding_companies || ''} onChange={(e) => setCfg(editingId!, { funding_companies: e.target.value })}
+                placeholder="Comma separated" /></div>
+            <div className="space-y-1"><label className="text-xs font-medium text-foreground">Using a competitor (optional)</label>
+              <input className={field} value={cfg.competitor_companies || ''} onChange={(e) => setCfg(editingId!, { competitor_companies: e.target.value })}
+                placeholder="Comma separated" />
+              <p className="text-[11px] text-muted-foreground">Leads at these companies score higher.</p></div>
+          </>)}
+
+          {isExport && (() => {
+            const eid = editingId!;
+            const dests: string[] = Array.isArray(cfg.destinations) ? cfg.destinations : ['file'];
+            const cols: string[] = Array.isArray(cfg.columns) ? cfg.columns : EXPORT_DEFAULT_COLUMNS;
+            const fmt = cfg.format || 'csv';
+            const describe = (d: string[], f: string) => {
+              const names = EXPORT_DESTINATIONS.filter((x) => d.includes(x.key)).map((x) => x.label);
+              return `${String(f).toUpperCase()} · ${names.length ? names.join(' · ') : 'no destination'}`;
+            };
+            const toggleDest = (key: string) => {
+              const next = dests.includes(key) ? dests.filter((k) => k !== key) : [...dests, key];
+              setCfg(eid, { destinations: next });
+              updateWorkflowStep(eid, { description: describe(next, fmt) });
+            };
+            const toggleCol = (value: string) => {
+              const next = cols.includes(value) ? cols.filter((c) => c !== value) : [...cols, value];
+              setCfg(eid, { columns: next });
+            };
+            const has = (k: string) => dests.includes(k);
+            return (<>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">File format</label>
+                <select className={field} value={fmt} onChange={(e) => { setCfg(eid, { format: e.target.value }); updateWorkflowStep(eid, { description: describe(dests, e.target.value) }); }}>
+                  {EXPORT_FORMATS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-foreground">Where to send the results</label>
+                {EXPORT_DESTINATIONS.map((o) => (
+                  <label key={o.key} className="flex items-start gap-2.5 rounded-lg border border-border p-2.5 cursor-pointer hover:bg-muted/30 transition-colors">
+                    <input type="checkbox" className="mt-0.5 h-4 w-4" checked={has(o.key)} onChange={() => toggleDest(o.key)} />
+                    <span className="min-w-0">
+                      <span className="block text-sm text-foreground">{o.label}</span>
+                      <span className="block text-[11px] text-muted-foreground">{o.sub}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+
+              {/* Per-destination inputs — only shown for the ones selected. */}
+              {has('email') && (
+                <div className="space-y-1"><label className="text-xs font-medium text-foreground">Email to</label>
+                  <input className={field} value={cfg.email_to || ''} onChange={(e) => setCfg(eid, { email_to: e.target.value })} placeholder="you@company.com" /></div>
+              )}
+              {has('whatsapp') && (
+                <div className="space-y-1"><label className="text-xs font-medium text-foreground">WhatsApp number</label>
+                  <input className={field} value={cfg.whatsapp_to || ''} onChange={(e) => setCfg(eid, { whatsapp_to: e.target.value })} placeholder="+971500000000" /></div>
+              )}
+              {has('webhook') && (
+                <div className="space-y-1"><label className="text-xs font-medium text-foreground">Webhook URL</label>
+                  <input className={field} value={cfg.webhook_url || ''} onChange={(e) => setCfg(eid, { webhook_url: e.target.value })} placeholder="https://hooks.example.com/…" /></div>
+              )}
+              {has('google_sheets') && (
+                <div className="space-y-1"><label className="text-xs font-medium text-foreground">Google Sheet ID</label>
+                  <input className={field} value={cfg.sheet_id || ''} onChange={(e) => setCfg(eid, { sheet_id: e.target.value })} placeholder="1AbC…xyz (from the sheet URL)" />
+                  <p className="text-[11px] text-muted-foreground">Uses your connected Google account — the Sheets scope must be granted.</p></div>
+              )}
+              {has('slack') && (
+                <div className="space-y-1"><label className="text-xs font-medium text-foreground">Slack incoming webhook</label>
+                  <input className={field} value={cfg.slack_webhook_url || ''} onChange={(e) => setCfg(eid, { slack_webhook_url: e.target.value })} placeholder="https://hooks.slack.com/services/…" /></div>
+              )}
+              {has('cloud_storage') && (<>
+                <div className="space-y-1"><label className="text-xs font-medium text-foreground">Bucket</label>
+                  <input className={field} value={cfg.bucket || ''} onChange={(e) => setCfg(eid, { bucket: e.target.value })} placeholder="Leave blank for the default bucket" /></div>
+                <div className="space-y-1"><label className="text-xs font-medium text-foreground">Folder prefix</label>
+                  <input className={field} value={cfg.bucket_prefix || ''} onChange={(e) => setCfg(eid, { bucket_prefix: e.target.value })} placeholder="campaign-exports" /></div>
+              </>)}
+
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-foreground">Columns to include</label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {EXPORT_COLUMN_OPTIONS.map((c) => (
+                    <label key={c.value} className="flex items-center gap-2 text-[12px] text-foreground cursor-pointer">
+                      <input type="checkbox" className="h-3.5 w-3.5" checked={cols.includes(c.value)} onChange={() => toggleCol(c.value)} />
+                      <span className="truncate">{c.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <label className="flex items-start gap-2.5 rounded-lg border border-border p-2.5 cursor-pointer hover:bg-muted/30 transition-colors">
+                <input type="checkbox" className="mt-0.5 h-4 w-4" checked={cfg.run_on_completion !== false}
+                  onChange={(e) => setCfg(eid, { run_on_completion: e.target.checked })} />
+                <span className="min-w-0">
+                  <span className="block text-sm text-foreground">Export automatically when the campaign finishes</span>
+                  <span className="block text-[11px] text-muted-foreground">You can also export any time from the campaign page.</span>
+                </span>
+              </label>
+
+              {/* Execute now — proves the destinations work before launch. */}
+              <div className="space-y-2 pt-1">
+                <button type="button" onClick={runExportNow} disabled={exportRunning}
+                  className="w-full rounded-md bg-[#0b1957] text-white text-sm font-medium py-2 disabled:opacity-60 flex items-center justify-center gap-2">
+                  {exportRunning ? <><Loader2 className="h-4 w-4 animate-spin" /> Exporting…</> : <><Download className="h-4 w-4" /> Export now</>}
+                </button>
+                <p className="text-[11px] leading-snug text-muted-foreground">
+                  {source === 'file_import'
+                    ? 'Runs the export against the leads loaded above, so you can check the file and confirm your destinations work.'
+                    : 'Sends a test export (no leads are loaded yet for this source) — useful to confirm the destination settings are valid.'}
+                </p>
+                {exportResult && (
+                  <div className={`rounded-md border p-2.5 text-[11px] ${exportResult.success ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/30' : 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30'}`}>
+                    {exportResult.error && <p className="text-red-700 dark:text-red-300">{exportResult.error}</p>}
+                    {typeof exportResult.count === 'number' && <p className="text-foreground font-medium">{exportResult.count} row{exportResult.count !== 1 ? 's' : ''} exported</p>}
+                    {exportResult.results && Object.entries(exportResult.results).map(([k, v]: any) => (
+                      <p key={k} className={v.ok ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}>
+                        {v.ok ? '✓' : '✕'} {k}{v.error ? ` — ${v.error}` : ''}{v.skipped ? ` — ${v.skipped}` : ''}
+                      </p>
+                    ))}
+                    {exportResult.file_url && (
+                      <a href={exportResult.file_url} target="_blank" rel="noreferrer" className="inline-block mt-1 underline text-[#0b1957] dark:text-sky-300">Download file</a>
+                    )}
+                  </div>
+                )}
+              </div>
+            </>);
+          })()}
+
           {!isSource && (editingStep.type === 'linkedin_connect' || editingStep.type === 'linkedin_message') && (<>
             {res.liTemplates.length > 0 && (
               <div className="space-y-1"><label className="text-xs font-medium text-foreground">LinkedIn template (optional)</label>
@@ -1308,6 +2854,30 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Message {editingStep.type === 'linkedin_connect' ? '(optional note)' : ''}</label>
               <textarea className={`${field} min-h-[90px]`} value={cfg.message || ''} onChange={(e) => { setCfg(editingId, { message: e.target.value }); updateWorkflowStep(editingId, { description: e.target.value.slice(0, 40) }); }}
                 placeholder="Leave blank to let Mr LAD draft it" /></div>
+          </>)}
+          {!isSource && editingStep.type === 'linkedin_inmail' && (<>
+            <div className="rounded-md border border-violet-200 bg-violet-50 dark:border-violet-900 dark:bg-violet-950/30 px-3 py-2">
+              <p className="text-[11px] text-violet-700 dark:text-violet-300">
+                InMail reaches prospects you are <strong>not connected to</strong>. Requires a Premium /
+                Sales Navigator / Recruiter LinkedIn account and consumes one InMail credit per send.
+              </p>
+            </div>
+            {res.liTemplates.length > 0 && (
+              <div className="space-y-1"><label className="text-xs font-medium text-foreground">LinkedIn template (optional)</label>
+                <select className={field} value={cfg.linkedin_template_id || ''} onChange={(e) => {
+                  const t = res.liTemplates.find((x: any) => String(x.id) === e.target.value);
+                  setCfg(editingId!, { linkedin_template_id: e.target.value || undefined, message: t?.content ?? t?.message ?? cfg.message });
+                }}>
+                  <option value="">— None (write below / AI-drafted) —</option>
+                  {res.liTemplates.map((t: any) => <option key={t.id} value={t.id}>{t.name || t.title || 'Template'}</option>)}
+                </select></div>
+            )}
+            <div className="space-y-1"><label className="text-xs font-medium text-foreground">Subject (optional)</label>
+              <input className={field} value={cfg.subject || ''} onChange={(e) => setCfg(editingId!, { subject: e.target.value })}
+                placeholder="e.g. Quick question about {{company_name}}" /></div>
+            <div className="space-y-1"><label className="text-xs font-medium text-foreground">Message</label>
+              <textarea className={`${field} min-h-[90px]`} value={cfg.message || ''} onChange={(e) => { setCfg(editingId!, { message: e.target.value }); updateWorkflowStep(editingId!, { description: e.target.value.slice(0, 40) }); }}
+                placeholder="Hi {{first_name}}, I came across your profile…" /></div>
           </>)}
           {!isSource && editingStep.type === 'whatsapp_send' && (<>
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">WhatsApp account</label>
@@ -1442,6 +3012,136 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
       <div className="flex-1 flex min-h-0">
         {/* Palette */}
         <div className="w-[19rem] border-r border-border bg-card overflow-y-auto p-4 space-y-6">
+          {/* Tabs — Templates | Build from steps */}
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-muted/60 dark:bg-slate-800/60">
+            {([['templates', 'Templates'], ['steps', 'Build from steps']] as const).map(([k, label]) => (
+              <button key={k} type="button" onClick={() => setPaletteTab(k)}
+                className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold transition-all ${
+                  paletteTab === k
+                    ? 'bg-card text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}>
+                {k === 'templates'
+                  ? <Zap className="h-3.5 w-3.5" />
+                  : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M4 6h16M4 12h10M4 18h13" /></svg>}
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {paletteTab === 'templates' && (<>
+            {/* Search */}
+            <div className="relative">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+              <input value={tplSearch} onChange={(e) => setTplSearch(e.target.value)} placeholder="Search templates…"
+                className="w-full rounded-xl border border-input bg-muted/40 dark:bg-slate-800/40 pl-9 pr-3 py-2.5 text-[13px] outline-none focus:bg-background focus:border-[#0b1957]/40 transition-colors" />
+            </div>
+
+            <div>
+              <div className="text-[15px] font-bold text-foreground">Start from a template</div>
+              <p className="text-[12.5px] text-muted-foreground mt-0.5 mb-3">Builds the whole pipeline — then tune each node</p>
+
+              <div className="space-y-2.5">
+                {(() => {
+                  const q = tplSearch.trim().toLowerCase();
+                  const list = q
+                    ? WORKFLOW_TEMPLATES.filter((t) =>
+                        (t.name + ' ' + t.tagline + ' ' + t.chain.join(' ')).toLowerCase().includes(q))
+                    : WORKFLOW_TEMPLATES;
+                  if (!list.length) return (
+                    <p className="text-[12.5px] text-muted-foreground py-6 text-center">No templates match “{tplSearch}”.</p>
+                  );
+                  // 13 templates is a lot for one flat list — split general
+                  // pipelines from the industry-tuned ones.
+                  const renderCard = (t: typeof WORKFLOW_TEMPLATES[number]) => {
+                    const open = expandedTpl === t.key;
+                    return (
+                      <div key={t.key}
+                        className={`rounded-2xl border bg-card transition-all ${
+                          open ? 'border-[#0b1957]/40 shadow-[0_2px_16px_rgba(11,25,87,0.08)]' : 'border-border hover:border-[#0b1957]/25'
+                        }`}>
+                        <button type="button" onClick={() => setExpandedTpl(open ? null : t.key)}
+                          className="w-full flex items-start gap-3 p-3 text-left">
+                          <span className="h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${t.accent}14` }}>
+                            <TemplateIcon tplKey={t.key} color={t.accent} size={18} />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="flex items-start gap-1.5 flex-wrap">
+                              <span className="text-[14px] font-bold text-foreground leading-tight">{t.name}</span>
+                              {t.badge && (
+                                <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md mt-0.5 ${
+                                  t.badge.tone === 'violet'
+                                    ? 'bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300'
+                                    : 'bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300'
+                                }`}>{t.badge.label}</span>
+                              )}
+                            </span>
+                            <span className="block text-[12px] text-muted-foreground mt-1 leading-snug">{t.tagline}</span>
+                          </span>
+                          <span className="flex flex-col items-center flex-shrink-0 pl-1">
+                            <span className="text-[15px] font-bold text-foreground leading-none">{t.nodes.length + 1}</span>
+                            <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground mt-0.5">Steps</span>
+                          </span>
+                          <svg className={`text-muted-foreground flex-shrink-0 mt-2.5 transition-transform ${open ? 'rotate-90' : ''}`}
+                            width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m9 18 6-6-6-6" /></svg>
+                        </button>
+
+                        {open && (
+                          <div className="px-3 pb-3">
+                            <div className="border-t border-border pt-3 flex flex-wrap items-center gap-y-1.5" style={{ columnGap: 4 }}>
+                              {t.chain.map((c, i) => (
+                                <Fragment key={i}>
+                                  {i > 0 && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>}
+                                  <span className="text-[10.5px] font-semibold px-2 py-[3px] rounded-full whitespace-nowrap"
+                                    style={{ background: `${t.accent}12`, color: t.accent }}>{c}</span>
+                                </Fragment>
+                              ))}
+                            </div>
+                            <div className="flex items-center gap-3 mt-3">
+                              <span className="inline-flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
+                                <strong className="font-semibold text-foreground">{t.meta.cycleDays}-day</strong> cycle
+                              </span>
+                              <span className="h-3 w-px bg-border" />
+                              <span className="text-[11.5px] text-muted-foreground">
+                                <strong className="font-semibold text-foreground">{t.meta.channels}</strong> channels
+                              </span>
+                              <button type="button" onClick={(e) => { e.stopPropagation(); setOverviewTpl(t.key); setEditingId(null); }}
+                                className="ml-auto px-3.5 py-2 rounded-xl bg-[#0b1957] text-white text-[12.5px] font-semibold hover:bg-[#0b1957]/90 transition-colors">
+                                Use template
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  };
+                  const general = list.filter((t) => t.category === 'general');
+                  const industry = list.filter((t) => t.category === 'industry');
+                  const heading = (label: string, count: number) => (
+                    <div className="flex items-center gap-2 pt-1 pb-0.5">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{label}</span>
+                      <span className="text-[10px] font-semibold text-muted-foreground/70">{count}</span>
+                      <span className="flex-1 h-px bg-border" />
+                    </div>
+                  );
+                  return (<>
+                    {general.length > 0 && heading('General', general.length)}
+                    {general.map(renderCard)}
+                    {industry.length > 0 && heading('By industry', industry.length)}
+                    {industry.map(renderCard)}
+                  </>);
+                })()}
+              </div>
+
+              <button type="button" onClick={() => setPaletteTab('steps')}
+                className="mt-3 w-full rounded-2xl border border-dashed border-border hover:border-[#0b1957]/40 hover:bg-muted/40 py-3 text-[13px] font-semibold text-muted-foreground hover:text-foreground transition-colors inline-flex items-center justify-center gap-2">
+                <Plus className="h-4 w-4" /> Or build from scratch with steps
+              </button>
+            </div>
+          </>)}
+
+          {paletteTab === 'steps' && (<>
           {/* 1 · Contact source */}
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -1549,6 +3249,99 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-semibold text-foreground truncate">AI Agent</span>
                     <span className="block text-xs text-muted-foreground truncate">Clean messy titles / names before LinkedIn</span>
+                  </span>
+                  {added && (
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    </span>
+                  )}
+                </button>
+              );
+            })()}
+            {/* Data enrichment — reveal email/phone via FullEnrich. */}
+            {(() => {
+              const added = workflowPreview.some((s) => s.id === ENRICH_STEP_ID);
+              return (
+                <button onClick={addDataEnrich}
+                  className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
+                    added ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20' : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                  }`}>
+                  <IconChip icon={<Contact className="h-4 w-4 text-teal-600" />} chip="bg-teal-50 dark:bg-teal-950/30" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold text-foreground truncate">Enrich contact</span>
+                    <span className="block text-xs text-muted-foreground truncate">Reveal email &amp; phone (FullEnrich)</span>
+                  </span>
+                  {added && (
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    </span>
+                  )}
+                </button>
+              );
+            })()}
+            {/* Export results — ship the final result set to files / DB / channels. */}
+            {(() => {
+              const added = workflowPreview.some((s) => s.id === EXPORT_STEP_ID);
+              return (
+                <button onClick={addExport}
+                  className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
+                    added ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20' : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                  }`}>
+                  <IconChip icon={<Download className="h-4 w-4 text-cyan-700" />} chip="bg-cyan-50 dark:bg-cyan-950/30" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold text-foreground truncate">Export results</span>
+                    <span className="block text-xs text-muted-foreground truncate">File · DB · Email · WhatsApp · more</span>
+                  </span>
+                  {added && (
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    </span>
+                  )}
+                </button>
+              );
+            })()}
+            {/* Web intelligence — enrich each lead from the open web. */}
+            {([
+              { id: SCRAPE_STEP_ID, on: addWebScrape, icon: <Globe className="h-4 w-4 text-sky-600" />, chip: 'bg-sky-50 dark:bg-sky-950/30', label: 'Webpage scraper', sub: "Read the lead's website" },
+              { id: RESEARCH_STEP_ID, on: addWebResearch, icon: <Telescope className="h-4 w-4 text-indigo-600" />, chip: 'bg-indigo-50 dark:bg-indigo-950/30', label: 'Web research', sub: 'AI company intel from the web' },
+              { id: SCORE_STEP_ID, on: addLeadScore, icon: <Gauge className="h-4 w-4 text-yellow-600" />, chip: 'bg-yellow-50 dark:bg-yellow-950/30', label: 'Lead scoring', sub: 'Buy-intent 0-100 · hot/warm/cold' },
+              { id: SPLIT_STEP_ID, on: addSplitTest, icon: <Shuffle className="h-4 w-4 text-pink-600" />, chip: 'bg-pink-50 dark:bg-pink-950/30', label: 'A/B split test', sub: 'Compare two openers' },
+              { id: SETFIELD_STEP_ID, on: addSetField, icon: <PenLine className="h-4 w-4 text-lime-600" />, chip: 'bg-lime-50 dark:bg-lime-950/30', label: 'Set field', sub: 'Tag or write a value' },
+              { id: HTTP_STEP_ID, on: addHttpRequest, icon: <Webhook className="h-4 w-4 text-slate-600" />, chip: 'bg-slate-100 dark:bg-slate-800/50', label: 'HTTP request', sub: 'Call any API per lead' },
+              { id: CONTENT_STEP_ID, on: addLinkedInContent, icon: <PenTool className="h-4 w-4 text-violet-600" />, chip: 'bg-violet-50 dark:bg-violet-950/30', label: 'LinkedIn content', sub: 'Write or AI-generate the post' },
+              { id: APPROVAL_STEP_ID, on: addPostApproval, icon: <ShieldCheck className="h-4 w-4 text-green-600" />, chip: 'bg-green-50 dark:bg-green-950/30', label: 'Approval', sub: 'Approve on WhatsApp before posting' },
+            ]).map((b) => {
+              const added2 = workflowPreview.some((s) => s.id === b.id);
+              return (
+                <button key={b.id} onClick={b.on}
+                  className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
+                    added2 ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20' : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                  }`}>
+                  <IconChip icon={b.icon} chip={b.chip} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold text-foreground truncate">{b.label}</span>
+                    <span className="block text-xs text-muted-foreground truncate">{b.sub}</span>
+                  </span>
+                  {added2 && (
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+            {/* LinkedIn auto-post — recurring posts to the tenant's own feed. */}
+            {(() => {
+              const added = workflowPreview.some((s) => s.id === AUTOPOST_STEP_ID);
+              return (
+                <button onClick={addAutopost}
+                  className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
+                    added ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20' : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                  }`}>
+                  <IconChip icon={<Megaphone className="h-4 w-4 text-[#0077B5]" />} chip="bg-sky-50 dark:bg-sky-950/30" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold text-foreground truncate">LinkedIn auto-post</span>
+                    <span className="block text-xs text-muted-foreground truncate">Recurring posts to your own feed</span>
                   </span>
                   {added && (
                     <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
@@ -1675,6 +3468,7 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
               );
             })()}
           </div>
+          </>)}
         </div>
 
         {/* Canvas */}
@@ -1688,7 +3482,7 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
               <BuilderCanvas steps={workflowPreview} branches={mcBranches} switchId={MULTICOND_STEP_ID} />
             </ReactFlowProvider>
           )}
-          {renderEditor()}
+          {overviewTpl ? renderTemplateOverview() : renderEditor()}
         </div>
       </div>
 
@@ -1697,6 +3491,11 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
         <MediaGenerationModal
           isOpen={showMediaStudio}
           onClose={() => { setShowMediaStudio(false); setMediaGalleryOpen(true); mediaBuilder.fetchGallery?.().catch(() => {}); }}
+          // The builder is hosted in a fixed z-index:10000 overlay and the
+          // dialog portals to <body>, so without these it opens BEHIND the
+          // builder — invisible, and closed by the next click.
+          className="z-[10050]"
+          overlayClassName="z-[10040]"
         />
       )}
     </div>
