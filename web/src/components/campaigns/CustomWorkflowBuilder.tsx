@@ -1680,16 +1680,54 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
 
       // Editing updates THIS campaign. Posting again would leave the original
       // running alongside a duplicate, both posting to the same feed.
-      const res = editCampaignId
-        ? await fetchWithTenant(`/api/campaigns/${editCampaignId}`, {
-            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
-          })
-        : await fetchWithTenant('/api/campaigns', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
-          });
-      const data = await res.json();
+      let res: Response;
+      if (editCampaignId) {
+        // PATCH, not PUT — the backend only registers patch('/:id'), so PUT hit
+        // Express's 404 and returned "Cannot PUT /api/campaigns/<id>".
+        const { status: _dropStatus, steps: editSteps, ...rest } = payload;
+        const editPayload: any = {
+          ...rest,
+          // CampaignModel.update MERGES config instead of replacing it, so a
+          // node removed in the builder would leave its key behind and keep
+          // running. Null the macro keys that are no longer present.
+          config: {
+            ...rest.config,
+            ...(rest.config.autopost ? {} : { autopost: null }),
+            ...(rest.config.export_results ? {} : { export_results: null }),
+            ...(rest.config.analytics_notifications ? {} : { analytics_notifications: null }),
+            ...(rest.config.followup_sequence ? {} : { followup_sequence: null }),
+          },
+        };
+        // `status` is deliberately dropped. update() has no active→running
+        // mapping (create does), so sending 'active' would write that literally
+        // and the cron's `status = 'running'` filter would stop matching — the
+        // schedule would go quiet. It would also resurrect a paused campaign.
+        res = await fetchWithTenant(`/api/campaigns/${editCampaignId}`, {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editPayload),
+        });
+        // Steps are not in update()'s allowedFields — they have their own
+        // endpoint, so without this an edited outreach sequence saved nothing.
+        if (res.ok && Array.isArray(editSteps)) {
+          await fetchWithTenant(`/api/campaigns/${editCampaignId}/steps`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ steps: editSteps }),
+          }).catch(() => { /* surfaced by the reload below */ });
+        }
+      } else {
+        res = await fetchWithTenant('/api/campaigns', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+        });
+      }
+      // Express answers an unknown route with an HTML page, and res.json() then
+      // dumped the whole document into the error banner. Parse defensively so a
+      // failure reads as a sentence.
+      const raw = await res.text();
+      let data: any = null;
+      try { data = raw ? JSON.parse(raw) : null; } catch { /* not JSON */ }
       if (res.ok && (data?.success || data?.id || data?.data?.id)) window.location.href = '/campaigns';
-      else { setError(data?.error || 'Failed to launch workflow'); setLaunching(false); }
+      else {
+        setError(data?.error || `${editCampaignId ? 'Could not save changes' : 'Failed to launch workflow'} (${res.status})`);
+        setLaunching(false);
+      }
     } catch (e: any) {
       setError(e?.message || 'Failed to launch workflow');
       setLaunching(false);
