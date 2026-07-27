@@ -117,8 +117,8 @@ export default function CookiesPolicyPage() {
       </div>
 
       {/* Desktop / Tablet Table View (>= sm) */}
-      <div className="hidden sm:block my-6 overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-        <table className="w-full border-collapse text-left text-sm !mb-0">
+      <div className="hidden sm:block my-6 overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+        <table className="!mb-0">
           <thead>
             <tr>
               <th className="w-1/4">Category</th>
