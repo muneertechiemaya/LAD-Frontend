@@ -474,6 +474,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   const [inlineMedia, setInlineMedia] = useState(false);
   const [inlineAnswer, setInlineAnswer] = useState('');
   const inlinePrefilledRef = useRef<string | null>(null);
+  const inlineStartedRef = useRef(false);
   // Multi-condition node: fields of the connected source (dynamic dropdown).
   const [mcFields, setMcFields] = useState<{ value: string; label: string }[]>(SWITCH_FIELDS);
   const [mcFieldsLoading, setMcFieldsLoading] = useState(false);
@@ -919,6 +920,20 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setCfg]);
+
+  // Kick the image flow off only after startFlow's sessionId has committed.
+  // selectImageCreation is memoised on `sessionId`, so calling it in the same
+  // tick as startFlow captures the previous (empty) value — the worker then
+  // fails with "Session not found: " and returns 500.
+  useEffect(() => {
+    if (!inlineMedia) { inlineStartedRef.current = false; return; }
+    if (inlineStartedRef.current) return;
+    if (mediaBuilder.step === 'welcome' && mediaBuilder.sessionId) {
+      inlineStartedRef.current = true;
+      Promise.resolve(mediaBuilder.selectImageCreation?.()).catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inlineMedia, mediaBuilder.step, mediaBuilder.sessionId]);
 
   // Lazy-load the LinkedIn company pages the account may post as. Fails soft —
   // an empty list simply leaves "personal profile" as the only option.
@@ -2127,8 +2142,12 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   inlinePrefilledRef.current = null;
                   setInlineAnswer('');
                   setInlineMedia(true);
+                  // Only start the flow here. selectImageCreation closes over
+                  // the sessionId STATE, which startFlow has just queued —
+                  // calling it in this tick sends an empty session id and the
+                  // worker 500s with "Session not found". The effect below
+                  // fires it once the id has actually committed.
                   mediaBuilder.startFlow?.();
-                  Promise.resolve(mediaBuilder.selectImageCreation?.()).catch(() => {});
                 };
                 return (
                   <div className="space-y-2">
