@@ -655,7 +655,9 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
 
   /** "Generate with AI" — drafts the post from ICP + campaign context. */
   const generateAutopost = async () => {
-    const eid = AUTOPOST_STEP_ID;
+    // Copy lives on the content node since the split — writing to the post
+    // node here meant a successful generate updated nothing the user could see.
+    const eid = CONTENT_STEP_ID;
     const c = configs[eid] || {};
     setAutopostGenerating(true);
     setAutopostMsg(null);
@@ -682,7 +684,8 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
 
   /** "Post now" — publishes immediately so the user can see it land. */
   const postAutopostNow = async () => {
-    const c = configs[AUTOPOST_STEP_ID] || {};
+    // Copy + media come from the content node, identity from the post node.
+    const c = { ...(configs[AUTOPOST_STEP_ID] || {}), ...(configs[CONTENT_STEP_ID] || {}) };
     if (!(c.content || '').trim()) {
       setAutopostMsg({ ok: false, text: 'Write or generate the post content first.' });
       return;
@@ -2099,6 +2102,15 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   onChange={(e) => { setCfg(eid, { content: e.target.value }); updateWorkflowStep(eid, { description: e.target.value.slice(0, 40) || 'What the post says' }); }}
                   placeholder="Write your post, or add a topic and hit Generate with AI…" />
                 <p className="text-[11px] text-muted-foreground">{(cfg.content || '').length}/3000 characters</p>
+                {/* Generation feedback belongs here — the shared status line is
+                    rendered in the post drawer, which isn't visible from here. */}
+                {autopostMsg && (
+                  <div className={`rounded-md border p-2 text-[11px] ${autopostMsg.ok
+                    ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300'
+                    : 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30 text-red-700 dark:text-red-300'}`}>
+                    {autopostMsg.text}
+                  </div>
+                )}
               </div>
 
               <label className="flex items-start gap-2.5 rounded-lg border border-border p-2.5 cursor-pointer hover:bg-muted/30 transition-colors">
@@ -2252,7 +2264,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                                   const u = im?.url || im?.signed_url || (typeof im === 'string' ? im : '');
                                   return u ? (
                                     <img key={i} src={u} alt="generated"
-                                      onClick={() => { importGenerated(u, AUTOPOST_STEP_ID); setInlineMedia(false); mb.closeFlow?.(); }}
+                                      onClick={() => { importGenerated(u, CONTENT_STEP_ID); setInlineMedia(false); mb.closeFlow?.(); }}
                                       className="h-20 w-full object-cover rounded-md cursor-pointer hover:ring-2 ring-fuchsia-500" />
                                   ) : null;
                                 })}
@@ -2285,7 +2297,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                       </button>
                     </div>
                     <input ref={autopostFileRef} type="file" accept="image/*,video/*" className="hidden"
-                      onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadMediaFor(f, AUTOPOST_STEP_ID); e.target.value = ''; }} />
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadMediaFor(f, CONTENT_STEP_ID); e.target.value = ''; }} />
 
                     <button type="button" onClick={openGallery} className="text-[12px] font-medium text-[#0b1957] dark:text-sky-300 hover:underline">
                       {mediaGalleryOpen ? 'Hide generated media' : 'Pick from generated media'}
@@ -2300,11 +2312,11 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                         ) : (
                           <div className="grid grid-cols-3 gap-2 max-h-52 overflow-y-auto">
                             {imgs.map((it: any, i: number) => { const u = it?.url || it?.signed_url || (typeof it === 'string' ? it : ''); return u ? (
-                              <img key={`ai-${i}`} src={u} alt="generated" onClick={() => importGenerated(u, AUTOPOST_STEP_ID)}
+                              <img key={`ai-${i}`} src={u} alt="generated" onClick={() => importGenerated(u, CONTENT_STEP_ID)}
                                 className="h-16 w-full object-cover rounded cursor-pointer hover:ring-2 ring-fuchsia-400" />
                             ) : null; })}
                             {vids.map((it: any, i: number) => { const u = it?.url || it?.signed_url || (typeof it === 'string' ? it : ''); return u ? (
-                              <video key={`av-${i}`} src={u} onClick={() => importGenerated(u, AUTOPOST_STEP_ID)}
+                              <video key={`av-${i}`} src={u} onClick={() => importGenerated(u, CONTENT_STEP_ID)}
                                 className="h-16 w-full object-cover rounded cursor-pointer hover:ring-2 ring-fuchsia-400" />
                             ) : null; })}
                           </div>
