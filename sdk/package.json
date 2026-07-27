@@ -58,6 +58,10 @@
       "types": "./features/email-templates/index.ts",
       "default": "./features/email-templates/index.ts"
     },
+    "./meta-onboarding": {
+      "types": "./features/meta-onboarding/index.ts",
+      "default": "./features/meta-onboarding/index.ts"
+    },
     "./lad-monitor": {
       "types": "./features/lad-monitor/index.ts",
       "default": "./features/lad-monitor/index.ts"

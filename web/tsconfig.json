@@ -45,6 +45,7 @@
       "@lad/frontend-features/email-templates": ["../sdk/features/email-templates"],
       "@lad/frontend-features/email-senders": ["../sdk/features/email-senders"],
       "@lad/frontend-features/email-accounts": ["../sdk/features/email-accounts"],
+      "@lad/frontend-features/meta-onboarding": ["../sdk/features/meta-onboarding"],
       "@lad/frontend-features/lad-monitor": ["../sdk/features/lad-monitor"],
       "@lad/shared/*": ["../sdk/shared/*"]
     }
