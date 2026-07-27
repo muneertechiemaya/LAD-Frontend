@@ -275,6 +275,32 @@ const AUTOPOST_DAYS = [
   { value: 0, label: 'Sun' },
 ];
 
+/**
+ * When this schedule actually fires next, mirroring the backend's
+ * computeNextRun: the next slot STRICTLY in the future, on an allowed weekday.
+ *
+ * Worth surfacing because the consequence is easy to miss. Pick 04:17 on a
+ * Monday afternoon and the next Monday 04:17 is a week away, so the workflow
+ * launches, reports success and then does nothing for seven days.
+ *
+ * The builder sends the browser's timezone, so computing locally matches.
+ */
+export function nextAutopostRun(frequency: string, days: number[], time: string, from = new Date()): Date | null {
+  const [hh, mm] = String(time || '09:00').split(':').map((n) => parseInt(n, 10) || 0);
+  const weekly = frequency !== 'daily';
+  // Weekly with nothing selected never fires — the backend treats it as daily.
+  const allowed = weekly && days.length ? days : [0, 1, 2, 3, 4, 5, 6];
+  for (let i = 0; i <= 8; i += 1) {
+    const d = new Date(from);
+    d.setDate(d.getDate() + i);
+    d.setHours(hh, mm, 0, 0);
+    if (d.getTime() <= from.getTime()) continue;
+    if (!allowed.includes(d.getDay())) continue;
+    return d;
+  }
+  return null;
+}
+
 
 const SWITCH_FIELDS = [
   { value: 'tag', label: 'Tag' },
@@ -2680,6 +2706,35 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 <input type="time" className={field} value={cfg.time || '09:00'}
                   onChange={(e) => { setCfg(eid, { time: e.target.value }); updateWorkflowStep(eid, { description: describe(freq, days) }); }} />
                 <p className="text-[11px] text-muted-foreground">Your local timezone. Posting stops when the campaign is paused or finishes.</p></div>
+
+              {/* What this schedule actually means, in dates. */}
+              {(() => {
+                const next = nextAutopostRun(freq, days, cfg.time || '09:00');
+                if (!next) {
+                  return <p className="text-[11px] text-amber-600">This schedule never fires — check the days and time.</p>;
+                }
+                const hours = Math.round((next.getTime() - Date.now()) / 3600000);
+                const away = hours < 1 ? 'in under an hour'
+                  : hours < 24 ? `in about ${hours} hour${hours === 1 ? '' : 's'}`
+                  : `in ${Math.round(hours / 24)} days`;
+                const far = hours >= 48;
+                return (
+                  <div className={`rounded-md border px-3 py-2 ${far
+                    ? 'border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30'
+                    : 'border-border bg-muted/30'}`}>
+                    <p className={`text-[11.5px] ${far ? 'text-amber-800 dark:text-amber-300' : 'text-foreground'}`}>
+                      First post: <strong>{next.toLocaleString(undefined, {
+                        weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+                      })}</strong> — {away}.
+                    </p>
+                    {far && (
+                      <p className="text-[11px] text-amber-700/80 dark:text-amber-400/80 mt-0.5">
+                        That time has already passed today, so the first post waits for the next matching day.
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
             </>);
 
           })()}
