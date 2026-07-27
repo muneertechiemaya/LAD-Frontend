@@ -48,9 +48,18 @@ const FINISH_EVENTS = [
   'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING',
 ];
 
+/**
+ * The coexistence completion. Its payload carries ONLY `waba_id` — no
+ * `phone_number_id`, unlike every other finish event. Requiring both would
+ * reject the signup with "finished without a phone number" at the exact moment
+ * it succeeded, so the backend resolves the number from the WABA instead.
+ */
+const COEXISTENCE_FINISH_EVENT = 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING';
+
 interface SessionInfo {
   waba_id: string;
-  phone_number_id: string;
+  /** Absent on the coexistence flow — resolved server-side from the WABA. */
+  phone_number_id?: string;
   business_id?: string;
   /** Literal completion event — the backend uses it to detect coexistence. */
   onboarding_event: string;
@@ -203,10 +212,15 @@ export function useWhatsAppEmbeddedSignup(options: UseWhatsAppEmbeddedSignupOpti
 
       if (FINISH_EVENTS.includes(payload.event)) {
         const data = payload.data || {};
-        if (data.waba_id && data.phone_number_id) {
+        const isCoexistence = payload.event === COEXISTENCE_FINISH_EVENT;
+        // Coexistence reports only waba_id; every other flow reports both.
+        const hasWhatWeNeed =
+          data.waba_id && (isCoexistence || data.phone_number_id);
+
+        if (hasWhatWeNeed) {
           sessionRef.current = {
             waba_id:         String(data.waba_id),
-            phone_number_id: String(data.phone_number_id),
+            phone_number_id: data.phone_number_id ? String(data.phone_number_id) : undefined,
             business_id:     data.business_id ? String(data.business_id) : undefined,
             onboarding_event: String(payload.event),
           };
