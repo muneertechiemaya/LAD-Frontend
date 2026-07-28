@@ -454,7 +454,7 @@ function ComposeBroadcastDialog({
   return (
     <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) reset(); }}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+        <DialogHeader className="flex-col items-start sm:flex-row sm:items-center gap-1 sm:gap-4">
           <DialogTitle>New broadcast</DialogTitle>
           <DialogDescription className="text-[13px] sm:text-sm pr-6 sm:pr-0">
             Send the same message to many recipients via a connected Gmail or Outlook account.
