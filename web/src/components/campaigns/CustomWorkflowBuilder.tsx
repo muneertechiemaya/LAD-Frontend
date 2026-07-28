@@ -1165,6 +1165,44 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     const autopostNode = workflowPreview.find((s) => s.id === AUTOPOST_STEP_ID);
     const zohoUpdateNode = workflowPreview.find((s) => s.id === ZOHO_UPDATE_STEP_ID);
     if (!outreachSteps.length && !followupNode && !multiCondNode && !publisherOnly) { setError('Add at least one outreach step.'); return; }
+
+    // InMail needs an entitlement the account may not have. Checking here means
+    // the user finds out while looking at the canvas, instead of one lead
+    // failing hours later with a 422 that reads like a billing problem.
+    //
+    // A free LinkedIn account returns "insufficient credits", which is NOT a
+    // depleted balance — it has no InMail entitlement at all, so credits on
+    // another account are irrelevant. Fails OPEN: an unreachable probe must
+    // never block a launch.
+    if (workflowPreview.some((s) => s.type === 'linkedin_inmail')) {
+      try {
+        const capRes = await fetchWithTenant('/api/campaigns/linkedin/capabilities');
+        const capJson = await capRes.json();
+        const cap = capJson?.data;
+        if (cap?.known && cap.connected && cap.canInMail === false) {
+          const who = cap.accountName || 'The connected LinkedIn account';
+          // Distinguish "free account" from the far more confusing case: a paid
+          // seat whose credits the integration cannot see. The account that
+          // prompted this reported Premium, and its owner could see 149 Sales
+          // Navigator credits in LinkedIn, while the API reported every pool as
+          // null. Telling that user to buy credits would have been useless.
+          setError(cap.premium
+            ? `${who} has a paid LinkedIn plan, but no InMail credits are visible to the integration. `
+              + 'Sales Navigator credits are a separate pool and stay hidden unless the account was connected with that seat active. '
+              + 'Reconnect the LinkedIn account in Settings, or swap the InMail step for a connection request.'
+            : `${who} has no InMail credits available. `
+              + 'InMail needs Premium or Sales Navigator on the sending account. Swap the InMail step for a connection request, or connect an account that has one.'
+          );
+          return;
+        }
+        if (cap?.connected === false) {
+          setError('No LinkedIn account is connected, so the InMail step cannot run. Connect one in Settings first.');
+          return;
+        }
+      } catch {
+        // Probe unavailable — let the launch proceed rather than block on it.
+      }
+    }
     if (multiCondNode) {
       const mcCases: any[] = (configs[MULTICOND_STEP_ID]?.cases) || [];
       const validCases = mcCases.filter((c) => (c.value || '').trim() && (c.body || c.subject || '').trim());
