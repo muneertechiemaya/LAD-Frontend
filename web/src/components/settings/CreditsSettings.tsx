@@ -114,7 +114,7 @@ export const CreditsSettings: React.FC = () => {
       {/* Add Credits Modal */}
       {showAddCreditsModal && (
         <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50" onClick={() => setShowAddCreditsModal(false)}>
-          <div className="bg-white dark:bg-[#030a21] rounded-lg p-6 max-w-md w-full mx-4 border border-transparent dark:border-blue-950/50 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white dark:bg-[#030a21] rounded-lg p-6 max-w-[560px] w-full mx-4 border border-transparent dark:border-blue-950/50 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Add Credits</h3>
               <button
