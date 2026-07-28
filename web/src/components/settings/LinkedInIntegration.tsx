@@ -18,7 +18,19 @@ const getAuthHeaders = () => {
     ...(token ? { 'Authorization': `Bearer ${token}` } : {})
   };
 };
+/** What the integration can actually do with this account, from Unipile. */
+interface LinkedInCapabilities {
+  known?: boolean;
+  premium?: boolean;
+  salesNavigator?: boolean;
+  recruiter?: boolean;
+  canInMail?: boolean;
+  totalCredits?: number;
+  credits?: { premium?: number; recruiter?: number; salesNavigator?: number };
+}
+
 interface LinkedInAccount {
+  capabilities?: LinkedInCapabilities;
   id?: string;
   connected: boolean;
   status?: 'connected' | 'disconnected' | 'stopped' | 'checkpoint' | 'unknown' | 'error';
@@ -873,6 +885,7 @@ export const LinkedInIntegration: React.FC = () => {
                       onToggle={toggleAiReplies}
                     />
                   </div>
+                  <LinkedInPlanSummary caps={account.capabilities} />
                 </div>
               );
             })}
@@ -1276,6 +1289,59 @@ export const LinkedInIntegration: React.FC = () => {
 
 // ── AI Replies chip ──────────────────────────────────────────────────────────
 // Green pill toggle mirroring Instagram's connected-account cards
+/**
+ * LinkedIn plan and InMail credits, as the integration sees them.
+ *
+ * Deliberately reports what Unipile can reach, not what the LinkedIn website
+ * shows the account owner. Those two disagree in a way that has already cost a
+ * campaign: an account connected before a Sales Navigator seat was added
+ * reports the seat as absent and every credit pool as null, while its owner can
+ * see 149 credits in LinkedIn. Showing the LinkedIn figure would hide exactly
+ * the problem this is here to surface.
+ */
+function LinkedInPlanSummary({ caps }: { caps?: LinkedInCapabilities }) {
+  if (!caps?.known) return null;
+
+  const credits = caps.credits || {};
+  const plans = [
+    caps.salesNavigator && 'Sales Navigator',
+    caps.recruiter && 'Recruiter',
+    caps.premium && !caps.salesNavigator && !caps.recruiter && 'Premium',
+  ].filter(Boolean) as string[];
+
+  const pools = [
+    { label: 'Sales Navigator', n: credits.salesNavigator || 0 },
+    { label: 'Recruiter', n: credits.recruiter || 0 },
+    { label: 'Premium', n: credits.premium || 0 },
+  ].filter((p) => p.n > 0);
+
+  // Paid plan, no reachable credits: the case worth calling out, because the
+  // owner will be looking at credits in LinkedIn and wondering why sends fail.
+  const paidButUnusable = (caps.premium || caps.salesNavigator || caps.recruiter) && !caps.canInMail;
+
+  return (
+    <div className="mt-3 rounded-lg border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-3 py-2">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11.5px]">
+        <span className="text-gray-500 dark:text-white/50">Plan</span>
+        <span className="font-medium text-gray-800 dark:text-white/85">
+          {plans.length ? plans.join(' + ') : 'Free'}
+        </span>
+        <span className="text-gray-500 dark:text-white/50">InMail credits</span>
+        <span className="font-medium text-gray-800 dark:text-white/85">
+          {pools.length ? pools.map((p) => `${p.n} ${p.label}`).join(', ') : 'none available'}
+        </span>
+      </div>
+      {paidButUnusable && (
+        <p className="mt-1.5 text-[11px] leading-snug text-amber-700 dark:text-amber-400">
+          This account has a paid plan, but no InMail credits are visible to Mr LAD. Sales Navigator
+          credits stay hidden unless the account was connected while that seat was active. Reconnect
+          the account to pick them up.
+        </p>
+      )}
+    </div>
+  );
+}
+
 // (components/instagram/InstagramTenantOnboarding.tsx → AiToggleChip).
 function AiToggleChip({
   label,
