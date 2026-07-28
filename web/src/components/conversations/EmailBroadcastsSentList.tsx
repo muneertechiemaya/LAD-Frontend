@@ -136,6 +136,17 @@ function statusBadgeVariant(
   }
 }
 
+function statusBadgeClass(status: string): string {
+  switch (status) {
+    case 'running':
+      return 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800';
+    case 'queued':
+      return 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-900/50';
+    default:
+      return '';
+  }
+}
+
 function statusLabel(status: string): string {
   return (
     {
@@ -288,7 +299,10 @@ function BroadcastRow({
 
         {/* Time + status */}
         <div className="flex items-center gap-2 flex-shrink-0">
-          <Badge variant={statusBadgeVariant(run.status)}>
+          <Badge
+            variant={statusBadgeVariant(run.status)}
+            className={statusBadgeClass(run.status)}
+          >
             {statusLabel(run.status)}
           </Badge>
           <span className="text-xs text-[#5f6368] dark:text-[#9aa0a6] tabular-nums w-16 text-right">
@@ -317,7 +331,10 @@ function BroadcastRow({
               {run.from_email}
             </span>
             <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
-              <Badge variant={statusBadgeVariant(run.status)}>
+              <Badge
+                variant={statusBadgeVariant(run.status)}
+                className={statusBadgeClass(run.status)}
+              >
                 {statusLabel(run.status)}
               </Badge>
               <span className="text-xs text-[#5f6368] dark:text-[#9aa0a6] tabular-nums">
@@ -868,7 +885,10 @@ function BroadcastDetailDialog({
             </DialogTitle>
             {data && (
               <DialogDescription className="mt-1 flex items-center gap-2 text-xs">
-                <Badge variant={statusBadgeVariant(data.status)}>
+                <Badge
+                  variant={statusBadgeVariant(data.status)}
+                  className={statusBadgeClass(data.status)}
+                >
                   {statusLabel(data.status)}
                 </Badge>
                 <span>·</span>
