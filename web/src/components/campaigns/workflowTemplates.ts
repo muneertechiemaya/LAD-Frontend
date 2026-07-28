@@ -1,7 +1,7 @@
 /**
- * Workflow templates ("Roles") — one-click pipeline recipes shared by:
+ * Workflow templates ("Accelerators") — one-click pipeline recipes shared by:
  *   - CustomWorkflowBuilder's "Start from a template" gallery
- *   - the advanced-search chat panel's Roles dropdown (conversational wizard)
+ *   - the advanced-search chat panel's Accelerators dropdown (conversational wizard)
  *
  * Each node is either an OUTREACH step (the builder assigns a generated id) or
  * a single-instance macro (uses its fixed *_STEP_ID so the builder's drawers
@@ -26,6 +26,10 @@ export const AI_STEP_ID = 'ai-agent-node';
 export const ENRICH_STEP_ID = 'data-enrich-node';
 export const EXPORT_STEP_ID = 'export-results-node';
 export const AUTOPOST_STEP_ID = 'linkedin-post-node';
+// The posting strategy is three composable nodes: content -> (approval) -> post.
+// All three merge into ONE campaigns.config.autopost object at launch.
+export const CONTENT_STEP_ID = 'linkedin-content-node';
+export const APPROVAL_STEP_ID = 'post-approval-node';
 // Web-intel + flow macros. These lived in CustomWorkflowBuilder until
 // Strategies needed one canonical list of "ids that must survive save/restore".
 export const SCRAPE_STEP_ID = 'web-scrape-node';
@@ -47,6 +51,7 @@ export const HTTP_STEP_ID = 'http-request-node';
 export const MACRO_STEP_IDS: readonly string[] = [
   FOLLOWUP_STEP_ID, ANALYTICS_STEP_ID, ZOHO_UPDATE_STEP_ID, MEDIA_STEP_ID,
   MULTICOND_STEP_ID, AI_STEP_ID, ENRICH_STEP_ID, EXPORT_STEP_ID, AUTOPOST_STEP_ID,
+  CONTENT_STEP_ID, APPROVAL_STEP_ID,
   SCRAPE_STEP_ID, RESEARCH_STEP_ID, SCORE_STEP_ID,
   SPLIT_STEP_ID, SETFIELD_STEP_ID, HTTP_STEP_ID,
 ];
@@ -108,13 +113,18 @@ export type WorkflowTemplate = {
   tagline: string;
   /** Chip labels shown on cards / in chat so users see the pipeline up front. */
   chain: string[];
-  source: { key: TemplateSourceKey; cfg?: any; title: string; description: string };
+  /**
+   * Omitted for publisher-only pipelines (content -> approval -> post).
+   * Those enrol nobody, so asking for a contact source would be noise the
+   * user has to configure and then ignore.
+   */
+  source?: { key: TemplateSourceKey; cfg?: any; title: string; description: string };
   nodes: TemplateNode[];
   /** Chat-wizard questions; empty means nothing to collect conversationally. */
   inputs: TemplateInput[];
   /** Needs a file upload (chat routes these to the builder instead of launching directly). */
   requiresFile?: boolean;
-  /** Brand accent used by the chat Roles UI (cards, chips, CTAs). */
+  /** Brand accent used by the chat Accelerators UI (cards, chips, CTAs). */
   accent: string;
   /** Small card badge (e.g. Popular / Daily). */
   badge?: { label: string; tone: 'blue' | 'violet' };
@@ -257,7 +267,7 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
       { type: 'zoho_update', macroId: ZOHO_UPDATE_STEP_ID, title: 'Update Zoho record', description: 'Write back to Contacts', cfg: { module: 'Contacts', map: {} } },
     ],
   },
-  // ── Industry Roles ────────────────────────────────────────────────────────
+  // ── Industry Accelerators ─────────────────────────────────────────────────
   // Titles + industries are pre-filled, so activating one only needs a
   // location. The wizard still offers a title override for anyone who wants
   // to narrow it further.
@@ -502,6 +512,54 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
       { type: 'whatsapp_send', title: 'WhatsApp', description: 'Follow up on mobile', cfg: { message: 'Hi {{first_name}}, following up from LinkedIn on freight capacity and lead times. Happy to share options if it is useful.', delayDays: 3 } },
     ],
   },
+  {
+    // Built from LinkedIn/Meltwater's "5 Takeaways from 9.5 Million Citations":
+    // LinkedIn is the #2 most-cited source for AI models, 75% of those citations
+    // come from individual member profiles rather than Company Pages, 92% of
+    // cited posts use clear headings, every top-cited article used a list, and
+    // 48% of cited content was published within the last three months.
+    //
+    // So: post as a PERSON not a page, three times a week, in the structured
+    // list shape, with fresh copy every run.
+    key: 'ai_search_authority',
+    category: 'general',
+    badge: { label: 'Publisher', tone: 'violet' },
+    meta: { cycleDays: 30, channels: 1 },
+    accent: '#7C3AED',
+    name: 'AI Search Authority',
+    tagline: 'Get cited by ChatGPT and Google AI — structured posts, three times a week, from your own profile',
+    chain: ['AI writes a listicle', 'You approve it', 'Posts Mon / Wed / Fri'],
+    // No source: this pipeline publishes, it does not enrol anyone.
+    inputs: [],
+    nodes: [
+      {
+        type: 'linkedin_content', macroId: CONTENT_STEP_ID,
+        title: 'LinkedIn content', description: 'Structured listicle, AI-written',
+        cfg: {
+          // The seed is the standing brief, rewritten fresh each run. Phrased as
+          // the citation research prescribes: answer a real buyer question, with
+          // specific names and numbers, as a numbered list.
+          content: 'Answer one real question my buyers ask before they choose a vendor. Make it a numbered list of 4 to 6 points, each naming a specific tool, threshold, number, or worked example. Practical enough that someone could act on it today, and useful even to a reader who never buys from us.',
+          ai_generate: true,
+          post_format: 'structured',
+        },
+      },
+      {
+        type: 'post_approval', macroId: APPROVAL_STEP_ID,
+        title: 'Approval', description: 'WhatsApp · before posting',
+        cfg: { approval_channel: 'whatsapp', approval_to: '' },
+      },
+      {
+        type: 'linkedin_post', macroId: AUTOPOST_STEP_ID,
+        title: 'LinkedIn auto-post', description: 'Mon / Wed / Fri · 09:00',
+        cfg: {
+          // Personal profile, deliberately: 75% of LinkedIn's AI citations come
+          // from member profiles, only 25% from Company Pages.
+          ai_generate: true, frequency: 'weekly', days: [1, 3, 5], time: '09:00', post_as: 'personal',
+        },
+      },
+    ],
+  },
 ];
 
 // ── Wizard input derivation ────────────────────────────────────────────────
@@ -522,7 +580,7 @@ const touchDelayLabel = (hours?: number): string => {
 
 /**
  * The one question that decides whether the copy questions get asked at all.
- * Answering it "no" keeps every template suggestion as-is, so a Role stays a
+ * Answering it "no" keeps every template suggestion as-is, so an Accelerator stays a
  * three-question flow for anyone who just wants the defaults.
  */
 export const COPY_GATE_KEY = '__write_copy__';
@@ -558,7 +616,7 @@ export function templateWizardInputs(t: WorkflowTemplate): TemplateInput[] {
   if (!derived.length) return [...t.inputs];
   const gate: TemplateInput = {
     key: COPY_GATE_KEY, target: 'gate', optional: true, label: 'Message copy',
-    question: `Want to write the **${derived.length} message${derived.length === 1 ? '' : 's'}** this Role sends? Say **yes** to go through them one by one — or **skip** to use the suggested copy, which Mr LAD adapts per lead.`,
+    question: `Want to write the **${derived.length} message${derived.length === 1 ? '' : 's'}** this Accelerator sends? Say **yes** to go through them one by one — or **skip** to use the suggested copy, which Mr LAD adapts per lead.`,
   };
   return [...t.inputs, gate, ...derived];
 }
@@ -606,10 +664,13 @@ export function splitWizardAnswers(
 
 /**
  * The LinkedIn search string a template's targeting describes — used to preview
- * the audience in the leads panel before the Role is launched. Returns null for
+ * the audience in the leads panel before the Accelerator is launched. Returns null for
  * sources that aren't a searchable query (file import, CRM pulls).
  */
 export function templateSearchQuery(t: WorkflowTemplate, sourceCfg: Record<string, string>): string | null {
+  // Publisher-only pipelines (content → approval → post) enrol nobody, so they
+  // carry no source and have no audience to preview.
+  if (!t.source) return null;
   const cfg = { ...(t.source.cfg || {}), ...sourceCfg } as Record<string, string>;
   if (t.source.key === 'linkedin_signal') {
     const titles = (cfg.decision_maker_titles || '').trim();

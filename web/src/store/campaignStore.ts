@@ -51,6 +51,8 @@ const defaultStepData: Record<StepType, Partial<StepData>> = {
   analytics_report: { title: 'Analytics report' },
   export_results: { title: 'Export results' },
   linkedin_post: { title: 'LinkedIn auto-post' },
+  linkedin_content: { title: 'LinkedIn content' },
+  post_approval: { title: 'Approval' },
   web_scrape: { title: 'Webpage scraper' },
   web_research: { title: 'Web research' },
   lead_score: { title: 'Lead scoring' },

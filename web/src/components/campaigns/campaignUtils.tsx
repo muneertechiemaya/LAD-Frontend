@@ -73,10 +73,38 @@ export const getDetailedActions = (campaign: Campaign) => {
       }
     });
   }
+  // Campaign-level macros live in campaigns.config, not in steps: they run once
+  // per campaign or on a cron, so they never became step rows. A publisher-only
+  // workflow (content -> approval -> auto-post) has NO steps at all, which is
+  // why it rendered "No actions" despite doing plenty.
+  const cfg: any = (campaign as any)?.config || {};
+  if (cfg.autopost?.content) {
+    actionCounts['linkedin_content'] = 1;
+    if (cfg.autopost.require_approval) actionCounts['post_approval'] = 1;
+    actionCounts['linkedin_post'] = 1;
+  }
+  if (cfg.followup_sequence?.touches) {
+    actionCounts['followup_sequence'] = Number(cfg.followup_sequence.touches) || 1;
+  }
+  if (cfg.export_results?.destinations?.length) actionCounts['export_results'] = 1;
+  if (cfg.analytics_notifications?.recipient) actionCounts['analytics_report'] = 1;
+
   Object.entries(actionCounts).forEach(([type, count]) => {
     let platform = 'other';
     let name = type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-    if (type.startsWith('linkedin_')) {
+    // Macro nodes read badly under the generic prettifier: "Post" and "Content"
+    // say nothing on their own, and post_approval is not a LinkedIn action.
+    const MACRO_LABELS: Record<string, { name: string; platform: string }> = {
+      linkedin_content: { name: 'AI post copy', platform: 'linkedin' },
+      linkedin_post: { name: 'Auto-post', platform: 'linkedin' },
+      post_approval: { name: 'Approval', platform: 'other' },
+      followup_sequence: { name: 'Follow-ups', platform: 'other' },
+      export_results: { name: 'Export', platform: 'other' },
+      analytics_report: { name: 'Analytics', platform: 'other' },
+    };
+    if (MACRO_LABELS[type]) {
+      ({ name, platform } = MACRO_LABELS[type]);
+    } else if (type.startsWith('linkedin_')) {
       platform = 'linkedin';
       name = type.replace('linkedin_', '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     } else if (type.startsWith('email_')) {

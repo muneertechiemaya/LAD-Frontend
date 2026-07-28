@@ -158,7 +158,7 @@ interface ChatMsg {
     targeting?: LeadTargeting;
     loading?: boolean;
     options?: { label: string; value: string }[];
-    /** Rich "Roles" wizard card (template pipelines launched from chat). */
+    /** Rich "Accelerators" wizard card (template pipelines launched from chat). */
     roleCard?: { key: string; stage: 'intro' | 'question' | 'summary' | 'file'; qIdx?: number; nudge?: boolean; answers?: Record<string, string> };
     leads?: LeadProfile[];
     inboundAction?: 'download' | 'upload' | 'summary';
@@ -618,7 +618,7 @@ export default function AdvancedSearchAIPage() {
     // Unified single-screen mode - always show chat interface
     // const [screen, setScreen] = useState<'landing' | 'chat'>('landing');
     const [messages, setMessages] = useState<ChatMsg[]>([]);
-    // Edit mode: set when "Edit Workflow" routes here with ?campaignId=<id>.
+    // Edit mode: set when "Edit Accelerator" routes here with ?campaignId=<id>.
     const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
     const editHydratedRef = useRef(false);
     const [input, setInput] = useState('');
@@ -962,7 +962,7 @@ export default function AdvancedSearchAIPage() {
     }, []);
 
     const [showMediaModal, setShowMediaModal] = useState(false);
-    // Custom Workflow Builder (n8n-style) — full-screen takeover opened from the "+" menu.
+    // Custom Accelerator builder (node graph) — full-screen takeover opened from the "+" menu.
     const [showCustomWorkflow, setShowCustomWorkflow] = useState(false);
     // "Roles" — prebuilt pipeline templates launched from chat. The wizard asks
     // each template's inputs in the chat thread, then hands off to the embedded
@@ -970,7 +970,7 @@ export default function AdvancedSearchAIPage() {
     // the launch path is the builder's own — no duplicated payload logic.
     const [builderTemplate, setBuilderTemplate] = useState<{ key: string; sourceCfg: Record<string, string>; nodeCfg: Record<string, any>; autoLaunch: boolean } | null>(null);
     const roleWizardRef = useRef<{ key: string; idx: number; answers: Record<string, string> } | null>(null);
-    /** Audience preview for the pending Role — keyed off the summary card's CTA. */
+    /** Audience preview for the pending Accelerator — keyed off the summary card's CTA. */
     const [rolePreviewing, setRolePreviewing] = useState(false);
 
     interface MediaChatMsg {
@@ -1686,7 +1686,7 @@ export default function AdvancedSearchAIPage() {
     useEffect(() => { if (tgStep >= 0) endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [tgStep]);
 
     // ── Edit mode: hydrate the setup flow from an existing campaign ──────────────
-    // "Edit Workflow" routes here with ?campaignId=<id>. The setup flow already
+    // "Edit Accelerator" routes here with ?campaignId=<id>. The setup flow already
     // persists the chat (config.conversation_history) and the config-step
     // selections (config.checkpoint_selections), so we reload them and open the
     // checkpoint form pre-filled. Saving then updates THIS campaign (gated in
@@ -1703,6 +1703,17 @@ export default function AdvancedSearchAIPage() {
             try {
                 const camp: any = await getCampaign(cid);
                 const cfg = camp?.config || {};
+                // Campaigns built in the Custom Workflow Builder are not
+                // expressible in the chat checkpoint form — its fields cover the
+                // guided flow's steps, not arbitrary builder nodes. Hydrating
+                // them here left the user on the search screen with the campaign
+                // apparently gone, so hand straight over to the builder instead.
+                if (cfg.builder === 'custom_workflow') {
+                    setEditingCampaignId(cid);
+                    setBuilderTemplate(null);
+                    setShowCustomWorkflow(true);
+                    return;
+                }
                 const cs = cfg.checkpoint_selections || {};
                 // Restore the chat thread.
                 const hist = Array.isArray(cfg.conversation_history) ? cfg.conversation_history : [];
@@ -4398,7 +4409,7 @@ export default function AdvancedSearchAIPage() {
         }
         if (v === '__role_cancel__') {
             roleWizardRef.current = null;
-            rolePushAi('No problem — Role setup cancelled. Pick another from the **Roles** menu any time.');
+            rolePushAi('No problem — Accelerator setup cancelled. Pick another from the **Accelerators** menu any time.');
             return;
         }
         if (v.startsWith('__role_builder__:')) {
@@ -4408,7 +4419,7 @@ export default function AdvancedSearchAIPage() {
             return;
         }
         // Preview the audience in the leads panel WITHOUT launching: same
-        // /search/unified call the chat uses, driven by the Role's targeting.
+        // /search/unified call the chat uses, driven by the Accelerator's targeting.
         // The wizard stays open so the summary CTAs remain usable afterwards.
         if (v === '__role_preview__') {
             const wiz = roleWizardRef.current;
@@ -4418,21 +4429,21 @@ export default function AdvancedSearchAIPage() {
             const { sourceCfg } = splitWizardAnswers(tpl, wiz.answers);
             const query = templateSearchQuery(tpl, sourceCfg);
             if (!query) {
-                rolePushAi('This Role doesn\'t search LinkedIn for its leads, so there\'s nothing to preview yet.');
+                rolePushAi('This Accelerator doesn\'t search LinkedIn for its leads, so there\'s nothing to preview yet.');
                 return;
             }
             setRolePreviewing(true);
             setIsSearching(true);
-            rolePushAi(`🔍 Previewing who this Role would reach — searching for **${query}**…`);
+            rolePushAi(`🔍 Previewing who this Accelerator would reach — searching for **${query}**…`);
             try {
-                // Same structured targeting the Role's source node will run with,
+                // Same structured targeting the Accelerator's source node will run with,
                 // so the preview reflects the real audience rather than an
                 // approximation of it.
                 const csv = (s?: string) => (s || '').split(',').map(x => x.trim()).filter(Boolean);
                 // Industry Roles pre-fill titles/industries on the template itself;
                 // wizard answers only override what the user was asked.
-                const effCfg = { ...(tpl.source.cfg || {}), ...sourceCfg } as Record<string, string>;
-                const previewTargeting = tpl.source.key === 'linkedin_search' ? {
+                const effCfg = { ...(tpl.source?.cfg || {}), ...sourceCfg } as Record<string, string>;
+                const previewTargeting = tpl.source?.key === 'linkedin_search' ? {
                     job_titles: csv(effCfg.job_titles),
                     industries: csv(effCfg.industries),
                     locations: csv(effCfg.locations),
@@ -4473,17 +4484,17 @@ export default function AdvancedSearchAIPage() {
                     };
                 });
                 if (previewLeads.length === 0) {
-                    rolePushAi('No profiles came back for that targeting. Widen the titles or location — say **cancel** and pick the Role again, or open it in the builder to edit the search.');
+                    rolePushAi('No profiles came back for that targeting. Widen the titles or location — say **cancel** and pick the Accelerator again, or open it in the builder to edit the search.');
                 } else {
                     setLeads(previewLeads);
                     seedDefaultSelection(previewLeads);
                     setTotalResults(d?.total || previewLeads.length);
                     setShowPanel('leads');
-                    rolePushAi(`👀 Found **${d?.total || previewLeads.length}** matching profiles — they're in the **Leads** panel on the right. Happy with them? Activate the Role below.`);
+                    rolePushAi(`👀 Found **${d?.total || previewLeads.length}** matching profiles — they're in the **Leads** panel on the right. Happy with them? Activate the Accelerator below.`);
                 }
             } catch (e) {
                 console.warn('[role-preview] search failed:', e);
-                rolePushAi('⚠️ The preview search failed. You can still activate the Role — it runs its own search when it launches.');
+                rolePushAi('⚠️ The preview search failed. You can still activate the Accelerator — it runs its own search when it launches.');
             } finally {
                 setIsSearching(false);
                 setRolePreviewing(false);
@@ -4505,8 +4516,8 @@ export default function AdvancedSearchAIPage() {
             setBuilderTemplate({ key: wiz.key, sourceCfg, nodeCfg, autoLaunch: v === '__role_launch__' });
             setShowCustomWorkflow(true);
             rolePushAi(v === '__role_launch__'
-                ? '🚀 Building and launching your Role — you\'ll land on the campaigns page when it\'s live.'
-                : 'Opening the workflow builder with your Role pre-built — review each node and hit Launch.');
+                ? '🚀 Building and launching your Accelerator — you\'ll land on the campaigns page when it\'s live.'
+                : 'Opening the workflow builder with your Accelerator pre-built — review each node and hit Launch.');
             return;
         }
         // Special action: submit lead detail form data
@@ -5050,7 +5061,7 @@ export default function AdvancedSearchAIPage() {
 
                     {/* Input bottom row */}
                     <div className="adv-input-foot">
-                      {/* Left cluster — keeps Roles pinned beside the + button
+                      {/* Left cluster — keeps Accelerators pinned beside the + button
                           (the foot is space-between, so ungrouped children
                           would spread across the whole bar). */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -5089,8 +5100,8 @@ export default function AdvancedSearchAIPage() {
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round"><circle cx="5" cy="6" r="3" /><circle cx="19" cy="6" r="3" /><circle cx="12" cy="18" r="3" /><path d="M7.5 8L10 15M16.5 8L14 15" /></svg>
                                         </div>
                                         <div>
-                                            <div className="adv-attach-label">Custom workflow</div>
-                                            <div className="adv-attach-sub">Source → outreach nodes, n8n-style</div>
+                                            <div className="adv-attach-label">Custom Accelerator</div>
+                                            <div className="adv-attach-sub">Source → outreach nodes</div>
                                         </div>
                                     </div>
                                     <div className={`adv-attach-item${webSearchEnabled ? ' adv-attach-active' : ''}`} onClick={() => { setWebSearchEnabled(!webSearchEnabled); setShowAttachMenu(false); }}>
@@ -5116,7 +5127,7 @@ export default function AdvancedSearchAIPage() {
                             )}
                         </div>
 
-                        {/* Roles — prebuilt pipeline templates, configured via chat wizard */}
+                        {/* Accelerators — prebuilt pipeline templates, configured via chat wizard */}
                         <RolesLauncher onPick={startRole} />
                       </div>
 
@@ -5721,7 +5732,7 @@ export default function AdvancedSearchAIPage() {
                                     placeholder={mediaMode ? (mb.step === 'builder-image-output' ? 'Type feedback to refine generated images...' : mediaPlaceholder) : (creditBalance !== null && creditBalance <= 0 && msgCount >= 10 ? 'Message limit reached — add credits to continue' : (typedPlaceholder || 'Ask Mr LAD...'))}
                                     className="adv-chat-ta" />
                                 <div className="adv-chat-input-foot">
-                                  {/* Left cluster — Roles sits beside + (foot is space-between). */}
+                                  {/* Left cluster — Accelerators sits beside + (foot is space-between). */}
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                     <div style={{ position: 'relative' }}>
                                         {mediaMode ? (
@@ -5762,8 +5773,8 @@ export default function AdvancedSearchAIPage() {
                                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round"><circle cx="5" cy="6" r="3" /><circle cx="19" cy="6" r="3" /><circle cx="12" cy="18" r="3" /><path d="M7.5 8L10 15M16.5 8L14 15" /></svg>
                                                             </div>
                                                             <div>
-                                                                <div className="adv-attach-label">Custom workflow</div>
-                                                                <div className="adv-attach-sub">Source → outreach nodes, n8n-style</div>
+                                                                <div className="adv-attach-label">Custom Accelerator</div>
+                                                                <div className="adv-attach-sub">Source → outreach nodes</div>
                                                             </div>
                                                         </div>
                                                         <div className="adv-attach-divider" />
@@ -6439,7 +6450,7 @@ export default function AdvancedSearchAIPage() {
                               {/* Workflow panel header */}
                               <div className="flex-shrink-0 border-b border-gray-200 bg-white px-5 py-4 dark:border-gray-800 dark:bg-[#000724]">
                                   <div className="mb-1 text-[17px] font-extrabold text-gray-900 dark:text-slate-300">
-                                      Campaign Workflow
+                                      Campaign Accelerator
                                   </div>
                                   <div className="text-[12.5px] text-gray-500 dark:text-slate-300">
                                       Live preview of your outreach sequence
@@ -7181,15 +7192,16 @@ export default function AdvancedSearchAIPage() {
             )}
 
             {/* ── Contact Picker Modal ── */}
-            {/* ── Custom Workflow Builder (n8n-style) — full-screen takeover from the "+" menu ── */}
+            {/* ── Custom Accelerator builder (node graph) — full-screen takeover from the "+" menu ── */}
             {showCustomWorkflow && (
                 <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: '#F8F9FE' }}>
                     <CustomWorkflowBuilder
-                        onClose={() => { setShowCustomWorkflow(false); setBuilderTemplate(null); }}
+                        onClose={() => { setShowCustomWorkflow(false); setBuilderTemplate(null); setEditingCampaignId(null); }}
                         initialTemplateKey={builderTemplate?.key}
                         initialSourceCfg={builderTemplate?.sourceCfg}
                         initialNodeCfg={builderTemplate?.nodeCfg}
                         autoLaunch={builderTemplate?.autoLaunch}
+                        editCampaignId={editingCampaignId || undefined}
                     />
                 </div>
             )}
@@ -7377,7 +7389,10 @@ function RoleChain({ tpl, compact = false }: { tpl: WorkflowTemplate; compact?: 
     );
 }
 
-/** "Roles" pill + dropdown of template cards. Self-contained open/close state. */
+/** "Accelerators" pill + dropdown of template cards. Self-contained open/close state.
+ *  NOTE: the component and its CSS keep the older `roles` naming — renaming those
+ *  is churn with no user-visible effect, and `.adv-roles-btn` is referenced in
+ *  four style blocks. */
 function RolesLauncher({ onPick }: { onPick: (t: WorkflowTemplate) => void }) {
     const [open, setOpen] = React.useState(false);
     React.useEffect(() => {
@@ -7388,16 +7403,16 @@ function RolesLauncher({ onPick }: { onPick: (t: WorkflowTemplate) => void }) {
     }, [open]);
     return (
         <div style={{ position: 'relative' }}>
-            <button type="button" className="adv-roles-btn" title="Roles — hire a prebuilt AI pipeline"
+            <button type="button" className="adv-roles-btn" title="Accelerate LAD with prebuilt pipeline"
                 onClick={(e) => { e.stopPropagation(); setOpen(!open); }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>
-                Roles
+                Accelerators
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ opacity: .55, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}><path d="m6 9 6 6 6-6" /></svg>
             </button>
             {open && (
                 <div className="adv-roles-menu" onClick={(e) => e.stopPropagation()}>
                     <div className="px-2.5 pt-1.5 pb-2 flex items-center justify-between">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Hire a Role</span>
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Pick an Accelerator</span>
                         <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">{WORKFLOW_TEMPLATES.length} pipelines</span>
                     </div>
                     {(() => {
@@ -7464,7 +7479,7 @@ function RoleCardView({ card, onOpt, previewing }: { card: NonNullable<ChatMsg['
                 <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                         <span className="text-[14px] font-bold text-slate-900 dark:text-white leading-tight">{tpl.name}</span>
-                        <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full" style={{ background: `${accent}14`, color: accent }}>Role</span>
+                        <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full" style={{ background: `${accent}14`, color: accent }}>Accelerator</span>
                     </div>
                     <div className="text-[11.5px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">{tpl.tagline}</div>
                 </div>
@@ -7486,7 +7501,7 @@ function RoleCardView({ card, onOpt, previewing }: { card: NonNullable<ChatMsg['
                     {card.nudge && (
                         <div className="flex items-center gap-1.5 text-[11.5px] font-medium text-amber-600 dark:text-amber-400 mb-1.5">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 9v4M12 17h.01" /><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /></svg>
-                            This one&apos;s required to launch the Role
+                            This one&apos;s required to launch the Accelerator
                         </div>
                     )}
                     {/* The question itself — highlighted in the same navy as the
@@ -7534,7 +7549,7 @@ function RoleCardView({ card, onOpt, previewing }: { card: NonNullable<ChatMsg['
             {card.stage === 'file' && (
                 <div className="px-4 pb-4 pt-3 border-t border-slate-100 dark:border-slate-800">
                     <div className="text-[13px] text-slate-700 dark:text-slate-200 leading-relaxed">
-                        This Role starts from a <strong className="font-semibold">file upload</strong>. I&apos;ll open the workflow builder with the whole pipeline pre-built — upload your CSV/Excel in the source node and hit Launch.
+                        This Accelerator starts from a <strong className="font-semibold">file upload</strong>. I&apos;ll open the workflow builder with the whole pipeline pre-built — upload your CSV/Excel in the source node and hit Launch.
                     </div>
                     <div className="flex items-center gap-2 mt-3.5">
                         <button type="button" onClick={() => onOpt(`__role_builder__:${tpl.key}`)}
@@ -7589,7 +7604,7 @@ function RoleCardView({ card, onOpt, previewing }: { card: NonNullable<ChatMsg['
                             })}
                         </div>
                     ) : (
-                        <div className="text-[13px] text-slate-600 dark:text-slate-300 mb-3">Nothing to configure — this Role is ready to go.</div>
+                        <div className="text-[13px] text-slate-600 dark:text-slate-300 mb-3">Nothing to configure — this Accelerator is ready to go.</div>
                     )}
                     <div className="flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500 mb-3.5">
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
@@ -7689,7 +7704,7 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                     <span className="adv-ai-name-dot" />
                 </div>
 
-                {/* Roles wizard card — rendered under the LAD in Action label. */}
+                {/* Accelerators wizard card — rendered under the LAD in Action label. */}
                 {msg.roleCard && <RoleCardView card={msg.roleCard} onOpt={onOpt} previewing={rolePreviewing} />}
 
                 {/* ── Rich markdown-aware renderer ── */}
@@ -7844,7 +7859,7 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-indigo-900 dark:text-blue-300" strokeWidth="2"><circle cx="12" cy="5" r="2" /><circle cx="5" cy="19" r="2" /><circle cx="19" cy="19" r="2" /><path d="M12 7v4M9.5 17.5L12 11l2.5 6.5" /></svg>
                           </div>
                           <div className="flex-1">
-                              <div className="text-[13px] font-bold text-gray-900 dark:text-gray-100">Workflow</div>
+                              <div className="text-[13px] font-bold text-gray-900 dark:text-gray-100">Accelerator</div>
                               <div className="text-[11px] text-indigo-900 dark:text-blue-300 font-medium">Live preview</div>
                           </div>
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-gray-400 dark:text-gray-500" strokeWidth="2"><path d="M9 18l6-6-6-6" /></svg>
@@ -12581,7 +12596,7 @@ const css = `
             .adv-bubble {padding:6px 0; }
             .adv-bubble-user {display:flex; justify-content:flex-end; margin-bottom:4px; }
             .adv-user-msg {background:#0b1957; color:#fff; border-radius:20px 20px 4px 20px; padding:12px 18px; max-width:72%; font-size:14.5px; line-height:1.65; box-shadow:0 2px 14px rgba(11,25,87,.2); font-weight:450; }
-            /* ── Roles wizard: highlighted question ──────────────────────────
+            /* ── Accelerators wizard: highlighted question ───────────────────
                Same #0b1957 navy as .adv-user-msg so the question reads as the
                other half of the conversation, with a pulsing "?" badge. */
             .adv-role-q {display:flex; align-items:flex-start; gap:10px; background:#0b1957; color:#fff; border-radius:14px; padding:12px 14px; margin-top:2px; box-shadow:0 2px 14px rgba(11,25,87,.2); font-size:13.5px; line-height:1.6; font-weight:450; }

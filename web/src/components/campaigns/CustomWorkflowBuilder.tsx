@@ -1,5 +1,5 @@
 'use client';
-// Custom Workflow Builder (n8n/Zapier-style) — embeddable component.
+// Custom Accelerator builder (node graph) — embeddable component.
 //
 // Pick a contact SOURCE node (Zoho CRM recurring/one-time, GoHighLevel,
 // LinkedIn Search), chain OUTREACH nodes (LinkedIn / Email / WhatsApp / Voice /
@@ -26,7 +26,7 @@ import 'reactflow/dist/style.css';
 import {
   Rocket, Loader2, Linkedin, Mail, MailPlus, MessageCircle, Phone, Clock,
   Users, Repeat, Search, X, HardDrive, Inbox, ListOrdered, BarChart3, GitFork, DatabaseZap,
-  Wand2, Trash2, Radar, Split, Plus, Upload, FileSpreadsheet, Sparkles, Contact, Download, Megaphone, Zap, Globe, Telescope, Gauge, Shuffle, PenLine, Webhook,
+  Wand2, Trash2, Radar, Split, Plus, Upload, FileSpreadsheet, Sparkles, Contact, Download, Megaphone, Zap, Globe, Telescope, Gauge, Shuffle, PenLine, Webhook, PenTool, ShieldCheck,
   Bookmark,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -36,7 +36,7 @@ import {
   WORKFLOW_TEMPLATES, WorkflowTemplate,
   SOURCE_STEP_ID, FOLLOWUP_STEP_ID, ANALYTICS_STEP_ID, ZOHO_UPDATE_STEP_ID,
   MEDIA_STEP_ID, MULTICOND_STEP_ID, AI_STEP_ID, ENRICH_STEP_ID, EXPORT_STEP_ID,
-  AUTOPOST_STEP_ID, AI_DEFAULT_INSTRUCTION, EXPORT_DEFAULT_COLUMNS,
+  AUTOPOST_STEP_ID, CONTENT_STEP_ID, APPROVAL_STEP_ID, AI_DEFAULT_INSTRUCTION, EXPORT_DEFAULT_COLUMNS,
   SCRAPE_STEP_ID, RESEARCH_STEP_ID, SCORE_STEP_ID,
   SPLIT_STEP_ID, SETFIELD_STEP_ID, HTTP_STEP_ID, templateNodeKey,
 } from './workflowTemplates';
@@ -278,6 +278,32 @@ const AUTOPOST_DAYS = [
   { value: 0, label: 'Sun' },
 ];
 
+/**
+ * When this schedule actually fires next, mirroring the backend's
+ * computeNextRun: the next slot STRICTLY in the future, on an allowed weekday.
+ *
+ * Worth surfacing because the consequence is easy to miss. Pick 04:17 on a
+ * Monday afternoon and the next Monday 04:17 is a week away, so the workflow
+ * launches, reports success and then does nothing for seven days.
+ *
+ * The builder sends the browser's timezone, so computing locally matches.
+ */
+export function nextAutopostRun(frequency: string, days: number[], time: string, from = new Date()): Date | null {
+  const [hh, mm] = String(time || '09:00').split(':').map((n) => parseInt(n, 10) || 0);
+  const weekly = frequency !== 'daily';
+  // Weekly with nothing selected never fires — the backend treats it as daily.
+  const allowed = weekly && days.length ? days : [0, 1, 2, 3, 4, 5, 6];
+  for (let i = 0; i <= 8; i += 1) {
+    const d = new Date(from);
+    d.setDate(d.getDate() + i);
+    d.setHours(hh, mm, 0, 0);
+    if (d.getTime() <= from.getTime()) continue;
+    if (!allowed.includes(d.getDay())) continue;
+    return d;
+  }
+  return null;
+}
+
 
 const SWITCH_FIELDS = [
   { value: 'tag', label: 'Tag' },
@@ -317,7 +343,7 @@ const WORKFLOW_DATA_POINTS: DataPoint[] = [
 ];
 
 /** Suggest a data-point for a Zoho field, sequence-aware (only maps a channel
- *  source when that channel is actually in the workflow). Returns key or ''. */
+ *  source when that channel is actually in the Accelerator). Returns key or ''. */
 function suggestDataPoint(field: { api_name: string; field_label: string }, channels: Set<Channel>): string {
   const hay = `${field.field_label || ''} ${field.api_name || ''}`;
   for (const dp of WORKFLOW_DATA_POINTS) {
@@ -425,9 +451,9 @@ function useBuilderResources() {
   };
 }
 
-export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSourceCfg, initialNodeCfg, autoLaunch }: {
+export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSourceCfg, initialNodeCfg, autoLaunch, editCampaignId }: {
   onClose: () => void;
-  /** Apply this template on mount (chat "Roles" wizard hands off here). */
+  /** Apply this template on mount (chat "Accelerators" wizard hands off here). */
   initialTemplateKey?: string;
   /** Answers collected in chat — merged into the source node's config. */
   initialSourceCfg?: Record<string, any>;
@@ -439,6 +465,8 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   initialNodeCfg?: Record<string, any>;
   /** Fire launch() automatically once the template is applied. */
   autoLaunch?: boolean;
+  /** Reopen an existing custom workflow for editing; launch updates it in place. */
+  editCampaignId?: string;
 }) {
   const { workflowPreview, setWorkflowPreview, addWorkflowStep, updateWorkflowStep } = useOnboardingStore();
   const res = useBuilderResources();
@@ -451,6 +479,10 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   const [configs, setConfigs] = useState<Record<string, any>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
   const [launching, setLaunching] = useState(false);
+  // Edit mode: block the canvas until the saved state is back, so a stray click
+  // can't launch a half-restored workflow over the real one.
+  const [hydrating, setHydrating] = useState(!!editCampaignId);
+  const hydratedRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   // Zoho write-back node: the target module's field metadata (fetched lazily).
   const [zohoFields, setZohoFields] = useState<any[]>([]);
@@ -486,9 +518,29 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   const [exportResult, setExportResult] = useState<any>(null);
   // LinkedIn auto-post state.
   const [autopostGenerating, setAutopostGenerating] = useState(false);
-  const [autopostPosting, setAutopostPosting] = useState(false);
   const [autopostMsg, setAutopostMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [liOrganizations, setLiOrganizations] = useState<{ id: string; name: string }[]>([]);
+  const autopostFileRef = useRef<HTMLInputElement | null>(null);
+  // Inline AI-media wizard for the auto-post node — runs the media builder's
+  // Q&A inside the drawer instead of the full-screen studio modal.
+  const [inlineMedia, setInlineMedia] = useState(false);
+  const [inlineAnswer, setInlineAnswer] = useState('');
+  const inlinePrefilledRef = useRef<string | null>(null);
+  // Agent-driven mode: the wizard still runs, but each question is answered
+  // from the post copy instead of being shown. See autoMediaLog for what it
+  // decided — silent automation the user can't inspect is worse than a form.
+  const [autoMedia, setAutoMedia] = useState(false);
+  const [autoMediaLog, setAutoMediaLog] = useState<{ phase: string; answer: string }[]>([]);
+  const autoBusyRef = useRef(false);
+  const autoKeyRef = useRef<string | null>(null);
+  const autoCountRef = useRef(0);
+  // Stall guard. The media worker's hold can be torn down mid-run, after which
+  // no further phase ever arrives — the loop simply waits, and the user watches
+  // a spinner indefinitely (observed: 10 minutes on Brand DNA). Nothing here
+  // can keep the worker alive, but it can stop pretending work is happening.
+  const autoProgressAtRef = useRef(0);
+  const [autoStalled, setAutoStalled] = useState(false);
+  const inlineStartedRef = useRef(false);
   // Multi-condition node: fields of the connected source (dynamic dropdown).
   const [mcFields, setMcFields] = useState<{ value: string; label: string }[]>(SWITCH_FIELDS);
   const [mcFieldsLoading, setMcFieldsLoading] = useState(false);
@@ -642,7 +694,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       const res = await fetchWithTenant('/api/campaigns/export/preview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ config: cfg, leads, campaign_name: name.trim() || 'Workflow preview' }),
+        body: JSON.stringify({ config: cfg, leads, campaign_name: name.trim() || 'Accelerator preview' }),
       });
       const data = await res.json();
       setExportResult(data);
@@ -670,7 +722,9 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
 
   /** "Generate with AI" — drafts the post from ICP + campaign context. */
   const generateAutopost = async () => {
-    const eid = AUTOPOST_STEP_ID;
+    // Copy lives on the content node since the split — writing to the post
+    // node here meant a successful generate updated nothing the user could see.
+    const eid = CONTENT_STEP_ID;
     const c = configs[eid] || {};
     setAutopostGenerating(true);
     setAutopostMsg(null);
@@ -695,38 +749,6 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     }
   };
 
-  /** "Post now" — publishes immediately so the user can see it land. */
-  const postAutopostNow = async () => {
-    const c = configs[AUTOPOST_STEP_ID] || {};
-    if (!(c.content || '').trim()) {
-      setAutopostMsg({ ok: false, text: 'Write or generate the post content first.' });
-      return;
-    }
-    setAutopostPosting(true);
-    setAutopostMsg(null);
-    try {
-      const res = await fetchWithTenant('/api/campaigns/linkedin-post/publish', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          content: c.content,
-          media_url: c.media_url || undefined,
-          media_filename: c.media_filename || undefined,
-          external_link: c.external_link || undefined,
-          as_organization: c.post_as && c.post_as !== 'personal' ? c.post_as : undefined,
-        }),
-      });
-      const data = await res.json();
-      setAutopostMsg(data?.success
-        ? { ok: true, text: 'Posted to LinkedIn.' }
-        : { ok: false, text: data?.error || 'Could not post.' });
-    } catch (e: any) {
-      setAutopostMsg({ ok: false, text: e?.message || 'Could not post.' });
-    } finally {
-      setAutopostPosting(false);
-    }
-  };
-
   /**
    * Apply a template: replaces the canvas with the recipe's source + nodes and
    * seeds every drawer config in one shot. Opens the source drawer afterwards
@@ -735,18 +757,20 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   const applyTemplate = (t: WorkflowTemplate, opts?: { silent?: boolean; sourceCfgOverride?: Record<string, any>; nodeCfgOverride?: Record<string, any> }) => {
     setOverviewTpl(null);
     if (!opts?.silent && workflowPreview.length > 0 &&
-        !window.confirm(`Replace the current workflow with the "${t.name}" template?`)) {
+        !window.confirm(`Replace the current Accelerator with the "${t.name}" template?`)) {
       return;
     }
-    const srcDef = SOURCES.find((s) => s.key === t.source.key)!;
-    const steps: WorkflowPreviewStep[] = [{
+    // Publisher-only templates have no source: they enrol nobody, so a contact
+    // source would be a step the user configures and then never uses.
+    const srcDef = t.source ? SOURCES.find((s) => s.key === t.source!.key) : undefined;
+    const steps: WorkflowPreviewStep[] = t.source ? [{
       id: SOURCE_STEP_ID, type: 'lead_generation',
       channel: t.source.key.startsWith('linkedin') ? 'linkedin' : 'email',
-      title: t.source.title || srcDef.label,
-      description: t.source.description || srcDef.sub,
-    }];
+      title: t.source.title || srcDef?.label || 'Contact source',
+      description: t.source.description || srcDef?.sub || '',
+    }] : [];
     const cfgs: Record<string, any> = {};
-    if (t.source.cfg || opts?.sourceCfgOverride) {
+    if (t.source && (t.source.cfg || opts?.sourceCfgOverride)) {
       cfgs[SOURCE_STEP_ID] = { ...(t.source.cfg || {}), ...(opts?.sourceCfgOverride || {}) };
     }
 
@@ -767,12 +791,13 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       if (n.cfg || override) cfgs[id] = { ...(n.cfg || {}), ...(override || {}) };
     }
 
-    setSource(t.source.key);
+    setSource(t.source ? t.source.key : null);
     setWorkflowPreview(steps);
     setConfigs(cfgs);
     if (!name.trim()) setName(t.name);
     setError(null);
-    setEditingId(SOURCE_STEP_ID);
+    // With no source, open the first real node instead of a step that isn't there.
+    setEditingId(t.source ? SOURCE_STEP_ID : (steps[0]?.id ?? null));
   };
 
   /**
@@ -892,6 +917,22 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     setEditingId(SCORE_STEP_ID);
   };
 
+  const addLinkedInContent = () => {
+    if (!workflowPreview.some((s) => s.id === CONTENT_STEP_ID)) {
+      addWorkflowStep({ id: CONTENT_STEP_ID, type: 'linkedin_content', channel: 'linkedin', title: 'LinkedIn content', description: 'What the post says' });
+      setCfg(CONTENT_STEP_ID, { content: '', ai_generate: false });
+    }
+    setEditingId(CONTENT_STEP_ID);
+  };
+
+  const addPostApproval = () => {
+    if (!workflowPreview.some((s) => s.id === APPROVAL_STEP_ID)) {
+      addWorkflowStep({ id: APPROVAL_STEP_ID, type: 'post_approval', channel: 'whatsapp', title: 'Approval', description: 'WhatsApp · before posting' });
+      setCfg(APPROVAL_STEP_ID, { approval_channel: 'whatsapp', approval_to: '' });
+    }
+    setEditingId(APPROVAL_STEP_ID);
+  };
+
   const addExport = () => {
     if (!workflowPreview.some((s) => s.id === EXPORT_STEP_ID)) {
       addWorkflowStep({ id: EXPORT_STEP_ID, type: 'export_results', channel: 'email', title: 'Export results', description: 'CSV · Download' });
@@ -936,7 +977,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
 
   // Re-home a generated asset (MAGe 7-day signed URL) into the permanent
   // campaign bucket and attach it to the AI Media node.
-  const importGenerated = useCallback(async (sourceUrl: string) => {
+  const importGenerated = useCallback(async (sourceUrl: string, targetStepId: string = MEDIA_STEP_ID) => {
     if (!sourceUrl) return;
     setMediaImporting(true); setMediaError(null);
     try {
@@ -947,12 +988,15 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       });
       const d = await res.json();
       if (!res.ok || !d?.url) throw new Error(d?.error || `Import failed (${res.status})`);
-      setCfg(MEDIA_STEP_ID, {
+      setCfg(targetStepId, {
         media_url: d.url,
         media_type: d.media_type || mediaTypeFromName(d.filename || filename),
         media_filename: d.filename || filename,
       });
-      updateWorkflowStep(MEDIA_STEP_ID, { description: `${d.media_type || mediaTypeFromName(filename)} attached` });
+      // The auto-post node keeps its own schedule summary as the description.
+      if (targetStepId === MEDIA_STEP_ID) {
+        updateWorkflowStep(MEDIA_STEP_ID, { description: `${d.media_type || mediaTypeFromName(filename)} attached` });
+      }
       setMediaGalleryOpen(false);
     } catch (e: any) {
       setMediaError(e?.message || 'Failed to import media');
@@ -961,6 +1005,127 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setCfg, updateWorkflowStep]);
+
+  /** Upload a local image/video and attach it to a node (reuses the LinkedIn
+   *  template media endpoint, which stores to GCP and returns a stable URL). */
+  const uploadMediaFor = useCallback(async (file: File, targetStepId: string) => {
+    if (!file) return;
+    setMediaImporting(true); setMediaError(null);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetchWithTenant('/api/campaigns/linkedin-templates/media-upload', { method: 'POST', body: fd });
+      // A failing upload can answer with an HTML error page rather than JSON.
+      // res.json() would then either throw or, worse, the page ends up rendered
+      // as the error text — a stack trace in the drawer tells the user nothing.
+      const raw = await res.text();
+      let d: any = null;
+      try { d = raw ? JSON.parse(raw) : null; } catch { /* not JSON — keep the status instead */ }
+      if (!res.ok || !d?.url) throw new Error(d?.error || `Upload failed (${res.status})`);
+      setCfg(targetStepId, {
+        media_url: d.url,
+        media_type: d.media_type || mediaTypeFromName(d.filename || file.name),
+        media_filename: d.filename || file.name,
+      });
+    } catch (e: any) {
+      setMediaError(e?.message || 'Failed to upload media');
+    } finally {
+      setMediaImporting(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setCfg]);
+
+  // Kick the image flow off only after startFlow's sessionId has committed.
+  // selectImageCreation is memoised on `sessionId`, so calling it in the same
+  // tick as startFlow captures the previous (empty) value — the worker then
+  // fails with "Session not found: " and returns 500.
+  useEffect(() => {
+    if (!inlineMedia) { inlineStartedRef.current = false; return; }
+    if (inlineStartedRef.current) return;
+    if (mediaBuilder.step === 'welcome' && mediaBuilder.sessionId) {
+      inlineStartedRef.current = true;
+      Promise.resolve(mediaBuilder.selectImageCreation?.()).catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inlineMedia, mediaBuilder.step, mediaBuilder.sessionId]);
+
+  // ── Agent-driven media configuration ──────────────────────────────────────
+  // Answer each wizard question from the post copy instead of asking the user.
+  // The wizard is the media worker's own state machine, so this drives it the
+  // same way a human would — one answer at a time — rather than trying to
+  // shortcut it. It deliberately STOPS at the image grid: picking the picture
+  // is a real choice worth keeping, and it isn't the part that was tedious.
+  const AUTO_MEDIA_MAX_PHASES = 30;
+  // Brand DNA extraction is genuinely slow, so this is deliberately generous:
+  // long enough that a working run is never interrupted, short enough that a
+  // dead one doesn't cost ten minutes.
+  const AUTO_MEDIA_STALL_MS = 3 * 60 * 1000;
+
+  // Any movement from the worker counts as progress.
+  useEffect(() => {
+    if (!inlineMedia || !autoMedia) return;
+    autoProgressAtRef.current = Date.now();
+    setAutoStalled(false);
+  }, [inlineMedia, autoMedia, mediaBuilder.step, mediaBuilder.uiPayload]);
+
+  useEffect(() => {
+    if (!inlineMedia || !autoMedia) return;
+    const t = setInterval(() => {
+      if (!autoProgressAtRef.current) return;
+      if (Date.now() - autoProgressAtRef.current < AUTO_MEDIA_STALL_MS) return;
+      setAutoStalled(true);
+      setAutoMedia(false);   // stop answering into a run that is no longer there
+    }, 15000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inlineMedia, autoMedia]);
+  useEffect(() => {
+    if (!inlineMedia || !autoMedia) return;
+    const mb = mediaBuilder;
+    const step = mb.step as string;
+    const p: any = mb.uiPayload || {};
+    if (step === 'loading' || mb.generating) return;
+    // Hand back to the manual UI on anything we can't answer — an error, or a
+    // video/keyframe phase that has no question to answer.
+    if (mb.error) { setAutoMedia(false); return; }
+    if (step !== 'builder-mcq-few' && step !== 'builder-text') return;
+
+    const key = `${step}|${p.phase || ''}|${p.question || ''}`;
+    if (autoBusyRef.current || autoKeyRef.current === key) return;
+    // A wizard that loops would otherwise burn model calls forever.
+    if (autoCountRef.current >= AUTO_MEDIA_MAX_PHASES) { setAutoMedia(false); return; }
+
+    autoBusyRef.current = true;
+    autoKeyRef.current = key;
+    autoCountRef.current += 1;
+
+    (async () => {
+      const post = (configs[CONTENT_STEP_ID]?.content || configs[AUTOPOST_STEP_ID]?.content || '').trim();
+      let answer = '';
+      try {
+        const res = await fetchWithTenant('/api/campaigns/linkedin-post/media-answer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            question: p.question || '',
+            description: p.description || '',
+            options: step === 'builder-mcq-few' ? (p.options || []) : null,
+            phase: p.phase || '',
+            post_content: post,
+          }),
+        });
+        const data = await res.json();
+        if (data?.success) answer = String(data.answer ?? '');
+      } catch {
+        // Leave the answer empty — the wizard treats that as a skip, which is
+        // better than abandoning a run half-way through.
+      }
+      setAutoMediaLog((l) => [...l, { phase: p.phase || p.question || 'Step', answer }]);
+      try { await mb.advanceStep?.(answer); } catch { /* surfaced via mb.error */ }
+      autoBusyRef.current = false;
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inlineMedia, autoMedia, mediaBuilder.step, mediaBuilder.uiPayload, mediaBuilder.generating, mediaBuilder.error]);
 
   // Lazy-load the LinkedIn company pages the account may post as. Fails soft —
   // an empty list simply leaves "personal profile" as the only option.
@@ -1048,8 +1213,29 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   // ── Launch ────────────────────────────────────────────────────────────────
   const launch = async () => {
     setError(null);
-    if (!name.trim()) { setError('Name your workflow.'); return; }
-    if (!source) { setError('Pick a contact source (first node).'); return; }
+    if (hydrating) return;   // never launch over a workflow that is still loading
+    if (!name.trim()) { setError('Name your Accelerator.'); return; }
+    // A publisher-only workflow (content → approval → post) never touches a
+    // lead: all three nodes compile into campaigns.config.autopost, a
+    // campaign-level macro that linkedinAutopostCron fires on a schedule. There
+    // is nobody to enrol, so demanding a contact source — or an outreach step —
+    // would block a perfectly valid pipeline. Any other node present means the
+    // workflow does operate on leads, and the normal guards apply again.
+    const outreachSteps = workflowPreview.filter(
+      (s) => s.id !== SOURCE_STEP_ID && s.id !== FOLLOWUP_STEP_ID && s.id !== ANALYTICS_STEP_ID && s.id !== ZOHO_UPDATE_STEP_ID && s.id !== MEDIA_STEP_ID && s.id !== MULTICOND_STEP_ID && s.id !== AI_STEP_ID && s.id !== ENRICH_STEP_ID && s.id !== EXPORT_STEP_ID && s.id !== AUTOPOST_STEP_ID && s.id !== SCRAPE_STEP_ID && s.id !== RESEARCH_STEP_ID && s.id !== SCORE_STEP_ID && s.id !== SPLIT_STEP_ID && s.id !== SETFIELD_STEP_ID && s.id !== HTTP_STEP_ID && s.id !== CONTENT_STEP_ID && s.id !== APPROVAL_STEP_ID
+    );
+    const multiCondNode = workflowPreview.find((s) => s.id === MULTICOND_STEP_ID);
+    const followupNode = workflowPreview.find((s) => s.id === FOLLOWUP_STEP_ID);
+    // Publisher-only is about what CONSUMES leads, not about which nodes are on
+    // the canvas. A contact source on its own consumes nothing: with no per-lead
+    // step the imported contacts have nowhere to go, so a workflow whose only
+    // real work is the scheduled post stays publisher-only even with a source
+    // attached. Defining it by node identity instead meant picking a source
+    // silently turned the exemption off.
+    const publisherOnly =
+      workflowPreview.some((s) => s.id === AUTOPOST_STEP_ID) &&
+      !outreachSteps.length && !followupNode && !multiCondNode;
+    if (!source && !publisherOnly) { setError('Pick a contact source (first node).'); return; }
     // LinkedIn Search needs at least one criterion — templates seed these empty
     // on purpose, so catch it here with a pointer instead of a backend 400.
     if (source === 'linkedin_search') {
@@ -1062,19 +1248,52 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         return;
       }
     }
-    const outreachSteps = workflowPreview.filter(
-      (s) => s.id !== SOURCE_STEP_ID && s.id !== FOLLOWUP_STEP_ID && s.id !== ANALYTICS_STEP_ID && s.id !== ZOHO_UPDATE_STEP_ID && s.id !== MEDIA_STEP_ID && s.id !== MULTICOND_STEP_ID && s.id !== AI_STEP_ID && s.id !== ENRICH_STEP_ID && s.id !== EXPORT_STEP_ID && s.id !== AUTOPOST_STEP_ID && s.id !== SCRAPE_STEP_ID && s.id !== RESEARCH_STEP_ID && s.id !== SCORE_STEP_ID && s.id !== SPLIT_STEP_ID && s.id !== SETFIELD_STEP_ID && s.id !== HTTP_STEP_ID
-    );
     const aiNode = workflowPreview.find((s) => s.id === AI_STEP_ID);
     const enrichNode = workflowPreview.find((s) => s.id === ENRICH_STEP_ID);
     const mediaNode = workflowPreview.find((s) => s.id === MEDIA_STEP_ID);
-    const multiCondNode = workflowPreview.find((s) => s.id === MULTICOND_STEP_ID);
-    const followupNode = workflowPreview.find((s) => s.id === FOLLOWUP_STEP_ID);
     const analyticsNode = workflowPreview.find((s) => s.id === ANALYTICS_STEP_ID);
     const exportNode = workflowPreview.find((s) => s.id === EXPORT_STEP_ID);
     const autopostNode = workflowPreview.find((s) => s.id === AUTOPOST_STEP_ID);
     const zohoUpdateNode = workflowPreview.find((s) => s.id === ZOHO_UPDATE_STEP_ID);
-    if (!outreachSteps.length && !followupNode && !multiCondNode) { setError('Add at least one outreach step.'); return; }
+    if (!outreachSteps.length && !followupNode && !multiCondNode && !publisherOnly) { setError('Add at least one outreach step.'); return; }
+
+    // InMail needs an entitlement the account may not have. Checking here means
+    // the user finds out while looking at the canvas, instead of one lead
+    // failing hours later with a 422 that reads like a billing problem.
+    //
+    // A free LinkedIn account returns "insufficient credits", which is NOT a
+    // depleted balance — it has no InMail entitlement at all, so credits on
+    // another account are irrelevant. Fails OPEN: an unreachable probe must
+    // never block a launch.
+    if (workflowPreview.some((s) => s.type === 'linkedin_inmail')) {
+      try {
+        const capRes = await fetchWithTenant('/api/campaigns/linkedin/capabilities');
+        const capJson = await capRes.json();
+        const cap = capJson?.data;
+        if (cap?.known && cap.connected && cap.canInMail === false) {
+          const who = cap.accountName || 'The connected LinkedIn account';
+          // Distinguish "free account" from the far more confusing case: a paid
+          // seat whose credits the integration cannot see. The account that
+          // prompted this reported Premium, and its owner could see 149 Sales
+          // Navigator credits in LinkedIn, while the API reported every pool as
+          // null. Telling that user to buy credits would have been useless.
+          setError(cap.premium
+            ? `${who} has a paid LinkedIn plan, but no InMail credits are visible to the integration. `
+              + 'Sales Navigator credits are a separate pool and stay hidden unless the account was connected with that seat active. '
+              + 'Reconnect the LinkedIn account in Settings, or swap the InMail step for a connection request.'
+            : `${who} has no InMail credits available. `
+              + 'InMail needs Premium or Sales Navigator on the sending account. Swap the InMail step for a connection request, or connect an account that has one.'
+          );
+          return;
+        }
+        if (cap?.connected === false) {
+          setError('No LinkedIn account is connected, so the InMail step cannot run. Connect one in Settings first.');
+          return;
+        }
+      } catch {
+        // Probe unavailable — let the launch proceed rather than block on it.
+      }
+    }
     if (multiCondNode) {
       const mcCases: any[] = (configs[MULTICOND_STEP_ID]?.cases) || [];
       const validCases = mcCases.filter((c) => (c.value || '').trim() && (c.body || c.subject || '').trim());
@@ -1087,6 +1306,26 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       if (!(spc.a?.body || '').trim() || !(spc.b?.body || '').trim()) {
         setError('Write a message for BOTH variants in the A/B split test — otherwise there is nothing to compare.');
         setEditingId(SPLIT_STEP_ID); return;
+      }
+    }
+    // A post node with nothing to say, or an approval gate with nobody to ask,
+    // would launch silently doing nothing — point at the offending node instead.
+    if (workflowPreview.some((s) => s.id === AUTOPOST_STEP_ID)) {
+      const hasContent = ((configs[CONTENT_STEP_ID]?.content ?? configs[AUTOPOST_STEP_ID]?.content) || '').trim();
+      if (!hasContent) {
+        setError('Add the LinkedIn content node and write what the post should say.');
+        setEditingId(workflowPreview.some((s) => s.id === CONTENT_STEP_ID) ? CONTENT_STEP_ID : AUTOPOST_STEP_ID);
+        return;
+      }
+    }
+    if (workflowPreview.some((s) => s.id === APPROVAL_STEP_ID)) {
+      if (!(configs[APPROVAL_STEP_ID]?.approval_to || '').trim()) {
+        setError('Add the WhatsApp number (or email) that should approve each post.');
+        setEditingId(APPROVAL_STEP_ID); return;
+      }
+      if (!workflowPreview.some((s) => s.id === AUTOPOST_STEP_ID)) {
+        setError('The Approval node needs a LinkedIn post node — it gates what that node publishes.');
+        setEditingId(APPROVAL_STEP_ID); return;
       }
     }
     if (analyticsNode && !(configs[ANALYTICS_STEP_ID]?.recipient || '').trim()) {
@@ -1193,7 +1432,13 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         const res = await fetchWithTenant(url);
         const data = await res.json();
         const rows = data?.data || [];
-        if (!rows.length) throw new Error('No synced contacts found for this source — sync it first.');
+        // A publisher workflow has nobody to enrol, so an empty import is not a
+        // failure — it only means the source was pointless, not that the
+        // scheduled post can't run. Blocking here stopped a post-only workflow
+        // from launching just because a source had been picked.
+        if (!rows.length && !publisherOnly) {
+          throw new Error('No synced contacts found for this source — sync it first.');
+        }
         initialLeads = rows.map((c: any, i: number) => ({
           id: String(c.source_id || c.id || i),
           first_name: c.first_name || undefined,
@@ -1443,6 +1688,21 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         config: {
           data_source: source === 'zoho_recurring' ? 'zoho_contacts' : source === 'linkedin_search' ? 'linkedin_search' : 'direct_contact',
           builder: 'custom_workflow',
+          // The builder's own state, stored so "Edit Accelerator" can reopen it
+          // exactly as it was. Launch flattens these nodes into config.* and
+          // steps, and that flattening is lossy — reversing it would be guesswork.
+          // Mirrors how the chat flow persists checkpoint_selections.
+          builder_state: {
+            version: 1,
+            source,
+            name: name.trim(),
+            per_day: perDayN,
+            days: daysN,
+            steps: workflowPreview.map((s: any) => ({
+              id: s.id, type: s.type, channel: s.channel, title: s.title, description: s.description,
+            })),
+            configs,
+          },
           // Search targeting, surfaced at campaign level so AI features ground
           // on it — notably the auto-post generator (LinkedInPostContentService
           // reads config.targeting), making "daily post about the industry you
@@ -1472,8 +1732,15 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             followup_sequence: { touches: fuTouchList.length, channel: fuChannel, timeline_hours: fuTouchList.map((t) => t.hours || 24), human_approval: !!fc.human_approval },
           } : {}),
           ...(autopostNode ? (() => {
-            const pc = configs[AUTOPOST_STEP_ID] || {};
-            const content = (pc.content || '').trim();
+            // The three nodes merge here: content node supplies the copy/media,
+            // the approval node the gate, the post node the schedule. Falling
+            // back to the post node's own config keeps campaigns built before
+            // the split working unchanged.
+            const sc = configs[AUTOPOST_STEP_ID] || {};
+            const cc = configs[CONTENT_STEP_ID] || {};
+            const ac = workflowPreview.some((s) => s.id === APPROVAL_STEP_ID) ? (configs[APPROVAL_STEP_ID] || {}) : null;
+            const pc = { ...sc, ...cc };   // content-node values win for copy/media
+            const content = ((cc.content ?? sc.content) || '').trim();
             if (!content) return {};
             return {
               // Read by LinkedInAutopostScheduleService at launch → drives
@@ -1481,13 +1748,25 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               autopost: {
                 content,
                 ai_generate: !!pc.ai_generate,
+                // Read by LinkedInPostContentService — 'structured' switches the
+                // generator to the heading + numbered-list shape AI search cites.
+                post_format: pc.post_format === 'structured' ? 'structured' : undefined,
                 media_url: (pc.media_url || '').trim() || undefined,
+                // The cron passes this to publishPost, which derives the MIME
+                // type from the extension — without it the filename is guessed
+                // from the URL, which loses it for signed/query-string URLs.
+                media_filename: (pc.media_filename || '').trim() || undefined,
                 external_link: (pc.external_link || '').trim() || undefined,
                 as_organization: pc.post_as && pc.post_as !== 'personal' ? pc.post_as : undefined,
                 frequency: pc.frequency === 'daily' ? 'daily' : 'weekly',
                 days: Array.isArray(pc.days) ? pc.days : [1],
                 time: pc.time || '09:00',
                 timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || undefined,
+                // Approval node present → the cron drafts and asks instead of
+                // publishing. Absent → unchanged auto-post behaviour.
+                require_approval: !!ac,
+                approval_channel: ac ? (ac.approval_channel || 'whatsapp') : undefined,
+                approval_to: ac ? ((ac.approval_to || '').trim() || undefined) : undefined,
               },
             };
           })() : {}),
@@ -1525,26 +1804,109 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         // leads as source='direct_contact' (NOT 'linkedin_search') — otherwise
         // the LinkedIn step treats the row id as a Unipile provider_id and
         // skips the name+company resolution waterfall.
-        ...(initialLeads ? { initial_leads: initialLeads, campaign_type: 'direct_outreach' } : {}),
+        // `.length`, not just truthiness — an empty import (allowed for a
+        // publisher workflow) would otherwise send initial_leads: [] and mark
+        // the campaign direct_outreach with nobody in it.
+        ...(initialLeads?.length ? { initial_leads: initialLeads, campaign_type: 'direct_outreach' } : {}),
       };
 
-      const res = await fetchWithTenant('/api/campaigns', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
-      });
-      const data = await res.json();
+      // Editing updates THIS campaign. Posting again would leave the original
+      // running alongside a duplicate, both posting to the same feed.
+      let res: Response;
+      if (editCampaignId) {
+        // PATCH, not PUT — the backend only registers patch('/:id'), so PUT hit
+        // Express's 404 and returned "Cannot PUT /api/campaigns/<id>".
+        const { status: _dropStatus, steps: editSteps, ...rest } = payload;
+        const editPayload: any = {
+          ...rest,
+          // CampaignModel.update MERGES config instead of replacing it, so a
+          // node removed in the builder would leave its key behind and keep
+          // running. Null the macro keys that are no longer present.
+          config: {
+            ...rest.config,
+            ...(rest.config.autopost ? {} : { autopost: null }),
+            ...(rest.config.export_results ? {} : { export_results: null }),
+            ...(rest.config.analytics_notifications ? {} : { analytics_notifications: null }),
+            ...(rest.config.followup_sequence ? {} : { followup_sequence: null }),
+          },
+        };
+        // `status` is deliberately dropped. update() has no active→running
+        // mapping (create does), so sending 'active' would write that literally
+        // and the cron's `status = 'running'` filter would stop matching — the
+        // schedule would go quiet. It would also resurrect a paused campaign.
+        res = await fetchWithTenant(`/api/campaigns/${editCampaignId}`, {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editPayload),
+        });
+        // Steps are not in update()'s allowedFields — they have their own
+        // endpoint, so without this an edited outreach sequence saved nothing.
+        if (res.ok && Array.isArray(editSteps)) {
+          await fetchWithTenant(`/api/campaigns/${editCampaignId}/steps`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ steps: editSteps }),
+          }).catch(() => { /* surfaced by the reload below */ });
+        }
+      } else {
+        res = await fetchWithTenant('/api/campaigns', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+        });
+      }
+      // Express answers an unknown route with an HTML page, and res.json() then
+      // dumped the whole document into the error banner. Parse defensively so a
+      // failure reads as a sentence.
+      const raw = await res.text();
+      let data: any = null;
+      try { data = raw ? JSON.parse(raw) : null; } catch { /* not JSON */ }
       if (res.ok && (data?.success || data?.id || data?.data?.id)) window.location.href = '/campaigns';
-      else { setError(data?.error || 'Failed to launch workflow'); setLaunching(false); }
+      else {
+        setError(data?.error || `${editCampaignId ? 'Could not save changes' : 'Failed to launch Accelerator'} (${res.status})`);
+        setLaunching(false);
+      }
     } catch (e: any) {
-      setError(e?.message || 'Failed to launch workflow');
+      setError(e?.message || 'Failed to launch Accelerator');
       setLaunching(false);
     }
   };
 
-  // ── Programmatic template launch (chat "Roles" wizard hand-off) ───────────
+  // ── Programmatic template launch (chat "Accelerators" wizard hand-off) ────
   // Effect 1 applies the template once on mount (silently — no confirm) with
   // the wizard's answers merged into the source config. Effect 2 fires launch()
   // exactly once, on the render AFTER the applied state has committed (the
   // !source guard skips the same-commit run where state is still stale).
+  // ── Edit mode ─────────────────────────────────────────────────────────────
+  // Restore from config.builder_state, written at launch. Reversing the
+  // flattened config.* + steps back into builder nodes would be guesswork, so
+  // the builder stores its own state and reads it straight back.
+  useEffect(() => {
+    if (!editCampaignId || hydratedRef.current) return;
+    hydratedRef.current = true;
+    (async () => {
+      try {
+        const res = await fetchWithTenant(`/api/campaigns/${editCampaignId}`);
+        const json = await res.json();
+        const camp = json?.data || json;
+        const bs = camp?.config?.builder_state;
+        if (bs?.steps) {
+          setSource(bs.source ?? null);
+          setWorkflowPreview(bs.steps as any);
+          setConfigs(bs.configs || {});
+          setName(bs.name || camp?.name || '');
+          if (bs.per_day) setPerDay(String(bs.per_day));
+          if (bs.days) setDays(String(bs.days));
+        } else {
+          // Launched before builder_state existed. Rather than silently opening
+          // an empty canvas over a live campaign, say so — the nodes cannot be
+          // recovered and overwriting would delete the workflow.
+          setName(camp?.name || '');
+          setError('This Accelerator was created before edits were supported, so its steps cannot be reopened. Relaunching here would replace it — build it again, or leave it running.');
+        }
+      } catch {
+        setError('Could not load this Accelerator for editing.');
+      } finally {
+        setHydrating(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editCampaignId]);
+
   const appliedTplRef = useRef(false);
   const autoLaunchedRef = useRef(false);
   useEffect(() => {
@@ -1572,7 +1934,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     const t = allTemplates.find((x) => x.key === overviewTpl);
     if (!t) return null;
     const steps = [
-      { title: t.source.title, category: 'Contact source' },
+      ...(t.source ? [{ title: t.source.title, category: 'Contact source' }] : []),
       ...t.nodes.map((n) => ({ title: n.title, category: stepCategory(n.type) })),
     ];
     // Community cards are imported (copied into this tenant) before being
@@ -1671,13 +2033,15 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     const isDataEnrich = editingId === ENRICH_STEP_ID;
     const isExport = editingId === EXPORT_STEP_ID;
     const isAutopost = editingId === AUTOPOST_STEP_ID;
+    const isContent = editingId === CONTENT_STEP_ID;
+    const isApproval = editingId === APPROVAL_STEP_ID;
     const isScrape = editingId === SCRAPE_STEP_ID;
     const isResearch = editingId === RESEARCH_STEP_ID;
     const isScore = editingId === SCORE_STEP_ID;
     const isSplit = editingId === SPLIT_STEP_ID;
     const isSetField = editingId === SETFIELD_STEP_ID;
     const isHttp = editingId === HTTP_STEP_ID;
-    const isMacro = isFollowup || isAnalytics || isZohoUpdate || isMedia || isMultiCond || isAiParse || isDataEnrich || isExport || isAutopost || isScrape || isResearch || isScore || isSplit || isSetField || isHttp;
+    const isMacro = isFollowup || isAnalytics || isZohoUpdate || isMedia || isMultiCond || isAiParse || isDataEnrich || isExport || isAutopost || isScrape || isResearch || isScore || isSplit || isSetField || isHttp || isContent || isApproval;
     const visual = isSource
       ? SOURCES.find((s) => s.key === source)
       : isFollowup
@@ -1698,6 +2062,10 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             ? { icon: <Download className="h-4 w-4 text-cyan-700" />, chip: 'bg-cyan-50 dark:bg-cyan-950/30' }
           : isAutopost
             ? { icon: <Megaphone className="h-4 w-4 text-[#0077B5]" />, chip: 'bg-sky-50 dark:bg-sky-950/30' }
+          : isContent
+            ? { icon: <PenTool className="h-4 w-4 text-violet-600" />, chip: 'bg-violet-50 dark:bg-violet-950/30' }
+          : isApproval
+            ? { icon: <ShieldCheck className="h-4 w-4 text-green-600" />, chip: 'bg-green-50 dark:bg-green-950/30' }
           : isScrape
             ? { icon: <Globe className="h-4 w-4 text-sky-600" />, chip: 'bg-sky-50 dark:bg-sky-950/30' }
           : isResearch
@@ -1720,7 +2088,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           <div className="min-w-0 flex-1">
             <div className="text-sm font-semibold text-foreground truncate">{editingStep.title}</div>
             <div className="text-xs text-muted-foreground">
-              {isSource ? 'Contact source settings' : isFollowup ? 'Follow-up sequence settings' : isAnalytics ? 'Report settings' : isZohoUpdate ? 'Field mapping' : isMedia ? 'AI media' : isMultiCond ? 'Branch by condition' : isAiParse ? 'AI data cleanup' : isDataEnrich ? 'Data to enrich' : isExport ? 'Export destinations' : isAutopost ? 'Post content & schedule' : isScrape ? 'Page to read' : isResearch ? 'What gets researched' : isScore ? 'Scoring signals' : isSplit ? 'Variants & split' : isSetField ? 'Fields to write' : isHttp ? 'Request' : isRouter ? 'Fallback routing settings' : 'Step settings'}
+              {isSource ? 'Contact source settings' : isFollowup ? 'Follow-up sequence settings' : isAnalytics ? 'Report settings' : isZohoUpdate ? 'Field mapping' : isMedia ? 'AI media' : isMultiCond ? 'Branch by condition' : isAiParse ? 'AI data cleanup' : isDataEnrich ? 'Data to enrich' : isExport ? 'Export destinations' : isAutopost ? 'Where & when' : isContent ? 'What the post says' : isApproval ? 'Who approves' : isScrape ? 'Page to read' : isResearch ? 'What gets researched' : isScore ? 'Scoring signals' : isSplit ? 'Variants & split' : isSetField ? 'Fields to write' : isHttp ? 'Request' : isRouter ? 'Fallback routing settings' : 'Step settings'}
             </div>
           </div>
           <button onClick={() => setEditingId(null)} className="h-7 w-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors flex-shrink-0">
@@ -2089,20 +2457,8 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             </>);
           })()}
 
-          {isAutopost && (() => {
+          {isContent && (() => {
             const eid = editingId!;
-            const freq = cfg.frequency === 'daily' ? 'daily' : 'weekly';
-            const days: number[] = Array.isArray(cfg.days) ? cfg.days : [1];
-            const describe = (f: string, d: number[]) => {
-              if (f === 'daily') return 'Daily · ' + (cfg.time || '09:00');
-              const names = AUTOPOST_DAYS.filter((x) => d.includes(x.value)).map((x) => x.label);
-              return (names.length ? names.join(', ') : 'no days') + ' · ' + (cfg.time || '09:00');
-            };
-            const toggleDay = (v: number) => {
-              const next = days.includes(v) ? days.filter((x) => x !== v) : [...days, v];
-              setCfg(eid, { days: next });
-              updateWorkflowStep(eid, { description: describe(freq, next) });
-            };
             return (<>
               <div className="rounded-md border border-sky-200 bg-sky-50 dark:border-sky-900 dark:bg-sky-950/30 px-3 py-2">
                 <p className="text-[11px] text-sky-800 dark:text-sky-300">
@@ -2121,9 +2477,18 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   </button>
                 </div>
                 <textarea className={`${field} min-h-[140px]`} value={cfg.content || ''}
-                  onChange={(e) => { setCfg(eid, { content: e.target.value }); updateWorkflowStep(eid, { description: e.target.value.slice(0, 40) || describe(freq, days) }); }}
+                  onChange={(e) => { setCfg(eid, { content: e.target.value }); updateWorkflowStep(eid, { description: e.target.value.slice(0, 40) || 'What the post says' }); }}
                   placeholder="Write your post, or add a topic and hit Generate with AI…" />
                 <p className="text-[11px] text-muted-foreground">{(cfg.content || '').length}/3000 characters</p>
+                {/* Generation feedback belongs here — the shared status line is
+                    rendered in the post drawer, which isn't visible from here. */}
+                {autopostMsg && (
+                  <div className={`rounded-md border p-2 text-[11px] ${autopostMsg.ok
+                    ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300'
+                    : 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30 text-red-700 dark:text-red-300'}`}>
+                    {autopostMsg.text}
+                  </div>
+                )}
               </div>
 
               <label className="flex items-start gap-2.5 rounded-lg border border-border p-2.5 cursor-pointer hover:bg-muted/30 transition-colors">
@@ -2135,14 +2500,357 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 </span>
               </label>
 
+              {/* Shape of the post. Only meaningful when AI writes it — a post
+                  typed by hand is already whatever shape it is. */}
+              {!!cfg.ai_generate && (
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-foreground">Post shape</label>
+                  <select className={field} value={cfg.post_format || 'insight'}
+                    onChange={(e) => setCfg(eid, { post_format: e.target.value })}>
+                    <option value="insight">Short insight post (80-150 words)</option>
+                    <option value="structured">Structured list (200-400 words)</option>
+                  </select>
+                  <p className="text-[11px] text-muted-foreground">
+                    {(cfg.post_format || 'insight') === 'structured'
+                      ? 'A heading and 3-6 numbered points. This is the shape AI search engines cite most: LinkedIn found headings in 92% of cited posts, and a list in every top-cited article.'
+                      : 'A single hook and a short story. Good for reach and replies.'}
+                  </p>
+                </div>
+              )}
+
               <div className="space-y-1"><label className="text-xs font-medium text-foreground">Link (optional)</label>
                 <input className={field} value={cfg.external_link || ''} onChange={(e) => setCfg(eid, { external_link: e.target.value })}
                   placeholder="https://… (shown as a preview card)" /></div>
 
-              <div className="space-y-1"><label className="text-xs font-medium text-foreground">Image / video URL (optional)</label>
-                <input className={field} value={cfg.media_url || ''} onChange={(e) => setCfg(eid, { media_url: e.target.value })}
-                  placeholder="Paste a URL, or add the AI Media node to generate one" /></div>
+              {/* ── Media: generate with AI, pick from the gallery, upload, or paste ── */}
+              {(() => {
+                const imgs = mediaBuilder.galleryImages || [];
+                const vids = mediaBuilder.galleryVideos || [];
+                const openGallery = () => { setMediaGalleryOpen((o) => !o); if (!mediaGalleryOpen) mediaBuilder.fetchGallery?.().catch(() => {}); };
+                // Run the wizard inline in this drawer. selectImageCreation
+                // skips the image/video choice — an auto-post wants an image —
+                // and the describe-image phase is pre-filled with the post text.
+                const openStudio = (auto = false) => {
+                  setAutopostMsg(null);
+                  inlinePrefilledRef.current = null;
+                  setInlineAnswer('');
+                  autoBusyRef.current = false;
+                  autoKeyRef.current = null;
+                  autoCountRef.current = 0;
+                  autoProgressAtRef.current = Date.now();
+                  setAutoStalled(false);
+                  setAutoMediaLog([]);
+                  setAutoMedia(auto);
+                  setInlineMedia(true);
+                  // Only start the flow here. selectImageCreation closes over
+                  // the sessionId STATE, which startFlow has just queued —
+                  // calling it in this tick sends an empty session id and the
+                  // worker 500s with "Session not found". The effect below
+                  // fires it once the id has actually committed.
+                  mediaBuilder.startFlow?.();
+                };
+                return (
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-foreground">Image / video (optional)</label>
 
+                    {cfg.media_url ? (
+                      <div className="space-y-2">
+                        {cfg.media_type === 'video'
+                          ? <video src={cfg.media_url} controls className="w-full max-h-44 rounded-md bg-black" />
+                          : <img src={cfg.media_url} alt={cfg.media_filename || 'media'} className="w-full max-h-44 object-contain rounded-md border border-border" />}
+                        <button type="button" onClick={() => setCfg(eid, { media_url: '', media_type: '', media_filename: '' })}
+                          className="inline-flex items-center gap-1.5 text-xs text-red-600 hover:underline">
+                          <Trash2 className="h-3.5 w-3.5" /> Remove
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-muted-foreground">Posts with an image get noticeably more reach than text alone.</p>
+                    )}
+
+                    {mediaError && <p className="text-xs text-red-600">{mediaError}</p>}
+
+                    {/* ── Inline AI-media wizard ─────────────────────────────
+                        The media builder is a multi-phase Q&A. Rather than the
+                        full-screen studio, render each phase compactly here and
+                        pre-fill the image description with the post text. */}
+                    {inlineMedia && (() => {
+                      const mb = mediaBuilder;
+                      const step = mb.step as string;
+                      const p: any = mb.uiPayload || {};
+                      const phase: string = p.phase || '';
+                      const busy = step === 'loading' || mb.generating;
+                      const cancel = () => { setInlineMedia(false); setInlineAnswer(''); setAutoMedia(false); mb.closeFlow?.(); };
+
+                      // The prompt phase — seed it with the post content once.
+                      const isDescribe = /describe image/i.test(phase) || /describe.*image/i.test(p.question || '');
+                      if (step === 'builder-text' && isDescribe && inlinePrefilledRef.current !== phase) {
+                        inlinePrefilledRef.current = phase;
+                        const seed = (cfg.content || '').trim();
+                        if (seed) setTimeout(() => setInlineAnswer(seed.slice(0, 900)), 0);
+                      }
+
+                      // NOTE: a plain function, NOT a component. Declaring a
+                      // component inside render gives it a new type every pass,
+                      // so React remounts the subtree and the textarea loses
+                      // focus on each keystroke.
+                      const shell = (children: React.ReactNode) => (
+                        <div className="rounded-xl border border-fuchsia-200 dark:border-fuchsia-900 bg-fuchsia-50/50 dark:bg-fuchsia-950/20 p-3 space-y-2.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-fuchsia-700 dark:text-fuchsia-300">
+                              <Wand2 className="h-3.5 w-3.5" /> AI image
+                            </span>
+                            <button type="button" onClick={cancel} className="text-[11px] text-muted-foreground hover:text-foreground">Cancel</button>
+                          </div>
+                          {phase && <div className="text-[10.5px] font-medium text-fuchsia-600/80 dark:text-fuchsia-400/80">{phase}</div>}
+                          {children}
+                        </div>
+                      );
+
+                      // The run stopped responding. Say so plainly rather than
+                      // spinning: the copy is safe, and both ways forward are
+                      // one click away.
+                      if (autoStalled) return (
+                        shell(<>
+                          <p className="text-[12.5px] font-medium text-foreground">The image service stopped responding.</p>
+                          <p className="text-[11.5px] text-muted-foreground leading-snug">
+                            Your post copy is safe. You can try again, or attach an image yourself with Upload.
+                          </p>
+                          {autoMediaLog.length > 0 && (
+                            <p className="text-[11px] text-muted-foreground">Got as far as: {autoMediaLog[autoMediaLog.length - 1].phase}</p>
+                          )}
+                          <div className="flex items-center gap-2">
+                            <button type="button" onClick={() => { cancel(); openStudio(true); }}
+                              className="px-3 py-1.5 rounded-lg bg-fuchsia-600 text-white text-[12.5px] font-semibold">Try again</button>
+                            <button type="button" onClick={cancel}
+                              className="text-[12px] text-muted-foreground hover:text-foreground">Close</button>
+                          </div>
+                        </>)
+                      );
+
+                      // Agent-driven: never show the questionnaire. Show what it
+                      // has decided instead — automation you can't inspect is
+                      // worse than the form it replaced. Stops at the image
+                      // grid, which is a real choice and was never the tedious
+                      // part.
+                      if (autoMedia && !mb.error && step !== 'builder-image-output') return (
+                        shell(<>
+                          <p className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin text-fuchsia-600" />
+                            Setting the image up from your post…
+                          </p>
+                          {autoMediaLog.length > 0 && (
+                            <ul className="space-y-1 max-h-40 overflow-y-auto">
+                              {autoMediaLog.map((e, i) => (
+                                <li key={i} className="text-[11px] leading-snug">
+                                  <span className="text-muted-foreground">{e.phase}: </span>
+                                  <span className="text-foreground font-medium">{e.answer || 'skipped'}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                          <button type="button" onClick={() => setAutoMedia(false)}
+                            className="text-[11.5px] text-muted-foreground hover:text-foreground underline">
+                            Take over and answer the rest myself
+                          </button>
+                        </>)
+                      );
+
+                      if (busy) return (
+                        shell(<><p className="py-3 text-center text-[12px] text-muted-foreground flex items-center justify-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" /> Working…
+                        </p></>)
+                      );
+
+                      if (mb.error) return (
+                        shell(<>
+                          <p className="text-[12px] text-red-600">{String(mb.error)}</p>
+                          <button type="button" onClick={() => { cancel(); setShowMediaStudio(true); }}
+                            className="text-[12px] font-medium text-[#0b1957] dark:text-sky-300 hover:underline">Open the full studio instead</button>
+                        </>)
+                      );
+
+                      // Multiple-choice phase
+                      if (step === 'builder-mcq-few') return (
+                        shell(<>
+                          <p className="text-[13px] font-medium text-foreground leading-snug">{p.question}</p>
+                          {p.description && <p className="text-[11.5px] text-muted-foreground leading-snug">{p.description}</p>}
+                          <div className="flex flex-col gap-1.5">
+                            {(p.options || []).map((o: any, i: number) => (
+                              <button key={i} type="button"
+                                onClick={() => { setInlineAnswer(''); mb.advanceStep?.(o?.label ?? String(o)); }}
+                                className="w-full text-left rounded-lg border border-border bg-card px-2.5 py-2 text-[12.5px] text-foreground hover:border-fuchsia-400 hover:bg-fuchsia-50 dark:hover:bg-fuchsia-950/30 transition-colors">
+                                {o?.label ?? String(o)}
+                              </button>
+                            ))}
+                          </div>
+                        </>)
+                      );
+
+                      // Free-text phase (the image description lands here)
+                      if (step === 'builder-text') return (
+                        shell(<>
+                          <p className="text-[13px] font-medium text-foreground leading-snug">{p.question}</p>
+                          {p.description && <p className="text-[11.5px] text-muted-foreground leading-snug">{p.description}</p>}
+                          {isDescribe && (
+                            <p className="text-[11px] text-fuchsia-700 dark:text-fuchsia-300">Pre-filled from your post — edit if you want a different image.</p>
+                          )}
+                          <textarea className={`${field} min-h-[80px]`} value={inlineAnswer}
+                            onChange={(e) => setInlineAnswer(e.target.value)} placeholder="Type your answer…" />
+                          <div className="flex items-center gap-2">
+                            <button type="button" disabled={!inlineAnswer.trim()}
+                              onClick={() => { const v = inlineAnswer.trim(); setInlineAnswer(''); mb.advanceStep?.(v); }}
+                              className="px-3 py-1.5 rounded-lg bg-fuchsia-600 text-white text-[12.5px] font-semibold disabled:opacity-50">Send</button>
+                            <button type="button" onClick={() => { setInlineAnswer(''); mb.advanceStep?.(''); }}
+                              className="text-[12px] text-muted-foreground hover:text-foreground">Skip</button>
+                          </div>
+                        </>)
+                      );
+
+                      // Generated images — click one to attach it to the post
+                      if (step === 'builder-image-output') {
+                        const outImgs: any[] = p.images || [];
+                        return (
+                          shell(<>
+                            <p className="text-[13px] font-medium text-foreground leading-snug">
+                              {autoMedia ? 'Configured from your post — pick your favourite' : (p.question || 'Pick an image for your post')}
+                            </p>
+                            {!outImgs.length ? (
+                              <p className="text-[12px] text-muted-foreground">No images came back — try the full studio.</p>
+                            ) : (
+                              <div className="grid grid-cols-2 gap-2">
+                                {outImgs.map((im: any, i: number) => {
+                                  const u = im?.url || im?.signed_url || (typeof im === 'string' ? im : '');
+                                  return u ? (
+                                    <img key={i} src={u} alt="generated"
+                                      onClick={() => { importGenerated(u, CONTENT_STEP_ID); setInlineMedia(false); mb.closeFlow?.(); }}
+                                      className="h-20 w-full object-cover rounded-md cursor-pointer hover:ring-2 ring-fuchsia-500" />
+                                  ) : null;
+                                })}
+                              </div>
+                            )}
+                            <p className="text-[11px] text-muted-foreground">Click an image to attach it.</p>
+                          </>)
+                        );
+                      }
+
+                      // Video / keyframe phases aren't worth reproducing in a
+                      // 22rem drawer — hand off to the studio.
+                      return (
+                        shell(<>
+                          <p className="text-[12.5px] text-muted-foreground leading-snug">This part of the wizard needs more room.</p>
+                          <button type="button" onClick={() => { setInlineMedia(false); setShowMediaStudio(true); }}
+                            className="px-3 py-1.5 rounded-lg bg-fuchsia-600 text-white text-[12.5px] font-semibold">Continue in the full studio</button>
+                        </>)
+                      );
+                    })()}
+
+                    <div className="grid grid-cols-2 gap-2">
+                      {/* Default to the agent doing the setup: the post copy is
+                          already the brief, so making everyone sit through the
+                          questionnaire to restate it is the wrong default. */}
+                      <button type="button" onClick={() => openStudio(true)} disabled={inlineMedia || !(cfg.content || '').trim()}
+                        title={!(cfg.content || '').trim() ? 'Write or generate the post first — the copy is what the image is based on' : undefined}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-fuchsia-300 bg-fuchsia-50 dark:bg-fuchsia-950/30 px-2.5 py-2 text-[12.5px] font-medium text-fuchsia-700 dark:text-fuchsia-300 hover:bg-fuchsia-100 dark:hover:bg-fuchsia-900/40 disabled:opacity-50">
+                        <Wand2 className="h-3.5 w-3.5" /> Generate with AI
+                      </button>
+                      <button type="button" onClick={() => autopostFileRef.current?.click()} disabled={mediaImporting}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border px-2.5 py-2 text-[12.5px] font-medium text-foreground hover:bg-muted/50 disabled:opacity-60">
+                        {mediaImporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />} Upload
+                      </button>
+                    </div>
+                    {!inlineMedia && (
+                      <button type="button" onClick={() => openStudio(false)}
+                        className="text-[11.5px] text-muted-foreground hover:text-foreground underline">
+                        Set the image up myself instead
+                      </button>
+                    )}
+                    <input ref={autopostFileRef} type="file" accept="image/*,video/*" className="hidden"
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadMediaFor(f, CONTENT_STEP_ID); e.target.value = ''; }} />
+
+                    <button type="button" onClick={openGallery} className="text-[12px] font-medium text-[#0b1957] dark:text-sky-300 hover:underline">
+                      {mediaGalleryOpen ? 'Hide generated media' : 'Pick from generated media'}
+                    </button>
+
+                    {mediaGalleryOpen && (
+                      <div className="rounded-lg border border-border p-2 bg-muted/20">
+                        {mediaBuilder.loadingGallery ? (
+                          <p className="py-3 text-center text-xs text-muted-foreground flex items-center justify-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</p>
+                        ) : (!imgs.length && !vids.length) ? (
+                          <p className="py-3 text-center text-xs text-muted-foreground">Nothing generated yet — use Generate with AI first.</p>
+                        ) : (
+                          <div className="grid grid-cols-3 gap-2 max-h-52 overflow-y-auto">
+                            {imgs.map((it: any, i: number) => { const u = it?.url || it?.signed_url || (typeof it === 'string' ? it : ''); return u ? (
+                              <img key={`ai-${i}`} src={u} alt="generated" onClick={() => importGenerated(u, CONTENT_STEP_ID)}
+                                className="h-16 w-full object-cover rounded cursor-pointer hover:ring-2 ring-fuchsia-400" />
+                            ) : null; })}
+                            {vids.map((it: any, i: number) => { const u = it?.url || it?.signed_url || (typeof it === 'string' ? it : ''); return u ? (
+                              <video key={`av-${i}`} src={u} onClick={() => importGenerated(u, CONTENT_STEP_ID)}
+                                className="h-16 w-full object-cover rounded cursor-pointer hover:ring-2 ring-fuchsia-400" />
+                            ) : null; })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <input className={field} value={cfg.media_url || ''} onChange={(e) => setCfg(eid, { media_url: e.target.value })}
+                      placeholder="…or paste an image / video URL" />
+                  </div>
+                );
+              })()}
+
+            </>);
+          })()}
+
+          {isApproval && (() => {
+            const eid = editingId!;
+            return (<>
+              <div className="rounded-md border border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30 px-3 py-2">
+                <p className="text-[11px] text-green-800 dark:text-green-300">
+                  Nothing is published until you approve it. At each scheduled slot the post is
+                  drafted and sent to you — tap <strong>Approve</strong> and it goes out immediately.
+                </p>
+              </div>
+              <div className="space-y-1"><label className="text-xs font-medium text-foreground">Send the draft to</label>
+                <select className={field} value={cfg.approval_channel || 'whatsapp'}
+                  onChange={(e) => { setCfg(eid, { approval_channel: e.target.value }); updateWorkflowStep(eid, { description: `${e.target.value === 'email' ? 'Email' : 'WhatsApp'} · before posting` }); }}>
+                  <option value="whatsapp">WhatsApp</option>
+                  <option value="email">Email</option>
+                </select></div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">
+                  {(cfg.approval_channel || 'whatsapp') === 'email' ? 'Approver email' : 'Approver WhatsApp number'}
+                </label>
+                <input className={field} value={cfg.approval_to || ''} onChange={(e) => setCfg(eid, { approval_to: e.target.value })}
+                  placeholder={(cfg.approval_channel || 'whatsapp') === 'email' ? 'you@company.com' : '+971500000000'} />
+              </div>
+              <p className="text-[11px] leading-snug text-muted-foreground">
+                A draft nobody answers is released after 48 hours so the schedule keeps running —
+                that slot is skipped, not posted.
+              </p>
+            </>);
+          })()}
+
+          {isAutopost && (() => {
+            const eid = editingId!;
+            const freq = cfg.frequency === 'daily' ? 'daily' : 'weekly';
+            const days: number[] = Array.isArray(cfg.days) ? cfg.days : [1];
+            const describe = (f: string, d: number[]) => {
+              if (f === 'daily') return 'Daily · ' + (cfg.time || '09:00');
+              const names = AUTOPOST_DAYS.filter((x) => d.includes(x.value)).map((x) => x.label);
+              return (names.length ? names.join(', ') : 'no days') + ' · ' + (cfg.time || '09:00');
+            };
+            const toggleDay = (v: number) => {
+              const next = days.includes(v) ? days.filter((x) => x !== v) : [...days, v];
+              setCfg(eid, { days: next });
+              updateWorkflowStep(eid, { description: describe(freq, next) });
+            };
+            return (<>
+              <div className="rounded-md border border-sky-200 bg-sky-50 dark:border-sky-900 dark:bg-sky-950/30 px-3 py-2">
+                <p className="text-[11px] text-sky-800 dark:text-sky-300">
+                  Publishes the content from the <strong>LinkedIn content</strong> node to your own
+                  feed on this schedule. Posts <strong>once per schedule</strong>, not once per lead.
+                </p>
+              </div>
               <div className="space-y-1"><label className="text-xs font-medium text-foreground">Post as</label>
                 <select className={field} value={cfg.post_as || 'personal'} onChange={(e) => setCfg(eid, { post_as: e.target.value })}>
                   <option value="personal">My personal profile</option>
@@ -2179,21 +2887,38 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   onChange={(e) => { setCfg(eid, { time: e.target.value }); updateWorkflowStep(eid, { description: describe(freq, days) }); }} />
                 <p className="text-[11px] text-muted-foreground">Your local timezone. Posting stops when the campaign is paused or finishes.</p></div>
 
-              <div className="space-y-2 pt-1">
-                <button type="button" onClick={postAutopostNow} disabled={autopostPosting}
-                  className="w-full rounded-md bg-[#0077B5] text-white text-sm font-medium py-2 disabled:opacity-60 flex items-center justify-center gap-2">
-                  {autopostPosting ? <><Loader2 className="h-4 w-4 animate-spin" /> Posting…</> : <><Megaphone className="h-4 w-4" /> Post now</>}
-                </button>
-                {autopostMsg && (
-                  <div className={`rounded-md border p-2.5 text-[11px] ${autopostMsg.ok
-                    ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300'
-                    : 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30 text-red-700 dark:text-red-300'}`}>
-                    {autopostMsg.text}
+              {/* What this schedule actually means, in dates. */}
+              {(() => {
+                const next = nextAutopostRun(freq, days, cfg.time || '09:00');
+                if (!next) {
+                  return <p className="text-[11px] text-amber-600">This schedule never fires — check the days and time.</p>;
+                }
+                const hours = Math.round((next.getTime() - Date.now()) / 3600000);
+                const away = hours < 1 ? 'in under an hour'
+                  : hours < 24 ? `in about ${hours} hour${hours === 1 ? '' : 's'}`
+                  : `in ${Math.round(hours / 24)} days`;
+                const far = hours >= 48;
+                return (
+                  <div className={`rounded-md border px-3 py-2 ${far
+                    ? 'border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30'
+                    : 'border-border bg-muted/30'}`}>
+                    <p className={`text-[11.5px] ${far ? 'text-amber-800 dark:text-amber-300' : 'text-foreground'}`}>
+                      First post: <strong>{next.toLocaleString(undefined, {
+                        weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+                      })}</strong> — {away}.
+                    </p>
+                    {far && (
+                      <p className="text-[11px] text-amber-700/80 dark:text-amber-400/80 mt-0.5">
+                        That time has already passed today, so the first post waits for the next matching day.
+                      </p>
+                    )}
                   </div>
-                )}
-              </div>
+                );
+              })()}
             </>);
+
           })()}
+
 
           {isSplit && (() => {
             const eid = editingId!;
@@ -2648,22 +3373,22 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           <button onClick={onClose} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground" title="Close builder">
             <X className="h-4 w-4" /> Close
           </button>
-          <span className="text-sm font-semibold text-foreground hidden sm:block">Custom Workflow</span>
-          <Input className="w-64" value={name} onChange={(e) => setName(e.target.value)} placeholder="Workflow name…" />
+          <span className="text-sm font-semibold text-foreground hidden sm:block">Custom Accelerator</span>
+          <Input className="w-64" value={name} onChange={(e) => setName(e.target.value)} placeholder="Accelerator name…" />
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <span>Leads/day</span><Input type="number" className="w-16 h-8" value={perDay} onChange={(e) => setPerDay(e.target.value)} />
             <span>Days</span><Input type="number" className="w-16 h-8" value={days} onChange={(e) => setDays(e.target.value)} />
           </div>
-          <Button variant="outline" onClick={saveAsStrategy} disabled={strategySaving || launching}
+          <Button variant="outline" onClick={saveAsStrategy} disabled={strategySaving || launching || hydrating}
             title="Save this pipeline so you can reuse it later without launching it now">
             {strategySaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Bookmark className="h-4 w-4 mr-2" />}
             Save as strategy
           </Button>
-          <Button onClick={launch} disabled={launching}>
-            {launching ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Rocket className="h-4 w-4 mr-2" />}
-            Launch workflow
+          <Button onClick={launch} disabled={launching || hydrating}>
+            {(launching || hydrating) ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Rocket className="h-4 w-4 mr-2" />}
+            {hydrating ? 'Loading…' : editCampaignId ? 'Save changes' : 'Launch Accelerator'}
           </Button>
         </div>
       </div>
@@ -2835,7 +3560,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               <span className="h-5 w-5 rounded-full bg-[#0b1957] text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">1</span>
               <span className="text-sm font-semibold text-foreground">Contact source</span>
             </div>
-            <p className="text-xs text-muted-foreground mb-2.5 ml-7">Where leads enter this workflow</p>
+            <p className="text-xs text-muted-foreground mb-2.5 ml-7">Where leads enter this Accelerator</p>
             <div className="space-y-2">
               {SOURCES.map((s) => {
                 const active = source === s.key;
@@ -2995,6 +3720,8 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               { id: SPLIT_STEP_ID, on: addSplitTest, icon: <Shuffle className="h-4 w-4 text-pink-600" />, chip: 'bg-pink-50 dark:bg-pink-950/30', label: 'A/B split test', sub: 'Compare two openers' },
               { id: SETFIELD_STEP_ID, on: addSetField, icon: <PenLine className="h-4 w-4 text-lime-600" />, chip: 'bg-lime-50 dark:bg-lime-950/30', label: 'Set field', sub: 'Tag or write a value' },
               { id: HTTP_STEP_ID, on: addHttpRequest, icon: <Webhook className="h-4 w-4 text-slate-600" />, chip: 'bg-slate-100 dark:bg-slate-800/50', label: 'HTTP request', sub: 'Call any API per lead' },
+              { id: CONTENT_STEP_ID, on: addLinkedInContent, icon: <PenTool className="h-4 w-4 text-violet-600" />, chip: 'bg-violet-50 dark:bg-violet-950/30', label: 'LinkedIn content', sub: 'Write or AI-generate the post' },
+              { id: APPROVAL_STEP_ID, on: addPostApproval, icon: <ShieldCheck className="h-4 w-4 text-green-600" />, chip: 'bg-green-50 dark:bg-green-950/30', label: 'Approval', sub: 'Approve on WhatsApp before posting' },
             ]).map((b) => {
               const added2 = workflowPreview.some((s) => s.id === b.id);
               return (
@@ -3176,6 +3903,11 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         <MediaGenerationModal
           isOpen={showMediaStudio}
           onClose={() => { setShowMediaStudio(false); setMediaGalleryOpen(true); mediaBuilder.fetchGallery?.().catch(() => {}); }}
+          // The builder is hosted in a fixed z-index:10000 overlay and the
+          // dialog portals to <body>, so without these it opens BEHIND the
+          // builder — invisible, and closed by the next click.
+          className="z-[10050]"
+          overlayClassName="z-[10040]"
         />
       )}
 
