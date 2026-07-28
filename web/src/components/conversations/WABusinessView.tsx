@@ -1865,12 +1865,6 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
             </div>
             <span className="text-[13px] font-medium text-[#111b21] dark:text-[#e9edef]">Add contact</span>
           </div>
-          <div className="flex flex-col items-center gap-2.5">
-            <div className="w-[62px] h-12 bg-black/4 dark:bg-[#35373b] rounded-full flex items-center justify-center cursor-pointer hover:bg-[#d8dadf] dark:hover:bg-[#323436] transition-colors">
-              <img src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Meta_AI_Logo_%282026%29.svg" alt="Meta AI" className="w-6 h-6 object-contain" />
-            </div>
-            <span className="text-[13px] font-medium text-[#111b21] dark:text-[#e9edef]">Ask Meta AI</span>
-          </div>
         </div>
       </div>
     );
