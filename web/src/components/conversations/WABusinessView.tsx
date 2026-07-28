@@ -1852,48 +1852,24 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
   if (!conversation) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-[#f0f2f5] dark:bg-[#161717] border-l border-border dark:border-[#222d34]">
-        <div className="bg-white dark:bg-[#161717] p-8 rounded-2xl max-w-sm w-full flex flex-col items-center text-center shadow-sm">
-          <div className="mb-6 relative">
-            <div className="w-32 h-24 relative flex items-center justify-center">
-              <svg viewBox="0 0 200 150" className="w-full h-full text-[#00a884]">
-                <path d="M40 120 L160 120 C165 120 170 115 170 110 L170 40 C170 35 165 30 160 30 L40 30 C35 30 30 35 30 40 L30 110 C30 115 35 120 40 120 Z" fill="#e9edef" />
-                <rect x="35" y="35" width="130" height="80" fill="#202c33" />
-                <path d="M20 125 L180 125 C185 125 185 130 180 130 L20 130 C15 130 15 125 20 125 Z" fill="#d1d7db" />
-                <rect x="40" y="40" width="120" height="70" fill="#00a884" />
-                <rect x="50" y="50" width="40" height="10" rx="2" fill="#fff" opacity="0.9" />
-                <rect x="110" y="70" width="40" height="10" rx="2" fill="#dcf8c6" />
-              </svg>
-            </div>
-          </div>
-          <h2 className="text-[19px] font-normal text-foreground dark:text-[#e9edef] mb-2">Download WhatsApp for Mac</h2>
-          <p className="text-[13px] text-muted-foreground dark:text-[#8696a0] mb-8 leading-5">
-            Make calls and get a faster experience when you download the Mac app.
-          </p>
-          <button type="button" className="bg-[#00a884] hover:bg-[#008f6f] text-white dark:text-[#111b21] font-medium text-[13px] px-6 py-2.5 rounded-full transition-colors">
-            Get from App Store
-          </button>
-        </div>
-
         <div className="flex gap-6 mt-8">
-          <div className="flex flex-col items-center gap-2">
-            <div className="w-14 h-14 bg-white dark:bg-[#161717] rounded-2xl flex items-center justify-center shadow-sm cursor-pointer hover:bg-muted dark:hover:bg-[#202c33]">
-              <FileText className="w-6 h-6 text-muted-foreground dark:text-[#8696a0]" />
+          <div className="flex flex-col items-center gap-2.5">
+            <div className="w-[62px] h-12 bg-black/4 dark:bg-[#35373b] rounded-full flex items-center justify-center cursor-pointer hover:bg-[#d8dadf] dark:hover:bg-[#323436] transition-colors">
+              <FileText className="w-6 h-6 text-[#111b21] dark:text-[#e9edef]" />
             </div>
-            <span className="text-[13px] text-muted-foreground dark:text-[#8696a0]">Send document</span>
+            <span className="text-[13px] font-medium text-[#111b21] dark:text-[#e9edef]">Send document</span>
           </div>
-          <div className="flex flex-col items-center gap-2">
-            <div className="w-14 h-14 bg-white dark:bg-[#161717] rounded-2xl flex items-center justify-center shadow-sm cursor-pointer hover:bg-muted dark:hover:bg-[#202c33]">
-              <UserPlus className="w-6 h-6 text-muted-foreground dark:text-[#8696a0]" />
+          <div className="flex flex-col items-center gap-2.5">
+            <div className="w-[62px] h-12 bg-black/4 dark:bg-[#35373b] rounded-full flex items-center justify-center cursor-pointer hover:bg-[#d8dadf] dark:hover:bg-[#323436] transition-colors">
+              <UserPlus className="w-6 h-6 text-[#111b21] dark:text-[#e9edef]" />
             </div>
-            <span className="text-[13px] text-muted-foreground dark:text-[#8696a0]">Add contact</span>
+            <span className="text-[13px] font-medium text-[#111b21] dark:text-[#e9edef]">Add contact</span>
           </div>
-          <div className="flex flex-col items-center gap-2">
-            <div className="w-14 h-14 bg-white dark:bg-[#161717] rounded-2xl flex items-center justify-center shadow-sm cursor-pointer hover:bg-muted dark:hover:bg-[#202c33]">
-              <svg className="w-6 h-6 text-muted-foreground dark:text-[#8696a0]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" />
-              </svg>
+          <div className="flex flex-col items-center gap-2.5">
+            <div className="w-[62px] h-12 bg-black/4 dark:bg-[#35373b] rounded-full flex items-center justify-center cursor-pointer hover:bg-[#d8dadf] dark:hover:bg-[#323436] transition-colors">
+              <img src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Meta_AI_Logo_%282026%29.svg" alt="Meta AI" className="w-6 h-6 object-contain" />
             </div>
-            <span className="text-[13px] text-muted-foreground dark:text-[#8696a0]">Ask Meta AI</span>
+            <span className="text-[13px] font-medium text-[#111b21] dark:text-[#e9edef]">Ask Meta AI</span>
           </div>
         </div>
       </div>
