@@ -22,6 +22,8 @@ export {
   getMigrationStatus,
   getStrategiesForReview,
   reviewStrategy,
+  getCommunitySignups,
+  updateCommunitySignup,
 } from './api';
 
 // Hooks
@@ -35,3 +37,4 @@ export { useTaskHealth } from './hooks/useTaskHealth';
 export { useLlmCost } from './hooks/useLlmCost';
 export { useMigrationStatus } from './hooks/useMigrationStatus';
 export { useStrategyReview } from './hooks/useStrategyReview';
+export { useCommunitySignups } from './hooks/useCommunitySignups';

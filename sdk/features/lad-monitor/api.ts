@@ -3,7 +3,7 @@
 // which (in the browser) routes same-origin through the Next.js [feature]/[...path]
 // proxy → /api/admin/monitor/* on the backend. Super-admin gating is enforced
 // server-side; these calls simply carry the caller's auth token.
-import { apiGet, apiPost } from '../../shared/apiClient';
+import { apiGet, apiPatch, apiPost } from '../../shared/apiClient';
 import type {
   DashboardStats,
   DateRangeParams,
@@ -19,6 +19,8 @@ import type {
   MigrationStatusData,
   StrategyForReview,
   StrategyReviewStatus,
+  SignupStatus,
+  CommunitySignupsResponse,
 } from './types';
 
 const BASE = '/api/admin/monitor';
@@ -138,4 +140,28 @@ export async function reviewStrategy(
   note?: string,
 ): Promise<void> {
   await apiPost(`${BASE}/strategies/${id}/review`, { decision, note });
+}
+
+// ── Community signups ───────────────────────────────────────────────────────
+// NOTE: these live under /api/community, NOT /api/admin/monitor — the public
+// POST and the admin reads share one feature router on the backend.
+
+export async function getCommunitySignups(
+  status?: SignupStatus,
+): Promise<CommunitySignupsResponse> {
+  // Not the module-level qs() helper — a plain suffix, named distinctly so it
+  // doesn't shadow it.
+  const query = status ? `?status=${encodeURIComponent(status)}` : '';
+  const res = await apiGet<{ success: boolean } & CommunitySignupsResponse>(
+    `/api/community/signups${query}`,
+  );
+  return { data: res.data.data ?? [], summary: res.data.summary ?? {}, count: res.data.count ?? 0 };
+}
+
+export async function updateCommunitySignup(
+  id: string,
+  status: SignupStatus,
+  notes?: string,
+): Promise<void> {
+  await apiPatch(`/api/community/signups/${id}`, { status, notes });
 }
