@@ -27,6 +27,7 @@ import {
   Rocket, Loader2, Linkedin, Mail, MailPlus, MessageCircle, Phone, Clock,
   Users, Repeat, Search, X, HardDrive, Inbox, ListOrdered, BarChart3, GitFork, DatabaseZap,
   Wand2, Trash2, Radar, Split, Plus, Upload, FileSpreadsheet, Sparkles, Contact, Download, Megaphone, Zap, Globe, Telescope, Gauge, Shuffle, PenLine, Webhook, PenTool, ShieldCheck,
+  Bookmark,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,8 +37,18 @@ import {
   SOURCE_STEP_ID, FOLLOWUP_STEP_ID, ANALYTICS_STEP_ID, ZOHO_UPDATE_STEP_ID,
   MEDIA_STEP_ID, MULTICOND_STEP_ID, AI_STEP_ID, ENRICH_STEP_ID, EXPORT_STEP_ID,
   AUTOPOST_STEP_ID, CONTENT_STEP_ID, APPROVAL_STEP_ID, AI_DEFAULT_INSTRUCTION, EXPORT_DEFAULT_COLUMNS,
+  SCRAPE_STEP_ID, RESEARCH_STEP_ID, SCORE_STEP_ID,
+  SPLIT_STEP_ID, SETFIELD_STEP_ID, HTTP_STEP_ID, templateNodeKey,
 } from './workflowTemplates';
 import { TemplateIcon, stepCategory } from './TemplateIcon';
+import {
+  useStrategies, useCreateStrategy, useSharedStrategies, useImportSharedStrategy,
+} from '@lad/frontend-features/campaigns';
+import {
+  builderStateToDefinition, definitionToTemplate, isStrategyKey, strategyIdFromKey,
+  SHARED_STRATEGY_PREFIX,
+} from './strategyAdapter';
+import { StrategyPublishDialog } from './StrategyPublishDialog';
 import { useMediaBuilder } from '@/hooks/voice-agent/useMediaBuilder';
 import { MediaGenerationModal } from '@/components/voice-agent/MediaGenerationModal';
 import { useOnboardingStore, type WorkflowPreviewStep } from '@/store/onboardingStore';
@@ -257,14 +268,6 @@ const EXPORT_COLUMN_OPTIONS: { value: string; label: string }[] = [
 // outreach. Each is single-instance (fixed id) like the other AI/data nodes.
 // Logic / data nodes. split_test reuses the switch machinery on the backend
 // (stamps an outcome, prunes the losing variant) — see WorkflowProcessor.
-const SPLIT_STEP_ID = 'split-test-node';
-const SETFIELD_STEP_ID = 'set-field-node';
-const HTTP_STEP_ID = 'http-request-node';
-
-const SCRAPE_STEP_ID = 'web-scrape-node';
-const RESEARCH_STEP_ID = 'web-research-node';
-const SCORE_STEP_ID = 'lead-score-node';
-
 const AUTOPOST_FREQUENCIES = [
   { value: 'daily', label: 'Every day' },
   { value: 'weekly', label: 'On selected days' },
@@ -448,12 +451,18 @@ function useBuilderResources() {
   };
 }
 
-export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSourceCfg, autoLaunch, editCampaignId }: {
+export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSourceCfg, initialNodeCfg, autoLaunch, editCampaignId }: {
   onClose: () => void;
   /** Apply this template on mount (chat "Accelerators" wizard hands off here). */
   initialTemplateKey?: string;
   /** Answers collected in chat — merged into the source node's config. */
   initialSourceCfg?: Record<string, any>;
+  /**
+   * Message copy collected in chat, keyed by `macroId || type` (templateNodeKey).
+   * Each value replaces that node's template cfg wholesale — splitWizardAnswers
+   * already merged it over the node's defaults.
+   */
+  initialNodeCfg?: Record<string, any>;
   /** Fire launch() automatically once the template is applied. */
   autoLaunch?: boolean;
   /** Reopen an existing custom workflow for editing; launch updates it in place. */
@@ -491,6 +500,18 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   const [expandedTpl, setExpandedTpl] = useState<string | null>(WORKFLOW_TEMPLATES[0]?.key || null);
   /** Template shown in the right-hand overview drawer (null = show node editor). */
   const [overviewTpl, setOverviewTpl] = useState<string | null>(null);
+
+  // ── Strategies: save the current canvas as a reusable playbook ────────────
+  const { data: ownStrategies = [] } = useStrategies();
+  // Sharing is backend-flagged (STRATEGY_SHARING_ENABLED); when it's off the
+  // endpoint 404s and this simply stays empty, so the Community group hides.
+  const { data: sharedStrategies = [] } = useSharedStrategies();
+  const createStrategyMutation = useCreateStrategy();
+  const importStrategyMutation = useImportSharedStrategy();
+  const [strategySaving, setStrategySaving] = useState(false);
+  const [strategyMsg, setStrategyMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  /** Strategy id whose publish-confirmation dialog is open. */
+  const [publishingId, setPublishingId] = useState<string | null>(null);
 
   // "Export now" (builder test run) state.
   const [exportRunning, setExportRunning] = useState(false);
@@ -733,7 +754,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
    * seeds every drawer config in one shot. Opens the source drawer afterwards
    * so the user lands on the targeting fields they still need to fill.
    */
-  const applyTemplate = (t: WorkflowTemplate, opts?: { silent?: boolean; sourceCfgOverride?: Record<string, any> }) => {
+  const applyTemplate = (t: WorkflowTemplate, opts?: { silent?: boolean; sourceCfgOverride?: Record<string, any>; nodeCfgOverride?: Record<string, any> }) => {
     setOverviewTpl(null);
     if (!opts?.silent && workflowPreview.length > 0 &&
         !window.confirm(`Replace the current Accelerator with the "${t.name}" template?`)) {
@@ -753,8 +774,13 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       cfgs[SOURCE_STEP_ID] = { ...(t.source.cfg || {}), ...(opts?.sourceCfgOverride || {}) };
     }
 
+    // A node-cfg override addresses nodes by `macroId || type`. Templates carry
+    // at most one node per addressable type, so first-match assignment is exact;
+    // a hand-built template with two same-type nodes would seed both alike.
+    const nodeOverrides = opts?.nodeCfgOverride || {};
     for (const n of t.nodes) {
       const id = n.macroId || nextId();
+      const override = nodeOverrides[templateNodeKey(n)];
       const channel = n.type.startsWith('linkedin') ? 'linkedin'
         : n.type.startsWith('email') ? 'email'
         : n.type.startsWith('whatsapp') ? 'whatsapp'
@@ -762,7 +788,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         : n.type === 'condition' ? 'linkedin'
         : 'email';
       steps.push({ id, type: n.type, channel, title: n.title, description: n.description } as WorkflowPreviewStep);
-      if (n.cfg) cfgs[id] = { ...n.cfg };
+      if (n.cfg || override) cfgs[id] = { ...(n.cfg || {}), ...(override || {}) };
     }
 
     setSource(t.source ? t.source.key : null);
@@ -772,6 +798,71 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     setError(null);
     // With no source, open the first real node instead of a step that isn't there.
     setEditingId(t.source ? SOURCE_STEP_ID : (steps[0]?.id ?? null));
+  };
+
+  /**
+   * Saved strategies presented as WorkflowTemplates, so the gallery cards, the
+   * overview drawer and applyTemplate() all treat them identically to built-in
+   * recipes. definitionToTemplate returns null for a strategy whose source key
+   * this build doesn't know — those are skipped rather than crashing applyTemplate.
+   */
+  const strategyTemplates = useMemo(
+    () => ownStrategies
+      .map((s) => definitionToTemplate(s, s.definition))
+      .filter((t): t is WorkflowTemplate => t !== null),
+    [ownStrategies],
+  );
+  const communityTemplates = useMemo(
+    () => sharedStrategies
+      .map((s) => definitionToTemplate(s, s.shared_definition, { shared: true }))
+      .filter((t): t is WorkflowTemplate => t !== null),
+    [sharedStrategies],
+  );
+  /** Every template the gallery, search and key lookups can resolve. */
+  const allTemplates = useMemo(
+    () => [...WORKFLOW_TEMPLATES, ...strategyTemplates, ...communityTemplates],
+    [strategyTemplates, communityTemplates],
+  );
+
+  /** Snapshot the current canvas as a named, reusable strategy. */
+  const saveAsStrategy = async () => {
+    setStrategyMsg(null);
+    if (!name.trim()) { setError('Name your workflow before saving it as a strategy.'); return; }
+    if (!source) { setError('Pick a contact source before saving.'); return; }
+    if (!workflowPreview.length) { setError('Add at least one step before saving.'); return; }
+
+    setStrategySaving(true);
+    try {
+      const definition = builderStateToDefinition({ source, workflowPreview, configs, perDay, days });
+      await createStrategyMutation.mutateAsync({ name: name.trim(), definition });
+      setStrategyMsg({ ok: true, text: `Saved “${name.trim()}” — find it under My strategies.` });
+    } catch (e: any) {
+      const msg = e?.response?.data?.error || e?.message || 'Failed to save strategy.';
+      setStrategyMsg({ ok: false, text: msg });
+    } finally {
+      setStrategySaving(false);
+    }
+  };
+
+  /**
+   * Applying a community card copies it into this tenant first, so the user
+   * ends up owning an editable strategy rather than working off a card that
+   * disappears if the author unpublishes.
+   */
+  const applyCommunityTemplate = async (t: WorkflowTemplate) => {
+    const sharedId = strategyIdFromKey(t.key);
+    if (!sharedId) return;
+    setStrategyMsg(null);
+    try {
+      const { warnings } = await importStrategyMutation.mutateAsync({ id: sharedId, name: t.name });
+      applyTemplate(t);
+      setStrategyMsg(warnings.length
+        ? { ok: false, text: `Imported with warnings: ${warnings.map((w) => `${w.type} — ${w.reason}`).join(' ')}` }
+        : { ok: true, text: `Imported “${t.name}” into your strategies.` });
+    } catch (e: any) {
+      const msg = e?.response?.data?.error || e?.message || 'Failed to import strategy.';
+      setStrategyMsg({ ok: false, text: msg });
+    }
   };
 
   const addSplitTest = () => {
@@ -1476,17 +1567,20 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       // else the chosen template id). Delays are relative to the prior step.
       const fc = configs[FOLLOWUP_STEP_ID] || {};
       const fuChannel = fc.channel === 'email' ? 'email' : fc.channel === 'whatsapp' ? 'whatsapp' : 'linkedin';
-      const fuTouchList: { hours?: number; template_id?: string }[] =
+      const fuTouchList: { hours?: number; template_id?: string; message?: string }[] =
         Array.isArray(fc.touches) && fc.touches.length ? fc.touches.slice(0, 7) : [{ hours: 24 }, { hours: 72 }, { hours: 168 }];
       if (followupNode) {
         fuTouchList.forEach((t, idx) => {
           const hrs = Math.max(1, parseInt(String(t.hours), 10) || 24);
           const d = { delayDays: Math.floor(hrs / 24), delayHours: hrs % 24 };
           const tid = t.template_id || undefined;
+          // Written copy wins over the AI draft; blank keeps the old behaviour
+          // (Mr LAD writes the touch from the conversation at send time).
+          const body = (t.message || '').trim();
           const n = idx + 1;
-          if (fuChannel === 'email') steps.push({ type: 'email_send', title: `Follow-up ${n} (email)`, channel: 'email', order_index: order++, config: { subject: '', body: '', template_id: tid, ...d } });
-          else if (fuChannel === 'whatsapp') steps.push({ type: 'whatsapp_send', title: `Follow-up ${n} (WhatsApp)`, channel: 'whatsapp', order_index: order++, config: { whatsappMessage: '', whatsapp_template_id: tid, ...d } });
-          else steps.push({ type: 'linkedin_message', title: `Follow-up ${n} (LinkedIn)`, channel: 'linkedin', order_index: order++, config: { message: '', template_id: tid, ...d } });
+          if (fuChannel === 'email') steps.push({ type: 'email_send', title: `Follow-up ${n} (email)`, channel: 'email', order_index: order++, config: { subject: '', body, template_id: tid, ...d } });
+          else if (fuChannel === 'whatsapp') steps.push({ type: 'whatsapp_send', title: `Follow-up ${n} (WhatsApp)`, channel: 'whatsapp', order_index: order++, config: { whatsappMessage: body, whatsapp_template_id: tid, ...d } });
+          else steps.push({ type: 'linkedin_message', title: `Follow-up ${n} (LinkedIn)`, channel: 'linkedin', order_index: order++, config: { message: body, template_id: tid, ...d } });
         });
       }
 
@@ -1817,10 +1911,10 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   const autoLaunchedRef = useRef(false);
   useEffect(() => {
     if (!initialTemplateKey || appliedTplRef.current) return;
-    const tpl = WORKFLOW_TEMPLATES.find((t) => t.key === initialTemplateKey);
+    const tpl = allTemplates.find((t) => t.key === initialTemplateKey);
     if (!tpl) return;
     appliedTplRef.current = true;
-    applyTemplate(tpl, { silent: true, sourceCfgOverride: initialSourceCfg });
+    applyTemplate(tpl, { silent: true, sourceCfgOverride: initialSourceCfg, nodeCfgOverride: initialNodeCfg });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialTemplateKey]);
   useEffect(() => {
@@ -1837,13 +1931,19 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
    * gallery uses, so there is one code path for building a template.
    */
   const renderTemplateOverview = () => {
-    const t = WORKFLOW_TEMPLATES.find((x) => x.key === overviewTpl);
+    const t = allTemplates.find((x) => x.key === overviewTpl);
     if (!t) return null;
     const steps = [
       ...(t.source ? [{ title: t.source.title, category: 'Contact source' }] : []),
       ...t.nodes.map((n) => ({ title: n.title, category: stepCategory(n.type) })),
     ];
-    const use = () => { applyTemplate(t); setOverviewTpl(null); };
+    // Community cards are imported (copied into this tenant) before being
+    // applied, so the user ends up owning what they're about to edit.
+    const use = () => {
+      if (t.category === 'community') applyCommunityTemplate(t);
+      else applyTemplate(t);
+      setOverviewTpl(null);
+    };
     return (
       <div className="absolute right-0 top-0 h-full w-[22rem] bg-card border-l border-border shadow-2xl z-10 flex flex-col">
         {/* Header */}
@@ -2092,7 +2192,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           {isFollowup && (() => {
             const eid = editingId!;
             const channel: string = cfg.channel || 'linkedin';
-            const touches: { hours?: number; template_id?: string }[] = Array.isArray(cfg.touches) && cfg.touches.length ? cfg.touches : [{ hours: 24 }];
+            const touches: { hours?: number; template_id?: string; message?: string }[] = Array.isArray(cfg.touches) && cfg.touches.length ? cfg.touches : [{ hours: 24 }];
             const tmpls: any[] = channel === 'email' ? res.emailTemplates : channel === 'whatsapp' ? res.waTemplates : res.liTemplates;
             const tmplName = (t: any) => t.name || t.title || 'Template';
             const syncDesc = (n: number, ch: string) => updateWorkflowStep(eid, { description: `${n} touches · ${FU_CHANNELS.find((c2) => c2.value === ch)?.label}` });
@@ -2125,6 +2225,10 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                         <option value="">AI-generated (default)</option>
                         {tmpls.map((tm: any) => <option key={tm.id} value={tm.id}>{tmplName(tm)}</option>)}
                       </select>
+                      {!t.template_id && (
+                        <textarea className={`${field} min-h-[64px]`} value={t.message || ''} onChange={(e) => setTouch(i, { message: e.target.value })}
+                          placeholder={`Message for touch ${i + 1} — leave blank to let Mr LAD draft it`} />
+                      )}
                     </div>
                   );
                 })}
@@ -3277,6 +3381,11 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             <span>Leads/day</span><Input type="number" className="w-16 h-8" value={perDay} onChange={(e) => setPerDay(e.target.value)} />
             <span>Days</span><Input type="number" className="w-16 h-8" value={days} onChange={(e) => setDays(e.target.value)} />
           </div>
+          <Button variant="outline" onClick={saveAsStrategy} disabled={strategySaving || launching || hydrating}
+            title="Save this pipeline so you can reuse it later without launching it now">
+            {strategySaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Bookmark className="h-4 w-4 mr-2" />}
+            Save as strategy
+          </Button>
           <Button onClick={launch} disabled={launching || hydrating}>
             {(launching || hydrating) ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Rocket className="h-4 w-4 mr-2" />}
             {hydrating ? 'Loading…' : editCampaignId ? 'Save changes' : 'Launch Accelerator'}
@@ -3284,6 +3393,18 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         </div>
       </div>
       {error && <div className="mx-4 mt-3 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">{error}</div>}
+      {strategyMsg && (
+        <div className={`mx-4 mt-3 rounded-lg border p-3 text-sm flex items-start gap-2 ${
+          strategyMsg.ok
+            ? 'bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-950/30 dark:border-emerald-900 dark:text-emerald-200'
+            : 'bg-amber-50 border-amber-200 text-amber-900 dark:bg-amber-950/30 dark:border-amber-900 dark:text-amber-200'
+        }`}>
+          <span className="flex-1">{strategyMsg.text}</span>
+          <button type="button" onClick={() => setStrategyMsg(null)} className="opacity-60 hover:opacity-100" aria-label="Dismiss">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       <div className="flex-1 flex min-h-0">
         {/* Palette */}
@@ -3321,9 +3442,9 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 {(() => {
                   const q = tplSearch.trim().toLowerCase();
                   const list = q
-                    ? WORKFLOW_TEMPLATES.filter((t) =>
+                    ? allTemplates.filter((t) =>
                         (t.name + ' ' + t.tagline + ' ' + t.chain.join(' ')).toLowerCase().includes(q))
-                    : WORKFLOW_TEMPLATES;
+                    : allTemplates;
                   if (!list.length) return (
                     <p className="text-[12.5px] text-muted-foreground py-6 text-center">No templates match “{tplSearch}”.</p>
                   );
@@ -3382,9 +3503,16 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                               <span className="text-[11.5px] text-muted-foreground">
                                 <strong className="font-semibold text-foreground">{t.meta.channels}</strong> channels
                               </span>
+                              {t.category === 'strategy' && (
+                                <button type="button"
+                                  onClick={(e) => { e.stopPropagation(); setPublishingId(strategyIdFromKey(t.key)); }}
+                                  className="ml-auto px-3 py-2 rounded-xl border border-border text-[12.5px] font-semibold text-muted-foreground hover:text-foreground hover:border-[#0b1957]/40 transition-colors">
+                                  Share
+                                </button>
+                              )}
                               <button type="button" onClick={(e) => { e.stopPropagation(); setOverviewTpl(t.key); setEditingId(null); }}
-                                className="ml-auto px-3.5 py-2 rounded-xl bg-[#0b1957] text-white text-[12.5px] font-semibold hover:bg-[#0b1957]/90 transition-colors">
-                                Use template
+                                className={`${t.category === 'strategy' ? '' : 'ml-auto '}px-3.5 py-2 rounded-xl bg-[#0b1957] text-white text-[12.5px] font-semibold hover:bg-[#0b1957]/90 transition-colors`}>
+                                {t.category === 'community' ? 'Import' : 'Use template'}
                               </button>
                             </div>
                           </div>
@@ -3394,6 +3522,8 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   };
                   const general = list.filter((t) => t.category === 'general');
                   const industry = list.filter((t) => t.category === 'industry');
+                  const mine = list.filter((t) => t.category === 'strategy');
+                  const community = list.filter((t) => t.category === 'community');
                   const heading = (label: string, count: number) => (
                     <div className="flex items-center gap-2 pt-1 pb-0.5">
                       <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{label}</span>
@@ -3402,6 +3532,12 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     </div>
                   );
                   return (<>
+                    {/* The tenant's own saved playbooks lead — they're the most
+                        likely thing someone opening this panel is reaching for. */}
+                    {mine.length > 0 && heading('My strategies', mine.length)}
+                    {mine.map(renderCard)}
+                    {community.length > 0 && heading('Community', community.length)}
+                    {community.map(renderCard)}
                     {general.length > 0 && heading('General', general.length)}
                     {general.map(renderCard)}
                     {industry.length > 0 && heading('By industry', industry.length)}
@@ -3772,6 +3908,16 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           // builder — invisible, and closed by the next click.
           className="z-[10050]"
           overlayClassName="z-[10040]"
+        />
+      )}
+
+      {/* Publish confirmation — shows exactly what would leave this account. */}
+      {publishingId && (
+        <StrategyPublishDialog
+          strategyId={publishingId}
+          strategyName={ownStrategies.find((s) => s.id === publishingId)?.name}
+          onClose={() => setPublishingId(null)}
+          onPublished={() => setStrategyMsg({ ok: true, text: 'Submitted for review. It appears in the Community gallery once an admin approves it.' })}
         />
       )}
     </div>

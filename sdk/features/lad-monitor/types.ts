@@ -391,3 +391,33 @@ export interface MigrationStatusData {
     ledgerAdoption: number;
   };
 }
+
+// ── Strategy moderation (published workflow playbooks awaiting review) ───────
+
+export type StrategyReviewStatus = 'pending' | 'approved' | 'rejected' | 'withdrawn';
+
+/**
+ * A tenant-published strategy in the review queue. Carries only the SANITIZED
+ * `shared_definition` — the author's private definition is never returned by
+ * the moderation endpoint either.
+ */
+export interface StrategyForReview {
+  id: string;
+  tenant_id: string;
+  tenant_name: string | null;
+  name: string;
+  description: string | null;
+  shared_definition: {
+    version?: number;
+    source?: { key: string; cfg?: Record<string, any> };
+    nodes?: Array<{ type: string; title?: string; cfg?: Record<string, any> }>;
+    requiresFile?: boolean;
+    meta?: Record<string, any>;
+  };
+  node_types: string[];
+  share_status: StrategyReviewStatus;
+  submitted_at: string | null;
+  reviewed_at: string | null;
+  review_note: string | null;
+  import_count: number;
+}

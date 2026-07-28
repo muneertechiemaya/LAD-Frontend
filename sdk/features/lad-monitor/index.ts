@@ -20,6 +20,8 @@ export {
   getTaskHealth,
   getLlmCost,
   getMigrationStatus,
+  getStrategiesForReview,
+  reviewStrategy,
 } from './api';
 
 // Hooks
@@ -32,3 +34,4 @@ export { useCostPerSah } from './hooks/useCostPerSah';
 export { useTaskHealth } from './hooks/useTaskHealth';
 export { useLlmCost } from './hooks/useLlmCost';
 export { useMigrationStatus } from './hooks/useMigrationStatus';
+export { useStrategyReview } from './hooks/useStrategyReview';

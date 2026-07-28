@@ -30,6 +30,39 @@ export const AUTOPOST_STEP_ID = 'linkedin-post-node';
 // All three merge into ONE campaigns.config.autopost object at launch.
 export const CONTENT_STEP_ID = 'linkedin-content-node';
 export const APPROVAL_STEP_ID = 'post-approval-node';
+// Web-intel + flow macros. These lived in CustomWorkflowBuilder until
+// Strategies needed one canonical list of "ids that must survive save/restore".
+export const SCRAPE_STEP_ID = 'web-scrape-node';
+export const RESEARCH_STEP_ID = 'web-research-node';
+export const SCORE_STEP_ID = 'lead-score-node';
+export const SPLIT_STEP_ID = 'split-test-node';
+export const SETFIELD_STEP_ID = 'set-field-node';
+export const HTTP_STEP_ID = 'http-request-node';
+
+/**
+ * Every fixed, single-instance macro id. A node carrying one of these must keep
+ * it across a save → restore round trip: the builder's drawers and `launch()`
+ * emit both look configs up by these exact strings, so a regenerated id would
+ * silently drop that node's configuration.
+ *
+ * SOURCE_STEP_ID is deliberately excluded — the source is stored separately on
+ * a strategy, not as one of its nodes.
+ */
+export const MACRO_STEP_IDS: readonly string[] = [
+  FOLLOWUP_STEP_ID, ANALYTICS_STEP_ID, ZOHO_UPDATE_STEP_ID, MEDIA_STEP_ID,
+  MULTICOND_STEP_ID, AI_STEP_ID, ENRICH_STEP_ID, EXPORT_STEP_ID, AUTOPOST_STEP_ID,
+  CONTENT_STEP_ID, APPROVAL_STEP_ID,
+  SCRAPE_STEP_ID, RESEARCH_STEP_ID, SCORE_STEP_ID,
+  SPLIT_STEP_ID, SETFIELD_STEP_ID, HTTP_STEP_ID,
+];
+
+/**
+ * Router nodes are `type: 'condition'` distinguished ONLY by an `rt-` id
+ * prefix (see CustomWorkflowBuilder's `addRouter` / `launch`). Their id is
+ * therefore load-bearing too and must be preserved verbatim on restore —
+ * otherwise a router silently degrades into a plain wait-for-condition step.
+ */
+export const ROUTER_ID_PREFIX = 'rt-';
 
 export const AI_DEFAULT_INSTRUCTION =
   'If the job title has multiple or mixed roles, keep the single best-fit, most senior title. Split the full name into first/last and tidy the company name.';
@@ -50,12 +83,28 @@ export type TemplateNode = {
 };
 
 export type TemplateInput = {
-  /** Source-config key the answer is stored under (matches the builder's source drawer). */
+  /** Answer key. For source inputs this is the source-config key (matches the builder's source drawer). */
   key: string;
   /** Question asked in the chat wizard. */
   question: string;
+  /** Row label on the summary card. Defaults to a prettified `key`. */
+  label?: string;
   placeholder?: string;
   optional?: boolean;
+  /**
+   * Where the answer is written. Omitted / 'source' → the source drawer config;
+   * 'node' → the cfg of the node named by `nodeKey` (message copy, subjects…);
+   * 'gate' → written nowhere, it only decides whether the copy questions run.
+   */
+  target?: 'source' | 'node' | 'gate';
+  /** target:'node' — the receiving node, addressed by `macroId || type`. */
+  nodeKey?: string;
+  /** target:'node' — dotted cfg path; numeric segments index arrays (e.g. `touches.0.message`). */
+  cfgPath?: string;
+  /** The copy the template ships with — shown as the value "skip" keeps. */
+  suggestion?: string;
+  /** Long-form answer (message bodies) — cards truncate these. */
+  multiline?: boolean;
 };
 
 export type WorkflowTemplate = {
@@ -81,8 +130,13 @@ export type WorkflowTemplate = {
   badge?: { label: string; tone: 'blue' | 'violet' };
   /** Overview stats shown on template cards and the overview drawer. */
   meta: { cycleDays: number; channels: number };
-  /** Gallery grouping: general-purpose pipelines vs industry-tuned ones. */
-  category: 'general' | 'industry';
+  /**
+   * Gallery grouping. 'general' / 'industry' are the built-in recipes;
+   * 'strategy' (the tenant's own saved playbooks) and 'community' (published by
+   * another tenant, imported as a copy) are synthesized at runtime from stored
+   * Strategies — see strategyAdapter.definitionToTemplate.
+   */
+  category: 'general' | 'industry' | 'strategy' | 'community';
 };
 
 export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
@@ -507,3 +561,130 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
     ],
   },
 ];
+
+// ── Wizard input derivation ────────────────────────────────────────────────
+// A template's declared `inputs` only cover targeting. The copy that actually
+// goes out — InMail subject/message and each follow-up touch — lives on the
+// nodes, so the chat wizard derives a question per piece of copy rather than
+// every template repeating them. All derived questions are optional: skipping
+// one keeps the template's own suggestion (or leaves it blank for Mr LAD to
+// draft, which is what an empty follow-up message means downstream).
+
+/** How a node is addressed by a node-targeted input and by the builder's override map. */
+export const templateNodeKey = (n: TemplateNode): string => n.macroId || n.type;
+
+const touchDelayLabel = (hours?: number): string => {
+  const h = Math.max(1, Number(hours) || 24);
+  return h < 48 ? `sent ${h}h later` : `sent ~${Math.round(h / 24)} days later`;
+};
+
+/**
+ * The one question that decides whether the copy questions get asked at all.
+ * Answering it "no" keeps every template suggestion as-is, so an Accelerator stays a
+ * three-question flow for anyone who just wants the defaults.
+ */
+export const COPY_GATE_KEY = '__write_copy__';
+
+/** Every chat-wizard question for a template: declared targeting inputs, then message copy. */
+export function templateWizardInputs(t: WorkflowTemplate): TemplateInput[] {
+  const derived: TemplateInput[] = [];
+  for (const n of t.nodes) {
+    const nodeKey = templateNodeKey(n);
+    if (n.type === 'linkedin_inmail') {
+      derived.push({
+        key: `${nodeKey}__subject`, label: 'InMail subject', target: 'node', nodeKey, cfgPath: 'subject', optional: true,
+        suggestion: n.cfg?.subject || '',
+        question: 'What **subject line** should the InMail use? (or say **skip** — LinkedIn allows a blank subject)',
+      });
+      derived.push({
+        key: `${nodeKey}__message`, label: 'InMail message', target: 'node', nodeKey, cfgPath: 'message', optional: true, multiline: true,
+        suggestion: n.cfg?.message || '',
+        question: 'What should the **InMail message** say? You can use {{first_name}}, {{title}} and {{company_name}} — or say **skip** to keep the suggested copy.',
+      });
+    }
+    if (n.type === 'followup_sequence') {
+      const touches: any[] = Array.isArray(n.cfg?.touches) && n.cfg.touches.length ? n.cfg.touches : [{ hours: 24 }];
+      touches.forEach((touch, i) => {
+        derived.push({
+          key: `${nodeKey}__touch_${i}`, label: `Follow-up ${i + 1}`, target: 'node', nodeKey, cfgPath: `touches.${i}.message`, optional: true, multiline: true,
+          suggestion: touch?.message || '',
+          question: `What should **follow-up ${i + 1}** say (${touchDelayLabel(touch?.hours)})? Say **skip** to let Mr LAD write it from the conversation.`,
+        });
+      });
+    }
+  }
+  if (!derived.length) return [...t.inputs];
+  const gate: TemplateInput = {
+    key: COPY_GATE_KEY, target: 'gate', optional: true, label: 'Message copy',
+    question: `Want to write the **${derived.length} message${derived.length === 1 ? '' : 's'}** this Accelerator sends? Say **yes** to go through them one by one — or **skip** to use the suggested copy, which Mr LAD adapts per lead.`,
+  };
+  return [...t.inputs, gate, ...derived];
+}
+
+/** Write `value` at a dotted path, creating arrays for numeric segments. */
+function setCfgPath(obj: any, path: string, value: any): void {
+  const segs = path.split('.');
+  let cur = obj;
+  for (let i = 0; i < segs.length - 1; i++) {
+    const seg = segs[i];
+    if (cur[seg] == null || typeof cur[seg] !== 'object') cur[seg] = /^\d+$/.test(segs[i + 1]) ? [] : {};
+    cur = cur[seg];
+  }
+  cur[segs[segs.length - 1]] = value;
+}
+
+/**
+ * Split collected wizard answers into the two overrides the builder takes.
+ *
+ * `nodeCfg` values are COMPLETE cfg objects (the node's own cfg deep-cloned,
+ * then patched) so the builder can shallow-merge them — patching `touches.0`
+ * into a shallow merge would otherwise drop the remaining touches.
+ */
+export function splitWizardAnswers(
+  t: WorkflowTemplate,
+  answers: Record<string, string>,
+): { sourceCfg: Record<string, string>; nodeCfg: Record<string, any> } {
+  const sourceCfg: Record<string, string> = {};
+  const nodeCfg: Record<string, any> = {};
+  for (const inp of templateWizardInputs(t)) {
+    const val = answers[inp.key];
+    if (val == null || val === '' || inp.target === 'gate') continue;
+    if (inp.target === 'node' && inp.nodeKey && inp.cfgPath) {
+      if (!nodeCfg[inp.nodeKey]) {
+        const node = t.nodes.find((n) => templateNodeKey(n) === inp.nodeKey);
+        nodeCfg[inp.nodeKey] = JSON.parse(JSON.stringify(node?.cfg || {}));
+      }
+      setCfgPath(nodeCfg[inp.nodeKey], inp.cfgPath, val);
+    } else {
+      sourceCfg[inp.key] = val;
+    }
+  }
+  return { sourceCfg, nodeCfg };
+}
+
+/**
+ * The LinkedIn search string a template's targeting describes — used to preview
+ * the audience in the leads panel before the Accelerator is launched. Returns null for
+ * sources that aren't a searchable query (file import, CRM pulls).
+ */
+export function templateSearchQuery(t: WorkflowTemplate, sourceCfg: Record<string, string>): string | null {
+  // Publisher-only pipelines (content → approval → post) enrol nobody, so they
+  // carry no source and have no audience to preview.
+  if (!t.source) return null;
+  const cfg = { ...(t.source.cfg || {}), ...sourceCfg } as Record<string, string>;
+  if (t.source.key === 'linkedin_signal') {
+    const titles = (cfg.decision_maker_titles || '').trim();
+    const signal = (cfg.signal_query || '').trim();
+    if (!signal && !titles) return null;
+    return [titles && `${titles} at companies`, signal].filter(Boolean).join(' — ');
+  }
+  if (t.source.key !== 'linkedin_search') return null;
+  const titles = (cfg.job_titles || '').trim();
+  const industries = (cfg.industries || '').trim();
+  const locations = (cfg.locations || '').trim();
+  if (!titles && !industries && !locations) return null;
+  const parts = [titles || 'decision makers'];
+  if (industries) parts.push(`in ${industries}`);
+  if (locations) parts.push(`in ${locations}`);
+  return parts.join(' ');
+}
