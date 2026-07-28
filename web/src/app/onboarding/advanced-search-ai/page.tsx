@@ -30,7 +30,11 @@ import { AgentBuilderKeyframesConfirm } from "@/components/voice-agent/playgroun
 import { AgentBuilderBrandDNA } from "@/components/voice-agent/playground/builder-steps/AgentBuilderBrandDNA";
 import { useAuth } from '@/contexts/AuthContext';
 import CustomWorkflowBuilder from '@/components/campaigns/CustomWorkflowBuilder';
-import { WORKFLOW_TEMPLATES, WorkflowTemplate } from '@/components/campaigns/workflowTemplates';
+import {
+    WORKFLOW_TEMPLATES, WorkflowTemplate,
+    templateWizardInputs, splitWizardAnswers, templateSearchQuery,
+} from '@/components/campaigns/workflowTemplates';
+import type { TemplateInput } from '@/components/campaigns/workflowTemplates';
 import { TemplateIcon } from '@/components/campaigns/TemplateIcon';
 import { useEmailTemplates, useCreateEmailTemplate } from '@lad/frontend-features/email-templates';
 import { useConnectedEmailSenders } from '@lad/frontend-features/email-senders';
@@ -964,8 +968,10 @@ export default function AdvancedSearchAIPage() {
     // each template's inputs in the chat thread, then hands off to the embedded
     // CustomWorkflowBuilder (initialTemplateKey/initialSourceCfg/autoLaunch) so
     // the launch path is the builder's own — no duplicated payload logic.
-    const [builderTemplate, setBuilderTemplate] = useState<{ key: string; sourceCfg: Record<string, string>; autoLaunch: boolean } | null>(null);
+    const [builderTemplate, setBuilderTemplate] = useState<{ key: string; sourceCfg: Record<string, string>; nodeCfg: Record<string, any>; autoLaunch: boolean } | null>(null);
     const roleWizardRef = useRef<{ key: string; idx: number; answers: Record<string, string> } | null>(null);
+    /** Audience preview for the pending Role — keyed off the summary card's CTA. */
+    const [rolePreviewing, setRolePreviewing] = useState(false);
 
     interface MediaChatMsg {
         id: string;
@@ -4329,7 +4335,7 @@ export default function AdvancedSearchAIPage() {
             return;
         }
         roleWizardRef.current = { key: t.key, idx: 0, answers: {} };
-        if (!t.inputs.length) {
+        if (!templateWizardInputs(t).length) {
             pushRoleCard({ key: t.key, stage: 'summary', answers: {} });
             return;
         }
@@ -4341,8 +4347,19 @@ export default function AdvancedSearchAIPage() {
         if (!wiz) return;
         const tpl = WORKFLOW_TEMPLATES.find(t => t.key === wiz.key);
         if (!tpl) { roleWizardRef.current = null; return; }
+        const inputs = templateWizardInputs(tpl);
         setMessages(p => [...p, { id: `u-role-${Date.now()}`, role: 'user', text, ts: new Date() }]);
-        const inp = tpl.inputs[wiz.idx];
+        const inp = inputs[wiz.idx];
+        // The copy gate branches rather than storing anything: only an explicit
+        // yes walks the message questions, anything else jumps to the summary
+        // with the template's own copy intact.
+        if (inp.target === 'gate') {
+            const wantsToWrite = /^(y|yes|yeah|yep|sure|ok(ay)?|please|write|edit|customi[sz]e)/i.test(text.trim());
+            wiz.idx = wantsToWrite ? wiz.idx + 1 : inputs.length;
+            if (wiz.idx < inputs.length) pushRoleCard({ key: tpl.key, stage: 'question', qIdx: wiz.idx });
+            else pushRoleCard({ key: tpl.key, stage: 'summary', answers: { ...wiz.answers } });
+            return;
+        }
         const skipped = !!inp.optional && /^(skip|no|none|-)$/i.test(text.trim());
         const val = skipped ? '' : text.trim();
         if (!val && !inp.optional) {
@@ -4351,7 +4368,7 @@ export default function AdvancedSearchAIPage() {
         }
         if (val) wiz.answers[inp.key] = val;
         wiz.idx += 1;
-        if (wiz.idx < tpl.inputs.length) {
+        if (wiz.idx < inputs.length) {
             pushRoleCard({ key: tpl.key, stage: 'question', qIdx: wiz.idx });
             return;
         }
@@ -4373,6 +4390,12 @@ export default function AdvancedSearchAIPage() {
 
     const onOptClick = useCallback(async (v: string) => {
         // ── Roles wizard actions ──────────────────────────────────────────
+        // Copy gate answered by button — routed through the same handler as a
+        // typed reply so the wizard has one advance path.
+        if (v === '__role_gate_yes__' || v === '__role_gate_no__') {
+            handleRoleAnswer(v === '__role_gate_yes__' ? 'yes' : 'skip');
+            return;
+        }
         if (v === '__role_cancel__') {
             roleWizardRef.current = null;
             rolePushAi('No problem — Role setup cancelled. Pick another from the **Roles** menu any time.');
@@ -4380,15 +4403,106 @@ export default function AdvancedSearchAIPage() {
         }
         if (v.startsWith('__role_builder__:')) {
             const key = v.slice('__role_builder__:'.length);
-            setBuilderTemplate({ key, sourceCfg: {}, autoLaunch: false });
+            setBuilderTemplate({ key, sourceCfg: {}, nodeCfg: {}, autoLaunch: false });
             setShowCustomWorkflow(true);
+            return;
+        }
+        // Preview the audience in the leads panel WITHOUT launching: same
+        // /search/unified call the chat uses, driven by the Role's targeting.
+        // The wizard stays open so the summary CTAs remain usable afterwards.
+        if (v === '__role_preview__') {
+            const wiz = roleWizardRef.current;
+            if (!wiz || rolePreviewing) return;
+            const tpl = WORKFLOW_TEMPLATES.find(t => t.key === wiz.key);
+            if (!tpl) return;
+            const { sourceCfg } = splitWizardAnswers(tpl, wiz.answers);
+            const query = templateSearchQuery(tpl, sourceCfg);
+            if (!query) {
+                rolePushAi('This Role doesn\'t search LinkedIn for its leads, so there\'s nothing to preview yet.');
+                return;
+            }
+            setRolePreviewing(true);
+            setIsSearching(true);
+            rolePushAi(`🔍 Previewing who this Role would reach — searching for **${query}**…`);
+            try {
+                // Same structured targeting the Role's source node will run with,
+                // so the preview reflects the real audience rather than an
+                // approximation of it.
+                const csv = (s?: string) => (s || '').split(',').map(x => x.trim()).filter(Boolean);
+                // Industry Roles pre-fill titles/industries on the template itself;
+                // wizard answers only override what the user was asked.
+                const effCfg = { ...(tpl.source.cfg || {}), ...sourceCfg } as Record<string, string>;
+                const previewTargeting = tpl.source.key === 'linkedin_search' ? {
+                    job_titles: csv(effCfg.job_titles),
+                    industries: csv(effCfg.industries),
+                    locations: csv(effCfg.locations),
+                } : undefined;
+                const bizCtx = getBusinessContext();
+                const d = await linkedInSearch.searchUnified({
+                    query,
+                    count: leadCount,
+                    targeting: previewTargeting,
+                    icp_description: bizCtx
+                        ? `## Search Target (WHO to find):\n${query}\n\n## Seller Context (WHAT they sell — use only to assess relevance, not to redefine the target):\n${bizCtx}`
+                        : query,
+                    useSalesNav,
+                    // Full 0–100 range: the preview is for judging fit, not enrolling.
+                    icp_min_score: 0,
+                });
+                const results: any[] = Array.isArray(d?.results) ? d.results : [];
+                const previewLeads: LeadProfile[] = results.map((item: any, idx: number) => {
+                    const profileUrl = resolveProfileUrl(item);
+                    return {
+                        id: item.id || item.provider_id || `role-preview-${idx}`,
+                        name: item.name || `${item.first_name || ''} ${item.last_name || ''}`.trim() || (profileUrl ? 'LinkedIn User' : 'Contact'),
+                        first_name: item.first_name || '',
+                        last_name: item.last_name || '',
+                        headline: item.headline || '',
+                        location: item.location || '',
+                        current_company: item.current_company || '',
+                        profile_url: profileUrl,
+                        profile_picture: item.profile_picture || '',
+                        industry: item.industry || '',
+                        network_distance: item.network_distance || '',
+                        locked: idx >= 5,
+                        icp_score: item.icp_score != null ? item.icp_score : undefined,
+                        match_level: item.match_level || undefined,
+                        icp_reasoning: item.icp_reasoning || undefined,
+                        enriched_profile: item.enriched_profile || undefined,
+                        inferred: item.inferred || undefined,
+                    };
+                });
+                if (previewLeads.length === 0) {
+                    rolePushAi('No profiles came back for that targeting. Widen the titles or location — say **cancel** and pick the Role again, or open it in the builder to edit the search.');
+                } else {
+                    setLeads(previewLeads);
+                    seedDefaultSelection(previewLeads);
+                    setTotalResults(d?.total || previewLeads.length);
+                    setShowPanel('leads');
+                    rolePushAi(`👀 Found **${d?.total || previewLeads.length}** matching profiles — they're in the **Leads** panel on the right. Happy with them? Activate the Role below.`);
+                }
+            } catch (e) {
+                console.warn('[role-preview] search failed:', e);
+                rolePushAi('⚠️ The preview search failed. You can still activate the Role — it runs its own search when it launches.');
+            } finally {
+                setIsSearching(false);
+                setRolePreviewing(false);
+                // Re-render the summary card so Activate / Review stay one click away.
+                pushRoleCard({ key: wiz.key, stage: 'summary', answers: { ...wiz.answers } });
+            }
             return;
         }
         if (v === '__role_launch__' || v === '__role_review__') {
             const wiz = roleWizardRef.current;
             if (!wiz) return;
+            const tpl = WORKFLOW_TEMPLATES.find(t => t.key === wiz.key);
             roleWizardRef.current = null;
-            setBuilderTemplate({ key: wiz.key, sourceCfg: wiz.answers, autoLaunch: v === '__role_launch__' });
+            // Targeting answers seed the source drawer; message answers seed the
+            // node they belong to (InMail subject/body, each follow-up touch).
+            const { sourceCfg, nodeCfg } = tpl
+                ? splitWizardAnswers(tpl, wiz.answers)
+                : { sourceCfg: wiz.answers, nodeCfg: {} };
+            setBuilderTemplate({ key: wiz.key, sourceCfg, nodeCfg, autoLaunch: v === '__role_launch__' });
             setShowCustomWorkflow(true);
             rolePushAi(v === '__role_launch__'
                 ? '🚀 Building and launching your Role — you\'ll land on the campaigns page when it\'s live.'
@@ -4510,7 +4624,7 @@ export default function AdvancedSearchAIPage() {
         }
         if (v.toLowerCase().includes('refine')) setChatBlocked(false);
         doSend(v);
-    }, [doSend, targeting, pendingContact, setCpStep, isMobile]);
+    }, [doSend, targeting, pendingContact, setCpStep, isMobile, rolePreviewing, leadCount, useSalesNav, linkedInSearch, rolePushAi, pushRoleCard, handleRoleAnswer]);
 
     const handleTargetingConfirm = useCallback(async () => {
         // Build the updated targeting object with new filter values
@@ -5418,7 +5532,7 @@ export default function AdvancedSearchAIPage() {
                                                 : 'Qualifying...'
                                         }
                                         : m;
-                                    return <Bubble key={m.id} msg={displayMsg} onOpt={onOptClick} onShowPanel={setShowPanel} onStartCheckpoints={() => setCpStep(0)} onLetAgentDeal={letAgentDeal} agentDealLoading={agentDealLoading} onStartTargeting={() => { setTgStep(0); setChatBlocked(false); }} hasPanel={!!showPanel} leadsCount={leads.length} filteredLeadsCount={filteredLeads.length} onUploadClick={() => fileInputRef.current?.click()} useSalesNav={useSalesNav} isMobile={isMobile} />;
+                                    return <Bubble key={m.id} msg={displayMsg} onOpt={onOptClick} onShowPanel={setShowPanel} onStartCheckpoints={() => setCpStep(0)} onLetAgentDeal={letAgentDeal} agentDealLoading={agentDealLoading} onStartTargeting={() => { setTgStep(0); setChatBlocked(false); }} hasPanel={!!showPanel} leadsCount={leads.length} filteredLeadsCount={filteredLeads.length} onUploadClick={() => fileInputRef.current?.click()} useSalesNav={useSalesNav} isMobile={isMobile} rolePreviewing={rolePreviewing} />;
                                 })
                             )}
                             {/* Import leads prompt — shown when conversation is about existing client relationships */}
@@ -7074,6 +7188,7 @@ export default function AdvancedSearchAIPage() {
                         onClose={() => { setShowCustomWorkflow(false); setBuilderTemplate(null); }}
                         initialTemplateKey={builderTemplate?.key}
                         initialSourceCfg={builderTemplate?.sourceCfg}
+                        initialNodeCfg={builderTemplate?.nodeCfg}
                         autoLaunch={builderTemplate?.autoLaunch}
                     />
                 </div>
@@ -7323,13 +7438,14 @@ function RolesLauncher({ onPick }: { onPick: (t: WorkflowTemplate) => void }) {
 }
 
 /** Rich wizard card rendered inside AI bubbles (msg.roleCard). */
-function RoleCardView({ card, onOpt }: { card: NonNullable<ChatMsg['roleCard']>; onOpt: (v: string) => void }) {
+function RoleCardView({ card, onOpt, previewing }: { card: NonNullable<ChatMsg['roleCard']>; onOpt: (v: string) => void; previewing?: boolean }) {
     const tpl = WORKFLOW_TEMPLATES.find((t) => t.key === card.key);
     if (!tpl) return null;
     const accent = tpl.accent;
-    const total = tpl.inputs.length;
+    const inputs = templateWizardInputs(tpl);
+    const total = inputs.length;
     const qIdx = Math.min(card.qIdx ?? 0, Math.max(0, total - 1));
-    const q = tpl.inputs[qIdx];
+    const q = inputs[qIdx];
     // Tiny **bold** renderer — questions carry markdown-style emphasis.
     const md = (t: string) => t.split('**').map((part, i) => (i % 2
         ? <strong key={i} className="adv-role-q-strong">{part}</strong>
@@ -7379,10 +7495,38 @@ function RoleCardView({ card, onOpt }: { card: NonNullable<ChatMsg['roleCard']>;
                         <span className="adv-role-q-mark" aria-hidden="true">?</span>
                         <span className="adv-role-q-text">{md(q?.question || '')}</span>
                     </div>
-                    <div className="flex items-center gap-1.5 mt-2.5 text-[11px] text-slate-400 dark:text-slate-500">
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 4v7a4 4 0 0 1-4 4H4" /><path d="m9 10-5 5 5 5" /></svg>
-                        Type your answer below{q?.optional ? ' — or say "skip"' : ''}
-                    </div>
+                    {/* The copy gate is a two-way choice — answer it by button
+                        rather than making the user type "yes". */}
+                    {q?.target === 'gate' && (
+                        <div className="flex flex-wrap items-center gap-2 mt-2.5">
+                            <button type="button" onClick={() => onOpt('__role_gate_yes__')}
+                                className="px-4 py-2 rounded-xl text-[12.5px] font-semibold text-white transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                                style={{ background: accent, boxShadow: `0 4px 14px ${accent}40` }}>
+                                Write them myself
+                            </button>
+                            <button type="button" onClick={() => onOpt('__role_gate_no__')}
+                                className="px-3.5 py-2 rounded-xl text-[12.5px] font-semibold border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                                Use the suggested copy
+                            </button>
+                        </div>
+                    )}
+                    {/* What "skip" keeps — so message copy is never a blind choice. */}
+                    {q?.suggestion ? (
+                        <div className="mt-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/40 px-3 py-2">
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">Suggested — kept if you skip</div>
+                            <div className="text-[12px] text-slate-600 dark:text-slate-300 leading-snug whitespace-pre-wrap">{q.suggestion}</div>
+                        </div>
+                    ) : q?.target === 'node' ? (
+                        <div className="mt-2.5 text-[11.5px] text-slate-500 dark:text-slate-400">
+                            Skip and Mr LAD writes this one from the lead&apos;s profile and the conversation so far.
+                        </div>
+                    ) : null}
+                    {q?.target !== 'gate' && (
+                        <div className="flex items-center gap-1.5 mt-2.5 text-[11px] text-slate-400 dark:text-slate-500">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 4v7a4 4 0 0 1-4 4H4" /><path d="m9 10-5 5 5 5" /></svg>
+                            Type your answer below{q?.optional ? ' — or say "skip"' : ''}
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -7406,16 +7550,43 @@ function RoleCardView({ card, onOpt }: { card: NonNullable<ChatMsg['roleCard']>;
             )}
 
             {/* Summary + launch CTAs */}
-            {card.stage === 'summary' && (
+            {card.stage === 'summary' && (() => {
+                const answers = card.answers || {};
+                // Targeting rows show only what was answered. Message rows always
+                // show — with the answer, the template's suggestion, or the
+                // AI-drafted note — so nothing goes out unseen.
+                const targetingRows = inputs.filter((i) => (!i.target || i.target === 'source') && answers[i.key]);
+                const messageRows = inputs.filter((i) => i.target === 'node');
+                const rowLabel = (i: TemplateInput) => i.label || i.key.replace(/_/g, ' ');
+                const previewQuery = templateSearchQuery(tpl, splitWizardAnswers(tpl, answers).sourceCfg);
+                return (
                 <div className="px-4 pb-4 pt-3 border-t border-slate-100 dark:border-slate-800">
-                    {Object.keys(card.answers || {}).length > 0 ? (
+                    {(targetingRows.length > 0 || messageRows.length > 0) ? (
                         <div className="space-y-1.5 mb-3">
-                            {tpl.inputs.filter((i) => (card.answers || {})[i.key]).map((i) => (
+                            {targetingRows.map((i) => (
                                 <div key={i.key} className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 px-3 py-2">
-                                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 whitespace-nowrap">{i.key.replace(/_/g, ' ')}</span>
-                                    <span className="text-[12.5px] font-medium text-slate-800 dark:text-slate-100 text-right truncate">{(card.answers || {})[i.key]}</span>
+                                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 whitespace-nowrap">{rowLabel(i)}</span>
+                                    <span className="text-[12.5px] font-medium text-slate-800 dark:text-slate-100 text-right truncate">{answers[i.key]}</span>
                                 </div>
                             ))}
+                            {messageRows.map((i) => {
+                                const copy = answers[i.key] || i.suggestion || '';
+                                return (
+                                    <div key={i.key} className="rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 px-3 py-2">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 whitespace-nowrap">{rowLabel(i)}</span>
+                                            {!answers[i.key] && (
+                                                <span className="text-[9.5px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-slate-200/70 dark:bg-slate-700/60 text-slate-500 dark:text-slate-300">
+                                                    {copy ? 'suggested' : 'AI-written'}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="text-[12px] text-slate-700 dark:text-slate-200 leading-snug whitespace-pre-wrap line-clamp-3">
+                                            {copy || 'Mr LAD drafts this at send time from the lead\'s profile and the thread.'}
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
                     ) : (
                         <div className="text-[13px] text-slate-600 dark:text-slate-300 mb-3">Nothing to configure — this Role is ready to go.</div>
@@ -7425,6 +7596,18 @@ function RoleCardView({ card, onOpt }: { card: NonNullable<ChatMsg['roleCard']>;
                         Defaults: 25 leads/day · 30 days — adjustable in the builder
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
+                        {previewQuery && (
+                            <button type="button" disabled={previewing} onClick={() => onOpt('__role_preview__')}
+                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12.5px] font-semibold border transition-colors disabled:opacity-60 disabled:cursor-wait"
+                                style={{ borderColor: `${accent}55`, color: accent, background: `${accent}0f` }}>
+                                {previewing ? (
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="animate-spin"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
+                                ) : (
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.2-3.2" /></svg>
+                                )}
+                                {previewing ? 'Searching…' : 'Preview leads'}
+                            </button>
+                        )}
                         <button type="button" onClick={() => onOpt('__role_launch__')}
                             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12.5px] font-semibold text-white transition-transform hover:scale-[1.02] active:scale-[0.98]"
                             style={{ background: accent, boxShadow: `0 4px 14px ${accent}40` }}>
@@ -7437,12 +7620,13 @@ function RoleCardView({ card, onOpt }: { card: NonNullable<ChatMsg['roleCard']>;
                             className="px-3 py-2 rounded-xl text-[12.5px] font-medium text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Cancel</button>
                     </div>
                 </div>
-            )}
+                );
+            })()}
         </div>
     );
 }
 
-function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, agentDealLoading, onStartTargeting, hasPanel, leadsCount, filteredLeadsCount, onUploadClick, useSalesNav, isMobile }: { msg: ChatMsg; onOpt: (v: string) => void; onShowPanel: (panel: 'leads' | 'workflow') => void; onStartCheckpoints: () => void; onLetAgentDeal?: () => void; agentDealLoading?: boolean; onStartTargeting: () => void; hasPanel: boolean; leadsCount: number; filteredLeadsCount?: number; onUploadClick?: () => void; useSalesNav?: boolean; isMobile?: boolean }) {
+function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, agentDealLoading, onStartTargeting, hasPanel, leadsCount, filteredLeadsCount, onUploadClick, useSalesNav, isMobile, rolePreviewing }: { msg: ChatMsg; onOpt: (v: string) => void; onShowPanel: (panel: 'leads' | 'workflow') => void; onStartCheckpoints: () => void; onLetAgentDeal?: () => void; agentDealLoading?: boolean; onStartTargeting: () => void; hasPanel: boolean; leadsCount: number; filteredLeadsCount?: number; onUploadClick?: () => void; useSalesNav?: boolean; isMobile?: boolean; rolePreviewing?: boolean }) {
     const user = useSelector((state: any) => state.auth?.user);
     const displayName = user?.name || "User";
     const userInitial = displayName.charAt(0).toUpperCase();
@@ -7506,7 +7690,7 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                 </div>
 
                 {/* Roles wizard card — rendered under the LAD in Action label. */}
-                {msg.roleCard && <RoleCardView card={msg.roleCard} onOpt={onOpt} />}
+                {msg.roleCard && <RoleCardView card={msg.roleCard} onOpt={onOpt} previewing={rolePreviewing} />}
 
                 {/* ── Rich markdown-aware renderer ── */}
                 <div className="adv-ai-text" style={{ marginBottom: msg.targeting ? "16px" : "0", display: msg.roleCard && !msg.text ? 'none' : undefined }}>

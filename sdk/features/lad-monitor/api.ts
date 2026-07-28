@@ -17,6 +17,8 @@ import type {
   TaskHealth,
   LlmCostData,
   MigrationStatusData,
+  StrategyForReview,
+  StrategyReviewStatus,
 } from './types';
 
 const BASE = '/api/admin/monitor';
@@ -111,4 +113,29 @@ export async function getLlmCost(params?: { days?: number }): Promise<LlmCostDat
 export async function getMigrationStatus(): Promise<MigrationStatusData> {
   const res = await apiGet<{ success: boolean; data: MigrationStatusData }>(`${BASE}/migrations`);
   return res.data;
+}
+
+// ── Strategy moderation ─────────────────────────────────────────────────────
+
+/** Published strategies awaiting (or past) super-admin review. */
+export async function getStrategiesForReview(
+  status: StrategyReviewStatus = 'pending',
+): Promise<StrategyForReview[]> {
+  const res = await apiGet<{ success: boolean; data: StrategyForReview[] }>(
+    `${BASE}/strategies?status=${encodeURIComponent(status)}`,
+  );
+  return res.data.data ?? [];
+}
+
+/**
+ * Approve or reject a published strategy. Approving makes it visible in every
+ * tenant's Community gallery; rejecting is the kill switch and works even when
+ * sharing is disabled platform-wide.
+ */
+export async function reviewStrategy(
+  id: string,
+  decision: 'approve' | 'reject',
+  note?: string,
+): Promise<void> {
+  await apiPost(`${BASE}/strategies/${id}/review`, { decision, note });
 }
