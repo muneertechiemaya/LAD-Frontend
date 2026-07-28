@@ -234,6 +234,7 @@ interface WABAChatWindowProps {
   onMuteChat?: ConversationActionHandler;
   onClearChat?: ConversationActionHandler;
   onCloseChat?: ConversationActionHandler;
+  onOpenImportLeads?: () => void;
   channel?: 'personal' | 'waba';
   conversationId?: string;
   owner?: string | null;
@@ -1016,6 +1017,7 @@ function WABAChatWindow({
   onMuteChat,
   onClearChat,
   onCloseChat,
+  onOpenImportLeads,
   channel,
   conversationId,
   owner,
@@ -1859,12 +1861,16 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
             </div>
             <span className="text-[13px] font-medium text-[#111b21] dark:text-[#e9edef]">Send document</span>
           </div>
-          <div className="flex flex-col items-center gap-2.5">
-            <div className="w-[62px] h-12 bg-black/4 dark:bg-[#35373b] rounded-full flex items-center justify-center cursor-pointer hover:bg-[#d8dadf] dark:hover:bg-[#323436] transition-colors">
+          <button
+            type="button"
+            onClick={onOpenImportLeads}
+            className="flex flex-col items-center gap-2.5 bg-transparent border-0 p-0 cursor-pointer group focus:outline-none"
+          >
+            <div className="w-[62px] h-12 bg-black/4 dark:bg-[#35373b] rounded-full flex items-center justify-center group-hover:bg-[#d8dadf] dark:group-hover:bg-[#323436] transition-colors">
               <UserPlus className="w-6 h-6 text-[#111b21] dark:text-[#e9edef]" />
             </div>
             <span className="text-[13px] font-medium text-[#111b21] dark:text-[#e9edef]">Add contact</span>
-          </div>
+          </button>
         </div>
       </div>
     );
@@ -2387,6 +2393,8 @@ interface WABASidebarProps {
   loadMore?: () => void;
   hasMore?: boolean;
   isLoadingMore?: boolean;
+  isImportDialogOpen?: boolean;
+  onImportDialogOpenChange?: (open: boolean) => void;
 }
 
 type FilterTab = 'all' | 'unread' | 'favourites';
@@ -2416,6 +2424,8 @@ function WABASidebar({
   loadMore,
   hasMore,
   isLoadingMore,
+  isImportDialogOpen: externalIsImportDialogOpen,
+  onImportDialogOpenChange,
 }: WABASidebarProps) {
   const [filterTab, setFilterTab] = useState<FilterTab>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -2477,7 +2487,9 @@ function WABASidebar({
   }, [conversations, normalizePhone]);
 
   // ── Import dialog ──────────────────────────────────────────────────────
-  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [internalIsImportDialogOpen, setInternalIsImportDialogOpen] = useState(false);
+  const isImportDialogOpen = externalIsImportDialogOpen ?? internalIsImportDialogOpen;
+  const setIsImportDialogOpen = onImportDialogOpenChange ?? setInternalIsImportDialogOpen;
 
   // ── Group manager dialog ───────────────────────────────────────────────
   const [isGroupManagerOpen, setIsGroupManagerOpen] = useState(false);
@@ -4613,6 +4625,7 @@ export function WABusinessView({
   // Groups currently multi-selected in the Broadcast Groups panel — when non-empty,
   // the right pane shows broadcast-group actions instead of the chat splash.
   const [multiSelectGroupIds, setMultiSelectGroupIds] = useState<string[]>([]);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   // Lazily resolve WhatsApp DPs (avatars) for visible personal-WhatsApp conversations.
   // We POST the ids of any conversation still missing an avatar; the backend fetches
@@ -4950,6 +4963,8 @@ const handleFavorite = useCallback(
               loadMore={loadMore}
               hasMore={hasMore}
               isLoadingMore={isLoadingMore}
+              isImportDialogOpen={isImportDialogOpen}
+              onImportDialogOpenChange={setIsImportDialogOpen}
             />
           </motion.div>
         )}
@@ -4996,6 +5011,7 @@ const handleFavorite = useCallback(
           onMuteChat={muteConversation}
           onClearChat={(id) => handleClear(id)}
           onCloseChat={() => { selectConversation(''); }}
+          onOpenImportLeads={() => setIsImportDialogOpen(true)}
           channel={channel}
           conversationId={typedSelectedConversation?.id}
           owner={typedSelectedConversation?.owner}
