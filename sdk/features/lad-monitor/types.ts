@@ -421,3 +421,31 @@ export interface StrategyForReview {
   review_note: string | null;
   import_count: number;
 }
+
+// ── Community signups (founding-group applications) ─────────────────────────
+
+export type SignupStatus = 'new' | 'contacted' | 'accepted' | 'declined' | 'spam';
+
+/** Where a signup came from, so InMail can be told apart from organic. */
+export type SignupSource = 'landing' | 'inmail' | 'pdf' | 'referral' | 'other';
+
+export interface CommunitySignup {
+  id: string;
+  full_name: string;
+  email: string;
+  company: string | null;
+  linkedin_url: string | null;
+  playbook: string | null;
+  client_volume: string | null;
+  source: SignupSource;
+  status: SignupStatus;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CommunitySignupsResponse {
+  data: CommunitySignup[];
+  summary: Partial<Record<SignupStatus, number>>;
+  count: number;
+}
