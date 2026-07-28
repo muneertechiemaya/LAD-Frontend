@@ -1180,9 +1180,18 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         const capJson = await capRes.json();
         const cap = capJson?.data;
         if (cap?.known && cap.connected && cap.canInMail === false) {
-          setError(
-            `${cap.accountName || 'The connected LinkedIn account'} cannot send InMail. It has no Premium or Sales Navigator, `
-            + 'so credits on another account will not help. Connect that account, or swap the InMail step for a connection request.'
+          const who = cap.accountName || 'The connected LinkedIn account';
+          // Distinguish "free account" from the far more confusing case: a paid
+          // seat whose credits the integration cannot see. The account that
+          // prompted this reported Premium, and its owner could see 149 Sales
+          // Navigator credits in LinkedIn, while the API reported every pool as
+          // null. Telling that user to buy credits would have been useless.
+          setError(cap.premium
+            ? `${who} has a paid LinkedIn plan, but no InMail credits are visible to the integration. `
+              + 'Sales Navigator credits are a separate pool and stay hidden unless the account was connected with that seat active. '
+              + 'Reconnect the LinkedIn account in Settings, or swap the InMail step for a connection request.'
+            : `${who} has no InMail credits available. `
+              + 'InMail needs Premium or Sales Navigator on the sending account. Swap the InMail step for a connection request, or connect an account that has one.'
           );
           return;
         }
