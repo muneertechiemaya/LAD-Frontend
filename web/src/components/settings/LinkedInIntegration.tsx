@@ -58,17 +58,13 @@ interface LinkedInAutomationSettings {
   // Tenant-chosen model for AI-personalized outbound messages (connection
   // requests + follow-ups). Kept in sync with the backend allow-list in
   // core/constants/aiMessageModels.js.
+  /** Still returned by the backend; the picker was removed and every tenant
+   *  generates on DeepSeek. Kept so the type matches the payload. */
   linkedin_ai_model?: string;
 }
 // Curated model menu for LinkedIn outbound message personalization. Must match
 // the backend registry (core/constants/aiMessageModels.js) — ids are validated
 // server-side on PUT, so an out-of-sync entry here is rejected rather than saved.
-const LINKEDIN_MESSAGE_MODELS: { id: string; label: string }[] = [
-  { id: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5 — highest quality' },
-  { id: 'claude-haiku-4-5', label: 'Claude Haiku 4.5 — fast & economical' },
-  { id: 'deepseek-chat', label: 'DeepSeek — lowest cost' },
-];
-const DEFAULT_LINKEDIN_MESSAGE_MODEL = 'claude-sonnet-4-5';
 type AuthMethod = 'credentials' | 'cookies';
 export const LinkedInIntegration: React.FC = () => {
   const [linkedInConnections, setLinkedInConnections] = useState<LinkedInAccount[]>([]);
@@ -106,7 +102,6 @@ export const LinkedInIntegration: React.FC = () => {
   // the backend rebuilds all four keys, so omitting them would clobber them.
   const [automationSettings, setAutomationSettings] = useState<LinkedInAutomationSettings | null>(null);
   const [aiRepliesSaving, setAiRepliesSaving] = useState(false);
-  const [modelSaving, setModelSaving] = useState(false);
   const [aiToast, setAiToast] = useState<{ kind: 'ok' | 'err'; message: string } | null>(null);
   const inputClass =
       'w-full rounded-xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#00051d] px-3 py-2.5 text-sm text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 outline-none focus:border-slate-400 dark:focus:border-slate-600 focus:ring-0 focus-visible:ring-0 transition-all [box-shadow:0_0_0_30px_white_inset] dark:[box-shadow:0_0_0_30px_#00051d_inset] [-webkit-text-fill-color:#1e293b] dark:[-webkit-text-fill-color:white] [&:-webkit-autofill]:[box-shadow:0_0_0_30px_white_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:#1e293b] dark:[&:-webkit-autofill]:[box-shadow:0_0_0_30px_#00051d_inset] dark:[&:-webkit-autofill]:[-webkit-text-fill-color:white]';
@@ -409,37 +404,6 @@ export const LinkedInIntegration: React.FC = () => {
   // Change the tenant's outbound-message model. Optimistic UI, then a PARTIAL PUT
   // ({ linkedin_ai_model }) — the backend jsonb-merges it, so the other automation
   // settings are preserved. Reverts + toasts on failure (mirrors toggleAiReplies).
-  const saveMessageModel = async (model: string) => {
-    if (!automationSettings || modelSaving) return;
-    if (model === (automationSettings.linkedin_ai_model ?? DEFAULT_LINKEDIN_MESSAGE_MODEL)) return;
-    const previous = automationSettings;
-    setAutomationSettings({ ...previous, linkedin_ai_model: model });
-    setModelSaving(true);
-    try {
-      const response = await fetch(
-        `${getApiBaseUrl()}/api/social-integration/linkedin/automation-settings`,
-        {
-          method: 'PUT',
-          headers: getAuthHeaders(),
-          body: JSON.stringify({ linkedin_ai_model: model }),
-        }
-      );
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data?.success) {
-        throw new Error(data?.error || data?.message || 'Failed to update AI model');
-      }
-      if (data.data) setAutomationSettings(data.data as LinkedInAutomationSettings);
-      setAiToast({ kind: 'ok', message: 'LinkedIn message model updated.' });
-    } catch (error) {
-      setAutomationSettings(previous);
-      setAiToast({
-        kind: 'err',
-        message: error instanceof Error ? error.message : 'Could not update AI model.',
-      });
-    } finally {
-      setModelSaving(false);
-    }
-  };
   const handleConnect = async () => {
     setConnecting(true);
     setConnectionError(null);
@@ -908,23 +872,6 @@ export const LinkedInIntegration: React.FC = () => {
                       disabled={!automationSettings || aiRepliesSaving}
                       onToggle={toggleAiReplies}
                     />
-                    {/* Tenant-level model for AI-personalized outbound messages
-                        (connection requests + follow-ups). Applies to all accounts. */}
-                    <label className="flex items-center gap-1.5 text-[11px] font-medium text-gray-600 dark:text-white/60">
-                      <span title="Model used to generate personalized connection requests and follow-up messages">
-                        Message model:
-                      </span>
-                      <select
-                        value={automationSettings?.linkedin_ai_model ?? DEFAULT_LINKEDIN_MESSAGE_MODEL}
-                        onChange={(e) => saveMessageModel(e.target.value)}
-                        disabled={!automationSettings || modelSaving}
-                        className="rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-700 transition disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-white/10 dark:bg-white/5 dark:text-white/80"
-                      >
-                        {LINKEDIN_MESSAGE_MODELS.map((m) => (
-                          <option key={m.id} value={m.id}>{m.label}</option>
-                        ))}
-                      </select>
-                    </label>
                   </div>
                 </div>
               );
