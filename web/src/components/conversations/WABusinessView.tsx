@@ -1859,7 +1859,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
             <div className="w-[62px] h-12 bg-black/4 dark:bg-[#35373b] rounded-full flex items-center justify-center cursor-pointer hover:bg-[#d8dadf] dark:hover:bg-[#323436] transition-colors">
               <FileText className="w-6 h-6 text-[#111b21] dark:text-[#e9edef]" />
             </div>
-            <span className="text-[13px] font-medium text-[#111b21] dark:text-[#e9edef]">Send document</span>
+            <span className="text-[13px] font-medium text-[#111b21] dark:text-[#e9edef]">Send Template</span>
           </div>
           <button
             type="button"
@@ -1869,7 +1869,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
             <div className="w-[62px] h-12 bg-black/4 dark:bg-[#35373b] rounded-full flex items-center justify-center group-hover:bg-[#d8dadf] dark:group-hover:bg-[#323436] transition-colors">
               <UserPlus className="w-6 h-6 text-[#111b21] dark:text-[#e9edef]" />
             </div>
-            <span className="text-[13px] font-medium text-[#111b21] dark:text-[#e9edef]">Add contact</span>
+            <span className="text-[13px] font-medium text-[#111b21] dark:text-[#e9edef]">Import Leads</span>
           </button>
         </div>
       </div>
