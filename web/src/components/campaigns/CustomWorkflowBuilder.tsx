@@ -1165,6 +1165,35 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     const autopostNode = workflowPreview.find((s) => s.id === AUTOPOST_STEP_ID);
     const zohoUpdateNode = workflowPreview.find((s) => s.id === ZOHO_UPDATE_STEP_ID);
     if (!outreachSteps.length && !followupNode && !multiCondNode && !publisherOnly) { setError('Add at least one outreach step.'); return; }
+
+    // InMail needs an entitlement the account may not have. Checking here means
+    // the user finds out while looking at the canvas, instead of one lead
+    // failing hours later with a 422 that reads like a billing problem.
+    //
+    // A free LinkedIn account returns "insufficient credits", which is NOT a
+    // depleted balance — it has no InMail entitlement at all, so credits on
+    // another account are irrelevant. Fails OPEN: an unreachable probe must
+    // never block a launch.
+    if (workflowPreview.some((s) => s.type === 'linkedin_inmail')) {
+      try {
+        const capRes = await fetchWithTenant('/api/campaigns/linkedin/capabilities');
+        const capJson = await capRes.json();
+        const cap = capJson?.data;
+        if (cap?.known && cap.connected && cap.canInMail === false) {
+          setError(
+            `${cap.accountName || 'The connected LinkedIn account'} cannot send InMail. It has no Premium or Sales Navigator, `
+            + 'so credits on another account will not help. Connect that account, or swap the InMail step for a connection request.'
+          );
+          return;
+        }
+        if (cap?.connected === false) {
+          setError('No LinkedIn account is connected, so the InMail step cannot run. Connect one in Settings first.');
+          return;
+        }
+      } catch {
+        // Probe unavailable — let the launch proceed rather than block on it.
+      }
+    }
     if (multiCondNode) {
       const mcCases: any[] = (configs[MULTICOND_STEP_ID]?.cases) || [];
       const validCases = mcCases.filter((c) => (c.value || '').trim() && (c.body || c.subject || '').trim());
