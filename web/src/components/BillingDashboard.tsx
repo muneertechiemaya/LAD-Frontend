@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Wallet, TrendingUp, Calendar, Download, ExternalLink, Plus } from 'lucide-react';
+import { Wallet, TrendingUp, Calendar, Download, ExternalLink } from 'lucide-react';
 import { LoadingSpinner } from './LoadingSpinner';
 import { CreditUsageAnalytics } from './CreditUsageAnalytics';
 import Link from 'next/link';
@@ -111,18 +111,10 @@ export const BillingDashboard: React.FC<BillingDashboardProps> = ({ customerId }
     <div className="space-y-6">
       {/* Credit Balance Summary */}
       <div className="bg-gradient-to-br from-primary to-primary/80 text-[#ffffff] p-6 rounded-xl shadow-lg dark:from-[#051139] dark:to-[#02081e] dark:border dark:border-blue-950/50">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center">
-            <Wallet className="h-5 w-5 mr-2 text-[#ffffff] dark:text-blue-400" />
-            <h3 className="text-lg font-bold text-[#ffffff]">Billing Summary</h3>
-          </div>
-          <Link
-            href="/wallet"
-            className="bg-white/10 hover:bg-white/20 text-[#ffffff] px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center dark:bg-blue-600 dark:hover:bg-blue-700"
-          >
-            <Plus className="h-3 w-3 mr-1.5" />
-            Add Credits
-          </Link>
+        {/* Self-serve credit top-up is not offered here — no Add Credits action. */}
+        <div className="flex items-center mb-6">
+          <Wallet className="h-5 w-5 mr-2 text-[#ffffff] dark:text-blue-400" />
+          <h3 className="text-lg font-bold text-[#ffffff]">Billing Summary</h3>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-6 text-[#ffffff]">
@@ -163,18 +155,8 @@ export const BillingDashboard: React.FC<BillingDashboardProps> = ({ customerId }
           </div>
         )}
       </div>
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Link
-          href="/wallet"
-          className="bg-card text-card-foreground p-6 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 border-2 border-transparent hover:border-primary dark:bg-[#030a21]/60 dark:border-blue-950/30 dark:hover:border-blue-500"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-lg font-semibold text-foreground dark:text-white">Add Credits</h3>
-            <Wallet className="h-6 w-6 text-primary dark:text-blue-400" />
-          </div>
-          <p className="text-sm text-muted-foreground dark:text-gray-400">Purchase credit packages starting at $99</p>
-        </Link>
+      {/* Quick Actions — two cards since the Add Credits tile was removed. */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Link
           href="/pricing"
           className="bg-card text-card-foreground p-6 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 border-2 border-transparent hover:border-primary dark:bg-[#030a21]/60 dark:border-blue-950/30 dark:hover:border-blue-500"
