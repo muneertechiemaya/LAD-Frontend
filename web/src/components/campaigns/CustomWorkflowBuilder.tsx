@@ -482,6 +482,20 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   // Edit mode: block the canvas until the saved state is back, so a stray click
   // can't launch a half-restored workflow over the real one.
   const [hydrating, setHydrating] = useState(!!editCampaignId);
+
+  useEffect(() => {
+    if (!editCampaignId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetchWithTenant(`/api/campaigns/landing-page/${editCampaignId}`);
+        if (!r.ok) return;                       // 404 simply means no page yet
+        const j = await r.json();
+        if (!cancelled) setSavedLanding(j?.page || null);
+      } catch { /* the builder must still open if this read fails */ }
+    })();
+    return () => { cancelled = true; };
+  }, [editCampaignId]);
   const hydratedRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   // Zoho write-back node: the target module's field metadata (fetched lazily).
@@ -519,6 +533,14 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   // LinkedIn auto-post state.
   const [autopostGenerating, setAutopostGenerating] = useState(false);
   const [autopostMsg, setAutopostMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  /**
+   * The landing page already saved for the campaign being edited.
+   *
+   * Needed to answer "did anything actually change?". Without it the builder
+   * cannot tell an edited brief from an untouched one, and the only honest
+   * options would be to rewrite a public page on every save or never rewrite it.
+   */
+  const [savedLanding, setSavedLanding] = useState<any>(null);
   const [liOrganizations, setLiOrganizations] = useState<{ id: string; name: string }[]>([]);
   const autopostFileRef = useRef<HTMLInputElement | null>(null);
   // Inline AI-media wizard for the auto-post node — runs the media builder's
@@ -1822,6 +1844,9 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   ? lc.capture_fields : ['name', 'email'],
                 require_approval: lc.require_approval !== false,
                 source_file_name: lc.source_file_name || undefined,
+                // Only meaningful on edit. The backend still re-checks that the
+                // inputs really changed, so a stale true cannot force a rewrite.
+                regenerate: lc.regenerate === true,
               },
             };
           })() : {}),
@@ -3141,12 +3166,67 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 </span>
               </label>
 
-              <div className="rounded-md border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50 px-3 py-2">
-                <p className="text-[11px] text-slate-700 dark:text-slate-300">
-                  The page is written when you launch, then appears here for review. Nothing is
-                  published until you approve it.
-                </p>
-              </div>
+              {savedLanding ? (() => {
+                // Compare against what produced the LIVE page. Mirrors
+                // hasInputChanges() on the backend, which is the real gate —
+                // this only decides whether to offer the choice.
+                const norm = (v: any) => String(v ?? '').trim();
+                const sortedFields = (v: any) => (Array.isArray(v) ? [...v].sort().join(',') : '');
+                const dirty =
+                  norm(cfg.brief) !== norm(savedLanding.source_text) ||
+                  (cfg.capture_enabled !== false) !== (savedLanding.capture_enabled !== false) ||
+                  sortedFields(fields) !== sortedFields(savedLanding.capture_fields);
+                const live = savedLanding.status === 'published';
+                return (
+                  <div className="space-y-2">
+                    <div className="rounded-md border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50 px-3 py-2 space-y-1">
+                      <p className="text-[11px] font-medium text-foreground">
+                        {live ? 'This page is live' : `Current page: ${savedLanding.status}`}
+                      </p>
+                      {savedLanding.public_url && (
+                        <a href={savedLanding.public_url} target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:underline break-all">
+                          <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                          {savedLanding.public_url}
+                        </a>
+                      )}
+                      {typeof savedLanding.submission_count === 'number' && (
+                        <p className="text-[11px] text-muted-foreground">
+                          {savedLanding.submission_count} lead{savedLanding.submission_count === 1 ? '' : 's'} captured so far
+                        </p>
+                      )}
+                    </div>
+
+                    {dirty ? (
+                      <label className="flex items-start gap-2 cursor-pointer rounded-md border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30 px-3 py-2">
+                        <input type="checkbox" className="mt-0.5" checked={!!cfg.regenerate}
+                          onChange={(e) => setCfg(eid, { regenerate: e.target.checked })} />
+                        <span className="text-xs">
+                          <span className="font-medium text-amber-900 dark:text-amber-200">Rewrite the page with these changes</span>
+                          <span className="block text-[11px] text-amber-800 dark:text-amber-300">
+                            {cfg.regenerate
+                              ? (live
+                                ? 'The new copy needs approving before it replaces what is live. The current page keeps working until then.'
+                                : 'The page will be written again and will need approving.')
+                              : 'Leave this unticked and your edits are saved, but the existing page is left exactly as it is.'}
+                          </span>
+                        </span>
+                      </label>
+                    ) : (
+                      <p className="text-[11px] text-muted-foreground">
+                        Nothing about the page content has changed, so it will be left alone.
+                      </p>
+                    )}
+                  </div>
+                );
+              })() : (
+                <div className="rounded-md border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50 px-3 py-2">
+                  <p className="text-[11px] text-slate-700 dark:text-slate-300">
+                    The page is written when you launch, then appears here for review. Nothing is
+                    published until you approve it.
+                  </p>
+                </div>
+              )}
             </>);
           })()}
 
