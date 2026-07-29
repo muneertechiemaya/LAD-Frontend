@@ -30,6 +30,9 @@ export type StepType =
   | 'analytics_report'
   | 'export_results'
   | 'linkedin_post'
+  // Campaign-level: generates ONE public page for the campaign. Never per-lead —
+  // a per-lead landing page would mint one public URL per enrolled prospect.
+  | 'landing_page'
   | 'linkedin_content'
   | 'post_approval'
   | 'web_scrape'

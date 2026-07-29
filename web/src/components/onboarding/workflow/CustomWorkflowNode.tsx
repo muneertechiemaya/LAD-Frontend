@@ -27,6 +27,7 @@ function getBrandConfig(type: string) {
   if (type === 'followup_sequence') return { bg: '#6366f1', border: '#4f46e5', glow: 'rgba(99,102,241,0.25)' };
   if (type === 'analytics_report') return { bg: '#06b6d4', border: '#0891b2', glow: 'rgba(6,182,212,0.25)' };
   if (type === 'export_results')   return { bg: '#0891b2', border: '#0e7490', glow: 'rgba(8,145,178,0.25)' };
+  if (type === 'landing_page')     return { bg: '#10b981', border: '#059669', glow: 'rgba(16,185,129,0.25)' };
   if (type === 'linkedin_content') return { bg: '#7c3aed', border: '#6d28d9', glow: 'rgba(124,58,237,0.25)' };
   if (type === 'post_approval')    return { bg: '#16a34a', border: '#15803d', glow: 'rgba(22,163,74,0.25)' };
   if (type === 'linkedin_post')    return { bg: '#0a66c2', border: '#004182', glow: 'rgba(10,102,194,0.25)' };

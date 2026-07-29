@@ -88,6 +88,7 @@ export const getDetailedActions = (campaign: Campaign) => {
   }
   if (cfg.export_results?.destinations?.length) actionCounts['export_results'] = 1;
   if (cfg.analytics_notifications?.recipient) actionCounts['analytics_report'] = 1;
+  if (cfg.landing_page) actionCounts['landing_page'] = 1;
 
   Object.entries(actionCounts).forEach(([type, count]) => {
     let platform = 'other';
@@ -101,6 +102,7 @@ export const getDetailedActions = (campaign: Campaign) => {
       followup_sequence: { name: 'Follow-ups', platform: 'other' },
       export_results: { name: 'Export', platform: 'other' },
       analytics_report: { name: 'Analytics', platform: 'other' },
+      landing_page: { name: 'Landing page', platform: 'other' },
     };
     if (MACRO_LABELS[type]) {
       ({ name, platform } = MACRO_LABELS[type]);

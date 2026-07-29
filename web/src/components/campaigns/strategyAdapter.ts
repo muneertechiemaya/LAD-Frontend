@@ -130,6 +130,7 @@ function chipLabel(type: string): string {
   if (type === 'media_generation') return 'AI media';
   if (type === 'export_results') return 'Export';
   if (type === 'analytics_report') return 'Report';
+  if (type === 'landing_page') return 'Landing page';
   if (type === 'zoho_update') return 'CRM';
   if (type === 'switch' || type === 'multicondition') return 'Branch';
   if (type === 'condition') return 'Wait';

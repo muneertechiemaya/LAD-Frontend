@@ -25,6 +25,8 @@ export const MULTICOND_STEP_ID = 'multicond-node';
 export const AI_STEP_ID = 'ai-agent-node';
 export const ENRICH_STEP_ID = 'data-enrich-node';
 export const EXPORT_STEP_ID = 'export-results-node';
+/** Landing-page node. Campaign-level: ONE public page per campaign, not per lead. */
+export const LANDING_STEP_ID = 'landing-page-node';
 export const AUTOPOST_STEP_ID = 'linkedin-post-node';
 // The posting strategy is three composable nodes: content -> (approval) -> post.
 // All three merge into ONE campaigns.config.autopost object at launch.

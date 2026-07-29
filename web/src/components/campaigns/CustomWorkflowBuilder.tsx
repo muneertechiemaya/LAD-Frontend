@@ -27,7 +27,7 @@ import {
   Rocket, Loader2, Linkedin, Mail, MailPlus, MessageCircle, Phone, Clock,
   Users, Repeat, Search, X, HardDrive, Inbox, ListOrdered, BarChart3, GitFork, DatabaseZap,
   Wand2, Trash2, Radar, Split, Plus, Upload, FileSpreadsheet, Sparkles, Contact, Download, Megaphone, Zap, Globe, Telescope, Gauge, Shuffle, PenLine, Webhook, PenTool, ShieldCheck,
-  Bookmark,
+  Bookmark, LayoutTemplate, ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,7 +38,7 @@ import {
   MEDIA_STEP_ID, MULTICOND_STEP_ID, AI_STEP_ID, ENRICH_STEP_ID, EXPORT_STEP_ID,
   AUTOPOST_STEP_ID, CONTENT_STEP_ID, APPROVAL_STEP_ID, AI_DEFAULT_INSTRUCTION, EXPORT_DEFAULT_COLUMNS,
   SCRAPE_STEP_ID, RESEARCH_STEP_ID, SCORE_STEP_ID,
-  SPLIT_STEP_ID, SETFIELD_STEP_ID, HTTP_STEP_ID, templateNodeKey,
+  SPLIT_STEP_ID, SETFIELD_STEP_ID, HTTP_STEP_ID, LANDING_STEP_ID, templateNodeKey,
 } from './workflowTemplates';
 import { TemplateIcon, stepCategory } from './TemplateIcon';
 import {
@@ -946,6 +946,26 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     setEditingId(EXPORT_STEP_ID);
   };
 
+  /**
+   * Landing page — campaign-level, exactly like the auto-post node.
+   *
+   * Defaults to capture-on and approval-on: the page is published to a public
+   * URL under the tenant's brand, so it is reviewed before anyone can read it.
+   */
+  const addLandingPage = () => {
+    if (!workflowPreview.some((s) => s.id === LANDING_STEP_ID)) {
+      addWorkflowStep({ id: LANDING_STEP_ID, type: 'landing_page', channel: 'email', title: 'Landing page', description: 'AI page · Capture form' });
+      setCfg(LANDING_STEP_ID, {
+        brief: '',
+        goal: '',
+        capture_enabled: true,
+        capture_fields: ['name', 'email'],
+        require_approval: true,
+      });
+    }
+    setEditingId(LANDING_STEP_ID);
+  };
+
   const setCfg = useCallback((id: string, patch: any) => {
     setConfigs((c) => ({ ...c, [id]: { ...(c[id] || {}), ...patch } }));
   }, []);
@@ -1789,6 +1809,22 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               },
             };
           })() : {}),
+          ...(workflowPreview.some((s) => s.id === LANDING_STEP_ID) ? (() => {
+            const lc = configs[LANDING_STEP_ID] || {};
+            return {
+              // Read by the campaigns landing-page routes: the page is generated
+              // from this brief at launch, then approved and published.
+              landing_page: {
+                brief: (lc.brief || '').trim(),
+                goal: (lc.goal || '').trim() || undefined,
+                capture_enabled: lc.capture_enabled !== false,
+                capture_fields: Array.isArray(lc.capture_fields) && lc.capture_fields.length
+                  ? lc.capture_fields : ['name', 'email'],
+                require_approval: lc.require_approval !== false,
+                source_file_name: lc.source_file_name || undefined,
+              },
+            };
+          })() : {}),
           ...(analyticsNode ? {
             // Read by core/cron/campaignDigestCron.js — daily 08:00 GST (weekly = Mondays).
             analytics_notifications: {
@@ -1828,6 +1864,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             ...(rest.config.export_results ? {} : { export_results: null }),
             ...(rest.config.analytics_notifications ? {} : { analytics_notifications: null }),
             ...(rest.config.followup_sequence ? {} : { followup_sequence: null }),
+            ...(rest.config.landing_page ? {} : { landing_page: null }),
           },
         };
         // `status` is deliberately dropped. update() has no active→running
@@ -2041,7 +2078,8 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     const isSplit = editingId === SPLIT_STEP_ID;
     const isSetField = editingId === SETFIELD_STEP_ID;
     const isHttp = editingId === HTTP_STEP_ID;
-    const isMacro = isFollowup || isAnalytics || isZohoUpdate || isMedia || isMultiCond || isAiParse || isDataEnrich || isExport || isAutopost || isScrape || isResearch || isScore || isSplit || isSetField || isHttp || isContent || isApproval;
+    const isLanding = editingId === LANDING_STEP_ID;
+    const isMacro = isFollowup || isAnalytics || isZohoUpdate || isMedia || isMultiCond || isAiParse || isDataEnrich || isExport || isAutopost || isScrape || isResearch || isScore || isSplit || isSetField || isHttp || isContent || isApproval || isLanding;
     const visual = isSource
       ? SOURCES.find((s) => s.key === source)
       : isFollowup
@@ -2992,6 +3030,126 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             </>);
           })()}
 
+          {isLanding && (() => {
+            const eid = editingId!;
+            const fields: string[] = Array.isArray(cfg.capture_fields) && cfg.capture_fields.length
+              ? cfg.capture_fields : ['name', 'email'];
+            const toggleField = (f: string) => setCfg(eid, {
+              capture_fields: fields.includes(f) ? fields.filter((x) => x !== f) : [...fields, f],
+            });
+            // Read the brief in the browser. A .txt/.md brief is just text, and
+            // uploading it to parse it server-side would add an endpoint, a
+            // storage object and a failure mode for no benefit.
+            const readFile = async (file?: File | null) => {
+              if (!file) return;
+              if (file.size > 200 * 1024) {
+                setError('That file is larger than 200 KB. Paste the relevant part instead.');
+                return;
+              }
+              try {
+                const text = await file.text();
+                setCfg(eid, { brief: text.slice(0, 20000), source_file_name: file.name });
+              } catch {
+                setError('Could not read that file. Paste the content instead.');
+              }
+            };
+            return (<>
+              <div className="rounded-md border border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/30 px-3 py-2">
+                <p className="text-[11px] text-emerald-900 dark:text-emerald-200">
+                  Builds <strong>one public page for this campaign</strong> (not one per lead).
+                  The copy is written from your saved business profile and ICP, so describe
+                  only what is specific to this page.
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">What is this page for?</label>
+                <textarea
+                  className={`${field} min-h-[110px] resize-y`}
+                  value={cfg.brief || ''}
+                  onChange={(e) => setCfg(eid, { brief: e.target.value, source_file_name: undefined })}
+                  placeholder={'e.g. A page for our corporate wellness package aimed at HR heads in Dubai. Mention the free pilot session and that sessions run on-site.'}
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Your company name, what you sell, who you sell to and your logo are pulled
+                  from your business profile automatically. Do not repeat them here.
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">Or upload a brief</label>
+                <label className="flex items-center gap-2 rounded-md border border-dashed border-border px-3 py-2 cursor-pointer hover:bg-muted/40">
+                  <Upload className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground truncate">
+                    {cfg.source_file_name || 'Choose a .txt or .md file'}
+                  </span>
+                  <input type="file" accept=".txt,.md,text/plain,text/markdown" className="hidden"
+                    onChange={(e) => readFile(e.target.files?.[0])} />
+                </label>
+                <p className="text-[11px] text-muted-foreground">
+                  The file is read here and its text fills the box above, so you can edit it before launching.
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">Goal (optional)</label>
+                <input className={field} value={cfg.goal || ''}
+                  onChange={(e) => setCfg(eid, { goal: e.target.value })}
+                  placeholder="e.g. book a discovery call" />
+              </div>
+
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input type="checkbox" className="mt-0.5" checked={cfg.capture_enabled !== false}
+                  onChange={(e) => setCfg(eid, { capture_enabled: e.target.checked })} />
+                <span className="text-xs">
+                  <span className="font-medium text-foreground">Capture leads on the page</span>
+                  <span className="block text-[11px] text-muted-foreground">
+                    Anyone who fills the form is added to this campaign and picked up by the
+                    steps below. Turn this off and the button points at your booking link instead.
+                  </span>
+                </span>
+              </label>
+
+              {cfg.capture_enabled !== false && (
+                <div className="space-y-1 pl-5">
+                  <label className="text-xs font-medium text-foreground">Ask for</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {['name', 'email', 'phone', 'company', 'message'].map((f) => (
+                      <button key={f} type="button" onClick={() => toggleField(f)}
+                        className={`rounded-full border px-2.5 py-1 text-[11px] capitalize transition-colors ${
+                          fields.includes(f)
+                            ? 'border-emerald-600 bg-emerald-600 text-white'
+                            : 'border-border text-muted-foreground hover:bg-muted/50'
+                        }`}>{f}</button>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Every extra field costs you conversions. Email alone is usually enough.
+                  </p>
+                </div>
+              )}
+
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input type="checkbox" className="mt-0.5" checked={cfg.require_approval !== false}
+                  onChange={(e) => setCfg(eid, { require_approval: e.target.checked })} />
+                <span className="text-xs">
+                  <span className="font-medium text-foreground">Review before it goes live</span>
+                  <span className="block text-[11px] text-muted-foreground">
+                    Strongly recommended. The page is written by AI and published on a public
+                    URL under your brand.
+                  </span>
+                </span>
+              </label>
+
+              <div className="rounded-md border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50 px-3 py-2">
+                <p className="text-[11px] text-slate-700 dark:text-slate-300">
+                  The page is written when you launch, then appears here for review. Nothing is
+                  published until you approve it.
+                </p>
+              </div>
+            </>);
+          })()}
+
           {isHttp && (() => {
             const eid = editingId!;
             const hdrs: any[] = Array.isArray(cfg.headers) ? cfg.headers : [{ key: '', value: '' }];
@@ -3703,6 +3861,27 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-semibold text-foreground truncate">Export results</span>
                     <span className="block text-xs text-muted-foreground truncate">File · DB · Email · WhatsApp · more</span>
+                  </span>
+                  {added && (
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    </span>
+                  )}
+                </button>
+              );
+            })()}
+            {/* Landing page — one public page for the whole campaign. */}
+            {(() => {
+              const added = workflowPreview.some((s) => s.id === LANDING_STEP_ID);
+              return (
+                <button onClick={addLandingPage}
+                  className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
+                    added ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20' : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                  }`}>
+                  <IconChip icon={<LayoutTemplate className="h-4 w-4 text-emerald-700" />} chip="bg-emerald-50 dark:bg-emerald-950/30" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold text-foreground truncate">Landing page</span>
+                    <span className="block text-xs text-muted-foreground truncate">AI-written from your ICP · Captures leads</span>
                   </span>
                   {added && (
                     <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
