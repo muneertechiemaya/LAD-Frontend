@@ -541,6 +541,8 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
    * options would be to rewrite a public page on every save or never rewrite it.
    */
   const [savedLanding, setSavedLanding] = useState<any>(null);
+  const [landingBusy, setLandingBusy] = useState(false);
+  const [landingErr, setLandingErr] = useState<string | null>(null);
   const [liOrganizations, setLiOrganizations] = useState<{ id: string; name: string }[]>([]);
   const autopostFileRef = useRef<HTMLInputElement | null>(null);
   // Inline AI-media wizard for the auto-post node — runs the media builder's
@@ -1847,6 +1849,11 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 // Only meaningful on edit. The backend still re-checks that the
                 // inputs really changed, so a stale true cannot force a rewrite.
                 regenerate: lc.regenerate === true,
+                // Reused verbatim at launch when the brief has not changed
+                // since, so the page that goes live is the page that was
+                // reviewed rather than a fresh roll of the model.
+                preview_content: lc.preview_content || undefined,
+                preview_brief: lc.preview_brief || undefined,
               },
             };
           })() : {}),
@@ -3165,6 +3172,70 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   </span>
                 </span>
               </label>
+
+              {/* Build it now and hand back a URL, so the copy can be judged
+                  before committing to a launch. The content that comes back is
+                  stored on the node and reused at launch, so the page that goes
+                  live is the page that was reviewed. */}
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  disabled={landingBusy || !(cfg.brief || '').trim()}
+                  onClick={async () => {
+                    setLandingErr(null);
+                    setLandingBusy(true);
+                    try {
+                      const r = await fetchWithTenant('/api/campaigns/landing-page/preview', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          brief: cfg.brief || '',
+                          goal: cfg.goal || '',
+                          capture_enabled: cfg.capture_enabled !== false,
+                          capture_fields: fields,
+                        }),
+                      });
+                      const j = await r.json().catch(() => ({}));
+                      if (!r.ok || !j?.url) throw new Error(j?.error || 'Could not build the preview.');
+                      setCfg(eid, {
+                        preview_url: j.url,
+                        preview_content: j.content,
+                        // Stored so launch can tell whether the brief changed
+                        // after the preview was taken.
+                        preview_brief: (cfg.brief || '').trim(),
+                      });
+                    } catch (err: any) {
+                      setLandingErr(err?.message || 'Could not build the preview.');
+                    } finally {
+                      setLandingBusy(false);
+                    }
+                  }}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-md bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {landingBusy
+                    ? (<><Loader2 className="h-3.5 w-3.5 animate-spin" /> Writing the page…</>)
+                    : (<><Sparkles className="h-3.5 w-3.5" /> {cfg.preview_url ? 'Generate again' : 'Generate & preview'}</>)}
+                </button>
+
+                {!(cfg.brief || '').trim() && (
+                  <p className="text-[11px] text-muted-foreground">Describe the page above first.</p>
+                )}
+                {landingErr && <p className="text-[11px] text-red-600">{landingErr}</p>}
+
+                {cfg.preview_url && (
+                  <div className="rounded-md border border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/30 px-3 py-2 space-y-1">
+                    <a href={cfg.preview_url} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-800 dark:text-emerald-200 hover:underline break-all">
+                      <ExternalLink className="h-3 w-3 flex-shrink-0" /> Open the preview
+                    </a>
+                    <p className="text-[11px] text-emerald-800 dark:text-emerald-300">
+                      {(cfg.preview_brief ?? '') === (cfg.brief || '').trim()
+                        ? 'This exact page is what launches. The form is inactive until it is published.'
+                        : 'You have edited the brief since this preview. Generate again, or launch and the page will be written afresh.'}
+                    </p>
+                  </div>
+                )}
+              </div>
 
               {savedLanding ? (() => {
                 // Compare against what produced the LIVE page. Mirrors
