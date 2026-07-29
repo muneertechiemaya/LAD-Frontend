@@ -256,59 +256,18 @@
     <details class="sect" open>
       <summary>🔑 Connection <span class="chev">›</span></summary>
       <div class="body">
-        <label class="f">Message model <span style="font-weight:400;color:var(--ink-3)">— composes the follow-up</span></label>
-        <select class="t" id="model">
-          <optgroup label="Anthropic">
-            <option value="claude-sonnet-4-5">claude-sonnet-4-5 — prod LinkedIn default</option>
-            <option value="claude-haiku-4-5">claude-haiku-4-5 — fast &amp; economical</option>
-            <option value="claude-sonnet-4-6">claude-sonnet-4-6</option>
-            <option value="claude-opus-4-8">claude-opus-4-8 — no temperature</option>
-          </optgroup>
-          <optgroup label="Google">
-            <option value="gemini-2.5-flash">gemini-2.5-flash — backend chain primary</option>
-            <option value="gemini-2.0-flash">gemini-2.0-flash — chain fallback</option>
-          </optgroup>
-          <optgroup label="DeepSeek">
-            <option value="deepseek-v4-flash">deepseek-v4-flash — lowest cost</option>
-          </optgroup>
-        </select>
-        <div class="hint" id="modelNote"></div>
-
-        <label class="f">API key <span id="keyProvider" style="font-weight:400;color:var(--ink-3)"></span></label>
-        <input class="t" id="apiKey" type="password" placeholder="sk-ant-…" autocomplete="off" spellcheck="false"/>
-        <div class="keystate no" id="keyState"></div>
-        <div class="hint">One key stored per provider, in this browser only (localStorage). Sent only to that provider's own API.</div>
-
-        <label class="f">Gemini key <span style="font-weight:400;color:var(--ink-3)">— for trend grounding</span></label>
-        <input class="t" id="geminiKey" type="password" placeholder="AIza…" autocomplete="off" spellcheck="false"/>
-        <div class="keystate no" id="geminiKeyState"></div>
+        <div class="keystate ok" style="margin-bottom:8px">Models &amp; keys come from your Mr LAD account</div>
         <div class="hint">
-          Google Search grounding is <b>Gemini-exclusive</b>, so the backend researches every
-          <code>industry_trend</code> touch with <code>gemini-2.5-flash</code> + <code>googleSearch</code>
-          <i>regardless</i> of which model writes the message. Set this to reproduce that path.
+          Nothing to configure. Messages generate on <b>DeepSeek</b> (falling back to Gemini, then
+          Claude), and <code>industry_trend</code> research runs on <b>Gemini + Google Search</b>
+          grounding, falling back to Claude without grounding. Exactly the routing a live
+          follow-up uses — credentials stay on the server.
         </div>
+        <div class="hint" id="providerNote" style="margin-top:6px"></div>
 
-        <label class="f">Temperature <span id="tempVal" style="color:var(--ink-3)">0.7</span></label>
-        <div class="rangewrap">
-          <input type="range" id="temp" min="0" max="1" step="0.1" value="0.7"/>
+        <div class="hint" style="margin-top:8px">
+          Generation is billed to your workspace like a live send, and the same spend cap applies.
         </div>
-        <div class="hint">Lower = more consistent. Raise to probe how varied / off-script the agent gets.</div>
-
-        <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;margin:12px 0 0">
-          <input type="checkbox" id="dsThinking"/> DeepSeek reasoning (<code>thinking</code>)
-        </label>
-        <div class="hint">
-          Backend sends <code>thinking:{type:'disabled'}</code> by default and for good reason — on v4 the
-          reasoning tokens eat the whole <code>max_tokens</code> budget and the call returns a
-          <b>200 with empty content</b>. Turn this on only to reproduce that failure.
-        </div>
-
-        <label class="f">Pricing — $ per 1M tokens (estimate)</label>
-        <div class="row">
-          <div><label class="f" style="margin-top:0">input</label><input class="t" id="priceIn" type="number" min="0" step="0.01"/></div>
-          <div><label class="f" style="margin-top:0">output</label><input class="t" id="priceOut" type="number" min="0" step="0.01"/></div>
-        </div>
-        <div class="hint">Auto-filled per model — edit to your actual rate. No prompt caching, so every turn re-bills the full system prompt as input.</div>
       </div>
     </details>
 
@@ -377,21 +336,18 @@
         <input class="t v" data-k="prospect_industry" placeholder="Freight & Logistics"/>
         <div class="hint">Backend resolves this from <code>lead_data.industry</code> / firmographics. Blank = falls back like prod.</div>
 
-        <label class="f" style="margin-top:14px">🔎 industry_trend</label>
-        <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;margin:2px 0 6px">
-          <input type="checkbox" id="liveSearch" checked/> Live web search for the trend
-        </label>
-        <div class="hint">On: runs a real grounded web search (Anthropic <code>web_search</code>) — the simulator's stand-in for the backend's Gemini grounded search. Off: uses the manual trend below.</div>
-        <label class="f">Manual trend override (used when live search is off or finds nothing)</label>
-        <textarea class="t v" data-k="manual_trend" rows="3" placeholder="headline | insight | talking point"></textarea>
-        <div class="hint">Pipe-separated. Leave blank to make the touch fall back to a plain agent follow-up (exactly what prod does when no trend is found).</div>
+        <div class="hint" style="margin-top:14px">
+          🔎 <b>industry_trend</b> researches this industry live on Gemini + Google Search
+          (falling back to Claude without grounding). Nothing to configure.
+        </div>
 
         <label class="f" style="margin-top:14px">📰 company_page_post</label>
         <input class="t v" data-k="company_page_url" placeholder="https://www.linkedin.com/company/your-company"/>
         <div class="hint">Your own company page — appended as the “follow our page” CTA.</div>
-        <label class="f">Recent posts from that page (one per line: <code>url | post text</code>)</label>
-        <textarea class="t v" data-k="company_posts" rows="5" placeholder="https://www.linkedin.com/posts/abc | We just cut visa turnaround to under 6 hours for a client flying out same-day…"></textarea>
-        <div class="hint">Backend pulls these live from Unipile. Leave blank to make the touch fall back to a plain agent follow-up, like prod does when the tenant has no page or no posts.</div>
+        <div class="hint" style="margin-top:6px">
+          Posts are read live from this page through your connected LinkedIn account —
+          nothing to paste.
+        </div>
       </div>
     </details>
 
@@ -770,16 +726,8 @@ literal string <NO_REPLY/>.
     prospect_profile_summary:'COO at Falcon Logistics — Dubai-based freight & supply-chain firm (~250 staff, offices in JAFZA). Recently posted about opening a new Riyadh operation. Travels across the GCC most weeks; team flies regularly to KSA, India and Europe.',
     prospect_metadata:'Lead source: LinkedIn connection request (accepted). Prior touches: none. Mobile/email: not captured. Segment: mid-size logistics.',
     prospect_industry:'Freight & Logistics',
-    manual_trend:'',
-    company_page_url:'https://www.linkedin.com/company/plutotravelsdubai',
-    // REAL posts pulled from the live Pluto Travels page via Unipile — every URL
-    // resolves. Never seed invented permalinks here: a made-up link looks
-    // plausible in the transcript and 404s the moment anyone clicks it.
-    company_posts:[
-      'https://www.linkedin.com/posts/plutotravelsdubai_plutotravels-travelbetter-luxurytravel-activity-7487825473968930816-3-lQ | Why settle for ordinary when you can travel with the best? Experience seamless travel planning, personalised service and unforgettable journeys with Pluto Travels.',
-      'https://www.linkedin.com/posts/plutotravelsdubai_plutotravels-luxurytravel-familytravel-activity-7487497074889129984-9tYU | The Best Trips Begin with Less Stress. From seamless bookings to personalised travel planning, Pluto Travels takes care of every detail so you can focus on the trip.',
-      'https://www.linkedin.com/posts/plutotravelsdubai_plutotravels-visitdubai-dubaitravel-activity-7486793692268318721-w7nq | Planning a trip for your family or friends? Register their visit through Pluto Travels and unlock exclusive rewards worth AED 3,000+ after their arrival.'
-    ].join('\n')
+    company_page_url:'',
+    company_posts:'',
   };
 
   const PRESETS = [
@@ -999,8 +947,7 @@ literal string <NO_REPLY/>.
   const DEFAULT_TOUCHES = [
     { gap: '3 days',  type: 'agent' },
     { gap: '5 days',  type: 'industry_trend' },
-    { gap: '1 week',  type: 'company_page_post',
-      company_page_url: 'https://www.linkedin.com/company/plutotravelsdubai' }
+    { gap: '1 week',  type: 'company_page_post', company_page_url: '' }
   ];
   // Accepts a full page URL or a bare slug — mirrors core/utils/linkedinCompanyPage.
   function companyPageSlug(input){
@@ -1011,49 +958,8 @@ literal string <NO_REPLY/>.
   }
   let touches = LS.get('touches', null) || DEFAULT_TOUCHES.map(t => ({...t}));
 
-  // ---------- Model registry ----------
-  // Mirrors core/constants/aiMessageModels.js (the per-tenant picker stored on
-  // social_linkedin_accounts.metadata.automation.linkedin_ai_model) plus the
-  // provider chains in features/ai-icp-assistant/services/gemini-client.service.js.
-  //
-  //   temp:false  → the model 400s if `temperature` is sent (newer Claude tiers).
-  //   search:true → the provider can do real search grounding. Google Search
-  //                 grounding is Gemini-EXCLUSIVE, which is why the backend
-  //                 researches trends on Gemini no matter who writes the message.
-  //
-  // Prices are $/1M tokens and are ESTIMATES — override them in the two boxes.
-  const MODELS = {
-    'claude-sonnet-4-5': { provider:'anthropic', temp:true,  search:false, price:{in:3,   out:15},
-      note:'The prod default for LinkedIn outbound (DEFAULT_LINKEDIN_MESSAGE_MODEL).' },
-    'claude-haiku-4-5':  { provider:'anthropic', temp:true,  search:false, price:{in:1,   out:5},
-      note:'Registry option "DeepSeek-cheap alternative" on the Anthropic side.' },
-    'claude-sonnet-4-6': { provider:'anthropic', temp:true,  search:false, price:{in:3,   out:15},
-      note:'Not in the tenant picker — useful for comparing a newer tier.' },
-    'claude-opus-4-8':   { provider:'anthropic', temp:false, search:false, price:{in:15,  out:75},
-      note:'Rejects the temperature param with a 400, so the simulator omits it.' },
-    'gemini-2.5-flash':  { provider:'gemini',    temp:true,  search:true,  price:{in:0.30,out:2.50},
-      note:'Primary of the backend Gemini chain (AI_MODEL / GEMINI_MODEL) and the grounded-search model.' },
-    'gemini-2.0-flash':  { provider:'gemini',    temp:true,  search:true,  price:{in:0.10,out:0.40},
-      note:'Second link in the Gemini chain — tried when 2.5-flash fails.' },
-    'deepseek-v4-flash': { provider:'deepseek',  temp:true,  search:false, price:{in:0.28,out:0.42},
-      note:'DEEPSEEK_MODEL default and primary of the DeepSeek→Gemini→Claude chain. The old deepseek-chat id was RETIRED upstream.' }
-  };
-  const DEFAULT_PRICE = { in: 3, out: 15 };
-  const modelInfo = id => MODELS[id] || { provider:'anthropic', temp:true, search:false, price:DEFAULT_PRICE, note:'' };
-  const providerOf = id => modelInfo(id).provider;
-  const PROVIDER_LABEL = { anthropic:'Anthropic', gemini:'Google', deepseek:'DeepSeek' };
-  const KEY_HINT = {
-    anthropic:{ ls:'apikey',    prefix:'sk-ant-', ph:'sk-ant-…', where:"console.anthropic.com → API Keys" },
-    gemini:   { ls:'geminikey', prefix:'AIza',    ph:'AIza…',    where:"aistudio.google.com → API Keys" },
-    deepseek: { ls:'dskey',     prefix:'sk-',     ph:'sk-…',     where:"platform.deepseek.com → API Keys" }
-  };
-  // Per-provider keys, kept separate so switching models never loses one.
-  const keys = {
-    anthropic: LS.get('apikey',''),
-    gemini:    LS.get('geminikey',''),
-    deepseek:  LS.get('dskey','')
-  };
-  const keyFor = p => (keys[p] || '').trim();
+  // Models and credentials live server-side (see SIM_API below) — there is no
+  // client-side registry to keep in sync any more.
 
   // ---------- State ----------
   let convo = [];          // {role, apiContent, kind, text, reason, ts, usage, cost}
@@ -1064,17 +970,7 @@ literal string <NO_REPLY/>.
   // ---------- Init fields ----------
   const promptBox = $('#promptBox');
   promptBox.value = LS.get('prompt', DEFAULT_PROMPT);
-  $('#model').value = LS.get('model','claude-sonnet-4-5');
-  if(!$('#model').value) $('#model').value = 'claude-sonnet-4-5';   // saved id no longer in the list
-  $('#geminiKey').value = keys.gemini;
-  $('#dsThinking').checked = LS.get('dsThinking', false);
-  $('#temp').value = LS.get('temp', 0.7);
-  $('#tempVal').textContent = (+$('#temp').value).toFixed(1);
-  (function initPrice(){
-    const def = modelInfo($('#model').value).price;
-    $('#priceIn').value  = LS.get('priceIn',  def.in);
-    $('#priceOut').value = LS.get('priceOut', def.out);
-  })();
+
 
   const savedVars = Object.assign({}, DEFAULT_VARS, LS.get('vars', {}));
 
@@ -1213,27 +1109,13 @@ literal string <NO_REPLY/>.
   // ---------- Key state ----------
   // The single "API key" box always edits the key for whichever provider the
   // selected model belongs to; the other providers' keys stay stored.
+  // Nothing to configure any more — just surface whether we have a session.
   function refreshKeyState(){
-    const p    = providerOf($('#model').value);
-    const info = modelInfo($('#model').value);
-    const hint = KEY_HINT[p];
-    const k    = keyFor(p);
-
-    $('#keyProvider').textContent = `— ${PROVIDER_LABEL[p]}`;
-    $('#apiKey').placeholder = hint.ph;
-    if($('#apiKey').value !== keys[p]) $('#apiKey').value = keys[p];
-
-    const el=$('#keyState');
-    if(k.startsWith(hint.prefix)){ el.textContent=`${PROVIDER_LABEL[p]} key set ✓ (this browser only)`; el.className='keystate ok'; }
-    else if(k){ el.textContent=`Hmm — ${PROVIDER_LABEL[p]} keys usually start with ${hint.prefix}`; el.className='keystate no'; }
-    else { el.textContent=`No ${PROVIDER_LABEL[p]} key — copy it from ${hint.where}`; el.className='keystate no'; }
-
-    const g=$('#geminiKeyState');
-    if(keys.gemini) { g.textContent='Gemini key set ✓ — industry_trend will use real Google Search grounding'; g.className='keystate ok'; }
-    else { g.textContent='No Gemini key — trend research falls back to Anthropic web_search'; g.className='keystate no'; }
-
-    $('#modelNote').textContent = info.note || '';
-    $('#dsThinking').closest('label').style.opacity = p==='deepseek' ? '1' : '.45';
+    const el = $('#tenantState');
+    if(el && !authToken()){
+      el.textContent = 'Not signed in — open this from Mr LAD to generate';
+      el.className = 'keystate no';
+    }
   }
   function refreshRoleStrip(){
     const v=getVars();
@@ -1369,120 +1251,49 @@ Set "stop_agent": true if there is genuinely nothing useful to say (e.g. you've 
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Provider-dispatching model call (no streaming — research + follow-ups)
-  // Each branch mirrors the request the backend actually builds for that
-  // provider, quirks included.
+  // GENERATION — server-side.
+  //
+  // No API key is ever asked for or held here. Every call goes to the tenant's
+  // own backend, which uses the platform credentials from Secret Manager and
+  // the SAME provider routing as a live follow-up:
+  //   message  → DeepSeek → Gemini → Claude
+  //   research → Gemini + Google Search grounding, Claude (ungrounded) fallback
   // ─────────────────────────────────────────────────────────────────────────
+  const SIM_API = '/api/campaigns/followup-simulator';
+  let lastProvider = null;
+
+  async function apiPost(path, body){
+    const h = { 'Content-Type':'application/json' };
+    const t = authToken();          if(t) h['Authorization'] = `Bearer ${t}`;
+    const id = effectiveTenantId(); if(id) h['X-Tenant-ID'] = id;
+    const r = await fetch(SIM_API + path, {
+      method:'POST', headers:h, credentials:'include', body:JSON.stringify(body||{})
+    });
+    let j = null;
+    try{ j = await r.json(); }catch{ /* non-JSON error body */ }
+    if(!r.ok){
+      const detail = (j && (j.error || j.message)) || `HTTP ${r.status}`;
+      if(r.status === 401) throw new Error('Your session expired — reload Mr LAD and open the simulator again.');
+      throw new Error(detail);
+    }
+    return j || {};
+  }
+
+  function noteProvider(p){
+    lastProvider = p || lastProvider;
+    const el = $('#providerNote');
+    if(el && lastProvider) el.textContent = `Last generated by: ${lastProvider}`;
+  }
+
+  /** One message from a fully-assembled prompt. */
   async function callModel(prompt, opts){
-    opts = opts || {};
-    const model = opts.model || $('#model').value;
-    const info  = modelInfo(model);
-    const key   = keyFor(info.provider);
-    if(!key) throw new Error(`No ${PROVIDER_LABEL[info.provider]} API key set — add it under 🔑 Connection (${KEY_HINT[info.provider].where}).`);
-
-    if(info.provider === 'gemini')   return callGemini(model, prompt, opts, key);
-    if(info.provider === 'deepseek') return callDeepSeek(model, prompt, opts, key);
-    return callAnthropic(model, prompt, opts, key);
+    const j = await apiPost('/message', { prompt, touch_type: (opts && opts.touch_type) || null });
+    noteProvider(j.provider);
+    return { text: String(j.text || '').trim(), provider: j.provider || null };
   }
 
-  async function callAnthropic(model, prompt, opts, key){
-    const body = { model, max_tokens: opts.max_tokens || 1024, messages:[{role:'user', content:prompt}] };
-    // Newer tiers (Opus 4.8 / Sonnet 5) 400 on `temperature` — see
-    // aiMessageModels.js `supportsTemperature`.
-    if(opts.tools) body.tools = opts.tools;
-    else if(modelInfo(model).temp) body.temperature = parseFloat($('#temp').value);
-
-    const resp = await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'content-type':'application/json','x-api-key':key,
-               'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify(body)
-    });
-    if(!resp.ok) throw new Error(apiErr(await resp.text(), resp.status, 'Anthropic'));
-    const j = await resp.json();
-    return {
-      text: (j.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').trim(),
-      usage: { in: j.usage?.input_tokens ?? 0, out: j.usage?.output_tokens ?? 0 },
-      raw: j, model, provider:'anthropic'
-    };
-  }
-
-  // generativelanguage v1beta :generateContent. `tools:[{googleSearch:{}}]` is
-  // the exact grounding call gemini-client.service.generateContentWithSearch makes.
-  async function callGemini(model, prompt, opts, key){
-    const body = {
-      contents:[{ role:'user', parts:[{ text: prompt }] }],
-      generationConfig:{ maxOutputTokens: opts.max_tokens || 1024 }
-    };
-    if(modelInfo(model).temp) body.generationConfig.temperature = parseFloat($('#temp').value);
-    if(opts.search) body.tools = [{ googleSearch:{} }];
-
-    const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`,
-      { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify(body) });
-    if(!resp.ok) throw new Error(apiErr(await resp.text(), resp.status, 'Gemini'));
-    const j = await resp.json();
-
-    const cand = j.candidates?.[0];
-    const text = (cand?.content?.parts||[]).map(p=>p.text||'').join('').trim();
-    // Grounding citations, same shape the backend reads (and the same data: filter).
-    const sources = (cand?.groundingMetadata?.groundingChunks||[])
-      .map(c=>({ title:c.web?.title||'', url:c.web?.uri||'' }))
-      .filter(s=>s.url && !s.url.startsWith('data:'));
-    const um = j.usageMetadata || {};
-
-    if(!text){
-      // Gemini's own thinking-token trap: MAX_TOKENS with nothing emitted.
-      const fr = cand?.finishReason || 'unknown';
-      throw new Error(`Gemini returned empty content (finishReason=${fr}, maxOutputTokens=${opts.max_tokens||1024})`
-        + (fr === 'MAX_TOKENS' ? ' — thinking tokens consumed the budget; raise max tokens.' : ''));
-    }
-    return { text, sources,
-      usage:{ in: um.promptTokenCount||0, out: um.candidatesTokenCount||0 },
-      raw:j, model, provider:'gemini' };
-  }
-
-  // OpenAI-compatible endpoint. `thinking` defaults to disabled exactly as
-  // gemini-client.service._callDeepSeek does — with it enabled, v4 reasoning
-  // eats max_tokens and returns a 200 with empty content.
-  async function callDeepSeek(model, prompt, opts, key){
-    const thinking = !!$('#dsThinking').checked;
-    const maxTokens = opts.max_tokens || 1024;
-    const resp = await fetch('https://api.deepseek.com/chat/completions',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
-      body:JSON.stringify({
-        // opts.chat carries a full system+history array (live-DM path); the
-        // follow-up path sends the single assembled prompt as one user turn.
-        model, messages: opts.chat || [{role:'user', content:prompt}],
-        max_tokens:maxTokens,
-        temperature: parseFloat($('#temp').value),
-        thinking:{ type: thinking ? 'enabled' : 'disabled' }
-      })
-    });
-    if(!resp.ok) throw new Error(apiErr(await resp.text(), resp.status, 'DeepSeek'));
-    const j = await resp.json();
-    const choice = j.choices?.[0];
-    const text = (choice?.message?.content || '').trim();
-    const u = j.usage || {};
-
-    // A 200 carrying empty content is a REAL failure — the backend throws here
-    // so the chain falls through to Gemini/Claude rather than "succeeding" with ''.
-    if(!text){
-      const rt = u.completion_tokens_details?.reasoning_tokens || 0;
-      throw new Error(`DeepSeek returned empty content (finish_reason=${choice?.finish_reason}, max_tokens=${maxTokens}, reasoning_tokens=${rt})`
-        + (rt >= maxTokens ? ' — reasoning consumed the whole budget; turn DeepSeek reasoning off or raise max tokens.' : ''));
-    }
-    return { text, usage:{ in: u.prompt_tokens||0, out: u.completion_tokens||0 },
-      raw:j, model, provider:'deepseek' };
-  }
-
-  function bill(usage){
-    if(!usage) return 0;
-    const c = computeCost(usage);
-    totalIn += usage.in||0; totalOut += usage.out||0; totalCost += c;
-    updateTokenBadge();
-    return c;
-  }
+  // Kept as a no-op so call sites read unchanged; the backend meters and bills.
+  function bill(){ return 0; }
 
   // ---------- Touch 'industry_trend': grounded trend research ----------
   // Backend uses Gemini's grounded search; the simulator uses Anthropic's
@@ -1492,73 +1303,24 @@ Set "stop_agent": true if there is genuinely nothing useful to say (e.g. you've 
     const v = getVars();
     if(!industry) return { ok:false, why:'no industry set' };
 
-    if(!$('#liveSearch').checked){
-      const manual = (v.manual_trend||'').trim();
-      if(!manual) return { ok:false, why:'live search off and no manual trend' };
-      const [headline, insight, talking_point] = manual.split('|').map(s=>(s||'').trim());
-      return { ok:true, live:false, via:'manual override (no search)',
-        trend:{ headline: headline||'', insight: insight||'', talking_point: talking_point||'', source_url:null } };
-    }
-
-    const who = [v.prospect_role, v.prospect_company && `at ${v.prospect_company}`].filter(Boolean).join(' ');
-    const prompt = `Using CURRENT web results, identify ONE recent, noteworthy trend, development, or news item in the "${industry}" industry that a salesperson could reference to start a genuine conversation${who ? ` with a ${who}` : ''}. Prefer something from the last few months.
-
-Return a JSON object:
-{
-  "headline": "Short label for the trend (<= 8 words)",
-  "insight": "2-3 sentences explaining the trend, based on real search results",
-  "talking_point": "One natural, non-salesy sentence connecting this trend to the prospect's world (no greeting, no signature)",
-  "source_url": "The single most relevant source URL, or null",
-  "confidence": 0.85
-}
-
-Rules:
-- Base everything on real, recent web search results — NOT prior knowledge.
-- If you cannot find a real recent trend for this industry, set confidence <= 0.3 and headline "".
-- Keep talking_point conversational and specific; it will be woven into a LinkedIn follow-up message.
-- Return ONLY the JSON object. No preamble, no code fences.`;
-
-    // WHICH provider researches: the backend calls
-    // geminiClient.generateContentWithSearch() unconditionally, because Google
-    // Search grounding is Gemini-exclusive — the tenant's message model has no
-    // say in it. So prefer Gemini whenever its key is present, whatever is
-    // selected above; fall back to Anthropic's web_search only so the harness
-    // still works for someone who has no Gemini key.
-    let r, via, sources = [];
+    // The BACKEND decides who researches: Gemini + Google Search grounding
+    // (grounding is Gemini-exclusive), falling back to Claude WITHOUT grounding.
+    // It reports which ran, so the card can say whether the trend is a live
+    // search or model knowledge — the fallback is never passed off as grounded.
+    let j;
     try{
-      if(keyFor('gemini')){
-        via = 'gemini-2.5-flash + googleSearch';
-        r = await callGemini('gemini-2.5-flash', prompt, { max_tokens:2048, search:true }, keyFor('gemini'));
-        sources = r.sources || [];
-      }else if(keyFor('anthropic')){
-        // web_search_20260209 needs Opus 4.6+/Sonnet 4.6+; older tiers take the 2025 tool.
-        const m = $('#model').value;
-        const toolType = /haiku|4-5/i.test(m) ? 'web_search_20250305' : 'web_search_20260209';
-        via = `${m} + ${toolType}`;
-        r = await callAnthropic(m, prompt, { max_tokens:2048, tools:[{type:toolType, name:'web_search', max_uses:4}] }, keyFor('anthropic'));
-        for(const blk of (r.raw.content||[])){
-          if(blk.type==='web_search_tool_result' && Array.isArray(blk.content))
-            sources = blk.content.filter(c=>c.url).map(c=>({title:c.title||'', url:c.url}));
-        }
-      }else{
-        return { ok:false, why:'live search needs a Gemini key (the backend grounds trends on Gemini) or an Anthropic key' };
-      }
+      j = await apiPost('/research-trend', {
+        industry,
+        role: v.prospect_role || null,
+        company: v.prospect_company || null,
+      });
     }catch(err){
-      return { ok:false, why:'search failed — '+err.message };
+      return { ok:false, why:'research failed — '+err.message };
     }
-    bill(r.usage);
-
-    const m2 = r.text.match(/\{[\s\S]*\}/);
-    if(!m2) return { ok:false, why:'search returned no parsable JSON' };
-    let parsed; try{ parsed = JSON.parse(m2[0]); }catch{ return { ok:false, why:'search JSON invalid' }; }
-
-    const grounded = !!(parsed.headline && String(parsed.headline).trim())
-                  && (parsed.confidence == null || Number(parsed.confidence) > 0.3);
-    if(!grounded) return { ok:false, why:'no confident recent trend found (confidence ≤ 0.3)' };
-
-    // Prefer the model's cited URL, else the first grounding citation.
-    const src = parsed.source_url || sources[0]?.url || null;
-    return { ok:true, live:true, via, sources, trend:{ ...parsed, source_url: src } };
+    if(!j.ok || !j.trend) return { ok:false, why: j.why || 'no confident recent trend found' };
+    noteProvider(j.via);
+    return { ok:true, live:!!j.grounded, via:j.via, sources:[],
+             trend:{ ...j.trend, source_url: j.trend.source_url || null } };
   }
 
   // ---------- Touch 'company_page_post': pick the most industry-relevant post ----------
@@ -1576,27 +1338,22 @@ Rules:
     return isPermalink ? `${u.origin}${path}` : null;
   }
 
-  function parseCompanyPosts(){
-    const out = [];
-    (getVars().company_posts||'').split('\n').map(l=>l.trim()).filter(Boolean).forEach(line=>{
-      const i = line.indexOf('|');
-      if(i === -1) return;
-      const url = realPostUrl(line.slice(0,i).trim());
-      const text = line.slice(i+1).trim();
-      // Drop anything without a genuine permalink rather than letting it through
-      // — an unshareable "post" must look like no post at all to the caller.
-      if(url && text) out.push({ post_url:url, text });
-    });
-    return out;
-  }
-
   async function pickCompanyPost(pageUrl, industry){
     const slug = companyPageSlug(pageUrl);
     if(!slug) return { ok:false, why:'no company page URL set on this touch' };
     const canonical = `https://www.linkedin.com/company/${slug}`;
-    // Stand-in for the live Unipile fetch: whatever the page would return.
-    const posts = parseCompanyPosts();
-    if(!posts.length) return { ok:false, why:`no posts available from ${canonical}`, page_url:canonical };
+    // Real posts, pulled server-side from the tenant's connected LinkedIn
+    // account — the same Unipile path a live touch uses. Permalinks are
+    // validated there too, so anything unshareable never reaches us.
+    let posts = [];
+    try{
+      const j = await apiPost('/company-posts', { page_url: canonical });
+      if(!j.ok) return { ok:false, why: j.why || `no posts available from ${canonical}`, page_url: j.page_url || canonical };
+      posts = (j.posts || []).map(x => ({ post_url:x.post_url, text:x.text }));
+    }catch(err){
+      return { ok:false, why:'could not read your company page — '+err.message, page_url:canonical };
+    }
+    if(!posts.length) return { ok:false, why:`no post on ${canonical} has a usable permalink`, page_url:canonical };
 
     if(!industry){
       const p = posts[0];
@@ -1641,8 +1398,7 @@ Posts:\n${numbered}`;
   function esc(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
   function hhmm(ts){ try{return new Date(ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});}catch{return '';} }
   function initials(){ const n=(getVars().prospect_first_name||'You').trim(); return (n[0]||'Y').toUpperCase(); }
-  function priceNow(){ return { in: parseFloat($('#priceIn').value)||0, out: parseFloat($('#priceOut').value)||0 }; }
-  function computeCost(usage){ if(!usage) return 0; const p=priceNow(); return (usage.in||0)/1e6*p.in + (usage.out||0)/1e6*p.out; }
+
   function fmtCost(c){ return '$'+(c||0).toFixed(4); }
 
   function render(){
@@ -1852,7 +1608,7 @@ Posts:\n${numbered}`;
     };
   }
 
-  function updateTokenBadge(){ $('#tokenBadge').textContent='tokens: '+totalIn.toLocaleString()+' in / '+totalOut.toLocaleString()+' out · '+fmtCost(totalCost)+' total'; }
+  function updateTokenBadge(){ $('#tokenBadge').textContent = lastProvider ? ('via '+lastProvider) : 'server-side generation'; }
 
   function showError(msg){ const e=$('#errbar'); e.textContent='⚠ '+msg; e.classList.add('show'); }
   function clearError(){ $('#errbar').classList.remove('show'); }
@@ -1866,75 +1622,22 @@ Posts:\n${numbered}`;
     // turns — they must never reach the API as messages.
     const messages=convo.filter(m=>m.role && m.apiContent).map(m=>({role:m.role, content:m.apiContent}));
     const live=addLiveBubble();
-    let acc=''; let uIn=null, uOut=null;
-    const model=$('#model').value, info=modelInfo(model);
     try{
-      // Only Anthropic streams here; Gemini/DeepSeek resolve in one shot and
-      // render when complete.
-      if(info.provider !== 'anthropic'){
-        const key=keyFor(info.provider);
-        if(!key) throw new Error(`No ${PROVIDER_LABEL[info.provider]} API key set — add it under 🔑 Connection.`);
-        let r;
-        if(info.provider === 'gemini'){
-          const body={
-            systemInstruction:{ parts:[{text:system}] },
-            contents: messages.map(m=>({ role: m.role==='assistant'?'model':'user', parts:[{text:m.content}] })),
-            generationConfig:{ maxOutputTokens:1024 }
-          };
-          if(info.temp) body.generationConfig.temperature=parseFloat($('#temp').value);
-          const resp=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`,
-            {method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
-          if(!resp.ok) throw new Error(apiErr(await resp.text(), resp.status, 'Gemini'));
-          const j=await resp.json(), c=j.candidates?.[0], um=j.usageMetadata||{};
-          r={ text:(c?.content?.parts||[]).map(p=>p.text||'').join('').trim(),
-              usage:{in:um.promptTokenCount||0,out:um.candidatesTokenCount||0} };
-          if(!r.text) throw new Error(`Gemini returned empty content (finishReason=${c?.finishReason||'unknown'})`);
-        }else{
-          r = await callDeepSeek(model, '', { max_tokens:1024, chat:[{role:'system',content:system}, ...messages] }, key);
-        }
-        live.remove();
-        finalizeSapna(r.text, {in:r.usage.in, out:r.usage.out});
-        return;
-      }
+      // Inbound replies run through the SAME server-side routing. No streaming:
+      // the backend resolves the provider chain and returns the finished text.
+      const label = leadIdentity().first || 'Lead';
+      const turns = convo.filter(m => m.kind==='sapna' || m.kind==='prospect')
+        .map(m => (m.kind==='sapna' ? 'You: ' : `${label}: `) + m.text).join('\n');
+      const prompt = [
+        system,
+        '==================',
+        `CONVERSATION SO FAR\n${turns || '(no prior messages)'}`,
+        'Write ONLY the next message to send to the lead. No preamble, no labels, no quotes.',
+      ].join('\n\n');
 
-      const resp=await fetch('https://api.anthropic.com/v1/messages',{
-        method:'POST',
-        headers:{
-          'content-type':'application/json',
-          'x-api-key':keyFor('anthropic'),
-          'anthropic-version':'2023-06-01',
-          'anthropic-dangerous-direct-browser-access':'true'
-        },
-        body:JSON.stringify(Object.assign({
-          model, max_tokens:1024, system, messages, stream:true
-        }, info.temp ? { temperature:parseFloat($('#temp').value) } : {}))
-      });
-      if(!resp.ok || !resp.body){
-        const txt=await resp.text();
-        throw new Error(apiErr(txt, resp.status, 'Anthropic'));
-      }
-      const reader=resp.body.getReader(); const dec=new TextDecoder(); let buf='';
-      while(true){
-        const {done,value}=await reader.read(); if(done) break;
-        buf+=dec.decode(value,{stream:true});
-        let i;
-        while((i=buf.indexOf('\n\n'))>=0){
-          const chunk=buf.slice(0,i); buf=buf.slice(i+2);
-          for(const line of chunk.split('\n')){
-            const t=line.trim();
-            if(!t.startsWith('data:')) continue;
-            const payload=t.slice(5).trim();
-            if(!payload || payload==='[DONE]') continue;
-            let j; try{ j=JSON.parse(payload); }catch{ continue; }
-            if(j.type==='message_start'){ uIn=j.message&&j.message.usage?j.message.usage.input_tokens:uIn; }
-            else if(j.type==='content_block_delta' && j.delta && j.delta.type==='text_delta'){ acc+=j.delta.text; live.setText(acc); }
-            else if(j.type==='message_delta'){ if(j.usage&&j.usage.output_tokens!=null) uOut=j.usage.output_tokens; }
-            else if(j.type==='error'){ throw new Error((j.error&&j.error.message)||'stream error'); }
-          }
-        }
-      }
+      const r = await callModel(prompt, {});
       live.remove();
-      finalizeSapna(acc, {in:uIn, out:uOut});
+      finalizeSapna(r.text, null);
     }catch(err){
       live.remove();
       showError(err.message || String(err));
@@ -1967,18 +1670,15 @@ Posts:\n${numbered}`;
     }else{
       entry={role:'assistant', apiContent:(raw||'').trim()||' ', kind:'sapna', text:clean||'(empty response)', reason:null, ts:Date.now(), usage};
     }
-    entry.cost = computeCost(usage);
-    if(usage){ totalIn += usage.in||0; totalOut += usage.out||0; }
-    totalCost += entry.cost;
     convo.push(entry); render(); updateTokenBadge();
   }
 
   // ---------- Conversation control ----------
+  // A session is all that's needed now — generation happens server-side.
   function requireKey(){
-    const p=providerOf($('#model').value);
-    if(!keyFor(p)){
-      toast(`Paste your ${PROVIDER_LABEL[p]} API key first`); $('#apiKey').focus();
-      const s=$('#sidebar'); if(window.innerWidth<=880) s.classList.add('open');
+    if(!authToken()){
+      toast('Open the simulator from Mr LAD so it can generate for you');
+      const sb=$('#sidebar'); if(window.innerWidth<=880) sb.classList.add('open');
       return false;
     }
     return true;
@@ -2146,31 +1846,7 @@ Invite them (lightly) to give it a read and to follow our page for more.`;
 
   $('#addTouchBtn').onclick=()=>{ touches.push({gap:'1 week', type:'agent'}); saveTouches(); renderTouches(); render(); };
   $('#resetTouchBtn').onclick=()=>{ touches=DEFAULT_TOUCHES.map(t=>({...t})); saveTouches(); renderTouches(); render(); toast('Touch sequence reset'); };
-  $('#liveSearch').checked = LS.get('liveSearch', true);
-  $('#liveSearch').addEventListener('change', ()=>LS.set('liveSearch', $('#liveSearch').checked));
 
-  $('#apiKey').addEventListener('input', ()=>{
-    const p=providerOf($('#model').value);
-    keys[p]=$('#apiKey').value.trim();
-    LS.set(KEY_HINT[p].ls, keys[p]);
-    refreshKeyState();
-  });
-  $('#geminiKey').addEventListener('input', ()=>{
-    keys.gemini=$('#geminiKey').value.trim();
-    LS.set('geminikey', keys.gemini);
-    refreshKeyState();
-  });
-  $('#dsThinking').addEventListener('change', ()=>LS.set('dsThinking', $('#dsThinking').checked));
-  $('#model').addEventListener('change', ()=>{
-    LS.set('model',$('#model').value);
-    const d=modelInfo($('#model').value).price;
-    $('#priceIn').value=d.in; $('#priceOut').value=d.out;
-    LS.set('priceIn',d.in); LS.set('priceOut',d.out);
-    refreshKeyState();   // swap the key box to the new provider
-  });
-  $('#priceIn').addEventListener('input', ()=>LS.set('priceIn', parseFloat($('#priceIn').value)||0));
-  $('#priceOut').addEventListener('input', ()=>LS.set('priceOut', parseFloat($('#priceOut').value)||0));
-  $('#temp').addEventListener('input', ()=>{ $('#tempVal').textContent=(+$('#temp').value).toFixed(1); LS.set('temp',parseFloat($('#temp').value)); });
   // Mark the prompt as hand-edited so a reload stops overwriting it with the
   // tenant's live prompt — the box is for iterating on wording.
   promptBox.addEventListener('input', ()=>{ LS.set('prompt', promptBox.value); LS.set('promptEdited', true); });
