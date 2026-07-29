@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>LinkedIn DM Simulator — Sapna · Pluto Travels</title>
+<title>Follow-up Sequence Simulator — Mr LAD</title>
 <style>
   :root{
     --li-blue:#0a66c2; --li-blue-dark:#004182; --li-blue-soft:#e7f3ff;
@@ -313,8 +313,20 @@
     </details>
 
     <details class="sect" open>
+      <summary>🏢 Your agent &amp; ICP <span class="chev">›</span></summary>
+      <div class="body">
+        <div id="tenantState" class="keystate no">Loading your LinkedIn agent and ICP…</div>
+        <div class="hint" id="tenantDetail" style="margin-top:6px"></div>
+        <div class="btnbar">
+          <button class="btn" id="reloadTenantBtn">↻ Reload from my account</button>
+        </div>
+      </div>
+    </details>
+
+    <details class="sect" open>
       <summary>👤 Prospect (you roleplay this) <span class="chev">›</span></summary>
       <div class="body">
+        <div class="hint" id="presetSource" style="margin-bottom:6px"></div>
         <div class="presets" id="presets"></div>
         <label class="f">First name</label>
         <input class="t v" data-k="prospect_first_name" placeholder="Rahul"/>
@@ -400,18 +412,18 @@
   <!-- ===== Chat ===== -->
   <main id="chatPane">
     <div id="chatHead">
-      <div class="avatar sapna">SA<span class="dot"></span></div>
+      <div class="avatar sapna" id="agentAva">AI<span class="dot"></span></div>
       <div>
-        <div class="nm">Sapna Adasani <span class="deg">· 1st</span></div>
-        <div class="hl">Managing Director · Pluto Travels</div>
+        <div class="nm"><span id="agentName">Your LinkedIn agent</span> <span class="deg">· 1st</span></div>
+        <div class="hl" id="agentTitle">loading your agent…</div>
       </div>
       <div class="spacer"></div>
-      <button class="iconbtn" id="followupBtn" title="No reply from the lead? Send Sapna's follow-up (tests STATE 1b)" disabled>⏳ Follow-up</button>
-      <button class="iconbtn" id="regenBtn" title="Regenerate Sapna's last reply">↻ Regenerate</button>
+      <button class="iconbtn" id="followupBtn" title="No reply from the lead? Fire the next scheduled touch" disabled>⏳ Follow-up</button>
+      <button class="iconbtn" id="regenBtn" title="Regenerate the agent's last reply">↻ Regenerate</button>
       <button class="iconbtn" id="restartBtn">⟲ Restart</button>
     </div>
 
-    <div id="roleStrip">💬 You're messaging as the prospect — <b id="roleWho">Rahul · COO · Falcon Logistics</b>. Sapna (your AI agent) replies.</div>
+    <div id="roleStrip">💬 You're messaging as the prospect — <b id="roleWho">Rahul · COO · Falcon Logistics</b>. <span id="agentWho">your agent</span> replies.</div>
 
     <div id="msgs"></div>
 
@@ -794,16 +806,185 @@ literal string <NO_REPLY/>.
       prospect_metadata:'Lead source: csv_import. Prior touches: none. Industry: unknown.'}}
   ];
 
+  // Objections worth testing on ANY agent — deliberately industry-neutral so
+  // they stay useful whoever the tenant is.
   const CHIPS = [
-    "We already have a travel agency we're happy with.",
-    "Travel is handled by my EA, not me.",
+    "We already work with someone for this.",
+    "That's handled by someone else on my team.",
     "Not interested, thanks.",
     "Are you a bot?",
     "Just send me some info.",
-    "How much is the rebate exactly?",
+    "How much does it cost?",
     "Sounds good — let's set up a call.",
     "Please remove me from your list."
   ];
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // TENANT CONTEXT
+  //
+  // The point of this harness is to test YOUR agent, not a demo persona — so
+  // the system prompt is the tenant's live LinkedIn prompt and the roleplay
+  // presets are built from the tenant's ICP. Served same-origin as the app, so
+  // the app's own auth (token cookie → localStorage fallback) and X-Tenant-ID
+  // work unchanged. See web/src/lib/fetch-with-tenant.ts.
+  //
+  // Everything degrades: opened standalone or signed out, the built-in demo
+  // persona and presets stand in so the harness still runs.
+  // ─────────────────────────────────────────────────────────────────────────
+  let tenant = { profile:null, prompt:null, personaName:null, personaTitle:null, company:null };
+
+  function authToken(){
+    for(const c of (document.cookie ? document.cookie.split(';') : [])){
+      const [n,...v] = c.trim().split('=');
+      if(n && n.trim()==='token') return decodeURIComponent(v.join('=') || '');
+    }
+    return localStorage.getItem('token') || localStorage.getItem('auth_token') || null;
+  }
+  function effectiveTenantId(){
+    const sel = localStorage.getItem('selectedTenantId');
+    if(sel && sel !== 'default') return sel;
+    try{ const u = JSON.parse(localStorage.getItem('user')||'{}'); return u.tenantId || u.organizationId || null; }
+    catch{ return null; }
+  }
+  async function apiGet(path){
+    const h = { 'Content-Type':'application/json' };
+    const t = authToken();       if(t) h['Authorization'] = `Bearer ${t}`;
+    const id = effectiveTenantId(); if(id) h['X-Tenant-ID'] = id;
+    const r = await fetch(path, { headers:h, credentials:'include' });
+    if(!r.ok) throw new Error(`${path} → HTTP ${r.status}`);
+    return r.json();
+  }
+
+  // Split a comma / newline / semicolon list from the ICP fields.
+  const listOf = s => String(s||'').split(/[,\n;]+/).map(x=>x.trim()).filter(Boolean);
+
+  /**
+   * Build roleplay presets from the ICP instead of a fixed cast: one per job
+   * title the tenant actually targets, carrying their locations and pain points
+   * so the agent is tested against the people it will really message.
+   */
+  function presetsFromIcp(p){
+    const titles = listOf(p.icpJobTitles).slice(0, 6);
+    if(!titles.length) return null;
+    const locations = listOf(p.icpLocations || p.geographicFocus);
+    const pains     = listOf(p.icpPainPoints);
+    const size      = String(p.icpCompanySize || '').trim();
+    const segment   = String(p.targetCustomers || p.companyDescription || '').trim();
+    const NAMES = ['Rahul','Aisha','Omar','Maria','Daniel','Priya'];
+
+    return titles.map((title, i) => {
+      const loc  = locations[i % Math.max(locations.length,1)] || '';
+      const pain = pains[i % Math.max(pains.length,1)] || '';
+      const company = `${(segment.split(/\s+/)[0] || 'Target').replace(/[^A-Za-z0-9]/g,'')} Co.`;
+      return {
+        name: `${title}${loc ? ' · '+loc : ''}`,
+        sub: pain ? `pain: ${pain.slice(0,52)}` : 'from your ICP',
+        v: {
+          prospect_first_name: NAMES[i % NAMES.length],
+          prospect_role: title,
+          prospect_company: company,
+          prospect_industry: p.industry || '',
+          prospect_profile_summary: [
+            `${title}${company ? ' at '+company : ''}${loc ? ', based in '+loc : ''}.`,
+            size ? `Company size: ${size}.` : '',
+            segment ? `Segment: ${segment}.` : '',
+            pain ? `Known pain: ${pain}.` : '',
+          ].filter(Boolean).join(' '),
+          prospect_metadata: 'Lead source: LinkedIn connection request (accepted). Prior touches: none. Built from your saved ICP.',
+        }
+      };
+    });
+  }
+
+  async function loadTenantContext(){
+    const st = $('#tenantState'), dt = $('#tenantDetail');
+    if(!authToken()){
+      st.textContent = 'Not signed in — using the built-in demo agent';
+      st.className = 'keystate no';
+      dt.textContent = 'Open this from Mr LAD (the 🧪 link on a follow-up step) and it will load your own LinkedIn agent and ICP automatically.';
+      return;
+    }
+    st.textContent = 'Loading your LinkedIn agent and ICP…'; st.className = 'keystate no';
+    const found = [];
+    // Business profile → persona, ICP, booking link.
+    try{
+      const j = await apiGet('/api/ai-playground');
+      const p = j.profile || null;
+      if(p){
+        tenant.profile     = p;
+        tenant.personaName = p.personaName || null;
+        tenant.personaTitle= p.personaTitle || null;
+        tenant.company     = p.companyName || null;
+        found.push('business profile');
+        // Tenant data replaces the bundled DEMO values, but never something the
+        // tester typed — otherwise the Pluto demo content survives and the
+        // harness quietly tests the wrong company.
+        if(p.bookingLink) setVarIfDemo('calendar_link', p.bookingLink);
+        if(p.industry)    setVarIfDemo('prospect_industry', p.industry);
+        setVarIfDemo('instagram_link', '');
+        // The demo company page + its posts belong to the demo tenant. Clear
+        // them so a company-page touch asks for the tenant's own page, exactly
+        // as the real follow-up settings do.
+        setVarIfDemo('company_page_url', '');
+        setVarIfDemo('company_posts', '');
+        touches.forEach((t,i)=>{
+          if(t.company_page_url && t.company_page_url === DEFAULT_TOUCHES.find(d=>d.type===t.type)?.company_page_url){
+            touches[i] = { ...t, company_page_url: '' };
+          }
+        });
+        saveTouches(); renderTouches();
+        const built = presetsFromIcp(p);
+        if(built){
+          PRESETS.length = 0; PRESETS.push(...built);
+          renderPresets('Built from your ICP — the roles you actually target');
+          found.push(`${built.length} ICP personas`);
+          // Load the first ICP persona automatically when the prospect fields
+          // are still the bundled demo lead — otherwise the header would keep
+          // roleplaying a stranger from another industry.
+          const v = getVars();
+          if(v.prospect_company === DEFAULT_VARS.prospect_company
+             && v.prospect_role === DEFAULT_VARS.prospect_role){
+            Object.entries(built[0].v).forEach(([k, val]) => setVar(k, val));
+            refreshRoleStrip();
+          }
+        }
+      }
+    }catch(err){ /* reported below */ }
+    // Active LinkedIn channel prompt → the system prompt under test.
+    try{
+      const j = await apiGet('/api/whatsapp-conversations/prompts');
+      const list = j.prompts ?? j.data ?? [];
+      // Same resolution as LinkedInAgentService: the active linkedin prompt,
+      // excluding template-authoring rows (*_template).
+      const li = (Array.isArray(list) ? list : [])
+        .filter(x => String(x.channel||'').toLowerCase() === 'linkedin')
+        .filter(x => !/_template$/i.test(String(x.name||'')))
+        .sort((a,b) => (b.is_active?1:0)-(a.is_active?1:0));
+      if(li[0] && String(li[0].prompt_text||'').trim()){
+        tenant.prompt = li[0].prompt_text;
+        // Don't clobber edits made in this browser — the box is for iterating.
+        if(!LS.get('promptEdited', false)){
+          promptBox.value = tenant.prompt;
+          LS.set('prompt', tenant.prompt);
+        }
+        found.push(`prompt "${li[0].name}"`);
+      }
+    }catch(err){ /* reported below */ }
+
+    if(found.length){
+      st.textContent = 'Loaded ✓ ' + found.join(' · ');
+      st.className = 'keystate ok';
+      dt.innerHTML = LS.get('promptEdited', false)
+        ? 'Your edited prompt is kept — hit <b>↺ Reset</b> in the prompt section to pull your live one back.'
+        : 'Testing your live LinkedIn agent prompt against your own ICP.';
+    }else{
+      st.textContent = 'Could not read your account — using the built-in demo agent';
+      st.className = 'keystate no';
+      dt.textContent = 'Signed in, but the profile and prompt calls did not return data. The harness still runs on the demo persona.';
+    }
+    refreshAgentIdentity();
+    render();   // repaint the empty state so its avatar/copy match the real agent
+  }
 
   // ---------- Follow-up touch types (mirrors linkedin_auto_followups.touch_type) ----------
   // 'agent' is the plain generative follow-up (touch_type NULL in the DB).
@@ -925,18 +1106,52 @@ literal string <NO_REPLY/>.
   }
   function saveVars(){ LS.set('vars', getVars()); refreshRoleStrip(); }
 
+  // ---------- Agent identity (from the tenant profile; demo persona as fallback) ----------
+  function agentName(){
+    return tenant.personaName || (tenant.company ? `${tenant.company} agent` : 'Your LinkedIn agent');
+  }
+  function agentInitials(){
+    const n = (tenant.personaName || tenant.company || 'AI').trim().split(/\s+/);
+    return ((n[0]?.[0] || 'A') + (n[1]?.[0] || '')).toUpperCase();
+  }
+  function refreshAgentIdentity(){
+    const nm = $('#agentName'), ti = $('#agentTitle'), av = $('#agentAva'), who = $('#agentWho');
+    if(nm) nm.textContent = agentName();
+    if(who) who.textContent = agentName();
+    if(av) av.childNodes[0].nodeValue = agentInitials();
+    if(ti) ti.textContent = [tenant.personaTitle, tenant.company].filter(Boolean).join(' · ')
+      || (tenant.prompt ? 'your live LinkedIn agent' : 'demo agent — sign in to load yours');
+    document.title = `Follow-up Simulator — ${agentName()}`;
+  }
+
   // ---------- Presets ----------
-  const presetWrap = $('#presets');
-  PRESETS.forEach(p=>{
-    const b=document.createElement('button'); b.className='preset';
-    b.innerHTML='<b>'+esc(p.name)+'</b><span>'+esc(p.sub)+'</span>';
-    b.onclick=()=>{
-      const v=Object.assign({}, DEFAULT_VARS, p.v);
-      document.querySelectorAll('.v').forEach(el=>{ if(v[el.dataset.k]!==undefined) el.value=v[el.dataset.k]; });
-      saveVars(); toast('Scenario loaded — hit ⟲ Restart to begin');
-    };
-    presetWrap.appendChild(b);
-  });
+  function setVar(k, val){
+    const el = document.querySelector(`.v[data-k="${k}"]`);
+    if(el){ el.value = val; saveVars(); }
+  }
+  /** Overwrite only when the field is still empty or still holds the demo default. */
+  function setVarIfDemo(k, val){
+    const el = document.querySelector(`.v[data-k="${k}"]`);
+    if(!el) return;
+    const cur = (el.value || '').trim();
+    if(cur === '' || cur === String(DEFAULT_VARS[k] || '').trim()) { el.value = val; saveVars(); }
+  }
+  function renderPresets(sourceLabel){
+    const presetWrap = $('#presets');
+    presetWrap.innerHTML = '';
+    const src = $('#presetSource');
+    if(src) src.textContent = sourceLabel || 'Sample personas — sign in to build these from your ICP';
+    PRESETS.forEach(p=>{
+      const b=document.createElement('button'); b.className='preset';
+      b.innerHTML='<b>'+esc(p.name)+'</b><span>'+esc(p.sub)+'</span>';
+      b.onclick=()=>{
+        const v=Object.assign({}, DEFAULT_VARS, p.v);
+        document.querySelectorAll('.v').forEach(el=>{ if(v[el.dataset.k]!==undefined) el.value=v[el.dataset.k]; });
+        saveVars(); toast('Scenario loaded — hit ⟲ Restart to begin');
+      };
+      presetWrap.appendChild(b);
+    });
+  }
 
   // ---------- Chips ----------
   const chipWrap=$('#chips');
@@ -1434,11 +1649,11 @@ Posts:\n${numbered}`;
     const box=$('#msgs'); box.innerHTML=''; refreshFollowupBtn();
     if(convo.length===0){
       const e=document.createElement('div'); e.className='empty';
-      e.innerHTML='<div class="avatar sapna" style="margin:0 auto;width:56px;height:56px">SA</div>'
+      e.innerHTML='<div class="avatar sapna" style="margin:0 auto;width:56px;height:56px">'+esc(agentInitials())+'</div>'
         +'<h2>Test the connection-accepted flow</h2>'
-        +'<p>Hit <b>⟲ Restart</b> to have Sapna send her STATE-1 opener, then reply as the prospect. '
+        +'<p>Hit <b>⟲ Restart</b> to send the connection-accepted opener, then reply as the prospect. '
         +'Or just type below to have the <i>prospect</i> open the thread.</p>'
-        +'<button class="btn primary" id="startBtn">▶ Start — Sapna sends the opener</button>';
+        +'<button class="btn primary" id="startBtn">▶ Start — send the opener</button>';
       box.appendChild(e);
       e.querySelector('#startBtn').onclick=()=>startConversation(true);
       return;
@@ -1450,10 +1665,10 @@ Posts:\n${numbered}`;
       if(m.kind==='grounding'){ box.appendChild(groundingCard(m)); return; }
       const isYou = m.kind==='prospect';
       const t=document.createElement('div'); t.className='turn '+(isYou?'you':'sapna');
-      if(!isYou){ const a=document.createElement('div'); a.className='ava sapna'; a.textContent='SA'; t.appendChild(a); }
+      if(!isYou){ const a=document.createElement('div'); a.className='ava sapna'; a.textContent=agentInitials(); t.appendChild(a); }
       else { const a=document.createElement('div'); a.className='ava'; a.style.background='linear-gradient(135deg,#0a66c2,#378fe9)'; a.textContent=initials(); t.appendChild(a); }
       const stack=document.createElement('div'); stack.className='stack';
-      const who=document.createElement('div'); who.className='who'; who.textContent=isYou?'You (prospect)':'Sapna Adasani';
+      const who=document.createElement('div'); who.className='who'; who.textContent=isYou?'You (prospect)':agentName();
       stack.appendChild(who);
 
       if(m.kind==='noreply'){
@@ -1625,9 +1840,9 @@ Posts:\n${numbered}`;
   function addLiveBubble(){
     const box=$('#msgs');
     const t=document.createElement('div'); t.className='turn sapna typing';
-    const a=document.createElement('div'); a.className='ava sapna'; a.textContent='SA'; t.appendChild(a);
+    const a=document.createElement('div'); a.className='ava sapna'; a.textContent=agentInitials(); t.appendChild(a);
     const stack=document.createElement('div'); stack.className='stack';
-    const who=document.createElement('div'); who.className='who'; who.textContent='Sapna Adasani'; stack.appendChild(who);
+    const who=document.createElement('div'); who.className='who'; who.textContent=agentName(); stack.appendChild(who);
     const b=document.createElement('div'); b.className='bubble';
     b.innerHTML='<span class="d"></span><span class="d"></span><span class="d"></span>';
     stack.appendChild(b); t.appendChild(stack); box.appendChild(t); scrollBottom();
@@ -1786,7 +2001,7 @@ Posts:\n${numbered}`;
   //   resolve touch type → research grounding → assemble prompt → strict JSON → send
   async function sendFollowUp(gap, force){
     if(!requireKey() || busy) return;
-    if(!force && !waitingOnLead()){ toast('Follow-up applies right after Sapna has sent a message'); return; }
+    if(!force && !waitingOnLead()){ toast('Follow-up applies right after the agent has sent a message'); return; }
 
     const idx = followupsSent();
     const touch = touches[idx];
@@ -1956,10 +2171,24 @@ Invite them (lightly) to give it a read and to follow our page for more.`;
   $('#priceIn').addEventListener('input', ()=>LS.set('priceIn', parseFloat($('#priceIn').value)||0));
   $('#priceOut').addEventListener('input', ()=>LS.set('priceOut', parseFloat($('#priceOut').value)||0));
   $('#temp').addEventListener('input', ()=>{ $('#tempVal').textContent=(+$('#temp').value).toFixed(1); LS.set('temp',parseFloat($('#temp').value)); });
-  promptBox.addEventListener('input', ()=>LS.set('prompt', promptBox.value));
+  // Mark the prompt as hand-edited so a reload stops overwriting it with the
+  // tenant's live prompt — the box is for iterating on wording.
+  promptBox.addEventListener('input', ()=>{ LS.set('prompt', promptBox.value); LS.set('promptEdited', true); });
   document.querySelectorAll('.v').forEach(el=>el.addEventListener('input', saveVars));
 
-  $('#resetPromptBtn').onclick=()=>{ if(confirm('Reset the system prompt to the original?')){ promptBox.value=DEFAULT_PROMPT; LS.set('prompt',DEFAULT_PROMPT); toast('Prompt reset'); } };
+  // Reset pulls the tenant's LIVE prompt back when we have one; only a
+  // standalone/signed-out session falls back to the bundled demo prompt.
+  $('#resetPromptBtn').onclick=()=>{
+    const live = tenant.prompt;
+    const msg = live ? 'Discard your edits and reload your live LinkedIn prompt?'
+                     : 'Reset the system prompt to the bundled demo prompt?';
+    if(!confirm(msg)) return;
+    promptBox.value = live || DEFAULT_PROMPT;
+    LS.set('prompt', promptBox.value);
+    LS.set('promptEdited', false);
+    toast(live ? 'Reloaded your live LinkedIn prompt' : 'Prompt reset');
+  };
+  $('#reloadTenantBtn').onclick=()=>{ LS.set('promptEdited', false); loadTenantContext(); };
 
   function openModal(title, body){ $('#modalTitle').textContent=title; $('#modalBody').textContent=body; $('#overlay').classList.add('show'); }
   $('#previewSubBtn').onclick=()=>openModal('System prompt with variables substituted', buildSystemPrompt());
@@ -1981,7 +2210,11 @@ Invite them (lightly) to give it a read and to follow our page for more.`;
   function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2200); }
 
   // ---------- First paint ----------
-  refreshKeyState(); refreshRoleStrip(); updateTokenBadge(); renderTouches(); render();
+  refreshKeyState(); refreshRoleStrip(); updateTokenBadge(); renderTouches();
+  renderPresets(); refreshAgentIdentity(); render();
+  // Pull the tenant's live agent + ICP. Async and fail-soft: the harness is
+  // already usable on the demo persona if this never resolves.
+  loadTenantContext().catch(()=>{});
 })();
 </script>
 </body>
