@@ -1100,6 +1100,25 @@ export function CustomWorkflowBuilder({ onClose }: { onClose: () => void }) {
                     <span className="text-base leading-none">+</span> Add another touch
                   </button>
                 )}
+
+                {/* Dry-run the cadence before it goes anywhere near a real lead. */}
+                <a
+                  href="/followup-simulator.html"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 flex items-start gap-2 rounded-lg border border-dashed border-border p-2.5 hover:border-amber-500 hover:bg-amber-50/50 dark:hover:bg-amber-950/20 transition-colors group"
+                >
+                  <span className="text-base leading-none mt-0.5">🧪</span>
+                  <span className="min-w-0">
+                    <span className="block text-xs font-semibold text-foreground group-hover:text-amber-700">
+                      Test this sequence first
+                    </span>
+                    <span className="block text-[11px] text-muted-foreground leading-snug">
+                      Play the whole cadence against a sample lead and read what each touch would
+                      actually send — before you launch.
+                    </span>
+                  </span>
+                </a>
               </div>
 
               <label className="flex items-start gap-2 text-sm text-foreground cursor-pointer select-none">
