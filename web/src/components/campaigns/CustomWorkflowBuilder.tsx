@@ -32,6 +32,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
+import LeadPreviewPanel from './LeadPreviewPanel';
 import {
   WORKFLOW_TEMPLATES, WorkflowTemplate,
   SOURCE_STEP_ID, FOLLOWUP_STEP_ID, ANALYTICS_STEP_ID, ZOHO_UPDATE_STEP_ID,
@@ -3530,6 +3531,39 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           })()}
 
           {!isSource && (editingStep.type === 'linkedin_connect' || editingStep.type === 'linkedin_message') && (<>
+            {/* Who is this actually going to? Built from the SOURCE node's
+                targeting, because that is what decides who gets enrolled — this
+                node only decides what they receive. Connection requests cannot
+                be unsent, so seeing the people first is worth the extra call. */}
+            {(() => {
+              const sc = configs[SOURCE_STEP_ID] || {};
+              const srcNode = workflowPreview.find((x) => x.id === SOURCE_STEP_ID);
+              const parts = [sc.job_titles, sc.industries, sc.locations, sc.keywords]
+                .map((v: any) => String(v || '').trim()).filter(Boolean);
+              const query = parts.join(' ');
+              // Only LinkedIn search targeting can be previewed. An imported
+              // file or a CRM sync already has its people, so there is nothing
+              // to search for and offering the button would just fail.
+              // `source` is the SourceKey state, not the node's StepType — the
+              // source node is always type 'lead_generation' regardless of
+              // which kind of source was picked.
+              const isSearchSource = source === 'linkedin_search';
+              const reason = !srcNode
+                ? 'Add a contact source first to see who this reaches.'
+                : !isSearchSource
+                  ? 'Only available when the source is a LinkedIn search.'
+                  : !query
+                    ? 'Set job titles or a location on the source node first.'
+                    : null;
+              return (
+                <LeadPreviewPanel
+                  query={query}
+                  count={6}
+                  disabledReason={reason}
+                />
+              );
+            })()}
+
             {res.liTemplates.length > 0 && (
               <div className="space-y-1"><label className="text-xs font-medium text-foreground">LinkedIn template (optional)</label>
                 <select className={field} value={cfg.linkedin_template_id || ''} onChange={(e) => {
