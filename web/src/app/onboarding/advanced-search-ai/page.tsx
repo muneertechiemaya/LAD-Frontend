@@ -10372,6 +10372,25 @@ function CheckpointFormInline({
                                                                 loading={liFollowGenLoading}
                                                                 onGenerate={() => generateLinkedInFollowup('followup')}
                                                             />}
+
+                                                            {/* Dry-run the sequence before the campaign goes live. */}
+                                                            <a
+                                                                href="/followup-simulator.html"
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="group mt-[10px] flex items-start gap-[8px] rounded-[10px] border-[1.5px] border-dashed border-[#bfdbfe] dark:border-blue-900 p-[10px_12px] hover:border-[#3b82f6] hover:bg-[#eff6ff] dark:hover:bg-blue-900/20 transition-colors no-underline"
+                                                            >
+                                                                <span className="text-[15px] leading-none mt-[1px]">🧪</span>
+                                                                <span className="min-w-0">
+                                                                    <span className="block text-[12px] font-semibold text-[#0b1957] dark:text-blue-200">
+                                                                        Test this sequence before launching
+                                                                    </span>
+                                                                    <span className="block text-[11px] text-gray-500 dark:text-gray-400 leading-snug">
+                                                                        Play the connect note and every follow-up against a sample lead, and read
+                                                                        what each touch would actually send.
+                                                                    </span>
+                                                                </span>
+                                                            </a>
                                                         </div>
                                                     )}
                                                 </div>
