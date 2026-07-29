@@ -201,8 +201,11 @@ export const BillingDashboard: React.FC<BillingDashboardProps> = ({ customerId }
                     </p>
                   </div>
                   <div className="mt-4">
+                    {/* action=add is what CreditsSettings reads on mount to
+                        auto-open its Add Credits modal — same modal the
+                        Credits tab's own button opens. */}
                     <Link
-                      href="/wallet"
+                      href="/settings?tab=credits&action=add"
                       className="text-sm font-medium text-yellow-800 hover:text-yellow-900 underline"
                     >
                       Recharge now &rarr;
