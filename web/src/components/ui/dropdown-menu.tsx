@@ -85,7 +85,9 @@ const DropdownMenuCheckboxItem = React.forwardRef<
   <DropdownMenuPrimitive.CheckboxItem
     ref={ref}
     className={cn(
-      "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "data-[state=checked]:bg-blue-600 data-[state=checked]:text-white focus:bg-blue-700 focus:text-white data-[state=checked]:focus:bg-blue-700 data-[state=checked]:focus:text-white",
+      "dark:data-[state=checked]:bg-[#22C55E] dark:data-[state=checked]:text-[#000724] dark:focus:bg-[#22C55E] dark:focus:text-[#000724] dark:data-[state=checked]:focus:bg-[#22C55E] dark:data-[state=checked]:focus:text-[#000724]",
       className
     )}
     checked={checked}
@@ -119,7 +121,9 @@ const DropdownMenuRadioItem = React.forwardRef<
   <DropdownMenuPrimitive.RadioItem
     ref={ref}
     className={cn(
-      "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "data-[state=checked]:bg-blue-600 data-[state=checked]:text-white focus:bg-blue-700 focus:text-white data-[state=checked]:focus:bg-blue-700 data-[state=checked]:focus:text-white",
+      "dark:data-[state=checked]:bg-[#22C55E] dark:data-[state=checked]:text-[#000724] dark:focus:bg-[#22C55E] dark:focus:text-[#000724] dark:data-[state=checked]:focus:bg-[#22C55E] dark:data-[state=checked]:focus:text-[#000724]",
       className
     )}
     {...props}

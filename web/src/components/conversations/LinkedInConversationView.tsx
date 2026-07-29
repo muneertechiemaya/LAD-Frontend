@@ -137,14 +137,14 @@ const STATUS_CONFIG: Record<ConnectionStatus, {
     label:      'Awaiting acceptance',
     icon:       <Clock className="w-3 h-3" />,
     dotClass:   'bg-slate-300',
-    badgeClass: 'bg-slate-100 text-slate-500',
+    badgeClass: 'bg-slate-100 text-slate-500 dark:bg-slate-900/40 dark:text-slate-400',
     bannerText: 'Connection request sent — chat will be available once they accept.',
   },
   accepted: {
     label:      'Connected',
     icon:       <CheckCircle className="w-3 h-3" />,
     dotClass:   'bg-amber-400',
-    badgeClass: 'bg-amber-50 text-amber-700',
+    badgeClass: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-500',
     // Empty — chat is now unlocked immediately on acceptance. Sending any
     // message records CONTACTED on the backend, which cancels the workflow
     // scheduler's automated follow-up so there's no duplicate. The
@@ -155,7 +155,7 @@ const STATUS_CONFIG: Record<ConnectionStatus, {
     label:      'Active',
     icon:       <Zap className="w-3 h-3" />,
     dotClass:   'bg-emerald-500',
-    badgeClass: 'bg-emerald-50 text-emerald-700',
+    badgeClass: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-500',
     bannerText: '',
   },
 };
