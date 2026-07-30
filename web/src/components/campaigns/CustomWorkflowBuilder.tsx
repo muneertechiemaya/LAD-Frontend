@@ -28,6 +28,7 @@ import {
   Users, Repeat, Search, X, HardDrive, Inbox, ListOrdered, BarChart3, GitFork, DatabaseZap,
   Wand2, Trash2, Radar, Split, Plus, Upload, FileSpreadsheet, Sparkles, Contact, Download, Megaphone, Zap, Globe, Telescope, Gauge, Shuffle, PenLine, Webhook, PenTool, ShieldCheck,
   Bookmark, LayoutTemplate, ExternalLink, FlaskConical, Play,
+  Instagram, UserCheck, FileText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,6 +39,7 @@ import {
   SOURCE_STEP_ID, FOLLOWUP_STEP_ID, ANALYTICS_STEP_ID, ZOHO_UPDATE_STEP_ID,
   MEDIA_STEP_ID, MULTICOND_STEP_ID, AI_STEP_ID, ENRICH_STEP_ID, EXPORT_STEP_ID,
   AUTOPOST_STEP_ID, CONTENT_STEP_ID, APPROVAL_STEP_ID, AI_DEFAULT_INSTRUCTION, EXPORT_DEFAULT_COLUMNS,
+  IG_AUTOPOST_STEP_ID, HUMAN_TASK_STEP_ID, REPORT_STEP_ID,
   SCRAPE_STEP_ID, RESEARCH_STEP_ID, SCORE_STEP_ID,
   SPLIT_STEP_ID, SETFIELD_STEP_ID, HTTP_STEP_ID, LANDING_STEP_ID, templateNodeKey, MACRO_STEP_IDS,
   templateToPreviewSteps,
@@ -1390,6 +1392,64 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
    * Defaults to capture-on and approval-on: the page is published to a public
    * URL under the tenant's brand, so it is reviewed before anyone can read it.
    */
+  /**
+   * Instagram auto-post — campaign-level, exactly like the LinkedIn one.
+   *
+   * Media is REQUIRED and there is no way around it: Instagram has no
+   * text-only post type, so a caption alone can never be published.
+   */
+  const addInstagramPost = () => {
+    if (!workflowPreview.some((s) => s.id === IG_AUTOPOST_STEP_ID)) {
+      addWorkflowStep({ id: IG_AUTOPOST_STEP_ID, type: 'instagram_post', channel: 'email', title: 'Instagram auto-post', description: 'Image / Reel · Daily' });
+      setCfg(IG_AUTOPOST_STEP_ID, {
+        caption: '', media_url: '', media_type: 'image',
+        ai_generate: false, share_to_feed: true,
+        frequency: 'daily', days: [1, 2, 3, 4, 5], time: '10:00',
+      });
+    }
+    setEditingId(IG_AUTOPOST_STEP_ID);
+  };
+
+  /**
+   * Human task — PER-LEAD, unlike every other node added here.
+   *
+   * Pauses each lead at this point until someone confirms via a one-time
+   * link. Exists so a workflow can include work the platform cannot do
+   * (record a video, build a PDF, make a judgement call) instead of
+   * pretending those steps happened.
+   */
+  /**
+   * Audit report — the ONE node whose execution model depends on its own config.
+   *
+   * scope 'lead'     → a per-lead step, written from that company's research
+   * scope 'campaign' → a campaign-level macro, written about the industry
+   *
+   * Defaults to per-lead: it is the more valuable artifact, and the one the
+   * outreach steps can reference per prospect.
+   */
+  const addReport = () => {
+    if (!workflowPreview.some((s) => s.id === REPORT_STEP_ID)) {
+      addWorkflowStep({ id: REPORT_STEP_ID, type: 'lead_report', channel: 'email', title: 'Audit report', description: 'Per lead · PDF' });
+      setCfg(REPORT_STEP_ID, {
+        scope: 'lead',
+        report_type: 'growth_opportunity_audit',
+        context: '',
+        email_now: false,
+      });
+    }
+    setEditingId(REPORT_STEP_ID);
+  };
+
+  const addHumanTask = () => {
+    if (!workflowPreview.some((s) => s.id === HUMAN_TASK_STEP_ID)) {
+      addWorkflowStep({ id: HUMAN_TASK_STEP_ID, type: 'human_task', channel: 'email', title: 'Human task', description: 'Pauses until confirmed' });
+      setCfg(HUMAN_TASK_STEP_ID, {
+        title: '', instructions: '', assignee_channel: 'email', assignee_to: '',
+      });
+    }
+    setEditingId(HUMAN_TASK_STEP_ID);
+  };
+
   const addLandingPage = () => {
     if (!workflowPreview.some((s) => s.id === LANDING_STEP_ID)) {
       addWorkflowStep({ id: LANDING_STEP_ID, type: 'landing_page', channel: 'email', title: 'Landing page', description: 'AI page · Capture form' });
@@ -2043,7 +2103,39 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           continue;
         }
         const delay = { delayDays: Math.max(0, parseInt(c.delayDays, 10) || 0), delayHours: 0 };
-        if (s.type === 'linkedin_connect') steps.push({ type: s.type, title: 'Send Connection Request', channel: 'linkedin', order_index: order++, config: { message: (c.message || '').trim(), template_id: c.linkedin_template_id || undefined, ...delay } });
+        if (s.type === 'lead_report') {
+          // Campaign-scoped reports are macros and were emitted into config
+          // above; only the per-lead variant becomes a step.
+          if (c.scope !== 'campaign') {
+            steps.push({
+              type: 'lead_report', title: 'Audit report', channel: 'email',
+              order_index: order++,
+              config: {
+                step_id: REPORT_STEP_ID,
+                report_type: c.report_type || 'growth_opportunity_audit',
+                context: (c.context || '').trim() || undefined,
+                email_now: !!c.email_now,
+                ...delay,
+              },
+            });
+          }
+        }
+        else         if (s.type === 'human_task') {
+          // Per-lead, unlike the other new nodes. WorkflowProcessor pauses the
+          // lead here and resumes it only once someone confirms.
+          steps.push({
+            type: 'human_task', title: (c.title || 'Human task').trim(), channel: 'email',
+            order_index: order++,
+            config: {
+              title: (c.title || 'Human task').trim(),
+              instructions: (c.instructions || '').trim(),
+              assignee_channel: c.assignee_channel === 'whatsapp' ? 'whatsapp' : 'email',
+              assignee_to: (c.assignee_to || '').trim(),
+              ...delay,
+            },
+          });
+        }
+        else         if (s.type === 'linkedin_connect') steps.push({ type: s.type, title: 'Send Connection Request', channel: 'linkedin', order_index: order++, config: { message: (c.message || '').trim(), template_id: c.linkedin_template_id || undefined, ...delay } });
         else if (s.type === 'linkedin_message') steps.push({ type: s.type, title: 'Send LinkedIn Message', channel: 'linkedin', order_index: order++, config: { message: (c.message || '').trim(), template_id: c.linkedin_template_id || undefined, ...delay } });
         else if (s.type === 'linkedin_inmail') steps.push({ type: s.type, title: 'Send LinkedIn InMail', channel: 'linkedin', order_index: order++, config: { message: (c.message || '').trim(), subject: (c.subject || '').trim() || undefined, template_id: c.linkedin_template_id || undefined, ...delay } });
         else if (s.type === 'linkedin_visit') steps.push({ type: s.type, title: 'Visit LinkedIn Profile', channel: 'linkedin', order_index: order++, config: { ...delay } });
@@ -2284,6 +2376,43 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               },
             };
           })() : {}),
+          ...((() => {
+            const rc = configs[REPORT_STEP_ID] || {};
+            // Only the CAMPAIGN-scoped report is a macro. The per-lead variant is
+            // emitted into `steps` further down — same node, two execution models,
+            // chosen by its own scope field.
+            if (!workflowPreview.some((s) => s.id === REPORT_STEP_ID) || rc.scope !== 'campaign') return {};
+            const sc = configs[SOURCE_STEP_ID] || {};
+            return {
+              campaign_report: {
+                // Fall back to the source node's industry so the common case
+                // needs no retyping.
+                industry: (rc.industry || sc.industries || '').trim(),
+                audience: (sc.job_titles || '').trim() || undefined,
+                report_type: rc.report_type || 'growth_opportunity_audit',
+                context: (rc.context || '').trim() || undefined,
+              },
+            };
+          })()),
+          ...(workflowPreview.some((s) => s.id === IG_AUTOPOST_STEP_ID) ? (() => {
+            const ic = configs[IG_AUTOPOST_STEP_ID] || {};
+            return {
+              // Read by InstagramAutopostScheduleService at launch. media_url is
+              // what the backend gates on — Instagram has no text-only post.
+              instagram_autopost: {
+                caption: (ic.caption || '').trim(),
+                media_url: (ic.media_url || '').trim(),
+                media_type: ic.media_type === 'reel' ? 'reel' : 'image',
+                cover_url: (ic.cover_url || '').trim() || undefined,
+                share_to_feed: ic.share_to_feed !== false,
+                ai_generate: !!ic.ai_generate,
+                frequency: ic.frequency === 'weekly' ? 'weekly' : 'daily',
+                days: Array.isArray(ic.days) && ic.days.length ? ic.days : undefined,
+                time: ic.time || '10:00',
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+              },
+            };
+          })() : {}),
           ...(workflowPreview.some((s) => s.id === LANDING_STEP_ID) ? (() => {
             const lc = configs[LANDING_STEP_ID] || {};
             return {
@@ -2348,6 +2477,8 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             ...(rest.config.analytics_notifications ? {} : { analytics_notifications: null }),
             ...(rest.config.followup_sequence ? {} : { followup_sequence: null }),
             ...(rest.config.landing_page ? {} : { landing_page: null }),
+            ...(rest.config.instagram_autopost ? {} : { instagram_autopost: null }),
+            ...(rest.config.campaign_report ? {} : { campaign_report: null }),
           },
         };
         // `status` is deliberately dropped. update() has no active→running
@@ -2562,7 +2693,10 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     const isSetField = editingId === SETFIELD_STEP_ID;
     const isHttp = editingId === HTTP_STEP_ID;
     const isLanding = editingId === LANDING_STEP_ID;
-    const isMacro = isFollowup || isAnalytics || isZohoUpdate || isMedia || isMultiCond || isAiParse || isDataEnrich || isExport || isAutopost || isScrape || isResearch || isScore || isSplit || isSetField || isHttp || isContent || isApproval || isLanding;
+    const isIgPost = editingId === IG_AUTOPOST_STEP_ID;
+    const isHumanTask = editingId === HUMAN_TASK_STEP_ID;
+    const isReport = editingId === REPORT_STEP_ID;
+    const isMacro = isFollowup || isAnalytics || isZohoUpdate || isMedia || isMultiCond || isAiParse || isDataEnrich || isExport || isAutopost || isScrape || isResearch || isScore || isSplit || isSetField || isHttp || isContent || isApproval || isLanding || isIgPost || isHumanTask || isReport;
     const visual = isSource
       ? SOURCES.find((s) => s.key === source)
       : isFollowup
@@ -3541,6 +3675,289 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             </>);
           })()}
 
+          {isIgPost && (() => {
+            const eid = editingId!;
+            const isReel = cfg.media_type === 'reel';
+            const days: number[] = Array.isArray(cfg.days) ? cfg.days : [1, 2, 3, 4, 5];
+            const toggleDay = (d: number) => setCfg(eid, {
+              days: days.includes(d) ? days.filter((x) => x !== d) : [...days, d].sort(),
+            });
+            return (<>
+              <div className="rounded-md border border-pink-200 bg-pink-50 dark:border-pink-800 dark:bg-pink-950/30 px-3 py-2">
+                <p className="text-[11px] text-pink-900 dark:text-pink-200">
+                  Posts to <strong>your own Instagram account</strong> on a schedule — one post
+                  per campaign, not one per lead.
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">Post type</label>
+                <select className={field} value={cfg.media_type || 'image'}
+                  onChange={(e) => setCfg(eid, { media_type: e.target.value })}>
+                  <option value="image">Image post</option>
+                  <option value="reel">Reel (video)</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">
+                  {isReel ? 'Video URL' : 'Image URL'} <span className="text-red-600">*</span>
+                </label>
+                <input className={field} value={cfg.media_url || ''}
+                  onChange={(e) => setCfg(eid, { media_url: e.target.value })}
+                  placeholder={isReel ? 'https://…/video.mp4' : 'https://…/image.jpg'} />
+                <p className="text-[11px] text-muted-foreground">
+                  Instagram downloads this itself, so it has to be publicly reachable — a
+                  private or expiring link fails while Instagram processes it, not when you save.
+                </p>
+              </div>
+
+              {isReel && (
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-foreground">Cover image URL (optional)</label>
+                  <input className={field} value={cfg.cover_url || ''}
+                    onChange={(e) => setCfg(eid, { cover_url: e.target.value })}
+                    placeholder="https://…/cover.jpg" />
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">Caption</label>
+                <textarea className={`${field} min-h-[90px] resize-y`} value={cfg.caption || ''}
+                  onChange={(e) => setCfg(eid, { caption: e.target.value })}
+                  placeholder="What this post is about…" />
+              </div>
+
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input type="checkbox" className="mt-0.5" checked={!!cfg.ai_generate}
+                  onChange={(e) => setCfg(eid, { ai_generate: e.target.checked })} />
+                <span className="text-xs">
+                  <span className="font-medium text-foreground">Write the caption with AI each time</span>
+                  <span className="block text-[11px] text-muted-foreground">
+                    Grounded in your business profile. The caption above is used as the topic,
+                    and as a fallback if generation fails.
+                  </span>
+                </span>
+              </label>
+
+              {isReel && (
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input type="checkbox" className="mt-0.5" checked={cfg.share_to_feed !== false}
+                    onChange={(e) => setCfg(eid, { share_to_feed: e.target.checked })} />
+                  <span className="text-xs">
+                    <span className="font-medium text-foreground">Also show on your profile grid</span>
+                  </span>
+                </label>
+              )}
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">How often</label>
+                <select className={field} value={cfg.frequency || 'daily'}
+                  onChange={(e) => setCfg(eid, { frequency: e.target.value })}>
+                  <option value="daily">Every day</option>
+                  <option value="weekly">Chosen days</option>
+                </select>
+              </div>
+
+              {cfg.frequency === 'weekly' && (
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-foreground">Days</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d, i) => (
+                      <button key={d} type="button" onClick={() => toggleDay(i)}
+                        className={`rounded-full border px-2.5 py-1 text-[11px] transition-colors ${
+                          days.includes(i)
+                            ? 'border-pink-600 bg-pink-600 text-white'
+                            : 'border-border text-muted-foreground hover:bg-muted/50'
+                        }`}>{d}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">Time</label>
+                <input type="time" className={field} value={cfg.time || '10:00'}
+                  onChange={(e) => setCfg(eid, { time: e.target.value })} />
+              </div>
+
+              <div className="rounded-md border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30 px-3 py-2">
+                <p className="text-[11px] text-amber-900 dark:text-amber-200">
+                  Instagram publishing needs Meta&apos;s approval for this app before it can post.
+                  You can configure this now; it starts publishing once that is granted.
+                </p>
+              </div>
+            </>);
+          })()}
+
+          {isReport && (() => {
+            const eid = editingId!;
+            const isCampaign = cfg.scope === 'campaign';
+            const hasLanding = workflowPreview.some((x) => x.id === LANDING_STEP_ID);
+            // Whether the earlier research steps that a per-lead report needs
+            // are actually in this workflow. Without them the step fails at
+            // runtime with "add a Research or Scrape step", so say it here.
+            const hasResearch = workflowPreview.some((x) => x.id === RESEARCH_STEP_ID || x.id === SCRAPE_STEP_ID);
+            return (<>
+              <div className="rounded-md border border-teal-200 bg-teal-50 dark:border-teal-800 dark:bg-teal-950/30 px-3 py-2">
+                <p className="text-[11px] text-teal-900 dark:text-teal-200">
+                  Builds a PDF you can send as an attachment or offer as a download.
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">What is it about?</label>
+                <select className={field} value={cfg.scope || 'lead'}
+                  onChange={(e) => setCfg(eid, { scope: e.target.value })}>
+                  <option value="lead">Each lead&apos;s own company</option>
+                  <option value="campaign">The campaign&apos;s industry</option>
+                </select>
+                <p className="text-[11px] text-muted-foreground">
+                  {isCampaign
+                    ? 'One report for the whole campaign. The same document for everyone, so it can be given away on a landing page.'
+                    : 'A separate report per lead, written from their own website and research. More valuable, but personal to them.'}
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">Report</label>
+                <select className={field} value={cfg.report_type || 'growth_opportunity_audit'}
+                  onChange={(e) => setCfg(eid, { report_type: e.target.value })}>
+                  <option value="growth_opportunity_audit">Growth Opportunity Audit</option>
+                  <option value="competitor_analysis">Competitor Analysis</option>
+                  <option value="lead_conversion_assessment">Lead Conversion Assessment</option>
+                  <option value="customer_experience_audit">Customer Experience Audit</option>
+                  <option value="revenue_leakage_report">Revenue Leakage Report</option>
+                  <option value="market_positioning_review">Market Positioning Review</option>
+                  <option value="sales_process_review">Sales Process Review</option>
+                  <option value="followup_effectiveness_audit">Follow-up Effectiveness Audit</option>
+                  <option value="marketing_performance_snapshot">Marketing Performance Snapshot</option>
+                  <option value="industry_benchmark_report">Industry Benchmark Report</option>
+                </select>
+              </div>
+
+              {isCampaign && (
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-foreground">Industry</label>
+                  <input className={field} value={cfg.industry || ''}
+                    onChange={(e) => setCfg(eid, { industry: e.target.value })}
+                    placeholder="e.g. freight forwarding in the UAE" />
+                  <p className="text-[11px] text-muted-foreground">
+                    Left blank, the industry from your contact source is used. A report that
+                    would read the same for any sector is not worth sending.
+                  </p>
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">Anything to add? (optional)</label>
+                <textarea className={`${field} min-h-[70px] resize-y`} value={cfg.context || ''}
+                  onChange={(e) => setCfg(eid, { context: e.target.value })}
+                  placeholder="Angles you want covered, or things to avoid." />
+              </div>
+
+              {!isCampaign && (
+                <>
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input type="checkbox" className="mt-0.5" checked={!!cfg.email_now}
+                      onChange={(e) => setCfg(eid, { email_now: e.target.checked })} />
+                    <span className="text-xs">
+                      <span className="font-medium text-foreground">Email it here, as an attachment</span>
+                      <span className="block text-[11px] text-muted-foreground">
+                        Otherwise it is saved and any later step can link it with{' '}
+                        <code className="text-[10px]">{'{{report_url}}'}</code>.
+                      </span>
+                    </span>
+                  </label>
+
+                  {!hasResearch && (
+                    <div className="rounded-md border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30 px-3 py-2">
+                      <p className="text-[11px] text-amber-900 dark:text-amber-200">
+                        Add a <strong>Research</strong> or <strong>Scrape</strong> step before this one.
+                        A per-lead report is written from what those find; without them there is
+                        nothing to write about and the step will fail rather than invent something.
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* The rule: only the industry report can be given away publicly. */}
+              <div className={`rounded-md border px-3 py-2 ${
+                isCampaign
+                  ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/30'
+                  : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50'
+              }`}>
+                <p className={`text-[11px] ${isCampaign ? 'text-emerald-900 dark:text-emerald-200' : 'text-slate-700 dark:text-slate-300'}`}>
+                  {isCampaign
+                    ? (hasLanding
+                      ? 'Your landing page will offer this as a download once someone fills the form.'
+                      : 'Add a Landing page node and this becomes a download people can fill a form to get.')
+                    : 'A per-lead report cannot go on a landing page — one public URL is shared by every visitor, so there is no way to know whose report to show. Switch to the campaign industry for that.'}
+                </p>
+              </div>
+            </>);
+          })()}
+
+          {isHumanTask && (() => {
+            const eid = editingId!;
+            const isWa = cfg.assignee_channel === 'whatsapp';
+            return (<>
+              <div className="rounded-md border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30 px-3 py-2">
+                <p className="text-[11px] text-amber-900 dark:text-amber-200">
+                  <strong>Pauses each lead here</strong> until a person confirms. Use it for work
+                  Mr LAD cannot do itself — recording a video, building a deck, a judgement call.
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">Task name</label>
+                <input className={field} value={cfg.title || ''}
+                  onChange={(e) => setCfg(eid, { title: e.target.value })}
+                  placeholder="e.g. Record a personalised video" />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">What needs doing?</label>
+                <textarea className={`${field} min-h-[100px] resize-y`} value={cfg.instructions || ''}
+                  onChange={(e) => setCfg(eid, { instructions: e.target.value })}
+                  placeholder={'e.g. Record a 60-second video mentioning their recent funding round, upload it, and paste the link back.'} />
+                <p className="text-[11px] text-muted-foreground">
+                  Sent with the notification, so write it for whoever has to act on it.
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">Notify by</label>
+                <select className={field} value={cfg.assignee_channel || 'email'}
+                  onChange={(e) => setCfg(eid, { assignee_channel: e.target.value })}>
+                  <option value="email">Email</option>
+                  <option value="whatsapp">WhatsApp</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">
+                  {isWa ? 'WhatsApp number' : 'Email address'} <span className="text-red-600">*</span>
+                </label>
+                <input className={field} value={cfg.assignee_to || ''}
+                  onChange={(e) => setCfg(eid, { assignee_to: e.target.value })}
+                  placeholder={isWa ? '+9715…' : 'someone@yourcompany.com'} />
+                <p className="text-[11px] text-muted-foreground">
+                  They get a link to confirm — no Mr LAD login needed. Without someone to
+                  notify, leads would wait here forever.
+                </p>
+              </div>
+
+              <div className="rounded-md border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50 px-3 py-2">
+                <p className="text-[11px] text-slate-700 dark:text-slate-300">
+                  Whatever they type when confirming is saved onto the lead, so later steps can
+                  use it.
+                </p>
+              </div>
+            </>);
+          })()}
+
           {isLanding && (() => {
             const eid = editingId!;
             const fields: string[] = Array.isArray(cfg.capture_fields) && cfg.capture_fields.length
@@ -4130,7 +4547,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 onChange={(e) => setCfg(editingId, { track_opens: e.target.checked })} />
               <span className="min-w-0">
                 <span className="block text-sm text-foreground">Track email opens</span>
-                <span className="block text-[11px] text-muted-foreground">Required for a "Wait for condition → Email read" step later in this workflow. Turn off for sensitive sends.</span>
+                <span className="block text-[11px] text-muted-foreground">Required for a &ldquo;Wait for condition → Email read&rdquo; step later in this workflow. Turn off for sensitive sends.</span>
               </span>
             </label>
           </>)}
@@ -4840,7 +5257,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   </button>
                 ))}
               </div>
-              <p className="text-[10.5px] text-muted-foreground leading-snug">Just a suggestion — pick any other step below instead if you'd rather.</p>
+              <p className="text-[10.5px] text-muted-foreground leading-snug">Just a suggestion — pick any other step below instead if you&rsquo;d rather.</p>
             </div>
           )}
           {/* 1 · Contact source */}
@@ -5001,6 +5418,72 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 </button>
               );
             })()}
+            {/* Instagram auto-post — one scheduled post per campaign. */}
+            {(() => {
+              const added = workflowPreview.some((s) => s.id === IG_AUTOPOST_STEP_ID);
+              return (
+                <button onClick={addInstagramPost}
+                  className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
+                    added ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20' : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                  }`}>
+                  <IconChip icon={<Instagram className="h-4 w-4 text-pink-600" />} chip="bg-pink-50 dark:bg-pink-950/30" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold text-foreground truncate">Instagram auto-post</span>
+                    <span className="block text-xs text-muted-foreground truncate">Image or Reel · On a schedule</span>
+                  </span>
+                  {added && (
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    </span>
+                  )}
+                </button>
+              );
+            })()}
+
+            {/* Audit report — a PDF worth receiving. */}
+            {(() => {
+              const added = workflowPreview.some((s) => s.id === REPORT_STEP_ID);
+              return (
+                <button onClick={addReport}
+                  className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
+                    added ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20' : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                  }`}>
+                  <IconChip icon={<FileText className="h-4 w-4 text-teal-700" />} chip="bg-teal-50 dark:bg-teal-950/30" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold text-foreground truncate">Audit report</span>
+                    <span className="block text-xs text-muted-foreground truncate">PDF · Attach or offer as a download</span>
+                  </span>
+                  {added && (
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    </span>
+                  )}
+                </button>
+              );
+            })()}
+
+            {/* Human task — the escape hatch for work Mr LAD cannot do. */}
+            {(() => {
+              const added = workflowPreview.some((s) => s.id === HUMAN_TASK_STEP_ID);
+              return (
+                <button onClick={addHumanTask}
+                  className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
+                    added ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20' : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                  }`}>
+                  <IconChip icon={<UserCheck className="h-4 w-4 text-amber-600" />} chip="bg-amber-50 dark:bg-amber-950/30" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold text-foreground truncate">Assign a human task</span>
+                    <span className="block text-xs text-muted-foreground truncate">Pauses the lead until someone confirms</span>
+                  </span>
+                  {added && (
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    </span>
+                  )}
+                </button>
+              );
+            })()}
+
             {/* Landing page — one public page for the whole campaign. */}
             {(() => {
               const added = workflowPreview.some((s) => s.id === LANDING_STEP_ID);

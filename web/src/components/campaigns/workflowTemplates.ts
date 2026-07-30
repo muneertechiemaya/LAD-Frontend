@@ -32,6 +32,12 @@ export const AUTOPOST_STEP_ID = 'linkedin-post-node';
 // All three merge into ONE campaigns.config.autopost object at launch.
 export const CONTENT_STEP_ID = 'linkedin-content-node';
 export const APPROVAL_STEP_ID = 'post-approval-node';
+/** Instagram auto-post. Campaign-level: ONE post per campaign, not per lead. */
+export const IG_AUTOPOST_STEP_ID = 'instagram-post-node';
+/** Human task. Per-lead: pauses the lead until a person confirms. */
+export const HUMAN_TASK_STEP_ID = 'human-task-node';
+/** Audit report. Per-lead by default; campaign-level when scope='campaign'. */
+export const REPORT_STEP_ID = 'lead-report-node';
 // Web-intel + flow macros. These lived in CustomWorkflowBuilder until
 // Strategies needed one canonical list of "ids that must survive save/restore".
 export const SCRAPE_STEP_ID = 'web-scrape-node';
@@ -56,6 +62,7 @@ export const MACRO_STEP_IDS: readonly string[] = [
   CONTENT_STEP_ID, APPROVAL_STEP_ID,
   SCRAPE_STEP_ID, RESEARCH_STEP_ID, SCORE_STEP_ID,
   SPLIT_STEP_ID, SETFIELD_STEP_ID, HTTP_STEP_ID,
+  IG_AUTOPOST_STEP_ID, LANDING_STEP_ID,
 ];
 
 /**
@@ -142,6 +149,92 @@ export type WorkflowTemplate = {
 };
 
 export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
+  {
+    key: 'revenue_growth_audit',
+    category: 'general',
+    badge: { label: 'New', tone: 'violet' },
+    meta: { cycleDays: 7, channels: 4 },
+    accent: '#10B981',
+    name: 'AI Revenue Growth Audit',
+    tagline: 'Research each account, build them a page, then work the reply across four channels',
+    chain: [
+      'LinkedIn Search', 'Scrape site', 'Research', 'Score', 'Competitors (human)',
+      'Opportunities (human)', 'Landing page', 'Video (human)', 'Connect',
+      'Email', 'Wait: accepted', 'LinkedIn follow-up', 'Voice call', 'WhatsApp',
+    ],
+    source: {
+      key: 'linkedin_search',
+      title: 'LinkedIn Search', description: 'Industry · title · location',
+      cfg: { job_titles: '', industries: '', locations: '' },
+    },
+    inputs: [
+      { key: 'job_titles', question: 'Which **job titles** should I audit? e.g. "VP Sales, Head of Revenue, Founder".' },
+      { key: 'industries', question: 'Which **industries**? (e.g. "SaaS, Fintech" — or say **skip**)', optional: true },
+      { key: 'locations', question: 'Which **location**? (e.g. "Dubai, United Arab Emirates" — or say **skip**)', optional: true },
+    ],
+    nodes: [
+      // ── Phase 1: research and qualify ──────────────────────────────────────
+      { type: 'web_scrape', macroId: SCRAPE_STEP_ID, title: 'Scrape their site', description: 'Pull their positioning and stack' },
+      { type: 'web_research', macroId: RESEARCH_STEP_ID, title: 'Research the company', description: 'News, funding, hiring signals' },
+      { type: 'lead_score', macroId: SCORE_STEP_ID, title: 'Score the fit', description: 'Hot / warm / cold from buying signals' },
+
+      // Competitor discovery is NOT automated — the research node can only look
+      // up competitors somebody names. Assigned to a human rather than silently
+      // skipped, so the audit is not quietly missing a section.
+      {
+        type: 'human_task', macroId: HUMAN_TASK_STEP_ID,
+        title: 'Identify their competitors', description: 'Human · pauses the lead',
+        cfg: {
+          title: 'Identify their top competitors',
+          instructions: 'Look at this company and note their top 3 competitors, and one line on what differentiates each. Paste it back when you confirm — the landing page copy will use it.',
+          assignee_channel: 'email', assignee_to: '',
+        },
+      },
+
+      // ── Phase 2: personalised assets ───────────────────────────────────────
+      {
+        type: 'landing_page', macroId: LANDING_STEP_ID,
+        title: 'Personalised landing page', description: 'AI-written from your ICP',
+        cfg: {
+          brief: 'A short growth-audit page for this specific company: what we noticed about them, two or three concrete opportunities to increase pipeline without adding headcount, and an invitation to walk through it on a call.',
+          capture_enabled: true, capture_fields: ['name', 'email'], require_approval: true,
+        },
+      },
+
+      // Per-lead video generation does not exist on the platform. Rather than
+      // drop the step, hand it to a person — the sequence stays honest and the
+      // lead waits rather than skipping ahead without the asset.
+      {
+        type: 'human_task', macroId: HUMAN_TASK_STEP_ID,
+        title: 'Record a personalised video', description: 'Human · pauses the lead',
+        cfg: {
+          title: 'Record a short personalised video',
+          instructions: 'Record roughly 60 seconds for this contact: greet them by name, mention the specific signal we found (funding, hiring, a launch), and point them at their landing page. Upload it and paste the link back when you confirm.',
+          assignee_channel: 'email', assignee_to: '',
+        },
+      },
+
+      // ── Phase 3-7: work the account across channels ────────────────────────
+      { type: 'linkedin_connect', title: 'Connection request', description: 'No pitch — just connect', cfg: { message: '' } },
+      {
+        type: 'email_send', title: 'Email: the analysis', description: 'Curiosity, not a meeting ask',
+        cfg: {
+          subject: 'Quick idea for {{company_name}}',
+          body: 'Hi {{first_name}},\n\nI had a look at {{company_name}} and put together a short analysis of where outbound capacity could grow without adding headcount.\n\nWorth a look?\n\n',
+        },
+      },
+      { type: 'condition', title: 'Wait for condition', description: 'Connection accepted', cfg: { condition: 'connection_accepted' } },
+      {
+        type: 'linkedin_message', title: 'LinkedIn follow-up', description: 'Reference one specific finding',
+        cfg: { message: 'Hi {{first_name}}, not sure you saw the analysis I put together for {{company_name}} — one thing that stood out was how quickly the team is scaling. Happy to share the detail.' },
+      },
+      { type: 'voice_agent_call', title: 'AI voice call', description: 'Only worth it once they engage', cfg: {} },
+      {
+        type: 'whatsapp_send', title: 'WhatsApp follow-up', description: 'After recognition exists',
+        cfg: { message: 'Hi {{first_name}}, thanks for taking a moment earlier. Here is the analysis page again — happy to answer anything.' },
+      },
+    ],
+  },
   {
     key: 'linkedin_accelerator',
     category: 'general',

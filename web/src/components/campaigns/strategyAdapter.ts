@@ -116,6 +116,9 @@ function chipLabel(type: string): string {
   if (type === 'linkedin_inmail') return 'LI InMail';
   if (type === 'linkedin_visit') return 'LI visit';
   if (type === 'linkedin_post') return 'LI post';
+  if (type === 'instagram_post') return 'IG post';
+  if (type === 'human_task') return 'Human task';
+  if (type === 'lead_report') return 'Audit report';
   if (type.startsWith('linkedin')) return 'LinkedIn';
   if (type.startsWith('email')) return 'Email';
   if (type.startsWith('whatsapp')) return 'WhatsApp';
