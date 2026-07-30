@@ -3766,7 +3766,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 onChange={(e) => setCfg(editingId, { track_opens: e.target.checked })} />
               <span className="min-w-0">
                 <span className="block text-sm text-foreground">Track email opens</span>
-                <span className="block text-[11px] text-muted-foreground">Required for a "Wait for condition → Email read" step later in this workflow. Turn off for sensitive sends.</span>
+                <span className="block text-[11px] text-muted-foreground">Required for a &ldquo;Wait for condition → Email read&rdquo; step later in this workflow. Turn off for sensitive sends.</span>
               </span>
             </label>
           </>)}
@@ -4107,7 +4107,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   </button>
                 ))}
               </div>
-              <p className="text-[10.5px] text-muted-foreground leading-snug">Just a suggestion — pick any other step below instead if you'd rather.</p>
+              <p className="text-[10.5px] text-muted-foreground leading-snug">Just a suggestion — pick any other step below instead if you&rsquo;d rather.</p>
             </div>
           )}
           {/* 1 · Contact source */}
