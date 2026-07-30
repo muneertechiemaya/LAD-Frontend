@@ -1070,6 +1070,12 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         report_type: 'growth_opportunity_audit',
         context: '',
         email_now: false,
+        // On by default: this is an AI-written document sent to a prospect
+        // under the tenant's name. Reviewing it should be the thing you opt
+        // OUT of, not the thing you remember to switch on.
+        require_approval: true,
+        approval_channel: 'email',
+        approval_to: '',
       });
     }
     setEditingId(REPORT_STEP_ID);
@@ -1750,6 +1756,9 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 report_type: c.report_type || 'growth_opportunity_audit',
                 context: (c.context || '').trim() || undefined,
                 email_now: !!c.email_now,
+                require_approval: c.require_approval !== false,
+                approval_channel: c.approval_channel === 'whatsapp' ? 'whatsapp' : 'email',
+                approval_to: (c.approval_to || '').trim() || undefined,
                 ...delay,
               },
             });
@@ -1789,7 +1798,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       // else the chosen template id). Delays are relative to the prior step.
       const fc = configs[FOLLOWUP_STEP_ID] || {};
       const fuChannel = fc.channel === 'email' ? 'email' : fc.channel === 'whatsapp' ? 'whatsapp' : 'linkedin';
-      const fuTouchList: { hours?: number; template_id?: string; message?: string }[] =
+      const fuTouchList: { hours?: number; template_id?: string; message?: string; touch_type?: string }[] =
         Array.isArray(fc.touches) && fc.touches.length ? fc.touches.slice(0, 7) : [{ hours: 24 }, { hours: 72 }, { hours: 168 }];
       if (followupNode) {
         fuTouchList.forEach((t, idx) => {
@@ -1951,7 +1960,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             ...(srcCfg.resolve_instagram ? { resolve_instagram: true, instagram_business_discovery: srcCfg.instagram_business_discovery !== false } : {}),
           } : {}),
           ...(followupNode ? {
-            followup_sequence: { touches: fuTouchList.length, channel: fuChannel, timeline_hours: fuTouchList.map((t) => t.hours || 24), human_approval: !!fc.human_approval },
+            followup_sequence: { touches: fuTouchList.length, channel: fuChannel, timeline_hours: fuTouchList.map((t) => t.hours || 24), touches_config: fuTouchList.map((t) => ({ hours: t.hours || 24, template_id: t.template_id || undefined, touch_type: t.touch_type || undefined })), human_approval: !!fc.human_approval },
           } : {}),
           ...(autopostNode ? (() => {
             // The three nodes merge here: content node supplies the copy/media,
@@ -2026,6 +2035,9 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 audience: (sc.job_titles || '').trim() || undefined,
                 report_type: rc.report_type || 'growth_opportunity_audit',
                 context: (rc.context || '').trim() || undefined,
+                require_approval: rc.require_approval !== false,
+                approval_channel: rc.approval_channel === 'whatsapp' ? 'whatsapp' : 'email',
+                approval_to: (rc.approval_to || '').trim() || undefined,
               },
             };
           })()),
@@ -2489,9 +2501,13 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           </>)}
 
           {isFollowup && (() => {
+            // Is an Audit report node positioned BEFORE this follow-up?
+            const reportIdx = workflowPreview.findIndex((x) => x.id === REPORT_STEP_ID);
+            const followupIdx = workflowPreview.findIndex((x) => x.id === FOLLOWUP_STEP_ID);
+            const reportBeforeFollowup = reportIdx !== -1 && followupIdx !== -1 && reportIdx < followupIdx;
             const eid = editingId!;
             const channel: string = cfg.channel || 'linkedin';
-            const touches: { hours?: number; template_id?: string; message?: string }[] = Array.isArray(cfg.touches) && cfg.touches.length ? cfg.touches : [{ hours: 24 }];
+            const touches: { hours?: number; template_id?: string; message?: string; touch_type?: string }[] = Array.isArray(cfg.touches) && cfg.touches.length ? cfg.touches : [{ hours: 24 }];
             const tmpls: any[] = channel === 'email' ? res.emailTemplates : channel === 'whatsapp' ? res.waTemplates : res.liTemplates;
             const tmplName = (t: any) => t.name || t.title || 'Template';
             const syncDesc = (n: number, ch: string) => updateWorkflowStep(eid, { description: `${n} touches · ${FU_CHANNELS.find((c2) => c2.value === ch)?.label}` });
@@ -2499,6 +2515,11 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             const addTouch = () => { if (touches.length >= 7) return; const last = touches[touches.length - 1]?.hours || 24; const next = [...touches, { hours: last * 2 }]; setCfg(eid, { touches: next }); syncDesc(next.length, channel); };
             const removeTouch = (i: number) => { if (touches.length <= 1) return; const next = touches.filter((_, idx) => idx !== i); setCfg(eid, { touches: next }); syncDesc(next.length, channel); };
             return (<>
+              {/* The report must be GENERATED before a touch can attach it.
+                  Presence alone is not enough: a report node placed after the
+                  follow-up has not run when the touch fires, so the attachment
+                  would silently fall back to a plain message. Check position. */}
+              {(() => null)()}
               <div className="space-y-1"><label className="text-xs font-medium text-foreground">Follow-up channel</label>
                 <select className={field} value={channel} onChange={(e) => { setCfg(eid, { channel: e.target.value }); syncDesc(touches.length, e.target.value); }}>
                   {FU_CHANNELS.map((c2) => <option key={c2.value} value={c2.value}>{c2.label}</option>)}
@@ -2520,8 +2541,21 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                         <Input type="number" className="w-24 h-8" value={String(h)} onChange={(e) => setTouch(i, { hours: Math.max(1, parseInt(e.target.value, 10) || 1) })} />
                         <span className="text-xs text-muted-foreground">hours (≈ {Math.round((h / 24) * 10) / 10}d) after {i === 0 ? 'the previous step' : `touch ${i}`}</span>
                       </div>
-                      <select className={`${field} h-8`} value={t.template_id || ''} onChange={(e) => setTouch(i, { template_id: e.target.value || undefined })}>
+                      <select className={`${field} h-8`}
+                        value={t.touch_type === 'lead_report' ? '__lead_report__' : (t.template_id || '')}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          // The report option is a TOUCH TYPE, not a template —
+                          // the backend branches on touch_type, so setting one
+                          // must clear the other or the row carries both and the
+                          // template path wins.
+                          if (v === '__lead_report__') setTouch(i, { touch_type: 'lead_report', template_id: undefined });
+                          else setTouch(i, { touch_type: undefined, template_id: v || undefined });
+                        }}>
                         <option value="">AI-generated (default)</option>
+                        {reportBeforeFollowup && (
+                          <option value="__lead_report__">Attach the audit report</option>
+                        )}
                         {tmpls.map((tm: any) => <option key={tm.id} value={tm.id}>{tmplName(tm)}</option>)}
                       </select>
                       {!t.template_id && (
@@ -3515,6 +3549,47 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     </div>
                   )}
                 </>
+              )}
+
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input type="checkbox" className="mt-0.5" checked={cfg.require_approval !== false}
+                  onChange={(e) => setCfg(eid, { require_approval: e.target.checked })} />
+                <span className="text-xs">
+                  <span className="font-medium text-foreground">Review it before it goes out</span>
+                  <span className="block text-[11px] text-muted-foreground">
+                    Strongly recommended. You get a link to read the PDF, then approve or reject.
+                    {isCampaign
+                      ? ' Until approved, your landing page will not offer it.'
+                      : ' Until approved, nothing is sent and no step can link it.'}
+                  </span>
+                </span>
+              </label>
+
+              {cfg.require_approval !== false && (
+                <div className="space-y-2 pl-5">
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-foreground">Send the review request by</label>
+                    <select className={field} value={cfg.approval_channel || 'email'}
+                      onChange={(e) => setCfg(eid, { approval_channel: e.target.value })}>
+                      <option value="email">Email</option>
+                      <option value="whatsapp">WhatsApp</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-foreground">
+                      Who reviews it? <span className="text-red-600">*</span>
+                    </label>
+                    <input className={field} value={cfg.approval_to || ''}
+                      onChange={(e) => setCfg(eid, { approval_to: e.target.value })}
+                      placeholder={cfg.approval_channel === 'whatsapp' ? '+9715…' : 'you@yourcompany.com'} />
+                    {!(cfg.approval_to || '').trim() && (
+                      <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                        Needed to turn the review on. With nobody to ask, the report would wait
+                        forever, so it will go out unreviewed instead.
+                      </p>
+                    )}
+                  </div>
+                </div>
               )}
 
               {/* The rule: only the industry report can be given away publicly. */}
