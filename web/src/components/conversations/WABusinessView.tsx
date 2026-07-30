@@ -1878,7 +1878,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
 
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 bg-[#efeae2] dark:bg-[#161717] border-l border-border dark:border-[#222d34] relative">
+    <div className="flex-1 flex flex-col min-w-0 bg-[#efeae2] dark:bg-[#161717] relative">
       {/* Background */}
       <div
         className="absolute inset-0 pointer-events-none z-0 bg-repeat opacity-[0.4] dark:opacity-[0.06]"
@@ -4973,7 +4973,7 @@ const handleFavorite = useCallback(
       {/* Draggable divider — desktop only, visible when sidebar is open */}
       {!isMobileViewport && !isSidebarCollapsed && (
         <div
-          className="hidden lg:flex w-1 h-full shrink-0 cursor-col-resize z-20 group relative select-none items-center justify-center"
+          className="hidden lg:flex w-1 h-full shrink-0 cursor-col-resize z-20 group relative select-none items-center justify-center bg-background dark:bg-[#161717]"
           onMouseDown={(e) => {
             dividerDragRef.current = { isDragging: true, startX: e.clientX, startWidth: sidebarWidth };
             e.preventDefault();
