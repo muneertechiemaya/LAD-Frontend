@@ -86,6 +86,11 @@ export const getDetailedActions = (campaign: Campaign) => {
   if (cfg.instagram_autopost?.media_url) {
     actionCounts['instagram_post'] = 1;
   }
+  // Campaign-scoped (industry) report. The per-lead variant is a real step and
+  // is counted from steps, not from config.
+  if (cfg.campaign_report?.industry) {
+    actionCounts['lead_report'] = 1;
+  }
   if (cfg.followup_sequence?.touches) {
     actionCounts['followup_sequence'] = Number(cfg.followup_sequence.touches) || 1;
   }
@@ -103,6 +108,7 @@ export const getDetailedActions = (campaign: Campaign) => {
       linkedin_post: { name: 'Auto-post', platform: 'linkedin' },
       instagram_post: { name: 'IG auto-post', platform: 'other' },
       human_task: { name: 'Human task', platform: 'other' },
+      lead_report: { name: 'Audit report', platform: 'other' },
       post_approval: { name: 'Approval', platform: 'other' },
       followup_sequence: { name: 'Follow-ups', platform: 'other' },
       export_results: { name: 'Export', platform: 'other' },
