@@ -19,6 +19,12 @@ interface CreditBalance {
 interface BillingDashboardProps {
   customerId?: string;
 }
+/**
+ * Every credit-purchase CTA on this dashboard points here. CreditsSettings
+ * reads action=add on mount, opens its Add Credits modal, then strips the
+ * param back to ?tab=credits. Same target the pricing page CTA uses.
+ */
+const ADD_CREDITS_HREF = '/settings?tab=credits&action=add';
 export const BillingDashboard: React.FC<BillingDashboardProps> = ({ customerId }) => {
   const [balance, setBalance] = useState<CreditBalance | null>(null);
   const [loading, setLoading] = useState(true);
@@ -97,7 +103,7 @@ export const BillingDashboard: React.FC<BillingDashboardProps> = ({ customerId }
           <h3 className="text-lg font-semibold text-foreground mb-2">No Credit Balance</h3>
           <p className="text-muted-foreground mb-6">You don&apos;t have any credits yet.</p>
           <Link
-            href="/wallet"
+            href={ADD_CREDITS_HREF}
             className="inline-flex items-center px-4 py-2 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors duration-200"
           >
             <Wallet className="h-4 w-4 mr-2" />
@@ -201,11 +207,8 @@ export const BillingDashboard: React.FC<BillingDashboardProps> = ({ customerId }
                     </p>
                   </div>
                   <div className="mt-4">
-                    {/* action=add is what CreditsSettings reads on mount to
-                        auto-open its Add Credits modal — same modal the
-                        Credits tab's own button opens. */}
                     <Link
-                      href="/settings?tab=credits&action=add"
+                      href={ADD_CREDITS_HREF}
                       className="text-sm font-medium text-yellow-800 hover:text-yellow-900 underline"
                     >
                       Recharge now &rarr;
@@ -231,7 +234,7 @@ export const BillingDashboard: React.FC<BillingDashboardProps> = ({ customerId }
                   </div>
                   <div className="mt-4">
                     <Link
-                      href="/wallet"
+                      href={ADD_CREDITS_HREF}
                       className="text-sm font-medium text-blue-800 hover:text-blue-900 underline"
                     >
                       Upgrade package &rarr;
