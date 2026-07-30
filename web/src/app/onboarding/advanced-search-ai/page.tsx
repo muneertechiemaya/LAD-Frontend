@@ -680,6 +680,9 @@ export default function AdvancedSearchAIPage() {
     const [leads, setLeads] = useState<LeadProfile[]>([]);
     const [filteredLeads, setFilteredLeads] = useState<LeadProfile[]>([]);   // below ICP threshold
     const [showFilteredLeads, setShowFilteredLeads] = useState(false);        // toggle "Show all"
+    // True between "leads rendered" and "ICP scores arrived" when the search ran
+    // with defer_icp. Drives the pulsing dot that stands in for the score chip.
+    const [icpScoringPending, setIcpScoringPending] = useState(false);
     // Per-lead selection: which prospects the user has checked to enroll into the
     // campaign. The list now spans the full ICP range (0–100); the user picks the
     // exact prospects rather than relying on a score cutoff. Keyed by lead.id.
@@ -1483,7 +1486,12 @@ export default function AdvancedSearchAIPage() {
     // ── Lead selection (checkbox) helpers ───────────────────────────────────
     // The checkbox is the authoritative include signal: only checked leads are
     // enrolled into the campaign at launch (see CheckpointFormInline.launchCampaign).
+    // Set as soon as the user touches a checkbox. Deferred ICP scoring re-seeds
+    // the default selection when scores land; without this it would stomp on any
+    // picking the user did during the couple of seconds scoring was still running.
+    const selectionTouchedRef = useRef(false);
     const toggleLeadSelection = (leadId: string) => {
+        selectionTouchedRef.current = true;
         setSelectedLeadIds(prev => {
             const next = new Set(prev);
             if (next.has(leadId)) next.delete(leadId); else next.add(leadId);
@@ -1491,14 +1499,19 @@ export default function AdvancedSearchAIPage() {
         });
     };
     const selectAllLeads = () => {
+        selectionTouchedRef.current = true;
         setSelectedLeadIds(new Set(leads.map(l => l.id)));
     };
     const clearLeadSelection = () => {
+        selectionTouchedRef.current = true;
         setSelectedLeadIds(new Set());
     };
     // Seed default selection (leads scoring >= 50 pre-checked) for a fresh result
     // set, replacing any prior selection. Used when a new search populates `leads`.
-    const seedDefaultSelection = (list: LeadProfile[]) => {
+    // `respectUserEdits` is passed by the deferred-ICP re-seed, which must not
+    // overwrite picks the user already made while scoring was in flight.
+    const seedDefaultSelection = (list: LeadProfile[], respectUserEdits = false) => {
+        if (respectUserEdits && selectionTouchedRef.current) return;
         // A single-result search is almost always the specific person the user
         // asked for — check them regardless of ICP score so launch never
         // discards the only lead found (an ICP of "one person's name" scores
@@ -4117,6 +4130,9 @@ export default function AdvancedSearchAIPage() {
                     // Return the full ICP range (0–100) so the user can pick prospects
                     // via checkboxes rather than being capped at the backend's default 50.
                     icp_min_score: 0,
+                    // Don't block the response on ICP scoring — leads render as soon as
+                    // LinkedIn answers, and scoreIcp() fills the scores in afterwards.
+                    defer_icp: true,
                 });
 
                 // Extract and set activities from response
@@ -4182,9 +4198,66 @@ export default function AdvancedSearchAIPage() {
                             };
                         });
                         setLeads(realLeads);
+                        // Fresh result set — the user hasn't picked anything in it yet.
+                        selectionTouchedRef.current = false;
                         seedDefaultSelection(realLeads);
                         searchTotal = d.total || realLeads.length;
                         setLastModuleUsed(d.module_used || 'advanced_search');
+
+                        // ── Deferred ICP scoring ──────────────────────────────────────────
+                        // The search returned before Gemini scored anything (defer_icp), so
+                        // the leads above are already on screen. Score them in the background
+                        // and merge by id — never rebuild or reorder the list, because the
+                        // user may already be ticking checkboxes while this runs.
+                        if (d.icp_pending && realLeads.length > 0 && icpDesc) {
+                            setIcpScoringPending(true);
+                            (async () => {
+                                try {
+                                    const scoreResult = await linkedInSearch.scoreIcp(
+                                        realLeads,
+                                        icpDesc,
+                                        effectiveTargeting ? {
+                                            nationality:      effectiveTargeting.decision_maker_nationality,
+                                            experience_level: effectiveTargeting.decision_maker_experience_level,
+                                            skills:           effectiveTargeting.decision_maker_skills,
+                                            education:        effectiveTargeting.decision_maker_education,
+                                            company_size:     effectiveTargeting.company_size,
+                                        } : null
+                                    );
+                                    if (scoreResult?.success && Array.isArray(scoreResult.results)) {
+                                        const scoreMap: Record<string, any> = {};
+                                        for (const r of scoreResult.results) {
+                                            if (r.id) scoreMap[r.id] = r;
+                                        }
+                                        setLeads(prev => prev.map(l => {
+                                            const s = scoreMap[l.id];
+                                            if (!s || s.icp_score == null) return l;
+                                            return {
+                                                ...l,
+                                                icp_score:        s.icp_score,
+                                                match_level:      s.match_level || l.match_level,
+                                                icp_reasoning:    s.icp_reasoning || l.icp_reasoning,
+                                                enriched_profile: s.enriched_profile || l.enriched_profile,
+                                            };
+                                        }));
+                                        // Now that real scores exist, apply the default
+                                        // ≥50 pre-check the user would have seen up front
+                                        // had scoring been synchronous — unless they've
+                                        // already started picking, in which case leave it.
+                                        seedDefaultSelection(
+                                            realLeads.map(l => ({ ...l, icp_score: scoreMap[l.id]?.icp_score ?? l.icp_score })),
+                                            true
+                                        );
+                                    }
+                                } catch (scoreErr) {
+                                    console.warn('[ICP] Deferred scoring failed', scoreErr);
+                                } finally {
+                                    setIcpScoringPending(false);
+                                }
+                            })();
+                        } else {
+                            setIcpScoringPending(false);
+                        }
 
                         // ── Nationality annotation + secondary filter ─────────────────────
                         // The backend already filters by nationality via LLM name inference.
@@ -4203,24 +4276,35 @@ export default function AdvancedSearchAIPage() {
                                         for (const r of inferResult.results) {
                                             if (r.id) natMap[r.id] = { nationality: r.nationality || '', confidence: r.confidence || 0 };
                                         }
-                                        const annotated = realLeads.map(l => ({
+                                        const normalise = (s: string) => s.toLowerCase().trim();
+                                        const targetNats = nationalityFilters.map(normalise);
+                                        const isMatch = (nat?: string) =>
+                                            // Keep if: (a) inferred nationality matches, OR
+                                            //           (b) nationality is unknown/ambiguous (trust backend filter)
+                                            !nat || targetNats.some(t =>
+                                                normalise(nat).includes(t) || t.includes(normalise(nat))
+                                            );
+
+                                        const annotate = (l: LeadProfile) => ({
                                             ...l,
                                             inferred_nationality: natMap[l.id]?.nationality || undefined,
                                             nationality_confidence: natMap[l.id]?.confidence || undefined,
-                                        }));
-                                        const normalise = (s: string) => s.toLowerCase().trim();
-                                        const targetNats = nationalityFilters.map(normalise);
-                                        const matching = annotated.filter(l =>
-                                            // Keep if: (a) inferred nationality matches, OR
-                                            //           (b) nationality is unknown/ambiguous (trust backend filter)
-                                            !l.inferred_nationality ||
-                                            (l.inferred_nationality && targetNats.some(t =>
-                                                normalise(l.inferred_nationality!).includes(t) || t.includes(normalise(l.inferred_nationality!))
-                                            ))
-                                        );
-                                        const nonMatching = annotated.filter(l => !matching.find(m => m.id === l.id));
-                                        // Update leads with nationality annotations and remove confirmed non-matches
-                                        setLeads(matching);
+                                        });
+
+                                        // Annotate off the CURRENT list rather than rebuilding
+                                        // from the `realLeads` snapshot — deferred ICP scoring
+                                        // writes to this same state, and a snapshot rebuild
+                                        // would discard whichever of the two landed first.
+                                        setLeads(prev => prev
+                                            .filter(l => isMatch(natMap[l.id]?.nationality))
+                                            .map(annotate));
+
+                                        // Confirmed non-matches move to the "filtered out"
+                                        // bucket, which ICP scoring never touches — so taking
+                                        // them from the snapshot is safe.
+                                        const nonMatching = realLeads
+                                            .filter(l => !isMatch(natMap[l.id]?.nationality))
+                                            .map(annotate);
                                         if (nonMatching.length > 0) {
                                             setFilteredLeads(prev => [...nonMatching, ...prev]);
                                         }
@@ -6231,6 +6315,17 @@ export default function AdvancedSearchAIPage() {
                                                           <span className={`inline-flex items-center gap-[3px] px-[8px] py-[2px] rounded-[12px] text-[11px] font-bold ${scoreToMatchLevel(lead.icp_score) === 'strong' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300' : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-300'}`}>
                                                                 {scoreToMatchLevel(lead.icp_score) === 'strong' ? '🟢' : '🟡'} {lead.icp_score}%
                                                             </span>
+                                                        )}
+                                                        {/* Scoring still in flight (defer_icp): hold the chip's place with a
+                                                            pulsing dot so the row doesn't reflow when the real score lands. */}
+                                                        {!targetingFiltersActive && lead.icp_score === undefined && icpScoringPending && (
+                                                          <span
+                                                            className="adv-icp-pending inline-flex items-center gap-[5px] px-[8px] py-[2px] rounded-[12px] text-[11px] font-bold bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+                                                            title="Scoring this lead against your ICP…"
+                                                          >
+                                                            <span className="adv-icp-pending-dot" />
+                                                            Scoring
+                                                          </span>
                                                         )}
                                                     </div>
                                                     <div className="adv-lead-title">
@@ -12860,6 +12955,10 @@ const css = `
             .adv-lead-info {flex:1; min-width:0; }
             .adv-lead-name {font-size:14px; font-weight:700; color:#111827; display:flex; align-items:center; gap:4px; }
             .adv-verified {background:#10b981; color:#fff; border-radius:50%; width:16px; height:16px; display:inline-flex; align-items:center; justify-content:center; font-size:9px; font-weight:800; }
+            /* Placeholder chip shown while deferred ICP scoring is still running. */
+            .adv-icp-pending-dot {width:7px; height:7px; border-radius:50%; background:#10b981; flex-shrink:0; animation:adv-icp-blink 1.1s ease-in-out infinite; }
+            @keyframes adv-icp-blink {0%,100% {opacity:1; transform:scale(1); } 50% {opacity:.25; transform:scale(.75); } }
+            @media (prefers-reduced-motion: reduce) { .adv-icp-pending-dot {animation:none; opacity:.6; } }
             .adv-lead-title {font-size:12px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:10px}
             .adv-lead-company {font-size:12px; font-weight:600; color:#374151; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
             .adv-lead-platform {margin-top:4px; display:flex; gap:4px; }
