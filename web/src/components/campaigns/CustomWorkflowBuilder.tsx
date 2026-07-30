@@ -39,7 +39,7 @@ import {
   MEDIA_STEP_ID, MULTICOND_STEP_ID, AI_STEP_ID, ENRICH_STEP_ID, EXPORT_STEP_ID,
   AUTOPOST_STEP_ID, CONTENT_STEP_ID, APPROVAL_STEP_ID, AI_DEFAULT_INSTRUCTION, EXPORT_DEFAULT_COLUMNS,
   SCRAPE_STEP_ID, RESEARCH_STEP_ID, SCORE_STEP_ID,
-  SPLIT_STEP_ID, SETFIELD_STEP_ID, HTTP_STEP_ID, LANDING_STEP_ID, templateNodeKey,
+  SPLIT_STEP_ID, SETFIELD_STEP_ID, HTTP_STEP_ID, LANDING_STEP_ID, templateNodeKey, MACRO_STEP_IDS,
 } from './workflowTemplates';
 import { TemplateIcon, stepCategory } from './TemplateIcon';
 import {
@@ -192,6 +192,55 @@ const CONDITIONS = [
   { value: 'wa_read', label: 'WhatsApp read', action: 'WA_READ' },
   { value: 'wa_replied', label: 'WhatsApp replied', action: 'WA_REPLIED' },
 ];
+
+// ─── Per-node instructions ───────────────────────────────────────────────────
+// What each node needs and how it behaves, shown at the top of its settings
+// drawer. Keyed by SourceKey for sources, by StepType for plain outreach/logic
+// nodes, by 'router' for the router variant, and by the node's fixed macro id
+// (see workflowTemplates.ts) for everything else — mirrors the key resolution
+// already used for icons/labels in renderEditor(). Deliberately a loose
+// Record<string,string>, not tied to the three exhaustive StepType maps
+// elsewhere (StepSettings.tsx / both campaignStore.ts) — this is a new,
+// independent lookup so it can't break their exhaustiveness.
+const STEP_INSTRUCTIONS: Record<string, string> = {
+  // Sources
+  zoho_recurring: 'Imports newly-created Zoho CRM contacts every day for the life of the campaign. Nothing is required — the tag filter is optional.',
+  zoho_once: 'Imports contacts already synced from Zoho CRM, once. Nothing is required.',
+  ghl_once: 'Imports contacts already synced from GoHighLevel, once. Nothing is required.',
+  file_import: "Imports leads from an uploaded CSV/Excel file. Needs a file with at least one column mapped to name, company, email, or LinkedIn URL. Rows with no LinkedIn URL are resolved automatically by name+company at send time — some may never match, and those retry indefinitely rather than fail. Map a LinkedIn URL column directly when you have one.",
+  linkedin_search: 'Finds new leads by keyword, title, industry, or location. Needs at least one of those filled in.',
+  linkedin_signal: 'Finds leads from hiring/buying signals. Needs a description of the signal to search for.',
+  // LinkedIn outreach
+  linkedin_connect: "Sends a LinkedIn connection request — no prior connection needed. Needs an active LinkedIn account connected in Settings. Follow it with a Message step to reach leads once they accept.",
+  linkedin_message: "Sends a LinkedIn DM — but ONLY once a connection has already been accepted. If there is no Connection request step earlier in this sequence, the lead is never asked to connect, so this step waits for an acceptance that will never happen and no message is ever sent. Needs message text (supports {{first_name}}, {{company}}, {{web_insight}}, {{recent_post}}, {{article}}, {{news}}).",
+  linkedin_inmail: 'Sends a paid InMail straight to a non-connection — no prior connect step needed. Needs message text and a LinkedIn Premium / Sales Navigator / Recruiter seat with InMail credits on the sending account.',
+  linkedin_visit: "Visits the lead's LinkedIn profile as a warm-up signal. Nothing is required; no sequence dependency, though it reads best placed before Connect/Message.",
+  linkedin_follow: "Follows the lead's LinkedIn profile. Nothing is required; no sequence dependency.",
+  // Other channels
+  email_send: 'Sends an email. Needs a subject, a body, and a connected email sender.',
+  whatsapp_send: 'Sends a WhatsApp message. Needs message text and a connected WhatsApp number.',
+  voice_agent_call: 'Places an AI voice call. Voice agent and script are both optional — if left blank, the first available voice agent is used.',
+  condition: 'Pauses the lead here until the chosen condition (connection accepted, message replied, etc.) is met, then continues.',
+  router: 'Watches the step placed right before it. After the set number of failed attempts, it stops retrying and reroutes the lead to the fallback channel instead.',
+  // Macro nodes (by fixed id — see workflowTemplates.ts)
+  [FOLLOWUP_STEP_ID]: 'Automatic follow-up touches if a lead does not reply, on the schedule below. Needs at least one touch configured (defaults are pre-filled).',
+  [ANALYTICS_STEP_ID]: 'Emails or WhatsApps a daily performance digest. Needs a recipient.',
+  [ZOHO_UPDATE_STEP_ID]: "Writes this workflow's results back onto the lead's Zoho record. Needs a target module and at least one field mapped.",
+  [MEDIA_STEP_ID]: 'Generates an image or video asset to attach to outreach or a scheduled post.',
+  [MULTICOND_STEP_ID]: 'Routes each lead down a different branch (and message) by a field value. Needs at least one condition with a value and a message.',
+  [AI_STEP_ID]: 'Uses AI to clean up messy imported titles/names before outreach runs. Nothing is required. Most useful placed right after the contact source, before any outreach step.',
+  [ENRICH_STEP_ID]: "Reveals a lead's email/phone via FullEnrich, spending credits per lead found. Nothing is required. Most useful before an Email or WhatsApp step that needs that contact info.",
+  [EXPORT_STEP_ID]: 'Sends the final lead list to a file, database, email, WhatsApp, webhook, Sheet, or Slack. Needs at least one destination configured.',
+  [AUTOPOST_STEP_ID]: "Publishes on a recurring schedule to the tenant's own LinkedIn feed — not sent to leads. Needs post content from a LinkedIn content node.",
+  [CONTENT_STEP_ID]: 'Writes (or AI-generates) the text for the scheduled LinkedIn post.',
+  [APPROVAL_STEP_ID]: 'Holds a post for approval over WhatsApp/email before it publishes. Needs an approver contact, AND a LinkedIn auto-post node in this workflow — approval has nothing to gate without one.',
+  [SCRAPE_STEP_ID]: "Reads one web page's text for this workflow's own use. Needs a URL. This is the exact URL entered — it does NOT automatically use each lead's own company site — and its content is not inserted into your message unless you separately reference {{web_insight}} there, which is filled from a different, automatic per-lead lookup, not this step. Point this at a page that should be the same for every lead, or skip it.",
+  [RESEARCH_STEP_ID]: "Runs AI research on each lead's company from the open web. Nothing is required.",
+  [SCORE_STEP_ID]: 'Scores each lead\'s buy-intent 0-100 and labels it hot/warm/cold. Nothing is required. Pairs naturally with a Multi-condition step placed right after it, to branch hot vs. cold leads.',
+  [SPLIT_STEP_ID]: 'Sends variant A or B (roughly 50/50, sticky per lead) to compare two openers. Needs a message for BOTH variants.',
+  [SETFIELD_STEP_ID]: 'Writes a tag or value onto the lead record for later branching or export.',
+  [HTTP_STEP_ID]: "Calls any external API with this lead's data. Requests to internal/private/cloud-metadata addresses are blocked.",
+};
 
 // "Macro" nodes (single-instance): follow-ups EXPAND into real engine steps at
 // launch; analytics becomes campaign config read by the digest cron — it is
@@ -1232,6 +1281,39 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   const editingStep = workflowPreview.find((s) => s.id === editingId) || null;
   const cfg = editingId ? (configs[editingId] || {}) : {};
 
+  /**
+   * Hard sequence-order problems — derived from the visual step list itself,
+   * not per-node field completeness (launch() below still owns that, on
+   * click). Anything surfaced here disables Launch before the click, because
+   * these aren't "a field is empty", they're "this step can never do
+   * anything, ever" — grounded in confirmed engine behaviour:
+   *  - linkedin_message only sends once a connection is ACCEPTED
+   *    (LinkedInStepExecutor's isConnectionAccepted check). With no earlier
+   *    linkedin_connect step in this workflow, nothing ever asks the lead to
+   *    connect, so the step waits forever and never actually sends.
+   *  - post_approval has nothing to gate without a linkedin_post/autopost
+   *    node in the same workflow — same rule launch() already enforces on
+   *    click (the APPROVAL_STEP_ID check further below); surfaced here too
+   *    so Launch is disabled ahead of time instead of erroring after a click.
+   */
+  const sequenceIssues = useMemo(() => {
+    const issues: { id: string; message: string }[] = [];
+    let seenConnect = false;
+    for (const step of workflowPreview) {
+      if (step.type === 'linkedin_connect') seenConnect = true;
+      else if (step.type === 'linkedin_message' && !seenConnect) {
+        issues.push({
+          id: step.id,
+          message: "Add a 'Connection request' step before 'Message' — Message only sends once a connection is accepted, so without a Connect step earlier in the sequence it will wait forever and never send.",
+        });
+      }
+    }
+    if (workflowPreview.some((s) => s.id === APPROVAL_STEP_ID) && !workflowPreview.some((s) => s.id === AUTOPOST_STEP_ID)) {
+      issues.push({ id: APPROVAL_STEP_ID, message: 'The Approval node needs a LinkedIn post node — it gates what that node publishes.' });
+    }
+    return issues;
+  }, [workflowPreview]);
+
   // Router-style branch visualisation for the Multi-condition node: one output
   // node per condition (+ else), fanned out on the canvas.
   const CH_TO_STEP: Record<string, StepType> = { email: 'email_send', linkedin: 'linkedin_message', whatsapp: 'whatsapp_send' };
@@ -1260,6 +1342,10 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     setError(null);
     if (hydrating) return;   // never launch over a workflow that is still loading
     if (!name.trim()) { setError('Name your Accelerator.'); return; }
+    // Belt-and-suspenders: the Launch button is already disabled while
+    // sequenceIssues is non-empty, but guard the click too in case state
+    // changed between render and click.
+    if (sequenceIssues.length) { setError(sequenceIssues[0].message); setEditingId(sequenceIssues[0].id); return; }
     // A publisher-only workflow (content → approval → post) never touches a
     // lead: all three nodes compile into campaigns.config.autopost, a
     // campaign-level macro that linkedinAutopostCron fires on a schedule. There
@@ -2152,6 +2238,10 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           : isRouter
             ? { icon: <GitFork className="h-4 w-4 text-rose-600" />, chip: 'bg-rose-50 dark:bg-rose-950/30' }
             : OUTREACH.find((o) => o.type === editingStep.type && !o.router);
+    // What this node needs / how it behaves — same key resolution as `visual`
+    // above (macro id when fixed, 'router' for the router variant, else type).
+    const instructionsKey = isSource ? (source || '') : isRouter ? 'router' : isMacro ? editingId : editingStep.type;
+    const instructions = STEP_INSTRUCTIONS[instructionsKey as string];
     return (
       <div className="absolute right-0 top-0 h-full w-[22rem] bg-card border-l border-border shadow-2xl z-10 flex flex-col">
         <div className="flex items-start gap-3 p-4 border-b border-border">
@@ -2167,6 +2257,11 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           </button>
         </div>
         <div className="flex-1 p-4 space-y-4 overflow-y-auto text-sm">
+          {instructions && (
+            <div className="rounded-lg border border-sky-200 dark:border-sky-900 bg-sky-50 dark:bg-sky-950/30 p-2.5 text-[12px] leading-relaxed text-sky-900 dark:text-sky-200">
+              {instructions}
+            </div>
+          )}
           {isSource && source === 'zoho_recurring' && (<>
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Import from</label>
               <select className={field} value={cfg.zoho_modules || 'contacts'} onChange={(e) => setCfg(editingId, { zoho_modules: e.target.value })}>
@@ -3666,6 +3761,14 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               <Input value={cfg.subject || ''} onChange={(e) => { setCfg(editingId, { subject: e.target.value }); updateWorkflowStep(editingId, { description: e.target.value.slice(0, 40) }); }} /></div>
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Body</label>
               <textarea className={`${field} min-h-[110px]`} value={cfg.body || ''} onChange={(e) => setCfg(editingId, { body: e.target.value })} placeholder="Leave blank to let Mr LAD draft it" /></div>
+            <label className="flex items-start gap-2.5 rounded-lg border border-border p-2.5 cursor-pointer hover:bg-muted/30 transition-colors">
+              <input type="checkbox" className="mt-0.5 h-4 w-4" checked={cfg.track_opens !== false}
+                onChange={(e) => setCfg(editingId, { track_opens: e.target.checked })} />
+              <span className="min-w-0">
+                <span className="block text-sm text-foreground">Track email opens</span>
+                <span className="block text-[11px] text-muted-foreground">Required for a "Wait for condition → Email read" step later in this workflow. Turn off for sensitive sends.</span>
+              </span>
+            </label>
           </>)}
           {!isSource && editingStep.type === 'voice_agent_call' && (<>
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Calling number</label>
@@ -3727,6 +3830,56 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     );
   };
 
+  /**
+   * Suggested next node — a deterministic recommendation, not a live AI call,
+   * so it can't be flaky about something adjacent to what gates Launch. Each
+   * rule traces to a documented producer/consumer relationship already noted
+   * in STEP_INSTRUCTIONS or the palette copy above (e.g. lead-score → Multi-
+   * condition, AI Agent → LinkedIn). Purely a shortcut: every suggestion here
+   * is also always pickable manually from the palette below, unchanged.
+   */
+  const suggestions = useMemo(() => {
+    if (!source) return []; // "pick a source" is already section 1 of the palette
+    type Suggestion = { key: string; label: string; sub: string; action: () => void; primary?: boolean };
+    const hasId = (id: string) => workflowPreview.some((s) => s.id === id);
+    const hasType = (t: StepType) => workflowPreview.some((s) => s.type === t);
+    const hasOutreach = hasType('linkedin_connect') || hasType('email_send') || hasType('whatsapp_send') || hasType('voice_agent_call');
+    const last = workflowPreview[workflowPreview.length - 1];
+    const lastKey = !last ? 'source' : last.id === SOURCE_STEP_ID ? 'source' : (MACRO_STEP_IDS.includes(last.id) ? last.id : last.type);
+    const out: Suggestion[] = [];
+    switch (lastKey) {
+      case 'source':
+        if (!hasOutreach) {
+          out.push({ key: 'linkedin_connect', label: 'Connection request', sub: 'Start LinkedIn outreach with a connect step', action: () => addOutreach('linkedin_connect'), primary: true });
+          out.push({ key: 'email_send', label: 'Send email', sub: 'Or start an email sequence instead', action: () => addOutreach('email_send') });
+        }
+        if (!hasId(AI_STEP_ID)) out.push({ key: AI_STEP_ID, label: 'AI Agent', sub: 'Clean up messy imported titles/names first', action: addAiParse });
+        break;
+      case 'linkedin_connect':
+        out.push({ key: 'linkedin_message', label: 'Message', sub: 'Sent once the connection is accepted', action: () => addOutreach('linkedin_message'), primary: true });
+        break;
+      case SCORE_STEP_ID:
+        out.push({ key: MULTICOND_STEP_ID, label: 'Multi-condition', sub: 'Branch hot vs. cold leads by the score just computed', action: addMultiCond, primary: true });
+        break;
+      case SCRAPE_STEP_ID:
+      case RESEARCH_STEP_ID:
+      case AI_STEP_ID:
+      case ENRICH_STEP_ID:
+        if (!hasOutreach) out.push({ key: 'linkedin_connect', label: 'Connection request', sub: 'Start outreach now that lead data is ready', action: () => addOutreach('linkedin_connect'), primary: true });
+        break;
+      case 'linkedin_message':
+      case 'email_send':
+      case 'whatsapp_send':
+      case 'voice_agent_call':
+        if (!hasId(FOLLOWUP_STEP_ID)) out.push({ key: FOLLOWUP_STEP_ID, label: 'Follow-up sequence', sub: 'Automatic touches if there is no reply', action: addFollowup, primary: true });
+        if (!hasId(EXPORT_STEP_ID)) out.push({ key: EXPORT_STEP_ID, label: 'Export results', sub: 'Send the final list to a file, sheet, or webhook', action: addExport });
+        break;
+      default:
+        break;
+    }
+    return out;
+  }, [workflowPreview, source]);
+
   return (
     <div className="h-full min-h-0 flex flex-col bg-[#F8F9FE] dark:bg-[#000724]">
       {/* Header */}
@@ -3748,13 +3901,27 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             {strategySaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Bookmark className="h-4 w-4 mr-2" />}
             Save as strategy
           </Button>
-          <Button onClick={launch} disabled={launching || hydrating}>
+          <Button onClick={launch} disabled={launching || hydrating || sequenceIssues.length > 0}
+            title={sequenceIssues.length ? sequenceIssues[0].message : undefined}>
             {(launching || hydrating) ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Rocket className="h-4 w-4 mr-2" />}
             {hydrating ? 'Loading…' : editCampaignId ? 'Save changes' : 'Launch Accelerator'}
           </Button>
         </div>
       </div>
       {error && <div className="mx-4 mt-3 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">{error}</div>}
+      {!error && sequenceIssues.length > 0 && (
+        <div className="mx-4 mt-3 rounded-lg bg-amber-50 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-900 p-3 text-sm text-amber-900 dark:text-amber-200 flex items-start gap-2">
+          <span className="flex-1">
+            <strong className="font-semibold">Launch is disabled — fix the sequence first: </strong>
+            {sequenceIssues[0].message}
+            {sequenceIssues.length > 1 && ` (+${sequenceIssues.length - 1} more)`}
+          </span>
+          <button type="button" onClick={() => setEditingId(sequenceIssues[0].id)}
+            className="flex-shrink-0 px-2.5 py-1 rounded-md bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200 text-xs font-semibold hover:bg-amber-200 dark:hover:bg-amber-900 transition-colors">
+            Fix it
+          </button>
+        </div>
+      )}
       {strategyMsg && (
         <div className={`mx-4 mt-3 rounded-lg border p-3 text-sm flex items-start gap-2 ${
           strategyMsg.ok
@@ -3916,6 +4083,33 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           </>)}
 
           {paletteTab === 'steps' && (<>
+          {/* Suggested next step — a shortcut, not a requirement. Every option
+              here is also always pickable manually from the sections below. */}
+          {suggestions.length > 0 && (
+            <div className="rounded-2xl border border-dashed border-[#0b1957]/30 bg-[#0b1957]/[0.03] dark:bg-[#0b1957]/[0.08] p-3 space-y-2">
+              <div className="flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5 text-[#0b1957] dark:text-sky-300" />
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#0b1957] dark:text-sky-300">Suggested next step</span>
+              </div>
+              <div className="space-y-1.5">
+                {suggestions.map((s) => (
+                  <button key={s.key} type="button" onClick={s.action}
+                    className={`w-full flex items-center gap-2 rounded-xl border px-2.5 py-2 text-left transition-all ${
+                      s.primary
+                        ? 'border-[#0b1957] bg-card shadow-sm hover:bg-[#0b1957]/[0.04]'
+                        : 'border-border bg-card/60 hover:border-[#0b1957]/30 hover:bg-muted/40'
+                    }`}>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[12.5px] font-semibold text-foreground truncate">{s.label}</span>
+                      <span className="block text-[11px] text-muted-foreground truncate">{s.sub}</span>
+                    </span>
+                    <Plus className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10.5px] text-muted-foreground leading-snug">Just a suggestion — pick any other step below instead if you'd rather.</p>
+            </div>
+          )}
           {/* 1 · Contact source */}
           <div>
             <div className="flex items-center gap-2 mb-1">
