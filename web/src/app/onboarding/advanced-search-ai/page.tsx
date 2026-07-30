@@ -4461,6 +4461,13 @@ export default function AdvancedSearchAIPage() {
             handleRoleAnswer(v === '__role_gate_yes__' ? 'yes' : 'skip');
             return;
         }
+        // A quick-reply chip on a wizard question. Routed through the same
+        // handler as a typed reply so there is still one advance path — the
+        // chip is a shortcut for typing, not a second way through the wizard.
+        if (v.startsWith('__role_answer__:')) {
+            handleRoleAnswer(v.slice('__role_answer__:'.length));
+            return;
+        }
         if (v === '__role_cancel__') {
             roleWizardRef.current = null;
             rolePushAi('No problem — Accelerator setup cancelled. Pick another from the **Accelerators** menu any time.');
@@ -5597,7 +5604,7 @@ export default function AdvancedSearchAIPage() {
                                                 : 'Qualifying...'
                                         }
                                         : m;
-                                    return <Bubble key={m.id} msg={displayMsg} onOpt={onOptClick} onShowPanel={setShowPanel} onStartCheckpoints={() => setCpStep(0)} onLetAgentDeal={letAgentDeal} agentDealLoading={agentDealLoading} onStartTargeting={() => { setTgStep(0); setChatBlocked(false); }} hasPanel={!!showPanel} leadsCount={leads.length} filteredLeadsCount={filteredLeads.length} onUploadClick={() => fileInputRef.current?.click()} useSalesNav={useSalesNav} isMobile={isMobile} rolePreviewing={rolePreviewing} />;
+                                    return <Bubble key={m.id} msg={displayMsg} onOpt={onOptClick} onShowPanel={setShowPanel} onStartCheckpoints={() => setCpStep(0)} onLetAgentDeal={letAgentDeal} agentDealLoading={agentDealLoading} onStartTargeting={() => { setTgStep(0); setChatBlocked(false); }} hasPanel={!!showPanel} leadsCount={leads.length} filteredLeadsCount={filteredLeads.length} onUploadClick={() => fileInputRef.current?.click()} useSalesNav={useSalesNav} isMobile={isMobile} rolePreviewing={rolePreviewing} roleIcp={businessProfile} />;
                                 })
                             )}
                             {/* Import leads prompt — shown when conversation is about existing client relationships */}
@@ -7508,7 +7515,45 @@ function RolesLauncher({ onPick }: { onPick: (t: WorkflowTemplate) => void }) {
 }
 
 /** Rich wizard card rendered inside AI bubbles (msg.roleCard). */
-function RoleCardView({ card, onOpt, previewing }: { card: NonNullable<ChatMsg['roleCard']>; onOpt: (v: string) => void; previewing?: boolean }) {
+/**
+ * Quick replies for one wizard question.
+ *
+ * Every chip is grounded in something real — the template's own preset, or the
+ * tenant's saved ICP — so none of them invents a taxonomy for the user to pick
+ * from. A question with nothing real to offer simply stays free text.
+ */
+function roleQuickReplies(
+    q: TemplateInput | undefined,
+    tpl: WorkflowTemplate,
+    icp?: Record<string, string>,
+): { label: string; value: string; hint?: string }[] {
+    if (!q || q.target === 'gate') return [];
+    const out: { label: string; value: string; hint?: string }[] = [];
+
+    // The tenant's saved ICP, offered only where it answers THIS question.
+    // Chosen by the user rather than injected: elsewhere these fields are
+    // deliberately kept out of search context because they would silently
+    // override a fresh query — clicking a chip is an explicit choice.
+    const icpFor: Record<string, string | undefined> = {
+        job_titles: icp?.icpJobTitles,
+        industries: icp?.industry,
+        locations: icp?.icpLocations || icp?.geographicFocus,
+    };
+    const fromIcp = (icpFor[q.key] || '').trim();
+    if (fromIcp) out.push({ label: 'Use my ICP', value: fromIcp, hint: fromIcp });
+
+    // Skipping keeps whatever the template already carries, so say what that is
+    // rather than making "skip" a blind choice.
+    const preset = String((tpl.source?.cfg as Record<string, string> | undefined)?.[q.key] || '').trim();
+    if (q.optional) {
+        if (q.target === 'node') out.push({ label: 'Let Mr LAD write it', value: 'skip' });
+        else if (preset && preset !== fromIcp) out.push({ label: 'Keep the suggested', value: 'skip', hint: preset });
+        else out.push({ label: 'Skip', value: 'skip' });
+    }
+    return out;
+}
+
+function RoleCardView({ card, onOpt, previewing, icp }: { card: NonNullable<ChatMsg['roleCard']>; onOpt: (v: string) => void; previewing?: boolean; icp?: Record<string, string> }) {
     const tpl = WORKFLOW_TEMPLATES.find((t) => t.key === card.key);
     if (!tpl) return null;
     const accent = tpl.accent;
@@ -7591,10 +7636,32 @@ function RoleCardView({ card, onOpt, previewing }: { card: NonNullable<ChatMsg['
                             Skip and Mr LAD writes this one from the lead&apos;s profile and the conversation so far.
                         </div>
                     ) : null}
+                    {/* Quick replies — a shortcut for typing, never the only way
+                        to answer, so the free-text hint below stays. */}
+                    {(() => {
+                        const chips = roleQuickReplies(q, tpl, icp);
+                        if (!chips.length) return null;
+                        return (
+                            <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+                                {chips.map((c) => (
+                                    <button key={c.label} type="button" onClick={() => onOpt(`__role_answer__:${c.value}`)}
+                                        title={c.hint}
+                                        className="max-w-full inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700 text-[12px] font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-colors">
+                                        <span className="flex-shrink-0">{c.label}</span>
+                                        {c.hint && (
+                                            <span className="text-[11px] font-normal text-slate-400 dark:text-slate-500 truncate max-w-[190px]">
+                                                {c.hint}
+                                            </span>
+                                        )}
+                                    </button>
+                                ))}
+                            </div>
+                        );
+                    })()}
                     {q?.target !== 'gate' && (
                         <div className="flex items-center gap-1.5 mt-2.5 text-[11px] text-slate-400 dark:text-slate-500">
                             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 4v7a4 4 0 0 1-4 4H4" /><path d="m9 10-5 5 5 5" /></svg>
-                            Type your answer below{q?.optional ? ' — or say "skip"' : ''}
+                            Type your answer below{q?.optional ? ' — or pick an option above' : ''}
                         </div>
                     )}
                 </div>
@@ -7696,7 +7763,7 @@ function RoleCardView({ card, onOpt, previewing }: { card: NonNullable<ChatMsg['
     );
 }
 
-function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, agentDealLoading, onStartTargeting, hasPanel, leadsCount, filteredLeadsCount, onUploadClick, useSalesNav, isMobile, rolePreviewing }: { msg: ChatMsg; onOpt: (v: string) => void; onShowPanel: (panel: 'leads' | 'workflow') => void; onStartCheckpoints: () => void; onLetAgentDeal?: () => void; agentDealLoading?: boolean; onStartTargeting: () => void; hasPanel: boolean; leadsCount: number; filteredLeadsCount?: number; onUploadClick?: () => void; useSalesNav?: boolean; isMobile?: boolean; rolePreviewing?: boolean }) {
+function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, agentDealLoading, onStartTargeting, hasPanel, leadsCount, filteredLeadsCount, onUploadClick, useSalesNav, isMobile, rolePreviewing, roleIcp }: { msg: ChatMsg; onOpt: (v: string) => void; onShowPanel: (panel: 'leads' | 'workflow') => void; onStartCheckpoints: () => void; onLetAgentDeal?: () => void; agentDealLoading?: boolean; onStartTargeting: () => void; hasPanel: boolean; leadsCount: number; filteredLeadsCount?: number; onUploadClick?: () => void; useSalesNav?: boolean; isMobile?: boolean; rolePreviewing?: boolean; roleIcp?: Record<string, string> }) {
     const user = useSelector((state: any) => state.auth?.user);
     const displayName = user?.name || "User";
     const userInitial = displayName.charAt(0).toUpperCase();
@@ -7760,7 +7827,7 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                 </div>
 
                 {/* Accelerators wizard card — rendered under the LAD in Action label. */}
-                {msg.roleCard && <RoleCardView card={msg.roleCard} onOpt={onOpt} previewing={rolePreviewing} />}
+                {msg.roleCard && <RoleCardView card={msg.roleCard} onOpt={onOpt} previewing={rolePreviewing} icp={roleIcp} />}
 
                 {/* ── Rich markdown-aware renderer ── */}
                 <div className="adv-ai-text" style={{ marginBottom: msg.targeting ? "16px" : "0", display: msg.roleCard && !msg.text ? 'none' : undefined }}>
