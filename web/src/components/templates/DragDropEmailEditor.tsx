@@ -1590,12 +1590,12 @@ export default function DragDropEmailEditor({ htmlContent, subject, onContentCha
 
       {/* Empty state */}
       {blocks.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-16 text-center border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-2xl bg-white dark:bg-[#000c3b]/30">
-          <div className="w-14 h-14 rounded-2xl bg-gray-50 dark:bg-[#000724] shadow-sm border border-gray-100 dark:border-gray-800 flex items-center justify-center mb-4">
-            <AlignLeft className="w-7 h-7 text-gray-300 dark:text-gray-600" />
+        <div className="flex flex-col items-center justify-center py-16 text-center border-2 border-dashed border-zinc-300 dark:border-zinc-800 rounded-2xl bg-zinc-200 dark:bg-zinc-900">
+          <div className="w-14 h-14 rounded-2xl bg-zinc-200 dark:bg-zinc-800 shadow-sm border border-zinc-300 dark:border-zinc-700 flex items-center justify-center mb-4">
+            <AlignLeft className="w-7 h-7 text-zinc-500 dark:text-zinc-400" />
           </div>
-          <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Your email is empty</p>
-          <p className="text-xs text-gray-400 dark:text-slate-300 mb-4">Click &quot;Add Block&quot; above to build your email</p>
+          <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 mb-1">Your email is empty</p>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-4">Click &quot;Add Block&quot; above to build your email</p>
         </div>
       )}
 
