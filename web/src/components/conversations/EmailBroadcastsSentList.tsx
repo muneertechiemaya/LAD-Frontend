@@ -525,7 +525,7 @@ function ComposeBroadcastDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) reset(); }}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-zinc-800 focus:outline-none focus-visible:ring-0 focus:ring-0 [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-zinc-800 focus:outline-none focus-visible:ring-0 focus:ring-0">
         <DialogHeader className="flex-col items-start lg:flex-row lg:items-center gap-1 lg:gap-4 mb-6 pr-10 lg:pr-0 pt-6">
           <DialogTitle>New broadcast</DialogTitle>
           <DialogDescription className="text-[13px] sm:text-sm">
@@ -684,7 +684,7 @@ function ComposeBroadcastDialog({
 
           <div>
             <label className="text-sm font-medium block mb-1.5">Body</label>
-            <div className="rounded-lg border border-gray-200 dark:border-input bg-black/5 dark:bg-black/20 p-3">
+            <div className="rounded-lg border border-gray-200 dark:border-input bg-zinc-100 dark:bg-black/20 p-3">
               <DragDropEmailEditor
                 key={editorKey}
                 htmlContent={body}
