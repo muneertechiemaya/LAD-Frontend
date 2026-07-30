@@ -716,6 +716,65 @@ export function templateWizardInputs(t: WorkflowTemplate): TemplateInput[] {
   return [...t.inputs, gate, ...derived];
 }
 
+/**
+ * Turn a template into the canvas steps plus their seeded config.
+ *
+ * Shared so the builder's gallery and the chat wizard's right-hand preview
+ * expand a template identically — two implementations would drift, and the
+ * difference would only show as a preview that does not match what launches.
+ *
+ * Node ids are load-bearing: a macro keeps its fixed id so the builder's
+ * drawers and launch emit still find its config (see MACRO_STEP_IDS).
+ */
+export function templateToPreviewSteps(
+  t: WorkflowTemplate,
+  opts?: {
+    sourceCfgOverride?: Record<string, any>;
+    nodeCfgOverride?: Record<string, any>;
+    /** Fills title/description for a source the template left unlabelled. */
+    sourceLabel?: (key: TemplateSourceKey) => { label?: string; sub?: string } | undefined;
+    /** Id generator for non-macro nodes; defaults to a time-based one. */
+    nextId?: () => string;
+  },
+): { steps: any[]; configs: Record<string, any> } {
+  let seq = 0;
+  const genId = opts?.nextId || (() => `wf-${Date.now()}-${seq++}`);
+
+  // Publisher-only templates have no source: they enrol nobody, so a contact
+  // source would be a step the user configures and then never uses.
+  const srcDef = t.source ? opts?.sourceLabel?.(t.source.key) : undefined;
+  const steps: any[] = t.source ? [{
+    id: SOURCE_STEP_ID,
+    type: 'lead_generation' as StepType,
+    channel: t.source.key.startsWith('linkedin') ? 'linkedin' : 'email',
+    title: t.source.title || srcDef?.label || 'Contact source',
+    description: t.source.description || srcDef?.sub || '',
+  }] : [];
+
+  const configs: Record<string, any> = {};
+  if (t.source && (t.source.cfg || opts?.sourceCfgOverride)) {
+    configs[SOURCE_STEP_ID] = { ...(t.source.cfg || {}), ...(opts?.sourceCfgOverride || {}) };
+  }
+
+  // A node-cfg override addresses nodes by `macroId || type`. Templates carry
+  // at most one node per addressable type, so first-match assignment is exact;
+  // a hand-built template with two same-type nodes would seed both alike.
+  const nodeOverrides = opts?.nodeCfgOverride || {};
+  for (const n of t.nodes) {
+    const id = n.macroId || genId();
+    const override = nodeOverrides[templateNodeKey(n)];
+    const channel = n.type.startsWith('linkedin') ? 'linkedin'
+      : n.type.startsWith('email') ? 'email'
+      : n.type.startsWith('whatsapp') ? 'whatsapp'
+      : n.type === 'voice_agent_call' ? 'voice'
+      : n.type === 'condition' ? 'linkedin'
+      : 'email';
+    steps.push({ id, type: n.type, channel, title: n.title, description: n.description });
+    if (n.cfg || override) configs[id] = { ...(n.cfg || {}), ...(override || {}) };
+  }
+  return { steps, configs };
+}
+
 /** Write `value` at a dotted path, creating arrays for numeric segments. */
 function setCfgPath(obj: any, path: string, value: any): void {
   const segs = path.split('.');

@@ -27,7 +27,8 @@ import {
   Rocket, Loader2, Linkedin, Mail, MailPlus, MessageCircle, Phone, Clock,
   Users, Repeat, Search, X, HardDrive, Inbox, ListOrdered, BarChart3, GitFork, DatabaseZap,
   Wand2, Trash2, Radar, Split, Plus, Upload, FileSpreadsheet, Sparkles, Contact, Download, Megaphone, Zap, Globe, Telescope, Gauge, Shuffle, PenLine, Webhook, PenTool, ShieldCheck,
-  Bookmark, LayoutTemplate, ExternalLink, Instagram, UserCheck, FileText,
+  Bookmark, LayoutTemplate, ExternalLink, FlaskConical, Play,
+  Instagram, UserCheck, FileText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,6 +42,7 @@ import {
   IG_AUTOPOST_STEP_ID, HUMAN_TASK_STEP_ID, REPORT_STEP_ID,
   SCRAPE_STEP_ID, RESEARCH_STEP_ID, SCORE_STEP_ID,
   SPLIT_STEP_ID, SETFIELD_STEP_ID, HTTP_STEP_ID, LANDING_STEP_ID, templateNodeKey, MACRO_STEP_IDS,
+  templateToPreviewSteps,
 } from './workflowTemplates';
 import { TemplateIcon, stepCategory } from './TemplateIcon';
 import {
@@ -242,6 +244,116 @@ const STEP_INSTRUCTIONS: Record<string, string> = {
   [SETFIELD_STEP_ID]: 'Writes a tag or value onto the lead record for later branching or export.',
   [HTTP_STEP_ID]: "Calls any external API with this lead's data. Requests to internal/private/cloud-metadata addresses are blocked.",
 };
+
+// ─── Build with AI ───────────────────────────────────────────────────────────
+/**
+ * Starting points on the resting screen. Each seeds the prompt with a shape the
+ * drafter handles well and leaves the specifics in [brackets] for the user to
+ * replace — a real head start, not decoration. Colours follow the channel
+ * palette used everywhere else in the builder, so a starter reads as the
+ * channel it will build for.
+ */
+const AI_STARTERS: { label: string; prompt: string; icon: React.ReactNode; chip: string }[] = [
+  {
+    label: 'LinkedIn outreach',
+    chip: 'bg-[#0077B5]',
+    icon: <Linkedin className="h-4 w-4 text-white" />,
+    prompt: 'Find [job title] at [industry] companies in [location], visit their profile, send a connection request, then message them once they accept — and follow up twice if they go quiet.',
+  },
+  {
+    label: 'Email sequence',
+    chip: 'bg-amber-600',
+    icon: <Mail className="h-4 w-4 text-white" />,
+    prompt: 'Email [job title] at [industry] companies in [location], then follow up twice if they do not reply.',
+  },
+  {
+    label: 'Import a list',
+    chip: 'bg-emerald-600',
+    icon: <FileSpreadsheet className="h-4 w-4 text-white" />,
+    prompt: 'Import my CSV of contacts, find each person on LinkedIn, send a connection request, then message them once they accept.',
+  },
+  {
+    label: 'From your CRM',
+    chip: 'bg-red-600',
+    icon: <DatabaseZap className="h-4 w-4 text-white" />,
+    prompt: 'Import new contacts from Zoho every day, connect with them on LinkedIn, send a welcome email, then follow up twice.',
+  },
+];
+
+/**
+ * One clarifying question from /workflow/plan. The catalog lives server-side so
+ * every question maps to a config key the builder actually reads; the shape is
+ * mirrored here only for rendering.
+ */
+type AiQuestion = {
+  id: string;
+  nodeKey: string;
+  question: string;
+  help?: string;
+  placeholder?: string;
+  type: 'choice' | 'multi' | 'text' | 'longtext';
+  options?: { value: string; label: string; hint?: string }[];
+  required?: boolean;
+  /** Copy fields: blank is a real answer ("let Mr LAD write it"). */
+  skippable?: boolean;
+  /**
+   * Whether the listed options are a shortlist rather than the whole set. Only
+   * set where a typed answer is genuinely honoured — offering it on a closed
+   * set (the three follow-up channels, yes/no) would take an answer the engine
+   * cannot act on and silently drop it.
+   */
+  allowOther?: boolean;
+  otherLabel?: string;
+  otherPlaceholder?: string;
+  otherHelp?: string;
+};
+
+// ─── Test run (simulation) ───────────────────────────────────────────────────
+// One row of the dry-run timeline.
+type TestStep = {
+  id: string;
+  title: string;
+  /** 'send' renders the message body; 'action'/'skipped' just explain themselves. */
+  kind: 'send' | 'action' | 'skipped';
+  channel?: string;
+  detail: string;
+  /** Resolved message copy, for 'send' rows. */
+  body?: string;
+  /** Merge fields left unresolved because they only exist at real send time. */
+  deferred?: string[];
+};
+
+/**
+ * Substitute the merge fields the builder can actually resolve from a lead.
+ *
+ * Mirrors the engine's basic substitution (LinkedInStepExecutor) but stops
+ * there on purpose: {{web_insight}}/{{recent_post}}/{{article}}/{{news}} are
+ * filled from the paid per-lead enrichment pipeline at send time, and a test
+ * run must not spend credits. Those are reported as `deferred` and shown as a
+ * marker rather than silently blanked, so the preview never implies the message
+ * will go out with a hole in it.
+ */
+function applyTestMergeFields(text: string, lead: Record<string, string>) {
+  const full = [lead.first_name, lead.last_name].filter(Boolean).join(' ');
+  const map: Record<string, string> = {
+    first_name: lead.first_name || '', last_name: lead.last_name || '',
+    full_name: full, name: full,
+    title: lead.title || '', company: lead.company || '', company_name: lead.company || '',
+    industry: lead.industry || '', location: lead.location || '',
+    email: lead.email || '', phone: lead.phone || '',
+  };
+  let out = text || '';
+  for (const [k, v] of Object.entries(map)) {
+    out = out.replace(new RegExp(`\\{\\{?\\s*${k}\\s*\\}\\}?`, 'gi'), v);
+  }
+  const deferred: string[] = [];
+  out = out.replace(/\{\{\s*(web_insight|recent_post|article|news)\s*\}\}/gi, (_m, name) => {
+    const key = String(name).toLowerCase();
+    if (!deferred.includes(key)) deferred.push(key);
+    return `[${key} — filled from live enrichment at send time]`;
+  });
+  return { text: out.trim(), deferred };
+}
 
 // "Macro" nodes (single-instance): follow-ups EXPAND into real engine steps at
 // launch; analytics becomes campaign config read by the digest cron — it is
@@ -559,12 +671,40 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   const [mediaGalleryOpen, setMediaGalleryOpen] = useState(false);
   const [mediaImporting, setMediaImporting] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
-  // Left-panel tabs + template browsing state (Templates | Build from steps).
-  const [paletteTab, setPaletteTab] = useState<'templates' | 'steps'>('templates');
+  // Left-panel tabs + template browsing state (Templates | Build with AI | Build from steps).
+  const [paletteTab, setPaletteTab] = useState<'templates' | 'ai' | 'steps'>('templates');
   const [tplSearch, setTplSearch] = useState('');
   const [expandedTpl, setExpandedTpl] = useState<string | null>(WORKFLOW_TEMPLATES[0]?.key || null);
   /** Template shown in the right-hand overview drawer (null = show node editor). */
   const [overviewTpl, setOverviewTpl] = useState<string | null>(null);
+
+  // ── "Build with AI": describe a pipeline, answer a few questions, get one ──
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiBuilding, setAiBuilding] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  /** What the last AI draft produced — shown so the user can see what changed. */
+  const [aiResult, setAiResult] = useState<{ name: string; chain: string[]; notes: string } | null>(null);
+  /** The draft being clarified; null once it has been applied to the canvas. */
+  const [aiDraft, setAiDraft] = useState<any>(null);
+  const [aiQuestions, setAiQuestions] = useState<AiQuestion[]>([]);
+  const [aiAnswers, setAiAnswers] = useState<Record<string, any>>({});
+  /** Index of the question on screen — one at a time, like a conversation. */
+  const [aiStep, setAiStep] = useState(0);
+  /** Free-text buffer for the current question. */
+  const [aiText, setAiText] = useState('');
+  /** Question id whose "something else" input is open, if any. */
+  const [aiOtherFor, setAiOtherFor] = useState<string | null>(null);
+  const aiInputRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // ── Test run: simulate the current pipeline against one sample lead ───────
+  const [testOpen, setTestOpen] = useState(false);
+  const [testLead, setTestLead] = useState<Record<string, string>>({
+    first_name: '', last_name: '', title: '', company: '', industry: '', location: '', email: '', phone: '',
+  });
+  const [testSampling, setTestSampling] = useState(false);
+  const [testRunning, setTestRunning] = useState(false);
+  const [testError, setTestError] = useState<string | null>(null);
+  const [testSteps, setTestSteps] = useState<TestStep[] | null>(null);
 
   // ── Strategies: save the current canvas as a reusable playbook ────────────
   const { data: ownStrategies = [] } = useStrategies();
@@ -835,36 +975,14 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         !window.confirm(`Replace the current Accelerator with the "${t.name}" template?`)) {
       return;
     }
-    // Publisher-only templates have no source: they enrol nobody, so a contact
-    // source would be a step the user configures and then never uses.
-    const srcDef = t.source ? SOURCES.find((s) => s.key === t.source!.key) : undefined;
-    const steps: WorkflowPreviewStep[] = t.source ? [{
-      id: SOURCE_STEP_ID, type: 'lead_generation',
-      channel: t.source.key.startsWith('linkedin') ? 'linkedin' : 'email',
-      title: t.source.title || srcDef?.label || 'Contact source',
-      description: t.source.description || srcDef?.sub || '',
-    }] : [];
-    const cfgs: Record<string, any> = {};
-    if (t.source && (t.source.cfg || opts?.sourceCfgOverride)) {
-      cfgs[SOURCE_STEP_ID] = { ...(t.source.cfg || {}), ...(opts?.sourceCfgOverride || {}) };
-    }
-
-    // A node-cfg override addresses nodes by `macroId || type`. Templates carry
-    // at most one node per addressable type, so first-match assignment is exact;
-    // a hand-built template with two same-type nodes would seed both alike.
-    const nodeOverrides = opts?.nodeCfgOverride || {};
-    for (const n of t.nodes) {
-      const id = n.macroId || nextId();
-      const override = nodeOverrides[templateNodeKey(n)];
-      const channel = n.type.startsWith('linkedin') ? 'linkedin'
-        : n.type.startsWith('email') ? 'email'
-        : n.type.startsWith('whatsapp') ? 'whatsapp'
-        : n.type === 'voice_agent_call' ? 'voice'
-        : n.type === 'condition' ? 'linkedin'
-        : 'email';
-      steps.push({ id, type: n.type, channel, title: n.title, description: n.description } as WorkflowPreviewStep);
-      if (n.cfg || override) cfgs[id] = { ...(n.cfg || {}), ...(override || {}) };
-    }
+    // Expanded by the shared helper so this and the chat wizard's right-hand
+    // preview always produce the same pipeline from the same template.
+    const { steps, configs: cfgs } = templateToPreviewSteps(t, {
+      sourceCfgOverride: opts?.sourceCfgOverride,
+      nodeCfgOverride: opts?.nodeCfgOverride,
+      sourceLabel: (key) => SOURCES.find((s) => s.key === key),
+      nextId,
+    });
 
     setSource(t.source ? t.source.key : null);
     setWorkflowPreview(steps);
@@ -873,6 +991,253 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     setError(null);
     // With no source, open the first real node instead of a step that isn't there.
     setEditingId(t.source ? SOURCE_STEP_ID : (steps[0]?.id ?? null));
+  };
+
+  /** Put a finished draft on the canvas via the one existing apply path. */
+  const applyAiTemplate = (t: any) => {
+    const srcDef = SOURCES.find((s) => s.key === t.source?.key);
+    // silent: replacing the canvas was already confirmed when the draft started.
+    applyTemplate({
+      key: `ai-${Date.now()}`,
+      name: t.name || 'AI workflow',
+      tagline: t.tagline || '',
+      chain: t.nodes.map((n: any) => n.title),
+      source: t.source?.key
+        ? { key: t.source.key, cfg: t.source.cfg || {}, title: srcDef?.label || 'Contact source', description: srcDef?.sub || '' }
+        : undefined,
+      nodes: t.nodes,
+      inputs: [],
+      accent: '#0b1957',
+      meta: { cycleDays: parseInt(days, 10) || 30, channels: new Set(t.nodes.map((n: any) => n.type.split('_')[0])).size },
+      category: 'general',
+    } as WorkflowTemplate, { silent: true });
+    setAiResult({ name: t.name || 'AI workflow', chain: t.nodes.map((n: any) => n.title), notes: t.notes || '' });
+  };
+
+  /** Reset the conversation back to the prompt box. */
+  const resetAiChat = () => {
+    setAiDraft(null); setAiQuestions([]); setAiAnswers({}); setAiStep(0); setAiText(''); setAiOtherFor(null);
+  };
+
+  /**
+   * "Build with AI" — describe a pipeline in words, answer a few questions,
+   * get it on the canvas.
+   *
+   * Two-phase on purpose. Drafting straight to the canvas produced pipelines
+   * whose every node was blank, so the user had to open each one anyway; asking
+   * first means the nodes arrive configured. The questions come from the server
+   * (grounded in real config keys) rather than being invented here, and only
+   * cover what the description did not already say.
+   *
+   * The draft is still a starting point, not a launch: every node opens for
+   * editing and the usual launch validation applies.
+   */
+  const buildWithAi = async () => {
+    const description = aiPrompt.trim();
+    if (!description || aiBuilding) return;
+    if (workflowPreview.length > 0 &&
+        !window.confirm('Replace the current Accelerator with the workflow the AI builds?')) {
+      return;
+    }
+    setAiBuilding(true); setAiError(null); setAiResult(null); resetAiChat();
+    try {
+      const res = await fetchWithTenant('/api/campaigns/workflow/plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description }),
+      });
+      const data = await res.json();
+      if (!data?.success || !data?.template?.nodes?.length) {
+        setAiError(data?.error || 'Could not draft a workflow. Try rephrasing, or build it from the steps tab.');
+        return;
+      }
+      // Nothing to clarify — skip the questions entirely rather than inventing some.
+      if (!data.questions?.length) { applyAiTemplate(data.template); return; }
+      setAiDraft(data.template);
+      setAiQuestions(data.questions);
+      setAiStep(0);
+      setAiText(''); setAiOtherFor(null);
+    } catch (e: any) {
+      setAiError(e?.message || 'Could not reach the AI service.');
+    } finally {
+      setAiBuilding(false);
+    }
+  };
+
+  /** Send the collected answers back and put the configured pipeline on the canvas. */
+  const finishAiChat = async (finalAnswers: Record<string, any>) => {
+    setAiBuilding(true); setAiError(null);
+    try {
+      const res = await fetchWithTenant('/api/campaigns/workflow/plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: aiPrompt.trim(), template: aiDraft, answers: finalAnswers }),
+      });
+      const data = await res.json();
+      if (!data?.success || !data?.template?.nodes?.length) {
+        setAiError(data?.error || 'Could not finish building that workflow.');
+        return;
+      }
+      applyAiTemplate(data.template);
+      resetAiChat();
+    } catch (e: any) {
+      setAiError(e?.message || 'Could not reach the AI service.');
+    } finally {
+      setAiBuilding(false);
+    }
+  };
+
+  /**
+   * Record one answer and advance. Answering the last question builds straight
+   * away — a separate "done" click after the final answer is a step with no
+   * decision in it.
+   */
+  const answerAiQuestion = (value: any) => {
+    const q = aiQuestions[aiStep];
+    if (!q) return;
+    const next = { ...aiAnswers, [q.id]: value };
+    setAiAnswers(next);
+    setAiText(''); setAiOtherFor(null);
+    if (aiStep + 1 < aiQuestions.length) setAiStep(aiStep + 1);
+    else finishAiChat(next);
+  };
+
+  /** Skip an optional question, leaving the node's own default in place. */
+  const skipAiQuestion = () => {
+    setAiText(''); setAiOtherFor(null);
+    if (aiStep + 1 < aiQuestions.length) setAiStep(aiStep + 1);
+    else finishAiChat(aiAnswers);
+  };
+
+  /** Ask the AI to invent a lead to test against. */
+  const generateSampleLead = async () => {
+    setTestSampling(true); setTestError(null);
+    try {
+      const srcCfg = configs[SOURCE_STEP_ID] || {};
+      const hint = [srcCfg.job_titles, srcCfg.industries, srcCfg.locations, srcCfg.keywords]
+        .filter(Boolean).join(', ');
+      const res = await fetchWithTenant('/api/campaigns/workflow/sample-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hint }),
+      });
+      const data = await res.json();
+      if (!data?.success || !data?.lead) {
+        setTestError(data?.error || 'Could not generate a sample lead — fill the fields in yourself.');
+        return;
+      }
+      setTestLead((prev) => ({ ...prev, ...data.lead }));
+    } catch (e: any) {
+      setTestError(e?.message || 'Could not reach the AI service.');
+    } finally {
+      setTestSampling(false);
+    }
+  };
+
+  /**
+   * Dry-run the current pipeline against one lead.
+   *
+   * Deliberately simulated HERE, in the browser, walking `workflowPreview`
+   * directly — it never calls the campaign engine or a step executor. That is
+   * what makes "a test run can't message anyone" structural rather than a flag
+   * someone could flip: there is no code path from this function to a send API.
+   * The only network calls it makes are to draft copy for steps left blank.
+   */
+  const runTest = async () => {
+    setTestRunning(true); setTestError(null); setTestSteps(null);
+    try {
+      const lead = testLead;
+      const goal = (configs[SOURCE_STEP_ID]?.keywords || '') as string;
+      const out: TestStep[] = [];
+      let connected = false;
+
+      for (const step of workflowPreview) {
+        if (step.id === SOURCE_STEP_ID) {
+          const c = configs[SOURCE_STEP_ID] || {};
+          const crit = [c.job_titles && `titles: ${c.job_titles}`, c.industries && `industries: ${c.industries}`,
+            c.locations && `location: ${c.locations}`, c.keywords && `keywords: ${c.keywords}`]
+            .filter(Boolean).join(' · ');
+          out.push({
+            id: step.id, title: step.title, kind: 'action', channel: 'source',
+            detail: crit ? `Finds leads matching ${crit}. This run uses the sample lead below.` : 'Enrols leads into the campaign. This run uses the sample lead below.',
+          });
+          continue;
+        }
+        const cfg = configs[step.id] || {};
+        const type = step.type;
+
+        // Message-bearing steps: resolve the copy the lead would actually see.
+        if (type === 'linkedin_message' || type === 'linkedin_connect' || type === 'linkedin_inmail'
+            || type === 'email_send' || type === 'whatsapp_send') {
+          if (type === 'linkedin_message' && !connected) {
+            out.push({
+              id: step.id, title: step.title, kind: 'skipped', channel: 'linkedin',
+              detail: 'Skipped — no accepted connection yet. Without a Connection request earlier in the sequence this step never sends.',
+            });
+            continue;
+          }
+          let raw = String(cfg.message ?? cfg.body ?? '').trim();
+          let drafted = false;
+          if (!raw) {
+            const res = await fetchWithTenant('/api/campaigns/workflow/draft-message', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ step_type: type, lead, goal }),
+            });
+            const data = await res.json().catch(() => null);
+            raw = data?.content || '';
+            drafted = !!raw;
+          }
+          const { text, deferred } = applyTestMergeFields(raw, lead);
+          out.push({
+            id: step.id, title: step.title, kind: 'send',
+            channel: type.startsWith('linkedin') ? 'linkedin' : type.startsWith('email') ? 'email' : 'whatsapp',
+            detail: drafted ? 'Left blank — this is what Mr LAD would draft at send time.' : 'Your message, with the sample lead merged in.',
+            body: text || '(no message configured)',
+            deferred,
+          });
+          if (type === 'linkedin_connect') connected = true;   // assume acceptance, so later steps are visible
+          continue;
+        }
+
+        if (type === 'condition') {
+          const label = CONDITIONS.find((c) => c.value === (cfg.condition || 'connection_accepted'))?.label || 'a condition';
+          if ((cfg.condition || 'connection_accepted') === 'connection_accepted') connected = true;
+          out.push({ id: step.id, title: step.title, kind: 'action', channel: 'logic',
+            detail: `Holds the lead here until "${label}". This preview assumes it is met and continues.` });
+          continue;
+        }
+
+        const notes: Record<string, string> = {
+          linkedin_visit: "Views the lead's profile. No message is sent.",
+          linkedin_follow: "Follows the lead's profile. No message is sent.",
+          voice_agent_call: `Places an AI voice call to ${lead.phone || 'the lead'}.`,
+          ai_parse: 'Cleans up the title/name on the lead record before outreach.',
+          data_enrich: "Reveals the lead's email/phone via FullEnrich. Spends credits on a real run.",
+          web_scrape: 'Reads the configured page. Spends no credits.',
+          web_research: "Researches the lead's company on the open web.",
+          lead_score: 'Scores buy-intent 0-100 and tags the lead hot/warm/cold.',
+          switch: 'Routes the lead down a branch by a field value.',
+          split_test: 'Assigns variant A or B for this lead.',
+          set_field: 'Writes a field/tag onto the lead record.',
+          http_request: 'Calls the configured API with this lead.',
+          followup_sequence: 'Schedules follow-up touches if the lead does not reply.',
+          export_results: 'Campaign-level — runs once at the end, not per lead.',
+          analytics_report: 'Campaign-level — the daily digest, not a per-lead step.',
+          linkedin_post: "Campaign-level — posts to your own feed on a schedule, not to this lead.",
+          zoho_update: "Writes this workflow's results back to the lead's Zoho record.",
+        };
+        out.push({
+          id: step.id, title: step.title, kind: 'action', channel: step.channel || 'system',
+          detail: notes[type] || 'Runs for this lead.',
+        });
+      }
+      setTestSteps(out);
+    } catch (e: any) {
+      setTestError(e?.message || 'The test run could not complete.');
+    } finally {
+      setTestRunning(false);
+    }
   };
 
   /**
@@ -4321,6 +4686,111 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     );
   };
 
+  /** Dry-run drawer: sample lead in, simulated timeline out. */
+  const renderTestPanel = () => {
+    const LEAD_FIELDS: { key: string; label: string; placeholder: string }[] = [
+      { key: 'first_name', label: 'First name', placeholder: 'Dana' },
+      { key: 'last_name', label: 'Last name', placeholder: 'Reyes' },
+      { key: 'title', label: 'Job title', placeholder: 'VP Operations' },
+      { key: 'company', label: 'Company', placeholder: 'Trellis Freight' },
+      { key: 'industry', label: 'Industry', placeholder: 'Logistics' },
+      { key: 'location', label: 'Location', placeholder: 'Dubai, UAE' },
+      { key: 'email', label: 'Email', placeholder: 'dana@trellisfreight.com' },
+      { key: 'phone', label: 'Phone', placeholder: '+971 50 123 4567' },
+    ];
+    const tone: Record<TestStep['kind'], string> = {
+      send: 'border-sky-200 dark:border-sky-900 bg-sky-50/60 dark:bg-sky-950/20',
+      action: 'border-border bg-muted/30',
+      skipped: 'border-amber-200 dark:border-amber-900 bg-amber-50/60 dark:bg-amber-950/20',
+    };
+    return (
+      <div className="absolute right-0 top-0 h-full w-[24rem] bg-card border-l border-border shadow-2xl z-10 flex flex-col">
+        <div className="flex items-start gap-3 p-4 border-b border-border">
+          <IconChip icon={<FlaskConical className="h-4 w-4 text-emerald-600" />} chip="bg-emerald-50 dark:bg-emerald-950/30" size="h-10 w-10" />
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-semibold text-foreground">Test run</div>
+            <div className="text-xs text-muted-foreground">Dry run against one sample lead</div>
+          </div>
+          <button onClick={() => setTestOpen(false)} className="h-7 w-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors flex-shrink-0">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="flex-1 p-4 space-y-4 overflow-y-auto text-sm">
+          <div className="rounded-lg border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/30 p-2.5 text-[12px] leading-relaxed text-emerald-900 dark:text-emerald-200">
+            Simulated in your browser. Nothing is sent, nobody is enrolled, and no enrichment credits are spent — this only shows what each step <em>would</em> do.
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <span className="text-xs font-semibold text-foreground">Sample lead</span>
+              <button type="button" onClick={generateSampleLead} disabled={testSampling}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-border text-[11.5px] font-semibold text-muted-foreground hover:text-foreground hover:border-[#0b1957]/40 disabled:opacity-50 transition-colors">
+                {testSampling ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                {testSampling ? 'Generating…' : 'Generate for me'}
+              </button>
+            </div>
+            <p className="text-[11px] text-muted-foreground mb-2 leading-snug">
+              Fill in whoever you want to test against, or let Mr LAD invent someone who fits your targeting.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {LEAD_FIELDS.map((f) => (
+                <div key={f.key} className="space-y-1">
+                  <label className="text-[11px] font-medium text-muted-foreground">{f.label}</label>
+                  <Input value={testLead[f.key] || ''} placeholder={f.placeholder}
+                    onChange={(e) => setTestLead((p) => ({ ...p, [f.key]: e.target.value }))} />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {testError && (
+            <div className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 p-2.5 text-[12px] text-amber-900 dark:text-amber-200">
+              {testError}
+            </div>
+          )}
+
+          {testSteps && (
+            <div className="space-y-2">
+              <div className="text-xs font-semibold text-foreground">What would happen</div>
+              {testSteps.map((s, i) => (
+                <div key={`${s.id}-${i}`} className={`rounded-xl border p-2.5 ${tone[s.kind]}`}>
+                  <div className="flex items-center gap-2">
+                    <span className="h-5 w-5 rounded-full bg-card border border-border text-[10px] font-bold text-muted-foreground flex items-center justify-center flex-shrink-0">{i + 1}</span>
+                    <span className="text-[12.5px] font-semibold text-foreground flex-1 truncate">{s.title}</span>
+                    {s.kind === 'skipped' && <span className="text-[9.5px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">Skipped</span>}
+                    {s.kind === 'send' && <span className="text-[9.5px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-400">{s.channel}</span>}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-1.5 leading-snug">{s.detail}</p>
+                  {s.body && (
+                    <div className="mt-2 rounded-lg bg-card border border-border p-2 text-[12px] text-foreground whitespace-pre-wrap leading-relaxed">
+                      {s.body}
+                    </div>
+                  )}
+                  {!!s.deferred?.length && (
+                    <p className="text-[10.5px] text-muted-foreground mt-1.5 leading-snug">
+                      {s.deferred.join(', ')} {s.deferred.length > 1 ? 'are' : 'is'} filled from live enrichment on a real run.
+                    </p>
+                  )}
+                </div>
+              ))}
+              <p className="text-[10.5px] text-muted-foreground leading-snug pt-1">
+                Waits and acceptances are assumed to succeed so you can see the whole sequence. On a real run a lead who never accepts stops at that step.
+              </p>
+            </div>
+          )}
+        </div>
+
+        <div className="p-3 border-t border-border bg-muted/20">
+          <Button className="w-full" onClick={runTest} disabled={testRunning || !workflowPreview.length}>
+            {testRunning ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Play className="h-4 w-4 mr-2" />}
+            {testRunning ? 'Running…' : testSteps ? 'Run again' : 'Run test'}
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
   /**
    * Suggested next node — a deterministic recommendation, not a live AI call,
    * so it can't be flaky about something adjacent to what gates Launch. Each
@@ -4387,6 +4857,11 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             <span>Leads/day</span><Input type="number" className="w-16 h-8" value={perDay} onChange={(e) => setPerDay(e.target.value)} />
             <span>Days</span><Input type="number" className="w-16 h-8" value={days} onChange={(e) => setDays(e.target.value)} />
           </div>
+          <Button variant="outline" onClick={() => setTestOpen((v) => !v)} disabled={!workflowPreview.length || hydrating}
+            title="Dry-run this pipeline against one sample lead. Nothing is sent.">
+            <FlaskConical className="h-4 w-4 mr-2" />
+            Test run
+          </Button>
           <Button variant="outline" onClick={saveAsStrategy} disabled={strategySaving || launching || hydrating}
             title="Save this pipeline so you can reuse it later without launching it now">
             {strategySaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Bookmark className="h-4 w-4 mr-2" />}
@@ -4428,24 +4903,283 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
 
       <div className="flex-1 flex min-h-0">
         {/* Palette */}
-        <div className="w-[19rem] border-r border-border bg-card overflow-y-auto p-4 space-y-6">
-          {/* Tabs — Templates | Build from steps */}
-          <div className="flex items-center gap-1 p-1 rounded-xl bg-muted/60 dark:bg-slate-800/60">
-            {([['templates', 'Templates'], ['steps', 'Build from steps']] as const).map(([k, label]) => (
+        {/* Column, not a plain scroller: the AI tab pins its composer to the
+            bottom the way a chat does, so it owns its own scroll region. */}
+        <div className="w-[19rem] border-r border-border bg-card flex flex-col min-h-0">
+          {/* Tabs — Templates | Build with AI | Build from steps */}
+          <div className="flex items-center gap-1 p-1 m-4 mb-0 flex-shrink-0 rounded-xl bg-muted/60 dark:bg-slate-800/60">
+            {([['templates', 'Templates'], ['ai', 'Build with AI'], ['steps', 'From steps']] as const).map(([k, label]) => (
               <button key={k} type="button" onClick={() => setPaletteTab(k)}
-                className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold transition-all ${
+                className={`flex-1 inline-flex items-center justify-center gap-1 px-2 py-2 rounded-lg text-[12px] font-semibold transition-all ${
                   paletteTab === k
                     ? 'bg-card text-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}>
                 {k === 'templates'
-                  ? <Zap className="h-3.5 w-3.5" />
-                  : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M4 6h16M4 12h10M4 18h13" /></svg>}
+                  ? <Zap className="h-3.5 w-3.5 flex-shrink-0" />
+                  : k === 'ai'
+                    ? <Sparkles className="h-3.5 w-3.5 flex-shrink-0" />
+                    : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M4 6h16M4 12h10M4 18h13" /></svg>}
                 {label}
               </button>
             ))}
           </div>
 
+          {paletteTab === 'ai' && (
+            <div className="flex-1 flex flex-col min-h-0">
+            <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col">
+              {/* Resting state: a calm starting screen rather than a form. The
+                  starters are real accelerators — each seeds the prompt with a
+                  shape Mr LAD handles well, which the user then edits. */}
+              {!aiQuestions.length && !aiResult && (
+                <div className="flex-1 flex flex-col items-center justify-center text-center px-1">
+                  <h2 className="font-serif text-[22px] leading-tight text-foreground">Start with a goal</h2>
+                  <p className="text-[12.5px] text-muted-foreground mt-1.5 mb-6 leading-snug max-w-[15rem]">
+                    Say who you want to reach and how. Mr LAD asks a few questions, then builds the pipeline.
+                  </p>
+                  <div className="w-full space-y-2">
+                    {AI_STARTERS.map((s) => (
+                      <button key={s.label} type="button"
+                        onClick={() => {
+                          setAiPrompt(s.prompt);
+                          // Show the START of the seeded prompt, not wherever the
+                          // textarea happened to scroll to, and put the caret at
+                          // the front so the first [bracket] is what you edit.
+                          requestAnimationFrame(() => {
+                            const el = aiInputRef.current;
+                            if (!el) return;
+                            el.focus();
+                            el.setSelectionRange(0, 0);
+                            el.scrollTop = 0;
+                          });
+                        }}
+                        className="w-full flex items-center gap-3 rounded-full border border-border bg-card px-2 py-2 text-left hover:border-[#0b1957]/40 hover:bg-muted/40 transition-colors">
+                        <span className={`h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 ${s.chip}`}>
+                          {s.icon}
+                        </span>
+                        <span className="text-[13px] font-medium text-foreground truncate">{s.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* The clarifying conversation: one question at a time. */}
+              {!!aiQuestions.length && (() => {
+                const q = aiQuestions[aiStep];
+                if (!q) return null;
+                const answered = aiQuestions.slice(0, aiStep).filter((x) => aiAnswers[x.id] !== undefined);
+                const labelFor = (x: AiQuestion, v: any) => {
+                  if (Array.isArray(v)) return v.map((one) => x.options?.find((o) => o.value === one)?.label || one).join(', ');
+                  return x.options?.find((o) => o.value === v)?.label || String(v);
+                };
+                const multiSelected: string[] = Array.isArray(aiAnswers[q.id]) ? aiAnswers[q.id] : [];
+                const toggleMulti = (v: string) => {
+                  const next = multiSelected.includes(v) ? multiSelected.filter((x) => x !== v) : [...multiSelected, v];
+                  setAiAnswers({ ...aiAnswers, [q.id]: next });
+                };
+                return (
+                  <div className="space-y-3">
+                    {/* What you asked for, and what has been settled so far. */}
+                    <div className="rounded-xl bg-muted/50 dark:bg-slate-800/40 p-2.5">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">You asked for</div>
+                      <p className="text-[12px] text-foreground leading-snug">{aiPrompt.trim()}</p>
+                    </div>
+                    {answered.map((x) => (
+                      <div key={x.id} className="flex items-start gap-2 text-[11.5px]">
+                        <svg className="text-emerald-600 flex-shrink-0 mt-0.5" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
+                        <span className="min-w-0 flex-1">
+                          <span className="text-muted-foreground">{x.question}</span>{' '}
+                          <span className="font-semibold text-foreground">{labelFor(x, aiAnswers[x.id]) || 'Mr LAD writes it'}</span>
+                        </span>
+                      </div>
+                    ))}
+
+                    <div className="rounded-2xl border border-[#0b1957]/30 bg-[#0b1957]/[0.03] dark:bg-[#0b1957]/[0.08] p-3">
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#0b1957] dark:text-sky-300">
+                          Question {aiStep + 1} of {aiQuestions.length}
+                        </span>
+                        <button type="button" onClick={resetAiChat}
+                          className="text-[10.5px] font-semibold text-muted-foreground hover:text-foreground">Start over</button>
+                      </div>
+                      <p className="font-serif text-[16px] text-foreground leading-snug">{q.question}</p>
+                      {q.help && <p className="text-[11px] text-muted-foreground mt-1 leading-snug">{q.help}</p>}
+
+                      {q.type === 'choice' && (
+                        <div className="mt-2.5 space-y-1.5">
+                          {q.options?.map((o) => (
+                            <button key={o.value} type="button" onClick={() => answerAiQuestion(o.value)} disabled={aiBuilding}
+                              className={`w-full text-left border border-border bg-card px-3 py-2 hover:border-[#0b1957] hover:bg-[#0b1957]/[0.04] disabled:opacity-50 transition-all ${
+                                o.hint ? 'rounded-2xl' : 'rounded-full'}`}>
+                              <span className="block text-[12.5px] font-medium text-foreground">{o.label}</span>
+                              {o.hint && <span className="block text-[10.5px] text-muted-foreground">{o.hint}</span>}
+                            </button>
+                          ))}
+                          {/* Escape hatch, only where a typed answer is honoured. */}
+                          {q.allowOther && (aiOtherFor === q.id ? (
+                            <div className="rounded-2xl border border-[#0b1957] bg-card px-3 py-2.5 space-y-2">
+                              {q.otherHelp && <p className="text-[10.5px] text-muted-foreground leading-snug">{q.otherHelp}</p>}
+                              <input autoFocus value={aiText} onChange={(e) => setAiText(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter' && aiText.trim()) answerAiQuestion(aiText.trim()); }}
+                                placeholder={q.otherPlaceholder || ''}
+                                className="w-full rounded-full border border-input bg-background px-3 py-1.5 text-[12.5px] outline-none focus:border-[#0b1957]/40" />
+                              <div className="flex items-center gap-1.5">
+                                <button type="button" disabled={aiBuilding || !aiText.trim()}
+                                  onClick={() => answerAiQuestion(aiText.trim())}
+                                  className="flex-1 rounded-full bg-[#0b1957] text-white text-[12px] font-semibold py-1.5 hover:bg-[#0b1957]/90 disabled:opacity-40 transition-colors">
+                                  Use this
+                                </button>
+                                <button type="button" onClick={() => { setAiOtherFor(null); setAiText(''); }}
+                                  className="px-3 py-1.5 rounded-full border border-border text-[12px] font-semibold text-muted-foreground hover:text-foreground transition-colors">
+                                  Back
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button type="button" onClick={() => { setAiOtherFor(q.id); setAiText(''); }} disabled={aiBuilding}
+                              className="w-full text-left rounded-full border border-dashed border-border bg-transparent px-3 py-2 text-[12.5px] font-medium text-muted-foreground hover:text-foreground hover:border-[#0b1957]/40 disabled:opacity-50 transition-all">
+                              {q.otherLabel || 'Something else…'}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {q.type === 'multi' && (
+                        <div className="mt-2.5 space-y-1.5">
+                          {q.options?.map((o) => {
+                            const on = multiSelected.includes(o.value);
+                            return (
+                              <button key={o.value} type="button" onClick={() => toggleMulti(o.value)}
+                                className={`w-full text-left rounded-full border px-3 py-2 transition-all ${
+                                  on ? 'border-[#0b1957] bg-[#0b1957]/[0.06]' : 'border-border bg-card hover:border-[#0b1957]/40'}`}>
+                                <span className="flex items-center gap-2">
+                                  <span className={`h-3.5 w-3.5 rounded border flex items-center justify-center flex-shrink-0 ${
+                                    on ? 'bg-[#0b1957] border-[#0b1957]' : 'border-muted-foreground/40'}`}>
+                                    {on && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="4" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>}
+                                  </span>
+                                  <span className="min-w-0">
+                                    <span className="block text-[12.5px] font-semibold text-foreground">{o.label}</span>
+                                    {o.hint && <span className="block text-[10.5px] text-muted-foreground">{o.hint}</span>}
+                                  </span>
+                                </span>
+                              </button>
+                            );
+                          })}
+                          <button type="button" disabled={aiBuilding || !multiSelected.length}
+                            onClick={() => answerAiQuestion(multiSelected)}
+                            className="w-full rounded-xl bg-[#0b1957] text-white text-[12.5px] font-semibold py-2 hover:bg-[#0b1957]/90 disabled:opacity-40 transition-colors">
+                            Continue
+                          </button>
+                        </div>
+                      )}
+
+                      {(q.type === 'text' || q.type === 'longtext') && (
+                        <div className="mt-2.5 space-y-1.5">
+                          {q.type === 'longtext' ? (
+                            <textarea value={aiText} onChange={(e) => setAiText(e.target.value)}
+                              placeholder={q.placeholder || ''}
+                              className="w-full min-h-[80px] rounded-xl border border-input bg-background px-2.5 py-2 text-[12.5px] outline-none focus:border-[#0b1957]/40 resize-y" />
+                          ) : (
+                            <input value={aiText} onChange={(e) => setAiText(e.target.value)}
+                              onKeyDown={(e) => { if (e.key === 'Enter' && aiText.trim()) answerAiQuestion(aiText.trim()); }}
+                              placeholder={q.placeholder || ''}
+                              className="w-full rounded-xl border border-input bg-background px-2.5 py-2 text-[12.5px] outline-none focus:border-[#0b1957]/40" />
+                          )}
+                          <div className="flex items-center gap-1.5">
+                            <button type="button" disabled={aiBuilding || (!!q.required && !aiText.trim())}
+                              onClick={() => answerAiQuestion(aiText.trim())}
+                              className="flex-1 rounded-xl bg-[#0b1957] text-white text-[12.5px] font-semibold py-2 hover:bg-[#0b1957]/90 disabled:opacity-40 transition-colors">
+                              Continue
+                            </button>
+                            {!q.required && (
+                              <button type="button" onClick={skipAiQuestion} disabled={aiBuilding}
+                                className="px-3 py-2 rounded-xl border border-border text-[12px] font-semibold text-muted-foreground hover:text-foreground disabled:opacity-40 transition-colors">
+                                {q.skippable ? 'Let Mr LAD write it' : 'Skip'}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {aiBuilding && (
+                        <p className="text-[11px] text-muted-foreground mt-2 inline-flex items-center gap-1.5">
+                          <Loader2 className="h-3 w-3 animate-spin" /> Building your workflow…
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {aiError && (
+                <div className="mt-3 rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 p-3 text-[12px] text-amber-900 dark:text-amber-200">
+                  {aiError}
+                </div>
+              )}
+
+              {aiResult && (
+                <div className="mt-3 rounded-xl border border-border bg-card p-3">
+                  <div className="text-[13px] font-bold text-foreground">{aiResult.name}</div>
+                  <div className="mt-2 flex flex-wrap items-center gap-y-1.5" style={{ columnGap: 4 }}>
+                    {aiResult.chain.map((c, i) => (
+                      <Fragment key={i}>
+                        {i > 0 && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>}
+                        <span className="text-[10.5px] font-semibold px-2 py-[3px] rounded-full whitespace-nowrap bg-[#0b1957]/10 text-[#0b1957] dark:text-sky-300">{c}</span>
+                      </Fragment>
+                    ))}
+                  </div>
+                  {aiResult.notes && <p className="text-[11px] text-muted-foreground mt-2 leading-snug">{aiResult.notes}</p>}
+                  <div className="flex items-center gap-1.5 mt-3">
+                    <button type="button" onClick={() => setPaletteTab('steps')}
+                      className="flex-1 rounded-full border border-border py-2 text-[12.5px] font-semibold text-muted-foreground hover:text-foreground hover:border-[#0b1957]/40 transition-colors">
+                      Adjust the steps
+                    </button>
+                    <button type="button" onClick={() => { setAiResult(null); setAiPrompt(''); }}
+                      className="px-3 py-2 rounded-full border border-border text-[12px] font-semibold text-muted-foreground hover:text-foreground transition-colors">
+                      New
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Composer — pinned, like a chat. Hidden mid-conversation: the
+                answer controls are the input at that point, and two places to
+                type would be ambiguous. */}
+            {!aiQuestions.length && (
+              <div className="flex-shrink-0 border-t border-border p-3">
+                <div className="rounded-2xl border border-input bg-muted/40 dark:bg-slate-800/40 focus-within:bg-background focus-within:border-[#0b1957]/40 transition-colors">
+                  <textarea
+                    ref={aiInputRef}
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); buildWithAi(); }
+                    }}
+                    rows={3}
+                    placeholder="Describe the workflow you want…"
+                    className="w-full max-h-[9rem] bg-transparent px-3 pt-2.5 pb-1 text-[13px] leading-snug outline-none resize-none overflow-y-auto placeholder:text-muted-foreground"
+                  />
+                  <div className="flex items-center justify-between px-2 pb-2">
+                    <span className="text-[10px] text-muted-foreground pl-1">Enter to send</span>
+                    <button type="button" onClick={buildWithAi} disabled={aiBuilding || !aiPrompt.trim()}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-[#0b1957] text-white text-[12px] font-semibold pl-2.5 pr-3 py-1.5 hover:bg-[#0b1957]/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                      {aiBuilding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                      {aiBuilding ? 'Thinking' : 'Build'}
+                    </button>
+                  </div>
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-2 leading-snug text-center">
+                  Nothing is launched or sent until you press Launch.
+                </p>
+              </div>
+            )}
+          </div>
+          )}
+
+          {paletteTab !== 'ai' && (
+          <div className="flex-1 overflow-y-auto px-4 pt-4 pb-4 space-y-6">
           {paletteTab === 'templates' && (<>
             {/* Search */}
             <div className="relative">
@@ -5015,6 +5749,8 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             })()}
           </div>
           </>)}
+          </div>
+          )}
         </div>
 
         {/* Canvas */}
@@ -5028,7 +5764,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               <BuilderCanvas steps={workflowPreview} branches={mcBranches} switchId={MULTICOND_STEP_ID} />
             </ReactFlowProvider>
           )}
-          {overviewTpl ? renderTemplateOverview() : renderEditor()}
+          {testOpen ? renderTestPanel() : overviewTpl ? renderTemplateOverview() : renderEditor()}
         </div>
       </div>
 
