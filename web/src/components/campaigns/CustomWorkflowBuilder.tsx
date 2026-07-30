@@ -40,6 +40,7 @@ import {
   AUTOPOST_STEP_ID, CONTENT_STEP_ID, APPROVAL_STEP_ID, AI_DEFAULT_INSTRUCTION, EXPORT_DEFAULT_COLUMNS,
   SCRAPE_STEP_ID, RESEARCH_STEP_ID, SCORE_STEP_ID,
   SPLIT_STEP_ID, SETFIELD_STEP_ID, HTTP_STEP_ID, LANDING_STEP_ID, templateNodeKey, MACRO_STEP_IDS,
+  templateToPreviewSteps,
 } from './workflowTemplates';
 import { TemplateIcon, stepCategory } from './TemplateIcon';
 import {
@@ -972,36 +973,14 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         !window.confirm(`Replace the current Accelerator with the "${t.name}" template?`)) {
       return;
     }
-    // Publisher-only templates have no source: they enrol nobody, so a contact
-    // source would be a step the user configures and then never uses.
-    const srcDef = t.source ? SOURCES.find((s) => s.key === t.source!.key) : undefined;
-    const steps: WorkflowPreviewStep[] = t.source ? [{
-      id: SOURCE_STEP_ID, type: 'lead_generation',
-      channel: t.source.key.startsWith('linkedin') ? 'linkedin' : 'email',
-      title: t.source.title || srcDef?.label || 'Contact source',
-      description: t.source.description || srcDef?.sub || '',
-    }] : [];
-    const cfgs: Record<string, any> = {};
-    if (t.source && (t.source.cfg || opts?.sourceCfgOverride)) {
-      cfgs[SOURCE_STEP_ID] = { ...(t.source.cfg || {}), ...(opts?.sourceCfgOverride || {}) };
-    }
-
-    // A node-cfg override addresses nodes by `macroId || type`. Templates carry
-    // at most one node per addressable type, so first-match assignment is exact;
-    // a hand-built template with two same-type nodes would seed both alike.
-    const nodeOverrides = opts?.nodeCfgOverride || {};
-    for (const n of t.nodes) {
-      const id = n.macroId || nextId();
-      const override = nodeOverrides[templateNodeKey(n)];
-      const channel = n.type.startsWith('linkedin') ? 'linkedin'
-        : n.type.startsWith('email') ? 'email'
-        : n.type.startsWith('whatsapp') ? 'whatsapp'
-        : n.type === 'voice_agent_call' ? 'voice'
-        : n.type === 'condition' ? 'linkedin'
-        : 'email';
-      steps.push({ id, type: n.type, channel, title: n.title, description: n.description } as WorkflowPreviewStep);
-      if (n.cfg || override) cfgs[id] = { ...(n.cfg || {}), ...(override || {}) };
-    }
+    // Expanded by the shared helper so this and the chat wizard's right-hand
+    // preview always produce the same pipeline from the same template.
+    const { steps, configs: cfgs } = templateToPreviewSteps(t, {
+      sourceCfgOverride: opts?.sourceCfgOverride,
+      nodeCfgOverride: opts?.nodeCfgOverride,
+      sourceLabel: (key) => SOURCES.find((s) => s.key === key),
+      nextId,
+    });
 
     setSource(t.source ? t.source.key : null);
     setWorkflowPreview(steps);

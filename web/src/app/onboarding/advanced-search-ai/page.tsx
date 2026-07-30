@@ -32,7 +32,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import CustomWorkflowBuilder from '@/components/campaigns/CustomWorkflowBuilder';
 import {
     WORKFLOW_TEMPLATES, WorkflowTemplate,
-    templateWizardInputs, splitWizardAnswers, templateSearchQuery,
+    templateWizardInputs, splitWizardAnswers, templateSearchQuery, templateToPreviewSteps,
 } from '@/components/campaigns/workflowTemplates';
 import type { TemplateInput } from '@/components/campaigns/workflowTemplates';
 import { TemplateIcon } from '@/components/campaigns/TemplateIcon';
@@ -4413,8 +4413,14 @@ export default function AdvancedSearchAIPage() {
         const tpl = WORKFLOW_TEMPLATES.find(t => t.key === wiz.key);
         if (!tpl) { roleWizardRef.current = null; return; }
         const inputs = templateWizardInputs(tpl);
-        setMessages(p => [...p, { id: `u-role-${Date.now()}`, role: 'user', text, ts: new Date() }]);
+        // Every earlier card stays in the transcript with its buttons live, so a
+        // click can arrive for a question the wizard has already moved past —
+        // and after the last one `idx` sits at `inputs.length`. Bail before
+        // echoing a user bubble, so a stale click is a no-op rather than a
+        // phantom reply or a crash on `inputs[idx].target`.
         const inp = inputs[wiz.idx];
+        if (!inp) return;
+        setMessages(p => [...p, { id: `u-role-${Date.now()}`, role: 'user', text, ts: new Date() }]);
         // The copy gate branches rather than storing anything: only an explicit
         // yes walks the message questions, anything else jumps to the summary
         // with the template's own copy intact.
@@ -4564,6 +4570,19 @@ export default function AdvancedSearchAIPage() {
             }
             return;
         }
+        // Full builder, on demand — for editing a node rather than just reading
+        // the pipeline. Works after a review too: the answers were kept.
+        if (v === '__role_openbuilder__') {
+            const wiz = roleWizardRef.current;
+            const tpl = wiz ? WORKFLOW_TEMPLATES.find(t => t.key === wiz.key) : null;
+            if (wiz && tpl) {
+                const { sourceCfg, nodeCfg } = splitWizardAnswers(tpl, wiz.answers);
+                setBuilderTemplate({ key: wiz.key, sourceCfg, nodeCfg, autoLaunch: false });
+                roleWizardRef.current = null;
+            }
+            setShowCustomWorkflow(true);
+            return;
+        }
         if (v === '__role_launch__' || v === '__role_review__') {
             const wiz = roleWizardRef.current;
             if (!wiz) return;
@@ -4574,11 +4593,24 @@ export default function AdvancedSearchAIPage() {
             const { sourceCfg, nodeCfg } = tpl
                 ? splitWizardAnswers(tpl, wiz.answers)
                 : { sourceCfg: wiz.answers, nodeCfg: {} };
+
+            // Review stays on this page: the pipeline renders in the right-hand
+            // Workflow panel, which reads the same store the builder writes to.
+            // Sending the user to a full-screen builder to look at what they
+            // just described loses the conversation they built it from.
+            if (v === '__role_review__' && tpl) {
+                const { steps } = templateToPreviewSteps(tpl, { sourceCfgOverride: sourceCfg, nodeCfgOverride: nodeCfg });
+                setWorkflowPreview(steps as never);
+                // Remembered so "Open full builder" later carries the same answers.
+                setBuilderTemplate({ key: wiz.key, sourceCfg, nodeCfg, autoLaunch: false });
+                setShowPanel('workflow');
+                rolePushAi('Here\'s your Accelerator in the **Workflow** panel — every step, in order. Open the full builder if you want to edit a node, or hit **Activate & launch** above when it looks right.');
+                return;
+            }
+
             setBuilderTemplate({ key: wiz.key, sourceCfg, nodeCfg, autoLaunch: v === '__role_launch__' });
             setShowCustomWorkflow(true);
-            rolePushAi(v === '__role_launch__'
-                ? '🚀 Building and launching your Accelerator — you\'ll land on the campaigns page when it\'s live.'
-                : 'Opening the workflow builder with your Accelerator pre-built — review each node and hit Launch.');
+            rolePushAi('🚀 Building and launching your Accelerator — you\'ll land on the campaigns page when it\'s live.');
             return;
         }
         // Special action: submit lead detail form data
@@ -7752,7 +7784,9 @@ function RoleCardView({ card, onOpt, previewing, icp }: { card: NonNullable<Chat
                             Activate &amp; launch
                         </button>
                         <button type="button" onClick={() => onOpt('__role_review__')}
-                            className="px-3.5 py-2 rounded-xl text-[12.5px] font-semibold border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">Review in builder</button>
+                            className="px-3.5 py-2 rounded-xl text-[12.5px] font-semibold border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">Review workflow</button>
+                        <button type="button" onClick={() => onOpt('__role_openbuilder__')}
+                            className="px-3 py-2 rounded-xl text-[12.5px] font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Open builder</button>
                         <button type="button" onClick={() => onOpt('__role_cancel__')}
                             className="px-3 py-2 rounded-xl text-[12.5px] font-medium text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Cancel</button>
                     </div>
