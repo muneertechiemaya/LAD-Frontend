@@ -293,6 +293,16 @@ type AiQuestion = {
   required?: boolean;
   /** Copy fields: blank is a real answer ("let Mr LAD write it"). */
   skippable?: boolean;
+  /**
+   * Whether the listed options are a shortlist rather than the whole set. Only
+   * set where a typed answer is genuinely honoured — offering it on a closed
+   * set (the three follow-up channels, yes/no) would take an answer the engine
+   * cannot act on and silently drop it.
+   */
+  allowOther?: boolean;
+  otherLabel?: string;
+  otherPlaceholder?: string;
+  otherHelp?: string;
 };
 
 // ─── Test run (simulation) ───────────────────────────────────────────────────
@@ -679,6 +689,8 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   const [aiStep, setAiStep] = useState(0);
   /** Free-text buffer for the current question. */
   const [aiText, setAiText] = useState('');
+  /** Question id whose "something else" input is open, if any. */
+  const [aiOtherFor, setAiOtherFor] = useState<string | null>(null);
   const aiInputRef = useRef<HTMLTextAreaElement | null>(null);
 
   // ── Test run: simulate the current pipeline against one sample lead ───────
@@ -1023,7 +1035,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
 
   /** Reset the conversation back to the prompt box. */
   const resetAiChat = () => {
-    setAiDraft(null); setAiQuestions([]); setAiAnswers({}); setAiStep(0); setAiText('');
+    setAiDraft(null); setAiQuestions([]); setAiAnswers({}); setAiStep(0); setAiText(''); setAiOtherFor(null);
   };
 
   /**
@@ -1063,7 +1075,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       setAiDraft(data.template);
       setAiQuestions(data.questions);
       setAiStep(0);
-      setAiText('');
+      setAiText(''); setAiOtherFor(null);
     } catch (e: any) {
       setAiError(e?.message || 'Could not reach the AI service.');
     } finally {
@@ -1104,14 +1116,14 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     if (!q) return;
     const next = { ...aiAnswers, [q.id]: value };
     setAiAnswers(next);
-    setAiText('');
+    setAiText(''); setAiOtherFor(null);
     if (aiStep + 1 < aiQuestions.length) setAiStep(aiStep + 1);
     else finishAiChat(next);
   };
 
   /** Skip an optional question, leaving the node's own default in place. */
   const skipAiQuestion = () => {
-    setAiText('');
+    setAiText(''); setAiOtherFor(null);
     if (aiStep + 1 < aiQuestions.length) setAiStep(aiStep + 1);
     else finishAiChat(aiAnswers);
   };
@@ -4531,6 +4543,32 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                                 o.hint ? 'rounded-2xl' : 'rounded-full'}`}>
                               <span className="block text-[12.5px] font-medium text-foreground">{o.label}</span>
                               {o.hint && <span className="block text-[10.5px] text-muted-foreground">{o.hint}</span>}
+                            </button>
+                          ))}
+                          {/* Escape hatch, only where a typed answer is honoured. */}
+                          {q.allowOther && (aiOtherFor === q.id ? (
+                            <div className="rounded-2xl border border-[#0b1957] bg-card px-3 py-2.5 space-y-2">
+                              {q.otherHelp && <p className="text-[10.5px] text-muted-foreground leading-snug">{q.otherHelp}</p>}
+                              <input autoFocus value={aiText} onChange={(e) => setAiText(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter' && aiText.trim()) answerAiQuestion(aiText.trim()); }}
+                                placeholder={q.otherPlaceholder || ''}
+                                className="w-full rounded-full border border-input bg-background px-3 py-1.5 text-[12.5px] outline-none focus:border-[#0b1957]/40" />
+                              <div className="flex items-center gap-1.5">
+                                <button type="button" disabled={aiBuilding || !aiText.trim()}
+                                  onClick={() => answerAiQuestion(aiText.trim())}
+                                  className="flex-1 rounded-full bg-[#0b1957] text-white text-[12px] font-semibold py-1.5 hover:bg-[#0b1957]/90 disabled:opacity-40 transition-colors">
+                                  Use this
+                                </button>
+                                <button type="button" onClick={() => { setAiOtherFor(null); setAiText(''); }}
+                                  className="px-3 py-1.5 rounded-full border border-border text-[12px] font-semibold text-muted-foreground hover:text-foreground transition-colors">
+                                  Back
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button type="button" onClick={() => { setAiOtherFor(q.id); setAiText(''); }} disabled={aiBuilding}
+                              className="w-full text-left rounded-full border border-dashed border-border bg-transparent px-3 py-2 text-[12.5px] font-medium text-muted-foreground hover:text-foreground hover:border-[#0b1957]/40 disabled:opacity-50 transition-all">
+                              {q.otherLabel || 'Something else…'}
                             </button>
                           ))}
                         </div>
