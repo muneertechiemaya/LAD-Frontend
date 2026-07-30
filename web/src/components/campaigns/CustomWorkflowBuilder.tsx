@@ -27,7 +27,7 @@ import {
   Rocket, Loader2, Linkedin, Mail, MailPlus, MessageCircle, Phone, Clock,
   Users, Repeat, Search, X, HardDrive, Inbox, ListOrdered, BarChart3, GitFork, DatabaseZap,
   Wand2, Trash2, Radar, Split, Plus, Upload, FileSpreadsheet, Sparkles, Contact, Download, Megaphone, Zap, Globe, Telescope, Gauge, Shuffle, PenLine, Webhook, PenTool, ShieldCheck,
-  Bookmark, LayoutTemplate, ExternalLink, Instagram, UserCheck,
+  Bookmark, LayoutTemplate, ExternalLink, Instagram, UserCheck, FileText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,7 +38,7 @@ import {
   SOURCE_STEP_ID, FOLLOWUP_STEP_ID, ANALYTICS_STEP_ID, ZOHO_UPDATE_STEP_ID,
   MEDIA_STEP_ID, MULTICOND_STEP_ID, AI_STEP_ID, ENRICH_STEP_ID, EXPORT_STEP_ID,
   AUTOPOST_STEP_ID, CONTENT_STEP_ID, APPROVAL_STEP_ID, AI_DEFAULT_INSTRUCTION, EXPORT_DEFAULT_COLUMNS,
-  IG_AUTOPOST_STEP_ID, HUMAN_TASK_STEP_ID,
+  IG_AUTOPOST_STEP_ID, HUMAN_TASK_STEP_ID, REPORT_STEP_ID,
   SCRAPE_STEP_ID, RESEARCH_STEP_ID, SCORE_STEP_ID,
   SPLIT_STEP_ID, SETFIELD_STEP_ID, HTTP_STEP_ID, LANDING_STEP_ID, templateNodeKey, MACRO_STEP_IDS,
 } from './workflowTemplates';
@@ -1053,6 +1053,28 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
    * (record a video, build a PDF, make a judgement call) instead of
    * pretending those steps happened.
    */
+  /**
+   * Audit report — the ONE node whose execution model depends on its own config.
+   *
+   * scope 'lead'     → a per-lead step, written from that company's research
+   * scope 'campaign' → a campaign-level macro, written about the industry
+   *
+   * Defaults to per-lead: it is the more valuable artifact, and the one the
+   * outreach steps can reference per prospect.
+   */
+  const addReport = () => {
+    if (!workflowPreview.some((s) => s.id === REPORT_STEP_ID)) {
+      addWorkflowStep({ id: REPORT_STEP_ID, type: 'lead_report', channel: 'email', title: 'Audit report', description: 'Per lead · PDF' });
+      setCfg(REPORT_STEP_ID, {
+        scope: 'lead',
+        report_type: 'growth_opportunity_audit',
+        context: '',
+        email_now: false,
+      });
+    }
+    setEditingId(REPORT_STEP_ID);
+  };
+
   const addHumanTask = () => {
     if (!workflowPreview.some((s) => s.id === HUMAN_TASK_STEP_ID)) {
       addWorkflowStep({ id: HUMAN_TASK_STEP_ID, type: 'human_task', channel: 'email', title: 'Human task', description: 'Pauses until confirmed' });
@@ -1716,7 +1738,24 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           continue;
         }
         const delay = { delayDays: Math.max(0, parseInt(c.delayDays, 10) || 0), delayHours: 0 };
-        if (s.type === 'human_task') {
+        if (s.type === 'lead_report') {
+          // Campaign-scoped reports are macros and were emitted into config
+          // above; only the per-lead variant becomes a step.
+          if (c.scope !== 'campaign') {
+            steps.push({
+              type: 'lead_report', title: 'Audit report', channel: 'email',
+              order_index: order++,
+              config: {
+                step_id: REPORT_STEP_ID,
+                report_type: c.report_type || 'growth_opportunity_audit',
+                context: (c.context || '').trim() || undefined,
+                email_now: !!c.email_now,
+                ...delay,
+              },
+            });
+          }
+        }
+        else         if (s.type === 'human_task') {
           // Per-lead, unlike the other new nodes. WorkflowProcessor pauses the
           // lead here and resumes it only once someone confirms.
           steps.push({
@@ -1972,6 +2011,24 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               },
             };
           })() : {}),
+          ...((() => {
+            const rc = configs[REPORT_STEP_ID] || {};
+            // Only the CAMPAIGN-scoped report is a macro. The per-lead variant is
+            // emitted into `steps` further down — same node, two execution models,
+            // chosen by its own scope field.
+            if (!workflowPreview.some((s) => s.id === REPORT_STEP_ID) || rc.scope !== 'campaign') return {};
+            const sc = configs[SOURCE_STEP_ID] || {};
+            return {
+              campaign_report: {
+                // Fall back to the source node's industry so the common case
+                // needs no retyping.
+                industry: (rc.industry || sc.industries || '').trim(),
+                audience: (sc.job_titles || '').trim() || undefined,
+                report_type: rc.report_type || 'growth_opportunity_audit',
+                context: (rc.context || '').trim() || undefined,
+              },
+            };
+          })()),
           ...(workflowPreview.some((s) => s.id === IG_AUTOPOST_STEP_ID) ? (() => {
             const ic = configs[IG_AUTOPOST_STEP_ID] || {};
             return {
@@ -2056,6 +2113,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             ...(rest.config.followup_sequence ? {} : { followup_sequence: null }),
             ...(rest.config.landing_page ? {} : { landing_page: null }),
             ...(rest.config.instagram_autopost ? {} : { instagram_autopost: null }),
+            ...(rest.config.campaign_report ? {} : { campaign_report: null }),
           },
         };
         // `status` is deliberately dropped. update() has no active→running
@@ -2272,7 +2330,8 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     const isLanding = editingId === LANDING_STEP_ID;
     const isIgPost = editingId === IG_AUTOPOST_STEP_ID;
     const isHumanTask = editingId === HUMAN_TASK_STEP_ID;
-    const isMacro = isFollowup || isAnalytics || isZohoUpdate || isMedia || isMultiCond || isAiParse || isDataEnrich || isExport || isAutopost || isScrape || isResearch || isScore || isSplit || isSetField || isHttp || isContent || isApproval || isLanding || isIgPost || isHumanTask;
+    const isReport = editingId === REPORT_STEP_ID;
+    const isMacro = isFollowup || isAnalytics || isZohoUpdate || isMedia || isMultiCond || isAiParse || isDataEnrich || isExport || isAutopost || isScrape || isResearch || isScore || isSplit || isSetField || isHttp || isContent || isApproval || isLanding || isIgPost || isHumanTask || isReport;
     const visual = isSource
       ? SOURCES.find((s) => s.key === source)
       : isFollowup
@@ -3361,6 +3420,115 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 <p className="text-[11px] text-amber-900 dark:text-amber-200">
                   Instagram publishing needs Meta&apos;s approval for this app before it can post.
                   You can configure this now; it starts publishing once that is granted.
+                </p>
+              </div>
+            </>);
+          })()}
+
+          {isReport && (() => {
+            const eid = editingId!;
+            const isCampaign = cfg.scope === 'campaign';
+            const hasLanding = workflowPreview.some((x) => x.id === LANDING_STEP_ID);
+            // Whether the earlier research steps that a per-lead report needs
+            // are actually in this workflow. Without them the step fails at
+            // runtime with "add a Research or Scrape step", so say it here.
+            const hasResearch = workflowPreview.some((x) => x.id === RESEARCH_STEP_ID || x.id === SCRAPE_STEP_ID);
+            return (<>
+              <div className="rounded-md border border-teal-200 bg-teal-50 dark:border-teal-800 dark:bg-teal-950/30 px-3 py-2">
+                <p className="text-[11px] text-teal-900 dark:text-teal-200">
+                  Builds a PDF you can send as an attachment or offer as a download.
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">What is it about?</label>
+                <select className={field} value={cfg.scope || 'lead'}
+                  onChange={(e) => setCfg(eid, { scope: e.target.value })}>
+                  <option value="lead">Each lead&apos;s own company</option>
+                  <option value="campaign">The campaign&apos;s industry</option>
+                </select>
+                <p className="text-[11px] text-muted-foreground">
+                  {isCampaign
+                    ? 'One report for the whole campaign. The same document for everyone, so it can be given away on a landing page.'
+                    : 'A separate report per lead, written from their own website and research. More valuable, but personal to them.'}
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">Report</label>
+                <select className={field} value={cfg.report_type || 'growth_opportunity_audit'}
+                  onChange={(e) => setCfg(eid, { report_type: e.target.value })}>
+                  <option value="growth_opportunity_audit">Growth Opportunity Audit</option>
+                  <option value="competitor_analysis">Competitor Analysis</option>
+                  <option value="lead_conversion_assessment">Lead Conversion Assessment</option>
+                  <option value="customer_experience_audit">Customer Experience Audit</option>
+                  <option value="revenue_leakage_report">Revenue Leakage Report</option>
+                  <option value="market_positioning_review">Market Positioning Review</option>
+                  <option value="sales_process_review">Sales Process Review</option>
+                  <option value="followup_effectiveness_audit">Follow-up Effectiveness Audit</option>
+                  <option value="marketing_performance_snapshot">Marketing Performance Snapshot</option>
+                  <option value="industry_benchmark_report">Industry Benchmark Report</option>
+                </select>
+              </div>
+
+              {isCampaign && (
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-foreground">Industry</label>
+                  <input className={field} value={cfg.industry || ''}
+                    onChange={(e) => setCfg(eid, { industry: e.target.value })}
+                    placeholder="e.g. freight forwarding in the UAE" />
+                  <p className="text-[11px] text-muted-foreground">
+                    Left blank, the industry from your contact source is used. A report that
+                    would read the same for any sector is not worth sending.
+                  </p>
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-foreground">Anything to add? (optional)</label>
+                <textarea className={`${field} min-h-[70px] resize-y`} value={cfg.context || ''}
+                  onChange={(e) => setCfg(eid, { context: e.target.value })}
+                  placeholder="Angles you want covered, or things to avoid." />
+              </div>
+
+              {!isCampaign && (
+                <>
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input type="checkbox" className="mt-0.5" checked={!!cfg.email_now}
+                      onChange={(e) => setCfg(eid, { email_now: e.target.checked })} />
+                    <span className="text-xs">
+                      <span className="font-medium text-foreground">Email it here, as an attachment</span>
+                      <span className="block text-[11px] text-muted-foreground">
+                        Otherwise it is saved and any later step can link it with{' '}
+                        <code className="text-[10px]">{'{{report_url}}'}</code>.
+                      </span>
+                    </span>
+                  </label>
+
+                  {!hasResearch && (
+                    <div className="rounded-md border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30 px-3 py-2">
+                      <p className="text-[11px] text-amber-900 dark:text-amber-200">
+                        Add a <strong>Research</strong> or <strong>Scrape</strong> step before this one.
+                        A per-lead report is written from what those find; without them there is
+                        nothing to write about and the step will fail rather than invent something.
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* The rule: only the industry report can be given away publicly. */}
+              <div className={`rounded-md border px-3 py-2 ${
+                isCampaign
+                  ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/30'
+                  : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50'
+              }`}>
+                <p className={`text-[11px] ${isCampaign ? 'text-emerald-900 dark:text-emerald-200' : 'text-slate-700 dark:text-slate-300'}`}>
+                  {isCampaign
+                    ? (hasLanding
+                      ? 'Your landing page will offer this as a download once someone fills the form.'
+                      : 'Add a Landing page node and this becomes a download people can fill a form to get.')
+                    : 'A per-lead report cannot go on a landing page — one public URL is shared by every visitor, so there is no way to know whose report to show. Switch to the campaign industry for that.'}
                 </p>
               </div>
             </>);
@@ -4528,6 +4696,28 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-semibold text-foreground truncate">Instagram auto-post</span>
                     <span className="block text-xs text-muted-foreground truncate">Image or Reel · On a schedule</span>
+                  </span>
+                  {added && (
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    </span>
+                  )}
+                </button>
+              );
+            })()}
+
+            {/* Audit report — a PDF worth receiving. */}
+            {(() => {
+              const added = workflowPreview.some((s) => s.id === REPORT_STEP_ID);
+              return (
+                <button onClick={addReport}
+                  className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
+                    added ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20' : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                  }`}>
+                  <IconChip icon={<FileText className="h-4 w-4 text-teal-700" />} chip="bg-teal-50 dark:bg-teal-950/30" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold text-foreground truncate">Audit report</span>
+                    <span className="block text-xs text-muted-foreground truncate">PDF · Attach or offer as a download</span>
                   </span>
                   {added && (
                     <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">

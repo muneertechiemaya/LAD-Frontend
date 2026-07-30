@@ -53,6 +53,7 @@ const defaultStepData: Record<StepType, Partial<StepData>> = {
   linkedin_post: { title: 'LinkedIn auto-post' },
   instagram_post: { title: 'Instagram auto-post' },
   human_task: { title: 'Human task' },
+  lead_report: { title: 'Audit report' },
   landing_page: { title: 'Landing page' },
   linkedin_content: { title: 'LinkedIn content' },
   post_approval: { title: 'Approval' },

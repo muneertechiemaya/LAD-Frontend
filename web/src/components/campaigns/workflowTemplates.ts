@@ -36,6 +36,8 @@ export const APPROVAL_STEP_ID = 'post-approval-node';
 export const IG_AUTOPOST_STEP_ID = 'instagram-post-node';
 /** Human task. Per-lead: pauses the lead until a person confirms. */
 export const HUMAN_TASK_STEP_ID = 'human-task-node';
+/** Audit report. Per-lead by default; campaign-level when scope='campaign'. */
+export const REPORT_STEP_ID = 'lead-report-node';
 // Web-intel + flow macros. These lived in CustomWorkflowBuilder until
 // Strategies needed one canonical list of "ids that must survive save/restore".
 export const SCRAPE_STEP_ID = 'web-scrape-node';
