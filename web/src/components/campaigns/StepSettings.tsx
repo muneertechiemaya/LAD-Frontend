@@ -74,6 +74,8 @@ const getRequiredFields = (stepType: StepType): string[] => {
     analytics_report: [],
     export_results: [],
     linkedin_post: [],
+    instagram_post: [],
+    human_task: [],
     landing_page: [],
     linkedin_content: [],
     post_approval: [],

@@ -83,6 +83,9 @@ export const getDetailedActions = (campaign: Campaign) => {
     if (cfg.autopost.require_approval) actionCounts['post_approval'] = 1;
     actionCounts['linkedin_post'] = 1;
   }
+  if (cfg.instagram_autopost?.media_url) {
+    actionCounts['instagram_post'] = 1;
+  }
   if (cfg.followup_sequence?.touches) {
     actionCounts['followup_sequence'] = Number(cfg.followup_sequence.touches) || 1;
   }
@@ -98,6 +101,8 @@ export const getDetailedActions = (campaign: Campaign) => {
     const MACRO_LABELS: Record<string, { name: string; platform: string }> = {
       linkedin_content: { name: 'AI post copy', platform: 'linkedin' },
       linkedin_post: { name: 'Auto-post', platform: 'linkedin' },
+      instagram_post: { name: 'IG auto-post', platform: 'other' },
+      human_task: { name: 'Human task', platform: 'other' },
       post_approval: { name: 'Approval', platform: 'other' },
       followup_sequence: { name: 'Follow-ups', platform: 'other' },
       export_results: { name: 'Export', platform: 'other' },
