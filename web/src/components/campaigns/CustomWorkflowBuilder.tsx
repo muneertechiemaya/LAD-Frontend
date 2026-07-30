@@ -244,6 +244,40 @@ const STEP_INSTRUCTIONS: Record<string, string> = {
 
 // ─── Build with AI ───────────────────────────────────────────────────────────
 /**
+ * Starting points on the resting screen. Each seeds the prompt with a shape the
+ * drafter handles well and leaves the specifics in [brackets] for the user to
+ * replace — a real head start, not decoration. Colours follow the channel
+ * palette used everywhere else in the builder, so a starter reads as the
+ * channel it will build for.
+ */
+const AI_STARTERS: { label: string; prompt: string; icon: React.ReactNode; chip: string }[] = [
+  {
+    label: 'LinkedIn outreach',
+    chip: 'bg-[#0077B5]',
+    icon: <Linkedin className="h-4 w-4 text-white" />,
+    prompt: 'Find [job title] at [industry] companies in [location], visit their profile, send a connection request, then message them once they accept — and follow up twice if they go quiet.',
+  },
+  {
+    label: 'Email sequence',
+    chip: 'bg-amber-600',
+    icon: <Mail className="h-4 w-4 text-white" />,
+    prompt: 'Email [job title] at [industry] companies in [location], then follow up twice if they do not reply.',
+  },
+  {
+    label: 'Import a list',
+    chip: 'bg-emerald-600',
+    icon: <FileSpreadsheet className="h-4 w-4 text-white" />,
+    prompt: 'Import my CSV of contacts, find each person on LinkedIn, send a connection request, then message them once they accept.',
+  },
+  {
+    label: 'From your CRM',
+    chip: 'bg-red-600',
+    icon: <DatabaseZap className="h-4 w-4 text-white" />,
+    prompt: 'Import new contacts from Zoho every day, connect with them on LinkedIn, send a welcome email, then follow up twice.',
+  },
+];
+
+/**
  * One clarifying question from /workflow/plan. The catalog lives server-side so
  * every question maps to a config key the builder actually reads; the shape is
  * mirrored here only for rendering.
@@ -645,6 +679,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   const [aiStep, setAiStep] = useState(0);
   /** Free-text buffer for the current question. */
   const [aiText, setAiText] = useState('');
+  const aiInputRef = useRef<HTMLTextAreaElement | null>(null);
 
   // ── Test run: simulate the current pipeline against one sample lead ───────
   const [testOpen, setTestOpen] = useState(false);
@@ -4385,9 +4420,11 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
 
       <div className="flex-1 flex min-h-0">
         {/* Palette */}
-        <div className="w-[19rem] border-r border-border bg-card overflow-y-auto p-4 space-y-6">
+        {/* Column, not a plain scroller: the AI tab pins its composer to the
+            bottom the way a chat does, so it owns its own scroll region. */}
+        <div className="w-[19rem] border-r border-border bg-card flex flex-col min-h-0">
           {/* Tabs — Templates | Build with AI | Build from steps */}
-          <div className="flex items-center gap-1 p-1 rounded-xl bg-muted/60 dark:bg-slate-800/60">
+          <div className="flex items-center gap-1 p-1 m-4 mb-0 flex-shrink-0 rounded-xl bg-muted/60 dark:bg-slate-800/60">
             {([['templates', 'Templates'], ['ai', 'Build with AI'], ['steps', 'From steps']] as const).map(([k, label]) => (
               <button key={k} type="button" onClick={() => setPaletteTab(k)}
                 className={`flex-1 inline-flex items-center justify-center gap-1 px-2 py-2 rounded-lg text-[12px] font-semibold transition-all ${
@@ -4405,31 +4442,44 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             ))}
           </div>
 
-          {paletteTab === 'ai' && (<>
-            <div>
-              <div className="text-[15px] font-bold text-foreground">Describe your workflow</div>
-              <p className="text-[12.5px] text-muted-foreground mt-0.5 mb-3">
-                Say who you want to reach and how — Mr LAD builds the pipeline, then you tune each node.
-              </p>
-              {/* Prompt box — hidden while a draft is being clarified, so the
-                  panel reads as one conversation rather than two forms. */}
-              {!aiQuestions.length && (<>
-                <textarea
-                  value={aiPrompt}
-                  onChange={(e) => setAiPrompt(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) buildWithAi(); }}
-                  placeholder={'e.g. Find heads of ops at logistics companies in Dubai, visit their profile, send a connection request, then message them once they accept — and follow up twice if they go quiet.'}
-                  className="w-full min-h-[120px] rounded-xl border border-input bg-muted/40 dark:bg-slate-800/40 px-3 py-2.5 text-[13px] outline-none focus:bg-background focus:border-[#0b1957]/40 transition-colors resize-y"
-                />
-                <button type="button" onClick={buildWithAi} disabled={aiBuilding || !aiPrompt.trim()}
-                  className="mt-2 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#0b1957] text-white text-[13px] font-semibold py-2.5 hover:bg-[#0b1957]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                  {aiBuilding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                  {aiBuilding ? 'Thinking…' : 'Build it'}
-                </button>
-                <p className="text-[10.5px] text-muted-foreground mt-2 leading-snug">
-                  Mr LAD asks a few questions first, then builds a draft on the canvas. Nothing is launched or sent until you press Launch.
-                </p>
-              </>)}
+          {paletteTab === 'ai' && (
+            <div className="flex-1 flex flex-col min-h-0">
+            <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col">
+              {/* Resting state: a calm starting screen rather than a form. The
+                  starters are real accelerators — each seeds the prompt with a
+                  shape Mr LAD handles well, which the user then edits. */}
+              {!aiQuestions.length && !aiResult && (
+                <div className="flex-1 flex flex-col items-center justify-center text-center px-1">
+                  <h2 className="font-serif text-[22px] leading-tight text-foreground">Start with a goal</h2>
+                  <p className="text-[12.5px] text-muted-foreground mt-1.5 mb-6 leading-snug max-w-[15rem]">
+                    Say who you want to reach and how. Mr LAD asks a few questions, then builds the pipeline.
+                  </p>
+                  <div className="w-full space-y-2">
+                    {AI_STARTERS.map((s) => (
+                      <button key={s.label} type="button"
+                        onClick={() => {
+                          setAiPrompt(s.prompt);
+                          // Show the START of the seeded prompt, not wherever the
+                          // textarea happened to scroll to, and put the caret at
+                          // the front so the first [bracket] is what you edit.
+                          requestAnimationFrame(() => {
+                            const el = aiInputRef.current;
+                            if (!el) return;
+                            el.focus();
+                            el.setSelectionRange(0, 0);
+                            el.scrollTop = 0;
+                          });
+                        }}
+                        className="w-full flex items-center gap-3 rounded-full border border-border bg-card px-2 py-2 text-left hover:border-[#0b1957]/40 hover:bg-muted/40 transition-colors">
+                        <span className={`h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 ${s.chip}`}>
+                          {s.icon}
+                        </span>
+                        <span className="text-[13px] font-medium text-foreground truncate">{s.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* The clarifying conversation: one question at a time. */}
               {!!aiQuestions.length && (() => {
@@ -4470,15 +4520,16 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                         <button type="button" onClick={resetAiChat}
                           className="text-[10.5px] font-semibold text-muted-foreground hover:text-foreground">Start over</button>
                       </div>
-                      <p className="text-[13px] font-semibold text-foreground leading-snug">{q.question}</p>
+                      <p className="font-serif text-[16px] text-foreground leading-snug">{q.question}</p>
                       {q.help && <p className="text-[11px] text-muted-foreground mt-1 leading-snug">{q.help}</p>}
 
                       {q.type === 'choice' && (
                         <div className="mt-2.5 space-y-1.5">
                           {q.options?.map((o) => (
                             <button key={o.value} type="button" onClick={() => answerAiQuestion(o.value)} disabled={aiBuilding}
-                              className="w-full text-left rounded-xl border border-border bg-card px-2.5 py-2 hover:border-[#0b1957] hover:bg-[#0b1957]/[0.04] disabled:opacity-50 transition-all">
-                              <span className="block text-[12.5px] font-semibold text-foreground">{o.label}</span>
+                              className={`w-full text-left border border-border bg-card px-3 py-2 hover:border-[#0b1957] hover:bg-[#0b1957]/[0.04] disabled:opacity-50 transition-all ${
+                                o.hint ? 'rounded-2xl' : 'rounded-full'}`}>
+                              <span className="block text-[12.5px] font-medium text-foreground">{o.label}</span>
                               {o.hint && <span className="block text-[10.5px] text-muted-foreground">{o.hint}</span>}
                             </button>
                           ))}
@@ -4491,7 +4542,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                             const on = multiSelected.includes(o.value);
                             return (
                               <button key={o.value} type="button" onClick={() => toggleMulti(o.value)}
-                                className={`w-full text-left rounded-xl border px-2.5 py-2 transition-all ${
+                                className={`w-full text-left rounded-full border px-3 py-2 transition-all ${
                                   on ? 'border-[#0b1957] bg-[#0b1957]/[0.06]' : 'border-border bg-card hover:border-[#0b1957]/40'}`}>
                                 <span className="flex items-center gap-2">
                                   <span className={`h-3.5 w-3.5 rounded border flex items-center justify-center flex-shrink-0 ${
@@ -4570,15 +4621,56 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     ))}
                   </div>
                   {aiResult.notes && <p className="text-[11px] text-muted-foreground mt-2 leading-snug">{aiResult.notes}</p>}
-                  <button type="button" onClick={() => setPaletteTab('steps')}
-                    className="mt-3 w-full rounded-xl border border-border py-2 text-[12.5px] font-semibold text-muted-foreground hover:text-foreground hover:border-[#0b1957]/40 transition-colors">
-                    Adjust the steps
-                  </button>
+                  <div className="flex items-center gap-1.5 mt-3">
+                    <button type="button" onClick={() => setPaletteTab('steps')}
+                      className="flex-1 rounded-full border border-border py-2 text-[12.5px] font-semibold text-muted-foreground hover:text-foreground hover:border-[#0b1957]/40 transition-colors">
+                      Adjust the steps
+                    </button>
+                    <button type="button" onClick={() => { setAiResult(null); setAiPrompt(''); }}
+                      className="px-3 py-2 rounded-full border border-border text-[12px] font-semibold text-muted-foreground hover:text-foreground transition-colors">
+                      New
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
-          </>)}
 
+            {/* Composer — pinned, like a chat. Hidden mid-conversation: the
+                answer controls are the input at that point, and two places to
+                type would be ambiguous. */}
+            {!aiQuestions.length && (
+              <div className="flex-shrink-0 border-t border-border p-3">
+                <div className="rounded-2xl border border-input bg-muted/40 dark:bg-slate-800/40 focus-within:bg-background focus-within:border-[#0b1957]/40 transition-colors">
+                  <textarea
+                    ref={aiInputRef}
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); buildWithAi(); }
+                    }}
+                    rows={3}
+                    placeholder="Describe the workflow you want…"
+                    className="w-full max-h-[9rem] bg-transparent px-3 pt-2.5 pb-1 text-[13px] leading-snug outline-none resize-none overflow-y-auto placeholder:text-muted-foreground"
+                  />
+                  <div className="flex items-center justify-between px-2 pb-2">
+                    <span className="text-[10px] text-muted-foreground pl-1">Enter to send</span>
+                    <button type="button" onClick={buildWithAi} disabled={aiBuilding || !aiPrompt.trim()}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-[#0b1957] text-white text-[12px] font-semibold pl-2.5 pr-3 py-1.5 hover:bg-[#0b1957]/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                      {aiBuilding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                      {aiBuilding ? 'Thinking' : 'Build'}
+                    </button>
+                  </div>
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-2 leading-snug text-center">
+                  Nothing is launched or sent until you press Launch.
+                </p>
+              </div>
+            )}
+          </div>
+          )}
+
+          {paletteTab !== 'ai' && (
+          <div className="flex-1 overflow-y-auto px-4 pt-4 pb-4 space-y-6">
           {paletteTab === 'templates' && (<>
             {/* Search */}
             <div className="relative">
@@ -5082,6 +5174,8 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             })()}
           </div>
           </>)}
+          </div>
+          )}
         </div>
 
         {/* Canvas */}
