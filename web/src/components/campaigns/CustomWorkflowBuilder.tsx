@@ -242,6 +242,25 @@ const STEP_INSTRUCTIONS: Record<string, string> = {
   [HTTP_STEP_ID]: "Calls any external API with this lead's data. Requests to internal/private/cloud-metadata addresses are blocked.",
 };
 
+// ─── Build with AI ───────────────────────────────────────────────────────────
+/**
+ * One clarifying question from /workflow/plan. The catalog lives server-side so
+ * every question maps to a config key the builder actually reads; the shape is
+ * mirrored here only for rendering.
+ */
+type AiQuestion = {
+  id: string;
+  nodeKey: string;
+  question: string;
+  help?: string;
+  placeholder?: string;
+  type: 'choice' | 'multi' | 'text' | 'longtext';
+  options?: { value: string; label: string; hint?: string }[];
+  required?: boolean;
+  /** Copy fields: blank is a real answer ("let Mr LAD write it"). */
+  skippable?: boolean;
+};
+
 // ─── Test run (simulation) ───────────────────────────────────────────────────
 // One row of the dry-run timeline.
 type TestStep = {
@@ -612,12 +631,20 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   /** Template shown in the right-hand overview drawer (null = show node editor). */
   const [overviewTpl, setOverviewTpl] = useState<string | null>(null);
 
-  // ── "Build with AI": describe a pipeline, get one on the canvas ───────────
+  // ── "Build with AI": describe a pipeline, answer a few questions, get one ──
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiBuilding, setAiBuilding] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   /** What the last AI draft produced — shown so the user can see what changed. */
   const [aiResult, setAiResult] = useState<{ name: string; chain: string[]; notes: string } | null>(null);
+  /** The draft being clarified; null once it has been applied to the canvas. */
+  const [aiDraft, setAiDraft] = useState<any>(null);
+  const [aiQuestions, setAiQuestions] = useState<AiQuestion[]>([]);
+  const [aiAnswers, setAiAnswers] = useState<Record<string, any>>({});
+  /** Index of the question on screen — one at a time, like a conversation. */
+  const [aiStep, setAiStep] = useState(0);
+  /** Free-text buffer for the current question. */
+  const [aiText, setAiText] = useState('');
 
   // ── Test run: simulate the current pipeline against one sample lead ───────
   const [testOpen, setTestOpen] = useState(false);
@@ -938,14 +965,44 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     setEditingId(t.source ? SOURCE_STEP_ID : (steps[0]?.id ?? null));
   };
 
+  /** Put a finished draft on the canvas via the one existing apply path. */
+  const applyAiTemplate = (t: any) => {
+    const srcDef = SOURCES.find((s) => s.key === t.source?.key);
+    // silent: replacing the canvas was already confirmed when the draft started.
+    applyTemplate({
+      key: `ai-${Date.now()}`,
+      name: t.name || 'AI workflow',
+      tagline: t.tagline || '',
+      chain: t.nodes.map((n: any) => n.title),
+      source: t.source?.key
+        ? { key: t.source.key, cfg: t.source.cfg || {}, title: srcDef?.label || 'Contact source', description: srcDef?.sub || '' }
+        : undefined,
+      nodes: t.nodes,
+      inputs: [],
+      accent: '#0b1957',
+      meta: { cycleDays: parseInt(days, 10) || 30, channels: new Set(t.nodes.map((n: any) => n.type.split('_')[0])).size },
+      category: 'general',
+    } as WorkflowTemplate, { silent: true });
+    setAiResult({ name: t.name || 'AI workflow', chain: t.nodes.map((n: any) => n.title), notes: t.notes || '' });
+  };
+
+  /** Reset the conversation back to the prompt box. */
+  const resetAiChat = () => {
+    setAiDraft(null); setAiQuestions([]); setAiAnswers({}); setAiStep(0); setAiText('');
+  };
+
   /**
-   * "Build with AI" — describe a pipeline in words, get it on the canvas.
+   * "Build with AI" — describe a pipeline in words, answer a few questions,
+   * get it on the canvas.
    *
-   * The backend returns a WorkflowTemplate-shaped draft (already filtered to
-   * runnable step types), so it goes through the SAME applyTemplate() the
-   * gallery and the chat wizard use — no second apply path to keep in sync.
-   * The draft is a starting point, not a launch: every node still opens for
-   * editing and the usual launch validation still applies.
+   * Two-phase on purpose. Drafting straight to the canvas produced pipelines
+   * whose every node was blank, so the user had to open each one anyway; asking
+   * first means the nodes arrive configured. The questions come from the server
+   * (grounded in real config keys) rather than being invented here, and only
+   * cover what the description did not already say.
+   *
+   * The draft is still a starting point, not a launch: every node opens for
+   * editing and the usual launch validation applies.
    */
   const buildWithAi = async () => {
     const description = aiPrompt.trim();
@@ -954,9 +1011,9 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         !window.confirm('Replace the current Accelerator with the workflow the AI builds?')) {
       return;
     }
-    setAiBuilding(true); setAiError(null); setAiResult(null);
+    setAiBuilding(true); setAiError(null); setAiResult(null); resetAiChat();
     try {
-      const res = await fetchWithTenant('/api/campaigns/workflow/generate', {
+      const res = await fetchWithTenant('/api/campaigns/workflow/plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ description }),
@@ -966,29 +1023,62 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         setAiError(data?.error || 'Could not draft a workflow. Try rephrasing, or build it from the steps tab.');
         return;
       }
-      const t = data.template;
-      const srcDef = SOURCES.find((s) => s.key === t.source?.key);
-      // silent: the confirm above already covered replacing the canvas.
-      applyTemplate({
-        key: `ai-${Date.now()}`,
-        name: t.name || 'AI workflow',
-        tagline: t.tagline || '',
-        chain: t.nodes.map((n: any) => n.title),
-        source: t.source?.key
-          ? { key: t.source.key, title: srcDef?.label || 'Contact source', description: srcDef?.sub || '' }
-          : undefined,
-        nodes: t.nodes,
-        inputs: [],
-        accent: '#0b1957',
-        meta: { cycleDays: parseInt(days, 10) || 30, channels: new Set(t.nodes.map((n: any) => n.type.split('_')[0])).size },
-        category: 'general',
-      } as WorkflowTemplate, { silent: true });
-      setAiResult({ name: t.name || 'AI workflow', chain: t.nodes.map((n: any) => n.title), notes: t.notes || '' });
+      // Nothing to clarify — skip the questions entirely rather than inventing some.
+      if (!data.questions?.length) { applyAiTemplate(data.template); return; }
+      setAiDraft(data.template);
+      setAiQuestions(data.questions);
+      setAiStep(0);
+      setAiText('');
     } catch (e: any) {
       setAiError(e?.message || 'Could not reach the AI service.');
     } finally {
       setAiBuilding(false);
     }
+  };
+
+  /** Send the collected answers back and put the configured pipeline on the canvas. */
+  const finishAiChat = async (finalAnswers: Record<string, any>) => {
+    setAiBuilding(true); setAiError(null);
+    try {
+      const res = await fetchWithTenant('/api/campaigns/workflow/plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: aiPrompt.trim(), template: aiDraft, answers: finalAnswers }),
+      });
+      const data = await res.json();
+      if (!data?.success || !data?.template?.nodes?.length) {
+        setAiError(data?.error || 'Could not finish building that workflow.');
+        return;
+      }
+      applyAiTemplate(data.template);
+      resetAiChat();
+    } catch (e: any) {
+      setAiError(e?.message || 'Could not reach the AI service.');
+    } finally {
+      setAiBuilding(false);
+    }
+  };
+
+  /**
+   * Record one answer and advance. Answering the last question builds straight
+   * away — a separate "done" click after the final answer is a step with no
+   * decision in it.
+   */
+  const answerAiQuestion = (value: any) => {
+    const q = aiQuestions[aiStep];
+    if (!q) return;
+    const next = { ...aiAnswers, [q.id]: value };
+    setAiAnswers(next);
+    setAiText('');
+    if (aiStep + 1 < aiQuestions.length) setAiStep(aiStep + 1);
+    else finishAiChat(next);
+  };
+
+  /** Skip an optional question, leaving the node's own default in place. */
+  const skipAiQuestion = () => {
+    setAiText('');
+    if (aiStep + 1 < aiQuestions.length) setAiStep(aiStep + 1);
+    else finishAiChat(aiAnswers);
   };
 
   /** Ask the AI to invent a lead to test against. */
@@ -4321,21 +4411,146 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               <p className="text-[12.5px] text-muted-foreground mt-0.5 mb-3">
                 Say who you want to reach and how — Mr LAD builds the pipeline, then you tune each node.
               </p>
-              <textarea
-                value={aiPrompt}
-                onChange={(e) => setAiPrompt(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) buildWithAi(); }}
-                placeholder={'e.g. Find heads of ops at logistics companies in Dubai, visit their profile, send a connection request, then message them once they accept — and follow up twice if they go quiet.'}
-                className="w-full min-h-[120px] rounded-xl border border-input bg-muted/40 dark:bg-slate-800/40 px-3 py-2.5 text-[13px] outline-none focus:bg-background focus:border-[#0b1957]/40 transition-colors resize-y"
-              />
-              <button type="button" onClick={buildWithAi} disabled={aiBuilding || !aiPrompt.trim()}
-                className="mt-2 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#0b1957] text-white text-[13px] font-semibold py-2.5 hover:bg-[#0b1957]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                {aiBuilding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                {aiBuilding ? 'Building…' : 'Build it'}
-              </button>
-              <p className="text-[10.5px] text-muted-foreground mt-2 leading-snug">
-                Builds a draft on the canvas. Nothing is launched or sent until you press Launch.
-              </p>
+              {/* Prompt box — hidden while a draft is being clarified, so the
+                  panel reads as one conversation rather than two forms. */}
+              {!aiQuestions.length && (<>
+                <textarea
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) buildWithAi(); }}
+                  placeholder={'e.g. Find heads of ops at logistics companies in Dubai, visit their profile, send a connection request, then message them once they accept — and follow up twice if they go quiet.'}
+                  className="w-full min-h-[120px] rounded-xl border border-input bg-muted/40 dark:bg-slate-800/40 px-3 py-2.5 text-[13px] outline-none focus:bg-background focus:border-[#0b1957]/40 transition-colors resize-y"
+                />
+                <button type="button" onClick={buildWithAi} disabled={aiBuilding || !aiPrompt.trim()}
+                  className="mt-2 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#0b1957] text-white text-[13px] font-semibold py-2.5 hover:bg-[#0b1957]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                  {aiBuilding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                  {aiBuilding ? 'Thinking…' : 'Build it'}
+                </button>
+                <p className="text-[10.5px] text-muted-foreground mt-2 leading-snug">
+                  Mr LAD asks a few questions first, then builds a draft on the canvas. Nothing is launched or sent until you press Launch.
+                </p>
+              </>)}
+
+              {/* The clarifying conversation: one question at a time. */}
+              {!!aiQuestions.length && (() => {
+                const q = aiQuestions[aiStep];
+                if (!q) return null;
+                const answered = aiQuestions.slice(0, aiStep).filter((x) => aiAnswers[x.id] !== undefined);
+                const labelFor = (x: AiQuestion, v: any) => {
+                  if (Array.isArray(v)) return v.map((one) => x.options?.find((o) => o.value === one)?.label || one).join(', ');
+                  return x.options?.find((o) => o.value === v)?.label || String(v);
+                };
+                const multiSelected: string[] = Array.isArray(aiAnswers[q.id]) ? aiAnswers[q.id] : [];
+                const toggleMulti = (v: string) => {
+                  const next = multiSelected.includes(v) ? multiSelected.filter((x) => x !== v) : [...multiSelected, v];
+                  setAiAnswers({ ...aiAnswers, [q.id]: next });
+                };
+                return (
+                  <div className="space-y-3">
+                    {/* What you asked for, and what has been settled so far. */}
+                    <div className="rounded-xl bg-muted/50 dark:bg-slate-800/40 p-2.5">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">You asked for</div>
+                      <p className="text-[12px] text-foreground leading-snug">{aiPrompt.trim()}</p>
+                    </div>
+                    {answered.map((x) => (
+                      <div key={x.id} className="flex items-start gap-2 text-[11.5px]">
+                        <svg className="text-emerald-600 flex-shrink-0 mt-0.5" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
+                        <span className="min-w-0 flex-1">
+                          <span className="text-muted-foreground">{x.question}</span>{' '}
+                          <span className="font-semibold text-foreground">{labelFor(x, aiAnswers[x.id]) || 'Mr LAD writes it'}</span>
+                        </span>
+                      </div>
+                    ))}
+
+                    <div className="rounded-2xl border border-[#0b1957]/30 bg-[#0b1957]/[0.03] dark:bg-[#0b1957]/[0.08] p-3">
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#0b1957] dark:text-sky-300">
+                          Question {aiStep + 1} of {aiQuestions.length}
+                        </span>
+                        <button type="button" onClick={resetAiChat}
+                          className="text-[10.5px] font-semibold text-muted-foreground hover:text-foreground">Start over</button>
+                      </div>
+                      <p className="text-[13px] font-semibold text-foreground leading-snug">{q.question}</p>
+                      {q.help && <p className="text-[11px] text-muted-foreground mt-1 leading-snug">{q.help}</p>}
+
+                      {q.type === 'choice' && (
+                        <div className="mt-2.5 space-y-1.5">
+                          {q.options?.map((o) => (
+                            <button key={o.value} type="button" onClick={() => answerAiQuestion(o.value)} disabled={aiBuilding}
+                              className="w-full text-left rounded-xl border border-border bg-card px-2.5 py-2 hover:border-[#0b1957] hover:bg-[#0b1957]/[0.04] disabled:opacity-50 transition-all">
+                              <span className="block text-[12.5px] font-semibold text-foreground">{o.label}</span>
+                              {o.hint && <span className="block text-[10.5px] text-muted-foreground">{o.hint}</span>}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {q.type === 'multi' && (
+                        <div className="mt-2.5 space-y-1.5">
+                          {q.options?.map((o) => {
+                            const on = multiSelected.includes(o.value);
+                            return (
+                              <button key={o.value} type="button" onClick={() => toggleMulti(o.value)}
+                                className={`w-full text-left rounded-xl border px-2.5 py-2 transition-all ${
+                                  on ? 'border-[#0b1957] bg-[#0b1957]/[0.06]' : 'border-border bg-card hover:border-[#0b1957]/40'}`}>
+                                <span className="flex items-center gap-2">
+                                  <span className={`h-3.5 w-3.5 rounded border flex items-center justify-center flex-shrink-0 ${
+                                    on ? 'bg-[#0b1957] border-[#0b1957]' : 'border-muted-foreground/40'}`}>
+                                    {on && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="4" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>}
+                                  </span>
+                                  <span className="min-w-0">
+                                    <span className="block text-[12.5px] font-semibold text-foreground">{o.label}</span>
+                                    {o.hint && <span className="block text-[10.5px] text-muted-foreground">{o.hint}</span>}
+                                  </span>
+                                </span>
+                              </button>
+                            );
+                          })}
+                          <button type="button" disabled={aiBuilding || !multiSelected.length}
+                            onClick={() => answerAiQuestion(multiSelected)}
+                            className="w-full rounded-xl bg-[#0b1957] text-white text-[12.5px] font-semibold py-2 hover:bg-[#0b1957]/90 disabled:opacity-40 transition-colors">
+                            Continue
+                          </button>
+                        </div>
+                      )}
+
+                      {(q.type === 'text' || q.type === 'longtext') && (
+                        <div className="mt-2.5 space-y-1.5">
+                          {q.type === 'longtext' ? (
+                            <textarea value={aiText} onChange={(e) => setAiText(e.target.value)}
+                              placeholder={q.placeholder || ''}
+                              className="w-full min-h-[80px] rounded-xl border border-input bg-background px-2.5 py-2 text-[12.5px] outline-none focus:border-[#0b1957]/40 resize-y" />
+                          ) : (
+                            <input value={aiText} onChange={(e) => setAiText(e.target.value)}
+                              onKeyDown={(e) => { if (e.key === 'Enter' && aiText.trim()) answerAiQuestion(aiText.trim()); }}
+                              placeholder={q.placeholder || ''}
+                              className="w-full rounded-xl border border-input bg-background px-2.5 py-2 text-[12.5px] outline-none focus:border-[#0b1957]/40" />
+                          )}
+                          <div className="flex items-center gap-1.5">
+                            <button type="button" disabled={aiBuilding || (!!q.required && !aiText.trim())}
+                              onClick={() => answerAiQuestion(aiText.trim())}
+                              className="flex-1 rounded-xl bg-[#0b1957] text-white text-[12.5px] font-semibold py-2 hover:bg-[#0b1957]/90 disabled:opacity-40 transition-colors">
+                              Continue
+                            </button>
+                            {!q.required && (
+                              <button type="button" onClick={skipAiQuestion} disabled={aiBuilding}
+                                className="px-3 py-2 rounded-xl border border-border text-[12px] font-semibold text-muted-foreground hover:text-foreground disabled:opacity-40 transition-colors">
+                                {q.skippable ? 'Let Mr LAD write it' : 'Skip'}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {aiBuilding && (
+                        <p className="text-[11px] text-muted-foreground mt-2 inline-flex items-center gap-1.5">
+                          <Loader2 className="h-3 w-3 animate-spin" /> Building your workflow…
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {aiError && (
                 <div className="mt-3 rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 p-3 text-[12px] text-amber-900 dark:text-amber-200">
