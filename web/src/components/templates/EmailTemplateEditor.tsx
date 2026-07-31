@@ -740,11 +740,12 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
 
                   {template.media_url ? (
                     <div className="space-y-2">
-                      <div className="relative rounded-xl overflow-hidden border border-gray-202 dark:border-gray-800">
-                        <img src={template.media_url} alt="Preview" className="w-full max-h-32 object-cover" />
+                      <div className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800 min-h-[40px] flex items-center">
+                        <img src={template.media_url} alt="Preview" className="w-full max-h-32 object-cover pr-10" />
                         <button
+                          type="button"
                           onClick={() => set('media_url', '')}
-                          className="absolute top-2 right-2 w-6 h-6 bg-white dark:bg-[#000724] rounded-full shadow flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
+                          className="absolute top-1/2 -translate-y-1/2 right-2.5 z-10 w-6 h-6 bg-white dark:bg-[#000724] rounded-full shadow flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
                         >
                           <X className="w-3.5 h-3.5" />
                         </button>
