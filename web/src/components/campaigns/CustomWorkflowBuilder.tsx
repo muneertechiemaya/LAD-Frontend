@@ -1575,10 +1575,19 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     if (step === 'loading' || mb.generating) return;
     if (mb.error) { setAutoMedia(false); return; }
 
-    // Steps the driver deliberately leaves alone. builder-image-output is the
-    // intended stop — picking the picture is the user's call. Brand-DNA
-    // extraction is a genuine wait, and the hook already polls it.
-    if (step === 'builder-image-output' || step === 'builder-video-progress') return;
+    // Steps the driver waits through rather than acts on:
+    //   welcome  — startFlow sets this BEFORE selectImageCreation opens the
+    //              conversation. Treating it as unanswerable switched auto mode
+    //              off on the very first render, every time, and the user got
+    //              the questionnaire they had just asked the agent to fill in.
+    //   gallery  — not part of the flow.
+    //   progress — brand-DNA extraction or generation; the hook polls it.
+    //   output   — the intended stop: picking the picture is the user's call.
+    if (step === 'welcome' || step === 'gallery'
+      || step === 'builder-video-progress' || step === 'builder-image-output') return;
+    // Nothing has come back from the worker yet — there is no question here to
+    // fail to answer.
+    if (!mb.uiPayload) return;
 
     // The brand-DNA review is a confirmation screen, not a question: the wizard
     // parks there until something sends "Select this & start". Nothing polls it,
