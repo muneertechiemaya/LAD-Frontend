@@ -184,7 +184,6 @@ export const BusinessHoursModal: React.FC<BusinessHoursModalProps> = ({ initialD
               <h2 className="text-[18px] sm:text-[20px] font-bold text-gray-900 dark:text-slate-100 leading-tight tracking-tight">Business Hours</h2>
               <p className="text-[12px] sm:text-[13px] text-gray-400 dark:text-slate-400 mt-0.5">Configure availability &amp; timezone</p>
             </div>
-            <span className="ml-auto w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399] animate-pulse" />
           </div>
         </div>
 
