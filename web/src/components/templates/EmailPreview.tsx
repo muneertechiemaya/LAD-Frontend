@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import DOMPurify from 'dompurify';
 
 type DeviceType = 'mobile' | 'tablet' | 'desktop';
@@ -18,6 +18,20 @@ export default function EmailPreview({
 }: EmailPreviewProps) {
   const [device, setDevice] = useState<DeviceType>('desktop');
   const [error, setError] = useState('');
+  // Track parent app's dark mode via MutationObserver — drives iframe theme
+  const [isDark, setIsDark] = useState(() =>
+    typeof document !== 'undefined' &&
+    document.documentElement.classList.contains('dark')
+  );
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const observer = new MutationObserver(() =>
+      setIsDark(root.classList.contains('dark'))
+    );
+    observer.observe(root, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
 
   // Sanitize HTML content
   const sanitizeHtml = (dirtyHtml: string) => {
@@ -42,25 +56,11 @@ export default function EmailPreview({
   // Add basic email styles and make it responsive
   const htmlWithStyles = `
     <!DOCTYPE html>
-    <html id="iframe-root">
+    <html id="iframe-root"${isDark ? ' data-theme="dark"' : ''}>
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <meta name="color-scheme" content="light">
-      <script>
-        // Only follow the parent app's theme class, not the OS preference
-        (function() {
-          try {
-            const isParentDark = window.parent.document.documentElement.classList.contains('dark');
-            if (isParentDark) {
-              document.documentElement.setAttribute('data-theme', 'dark');
-              document.documentElement.style.backgroundColor = '#000724';
-            }
-          } catch (e) {
-            // Cross-origin blocked: stay light (safe default)
-          }
-        })();
-      </script>
       <style>
         /* Modern customized scrollbar tracking inside the preview iframe */
         ::-webkit-scrollbar {
@@ -201,7 +201,7 @@ export default function EmailPreview({
   };
 
     // Snapshot state-tracking rendering key used to force structural remount updates
-    const renderingKey = `${subject?.length || 0}_${sanitized.length}_${device}`;
+    const renderingKey = `${subject?.length || 0}_${sanitized.length}_${device}_${isDark}`;
 
   return (
     <div className="flex flex-col gap-4 bg-transparent">
