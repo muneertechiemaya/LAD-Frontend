@@ -1,7 +1,7 @@
 /**
- * Workflow templates ("Roles") — one-click pipeline recipes shared by:
+ * Workflow templates ("Accelerators") — one-click pipeline recipes shared by:
  *   - CustomWorkflowBuilder's "Start from a template" gallery
- *   - the advanced-search chat panel's Roles dropdown (conversational wizard)
+ *   - the advanced-search chat panel's Accelerators dropdown (conversational wizard)
  *
  * Each node is either an OUTREACH step (the builder assigns a generated id) or
  * a single-instance macro (uses its fixed *_STEP_ID so the builder's drawers
@@ -25,11 +25,53 @@ export const MULTICOND_STEP_ID = 'multicond-node';
 export const AI_STEP_ID = 'ai-agent-node';
 export const ENRICH_STEP_ID = 'data-enrich-node';
 export const EXPORT_STEP_ID = 'export-results-node';
+/** Landing-page node. Campaign-level: ONE public page per campaign, not per lead. */
+export const LANDING_STEP_ID = 'landing-page-node';
 export const AUTOPOST_STEP_ID = 'linkedin-post-node';
 // The posting strategy is three composable nodes: content -> (approval) -> post.
 // All three merge into ONE campaigns.config.autopost object at launch.
 export const CONTENT_STEP_ID = 'linkedin-content-node';
 export const APPROVAL_STEP_ID = 'post-approval-node';
+/** Instagram auto-post. Campaign-level: ONE post per campaign, not per lead. */
+export const IG_AUTOPOST_STEP_ID = 'instagram-post-node';
+/** Human task. Per-lead: pauses the lead until a person confirms. */
+export const HUMAN_TASK_STEP_ID = 'human-task-node';
+/** Audit report. Per-lead by default; campaign-level when scope='campaign'. */
+export const REPORT_STEP_ID = 'lead-report-node';
+// Web-intel + flow macros. These lived in CustomWorkflowBuilder until
+// Strategies needed one canonical list of "ids that must survive save/restore".
+export const SCRAPE_STEP_ID = 'web-scrape-node';
+export const RESEARCH_STEP_ID = 'web-research-node';
+export const SCORE_STEP_ID = 'lead-score-node';
+export const SPLIT_STEP_ID = 'split-test-node';
+export const SETFIELD_STEP_ID = 'set-field-node';
+export const HTTP_STEP_ID = 'http-request-node';
+
+/**
+ * Every fixed, single-instance macro id. A node carrying one of these must keep
+ * it across a save → restore round trip: the builder's drawers and `launch()`
+ * emit both look configs up by these exact strings, so a regenerated id would
+ * silently drop that node's configuration.
+ *
+ * SOURCE_STEP_ID is deliberately excluded — the source is stored separately on
+ * a strategy, not as one of its nodes.
+ */
+export const MACRO_STEP_IDS: readonly string[] = [
+  FOLLOWUP_STEP_ID, ANALYTICS_STEP_ID, ZOHO_UPDATE_STEP_ID, MEDIA_STEP_ID,
+  MULTICOND_STEP_ID, AI_STEP_ID, ENRICH_STEP_ID, EXPORT_STEP_ID, AUTOPOST_STEP_ID,
+  CONTENT_STEP_ID, APPROVAL_STEP_ID,
+  SCRAPE_STEP_ID, RESEARCH_STEP_ID, SCORE_STEP_ID,
+  SPLIT_STEP_ID, SETFIELD_STEP_ID, HTTP_STEP_ID,
+  IG_AUTOPOST_STEP_ID, LANDING_STEP_ID,
+];
+
+/**
+ * Router nodes are `type: 'condition'` distinguished ONLY by an `rt-` id
+ * prefix (see CustomWorkflowBuilder's `addRouter` / `launch`). Their id is
+ * therefore load-bearing too and must be preserved verbatim on restore —
+ * otherwise a router silently degrades into a plain wait-for-condition step.
+ */
+export const ROUTER_ID_PREFIX = 'rt-';
 
 export const AI_DEFAULT_INSTRUCTION =
   'If the job title has multiple or mixed roles, keep the single best-fit, most senior title. Split the full name into first/last and tidy the company name.';
@@ -50,12 +92,28 @@ export type TemplateNode = {
 };
 
 export type TemplateInput = {
-  /** Source-config key the answer is stored under (matches the builder's source drawer). */
+  /** Answer key. For source inputs this is the source-config key (matches the builder's source drawer). */
   key: string;
   /** Question asked in the chat wizard. */
   question: string;
+  /** Row label on the summary card. Defaults to a prettified `key`. */
+  label?: string;
   placeholder?: string;
   optional?: boolean;
+  /**
+   * Where the answer is written. Omitted / 'source' → the source drawer config;
+   * 'node' → the cfg of the node named by `nodeKey` (message copy, subjects…);
+   * 'gate' → written nowhere, it only decides whether the copy questions run.
+   */
+  target?: 'source' | 'node' | 'gate';
+  /** target:'node' — the receiving node, addressed by `macroId || type`. */
+  nodeKey?: string;
+  /** target:'node' — dotted cfg path; numeric segments index arrays (e.g. `touches.0.message`). */
+  cfgPath?: string;
+  /** The copy the template ships with — shown as the value "skip" keeps. */
+  suggestion?: string;
+  /** Long-form answer (message bodies) — cards truncate these. */
+  multiline?: boolean;
 };
 
 export type WorkflowTemplate = {
@@ -64,23 +122,141 @@ export type WorkflowTemplate = {
   tagline: string;
   /** Chip labels shown on cards / in chat so users see the pipeline up front. */
   chain: string[];
-  source: { key: TemplateSourceKey; cfg?: any; title: string; description: string };
+  /**
+   * Omitted for publisher-only pipelines (content -> approval -> post).
+   * Those enrol nobody, so asking for a contact source would be noise the
+   * user has to configure and then ignore.
+   */
+  source?: { key: TemplateSourceKey; cfg?: any; title: string; description: string };
   nodes: TemplateNode[];
   /** Chat-wizard questions; empty means nothing to collect conversationally. */
   inputs: TemplateInput[];
   /** Needs a file upload (chat routes these to the builder instead of launching directly). */
   requiresFile?: boolean;
-  /** Brand accent used by the chat Roles UI (cards, chips, CTAs). */
+  /** Brand accent used by the chat Accelerators UI (cards, chips, CTAs). */
   accent: string;
   /** Small card badge (e.g. Popular / Daily). */
   badge?: { label: string; tone: 'blue' | 'violet' };
   /** Overview stats shown on template cards and the overview drawer. */
   meta: { cycleDays: number; channels: number };
-  /** Gallery grouping: general-purpose pipelines vs industry-tuned ones. */
-  category: 'general' | 'industry';
+  /**
+   * Gallery grouping. 'general' / 'industry' are the built-in recipes;
+   * 'strategy' (the tenant's own saved playbooks) and 'community' (published by
+   * another tenant, imported as a copy) are synthesized at runtime from stored
+   * Strategies — see strategyAdapter.definitionToTemplate.
+   */
+  category: 'general' | 'industry' | 'strategy' | 'community';
 };
 
 export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
+  {
+    key: 'revenue_growth_audit',
+    category: 'general',
+    badge: { label: 'Flagship', tone: 'violet' },
+    meta: { cycleDays: 7, channels: 4 },
+    accent: '#0F766E',
+    name: 'AI Revenue Growth Audit',
+    tagline: 'Audit each account, send them the PDF, then work the reply across four channels',
+    chain: [
+      'LinkedIn Search', 'Scrape site', 'Research', 'Score', 'Competitors (human)',
+      'Audit report', 'Landing page', 'Connect', 'Wait: accepted', 'Email the report',
+      'LinkedIn follow-up', 'Follow-ups (report attached)', 'Voice call', 'WhatsApp',
+    ],
+    source: {
+      key: 'linkedin_search',
+      title: 'LinkedIn Search', description: 'Industry · title · location',
+      cfg: { job_titles: '', industries: '', locations: '' },
+    },
+    inputs: [
+      { key: 'job_titles', question: 'Which **job titles** should I audit? e.g. "VP Sales, Head of Revenue, Founder".' },
+      { key: 'industries', question: 'Which **industries**? (e.g. "SaaS, Fintech" — or say **skip**)', optional: true },
+      { key: 'locations', question: 'Which **location**? (e.g. "Dubai, United Arab Emirates" — or say **skip**)', optional: true },
+    ],
+    nodes: [
+      // ── Research and qualify ───────────────────────────────────────────────
+      // Everything downstream is expensive, so the research that decides who
+      // deserves it comes first.
+      { type: 'web_scrape', macroId: SCRAPE_STEP_ID, title: 'Scrape their site', description: 'Their positioning and stack' },
+      { type: 'web_research', macroId: RESEARCH_STEP_ID, title: 'Research the company', description: 'News, funding, hiring signals' },
+      { type: 'lead_score', macroId: SCORE_STEP_ID, title: 'Score the fit', description: 'Hot / warm / cold from buying signals' },
+
+      // Competitor discovery is not automated — research can look up
+      // competitors somebody names, but cannot find them. Assigned to a person
+      // rather than skipped, so the audit is not quietly missing a section.
+      {
+        type: 'human_task', macroId: HUMAN_TASK_STEP_ID,
+        title: 'Identify their competitors', description: 'Human · pauses the lead',
+        cfg: {
+          title: 'Identify their top competitors',
+          instructions: 'Note this company\'s top 3 competitors and one line on what differentiates each. Paste it back when you confirm — the audit uses it.',
+          assignee_channel: 'email', assignee_to: '',
+        },
+      },
+
+      // ── The thing worth receiving ──────────────────────────────────────────
+      // The audit is the reason any of this gets opened. It is written from the
+      // scrape and research above, and held for review before it goes out.
+      {
+        type: 'lead_report', macroId: REPORT_STEP_ID,
+        title: 'Audit report', description: 'Per lead · PDF · reviewed',
+        cfg: {
+          scope: 'lead',
+          report_type: 'growth_opportunity_audit',
+          context: 'Focus on where outbound capacity could grow without adding headcount.',
+          email_now: false,
+          require_approval: true, approval_channel: 'email', approval_to: '',
+        },
+      },
+      {
+        type: 'landing_page', macroId: LANDING_STEP_ID,
+        title: 'Landing page', description: 'A page to send them to',
+        cfg: {
+          brief: 'A short page for this audit: what we look at, what they get, and an invitation to walk through their own findings on a call.',
+          capture_enabled: true, capture_fields: ['name', 'email'], require_approval: true,
+        },
+      },
+
+      // ── Outreach ───────────────────────────────────────────────────────────
+      { type: 'linkedin_connect', title: 'Connection request', description: 'No pitch — just connect', cfg: { message: '' } },
+
+      // Email waits for ACCEPTANCE. Firing it on send would land a cold email
+      // and a connection request the same day, which contradicts the no-pitch
+      // note above.
+      { type: 'condition', title: 'Wait for condition', description: 'Connection accepted', cfg: { condition: 'connection_accepted' } },
+      {
+        type: 'email_send', title: 'Email the audit', description: 'Curiosity, not a meeting ask',
+        cfg: {
+          subject: 'A short analysis of {{company_name}}',
+          body: 'Hi {{first_name}},\n\nWe put together a short analysis based on publicly available information and thought you might find it useful.\n\n{{report_url}}\n\nWorth a look?\n\n',
+        },
+      },
+      {
+        type: 'linkedin_message', title: 'LinkedIn follow-up', description: 'Reference one specific finding',
+        cfg: { message: 'Hi {{first_name}}, not sure you saw the analysis we put together for {{company_name}} — one thing that stood out was how quickly the team is scaling. Happy to talk through it.' },
+      },
+
+      // Automatic touches if they go quiet. The second one attaches the audit
+      // itself — the node above it generated it, so the attachment resolves.
+      {
+        type: 'followup_sequence', macroId: FOLLOWUP_STEP_ID,
+        title: 'Follow-up sequence', description: '2 touches · LinkedIn',
+        cfg: {
+          channel: 'linkedin',
+          touches: [
+            { hours: 72 },
+            { hours: 168, touch_type: 'lead_report' },
+          ],
+        },
+      },
+
+      // Only worth a call once they have actually engaged.
+      { type: 'voice_agent_call', title: 'AI voice call', description: 'Once they reply or fill the form', cfg: {} },
+      {
+        type: 'whatsapp_send', title: 'WhatsApp', description: 'Last, never first',
+        cfg: { message: 'Hi {{first_name}}, thanks for taking a moment earlier. Here is the analysis again — happy to answer anything.' },
+      },
+    ],
+  },
   {
     key: 'linkedin_accelerator',
     category: 'general',
@@ -208,7 +384,7 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
       { type: 'zoho_update', macroId: ZOHO_UPDATE_STEP_ID, title: 'Update Zoho record', description: 'Write back to Contacts', cfg: { module: 'Contacts', map: {} } },
     ],
   },
-  // ── Industry Roles ────────────────────────────────────────────────────────
+  // ── Industry Accelerators ─────────────────────────────────────────────────
   // Titles + industries are pre-filled, so activating one only needs a
   // location. The wizard still offers a title override for anyone who wants
   // to narrow it further.
@@ -453,4 +629,238 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
       { type: 'whatsapp_send', title: 'WhatsApp', description: 'Follow up on mobile', cfg: { message: 'Hi {{first_name}}, following up from LinkedIn on freight capacity and lead times. Happy to share options if it is useful.', delayDays: 3 } },
     ],
   },
+  {
+    // Built from LinkedIn/Meltwater's "5 Takeaways from 9.5 Million Citations":
+    // LinkedIn is the #2 most-cited source for AI models, 75% of those citations
+    // come from individual member profiles rather than Company Pages, 92% of
+    // cited posts use clear headings, every top-cited article used a list, and
+    // 48% of cited content was published within the last three months.
+    //
+    // So: post as a PERSON not a page, three times a week, in the structured
+    // list shape, with fresh copy every run.
+    key: 'ai_search_authority',
+    category: 'general',
+    badge: { label: 'Publisher', tone: 'violet' },
+    meta: { cycleDays: 30, channels: 1 },
+    accent: '#7C3AED',
+    name: 'AI Search Authority',
+    tagline: 'Get cited by ChatGPT and Google AI — structured posts, three times a week, from your own profile',
+    chain: ['AI writes a listicle', 'You approve it', 'Posts Mon / Wed / Fri'],
+    // No source: this pipeline publishes, it does not enrol anyone.
+    inputs: [],
+    nodes: [
+      {
+        type: 'linkedin_content', macroId: CONTENT_STEP_ID,
+        title: 'LinkedIn content', description: 'Structured listicle, AI-written',
+        cfg: {
+          // The seed is the standing brief, rewritten fresh each run. Phrased as
+          // the citation research prescribes: answer a real buyer question, with
+          // specific names and numbers, as a numbered list.
+          content: 'Answer one real question my buyers ask before they choose a vendor. Make it a numbered list of 4 to 6 points, each naming a specific tool, threshold, number, or worked example. Practical enough that someone could act on it today, and useful even to a reader who never buys from us.',
+          ai_generate: true,
+          post_format: 'structured',
+        },
+      },
+      {
+        type: 'post_approval', macroId: APPROVAL_STEP_ID,
+        title: 'Approval', description: 'WhatsApp · before posting',
+        cfg: { approval_channel: 'whatsapp', approval_to: '' },
+      },
+      {
+        type: 'linkedin_post', macroId: AUTOPOST_STEP_ID,
+        title: 'LinkedIn auto-post', description: 'Mon / Wed / Fri · 09:00',
+        cfg: {
+          // Personal profile, deliberately: 75% of LinkedIn's AI citations come
+          // from member profiles, only 25% from Company Pages.
+          ai_generate: true, frequency: 'weekly', days: [1, 3, 5], time: '09:00', post_as: 'personal',
+        },
+      },
+    ],
+  },
 ];
+
+// ── Wizard input derivation ────────────────────────────────────────────────
+// A template's declared `inputs` only cover targeting. The copy that actually
+// goes out — InMail subject/message and each follow-up touch — lives on the
+// nodes, so the chat wizard derives a question per piece of copy rather than
+// every template repeating them. All derived questions are optional: skipping
+// one keeps the template's own suggestion (or leaves it blank for Mr LAD to
+// draft, which is what an empty follow-up message means downstream).
+
+/** How a node is addressed by a node-targeted input and by the builder's override map. */
+export const templateNodeKey = (n: TemplateNode): string => n.macroId || n.type;
+
+const touchDelayLabel = (hours?: number): string => {
+  const h = Math.max(1, Number(hours) || 24);
+  return h < 48 ? `sent ${h}h later` : `sent ~${Math.round(h / 24)} days later`;
+};
+
+/**
+ * The one question that decides whether the copy questions get asked at all.
+ * Answering it "no" keeps every template suggestion as-is, so an Accelerator stays a
+ * three-question flow for anyone who just wants the defaults.
+ */
+export const COPY_GATE_KEY = '__write_copy__';
+
+/** Every chat-wizard question for a template: declared targeting inputs, then message copy. */
+export function templateWizardInputs(t: WorkflowTemplate): TemplateInput[] {
+  const derived: TemplateInput[] = [];
+  for (const n of t.nodes) {
+    const nodeKey = templateNodeKey(n);
+    if (n.type === 'linkedin_inmail') {
+      derived.push({
+        key: `${nodeKey}__subject`, label: 'InMail subject', target: 'node', nodeKey, cfgPath: 'subject', optional: true,
+        suggestion: n.cfg?.subject || '',
+        question: 'What **subject line** should the InMail use? (or say **skip** — LinkedIn allows a blank subject)',
+      });
+      derived.push({
+        key: `${nodeKey}__message`, label: 'InMail message', target: 'node', nodeKey, cfgPath: 'message', optional: true, multiline: true,
+        suggestion: n.cfg?.message || '',
+        question: 'What should the **InMail message** say? You can use {{first_name}}, {{title}} and {{company_name}} — or say **skip** to keep the suggested copy.',
+      });
+    }
+    if (n.type === 'followup_sequence') {
+      const touches: any[] = Array.isArray(n.cfg?.touches) && n.cfg.touches.length ? n.cfg.touches : [{ hours: 24 }];
+      touches.forEach((touch, i) => {
+        derived.push({
+          key: `${nodeKey}__touch_${i}`, label: `Follow-up ${i + 1}`, target: 'node', nodeKey, cfgPath: `touches.${i}.message`, optional: true, multiline: true,
+          suggestion: touch?.message || '',
+          question: `What should **follow-up ${i + 1}** say (${touchDelayLabel(touch?.hours)})? Say **skip** to let Mr LAD write it from the conversation.`,
+        });
+      });
+    }
+  }
+  if (!derived.length) return [...t.inputs];
+  const gate: TemplateInput = {
+    key: COPY_GATE_KEY, target: 'gate', optional: true, label: 'Message copy',
+    question: `Want to write the **${derived.length} message${derived.length === 1 ? '' : 's'}** this Accelerator sends? Say **yes** to go through them one by one — or **skip** to use the suggested copy, which Mr LAD adapts per lead.`,
+  };
+  return [...t.inputs, gate, ...derived];
+}
+
+/**
+ * Turn a template into the canvas steps plus their seeded config.
+ *
+ * Shared so the builder's gallery and the chat wizard's right-hand preview
+ * expand a template identically — two implementations would drift, and the
+ * difference would only show as a preview that does not match what launches.
+ *
+ * Node ids are load-bearing: a macro keeps its fixed id so the builder's
+ * drawers and launch emit still find its config (see MACRO_STEP_IDS).
+ */
+export function templateToPreviewSteps(
+  t: WorkflowTemplate,
+  opts?: {
+    sourceCfgOverride?: Record<string, any>;
+    nodeCfgOverride?: Record<string, any>;
+    /** Fills title/description for a source the template left unlabelled. */
+    sourceLabel?: (key: TemplateSourceKey) => { label?: string; sub?: string } | undefined;
+    /** Id generator for non-macro nodes; defaults to a time-based one. */
+    nextId?: () => string;
+  },
+): { steps: any[]; configs: Record<string, any> } {
+  let seq = 0;
+  const genId = opts?.nextId || (() => `wf-${Date.now()}-${seq++}`);
+
+  // Publisher-only templates have no source: they enrol nobody, so a contact
+  // source would be a step the user configures and then never uses.
+  const srcDef = t.source ? opts?.sourceLabel?.(t.source.key) : undefined;
+  const steps: any[] = t.source ? [{
+    id: SOURCE_STEP_ID,
+    type: 'lead_generation' as StepType,
+    channel: t.source.key.startsWith('linkedin') ? 'linkedin' : 'email',
+    title: t.source.title || srcDef?.label || 'Contact source',
+    description: t.source.description || srcDef?.sub || '',
+  }] : [];
+
+  const configs: Record<string, any> = {};
+  if (t.source && (t.source.cfg || opts?.sourceCfgOverride)) {
+    configs[SOURCE_STEP_ID] = { ...(t.source.cfg || {}), ...(opts?.sourceCfgOverride || {}) };
+  }
+
+  // A node-cfg override addresses nodes by `macroId || type`. Templates carry
+  // at most one node per addressable type, so first-match assignment is exact;
+  // a hand-built template with two same-type nodes would seed both alike.
+  const nodeOverrides = opts?.nodeCfgOverride || {};
+  for (const n of t.nodes) {
+    const id = n.macroId || genId();
+    const override = nodeOverrides[templateNodeKey(n)];
+    const channel = n.type.startsWith('linkedin') ? 'linkedin'
+      : n.type.startsWith('email') ? 'email'
+      : n.type.startsWith('whatsapp') ? 'whatsapp'
+      : n.type === 'voice_agent_call' ? 'voice'
+      : n.type === 'condition' ? 'linkedin'
+      : 'email';
+    steps.push({ id, type: n.type, channel, title: n.title, description: n.description });
+    if (n.cfg || override) configs[id] = { ...(n.cfg || {}), ...(override || {}) };
+  }
+  return { steps, configs };
+}
+
+/** Write `value` at a dotted path, creating arrays for numeric segments. */
+function setCfgPath(obj: any, path: string, value: any): void {
+  const segs = path.split('.');
+  let cur = obj;
+  for (let i = 0; i < segs.length - 1; i++) {
+    const seg = segs[i];
+    if (cur[seg] == null || typeof cur[seg] !== 'object') cur[seg] = /^\d+$/.test(segs[i + 1]) ? [] : {};
+    cur = cur[seg];
+  }
+  cur[segs[segs.length - 1]] = value;
+}
+
+/**
+ * Split collected wizard answers into the two overrides the builder takes.
+ *
+ * `nodeCfg` values are COMPLETE cfg objects (the node's own cfg deep-cloned,
+ * then patched) so the builder can shallow-merge them — patching `touches.0`
+ * into a shallow merge would otherwise drop the remaining touches.
+ */
+export function splitWizardAnswers(
+  t: WorkflowTemplate,
+  answers: Record<string, string>,
+): { sourceCfg: Record<string, string>; nodeCfg: Record<string, any> } {
+  const sourceCfg: Record<string, string> = {};
+  const nodeCfg: Record<string, any> = {};
+  for (const inp of templateWizardInputs(t)) {
+    const val = answers[inp.key];
+    if (val == null || val === '' || inp.target === 'gate') continue;
+    if (inp.target === 'node' && inp.nodeKey && inp.cfgPath) {
+      if (!nodeCfg[inp.nodeKey]) {
+        const node = t.nodes.find((n) => templateNodeKey(n) === inp.nodeKey);
+        nodeCfg[inp.nodeKey] = JSON.parse(JSON.stringify(node?.cfg || {}));
+      }
+      setCfgPath(nodeCfg[inp.nodeKey], inp.cfgPath, val);
+    } else {
+      sourceCfg[inp.key] = val;
+    }
+  }
+  return { sourceCfg, nodeCfg };
+}
+
+/**
+ * The LinkedIn search string a template's targeting describes — used to preview
+ * the audience in the leads panel before the Accelerator is launched. Returns null for
+ * sources that aren't a searchable query (file import, CRM pulls).
+ */
+export function templateSearchQuery(t: WorkflowTemplate, sourceCfg: Record<string, string>): string | null {
+  // Publisher-only pipelines (content → approval → post) enrol nobody, so they
+  // carry no source and have no audience to preview.
+  if (!t.source) return null;
+  const cfg = { ...(t.source.cfg || {}), ...sourceCfg } as Record<string, string>;
+  if (t.source.key === 'linkedin_signal') {
+    const titles = (cfg.decision_maker_titles || '').trim();
+    const signal = (cfg.signal_query || '').trim();
+    if (!signal && !titles) return null;
+    return [titles && `${titles} at companies`, signal].filter(Boolean).join(' — ');
+  }
+  if (t.source.key !== 'linkedin_search') return null;
+  const titles = (cfg.job_titles || '').trim();
+  const industries = (cfg.industries || '').trim();
+  const locations = (cfg.locations || '').trim();
+  if (!titles && !industries && !locations) return null;
+  const parts = [titles || 'decision makers'];
+  if (industries) parts.push(`in ${industries}`);
+  if (locations) parts.push(`in ${locations}`);
+  return parts.join(' ');
+}

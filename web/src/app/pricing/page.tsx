@@ -10,6 +10,15 @@ type SectionId =
   | 'key' | 'broadcast' | 'linkedin' | 'email' | 'engage-ai'
   | 'voice' | 'ads' | 'analyse' | 'crm' | 'admin' | 'support';
 
+// ─── Plan columns ────────────────────────────────────────────────────────
+// The $39 "Broadcast" (No AI) plan is hidden from the public comparison.
+// Flip this back to true to bring it back: the plan card renders again and
+// cellGroup() stops dropping its column, so every <FRow> below keeps its
+// Broadcast value authored in place — nothing else needs editing.
+const SHOW_BROADCAST_PLAN = false;
+/** Number of plan columns rendered — drives the CSS grid templates. */
+const PLAN_COLUMNS = SHOW_BROADCAST_PLAN ? 5 : 4;
+
 export default function PricingPage() {
   const router = useRouter();
 
@@ -52,13 +61,15 @@ export default function PricingPage() {
                 <div className="grid">
                   <div className="corner text-slate-500 dark:text-slate-400 flex items-end">Features by plan</div>
 
-                  <div className="plan-card noai bg-slate-50 dark:bg-[#0d152a] border border-slate-200 dark:border-[#262831]">
-                    <span className="badge gray">No AI</span>
-                    <h3 className="text-slate-800 dark:text-white">Broadcast</h3>
-                    <div className="price text-slate-800 dark:text-white">$39<small>/mo</small></div>
-                    <div className="seg text-slate-500 dark:text-slate-400">Email &amp; WhatsApp campaigns only</div>
-                    <button type="button" className="cta" onClick={handleGetStarted}>Start free trial</button>
-                  </div>
+              {SHOW_BROADCAST_PLAN && (
+                <div className="plan-card noai bg-slate-50 dark:bg-[#0d152a] border border-slate-200 dark:border-[#262831]">
+                  <span className="badge gray">No AI</span>
+                  <h3 className="text-slate-800 dark:text-white">Broadcast</h3>
+                  <div className="price text-slate-800 dark:text-white">$39<small>/mo</small></div>
+                  <div className="seg text-slate-500 dark:text-slate-400">Email &amp; WhatsApp campaigns only</div>
+                  <button type="button" className="cta" onClick={handleGetStarted}>Start free trial</button>
+                </div>
+              )}
 
                   <div className="plan-card bg-white dark:bg-[#101935] border border-slate-200 dark:border-[#262831]">
                     <h3 className="text-slate-800 dark:text-white">Starter</h3>
@@ -329,9 +340,9 @@ export default function PricingPage() {
           .table-scroll-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
           .table-scroll-inner { min-width: 860px; width: 100%; }
 
-          .plan-row { background: var(--paper); padding: 14px 0 10px; border-bottom: 2px solid var(--ink); }
+          .plan-row { position: sticky; top: 0; z-index: 50; background: var(--paper); padding: 14px 0 10px; border-bottom: 2px solid var(--ink); }
           :global(.dark) .plan-row { background: var(--paper-dark); border-bottom-color: var(--line-dark); }
-          .grid { display: grid; grid-template-columns: minmax(220px, 1.4fr) repeat(5, 1fr); gap: 0; align-items: stretch; }
+          .grid { display: grid; grid-template-columns: minmax(220px, 1.4fr) repeat(${PLAN_COLUMNS}, 1fr); gap: 0; align-items: stretch; }
           .plan-card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; margin: 0 4px; padding: 14px 10px; text-align: center; position: relative; display: flex; flex-direction: column; justify-content: flex-start; }
           .plan-card.popular { border: 2px solid var(--teal); }
           .plan-card.noai { background: #FBFCFE; border-style: dashed; }
@@ -367,7 +378,7 @@ export default function PricingPage() {
           .pricing-root :global(.body) { display: none; }
           .pricing-root :global(.fgroup.open .body) { display: block; }
 
-          .pricing-root :global(.frow) { display: grid; grid-template-columns: minmax(220px, 1.4fr) repeat(5, 1fr); border-top: 1px solid var(--line); }
+          .pricing-root :global(.frow) { display: grid; grid-template-columns: minmax(220px, 1.4fr) repeat(${PLAN_COLUMNS}, 1fr); border-top: 1px solid var(--line); }
           .pricing-root :global(.frow:nth-child(even)) { background: #FBFCFE; }
           .pricing-root :global(.fname) { padding: 12px 16px; }
           .pricing-root :global(.fname b) { display: block; font-weight: 600; font-size: 13.5px; }
@@ -498,7 +509,7 @@ export default function PricingPage() {
           .pricing-root :global(.scc-cta:hover) { background: #142F5F; }
 
           @media (max-width: 920px) {
-            .grid, .pricing-root :global(.frow) { grid-template-columns: minmax(130px, 1.3fr) repeat(5, 1fr); }
+            .grid, .pricing-root :global(.frow) { grid-template-columns: minmax(130px, 1.3fr) repeat(${PLAN_COLUMNS}, 1fr); }
             .pricing-root :global(.head .bench) { display: none; }
             .plan-card .price { font-size: 14px; }
             .plan-card :global(h3) { font-size: 11px; }
@@ -698,8 +709,11 @@ function Section({ id, pillar, title, bench, isOpen, onToggle, children }: {
   );
 }
 
+// Every FRow below still authors 5 cells, Broadcast first. When the
+// Broadcast plan is hidden we drop that leading cell here rather than
+// editing ~45 rows, so the two stay in sync by construction.
 function cellGroup(...cells: React.ReactNode[]) {
-  return cells;
+  return SHOW_BROADCAST_PLAN ? cells : cells.slice(1);
 }
 
 function FRow({ name, cells }: { name: React.ReactNode; cells: React.ReactNode[] }) {

@@ -126,9 +126,9 @@ export function WhatsAppEmbeddedSignup() {
           <div className="text-sm text-amber-800 dark:text-amber-200">
             <p className="font-medium">WhatsApp sign-in isn&apos;t available on this environment yet.</p>
             <p className="mt-1 text-amber-700 dark:text-amber-300">
-              The Meta app credentials (<code>FACEBOOK_APP_ID</code>,{' '}
-              <code>FACEBOOK_APP_SECRET</code>, <code>META_WHATSAPP_CONFIG_ID</code>)
-              are not set. Use the manual setup below in the meantime.
+              One of <code>FACEBOOK_APP_ID</code>, <code>FACEBOOK_APP_SECRET</code>,{' '}
+              <code>META_WHATSAPP_CONFIG_ID</code> or <code>META_TOKEN_ENCRYPTION_KEY</code>{' '}
+              is missing. Use the manual setup below in the meantime.
             </p>
           </div>
         </div>

@@ -391,3 +391,61 @@ export interface MigrationStatusData {
     ledgerAdoption: number;
   };
 }
+
+// ── Strategy moderation (published workflow playbooks awaiting review) ───────
+
+export type StrategyReviewStatus = 'pending' | 'approved' | 'rejected' | 'withdrawn';
+
+/**
+ * A tenant-published strategy in the review queue. Carries only the SANITIZED
+ * `shared_definition` — the author's private definition is never returned by
+ * the moderation endpoint either.
+ */
+export interface StrategyForReview {
+  id: string;
+  tenant_id: string;
+  tenant_name: string | null;
+  name: string;
+  description: string | null;
+  shared_definition: {
+    version?: number;
+    source?: { key: string; cfg?: Record<string, any> };
+    nodes?: Array<{ type: string; title?: string; cfg?: Record<string, any> }>;
+    requiresFile?: boolean;
+    meta?: Record<string, any>;
+  };
+  node_types: string[];
+  share_status: StrategyReviewStatus;
+  submitted_at: string | null;
+  reviewed_at: string | null;
+  review_note: string | null;
+  import_count: number;
+}
+
+// ── Community signups (founding-group applications) ─────────────────────────
+
+export type SignupStatus = 'new' | 'contacted' | 'accepted' | 'declined' | 'spam';
+
+/** Where a signup came from, so InMail can be told apart from organic. */
+export type SignupSource = 'landing' | 'inmail' | 'pdf' | 'referral' | 'other';
+
+export interface CommunitySignup {
+  id: string;
+  full_name: string;
+  email: string;
+  company: string | null;
+  linkedin_url: string | null;
+  playbook: string | null;
+  client_volume: string | null;
+  source: SignupSource;
+  status: SignupStatus;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CommunitySignupsResponse {
+  data: CommunitySignup[];
+  summary: Partial<Record<SignupStatus, number>>;
+  count: number;
+}
