@@ -169,6 +169,23 @@ interface ChatMsg {
     outreach_journey?: OutreachStep[];
 }
 
+/**
+ * A lead source this wizard has no UI for (today: the recurring Zoho CRM
+ * import). Read off the saved campaign on edit hydration and written straight
+ * back out at save time so editing the outreach steps here never rewrites which
+ * system the campaign pulls leads from.
+ */
+interface PersistedLeadSource {
+    /** lead_generation step config.source — e.g. 'zoho_contacts'. */
+    source: string;
+    /** Campaign-level config.data_source mirror. */
+    data_source?: string;
+    /** Zoho-specific: which modules to import ('contacts' | 'contacts_leads'). */
+    zoho_modules?: string;
+    /** Zoho-specific: only import records carrying this tag. */
+    zoho_tag?: string;
+}
+
 interface OutreachStep {
     channel: 'linkedin' | 'email' | 'whatsapp' | 'voice';
     label: string;
@@ -725,6 +742,18 @@ export default function AdvancedSearchAIPage() {
     // once inboundMode/pendingContact are in scope) so the reconcile callbacks read
     // the latest value without a stale closure or a temporal-dead-zone reference.
     const includeLeadSourceRef = useRef(true);
+
+    // The campaign's REAL lead source, when it is something this form has no UI
+    // for — today a recurring Zoho import (source:'zoho_contacts', built in the
+    // Custom Workflow Builder or the /crm/zoho modal). This form only ever emits
+    // source:'linkedin_search', and saving does a destructive step replace, so
+    // without this an edit here silently converts a Zoho-sourced campaign into a
+    // LinkedIn search: the daily import stops and no new CRM contact is ever
+    // enrolled again. Captured on edit hydration, re-emitted verbatim on save.
+    // State, not a ref: the launch payload is built inside CheckpointFormInline,
+    // so this has to reach the child as a prop and re-render it once hydration
+    // resolves the source.
+    const [persistedLeadSource, setPersistedLeadSource] = useState<PersistedLeadSource | null>(null);
     const _applyCpCfg = useCallback((patch: Partial<{ actions: string[]; nextChannels: string[]; triggerCondition: string }>) => {
         const cur = useOnboardingStore.getState().workflowPreview as unknown as SyncStep[];
         setWorkflowPreview(applyConfig(cur, patch, { includeLeadSource: includeLeadSourceRef.current }) as any);
@@ -1164,10 +1193,15 @@ export default function AdvancedSearchAIPage() {
     const [pgIsComplete, setPgIsComplete] = useState(false);
     const [pgSuggesting, setPgSuggesting] = useState(false);  // AI suggestion loading
     const pgMessagesEndRef = useRef<HTMLDivElement>(null);
-    // The 17-key business profile (14 core + 3 optional). Persisted server-side
-    // by /api/ai-playground/chat on every turn — the hook handles the initial
-    // load + exposes the shared completeness math used by Settings and the
-    // wizard's Company step.
+    // The 22-key business profile (14 required + 8 optional). Persisted
+    // server-side by /api/ai-playground/chat on every turn — the hook handles
+    // the initial load + exposes the shared completeness math used by Settings
+    // and the wizard's Company step.
+    //
+    // This map is also the hydration allow-list (see the effect below, which
+    // iterates Object.keys) — any canonical key missing here is silently
+    // dropped on load even when the server has it. Keep it in sync with
+    // BUSINESS_PROFILE_ALL_FIELDS.
     const { profile: loadedProfile, loading: profileLoading } = useBusinessProfile();
     const [businessProfile, setBusinessProfile] = useState<Record<string, string>>({
         companyName: '', industry: '', website: '', companyDescription: '',
@@ -1175,6 +1209,12 @@ export default function AdvancedSearchAIPage() {
         icpCompanySize: '', icpLocations: '', icpPainPoints: '',
         sampleConversation: '', operatingHours: '', timezone: '',
         geographicFocus: '', valueProposition: '', competitors: '', campaignTone: '',
+        // Agent identity, CTA link and the tenant's own contact details. The
+        // chat now asks for these (flow steps 15-16 of the playground prompt);
+        // before they were absent here AND from the prompt, so they could never
+        // be captured or displayed by this surface.
+        personaName: '', personaTitle: '', bookingLink: '',
+        contactEmail: '', contactPhone: '',
     });
     const [bpHydrated, setBpHydrated] = useState(false);
     const [openSummaries, setOpenSummaries] = useState<Set<number>>(new Set());
@@ -1713,6 +1753,31 @@ export default function AdvancedSearchAIPage() {
                     setBuilderTemplate(null);
                     setShowCustomWorkflow(true);
                     return;
+                }
+                // Capture a lead source this form can't express (recurring Zoho
+                // import) BEFORE hydrating, so the save path can re-emit it
+                // instead of overwriting it with a LinkedIn search. Campaigns
+                // from the /crm/zoho modal carry no `builder` flag, so they fall
+                // through the handoff above and land here. Step config can come
+                // back as a JSON string, so parse defensively.
+                {
+                    const rawLeadGen = (camp?.steps || []).find((s: any) => (s.type || s.step_type) === 'lead_generation')?.config;
+                    let leadGenCfg: any = rawLeadGen;
+                    if (typeof rawLeadGen === 'string') {
+                        try { leadGenCfg = JSON.parse(rawLeadGen); } catch { leadGenCfg = null; }
+                    }
+                    const persistedSource = leadGenCfg?.source || cfg.data_source;
+                    // 'linkedin_search' is what this form itself emits, and
+                    // direct-contact / csv_import campaigns are already handled by
+                    // isDirectContact / inboundMode — only carry sources beyond those.
+                    if (persistedSource && !['linkedin_search', 'direct_contact', 'csv_import'].includes(persistedSource)) {
+                        setPersistedLeadSource({
+                            source: persistedSource,
+                            data_source: cfg.data_source || persistedSource,
+                            zoho_modules: leadGenCfg?.zoho_modules || cfg.zoho_modules || undefined,
+                            zoho_tag: leadGenCfg?.zoho_tag || cfg.zoho_tag || undefined,
+                        });
+                    }
                 }
                 const cs = cfg.checkpoint_selections || {};
                 // Restore the chat thread.
@@ -5600,6 +5665,7 @@ export default function AdvancedSearchAIPage() {
                             <div className="adv-msgs-inner">
                                 <CheckpointFormInline
                                     editingCampaignId={editingCampaignId}
+                                    persistedLeadSource={persistedLeadSource}
                                     onLetAgentDeal={letAgentDeal}
                                     agentDealLoading={agentDealLoading}
                                     step={cpStep}
@@ -8281,6 +8347,7 @@ function CheckpointFormInline({
     enableAiConnectionPersonalization, setEnableAiConnectionPersonalization,
     enableAiFollowupPersonalization, setEnableAiFollowupPersonalization,
     editingCampaignId,
+    persistedLeadSource,
     onLetAgentDeal, agentDealLoading,
 }: {
     step: number; setStep: (s: number) => void;
@@ -8331,6 +8398,7 @@ function CheckpointFormInline({
     enableAiConnectionPersonalization: boolean; setEnableAiConnectionPersonalization: (v: boolean) => void;
     enableAiFollowupPersonalization: boolean; setEnableAiFollowupPersonalization: (v: boolean) => void;
     editingCampaignId?: string | null;
+    persistedLeadSource?: PersistedLeadSource | null;
     onLetAgentDeal: () => void; agentDealLoading: boolean;
 }) {
     const totalSteps = CP_QUESTIONS.length;
@@ -9229,7 +9297,12 @@ function CheckpointFormInline({
                     : (goodMatchLeads.length > 0 ? goodMatchLeads : undefined),
                 inbound_lead_ids: resolvedInboundLeadIds,
                 config: {
-                    data_source: inboundMode ? 'csv_import' : (isDirectContact ? 'direct_contact' : 'linkedin_search'),
+                    // A preserved source (recurring Zoho import) wins: this form
+                    // edits the outreach sequence, never where leads come from.
+                    data_source: persistedLeadSource?.data_source
+                        || (inboundMode ? 'csv_import' : (isDirectContact ? 'direct_contact' : 'linkedin_search')),
+                    ...(persistedLeadSource?.zoho_modules ? { zoho_modules: persistedLeadSource.zoho_modules } : {}),
+                    ...(persistedLeadSource?.zoho_tag ? { zoho_tag: persistedLeadSource.zoho_tag } : {}),
                     search_intent: (inboundMode || isDirectContact) ? null : t, search_query: (inboundMode || isDirectContact) ? '' : (t.keywords?.join(' ') || ''),
                     leads_per_day: safeLeadsPerDay, daily_lead_limit: safeLeadsPerDay, linkedin_daily_limit: LINKEDIN_DAILY_LIMIT, linkedin_weekly_limit: LINKEDIN_WEEKLY_LIMIT, working_days: 'monday-friday', campaign_days: campaignDays,
                     linkedin_actions: actions, connection_message: connMsg || '', followup_message: followMsg || '',
@@ -9266,8 +9339,15 @@ function CheckpointFormInline({
                 steps: [
                     // Only include LinkedIn lead generation step for LinkedIn search campaigns.
                     // Direct contact and inbound lead campaigns skip this — leads are provided via initial_leads instead.
-                    ...(!isDirectContact && !inboundMode ? [{
-                        type: 'lead_generation', title: 'LinkedIn Lead Search', channel: 'linkedin', order_index: 0, config: {
+                    // A preserved source (Zoho recurring import) always emits the
+                    // step: saving here replaces every step, so dropping it would
+                    // leave the campaign with no lead source at all.
+                    ...((!isDirectContact && !inboundMode) || persistedLeadSource ? [{
+                        type: 'lead_generation',
+                        title: persistedLeadSource?.source === 'zoho_contacts' ? 'Zoho Contact Import' : 'LinkedIn Lead Search',
+                        channel: persistedLeadSource?.source === 'zoho_contacts' ? 'zoho' : 'linkedin',
+                        order_index: 0,
+                        config: {
                             source: 'linkedin_search',
                             leadGenerationFilters: {
                                 keywords: t.keywords?.join(' ') || '',
@@ -9279,6 +9359,14 @@ function CheckpointFormInline({
                             leadGenerationLimit: safeLeadsPerDay,
                             icp_input: initialIcpInput,
                             icp_threshold: icpMin,
+                            // Spread LAST so the campaign's real source survives the
+                            // 'linkedin_search' default above. Backend routes on
+                            // config.source (LeadGenerationService.executeLeadGeneration).
+                            ...(persistedLeadSource ? {
+                                source: persistedLeadSource.source,
+                                ...(persistedLeadSource.zoho_modules ? { zoho_modules: persistedLeadSource.zoho_modules } : {}),
+                                ...(persistedLeadSource.zoho_tag ? { zoho_tag: persistedLeadSource.zoho_tag } : {}),
+                            } : {}),
                         }
                     }] : []),
                     ...actionSteps,
@@ -9392,6 +9480,23 @@ function CheckpointFormInline({
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                     </button>
                 </div>
+
+                {/* Lead source this form can't edit (recurring Zoho import).
+                    Shown so it's obvious the campaign isn't LinkedIn-sourced —
+                    the steps below only change the outreach sequence, and the
+                    source is carried through the save untouched. */}
+                {persistedLeadSource && (
+                    <div
+                        className="text-gray-600 dark:text-gray-300"
+                        style={{ fontSize: '12px', marginBottom: '12px', padding: '8px 10px', borderRadius: '8px', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.25)', lineHeight: 1.5 }}
+                    >
+                        <strong>Lead source: {persistedLeadSource.source === 'zoho_contacts' ? 'Zoho CRM import' : persistedLeadSource.source}</strong>
+                        {persistedLeadSource.zoho_tag ? ` · tag "${persistedLeadSource.zoho_tag}"` : ''}
+                        {persistedLeadSource.zoho_modules === 'contacts_leads' ? ' · contacts + leads' : ''}
+                        <br />
+                        Editing here changes the outreach sequence only — the source is kept as-is.
+                    </div>
+                )}
 
                 {/* Question header */}
                 <div
