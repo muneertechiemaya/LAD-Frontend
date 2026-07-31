@@ -44,6 +44,10 @@ import {
   SPLIT_STEP_ID, SETFIELD_STEP_ID, HTTP_STEP_ID, LANDING_STEP_ID, templateNodeKey, MACRO_STEP_IDS,
   templateToPreviewSteps,
 } from './workflowTemplates';
+import {
+  buildIntelSteps, buildLeadReportStepConfig, buildContentMacros,
+  buildTestRunSteps, TEST_RUNNABLE_TYPES,
+} from './workflowPayload';
 import { TemplateIcon, stepCategory } from './TemplateIcon';
 import {
   useStrategies, useCreateStrategy, useSharedStrategies, useImportSharedStrategy,
@@ -308,52 +312,44 @@ type AiQuestion = {
   otherHelp?: string;
 };
 
-// ─── Test run (simulation) ───────────────────────────────────────────────────
-// One row of the dry-run timeline.
+// ─── Test run ────────────────────────────────────────────────────────────────
+//
+// This used to be a browser simulation that described what each step would do.
+// It is now a REAL single-lead execution on the server: the research and
+// content steps run for real and produce the actual artifacts, so an
+// accelerator whose output IS a PDF and a landing page can be judged by reading
+// them rather than by reading a description of them.
+//
+// Nothing reaches the lead. That is enforced in the backend executor
+// (WorkflowTestRunService), not here — the rows below are a rendering of what
+// the server reports it did, and the panel has no say in what runs.
+
+/** One row of the timeline the server returns. */
 type TestStep = {
-  id: string;
+  type: string;
   title: string;
-  /** 'send' renders the message body; 'action'/'skipped' just explain themselves. */
-  kind: 'send' | 'action' | 'skipped';
-  channel?: string;
+  status: 'ran' | 'skipped' | 'failed';
   detail: string;
-  /** Resolved message copy, for 'send' rows. */
-  body?: string;
-  /** Merge fields left unresolved because they only exist at real send time. */
-  deferred?: string[];
+  artifacts?: TestArtifact[];
 };
 
-/**
- * Substitute the merge fields the builder can actually resolve from a lead.
- *
- * Mirrors the engine's basic substitution (LinkedInStepExecutor) but stops
- * there on purpose: {{web_insight}}/{{recent_post}}/{{article}}/{{news}} are
- * filled from the paid per-lead enrichment pipeline at send time, and a test
- * run must not spend credits. Those are reported as `deferred` and shown as a
- * marker rather than silently blanked, so the preview never implies the message
- * will go out with a hole in it.
- */
-function applyTestMergeFields(text: string, lead: Record<string, string>) {
-  const full = [lead.first_name, lead.last_name].filter(Boolean).join(' ');
-  const map: Record<string, string> = {
-    first_name: lead.first_name || '', last_name: lead.last_name || '',
-    full_name: full, name: full,
-    title: lead.title || '', company: lead.company || '', company_name: lead.company || '',
-    industry: lead.industry || '', location: lead.location || '',
-    email: lead.email || '', phone: lead.phone || '',
-  };
-  let out = text || '';
-  for (const [k, v] of Object.entries(map)) {
-    out = out.replace(new RegExp(`\\{\\{?\\s*${k}\\s*\\}\\}?`, 'gi'), v);
-  }
-  const deferred: string[] = [];
-  out = out.replace(/\{\{\s*(web_insight|recent_post|article|news)\s*\}\}/gi, (_m, name) => {
-    const key = String(name).toLowerCase();
-    if (!deferred.includes(key)) deferred.push(key);
-    return `[${key} — filled from live enrichment at send time]`;
-  });
-  return { text: out.trim(), deferred };
-}
+/** Something the run actually produced, at a real URL. */
+type TestArtifact = {
+  kind: 'report' | 'landing_page' | 'file' | string;
+  label: string;
+  url: string;
+};
+
+const ARTIFACT_ICON: Record<string, React.ReactNode> = {
+  report: <FileText className="h-4 w-4 text-rose-600" />,
+  landing_page: <Globe className="h-4 w-4 text-sky-600" />,
+  file: <Download className="h-4 w-4 text-cyan-700" />,
+};
+const ARTIFACT_LABEL: Record<string, string> = {
+  report: 'PDF report',
+  landing_page: 'Landing page',
+  file: 'Results file',
+};
 
 // "Macro" nodes (single-instance): follow-ups EXPAND into real engine steps at
 // launch; analytics becomes campaign config read by the digest cron — it is
@@ -1135,104 +1131,34 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   };
 
   /**
-   * Dry-run the current pipeline against one lead.
+   * Run the current pipeline against one lead — for real, on the server.
    *
-   * Deliberately simulated HERE, in the browser, walking `workflowPreview`
-   * directly — it never calls the campaign engine or a step executor. That is
-   * what makes "a test run can't message anyone" structural rather than a flag
-   * someone could flip: there is no code path from this function to a send API.
-   * The only network calls it makes are to draft copy for steps left blank.
+   * The executable steps in this payload come from the SAME builders Launch
+   * uses (workflowPayload.ts), so what the test runs is what would launch.
+   * Every other node is sent as type + title only: enough to list what was
+   * skipped, and no message copy, template id or recipient for anything that
+   * could contact a person. The backend refuses to run them regardless — the
+   * filter is a closed handler map there, not a shape of this request.
    */
   const runTest = async () => {
     setTestRunning(true); setTestError(null); setTestSteps(null);
     try {
-      const lead = testLead;
-      const goal = (configs[SOURCE_STEP_ID]?.keywords || '') as string;
-      const out: TestStep[] = [];
-      let connected = false;
-
-      for (const step of workflowPreview) {
-        if (step.id === SOURCE_STEP_ID) {
-          const c = configs[SOURCE_STEP_ID] || {};
-          const crit = [c.job_titles && `titles: ${c.job_titles}`, c.industries && `industries: ${c.industries}`,
-            c.locations && `location: ${c.locations}`, c.keywords && `keywords: ${c.keywords}`]
-            .filter(Boolean).join(' · ');
-          out.push({
-            id: step.id, title: step.title, kind: 'action', channel: 'source',
-            detail: crit ? `Finds leads matching ${crit}. This run uses the sample lead below.` : 'Enrols leads into the campaign. This run uses the sample lead below.',
-          });
-          continue;
-        }
-        const cfg = configs[step.id] || {};
-        const type = step.type;
-
-        // Message-bearing steps: resolve the copy the lead would actually see.
-        if (type === 'linkedin_message' || type === 'linkedin_connect' || type === 'linkedin_inmail'
-            || type === 'email_send' || type === 'whatsapp_send') {
-          if (type === 'linkedin_message' && !connected) {
-            out.push({
-              id: step.id, title: step.title, kind: 'skipped', channel: 'linkedin',
-              detail: 'Skipped — no accepted connection yet. Without a Connection request earlier in the sequence this step never sends.',
-            });
-            continue;
-          }
-          let raw = String(cfg.message ?? cfg.body ?? '').trim();
-          let drafted = false;
-          if (!raw) {
-            const res = await fetchWithTenant('/api/campaigns/workflow/draft-message', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ step_type: type, lead, goal }),
-            });
-            const data = await res.json().catch(() => null);
-            raw = data?.content || '';
-            drafted = !!raw;
-          }
-          const { text, deferred } = applyTestMergeFields(raw, lead);
-          out.push({
-            id: step.id, title: step.title, kind: 'send',
-            channel: type.startsWith('linkedin') ? 'linkedin' : type.startsWith('email') ? 'email' : 'whatsapp',
-            detail: drafted ? 'Left blank — this is what Mr LAD would draft at send time.' : 'Your message, with the sample lead merged in.',
-            body: text || '(no message configured)',
-            deferred,
-          });
-          if (type === 'linkedin_connect') connected = true;   // assume acceptance, so later steps are visible
-          continue;
-        }
-
-        if (type === 'condition') {
-          const label = CONDITIONS.find((c) => c.value === (cfg.condition || 'connection_accepted'))?.label || 'a condition';
-          if ((cfg.condition || 'connection_accepted') === 'connection_accepted') connected = true;
-          out.push({ id: step.id, title: step.title, kind: 'action', channel: 'logic',
-            detail: `Holds the lead here until "${label}". This preview assumes it is met and continues.` });
-          continue;
-        }
-
-        const notes: Record<string, string> = {
-          linkedin_visit: "Views the lead's profile. No message is sent.",
-          linkedin_follow: "Follows the lead's profile. No message is sent.",
-          voice_agent_call: `Places an AI voice call to ${lead.phone || 'the lead'}.`,
-          ai_parse: 'Cleans up the title/name on the lead record before outreach.',
-          data_enrich: "Reveals the lead's email/phone via FullEnrich. Spends credits on a real run.",
-          web_scrape: 'Reads the configured page. Spends no credits.',
-          web_research: "Researches the lead's company on the open web.",
-          lead_score: 'Scores buy-intent 0-100 and tags the lead hot/warm/cold.',
-          switch: 'Routes the lead down a branch by a field value.',
-          split_test: 'Assigns variant A or B for this lead.',
-          set_field: 'Writes a field/tag onto the lead record.',
-          http_request: 'Calls the configured API with this lead.',
-          followup_sequence: 'Schedules follow-up touches if the lead does not reply.',
-          export_results: 'Campaign-level — runs once at the end, not per lead.',
-          analytics_report: 'Campaign-level — the daily digest, not a per-lead step.',
-          linkedin_post: "Campaign-level — posts to your own feed on a schedule, not to this lead.",
-          zoho_update: "Writes this workflow's results back to the lead's Zoho record.",
-        };
-        out.push({
-          id: step.id, title: step.title, kind: 'action', channel: step.channel || 'system',
-          detail: notes[type] || 'Runs for this lead.',
-        });
+      const res = await fetchWithTenant('/api/campaigns/workflow/test-run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim() || undefined,
+          lead: testLead,
+          steps: buildTestRunSteps(workflowPreview, configs),
+          config: buildContentMacros(workflowPreview, configs),
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.success) {
+        setTestError(data?.error || 'The test run could not complete.');
+        return;
       }
-      setTestSteps(out);
+      setTestSteps(Array.isArray(data.timeline) ? data.timeline : []);
     } catch (e: any) {
       setTestError(e?.message || 'The test run could not complete.');
     } finally {
@@ -1813,7 +1739,6 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     const enrichNode = workflowPreview.find((s) => s.id === ENRICH_STEP_ID);
     const mediaNode = workflowPreview.find((s) => s.id === MEDIA_STEP_ID);
     const analyticsNode = workflowPreview.find((s) => s.id === ANALYTICS_STEP_ID);
-    const exportNode = workflowPreview.find((s) => s.id === EXPORT_STEP_ID);
     const autopostNode = workflowPreview.find((s) => s.id === AUTOPOST_STEP_ID);
     const zohoUpdateNode = workflowPreview.find((s) => s.id === ZOHO_UPDATE_STEP_ID);
     if (!outreachSteps.length && !followupNode && !multiCondNode && !publisherOnly) { setError('Add at least one outreach step.'); return; }
@@ -2034,28 +1959,11 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       }
 
       // Web-intel nodes → per-lead steps that run before outreach, so the
-      // message generators can use what they gathered.
+      // message generators can use what they gathered. Emitted by the shared
+      // builder, so a Test run executes exactly these — see workflowPayload.ts.
       const csvList = (v: any) => String(v || '').split(',').map((x: string) => x.trim()).filter(Boolean);
-      if (workflowPreview.some((s) => s.id === SCRAPE_STEP_ID)) {
-        const sc = configs[SCRAPE_STEP_ID] || {};
-        steps.push({
-          type: 'web_scrape', title: 'Webpage scraper', channel: 'email', order_index: order++,
-          config: { url: (sc.url || '').trim() || undefined, max_chars: Math.max(200, Math.min(5000, parseInt(sc.max_chars, 10) || 1500)) },
-        });
-      }
-      if (workflowPreview.some((s) => s.id === RESEARCH_STEP_ID)) {
-        steps.push({ type: 'web_research', title: 'Web research', channel: 'email', order_index: order++, config: {} });
-      }
-      if (workflowPreview.some((s) => s.id === SCORE_STEP_ID)) {
-        const sc = configs[SCORE_STEP_ID] || {};
-        steps.push({
-          type: 'lead_score', title: 'Lead scoring', channel: 'email', order_index: order++,
-          config: {
-            hiring_companies: csvList(sc.hiring_companies),
-            funding_companies: csvList(sc.funding_companies),
-            competitor_companies: csvList(sc.competitor_companies),
-          },
-        });
+      for (const st of buildIntelSteps(workflowPreview, configs)) {
+        steps.push({ ...st, order_index: order++ });
       }
 
       // Set field / HTTP request → per-lead steps before outreach, so the
@@ -2111,21 +2019,13 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         const delay = { delayDays: Math.max(0, parseInt(c.delayDays, 10) || 0), delayHours: 0 };
         if (s.type === 'lead_report') {
           // Campaign-scoped reports are macros and were emitted into config
-          // above; only the per-lead variant becomes a step.
-          if (c.scope !== 'campaign') {
+          // above; only the per-lead variant becomes a step. Shared with the
+          // Test run — see workflowPayload.ts.
+          const reportCfg = buildLeadReportStepConfig(c, delay);
+          if (reportCfg) {
             steps.push({
               type: 'lead_report', title: 'Audit report', channel: 'email',
-              order_index: order++,
-              config: {
-                step_id: REPORT_STEP_ID,
-                report_type: c.report_type || 'growth_opportunity_audit',
-                context: (c.context || '').trim() || undefined,
-                email_now: !!c.email_now,
-                require_approval: c.require_approval !== false,
-                approval_channel: c.approval_channel === 'whatsapp' ? 'whatsapp' : 'email',
-                approval_to: (c.approval_to || '').trim() || undefined,
-                ...delay,
-              },
+              order_index: order++, config: reportCfg,
             });
           }
         }
@@ -2366,46 +2266,9 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               },
             };
           })() : {}),
-          ...(exportNode ? (() => {
-            const ec = configs[EXPORT_STEP_ID] || {};
-            return {
-              // Read by CampaignExportService — on completion and from "Export now".
-              export_results: {
-                format: ec.format || 'csv',
-                destinations: Array.isArray(ec.destinations) && ec.destinations.length ? ec.destinations : ['file'],
-                columns: Array.isArray(ec.columns) && ec.columns.length ? ec.columns : EXPORT_DEFAULT_COLUMNS,
-                run_on_completion: ec.run_on_completion !== false,
-                email_to: (ec.email_to || '').trim() || undefined,
-                whatsapp_to: (ec.whatsapp_to || '').trim() || undefined,
-                webhook_url: (ec.webhook_url || '').trim() || undefined,
-                sheet_id: (ec.sheet_id || '').trim() || undefined,
-                slack_webhook_url: (ec.slack_webhook_url || '').trim() || undefined,
-                bucket: (ec.bucket || '').trim() || undefined,
-                bucket_prefix: (ec.bucket_prefix || '').trim() || undefined,
-              },
-            };
-          })() : {}),
-          ...((() => {
-            const rc = configs[REPORT_STEP_ID] || {};
-            // Only the CAMPAIGN-scoped report is a macro. The per-lead variant is
-            // emitted into `steps` further down — same node, two execution models,
-            // chosen by its own scope field.
-            if (!workflowPreview.some((s) => s.id === REPORT_STEP_ID) || rc.scope !== 'campaign') return {};
-            const sc = configs[SOURCE_STEP_ID] || {};
-            return {
-              campaign_report: {
-                // Fall back to the source node's industry so the common case
-                // needs no retyping.
-                industry: (rc.industry || sc.industries || '').trim(),
-                audience: (sc.job_titles || '').trim() || undefined,
-                report_type: rc.report_type || 'growth_opportunity_audit',
-                context: (rc.context || '').trim() || undefined,
-                require_approval: rc.require_approval !== false,
-                approval_channel: rc.approval_channel === 'whatsapp' ? 'whatsapp' : 'email',
-                approval_to: (rc.approval_to || '').trim() || undefined,
-              },
-            };
-          })()),
+          // export_results / campaign_report / landing_page macros. Shared
+          // with the Test run, which executes all three — see workflowPayload.ts.
+          ...buildContentMacros(workflowPreview, configs),
           ...(workflowPreview.some((s) => s.id === IG_AUTOPOST_STEP_ID) ? (() => {
             const ic = configs[IG_AUTOPOST_STEP_ID] || {};
             return {
@@ -2422,30 +2285,6 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 days: Array.isArray(ic.days) && ic.days.length ? ic.days : undefined,
                 time: ic.time || '10:00',
                 timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-              },
-            };
-          })() : {}),
-          ...(workflowPreview.some((s) => s.id === LANDING_STEP_ID) ? (() => {
-            const lc = configs[LANDING_STEP_ID] || {};
-            return {
-              // Read by the campaigns landing-page routes: the page is generated
-              // from this brief at launch, then approved and published.
-              landing_page: {
-                brief: (lc.brief || '').trim(),
-                goal: (lc.goal || '').trim() || undefined,
-                capture_enabled: lc.capture_enabled !== false,
-                capture_fields: Array.isArray(lc.capture_fields) && lc.capture_fields.length
-                  ? lc.capture_fields : ['name', 'email'],
-                require_approval: lc.require_approval !== false,
-                source_file_name: lc.source_file_name || undefined,
-                // Only meaningful on edit. The backend still re-checks that the
-                // inputs really changed, so a stale true cannot force a rewrite.
-                regenerate: lc.regenerate === true,
-                // Reused verbatim at launch when the brief has not changed
-                // since, so the page that goes live is the page that was
-                // reviewed rather than a fresh roll of the model.
-                preview_content: lc.preview_content || undefined,
-                preview_brief: lc.preview_brief || undefined,
               },
             };
           })() : {}),
@@ -4686,8 +4525,14 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     );
   };
 
-  /** Dry-run drawer: sample lead in, simulated timeline out. */
+  /** Test-run drawer: sample lead in, real artifacts out. */
   const renderTestPanel = () => {
+    /** Nodes on the canvas whose step type the server will actually execute. */
+    const runnable = workflowPreview.filter(
+      (s) => s.type && TEST_RUNNABLE_TYPES.has(s.type),
+    ).length
+      + (workflowPreview.some((s) => s.id === LANDING_STEP_ID) ? 1 : 0)
+      + (workflowPreview.some((s) => s.id === EXPORT_STEP_ID) ? 1 : 0);
     const LEAD_FIELDS: { key: string; label: string; placeholder: string }[] = [
       { key: 'first_name', label: 'First name', placeholder: 'Dana' },
       { key: 'last_name', label: 'Last name', placeholder: 'Reyes' },
@@ -4698,18 +4543,27 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       { key: 'email', label: 'Email', placeholder: 'dana@trellisfreight.com' },
       { key: 'phone', label: 'Phone', placeholder: '+971 50 123 4567' },
     ];
-    const tone: Record<TestStep['kind'], string> = {
-      send: 'border-sky-200 dark:border-sky-900 bg-sky-50/60 dark:bg-sky-950/20',
-      action: 'border-border bg-muted/30',
-      skipped: 'border-amber-200 dark:border-amber-900 bg-amber-50/60 dark:bg-amber-950/20',
+    const tone: Record<TestStep['status'], string> = {
+      ran: 'border-emerald-200 dark:border-emerald-900 bg-emerald-50/60 dark:bg-emerald-950/20',
+      skipped: 'border-border bg-muted/30',
+      failed: 'border-amber-200 dark:border-amber-900 bg-amber-50/60 dark:bg-amber-950/20',
     };
+    const badge: Record<TestStep['status'], string> = {
+      ran: 'text-emerald-700 dark:text-emerald-400',
+      skipped: 'text-muted-foreground',
+      failed: 'text-amber-700 dark:text-amber-400',
+    };
+    // Pulled to the top of the results: the artifacts ARE the point of a test
+    // run, and hunting for them inside a step list buries the thing the user
+    // came to look at.
+    const artifacts: TestArtifact[] = (testSteps || []).flatMap((s) => s.artifacts || []);
     return (
       <div className="absolute right-0 top-0 h-full w-[24rem] bg-card border-l border-border shadow-2xl z-10 flex flex-col">
         <div className="flex items-start gap-3 p-4 border-b border-border">
           <IconChip icon={<FlaskConical className="h-4 w-4 text-emerald-600" />} chip="bg-emerald-50 dark:bg-emerald-950/30" size="h-10 w-10" />
           <div className="min-w-0 flex-1">
             <div className="text-sm font-semibold text-foreground">Test run</div>
-            <div className="text-xs text-muted-foreground">Dry run against one sample lead</div>
+            <div className="text-xs text-muted-foreground">One real run against one lead</div>
           </div>
           <button onClick={() => setTestOpen(false)} className="h-7 w-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors flex-shrink-0">
             <X className="h-4 w-4" />
@@ -4717,9 +4571,28 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         </div>
 
         <div className="flex-1 p-4 space-y-4 overflow-y-auto text-sm">
-          <div className="rounded-lg border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/30 p-2.5 text-[12px] leading-relaxed text-emerald-900 dark:text-emerald-200">
-            Simulated in your browser. Nothing is sent, nobody is enrolled, and no enrichment credits are spent — this only shows what each step <em>would</em> do.
+          <div className="rounded-lg border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/30 p-2.5 text-[12px] leading-relaxed text-emerald-900 dark:text-emerald-200 space-y-1.5">
+            <p>
+              Runs the research and content steps <strong>for real</strong> against one lead, so you can read
+              what your Accelerator actually produces before you launch it.
+            </p>
+            <p>
+              <strong>Nothing is sent to the prospect.</strong> Every message, connection request and call is
+              skipped. Anything the Export step delivers goes to the addresses you put on that node — yours.
+            </p>
+            <p className="text-emerald-800/90 dark:text-emerald-300/90">
+              This costs credits: live web research, AI-written reports and pages, and a real PDF render.
+              Reports and pages publish to a temporary public link.
+            </p>
           </div>
+
+          {!runnable && !!workflowPreview.length && (
+            <div className="rounded-lg border border-border bg-muted/30 p-2.5 text-[12px] leading-relaxed text-muted-foreground">
+              Nothing in this workflow produces something to look at yet. A test run executes research,
+              scraping, scoring, reports, landing pages and exports — add one of those and there will be an
+              artifact to review.
+            </div>
+          )}
 
           <div>
             <div className="flex items-center justify-between gap-2 mb-2">
@@ -4731,7 +4604,8 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               </button>
             </div>
             <p className="text-[11px] text-muted-foreground mb-2 leading-snug">
-              Fill in whoever you want to test against, or let Mr LAD invent someone who fits your targeting.
+              Use a real company you know, so you can judge whether the research and the report are any good.
+              Or let Mr LAD invent someone who fits your targeting.
             </p>
             <div className="grid grid-cols-2 gap-2">
               {LEAD_FIELDS.map((f) => (
@@ -4752,40 +4626,72 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
 
           {testSteps && (
             <div className="space-y-2">
-              <div className="text-xs font-semibold text-foreground">What would happen</div>
+              {!!artifacts.length && (
+                <div className="rounded-xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50/70 dark:bg-emerald-950/30 p-3 space-y-2">
+                  <div className="text-xs font-semibold text-emerald-900 dark:text-emerald-200">
+                    What this run produced
+                  </div>
+                  {artifacts.map((a, i) => (
+                    <a key={`${a.url}-${i}`} href={a.url} target="_blank" rel="noreferrer"
+                      className="flex items-center gap-2 rounded-lg bg-card border border-border p-2 hover:border-[#0b1957]/40 transition-colors">
+                      <span className="flex-shrink-0">{ARTIFACT_ICON[a.kind] || ARTIFACT_ICON.file}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[12px] font-semibold text-foreground truncate">{a.label}</span>
+                        <span className="block text-[10.5px] text-muted-foreground">{ARTIFACT_LABEL[a.kind] || 'File'}</span>
+                      </span>
+                      <ExternalLink className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                    </a>
+                  ))}
+                  <p className="text-[10.5px] text-emerald-800/90 dark:text-emerald-300/90 leading-snug">
+                    These are real, publicly reachable links, published as temporary previews. Launching
+                    generates the customer-facing versions separately.
+                  </p>
+                </div>
+              )}
+
+              <div className="text-xs font-semibold text-foreground pt-1">Step by step</div>
               {testSteps.map((s, i) => (
-                <div key={`${s.id}-${i}`} className={`rounded-xl border p-2.5 ${tone[s.kind]}`}>
+                <div key={`${s.type}-${i}`} className={`rounded-xl border p-2.5 ${tone[s.status] || tone.skipped}`}>
                   <div className="flex items-center gap-2">
                     <span className="h-5 w-5 rounded-full bg-card border border-border text-[10px] font-bold text-muted-foreground flex items-center justify-center flex-shrink-0">{i + 1}</span>
                     <span className="text-[12.5px] font-semibold text-foreground flex-1 truncate">{s.title}</span>
-                    {s.kind === 'skipped' && <span className="text-[9.5px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">Skipped</span>}
-                    {s.kind === 'send' && <span className="text-[9.5px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-400">{s.channel}</span>}
+                    <span className={`text-[9.5px] font-bold uppercase tracking-wider ${badge[s.status] || badge.skipped}`}>
+                      {s.status === 'ran' ? 'Ran' : s.status === 'failed' ? 'Failed' : 'Skipped'}
+                    </span>
                   </div>
-                  <p className="text-[11px] text-muted-foreground mt-1.5 leading-snug">{s.detail}</p>
-                  {s.body && (
-                    <div className="mt-2 rounded-lg bg-card border border-border p-2 text-[12px] text-foreground whitespace-pre-wrap leading-relaxed">
-                      {s.body}
+                  <p className="text-[11px] text-muted-foreground mt-1.5 leading-snug whitespace-pre-line">{s.detail}</p>
+                  {!!s.artifacts?.length && (
+                    <div className="mt-2 space-y-1">
+                      {s.artifacts.map((a, j) => (
+                        <a key={`${a.url}-${j}`} href={a.url} target="_blank" rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-[#0b1957] dark:text-sky-400 hover:underline">
+                          <ExternalLink className="h-3 w-3" /> {a.label}
+                        </a>
+                      ))}
                     </div>
-                  )}
-                  {!!s.deferred?.length && (
-                    <p className="text-[10.5px] text-muted-foreground mt-1.5 leading-snug">
-                      {s.deferred.join(', ')} {s.deferred.length > 1 ? 'are' : 'is'} filled from live enrichment on a real run.
-                    </p>
                   )}
                 </div>
               ))}
               <p className="text-[10.5px] text-muted-foreground leading-snug pt-1">
-                Waits and acceptances are assumed to succeed so you can see the whole sequence. On a real run a lead who never accepts stops at that step.
+                Skipped steps are not a fault: outreach, follow-ups and paid contact enrichment are held back
+                so a test can never reach the person you made up. They run normally once you launch.
               </p>
             </div>
           )}
         </div>
 
-        <div className="p-3 border-t border-border bg-muted/20">
+        <div className="p-3 border-t border-border bg-muted/20 space-y-1.5">
           <Button className="w-full" onClick={runTest} disabled={testRunning || !workflowPreview.length}>
             {testRunning ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Play className="h-4 w-4 mr-2" />}
-            {testRunning ? 'Running…' : testSteps ? 'Run again' : 'Run test'}
+            {testRunning ? 'Running…' : testSteps ? 'Run again' : 'Run for real'}
           </Button>
+          {testRunning && (
+            // Research, an LLM report and a PDF render, one after the other.
+            // Without this the panel looks hung and people click away mid-run.
+            <p className="text-[10.5px] text-muted-foreground text-center leading-snug">
+              Researching, writing and rendering. This usually takes a minute or two.
+            </p>
+          )}
         </div>
       </div>
     );
@@ -4858,7 +4764,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             <span>Days</span><Input type="number" className="w-16 h-8" value={days} onChange={(e) => setDays(e.target.value)} />
           </div>
           <Button variant="outline" onClick={() => setTestOpen((v) => !v)} disabled={!workflowPreview.length || hydrating}
-            title="Dry-run this pipeline against one sample lead. Nothing is sent.">
+            title="Run the research and content steps for real against one lead. Costs credits. Nothing is sent to the prospect.">
             <FlaskConical className="h-4 w-4 mr-2" />
             Test run
           </Button>
