@@ -18,7 +18,19 @@ const getAuthHeaders = () => {
     ...(token ? { 'Authorization': `Bearer ${token}` } : {})
   };
 };
+/** What the integration can actually do with this account, from Unipile. */
+interface LinkedInCapabilities {
+  known?: boolean;
+  premium?: boolean;
+  salesNavigator?: boolean;
+  recruiter?: boolean;
+  canInMail?: boolean;
+  totalCredits?: number;
+  credits?: { premium?: number; recruiter?: number; salesNavigator?: number };
+}
+
 interface LinkedInAccount {
+  capabilities?: LinkedInCapabilities;
   id?: string;
   connected: boolean;
   status?: 'connected' | 'disconnected' | 'stopped' | 'checkpoint' | 'unknown' | 'error';
@@ -58,17 +70,13 @@ interface LinkedInAutomationSettings {
   // Tenant-chosen model for AI-personalized outbound messages (connection
   // requests + follow-ups). Kept in sync with the backend allow-list in
   // core/constants/aiMessageModels.js.
+  /** Still returned by the backend; the picker was removed and every tenant
+   *  generates on DeepSeek. Kept so the type matches the payload. */
   linkedin_ai_model?: string;
 }
 // Curated model menu for LinkedIn outbound message personalization. Must match
 // the backend registry (core/constants/aiMessageModels.js) — ids are validated
 // server-side on PUT, so an out-of-sync entry here is rejected rather than saved.
-const LINKEDIN_MESSAGE_MODELS: { id: string; label: string }[] = [
-  { id: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5 — highest quality' },
-  { id: 'claude-haiku-4-5', label: 'Claude Haiku 4.5 — fast & economical' },
-  { id: 'deepseek-chat', label: 'DeepSeek — lowest cost' },
-];
-const DEFAULT_LINKEDIN_MESSAGE_MODEL = 'claude-sonnet-4-5';
 type AuthMethod = 'credentials' | 'cookies';
 export const LinkedInIntegration: React.FC = () => {
   const [linkedInConnections, setLinkedInConnections] = useState<LinkedInAccount[]>([]);
@@ -106,7 +114,6 @@ export const LinkedInIntegration: React.FC = () => {
   // the backend rebuilds all four keys, so omitting them would clobber them.
   const [automationSettings, setAutomationSettings] = useState<LinkedInAutomationSettings | null>(null);
   const [aiRepliesSaving, setAiRepliesSaving] = useState(false);
-  const [modelSaving, setModelSaving] = useState(false);
   const [aiToast, setAiToast] = useState<{ kind: 'ok' | 'err'; message: string } | null>(null);
   const inputClass =
       'w-full rounded-xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#00051d] px-3 py-2.5 text-sm text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 outline-none focus:border-slate-400 dark:focus:border-slate-600 focus:ring-0 focus-visible:ring-0 transition-all [box-shadow:0_0_0_30px_white_inset] dark:[box-shadow:0_0_0_30px_#00051d_inset] [-webkit-text-fill-color:#1e293b] dark:[-webkit-text-fill-color:white] [&:-webkit-autofill]:[box-shadow:0_0_0_30px_white_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:#1e293b] dark:[&:-webkit-autofill]:[box-shadow:0_0_0_30px_#00051d_inset] dark:[&:-webkit-autofill]:[-webkit-text-fill-color:white]';
@@ -409,37 +416,6 @@ export const LinkedInIntegration: React.FC = () => {
   // Change the tenant's outbound-message model. Optimistic UI, then a PARTIAL PUT
   // ({ linkedin_ai_model }) — the backend jsonb-merges it, so the other automation
   // settings are preserved. Reverts + toasts on failure (mirrors toggleAiReplies).
-  const saveMessageModel = async (model: string) => {
-    if (!automationSettings || modelSaving) return;
-    if (model === (automationSettings.linkedin_ai_model ?? DEFAULT_LINKEDIN_MESSAGE_MODEL)) return;
-    const previous = automationSettings;
-    setAutomationSettings({ ...previous, linkedin_ai_model: model });
-    setModelSaving(true);
-    try {
-      const response = await fetch(
-        `${getApiBaseUrl()}/api/social-integration/linkedin/automation-settings`,
-        {
-          method: 'PUT',
-          headers: getAuthHeaders(),
-          body: JSON.stringify({ linkedin_ai_model: model }),
-        }
-      );
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data?.success) {
-        throw new Error(data?.error || data?.message || 'Failed to update AI model');
-      }
-      if (data.data) setAutomationSettings(data.data as LinkedInAutomationSettings);
-      setAiToast({ kind: 'ok', message: 'LinkedIn message model updated.' });
-    } catch (error) {
-      setAutomationSettings(previous);
-      setAiToast({
-        kind: 'err',
-        message: error instanceof Error ? error.message : 'Could not update AI model.',
-      });
-    } finally {
-      setModelSaving(false);
-    }
-  };
   const handleConnect = async () => {
     setConnecting(true);
     setConnectionError(null);
@@ -908,24 +884,8 @@ export const LinkedInIntegration: React.FC = () => {
                       disabled={!automationSettings || aiRepliesSaving}
                       onToggle={toggleAiReplies}
                     />
-                    {/* Tenant-level model for AI-personalized outbound messages
-                        (connection requests + follow-ups). Applies to all accounts. */}
-                    <label className="flex items-center gap-1.5 text-[11px] font-medium text-gray-600 dark:text-white/60">
-                      <span title="Model used to generate personalized connection requests and follow-up messages">
-                        Message model:
-                      </span>
-                      <select
-                        value={automationSettings?.linkedin_ai_model ?? DEFAULT_LINKEDIN_MESSAGE_MODEL}
-                        onChange={(e) => saveMessageModel(e.target.value)}
-                        disabled={!automationSettings || modelSaving}
-                        className="rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-700 transition disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-white/10 dark:bg-white/5 dark:text-white/80"
-                      >
-                        {LINKEDIN_MESSAGE_MODELS.map((m) => (
-                          <option key={m.id} value={m.id}>{m.label}</option>
-                        ))}
-                      </select>
-                    </label>
                   </div>
+                  <LinkedInPlanSummary caps={account.capabilities} />
                 </div>
               );
             })}
@@ -1329,6 +1289,59 @@ export const LinkedInIntegration: React.FC = () => {
 
 // ── AI Replies chip ──────────────────────────────────────────────────────────
 // Green pill toggle mirroring Instagram's connected-account cards
+/**
+ * LinkedIn plan and InMail credits, as the integration sees them.
+ *
+ * Deliberately reports what Unipile can reach, not what the LinkedIn website
+ * shows the account owner. Those two disagree in a way that has already cost a
+ * campaign: an account connected before a Sales Navigator seat was added
+ * reports the seat as absent and every credit pool as null, while its owner can
+ * see 149 credits in LinkedIn. Showing the LinkedIn figure would hide exactly
+ * the problem this is here to surface.
+ */
+function LinkedInPlanSummary({ caps }: { caps?: LinkedInCapabilities }) {
+  if (!caps?.known) return null;
+
+  const credits = caps.credits || {};
+  const plans = [
+    caps.salesNavigator && 'Sales Navigator',
+    caps.recruiter && 'Recruiter',
+    caps.premium && !caps.salesNavigator && !caps.recruiter && 'Premium',
+  ].filter(Boolean) as string[];
+
+  const pools = [
+    { label: 'Sales Navigator', n: credits.salesNavigator || 0 },
+    { label: 'Recruiter', n: credits.recruiter || 0 },
+    { label: 'Premium', n: credits.premium || 0 },
+  ].filter((p) => p.n > 0);
+
+  // Paid plan, no reachable credits: the case worth calling out, because the
+  // owner will be looking at credits in LinkedIn and wondering why sends fail.
+  const paidButUnusable = (caps.premium || caps.salesNavigator || caps.recruiter) && !caps.canInMail;
+
+  return (
+    <div className="mt-3 rounded-lg border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-3 py-2">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11.5px]">
+        <span className="text-gray-500 dark:text-white/50">Plan</span>
+        <span className="font-medium text-gray-800 dark:text-white/85">
+          {plans.length ? plans.join(' + ') : 'Free'}
+        </span>
+        <span className="text-gray-500 dark:text-white/50">InMail credits</span>
+        <span className="font-medium text-gray-800 dark:text-white/85">
+          {pools.length ? pools.map((p) => `${p.n} ${p.label}`).join(', ') : 'none available'}
+        </span>
+      </div>
+      {paidButUnusable && (
+        <p className="mt-1.5 text-[11px] leading-snug text-amber-700 dark:text-amber-400">
+          This account has a paid plan, but no InMail credits are visible to Mr LAD. Sales Navigator
+          credits stay hidden unless the account was connected while that seat was active. Reconnect
+          the account to pick them up.
+        </p>
+      )}
+    </div>
+  );
+}
+
 // (components/instagram/InstagramTenantOnboarding.tsx → AiToggleChip).
 function AiToggleChip({
   label,

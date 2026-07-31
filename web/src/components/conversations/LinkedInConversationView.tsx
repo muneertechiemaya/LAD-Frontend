@@ -13,7 +13,8 @@
  *   active   → automated follow-up sent     → chat enabled
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Send, RefreshCw, Loader2, MessageSquare, Linkedin, Clock, CheckCircle, Zap, Lock, ChevronLeft, Search, MoreVertical, Trash2, X, Film, Music, FileText, Image as ImageIcon } from 'lucide-react';
+import { Send, RefreshCw, Loader2, MessageSquare, Linkedin, Clock, CheckCircle, Zap, Lock, ChevronLeft, Search, MoreVertical, Trash2, X, Film, Music, FileText, Image as ImageIcon, Megaphone } from 'lucide-react';
+import LinkedInBroadcastModal from './LinkedInBroadcastModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -136,14 +137,14 @@ const STATUS_CONFIG: Record<ConnectionStatus, {
     label:      'Awaiting acceptance',
     icon:       <Clock className="w-3 h-3" />,
     dotClass:   'bg-slate-300',
-    badgeClass: 'bg-slate-100 text-slate-500',
+    badgeClass: 'bg-slate-100 text-slate-500 dark:bg-slate-900/40 dark:text-slate-400',
     bannerText: 'Connection request sent — chat will be available once they accept.',
   },
   accepted: {
     label:      'Connected',
     icon:       <CheckCircle className="w-3 h-3" />,
     dotClass:   'bg-amber-400',
-    badgeClass: 'bg-amber-50 text-amber-700',
+    badgeClass: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-500',
     // Empty — chat is now unlocked immediately on acceptance. Sending any
     // message records CONTACTED on the backend, which cancels the workflow
     // scheduler's automated follow-up so there's no duplicate. The
@@ -154,7 +155,7 @@ const STATUS_CONFIG: Record<ConnectionStatus, {
     label:      'Active',
     icon:       <Zap className="w-3 h-3" />,
     dotClass:   'bg-emerald-500',
-    badgeClass: 'bg-emerald-50 text-emerald-700',
+    badgeClass: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-500',
     bannerText: '',
   },
 };
@@ -430,6 +431,7 @@ export function LinkedInConversationView({
   const [selectedId, setSelectedId]       = useState<string | null>(null);
   const [messages, setMessages]           = useState<LinkedInMessage[]>([]);
   const [searchQuery, setSearchQuery]     = useState('');
+  const [broadcastOpen, setBroadcastOpen] = useState(false);
   // Sidebar status filter — null shows everything, otherwise narrows to that status.
   // Toggled by the chips at the top of the conversation list.
   const [statusFilter, setStatusFilter]   = useState<ConnectionStatus | null>(null);
@@ -686,6 +688,17 @@ export function LinkedInConversationView({
             variant="ghost"
             size="icon"
             className="h-7 w-7 md:h-8 md:w-8 rounded-full flex-shrink-0"
+            className="h-8 w-8 rounded-full"
+            onClick={() => setBroadcastOpen(true)}
+            title="New Broadcast"
+          >
+            <Megaphone className="h-3.5 w-3.5" />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-full"
             onClick={loadConversations}
             disabled={loadingConvs}
             title="Refresh"
@@ -693,6 +706,8 @@ export function LinkedInConversationView({
             <RefreshCw className={cn('h-3 w-3 md:h-3.5 md:w-3.5', loadingConvs && 'animate-spin')} />
           </Button>
         </div>
+
+        {broadcastOpen && <LinkedInBroadcastModal onClose={() => setBroadcastOpen(false)} />}
 
         {/* Status summary pills — clickable: tap to filter the list to that status,
             tap the same chip again (or "All") to clear the filter. */}

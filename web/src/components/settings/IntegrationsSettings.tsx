@@ -12,6 +12,7 @@ import { WhatsAppIntegration } from './WhatsAppIntegration';
 import { PersonalWaTemplateManager } from '../conversations/PersonalWaTemplateManager';
 import { LinkedInIntegration } from './LinkedInIntegration';
 import { TenantOnboarding } from './TenantOnboarding';
+import { WhatsAppEmbeddedSignup } from './WhatsAppEmbeddedSignup';
 import { GoHighLevelIntegration } from './GoHighLevelIntegration';
 import { ZohoIntegration } from './ZohoIntegration';
 import { useTenant } from '@/contexts/TenantContext';
@@ -586,7 +587,14 @@ export const IntegrationsSettings: React.FC = () => {
             &larr; Back to Integrations
           </button>
 
-          {activeView === 'whatsapp-ai' && <TenantOnboarding />}
+          {activeView === 'whatsapp-ai' && (
+            <div className="space-y-6">
+              {/* Self-serve path — Meta Embedded Signup via our Tech Provider app. */}
+              <WhatsAppEmbeddedSignup />
+              {/* Fallback — bring-your-own Meta app, for tenants provisioned that way. */}
+              <TenantOnboarding />
+            </div>
+          )}
           {activeView === 'whatsapp-personal' && (
             <div className="space-y-6">
               <WhatsAppIntegration />
@@ -964,7 +972,7 @@ export const IntegrationsSettings: React.FC = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 px-4 sm:px-0">
             {filtered.map((integration) => {
               const isCreditGated = CREDIT_GATED_IDS.has(integration.id);
               const isAlreadyConnected = statusMap[integration.id] === 'connected';

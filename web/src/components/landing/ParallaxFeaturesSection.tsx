@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Lock, Zap, Users, TrendingUp } from 'lucide-react';
 import { StickyScroll } from '@/components/ui/sticky-scroll-reveal';
@@ -78,7 +79,7 @@ const StickyScrollFeatures = () => {
   ];
 
   return (
-    <section className="py-20 relative bg-gradient-to-b from-background via-background to-background">
+    <section id="features" className="py-20 relative bg-gradient-to-b from-background via-background to-background scroll-mt-24">
       {/* Background Blobs */}
       <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-80 h-80 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none" />
@@ -115,7 +116,7 @@ const StickyScrollFeatures = () => {
             Ready to hire Mr LAD?
           </h3>
           <p className="text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Join teams that are already booking 10-15x more meetings with one AI Sales Employee working every channel.
+            Join teams that are already booking 5-7x more meetings with one AI Sales Employee working every channel.
           </p>
 
           <motion.div
@@ -123,9 +124,12 @@ const StickyScrollFeatures = () => {
             whileTap={{ scale: 0.95 }}
             className="inline-block"
           >
-            <button className="px-10 py-4 bg-primary text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-shadow">
+            <Link
+              href="/onboarding"
+              className="inline-block px-10 py-4 bg-primary text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-shadow"
+            >
               Hire Mr LAD
-            </button>
+            </Link>
           </motion.div>
 
           <p className="text-xs text-muted-foreground mt-4">
