@@ -46,22 +46,18 @@ export default function EmailPreview({
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <meta name="color-scheme" content="light dark">
+      <meta name="color-scheme" content="light">
       <script>
-        // Inline syncing runtime: checks if parent window has dark mode enabled
+        // Only follow the parent app's theme class, not the OS preference
         (function() {
           try {
             const isParentDark = window.parent.document.documentElement.classList.contains('dark');
-            const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            if (isParentDark || isSystemDark) {
+            if (isParentDark) {
               document.documentElement.setAttribute('data-theme', 'dark');
               document.documentElement.style.backgroundColor = '#000724';
             }
           } catch (e) {
-            // Safe fallback if cross-origin rules block checking parent window directly
-            if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-              document.documentElement.setAttribute('data-theme', 'dark');
-            }
+            // Cross-origin blocked: stay light (safe default)
           }
         })();
       </script>
@@ -178,25 +174,7 @@ export default function EmailPreview({
           background: #1e293b;
         }
 
-        /* Standard Media Queries fallback cascade */
-        @media (prefers-color-scheme: dark) {
-          ::-webkit-scrollbar-track { background: #000724; }
-          ::-webkit-scrollbar-thumb { background: #1e293b; }
-          ::-webkit-scrollbar-thumb:hover { background: #334155; }
-          html, body {
-            background-color: #000724 !important;
-            color: #f3f4f6 !important;
-          }
-          .email-container {
-            background-color: #000c3b !important;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3) !important;
-          }
-          .email-header { border-bottom: 1px solid #1e293b !important; }
-          .email-subject { color: #ffffff !important; }
-          .email-body { color: #cbd5e1 !important; }
-          .email-body h1, .email-body h2, .email-body h3 { color: #ffffff !important; }
-          .email-body a { color: #38bdf8 !important; }
-        }
+        /* No OS-level dark media query — theme is driven solely by parent app class */
       </style>
     </head>
     <body>
