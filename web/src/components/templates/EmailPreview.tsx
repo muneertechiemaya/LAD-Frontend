@@ -108,7 +108,7 @@ export default function EmailPreview({
         }
         .email-body {
           font-size: 14px;
-          color: #555555;
+          color: #333333;
         }
         .email-body p {
           margin: 0 0 16px 0;

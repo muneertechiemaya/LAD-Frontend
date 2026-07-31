@@ -354,7 +354,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
 
   const previewHtml = editorMode === 'html' || editorMode === 'dragdrop'
     ? (template.body_html || '')
-    : `<p style="font-family:Arial,sans-serif;font-size:15px;line-height:1.7;color:#374151;">${(template.body || '').replace(/\n/g, '<br/>')}</p>`;
+    : `<p style="font-family:Arial,sans-serif;font-size:15px;line-height:1.7;">${(template.body || '').replace(/\n/g, '<br/>')}</p>`;
 
   // ── Send test email ───────────────────────────────────────────────────────
 
@@ -438,7 +438,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
           {/* Preview & test */}
           <button
             onClick={() => { setShowPreview(true); setTestResult(null); setTestEmailAddr(''); setTestProvider('google'); }}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold text-white bg-[#0B1957] dark:bg-[#0C1936] dark:border dark:border-[#262831] hover:bg-[#13257e] dark:hover:bg-[#253456] border-none transition-all cursor-pointer flex-shrink-0 shadow-sm"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold text-white bg-[#0B1957] dark:bg-blue-600 dark:border dark:border-[#262831] hover:bg-[#13257e] dark:hover:bg-blue-600/90 border-none transition-all cursor-pointer flex-shrink-0 shadow-sm"
           >
             <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
             <span className="hidden sm:inline">Preview & test</span>
@@ -450,14 +450,14 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
               <button
                 onClick={() => handleSave(true)}
                 disabled={saving}
-                className="flex items-center gap-1 px-3 py-1.5 sm:px-4 sm:py-2 bg-[#0B1957] dark:bg-[#0C1936] dark:border dark:border-[#262831] text-white text-xs sm:text-sm font-semibold rounded-l-lg sm:rounded-l-xl hover:bg-[#13257e] dark:hover:bg-[#253456] disabled:opacity-60 transition-all cursor-pointer border-none outline-none"
+                className="flex items-center gap-1 px-3 py-1.5 sm:px-4 sm:py-2 bg-[#0B1957] dark:bg-blue-600 dark:border dark:border-[#262831] text-white text-xs sm:text-sm font-semibold rounded-l-lg sm:rounded-l-xl hover:bg-[#13257e] dark:hover:bg-blue-600/90 disabled:opacity-60 transition-all cursor-pointer border-none outline-none"
               >
                 {saving && <Loader2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 animate-spin"/>}
                 Save
               </button>
               <button
                 onClick={() => setShowSaveMenu((v) => !v)}
-                className="px-1.5 py-1.5 sm:px-2 sm:py-2 bg-[#0B1957] dark:bg-[#0C1936] text-white rounded-r-lg sm:rounded-r-xl hover:bg-[#13257e] dark:hover:bg-[#253456] border-none border-l border-[#1c2c77]/60 dark:border-[#262831] transition-all cursor-pointer outline-none"
+                className="px-1.5 py-1.5 sm:px-2 sm:py-2 bg-[#0B1957] dark:bg-blue-600 dark:border dark:border-[#262831] text-white rounded-r-lg sm:rounded-r-xl hover:bg-[#13257e] dark:hover:bg-blue-600/90 border-none border-l border-[#1c2c77]/60 dark:border-[#262831] transition-all cursor-pointer outline-none"
               >
                 <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]"/>
               </button>
@@ -692,7 +692,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
 
             {/* Right: Settings panel — 50% */}
             <aside className={`w-full sm:w-1/2 flex-1 sm:flex-none bg-white dark:bg-[#000724] overflow-y-auto flex flex-col border-t sm:border-t-0 border-gray-150 dark:border-[#262831] ${mobileSubTab !== 'content' ? 'flex' : 'hidden sm:flex'}`}>
-              <div className="p-6 space-y-5 flex-1 max-w-2xl mx-auto w-full">
+              <div className="p-6 space-y-5 flex-1 w-full">
               {/* Details subtab fields */}
               <div className={`space-y-5 ${mobileSubTab === 'details' ? 'block' : 'hidden sm:block'}`}>
                 {/* Sender / metadata section header */}
@@ -911,11 +911,11 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
               </div>
 
               {/* Save actions */}
-              <div className="hidden sm:block border-t border-gray-100 dark:border-[#262831] p-5 max-w-2xl mx-auto w-full">
+              <div className="hidden sm:block border-t border-gray-100 dark:border-[#262831] p-5 w-full">
                 <button
                   onClick={() => handleSave(true)}
                   disabled={saving}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 bg-[#0B1957] dark:bg-[#0C1936] dark:border dark:border-[#262831] text-white text-sm font-semibold rounded-xl hover:bg-[#13257e] dark:hover:bg-[#253456] disabled:opacity-60 transition-all cursor-pointer border-none outline-none shadow-[0_4px_20px_rgba(11,25,87,0.3)] hover:shadow-[0_8px_30px_rgba(11,25,87,0.5)]"
+                  className="w-full flex items-center justify-center gap-2 py-2.5 bg-[#0B1957] dark:bg-blue-600 dark:border dark:border-[#262831] text-white text-sm font-semibold rounded-xl hover:bg-[#13257e] dark:hover:bg-blue-600/90 disabled:opacity-60 transition-all cursor-pointer border-none outline-none shadow-[0_4px_20px_rgba(11,25,87,0.3)] hover:shadow-[0_8px_30px_rgba(11,25,87,0.5)]"
                 >
                   {saving && <Loader2 className="w-4 h-4 animate-spin" />}
                   {saving ? 'Saving…' : mode === 'create' ? 'Create template' : 'Save changes'}
