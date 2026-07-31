@@ -68,6 +68,7 @@ import { CustomWorkflowNode } from '@/components/onboarding/workflow/CustomWorkf
 import { WorkflowCanvas } from '@/components/onboarding/workflow/WorkflowCanvas';
 import { createReactFlowNodes, createReactFlowEdges } from '@/components/onboarding/workflow/workflowFlowBuilder';
 import LabeledEdge from '@/components/onboarding/workflow/LabeledEdge';
+import { StepInsertMenu, type InsertMenuItem } from '@/components/onboarding/workflow/StepInsertMenu';
 
 const nodeTypes = { custom: CustomWorkflowNode };
 const edgeTypes = { labeled: LabeledEdge };
@@ -627,8 +628,25 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   /** Reopen an existing custom workflow for editing; launch updates it in place. */
   editCampaignId?: string;
 }) {
-  const { workflowPreview, setWorkflowPreview, addWorkflowStep, updateWorkflowStep } = useOnboardingStore();
+  const {
+    workflowPreview, setWorkflowPreview, updateWorkflowStep,
+    addWorkflowStep: appendWorkflowStep, insertWorkflowStep,
+  } = useOnboardingStore();
   const res = useBuilderResources();
+
+  /** Slot chosen by a node's "+" button, consumed by the very next add*() call. */
+  const insertAtRef = useRef<{ anchorId: string; position: 'before' | 'after' } | null>(null);
+  /**
+   * Every add*() helper below goes through this. Normally it appends, exactly
+   * as the store action does; when the picker was opened from a node's "+" it
+   * drops the step into that slot instead — so one wrapper makes the whole
+   * palette insert-aware without touching each helper.
+   */
+  const addWorkflowStep = useCallback((step: WorkflowPreviewStep) => {
+    const at = insertAtRef.current;
+    if (at) insertWorkflowStep(step, at.anchorId, at.position);
+    else appendWorkflowStep(step);
+  }, [appendWorkflowStep, insertWorkflowStep]);
 
   const [name, setName] = useState('');
   const [perDay, setPerDay] = useState('25');
@@ -673,6 +691,8 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   const [expandedTpl, setExpandedTpl] = useState<string | null>(WORKFLOW_TEMPLATES[0]?.key || null);
   /** Template shown in the right-hand overview drawer (null = show node editor). */
   const [overviewTpl, setOverviewTpl] = useState<string | null>(null);
+  /** Open step picker for a node's input/output "+" (null = closed). */
+  const [insertMenu, setInsertMenu] = useState<{ anchorId: string; position: 'before' | 'after'; x: number; y: number } | null>(null);
 
   // ── "Build with AI": describe a pipeline, answer a few questions, get one ──
   const [aiPrompt, setAiPrompt] = useState('');
@@ -782,6 +802,24 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     };
     window.addEventListener('openStepEditor', onEdit);
     return () => window.removeEventListener('openStepEditor', onEdit);
+  }, []);
+
+  // Node "+" clicks (CustomWorkflowNode dispatches 'addWorkflowStepAt') — open
+  // the step picker anchored to that slot.
+  useEffect(() => {
+    const onInsertAt = (e: any) => {
+      const d = e.detail || {};
+      if (!d.anchorId) return;
+      setOverviewTpl(null);
+      setInsertMenu({
+        anchorId: String(d.anchorId),
+        position: d.position === 'before' ? 'before' : 'after',
+        x: Number(d.x) || 0,
+        y: Number(d.y) || 0,
+      });
+    };
+    window.addEventListener('addWorkflowStepAt', onInsertAt);
+    return () => window.removeEventListener('addWorkflowStepAt', onInsertAt);
   }, []);
 
   const pickSource = (key: SourceKey) => {
@@ -2426,6 +2464,67 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     launch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoLaunch, source, workflowPreview, configs]);
+
+  /**
+   * Step picker for a node's input/output "+". Same palette as the left rail —
+   * each entry runs the very same add*() helper (so per-node config defaults are
+   * still seeded) with insertAtRef pointing at the clicked slot, which is what
+   * turns an append into an insert. Single-instance macro nodes that are
+   * already on the canvas are shown disabled rather than silently no-op'ing.
+   */
+  const renderInsertMenu = () => {
+    if (!insertMenu) return null;
+    const has = (id: string) => workflowPreview.some((s) => s.id === id);
+    const run = (fn: () => void) => {
+      insertAtRef.current = { anchorId: insertMenu.anchorId, position: insertMenu.position };
+      try { fn(); } finally { insertAtRef.current = null; }
+    };
+    const macro = (id: string, label: string, sub: string, icon: React.ReactNode, chip: string, on: () => void, group: string): InsertMenuItem => ({
+      key: id, label, sub, icon, chip, group,
+      disabled: has(id), hint: 'Already in this workflow',
+      onSelect: () => run(on),
+    });
+
+    const items: InsertMenuItem[] = [
+      ...OUTREACH.map((o, i) => ({
+        key: `outreach-${i}`,
+        label: o.label,
+        sub: o.group,
+        icon: o.icon,
+        chip: o.chip,
+        group: 'Outreach & timing',
+        onSelect: () => run(() => (o.router ? addRouter() : addOutreach(o.type))),
+      })),
+      macro(MULTICOND_STEP_ID, 'Multi-condition', 'Branch by a field value', <Split className="h-4 w-4 text-amber-600" />, 'bg-amber-50 dark:bg-amber-950/30', addMultiCond, 'Logic & routing'),
+      macro(SPLIT_STEP_ID, 'A/B split test', 'Compare two openers', <Shuffle className="h-4 w-4 text-pink-600" />, 'bg-pink-50 dark:bg-pink-950/30', addSplitTest, 'Logic & routing'),
+      macro(SETFIELD_STEP_ID, 'Set field', 'Tag or write a value', <PenLine className="h-4 w-4 text-lime-600" />, 'bg-lime-50 dark:bg-lime-950/30', addSetField, 'Logic & routing'),
+      macro(AI_STEP_ID, 'AI Agent', 'Clean & normalise lead data', <Sparkles className="h-4 w-4 text-violet-600" />, 'bg-violet-50 dark:bg-violet-950/30', addAiParse, 'Enrich & AI'),
+      macro(ENRICH_STEP_ID, 'Enrich contact', 'Official email · phone', <Contact className="h-4 w-4 text-teal-600" />, 'bg-teal-50 dark:bg-teal-950/30', addDataEnrich, 'Enrich & AI'),
+      macro(SCRAPE_STEP_ID, 'Webpage scraper', "Read the lead's website", <Globe className="h-4 w-4 text-sky-600" />, 'bg-sky-50 dark:bg-sky-950/30', addWebScrape, 'Enrich & AI'),
+      macro(RESEARCH_STEP_ID, 'Web research', 'AI company intel', <Telescope className="h-4 w-4 text-indigo-600" />, 'bg-indigo-50 dark:bg-indigo-950/30', addWebResearch, 'Enrich & AI'),
+      macro(SCORE_STEP_ID, 'Lead scoring', 'Buy-intent 0-100', <Gauge className="h-4 w-4 text-yellow-600" />, 'bg-yellow-50 dark:bg-yellow-950/30', addLeadScore, 'Enrich & AI'),
+      macro(MEDIA_STEP_ID, 'AI Media', 'Generate media to attach', <Wand2 className="h-4 w-4 text-fuchsia-600" />, 'bg-fuchsia-50 dark:bg-fuchsia-950/30', addMedia, 'Enrich & AI'),
+      macro(FOLLOWUP_STEP_ID, 'Follow-up sequence', 'Touches if no reply', <ListOrdered className="h-4 w-4 text-indigo-600" />, 'bg-indigo-50 dark:bg-indigo-950/30', addFollowup, 'Automation & output'),
+      macro(HTTP_STEP_ID, 'HTTP request', 'Call any API per lead', <Webhook className="h-4 w-4 text-slate-600" />, 'bg-slate-100 dark:bg-slate-800/50', addHttpRequest, 'Automation & output'),
+      macro(CONTENT_STEP_ID, 'LinkedIn content', 'Write or AI-generate a post', <PenTool className="h-4 w-4 text-violet-600" />, 'bg-violet-50 dark:bg-violet-950/30', addLinkedInContent, 'Automation & output'),
+      macro(APPROVAL_STEP_ID, 'Approval', 'Approve before posting', <ShieldCheck className="h-4 w-4 text-green-600" />, 'bg-green-50 dark:bg-green-950/30', addPostApproval, 'Automation & output'),
+      macro(AUTOPOST_STEP_ID, 'LinkedIn auto-post', 'Recurring post to your feed', <Megaphone className="h-4 w-4 text-[#0077B5]" />, 'bg-sky-50 dark:bg-sky-950/30', addAutopost, 'Automation & output'),
+      macro(IG_AUTOPOST_STEP_ID, 'Instagram auto-post', 'Image or Reel · on a schedule', <Instagram className="h-4 w-4 text-pink-600" />, 'bg-pink-50 dark:bg-pink-950/30', addInstagramPost, 'Automation & output'),
+      macro(REPORT_STEP_ID, 'Audit report', 'PDF · attach or offer', <FileText className="h-4 w-4 text-teal-700" />, 'bg-teal-50 dark:bg-teal-950/30', addReport, 'Automation & output'),
+      macro(HUMAN_TASK_STEP_ID, 'Assign a human task', 'Pauses until someone confirms', <UserCheck className="h-4 w-4 text-amber-600" />, 'bg-amber-50 dark:bg-amber-950/30', addHumanTask, 'Automation & output'),
+      macro(LANDING_STEP_ID, 'Landing page', 'AI-written · captures leads', <LayoutTemplate className="h-4 w-4 text-emerald-700" />, 'bg-emerald-50 dark:bg-emerald-950/30', addLandingPage, 'Automation & output'),
+      macro(ZOHO_UPDATE_STEP_ID, 'Update Zoho record', 'Write back to Contacts', <DatabaseZap className="h-4 w-4 text-red-600" />, 'bg-red-50 dark:bg-red-950/30', addZohoUpdate, 'Automation & output'),
+      macro(ANALYTICS_STEP_ID, 'Analytics report', 'Daily digest', <BarChart3 className="h-4 w-4 text-cyan-600" />, 'bg-cyan-50 dark:bg-cyan-950/30', addAnalytics, 'Automation & output'),
+      macro(EXPORT_STEP_ID, 'Export results', 'CSV · download & more', <Download className="h-4 w-4 text-cyan-700" />, 'bg-cyan-50 dark:bg-cyan-950/30', addExport, 'Automation & output'),
+    ];
+
+    return (
+      <StepInsertMenu
+        x={insertMenu.x} y={insertMenu.y} position={insertMenu.position}
+        items={items} onClose={() => setInsertMenu(null)}
+      />
+    );
+  };
 
   /**
    * Right-hand "Template overview" drawer — full pipeline breakdown before you
@@ -5673,6 +5772,9 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           {testOpen ? renderTestPanel() : overviewTpl ? renderTemplateOverview() : renderEditor()}
         </div>
       </div>
+
+      {/* Step picker opened from a node's input/output "+". */}
+      {renderInsertMenu()}
 
       {/* AI Media Studio (MAGe) — generate assets, then pick from the gallery. */}
       {showMediaStudio && (

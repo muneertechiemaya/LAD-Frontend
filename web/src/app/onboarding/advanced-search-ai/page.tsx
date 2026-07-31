@@ -1196,10 +1196,15 @@ export default function AdvancedSearchAIPage() {
     const [pgIsComplete, setPgIsComplete] = useState(false);
     const [pgSuggesting, setPgSuggesting] = useState(false);  // AI suggestion loading
     const pgMessagesEndRef = useRef<HTMLDivElement>(null);
-    // The 17-key business profile (14 core + 3 optional). Persisted server-side
-    // by /api/ai-playground/chat on every turn — the hook handles the initial
-    // load + exposes the shared completeness math used by Settings and the
-    // wizard's Company step.
+    // The 22-key business profile (14 required + 8 optional). Persisted
+    // server-side by /api/ai-playground/chat on every turn — the hook handles
+    // the initial load + exposes the shared completeness math used by Settings
+    // and the wizard's Company step.
+    //
+    // This map is also the hydration allow-list (see the effect below, which
+    // iterates Object.keys) — any canonical key missing here is silently
+    // dropped on load even when the server has it. Keep it in sync with
+    // BUSINESS_PROFILE_ALL_FIELDS.
     const { profile: loadedProfile, loading: profileLoading } = useBusinessProfile();
     const [businessProfile, setBusinessProfile] = useState<Record<string, string>>({
         companyName: '', industry: '', website: '', companyDescription: '',
@@ -1207,6 +1212,12 @@ export default function AdvancedSearchAIPage() {
         icpCompanySize: '', icpLocations: '', icpPainPoints: '',
         sampleConversation: '', operatingHours: '', timezone: '',
         geographicFocus: '', valueProposition: '', competitors: '', campaignTone: '',
+        // Agent identity, CTA link and the tenant's own contact details. The
+        // chat now asks for these (flow steps 15-16 of the playground prompt);
+        // before they were absent here AND from the prompt, so they could never
+        // be captured or displayed by this surface.
+        personaName: '', personaTitle: '', bookingLink: '',
+        contactEmail: '', contactPhone: '',
     });
     const [bpHydrated, setBpHydrated] = useState(false);
     const [openSummaries, setOpenSummaries] = useState<Set<number>>(new Set());

@@ -180,6 +180,17 @@ export function buildTestRunSteps(workflowPreview: Node[], configs: Cfgs): any[]
       if (cfg) steps.push({ type: 'lead_report', title: node.title || 'Audit report', config: cfg });
       continue;
     }
+    // The two nodes the backend runs from `config` rather than from `steps`.
+    // Sending them as steps too listed each one TWICE in the timeline: once
+    // "skipped" (there is no step handler for their type) and again "ran" (from
+    // the macro pass) — with a skip reason about contacting the lead that makes
+    // no sense for a landing page.
+    //
+    // Deliberately not MACRO_STEP_IDS, which is a much wider list: AI Agent,
+    // Enrich contact and the follow-up sequence are in it and DO compile to real
+    // steps. Their skipped rows are the honest disclosure of what a test holds
+    // back, so dropping them would hide exactly what the panel promises to show.
+    if (node.id === LANDING_STEP_ID || node.id === EXPORT_STEP_ID) continue;
     // Anything that can reach the lead or your accounts: name only.
     if (node.type) steps.push({ type: node.type, title: node.title || node.type });
   }
