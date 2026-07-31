@@ -27,9 +27,13 @@ function getBrandConfig(type: string) {
   if (type === 'followup_sequence') return { bg: '#6366f1', border: '#4f46e5', glow: 'rgba(99,102,241,0.25)' };
   if (type === 'analytics_report') return { bg: '#06b6d4', border: '#0891b2', glow: 'rgba(6,182,212,0.25)' };
   if (type === 'export_results')   return { bg: '#0891b2', border: '#0e7490', glow: 'rgba(8,145,178,0.25)' };
+  if (type === 'landing_page')     return { bg: '#10b981', border: '#059669', glow: 'rgba(16,185,129,0.25)' };
   if (type === 'linkedin_content') return { bg: '#7c3aed', border: '#6d28d9', glow: 'rgba(124,58,237,0.25)' };
   if (type === 'post_approval')    return { bg: '#16a34a', border: '#15803d', glow: 'rgba(22,163,74,0.25)' };
   if (type === 'linkedin_post')    return { bg: '#0a66c2', border: '#004182', glow: 'rgba(10,102,194,0.25)' };
+  if (type === 'instagram_post')   return { bg: '#c13584', border: '#a02c6d', glow: 'rgba(193,53,132,0.25)' };
+  if (type === 'human_task')       return { bg: '#f59e0b', border: '#d97706', glow: 'rgba(245,158,11,0.25)' };
+  if (type === 'lead_report')      return { bg: '#0f766e', border: '#115e59', glow: 'rgba(15,118,110,0.25)' };
   if (type === 'web_scrape')       return { bg: '#0284c7', border: '#0369a1', glow: 'rgba(2,132,199,0.25)' };
   if (type === 'web_research')     return { bg: '#4f46e5', border: '#4338ca', glow: 'rgba(79,70,229,0.25)' };
   if (type === 'lead_score')       return { bg: '#ca8a04', border: '#a16207', glow: 'rgba(202,138,4,0.25)' };
