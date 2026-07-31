@@ -1573,10 +1573,22 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     const step = mb.step as string;
     const p: any = mb.uiPayload || {};
     if (step === 'loading' || mb.generating) return;
-    // Hand back to the manual UI on anything we can't answer — an error, or a
-    // video/keyframe phase that has no question to answer.
     if (mb.error) { setAutoMedia(false); return; }
-    if (step !== 'builder-mcq-few' && step !== 'builder-text') return;
+
+    // Steps the driver deliberately leaves alone. builder-image-output is the
+    // intended stop — picking the picture is the user's call. Brand-DNA
+    // extraction is a genuine wait, and the hook already polls it.
+    if (step === 'builder-image-output' || step === 'builder-video-progress') return;
+
+    // The brand-DNA review is a confirmation screen, not a question: the wizard
+    // parks there until something sends "Select this & start". Nothing polls it,
+    // so leaving it unanswered surfaced three minutes later as "the image
+    // service stopped responding" when the service was perfectly healthy.
+    const isConfirm = step === 'builder-brand-dna';
+    // Hand back to the manual UI on anything else we can't answer — a video or
+    // keyframe phase has no question, and pretending to work is worse than
+    // showing the real screen.
+    if (!isConfirm && step !== 'builder-mcq-few' && step !== 'builder-text') { setAutoMedia(false); return; }
 
     const key = `${step}|${p.phase || ''}|${p.question || ''}`;
     if (autoBusyRef.current || autoKeyRef.current === key) return;
@@ -1590,6 +1602,14 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     (async () => {
       const post = (configs[CONTENT_STEP_ID]?.content || configs[AUTOPOST_STEP_ID]?.content || '').trim();
       let answer = '';
+      if (isConfirm) {
+        // The exact label the worker matches on — the full studio sends the same.
+        answer = 'Select this & start';
+        setAutoMediaLog((l) => [...l, { phase: p.phase || 'Brand DNA', answer }]);
+        try { await mb.advanceStep?.(answer); } catch { /* surfaced via mb.error */ }
+        autoBusyRef.current = false;
+        return;
+      }
       try {
         const res = await fetchWithTenant('/api/campaigns/linkedin-post/media-answer', {
           method: 'POST',
@@ -1915,6 +1935,9 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             source: 'signal_detection',
             signal_query: (srcCfg.signal_query || '').trim(),
             decision_maker_titles: titles,
+            // Blank/absent = worldwide. The backend only pays for the
+            // author-location lookups when this is set.
+            location: (srcCfg.location || '').trim() || undefined,
             leadGenerationLimit: perDayN,
           },
         });
@@ -2286,6 +2309,10 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 // generator to the heading + numbered-list shape AI search cites.
                 post_format: pc.post_format === 'structured' ? 'structured' : undefined,
                 media_url: (pc.media_url || '').trim() || undefined,
+                // Read by linkedinAutopostCron → LinkedInPostMediaService: each
+                // run rewrites that run's copy as an image brief and generates
+                // from it, falling back to media_url above.
+                media_ai_generate: !!pc.media_ai_generate,
                 // The cron passes this to publishPost, which derives the MIME
                 // type from the extension — without it the filename is guessed
                 // from the URL, which loses it for signed/query-string URLs.
@@ -2799,6 +2826,24 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 onChange={(e) => setCfg(editingId, { decision_maker_titles: e.target.value })}
                 placeholder="e.g. VP Revenue Operations, Head of Sales" />
               <p className="text-[11px] text-muted-foreground">Comma-separated. Who to enrol at the companies that match the signal.</p>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-foreground">Location (optional)</label>
+              <Input value={cfg.location || ''}
+                onChange={(e) => setCfg(editingId, { location: e.target.value })}
+                placeholder="e.g. Dubai, United Arab Emirates" />
+              {/*
+                Honest about the mechanism, because the result can surprise:
+                LinkedIn cannot search posts by geography, so we search
+                worldwide and then keep only the people whose own profile says
+                they are there. A narrow location can therefore come back empty
+                even when the signal exists somewhere.
+              */}
+              <p className="text-[11px] text-muted-foreground">
+                Leave blank to search worldwide. LinkedIn can’t filter posts by place, so Mr LAD
+                searches everywhere and then keeps only people whose profile location matches —
+                a very specific place may find fewer leads.
+              </p>
             </div>
             <p className="text-xs text-muted-foreground">Runs daily until the campaign ends, enrolling up to {perDay}/day of newly-signalled leads.</p>
           </>)}
@@ -3449,6 +3494,22 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
 
                     <input className={field} value={cfg.media_url || ''} onChange={(e) => setCfg(eid, { media_url: e.target.value })}
                       placeholder="…or paste an image / video URL" />
+
+                    {/* The visual counterpart of "write a fresh post". Without
+                        it a recurring series posts new copy against the same
+                        picture every time, which reads as automated faster than
+                        repeated words do. */}
+                    <label className="flex items-start gap-2.5 rounded-lg border border-border p-2.5 cursor-pointer hover:bg-muted/30 transition-colors">
+                      <input type="checkbox" className="mt-0.5 h-4 w-4" checked={!!cfg.media_ai_generate}
+                        onChange={(e) => setCfg(eid, { media_ai_generate: e.target.checked })} />
+                      <span className="min-w-0">
+                        <span className="block text-sm text-foreground">Make a fresh image with AI each time</span>
+                        <span className="block text-[11px] text-muted-foreground">
+                          Each scheduled run turns that run&apos;s post copy into an image brief and generates
+                          a new picture from it. The image above is the fallback if a run can&apos;t produce one.
+                        </span>
+                      </span>
+                    </label>
                   </div>
                 );
               })()}
