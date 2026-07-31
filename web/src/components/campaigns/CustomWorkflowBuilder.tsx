@@ -2309,6 +2309,10 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 // generator to the heading + numbered-list shape AI search cites.
                 post_format: pc.post_format === 'structured' ? 'structured' : undefined,
                 media_url: (pc.media_url || '').trim() || undefined,
+                // Read by linkedinAutopostCron → LinkedInPostMediaService: each
+                // run rewrites that run's copy as an image brief and generates
+                // from it, falling back to media_url above.
+                media_ai_generate: !!pc.media_ai_generate,
                 // The cron passes this to publishPost, which derives the MIME
                 // type from the extension — without it the filename is guessed
                 // from the URL, which loses it for signed/query-string URLs.
@@ -3490,6 +3494,22 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
 
                     <input className={field} value={cfg.media_url || ''} onChange={(e) => setCfg(eid, { media_url: e.target.value })}
                       placeholder="…or paste an image / video URL" />
+
+                    {/* The visual counterpart of "write a fresh post". Without
+                        it a recurring series posts new copy against the same
+                        picture every time, which reads as automated faster than
+                        repeated words do. */}
+                    <label className="flex items-start gap-2.5 rounded-lg border border-border p-2.5 cursor-pointer hover:bg-muted/30 transition-colors">
+                      <input type="checkbox" className="mt-0.5 h-4 w-4" checked={!!cfg.media_ai_generate}
+                        onChange={(e) => setCfg(eid, { media_ai_generate: e.target.checked })} />
+                      <span className="min-w-0">
+                        <span className="block text-sm text-foreground">Make a fresh image with AI each time</span>
+                        <span className="block text-[11px] text-muted-foreground">
+                          Each scheduled run turns that run&apos;s post copy into an image brief and generates
+                          a new picture from it. The image above is the fallback if a run can&apos;t produce one.
+                        </span>
+                      </span>
+                    </label>
                   </div>
                 );
               })()}
