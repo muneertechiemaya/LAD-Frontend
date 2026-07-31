@@ -1915,6 +1915,9 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             source: 'signal_detection',
             signal_query: (srcCfg.signal_query || '').trim(),
             decision_maker_titles: titles,
+            // Blank/absent = worldwide. The backend only pays for the
+            // author-location lookups when this is set.
+            location: (srcCfg.location || '').trim() || undefined,
             leadGenerationLimit: perDayN,
           },
         });
@@ -2799,6 +2802,24 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 onChange={(e) => setCfg(editingId, { decision_maker_titles: e.target.value })}
                 placeholder="e.g. VP Revenue Operations, Head of Sales" />
               <p className="text-[11px] text-muted-foreground">Comma-separated. Who to enrol at the companies that match the signal.</p>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-foreground">Location (optional)</label>
+              <Input value={cfg.location || ''}
+                onChange={(e) => setCfg(editingId, { location: e.target.value })}
+                placeholder="e.g. Dubai, United Arab Emirates" />
+              {/*
+                Honest about the mechanism, because the result can surprise:
+                LinkedIn cannot search posts by geography, so we search
+                worldwide and then keep only the people whose own profile says
+                they are there. A narrow location can therefore come back empty
+                even when the signal exists somewhere.
+              */}
+              <p className="text-[11px] text-muted-foreground">
+                Leave blank to search worldwide. LinkedIn can’t filter posts by place, so Mr LAD
+                searches everywhere and then keeps only people whose profile location matches —
+                a very specific place may find fewer leads.
+              </p>
             </div>
             <p className="text-xs text-muted-foreground">Runs daily until the campaign ends, enrolling up to {perDay}/day of newly-signalled leads.</p>
           </>)}
