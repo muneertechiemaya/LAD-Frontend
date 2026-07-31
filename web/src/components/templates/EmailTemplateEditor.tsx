@@ -901,9 +901,9 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
                   </div>
                   <button
                     onClick={() => set('is_active', !template.is_active)}
-                    className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${template.is_active ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-700'}`}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors cursor-pointer ${template.is_active ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-700'}`}
                   >
-                    <span className={`absolute top-1 w-4 h-4 bg-white dark:bg-gray-200 rounded-full shadow transition-transform ${template.is_active ? 'translate-x-6' : 'translate-x-1'}`} />
+                    <span className={`inline-block w-4 h-4 bg-white dark:bg-gray-200 rounded-full shadow transition-transform ${template.is_active ? 'translate-x-6' : 'translate-x-1'}`} />
                   </button>
                 </div>
 
