@@ -2,7 +2,7 @@ import React from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 import { StepType } from '@/types/campaign';
 import { getNodeIcon } from './workflowNodeUtils';
-import { Trash2, Settings, Tag } from 'lucide-react';
+import { Trash2, Settings, Tag, Plus } from 'lucide-react';
 import { useOnboardingStore } from '@/store/onboardingStore';
 
 /**
@@ -55,9 +55,30 @@ export function CustomWorkflowNode({ data, id, selected }: NodeProps) {
   const canDelete = stepType !== 'start' && stepType !== 'end' && stepType !== 'tag';
   const canEdit = stepType !== 'start' && stepType !== 'end' && stepType !== 'tag';
 
+  // Insert affordances ("+" on each side of the circle). The fanned-out branch
+  // children of a Multi-condition node are drawn from its config, not from the
+  // step list, so there is no slot to insert around them. Nothing may be
+  // inserted ahead of the lead source (or of 'start') — leads have to exist
+  // before any step can act on them.
+  const isBranchNode = !!data?._branch;
+  const isEntry = stepType === 'start' || stepType === 'lead_generation';
+  const canInsertBefore = !isBranchNode && !isEntry;
+  const canInsertAfter = !isBranchNode && stepType !== 'start' && stepType !== 'end';
+
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (canDelete && id) removeWorkflowStep(id);
+  };
+
+  /** Ask the host canvas to open its step picker for this slot. It owns the
+   *  palette (and any per-node launch config it seeds), so the node only
+   *  reports WHERE the new step goes. */
+  const requestInsert = (position: 'before' | 'after') => (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    window.dispatchEvent(new CustomEvent('addWorkflowStepAt', {
+      detail: { anchorId: id, position, x: r.left + r.width / 2, y: r.bottom },
+    }));
   };
 
   const handleEdit = (e: React.MouseEvent) => {
@@ -91,7 +112,7 @@ export function CustomWorkflowNode({ data, id, selected }: NodeProps) {
   return (
     <div
       onClick={canEdit ? handleEdit : undefined}
-      className="mk-node-wrap"
+      className={`mk-node-wrap${selected ? ' mk-node-active' : ''}`}
       style={{ cursor: canEdit ? 'pointer' : 'default' }}
     >
       {/* Handles */}
@@ -124,6 +145,29 @@ export function CustomWorkflowNode({ data, id, selected }: NodeProps) {
             </button>
           )}
         </div>
+      )}
+
+      {/* Add-a-step affordances — left = input (runs before), right = output
+          (runs after). Revealed on hover, and kept visible while selected. */}
+      {canInsertBefore && (
+        <button
+          onClick={requestInsert('before')}
+          className="mk-io mk-io-in"
+          style={{ left: `calc(50% - ${nodeSize / 2 + 28}px)`, top: nodeSize / 2 - 11 }}
+          title="Add input — a step that runs before this one"
+        >
+          <Plus className="w-3 h-3" />
+        </button>
+      )}
+      {canInsertAfter && (
+        <button
+          onClick={requestInsert('after')}
+          className="mk-io mk-io-out"
+          style={{ right: `calc(50% - ${nodeSize / 2 + 28}px)`, top: nodeSize / 2 - 11 }}
+          title="Add output — a step that runs after this one"
+        >
+          <Plus className="w-3 h-3" />
+        </button>
       )}
 
       {/* Selected ring */}
@@ -228,9 +272,43 @@ export function CustomWorkflowNode({ data, id, selected }: NodeProps) {
           transform: scale(1.08) !important;
           box-shadow: 0 6px 20px ${brand.glow}, 0 3px 10px rgba(0,0,0,0.12) !important;
         }
-        .mk-node-wrap:hover .mk-actions {
+        .mk-node-wrap:hover .mk-actions,
+        .mk-node-active .mk-actions {
           opacity: 1;
           transform: translateX(-50%) translateY(0);
+        }
+        .mk-node-wrap:hover .mk-io,
+        .mk-node-active .mk-io {
+          opacity: 1;
+          transform: scale(1);
+          pointer-events: auto;
+        }
+
+        /* Input / output "+" buttons flanking the circle */
+        .mk-io {
+          position: absolute;
+          width: 22px;
+          height: 22px;
+          border-radius: 50%;
+          border: 1.5px solid #e5e7eb;
+          background: #fff;
+          color: #6b7280;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          opacity: 0;
+          transform: scale(0.7);
+          pointer-events: none;
+          transition: all 0.18s ease;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+          z-index: 31;
+        }
+        .mk-io:hover {
+          background: ${brand.bg};
+          border-color: ${brand.bg};
+          color: #fff;
+          transform: scale(1.15);
         }
 
         .mk-actions {
