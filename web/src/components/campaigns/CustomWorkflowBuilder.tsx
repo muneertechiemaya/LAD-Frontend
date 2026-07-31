@@ -1589,11 +1589,18 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     // fail to answer.
     if (!mb.uiPayload) return;
 
-    // The brand-DNA review is a confirmation screen, not a question: the wizard
-    // parks there until something sends "Select this & start". Nothing polls it,
-    // so leaving it unanswered surfaced three minutes later as "the image
-    // service stopped responding" when the service was perfectly healthy.
-    const isConfirm = step === 'builder-brand-dna';
+    // Steps that are not questions but still need a specific answer sent, or
+    // the wizard parks there forever — nothing polls them.
+    //   brand-dna      — a review screen; it waits for this exact label.
+    //   trend-options  — the creative-direction picker Phase 1.5 ends on. The
+    //                    drawer cannot render it at all, and the post copy is
+    //                    already the brief, so take the skip.
+    const CANNED: Record<string, string> = {
+      'builder-brand-dna': 'Select this & start',
+      'builder-trend-options': 'Start Directly (Skip Trends)',
+    };
+    const canned = CANNED[step];
+    const isConfirm = !!canned;
     // Hand back to the manual UI on anything else we can't answer — a video or
     // keyframe phase has no question, and pretending to work is worse than
     // showing the real screen.
@@ -1611,10 +1618,10 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     (async () => {
       const post = (configs[CONTENT_STEP_ID]?.content || configs[AUTOPOST_STEP_ID]?.content || '').trim();
       let answer = '';
-      if (isConfirm) {
-        // The exact label the worker matches on — the full studio sends the same.
-        answer = 'Select this & start';
-        setAutoMediaLog((l) => [...l, { phase: p.phase || 'Brand DNA', answer }]);
+      if (canned) {
+        // The exact labels the worker matches on — the full studio sends these too.
+        answer = canned;
+        setAutoMediaLog((l) => [...l, { phase: p.phase || 'Confirm', answer }]);
         try { await mb.advanceStep?.(answer); } catch { /* surfaced via mb.error */ }
         autoBusyRef.current = false;
         return;

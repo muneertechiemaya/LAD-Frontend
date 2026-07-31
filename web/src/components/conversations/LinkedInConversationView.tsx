@@ -687,8 +687,7 @@ export function LinkedInConversationView({
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 md:h-8 md:w-8 rounded-full flex-shrink-0"
-            className="h-8 w-8 rounded-full"
+            className="h-8 w-8 rounded-full flex-shrink-0"
             onClick={() => setBroadcastOpen(true)}
             title="New Broadcast"
           >
