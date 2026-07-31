@@ -454,16 +454,16 @@ function ComposeBroadcastDialog({
   return (
     <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) reset(); }}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+        <DialogHeader className="flex-col items-start lg:flex-row lg:items-center gap-1 lg:gap-4">
           <DialogTitle>New broadcast</DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-[13px] sm:text-sm pr-6 lg:pr-0">
             Send the same message to many recipients via a connected Gmail or Outlook account.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3">
+        <div className="space-y-3 px-4 sm:px-8">
           <div>
-            <label className="text-sm font-medium">From</label>
+            <label className="text-sm font-medium block mb-2">From</label>
             <Select value={accountId} onValueChange={setAccountId}>
               <SelectTrigger>
                 <SelectValue placeholder="Pick a connected account" />
@@ -485,13 +485,13 @@ function ComposeBroadcastDialog({
           </div>
 
           <div>
-            <label className="text-sm font-medium">Subject</label>
+            <label className="text-sm font-medium block mb-2">Subject</label>
             <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Welcome to Mr LAD" />
           </div>
 
           {/* Recipients — tab toggle between manual list and saved group */}
           <div>
-            <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center justify-between mb-2">
               <label className="text-sm font-medium">Recipients</label>
               <div
                 role="tablist"
@@ -535,7 +535,7 @@ function ComposeBroadcastDialog({
                   rows={3}
                   placeholder={`alice@example.com, "Bob Smith" <bob@example.com>\nor one per line`}
                 />
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="mt-1.5 text-xs text-muted-foreground">
                   {recipients.length} parsed. Names in{' '}
                   <code>{'"Name" <email>'}</code> format are picked up too.
                 </p>
@@ -576,7 +576,7 @@ function ComposeBroadcastDialog({
                   </SelectContent>
                 </Select>
                 {selectedGroup && (
-                  <p className="mt-1 text-xs text-muted-foreground">
+                  <p className="mt-1.5 text-xs text-muted-foreground">
                     Sending to{' '}
                     <span className="font-medium">{selectedGroup.name}</span>{' '}
                     ({selectedGroup.member_count} recipient
@@ -590,7 +590,7 @@ function ComposeBroadcastDialog({
 
           {/* Start from a saved template — loads its HTML into the editor below */}
           <div>
-            <label className="text-sm font-medium">Template</label>
+            <label className="text-sm font-medium block mb-2">Template</label>
             <Select value={templateId} onValueChange={applyTemplate}>
               <SelectTrigger>
                 <SelectValue placeholder={templates.length ? 'Start from a saved template (optional)' : 'No saved templates yet'} />
@@ -610,7 +610,7 @@ function ComposeBroadcastDialog({
           </div>
 
           <div>
-            <label className="text-sm font-medium">Body</label>
+            <label className="text-sm font-medium block mb-2">Body</label>
             <div className="mt-1 rounded-lg border border-input bg-muted/20 p-3">
               <DragDropEmailEditor
                 key={editorKey}
@@ -619,7 +619,7 @@ function ComposeBroadcastDialog({
                 onContentChange={setBody}
               />
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="mt-2.5 text-xs text-muted-foreground">
               Build the email with blocks (header, image, button, signature…). Use{' '}
               <code>{'{{first_name}}'}</code> or <code>{'{first_name}'}</code> to personalise —
               unknown placeholders are removed before sending.
