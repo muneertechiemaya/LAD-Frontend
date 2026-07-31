@@ -1573,10 +1573,22 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     const step = mb.step as string;
     const p: any = mb.uiPayload || {};
     if (step === 'loading' || mb.generating) return;
-    // Hand back to the manual UI on anything we can't answer — an error, or a
-    // video/keyframe phase that has no question to answer.
     if (mb.error) { setAutoMedia(false); return; }
-    if (step !== 'builder-mcq-few' && step !== 'builder-text') return;
+
+    // Steps the driver deliberately leaves alone. builder-image-output is the
+    // intended stop — picking the picture is the user's call. Brand-DNA
+    // extraction is a genuine wait, and the hook already polls it.
+    if (step === 'builder-image-output' || step === 'builder-video-progress') return;
+
+    // The brand-DNA review is a confirmation screen, not a question: the wizard
+    // parks there until something sends "Select this & start". Nothing polls it,
+    // so leaving it unanswered surfaced three minutes later as "the image
+    // service stopped responding" when the service was perfectly healthy.
+    const isConfirm = step === 'builder-brand-dna';
+    // Hand back to the manual UI on anything else we can't answer — a video or
+    // keyframe phase has no question, and pretending to work is worse than
+    // showing the real screen.
+    if (!isConfirm && step !== 'builder-mcq-few' && step !== 'builder-text') { setAutoMedia(false); return; }
 
     const key = `${step}|${p.phase || ''}|${p.question || ''}`;
     if (autoBusyRef.current || autoKeyRef.current === key) return;
@@ -1590,6 +1602,14 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     (async () => {
       const post = (configs[CONTENT_STEP_ID]?.content || configs[AUTOPOST_STEP_ID]?.content || '').trim();
       let answer = '';
+      if (isConfirm) {
+        // The exact label the worker matches on — the full studio sends the same.
+        answer = 'Select this & start';
+        setAutoMediaLog((l) => [...l, { phase: p.phase || 'Brand DNA', answer }]);
+        try { await mb.advanceStep?.(answer); } catch { /* surfaced via mb.error */ }
+        autoBusyRef.current = false;
+        return;
+      }
       try {
         const res = await fetchWithTenant('/api/campaigns/linkedin-post/media-answer', {
           method: 'POST',
