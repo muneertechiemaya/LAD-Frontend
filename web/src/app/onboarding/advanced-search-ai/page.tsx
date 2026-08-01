@@ -47,6 +47,7 @@ import {
     useBilling,
     useBusinessProfile,
     computeCompleteness,
+    computeOfferCompleteness,
     type BusinessProfile,
 } from '@lad/frontend-features/ai-icp-assistant';
 import { getCampaign, updateCampaign, updateCampaignSteps, startCampaign } from '@lad/frontend-features/campaigns';
@@ -6735,6 +6736,26 @@ export default function AdvancedSearchAIPage() {
                                               style={{ width: `${pct}%` }}
                                             />
                                             </div>
+
+                                            {/* Offer progress — shown only once the 14 are done, which is
+                                                also when the chat starts asking the offer questions. Without
+                                                it the bar reads 100% while the assistant carries on asking,
+                                                which looks like a bug. Separate denominator on purpose: these
+                                                fields only matter to generated pages and reports. */}
+                                            {(() => {
+                                                const o = computeOfferCompleteness(businessProfile as BusinessProfile);
+                                                if (!pgIsComplete && o.filled === 0) return null;
+                                                return (
+                                                    <div className="mt-2 flex justify-between items-center">
+                                                        <span className="text-[11px] font-semibold text-gray-400 dark:text-gray-500">
+                                                            Offer details <span className="font-normal">(for landing pages &amp; reports)</span>
+                                                        </span>
+                                                        <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500">
+                                                            {o.filled}/{o.total}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })()}
 
                                             {/* Edit affordance — once any field is filled, the tenant can jump
                                                 to the full editor (Settings → Business Profile) to change any of
