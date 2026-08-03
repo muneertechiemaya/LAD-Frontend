@@ -342,11 +342,11 @@ export default function TemplatesPage() {
 
   // ── Header create button: label + action adapt to active view ─
   const createButton = (() => {
-    if (activeTab === 'email') return { label: '+ Create Template', icon: null, onClick: () => router.push('/conversations/templates/create') };
+    if (activeTab === 'email') return { label: '+ Create Email Template', icon: null, onClick: () => router.push('/conversations/templates/create') };
     if (activeTab === 'whatsapp' && waMode === 'business') return { label: '+ Create WhatsApp Template', icon: <MessageSquare className="w-4 h-4" />, onClick: () => router.push('/conversations/templates/create/whatsapp') };
-    if (activeTab === 'whatsapp' && waMode === 'personal') return { label: '+ New Personal Template', icon: <MessageSquare className="w-4 h-4" />, onClick: () => { setWapaEditing(null); setWapaModalOpen(true); } };
-    if (activeTab === 'linkedin') return { label: '+ New LinkedIn Template', icon: <Linkedin className="w-4 h-4" />, onClick: () => { setLiEditing(null); setLiModalOpen(true); } };
-    return { label: '+ New Instagram Template', icon: <Instagram className="w-4 h-4" />, onClick: () => { setIgEditing(null); setIgModalOpen(true); } };
+    if (activeTab === 'whatsapp' && waMode === 'personal') return { label: '+ Create WhatsApp Template', icon: <MessageSquare className="w-4 h-4" />, onClick: () => { setWapaEditing(null); setWapaModalOpen(true); } };
+    if (activeTab === 'linkedin') return { label: '+ Create LinkedIn Template', icon: <Linkedin className="w-4 h-4" />, onClick: () => { setLiEditing(null); setLiModalOpen(true); } };
+    return { label: '+ Create Instagram Template', icon: <Instagram className="w-4 h-4" />, onClick: () => { setIgEditing(null); setIgModalOpen(true); } };
   })();
 
   const TABS: { key: TabType; label: string }[] = [
