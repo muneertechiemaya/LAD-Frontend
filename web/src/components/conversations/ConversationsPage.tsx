@@ -214,7 +214,7 @@ export function ConversationsPage() {
               key={id}
               onClick={() => setActiveTab(id)}
               className={cn(
-                'flex items-center gap-1.5 px-3 h-7 rounded-md text-xs font-medium transition-all shrink-0 whitespace-nowrap',
+                'group flex items-center gap-1.5 px-3 h-7 rounded-md text-xs font-medium transition-all shrink-0 whitespace-nowrap',
                 activeTab === id
                   ? 'text-white shadow-sm'
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted'
@@ -225,6 +225,9 @@ export function ConversationsPage() {
                 channel={sublabel as any}
                 size={16}
                 overrideColor={activeTab === id ? '#ffffff' : undefined}
+                className={cn(
+                  id === 'linkedin' && activeTab !== id && 'dark:group-hover:[&_svg]:!text-white'
+                )}
               />
               {label}
             </button>
