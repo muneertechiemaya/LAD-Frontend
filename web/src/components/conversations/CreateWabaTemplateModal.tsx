@@ -8,6 +8,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
 
@@ -323,11 +326,11 @@ export function CreateWabaTemplateModal({ open, onOpenChange, onCreated }: Creat
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-h-[90vh] flex flex-col gap-0 p-0">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b">
+      <DialogContent className="sm:w-[90vw] sm:h-[90vh] flex flex-col p-0 overflow-hidden">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b flex-col items-start gap-1">
           <DialogTitle className="flex items-center gap-2">
             Create WhatsApp Template
-            <Badge variant="outline" className="text-[10px]">WABA</Badge>
+            <Badge variant="outline" className="hidden sm:inline-flex text-[10px]">WABA</Badge>
           </DialogTitle>
           <p className="text-xs text-muted-foreground mt-1">
             Templates must be approved by Meta before use. Approval usually takes a few minutes.
@@ -391,13 +394,18 @@ export function CreateWabaTemplateModal({ open, onOpenChange, onCreated }: Creat
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs font-medium">Language <span className="text-red-500">*</span></label>
-                    <select
-                      value={language}
-                      onChange={e => setLanguage(e.target.value)}
-                      className="w-full h-8 px-2 border border-input rounded-md text-sm bg-background focus:outline-none focus:ring-1 focus:ring-ring"
-                    >
-                      {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
-                    </select>
+                    <Select value={language} onValueChange={setLanguage}>
+                      <SelectTrigger className="w-full h-8 text-sm">
+                        <SelectValue placeholder="Select language" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {LANGUAGES.map(l => (
+                          <SelectItem key={l.code} value={l.code}>
+                            {l.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
@@ -613,15 +621,19 @@ export function CreateWabaTemplateModal({ open, onOpenChange, onCreated }: Creat
                 {buttons.map((btn) => (
                   <div key={btn.id} className="p-3 border border-border rounded-lg space-y-2">
                     <div className="flex items-center gap-2">
-                      <select
+                      <Select
                         value={btn.type}
-                        onChange={e => updateButton(btn.id, { type: e.target.value as ButtonType })}
-                        className="h-7 px-2 border border-input rounded text-xs bg-background focus:outline-none"
+                        onValueChange={val => updateButton(btn.id, { type: val as ButtonType })}
                       >
-                        <option value="QUICK_REPLY">Quick Reply</option>
-                        <option value="URL">URL</option>
-                        <option value="PHONE_NUMBER">Phone Number</option>
-                      </select>
+                        <SelectTrigger className="h-7 text-xs w-[130px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="QUICK_REPLY">Quick Reply</SelectItem>
+                          <SelectItem value="URL">URL</SelectItem>
+                          <SelectItem value="PHONE_NUMBER">Phone Number</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <Input
                         placeholder="Button label"
                         value={btn.text}
@@ -658,19 +670,19 @@ export function CreateWabaTemplateModal({ open, onOpenChange, onCreated }: Creat
             <div className="space-y-4">
               <div className="max-w-xs mx-auto">
                 {/* Phone mock */}
-                <div className="bg-[#e5ddd5] rounded-2xl p-4 min-h-[200px]">
-                  <div className="bg-white rounded-xl shadow-sm overflow-hidden max-w-[280px] mx-auto">
+                <div className="bg-[#e5ddd5] dark:bg-[#1a202c] rounded-2xl p-4 min-h-[200px]">
+                  <div className="bg-white dark:bg-[#0b142e] rounded-xl shadow-sm overflow-hidden max-w-[280px] mx-auto border dark:border-[#262831]">
                     {/* Header */}
                     {headerFmt !== 'NONE' && (
-                      <div className="bg-slate-100 px-3 py-2 border-b border-slate-200">
+                      <div className="bg-slate-100 dark:bg-[#151f38] px-3 py-2 border-b border-slate-200 dark:border-[#262831]">
                         {headerFmt === 'TEXT' ? (
-                          <p className="text-sm font-semibold text-slate-800">{previewHeader}</p>
+                          <p className="text-sm font-semibold text-slate-800 dark:text-white">{previewHeader}</p>
                         ) : (
-                          <div className="flex items-center gap-2 text-slate-500 text-xs">
+                          <div className="flex items-center gap-2 text-slate-500 dark:text-slate-300 text-xs">
                             <span className="uppercase font-mono">{headerFmt}</span>
                             {uploadStatus === 'done' && mediaFileName
-                              ? <span className="text-green-600 truncate max-w-[160px]">{mediaFileName}</span>
-                              : <span className="text-amber-500">Upload required</span>}
+                              ? <span className="text-green-600 dark:text-green-400 truncate max-w-[160px]">{mediaFileName}</span>
+                              : <span className="text-amber-500 dark:text-amber-400">Upload required</span>}
                           </div>
                         )}
                       </div>
@@ -678,23 +690,23 @@ export function CreateWabaTemplateModal({ open, onOpenChange, onCreated }: Creat
 
                     {/* Body */}
                     <div className="px-3 py-3">
-                      <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">
-                        {previewBody || <span className="text-slate-400 italic">Body text appears here...</span>}
+                      <p className="text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">
+                        {previewBody || <span className="text-slate-400 dark:text-slate-300 italic">Body text appears here...</span>}
                       </p>
                     </div>
 
                     {/* Footer */}
                     {footerText && (
                       <div className="px-3 pb-2">
-                        <p className="text-xs text-slate-400">{footerText}</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-300/70">{footerText}</p>
                       </div>
                     )}
 
                     {/* Buttons */}
                     {buttons.filter(b => b.text).length > 0 && (
-                      <div className="border-t border-slate-100">
+                      <div className="border-t border-slate-100 dark:border-[#262831]">
                         {buttons.filter(b => b.text).map(b => (
-                          <div key={b.id} className="px-3 py-2 text-center text-xs text-blue-600 font-medium border-b border-slate-100 last:border-0">
+                          <div key={b.id} className="px-3 py-2 text-center text-xs text-blue-600 dark:text-blue-400 font-medium border-b border-slate-100 dark:border-[#262831] last:border-0">
                             {b.text}
                           </div>
                         ))}
@@ -704,11 +716,11 @@ export function CreateWabaTemplateModal({ open, onOpenChange, onCreated }: Creat
                 </div>
 
                 {/* Meta submission summary */}
-                <div className="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-1 text-xs">
-                  <p><span className="text-slate-500">Name:</span> <span className="font-mono font-semibold">{safeName || '—'}</span></p>
-                  <p><span className="text-slate-500">Language:</span> {LANGUAGES.find(l => l.code === language)?.label}</p>
-                  <p><span className="text-slate-500">Category:</span> {category}</p>
-                  <p><span className="text-slate-500">Components:</span> {buildComponents().map((c: any) => c.type).join(', ') || '—'}</p>
+                <div className="mt-4 p-3 bg-slate-50 dark:bg-[#1a2a43] rounded-lg border border-slate-200 dark:border-[#262831] space-y-1 text-xs">
+                  <p><span className="text-slate-500 dark:text-slate-300">Name:</span> <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">{safeName || '—'}</span></p>
+                  <p><span className="text-slate-500 dark:text-slate-300">Language:</span> <span className="text-slate-800 dark:text-slate-200">{LANGUAGES.find(l => l.code === language)?.label}</span></p>
+                  <p><span className="text-slate-500 dark:text-slate-300">Category:</span> <span className="text-slate-800 dark:text-slate-200">{category}</span></p>
+                  <p><span className="text-slate-500 dark:text-slate-300">Components:</span> <span className="text-slate-800 dark:text-slate-200">{buildComponents().map((c: any) => c.type).join(', ') || '—'}</span></p>
                 </div>
               </div>
             </div>
@@ -716,7 +728,6 @@ export function CreateWabaTemplateModal({ open, onOpenChange, onCreated }: Creat
         </div>
 
         <DialogFooter className="px-6 py-4 border-t">
-          <Button variant="ghost" onClick={handleClose} disabled={submitting}>Cancel</Button>
           {!result?.success && (
             <Button onClick={handleSubmit} disabled={!canSubmit || submitting}>
               {submitting

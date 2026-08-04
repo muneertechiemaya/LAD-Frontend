@@ -13,14 +13,24 @@
  *   active   → automated follow-up sent     → chat enabled
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Send, RefreshCw, Loader2, MessageSquare, Linkedin, Clock, CheckCircle, Zap, Lock, ChevronLeft } from 'lucide-react';
+import { Send, RefreshCw, Loader2, MessageSquare, Linkedin, Clock, CheckCircle, Zap, Lock, ChevronLeft, Search, MoreVertical, Trash2, X, Film, Music, FileText, Image as ImageIcon, Megaphone } from 'lucide-react';
+import LinkedInBroadcastModal from './LinkedInBroadcastModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter,
+  AlertDialogTitle, AlertDialogDescription, AlertDialogCancel,
+} from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
 import { LinkedInFollowupComposer } from './LinkedInFollowupComposer';
 import { LinkedInContextPanel } from './LinkedInContextPanel';
 import { LinkedInChatToolbar } from './LinkedInChatToolbar';
+import type { InsertTemplatePayload } from './LinkedInChatToolbar';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -31,6 +41,16 @@ interface LinkedInContact {
   name: string;
   avatar?: string | null;
   headline?: string | null;
+  // Surfaced by the backend merge so the chat-toolbar template insert can
+  // substitute {{company}} client-side (backend fills it as a backstop).
+  company?: string | null;
+}
+
+/** A template attachment staged in the composer before send. */
+interface PendingMedia {
+  url: string;
+  type?: string | null;
+  filename?: string | null;
 }
 
 interface LinkedInConversation {
@@ -65,6 +85,45 @@ function li(url: string) {
   return `${url}${url.includes('?') ? '&' : '?'}channel=linkedin`;
 }
 
+/**
+ * Substitute {{var}} placeholders in a template body with the open
+ * conversation's lead data, so inserting a template shows the FINAL text (not a
+ * literal `{{first_name}}`). Only the vars we can resolve from the contact are
+ * filled; anything else is left intact for the backend's substitution backstop
+ * to fill on send (so we never guess and never clobber a value the server knows).
+ */
+function substituteLeadVars(text: string, contact?: LinkedInContact | null): string {
+  if (!text || !contact) return text;
+  const full = (contact.name || '').trim();
+  const first = full.split(/\s+/)[0] || '';
+  const last = full.split(/\s+/).slice(1).join(' ') || '';
+  const title = (contact.headline || '').trim();
+  const company = (contact.company || '').trim();
+
+  const sub = (src: string, key: string, value: string): string =>
+    value ? src.replace(new RegExp(`\\{\\{?\\s*${key}\\s*\\}\\}?`, 'gi'), value) : src;
+
+  let out = text;
+  out = sub(out, 'first_name', first);
+  out = sub(out, 'last_name', last);
+  out = sub(out, 'name', full);
+  out = sub(out, 'title', title);
+  out = sub(out, 'headline', title);
+  out = sub(out, 'company(?:_name)?', company);
+  return out;
+}
+
+/** Icon for a staged attachment chip, chosen from the media type / filename. */
+function MediaChipIcon({ type, filename }: { type?: string | null; url?: string; filename?: string | null }) {
+  const t = (type || '').toLowerCase();
+  const ext = (filename || '').split('.').pop()?.toLowerCase() || '';
+  const isImage = t.startsWith('image') || ['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext);
+  const isVideo = t.startsWith('video') || ['mp4', 'mov', 'webm', 'm4v'].includes(ext);
+  const isAudio = t.startsWith('audio') || ['mp3', 'm4a', 'wav', 'ogg', 'oga'].includes(ext);
+  const Icon = isImage ? ImageIcon : isVideo ? Film : isAudio ? Music : FileText;
+  return <Icon className="w-4 h-4 flex-shrink-0 text-blue-600" />;
+}
+
 // ─── Status badge config ──────────────────────────────────────────────────────
 
 const STATUS_CONFIG: Record<ConnectionStatus, {
@@ -77,22 +136,26 @@ const STATUS_CONFIG: Record<ConnectionStatus, {
   pending: {
     label:      'Awaiting acceptance',
     icon:       <Clock className="w-3 h-3" />,
-    dotClass:   'bg-slate-300',
-    badgeClass: 'bg-slate-100 text-slate-500',
+    dotClass:   'bg-slate-300 dark:bg-slate-500',
+    badgeClass: 'bg-slate-100 text-slate-500 dark:bg-slate-800/80 dark:text-slate-300',
     bannerText: 'Connection request sent — chat will be available once they accept.',
   },
   accepted: {
     label:      'Connected',
     icon:       <CheckCircle className="w-3 h-3" />,
     dotClass:   'bg-amber-400',
-    badgeClass: 'bg-amber-50 text-amber-700',
-    bannerText: 'Connection accepted! Chat will be enabled after the automated follow-up is sent.',
+    badgeClass: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-500',
+    // Empty — chat is now unlocked immediately on acceptance. Sending any
+    // message records CONTACTED on the backend, which cancels the workflow
+    // scheduler's automated follow-up so there's no duplicate. The
+    // FollowupComposer above the chat still offers AI/template shortcuts.
+    bannerText: '',
   },
   active: {
     label:      'Active',
     icon:       <Zap className="w-3 h-3" />,
     dotClass:   'bg-emerald-500',
-    badgeClass: 'bg-emerald-50 text-emerald-700',
+    badgeClass: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-500',
     bannerText: '',
   },
 };
@@ -199,6 +262,25 @@ function relativeTime(isoString: string): string {
   }
 }
 
+// Exact, absolute date + time for message bubbles (e.g. "Jul 7, 2026, 3:42 PM").
+// Used instead of relative "Xm ago" so the precise send time is always visible.
+function exactDateTime(isoString: string): string {
+  if (!isoString) return '';
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleString(undefined, {
+      year:   'numeric',
+      month:  'short',
+      day:    'numeric',
+      hour:   'numeric',
+      minute: '2-digit',
+    });
+  } catch {
+    return '';
+  }
+}
+
 // ─── Conversation list item ───────────────────────────────────────────────────
 
 function ConvListItem({
@@ -219,8 +301,8 @@ function ConvListItem({
       className={cn(
         'w-full flex items-start gap-3 px-4 py-3 text-left transition-colors',
         isSelected
-          ? 'bg-blue-50 border-l-2 border-blue-600'
-          : 'hover:bg-slate-50 border-l-2 border-transparent',
+          ? 'bg-blue-50 dark:bg-[#1A294C] border-l-2 border-blue-600 dark:border-blue-500'
+          : 'hover:bg-slate-200 dark:hover:bg-[#132242] border-l-2 border-transparent',
         isPending && 'opacity-70',
       )}
     >
@@ -229,7 +311,7 @@ function ConvListItem({
         <ContactAvatar contact={conv.contact} />
         <span
           className={cn(
-            'absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white',
+            'absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-[#0C162F]',
             cfg.dotClass,
           )}
         />
@@ -240,7 +322,7 @@ function ConvListItem({
         <div className="flex items-center justify-between gap-2">
           <span className={cn(
             'text-sm font-medium truncate',
-            isSelected ? 'text-blue-900' : 'text-slate-900',
+            isSelected ? 'text-blue-900 dark:text-white dark:font-semibold' : 'text-slate-900 dark:text-slate-200',
           )}>
             {conv.contact.name}
           </span>
@@ -260,7 +342,7 @@ function ConvListItem({
           </span>
         </div>
 
-        <p className="text-xs text-slate-500 truncate mt-0.5">
+        <p className={cn("text-xs truncate mt-0.5", isSelected ? "text-slate-500 dark:text-slate-300" : "text-slate-500 dark:text-slate-400")}>
           {conv.last_message || 'Connection request sent'}
         </p>
       </div>
@@ -297,13 +379,13 @@ function MessageBubble({ msg }: { msg: LinkedInMessage }) {
           'max-w-[75%] rounded-2xl px-4 py-2.5 text-sm',
           isOut
             ? 'bg-blue-600 text-white rounded-br-sm'
-            : 'bg-slate-100 text-slate-900 rounded-bl-sm',
+            : 'bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 rounded-bl-sm',
           msg.is_virtual && 'opacity-80',
         )}
       >
         <p className="whitespace-pre-wrap break-words">{msg.content}</p>
         <p className={cn('text-[10px] mt-1 text-right', isOut ? 'text-blue-200' : 'text-slate-400')}>
-          {relativeTime(msg.created_at)}
+          {exactDateTime(msg.created_at)}
         </p>
       </div>
     </div>
@@ -319,10 +401,10 @@ function ChatDisabledBanner({ conv }: { conv: LinkedInConversation }) {
 
   return (
     <div className={cn(
-      'flex items-start gap-2 mx-4 my-3 px-3 py-2.5 rounded-lg text-xs',
+      'flex items-start gap-2 mx-4 my-3 px-3 py-2.5 rounded-lg text-xs border',
       conv.connection_status === 'pending'
-        ? 'bg-slate-50 text-slate-600 border border-slate-200'
-        : 'bg-amber-50 text-amber-700 border border-amber-200',
+        ? 'bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800/60 dark:text-slate-300 dark:border-slate-700/60'
+        : 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/50',
     )}>
       <Lock className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
       <span>{cfg.bannerText}</span>
@@ -349,6 +431,7 @@ export function LinkedInConversationView({
   const [selectedId, setSelectedId]       = useState<string | null>(null);
   const [messages, setMessages]           = useState<LinkedInMessage[]>([]);
   const [searchQuery, setSearchQuery]     = useState('');
+  const [broadcastOpen, setBroadcastOpen] = useState(false);
   // Sidebar status filter — null shows everything, otherwise narrows to that status.
   // Toggled by the chips at the top of the conversation list.
   const [statusFilter, setStatusFilter]   = useState<ConnectionStatus | null>(null);
@@ -358,12 +441,18 @@ export function LinkedInConversationView({
     return window.innerWidth >= 1280;
   });
   const [messageText, setMessageText]     = useState('');
+  // Attachment staged from a template insert, shown as a removable composer chip.
+  const [pendingMedia, setPendingMedia]   = useState<PendingMedia | null>(null);
   const [loadingConvs, setLoadingConvs]   = useState(true);
   const [loadingMsgs, setLoadingMsgs]     = useState(false);
   const [sending, setSending]             = useState(false);
   const [error, setError]                 = useState<string | null>(null);
   const [msgError, setMsgError]           = useState<string | null>(null);
+  // Delete-conversation confirm flow: the conversation pending deletion (null = closed).
+  const [deleteTarget, setDeleteTarget]   = useState<LinkedInConversation | null>(null);
+  const [deleting, setDeleting]           = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
 
@@ -387,6 +476,46 @@ export function LinkedInConversationView({
   }, []);
 
   useEffect(() => { loadConversations(); }, [loadConversations]);
+
+  // ── Delete an entire conversation thread ───────────────────────────────────
+  // Removes the thread on LinkedIn (Unipile) AND soft-deletes our local record
+  // via DELETE /api/linkedin-conversations/conversations/:id (:id = Unipile chat
+  // id = LinkedInConversation.id). Routed through the shared conversations proxy
+  // with ?channel=linkedin.
+  const handleDeleteConversation = useCallback(async () => {
+    if (!deleteTarget) return;
+    const conv = deleteTarget;
+    setDeleting(true);
+    try {
+      const res = await fetchWithTenant(
+        li(`${API_BASE}/conversations/${conv.id}`),
+        { method: 'DELETE' }
+      );
+      const json = await res.json().catch(() => ({} as any));
+      if (!res.ok || json?.success === false) {
+        throw new Error(json?.message || json?.error || 'Failed to delete conversation');
+      }
+      toast({
+        title: 'Conversation deleted',
+        description: `${conv.contact?.name || 'The thread'} was removed from LinkedIn and your inbox.`,
+      });
+      setDeleteTarget(null);
+      // Close the open thread if it was the one we just deleted.
+      if (selectedId === conv.id) {
+        setSelectedId(null);
+        setMessages([]);
+      }
+      await loadConversations();
+    } catch (e: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Could not delete conversation',
+        description: e?.message || 'Please try again.',
+      });
+    } finally {
+      setDeleting(false);
+    }
+  }, [deleteTarget, selectedId, loadConversations, toast]);
 
   // ── Load messages for selected conversation ────────────────────────────────
   const loadMessages = useCallback(async (convId: string) => {
@@ -412,6 +541,9 @@ export function LinkedInConversationView({
   }, []);
 
   useEffect(() => {
+    // Drop any staged attachment when switching threads so it can't ride into
+    // the wrong conversation.
+    setPendingMedia(null);
     if (selectedId) {
       loadMessages(selectedId);
     } else {
@@ -426,27 +558,45 @@ export function LinkedInConversationView({
 
   // ── Send message ────────────────────────────────────────────────────────────
   const handleSend = useCallback(async () => {
-    if (!selectedId || !messageText.trim() || sending) return;
+    // A media-only send (attachment, no text) is valid.
+    if (!selectedId || (!messageText.trim() && !pendingMedia) || sending) return;
     const selectedConv = conversations.find(c => c.id === selectedId);
     if (!selectedConv?.chat_enabled) return;
 
     const text = messageText.trim();
+    const media = pendingMedia;
     setMessageText('');
+    setPendingMedia(null);
     setSending(true);
 
     const tempMsg: LinkedInMessage = {
       id:         `temp-${Date.now()}`,
       role:       'assistant',
-      content:    text,
+      // Show something for a media-only optimistic bubble so it isn't blank.
+      content:    text || `📎 ${media?.filename || 'Attachment'}`,
       created_at: new Date().toISOString(),
       is_sender:  true,
     };
     setMessages(prev => [...prev, tempMsg]);
 
     try {
+      // Pass campaign_id + lead_id when known so the backend can record
+      // CONTACTED in campaign_analytics on a successful send. That marker
+      // cancels the workflow scheduler's automated follow-up so the lead
+      // never gets a duplicate auto-message after the user has already
+      // engaged in chat manually. Media (from a template) rides along as
+      // media_url/type/filename — the backend re-downloads the bytes and
+      // sends a real LinkedIn attachment.
       const res  = await fetchWithTenant(li(`${API_BASE}/conversations/${selectedId}/messages`), {
         method: 'POST',
-        body:   JSON.stringify({ content: text }),
+        body:   JSON.stringify({
+          content: text,
+          campaign_id: selectedConv.campaign_id || undefined,
+          lead_id:     selectedConv.lead_id     || undefined,
+          media_url:      media?.url      || undefined,
+          media_type:     media?.type     || undefined,
+          media_filename: media?.filename || undefined,
+        }),
       });
       const json = await res.json();
       if (json.success && json.data) {
@@ -456,17 +606,24 @@ export function LinkedInConversationView({
         setConversations(prev =>
           prev.map(c =>
             c.id === selectedId
-              ? { ...c, last_message: text, last_message_time: new Date().toISOString() }
+              ? { ...c, last_message: text || `📎 ${media?.filename || 'Attachment'}`, last_message_time: new Date().toISOString() }
               : c
           )
         );
+      } else {
+        // Non-success response — drop the optimistic bubble and restore the draft.
+        setMessages(prev => prev.filter(m => m.id !== tempMsg.id));
+        setMessageText(text);
+        if (media) setPendingMedia(media);
       }
     } catch {
       setMessages(prev => prev.filter(m => m.id !== tempMsg.id));
+      setMessageText(text);
+      if (media) setPendingMedia(media);
     } finally {
       setSending(false);
     }
-  }, [selectedId, messageText, sending, conversations]);
+  }, [selectedId, messageText, pendingMedia, sending, conversations]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -505,35 +662,56 @@ export function LinkedInConversationView({
 
       {/* ── Left sidebar ─────────────────────────────────────────────────── */}
       <div className={cn(
-        "w-full lg:w-[340px] flex-shrink-0 flex flex-col border-r border-border bg-card transition-all",
+        "w-full lg:w-[340px] flex-shrink-0 flex flex-col border-r border-border dark:border-slate-800 bg-card dark:bg-[#0C162F] transition-all",
         isMobile && selectedId ? "hidden" : "flex"
       )}>
 
 
-        {/* Header - hidden on mobile as parent provides account tabs */}
-        <div className="hidden lg:flex items-center justify-between px-4 py-3 border-b border-border">
-          <div className="flex items-center gap-2">
-            <Linkedin className="w-4 h-4 text-blue-600" />
-            <span className="font-semibold text-sm text-slate-800">LinkedIn</span>
-            {conversations.length > 0 && (
-              <span className="text-xs text-slate-400">({conversations.length})</span>
-            )}
+        {/* Header */}
+        <div className="flex items-center gap-2 px-4 md:px-4 py-2 md:py-3 border-b border-border dark:border-slate-800 bg-card dark:bg-[#0C162F]">
+          <div className="flex items-center gap-1.5 md:gap-2 mr-1 md:mr-2">
+            <Linkedin className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-600 dark:text-blue-500" />
+            <span className="font-semibold text-xs md:text-sm text-slate-800 dark:text-white whitespace-nowrap">LinkedIn</span>
           </div>
+
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 md:left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground dark:text-slate-400" />
+            <Input
+              placeholder="Search conversations..."
+              className="pl-8 md:pl-9 h-8 md:h-9 text-xs md:text-sm bg-secondary/50 dark:bg-slate-900/90 border border-transparent dark:border-slate-800/80 text-slate-900 dark:text-white placeholder:text-muted-foreground dark:placeholder:text-slate-400 shadow-none focus-visible:ring-1"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+            />
+          </div>
+          
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7"
+            className="h-7 w-7 md:h-8 md:w-8 rounded-full flex-shrink-0 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60"
+            onClick={() => setBroadcastOpen(true)}
+            title="New Broadcast"
+          >
+            <Megaphone className="h-3.5 w-3.5" />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 md:h-8 md:w-8 rounded-full flex-shrink-0 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60"
             onClick={loadConversations}
             disabled={loadingConvs}
+            title="Refresh"
           >
-            <RefreshCw className={cn('h-3.5 w-3.5', loadingConvs && 'animate-spin')} />
+            <RefreshCw className={cn('h-3 w-3 md:h-3.5 md:w-3.5', loadingConvs && 'animate-spin')} />
           </Button>
         </div>
+
+        {broadcastOpen && <LinkedInBroadcastModal onClose={() => setBroadcastOpen(false)} />}
 
         {/* Status summary pills — clickable: tap to filter the list to that status,
             tap the same chip again (or "All") to clear the filter. */}
         {conversations.length > 0 && (
-          <div className="flex gap-1.5 px-3 py-2 border-b border-border overflow-x-auto">
+          <div className="flex gap-1.5 px-3 py-2 border-b border-border dark:border-slate-800 overflow-x-auto">
             {/* All */}
             <button
               type="button"
@@ -542,11 +720,11 @@ export function LinkedInConversationView({
                 'flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors',
                 statusFilter === null
                   ? 'bg-blue-600 text-white shadow-sm'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/80'
               )}
               title="Show all conversations"
             >
-              All ({conversations.length})
+              All
             </button>
 
             {pendingCount > 0 && (
@@ -557,7 +735,7 @@ export function LinkedInConversationView({
                   'flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium transition-all',
                   statusFilter === 'pending'
                     ? 'bg-slate-600 text-white shadow-sm ring-2 ring-slate-300 ring-offset-1'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer'
+                    : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/80 cursor-pointer'
                 )}
                 title={statusFilter === 'pending' ? 'Click to clear filter' : 'Show only pending requests'}
               >
@@ -572,7 +750,7 @@ export function LinkedInConversationView({
                   'flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium transition-all',
                   statusFilter === 'accepted'
                     ? 'bg-amber-600 text-white shadow-sm ring-2 ring-amber-300 ring-offset-1'
-                    : 'bg-amber-100 text-amber-700 hover:bg-amber-200 cursor-pointer'
+                    : 'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-900/50 border border-transparent dark:border-amber-800/40 cursor-pointer'
                 )}
                 title={statusFilter === 'accepted' ? 'Click to clear filter' : 'Show only connected (awaiting follow-up)'}
               >
@@ -587,7 +765,7 @@ export function LinkedInConversationView({
                   'flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium transition-all',
                   statusFilter === 'active'
                     ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-300 ring-offset-1'
-                    : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 cursor-pointer'
+                    : 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200 dark:hover:bg-emerald-900/50 border border-transparent dark:border-emerald-800/40 cursor-pointer'
                 )}
                 title={statusFilter === 'active' ? 'Click to clear filter' : 'Show only active conversations'}
               >
@@ -597,15 +775,6 @@ export function LinkedInConversationView({
           </div>
         )}
 
-        {/* Search */}
-        <div className="px-3 py-2 border-b border-border">
-          <Input
-            placeholder="Search conversations…"
-            className="h-8 text-xs"
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-          />
-        </div>
 
         {/* List */}
         <div className="flex-1 overflow-y-auto">
@@ -670,7 +839,7 @@ export function LinkedInConversationView({
         ) : (
           <>
             {/* Chat header */}
-            <div className="flex items-center gap-3 px-3 py-3 md:px-5 md:py-3.5 border-b border-border bg-card">
+            <div className="flex items-center gap-3 px-3 py-3 md:px-5 md:py-3.5 border-b border-border dark:border-slate-800 bg-card dark:bg-[#101C36]">
               {isMobile && (
                 <Button 
                   variant="ghost" 
@@ -684,7 +853,7 @@ export function LinkedInConversationView({
               <ContactAvatar contact={selectedConv.contact} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="font-semibold text-sm text-slate-900 truncate">
+                  <p className="font-semibold text-sm text-slate-900 dark:text-white truncate">
                     {selectedConv.contact.name}
                   </p>
                   {/* Status badge in header */}
@@ -717,6 +886,29 @@ export function LinkedInConversationView({
                   </a>
                 )}
               </div>
+
+              {/* Conversation actions (delete thread) */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0 text-slate-500"
+                    title="Conversation options"
+                  >
+                    <MoreVertical className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => setDeleteTarget(selectedConv)}
+                    className="text-red-600 focus:text-red-600 focus:bg-red-50 cursor-pointer"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete conversation
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             {/* Disabled banner (shown for pending/accepted) */}
@@ -780,15 +972,31 @@ export function LinkedInConversationView({
             <LinkedInChatToolbar
               contextPanelOpen={contextPanelOpen}
               onToggleContextPanel={() => setContextPanelOpen(o => !o)}
-              onInsertTemplate={(text) => {
-                setMessageText(prev => prev ? `${prev}\n${text}` : text);
+              onInsertTemplate={(payload: InsertTemplatePayload) => {
+                // Substitute {{first_name}} / {{company}} / {{title}} with the
+                // open lead's data so the composer shows the FINAL text (the
+                // literal-placeholder bug). Unresolved vars stay for the backend
+                // backstop. Coerce to string so the input value is never
+                // undefined (would crash the next `messageText.trim()` render).
+                const resolved = substituteLeadVars(payload.text ?? '', selectedConv?.contact);
+                if (resolved) {
+                  setMessageText(prev => prev ? `${prev}\n${resolved}` : resolved);
+                }
+                // Stage the template's attachment as a removable composer chip.
+                if (payload.mediaUrl) {
+                  setPendingMedia({
+                    url: payload.mediaUrl,
+                    type: payload.mediaType ?? null,
+                    filename: payload.mediaFilename ?? null,
+                  });
+                }
               }}
               chatEnabled={chatEnabled}
             />
 
             {/* Message input */}
             <div className={cn(
-              'px-4 py-3 border-t border-border bg-card',
+              'px-4 py-3 border-t border-border dark:border-slate-800 bg-card dark:bg-[#101C36]',
               !chatEnabled && 'opacity-60',
             )}>
               {!chatEnabled && (
@@ -801,11 +1009,29 @@ export function LinkedInConversationView({
                   </span>
                 </div>
               )}
+              {/* Staged attachment from a template — removable before send */}
+              {pendingMedia && (
+                <div className="mb-2 inline-flex items-center gap-2 max-w-full rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5">
+                  <MediaChipIcon type={pendingMedia.type} url={pendingMedia.url} filename={pendingMedia.filename} />
+                  <span className="text-xs text-slate-700 truncate max-w-[220px]">
+                    {pendingMedia.filename || 'Attachment'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPendingMedia(null)}
+                    className="flex-shrink-0 text-slate-400 hover:text-slate-700"
+                    title="Remove attachment"
+                    aria-label="Remove attachment"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
               <div className="flex items-end gap-2">
                 <textarea
                   className={cn(
                     'flex-1 resize-none rounded-xl border border-input bg-background px-3 py-2.5 text-sm leading-snug placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 min-h-[40px] max-h-[120px]',
-                    !chatEnabled && 'cursor-not-allowed bg-slate-50',
+                    !chatEnabled && 'cursor-not-allowed',
                   )}
                   placeholder={
                     chatEnabled
@@ -827,7 +1053,7 @@ export function LinkedInConversationView({
                       : 'bg-slate-200 text-slate-400 cursor-not-allowed',
                   )}
                   onClick={chatEnabled ? handleSend : undefined}
-                  disabled={!chatEnabled || !messageText.trim() || sending}
+                  disabled={!chatEnabled || (!messageText.trim() && !pendingMedia) || sending}
                 >
                   {sending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -842,7 +1068,7 @@ export function LinkedInConversationView({
         </div>
 
         {/* Right-side Contact Details panel — only when a conversation is open */}
-        {selectedConv && contextPanelOpen && !isMobile && (
+        {selectedConv && contextPanelOpen && (
           <LinkedInContextPanel
             conversation={{
               id:                selectedConv.id,
@@ -858,6 +1084,33 @@ export function LinkedInConversationView({
           />
         )}
       </div>
+
+      {/* Delete-conversation confirmation */}
+      <AlertDialog
+        open={!!deleteTarget}
+        onOpenChange={(o) => { if (!o && !deleting) setDeleteTarget(null); }}
+      >
+        <AlertDialogContent className="sm:max-w-md sm:w-full">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this conversation?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes the entire thread with{' '}
+              <span className="font-medium text-foreground">{deleteTarget?.contact?.name || 'this lead'}</span>{' '}
+              on LinkedIn and removes it from your inbox. This can’t be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <Button variant="destructive" disabled={deleting} onClick={handleDeleteConversation}>
+              {deleting ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Deleting…</>
+              ) : (
+                <><Trash2 className="h-4 w-4 mr-2" /> Delete conversation</>
+              )}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

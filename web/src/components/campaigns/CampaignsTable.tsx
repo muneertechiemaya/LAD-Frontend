@@ -34,6 +34,7 @@ import {
   type ColumnSizingState,
 } from '@tanstack/react-table';
 import type { Campaign, CampaignStatus } from '@lad/frontend-features/campaigns';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { getStatusColor, renderActionChips } from './campaignUtils';
 interface CampaignsTableProps {
   campaigns: Campaign[];
@@ -58,25 +59,26 @@ export default function CampaignsTable({ campaigns, loading, onMenuOpen }: Campa
   // Local filter states
   const [searchQuery, setSearchQuery] = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState('all');
-  
+  // Campaign lists per tenant are small (<100) so we filter client-side, but
+  // debounce so the .filter() doesn't run on every keystroke.
+  const debouncedSearch = useDebouncedValue(searchQuery.trim().toLowerCase(), 200);
+
   // Filter campaigns based on local state
   const filteredCampaigns = React.useMemo(() => {
     let filtered = campaigns || [];
-    
-    // Apply search filter
-    if (searchQuery.trim()) {
-      filtered = filtered.filter(campaign => 
-        campaign.name.toLowerCase().includes(searchQuery.toLowerCase())
+
+    if (debouncedSearch) {
+      filtered = filtered.filter(campaign =>
+        campaign.name.toLowerCase().includes(debouncedSearch)
       );
     }
-    
-    // Apply status filter
+
     if (statusFilter !== 'all') {
       filtered = filtered.filter(campaign => campaign.status === statusFilter);
     }
-    
+
     return filtered;
-  }, [campaigns, searchQuery, statusFilter]);
+  }, [campaigns, debouncedSearch, statusFilter]);
 
   const getStatusIconComponent = (status: CampaignStatus) => {
     switch (status) {
@@ -195,7 +197,7 @@ export default function CampaignsTable({ campaigns, loading, onMenuOpen }: Campa
       <div className="p-4 border-b border-[#E2E8F0] dark:border-[#262831] bg-[#F8FAFC] dark:bg-[#000724]">
         <div className="flex gap-2 sm:gap-3 flex-row justify-between items-center">
           <div className="relative flex-1 sm:min-w-[300px]">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#64748B] dark:text-[#7a8ba3] h-4 w-4" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#64748B] dark:text-slate-300 h-4 w-4" />
             <Input
               placeholder="Search campaigns..."
               value={searchQuery}
@@ -286,7 +288,7 @@ export default function CampaignsTable({ campaigns, loading, onMenuOpen }: Campa
           </div>
         ) : filteredCampaigns.length === 0 ? (
           <div className="p-4 text-center">
-            <p className="text-[#64748B] dark:text-[#7a8ba3] mb-2">
+            <p className="text-[#64748B] dark:text-slate-300 mb-2">
               No campaigns found
             </p>
             <Button
@@ -338,7 +340,7 @@ export default function CampaignsTable({ campaigns, loading, onMenuOpen }: Campa
               <TableBody>
                 {table.getRowModel().rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={columns.length} className="text-center py-8 text-[#64748B] dark:text-[#7a8ba3]">
+                    <TableCell colSpan={columns.length} className="text-center py-8 text-[#64748B] dark:text-slate-300">
                       No campaigns found
                     </TableCell>
                   </TableRow>
@@ -365,14 +367,14 @@ export default function CampaignsTable({ campaigns, loading, onMenuOpen }: Campa
             {/* Pagination Controls */}
             {filteredCampaigns.length > 0 && (
               <div className="flex items-center justify-between px-2 xs:px-4 py-3 gap-2 border-t border-[#E2E8F0] dark:border-[#262831] bg-[#F8FAFC] dark:bg-[#000724]">
-                <div className="flex items-center gap-2 text-xs xs:text-sm text-[#64748B] dark:text-[#7a8ba3]">
+                <div className="flex items-center gap-2 text-xs xs:text-sm text-[#64748B] dark:text-slate-300">
                   <span>Show</span>
                   <select
                     value={table.getState().pagination.pageSize}
                     onChange={(e) => {
                       table.setPageSize(Number(e.target.value));
                     }}
-                    className="border border-[#E2E8F0] dark:border-[#262831] rounded px-2 py-1 text-sm bg-transparent dark:bg-[#1a2a43] dark:text-white"
+                    className="border border-[#E2E8F0] dark:border-[#262831] rounded px-2 py-1 text-sm bg-transparent dark:bg-[#1a2a43] dark:text-slate-300"
                   >
                   {[10, 20, 50, 100].map((pageSize) => (
                     <option key={pageSize} value={pageSize}>
@@ -386,7 +388,7 @@ export default function CampaignsTable({ campaigns, loading, onMenuOpen }: Campa
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  <div className="text-[10px] xs:text-xs sm:text-sm text-[#64748B] dark:text-[#7a8ba3] whitespace-nowrap">
+                  <div className="text-[10px] xs:text-xs sm:text-sm text-[#64748B] dark:text-slate-300 whitespace-nowrap">
                     Page {table.getState().pagination.pageIndex + 1} of{' '}
                     {table.getPageCount()}
                   </div>

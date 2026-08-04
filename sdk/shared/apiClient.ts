@@ -10,6 +10,8 @@ type ApiResponse<T = any> = {
   data: T;
   status: number;
   statusText: string;
+  /** Raw response headers (e.g. for reading X-Total-Count on paginated lists). */
+  headers?: Headers;
 };
 type RequestOptions = {
   headers?: Record<string, string>;
@@ -103,6 +105,7 @@ class ApiClient {
         data,
         status: response.status,
         statusText: response.statusText,
+        headers: response.headers,
       };
     } catch (error) {
       if (error instanceof Error) {

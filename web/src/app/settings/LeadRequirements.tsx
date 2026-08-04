@@ -13,12 +13,15 @@ interface LeadRequirementsProps {
 }
  
 export const LeadRequirements: React.FC<LeadRequirementsProps> = ({ 
-  requirementConfigs, 
-  pricingModels,
+  requirementConfigs = [], 
+  pricingModels = [],
   onEdit, 
   onDelete, 
   onAdd 
 }) => {
+  const safeRequirementConfigs = Array.isArray(requirementConfigs) ? requirementConfigs : [];
+  const safePricingModels = Array.isArray(pricingModels) ? pricingModels : [];
+
   return (
       <section className="bg-white p-3 sm:p-8 rounded-xl sm:rounded-3xl shadow-sm border border-[#E5E7EB] overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 sm:mb-6">
@@ -53,13 +56,13 @@ export const LeadRequirements: React.FC<LeadRequirementsProps> = ({
             </tr>
           </thead>
           <tbody>
-            {requirementConfigs.map(config => (
+            {safeRequirementConfigs.map(config => (
                 <tr key={config.id} className="border-b border-[#F3F4F6] hover:bg-[#F9FAFB] transition-colors">
                   <td className="px-4 py-3 font-medium text-[#1F2937]">{config.label}</td>
                   <td className="px-4 py-3 text-[#6B7280]">{config.field_key}</td>
                   <td className="px-4 py-3 text-[#1F2937] font-bold">${config.base_price?.toLocaleString()}</td>
                   <td className="px-4 py-3 text-[#6B7280]">
-                    {pricingModels.find(m => m.id === config.pricing_model_id)?.label}
+                    {safePricingModels.find(m => m.id === config.pricing_model_id)?.label}
                   </td>
                   <td className="px-4 py-3">
                   <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-bold", config.is_active ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-600")}>
@@ -88,7 +91,7 @@ export const LeadRequirements: React.FC<LeadRequirementsProps> = ({
 
         {/* Mobile Grid View */}
         <div className="md:hidden space-y-3">
-          {requirementConfigs.map(config => (
+          {safeRequirementConfigs.map(config => (
               <div key={config.id} className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-3 overflow-hidden">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">

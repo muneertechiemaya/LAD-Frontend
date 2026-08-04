@@ -17,14 +17,17 @@ interface ConceptManagementProps {
 }
 
 export const ConceptManagement: React.FC<ConceptManagementProps> = ({
-  concepts,
-  requirementConfigs,
+  concepts = [],
+  requirementConfigs = [],
   tenantId,
   onEdit,
   onDelete,
   onAdd,
   afterSave
 }) => {
+  const safeConcepts = Array.isArray(concepts) ? concepts : [];
+  const safeRequirementConfigs = Array.isArray(requirementConfigs) ? requirementConfigs : [];
+
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<any[] | null>(null);
   const [selectedSuggestions, setSelectedSuggestions] = useState<number[]>([]);
@@ -212,14 +215,14 @@ export const ConceptManagement: React.FC<ConceptManagementProps> = ({
             </tr>
             </thead>
             <tbody>
-            {concepts.length === 0 ? (
+            {safeConcepts.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-4 py-8 text-center text-[#9CA3AF]">
                     No concepts found. Click "Add Concept" to create one.
                   </td>
                 </tr>
             ) : (
-                concepts.map(concept => (
+                safeConcepts.map(concept => (
                     <tr key={concept.id} className="border-b border-[#F3F4F6] hover:bg-[#F9FAFB] transition-colors">
                       <td className="px-4 py-4 font-bold text-[#1F2937]">{concept.name}</td>
                       <td className="px-4 py-4">
@@ -264,12 +267,12 @@ export const ConceptManagement: React.FC<ConceptManagementProps> = ({
 
         {/* Mobile grid view */}
         <div className="md:hidden space-y-3">
-          {concepts.length === 0 ? (
+          {safeConcepts.length === 0 ? (
               <div className="py-12 text-center text-[#9CA3AF] text-sm">
                 No concepts found.
               </div>
           ) : (
-              concepts.map(concept => (
+              safeConcepts.map(concept => (
                   <div key={concept.id} className="p-3 sm:p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-3 overflow-hidden">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
@@ -297,13 +300,11 @@ export const ConceptManagement: React.FC<ConceptManagementProps> = ({
                     )}
 
                     <div className="flex flex-wrap gap-1">
-
-                      {concept.requirement_configs.map((config, index) => (
+                      {(concept.requirement_configs || []).map((config, index) => (
                         <span key={index} className="px-1.5 py-0.5 bg-white text-gray-500 text-[8px] rounded border border-slate-100 font-mono break-all max-w-full">
                       {config.field_key}
                     </span>
                     ))}
-
                     </div>
                   </div>
               ))

@@ -1,9 +1,40 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Send, Clock, Search, CheckCircle, AlertCircle, ChevronRight, ChevronLeft } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Send, Clock, Search, CheckCircle, AlertCircle, ChevronRight, ChevronLeft, X } from 'lucide-react';
 import { useScheduleMessages } from '@lad/frontend-features/community-roi';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
+
+// Render the modal at <body> via a portal so its `position: fixed` actually
+// pins to the viewport. Without this, any ancestor with a CSS transform / filter
+// / will-change becomes the fixed-positioning containing block — which happens
+// on the dashboard Overview because @dnd-kit applies a transform to widget
+// wrappers, clipping this modal inside the widget card (no visible footer,
+// broken scrolling). Falls through cleanly during SSR (document undefined).
+function ModalPortal({ children }: { children: React.ReactNode }) {
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => { setMounted(true); }, []);
+  if (!mounted || typeof document === 'undefined') return null;
+  return createPortal(children, document.body);
+}
+
+// Small × button shown in every step's header. The component originally lived
+// in a flow with a guaranteed Cancel/Back path, but once it's invoked from
+// elsewhere (e.g. the Overview Re-engage widget) callers expect a top-right
+// close affordance.
+function CloseButton({ onClose }: { onClose: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClose}
+      aria-label="Close"
+      className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+    >
+      <X className="w-5 h-5" />
+    </button>
+  );
+}
 
 interface MetaTemplate {
   name: string;
@@ -62,10 +93,27 @@ const FIELD_OPTIONS = [
 
 type WeekKey = 'week1' | 'week2' | 'week3' | 'week4';
 type MemberRecData = Record<string, Partial<Record<WeekKey, string[]>> & { no_interaction_count?: number }>;
+type WeekDateMap = Partial<Record<'week_1' | 'week_2' | 'week_3' | 'week_4', string>>;
 
-/** Returns the date of the upcoming Monday for weekNumber=1, +7 days for week=2,
- *  +14 for week=3, +21 for week=4. Generic — works for any positive integer. */
+// Module-level mutable holder updated by useEffect when the API returns.
+// We deliberately keep it OUT of `resolveParam`'s parameter list so old call
+// sites (used in many places) don't have to change.
+let _apiWeekDates: WeekDateMap = {};
+
+/**
+ * Returns the Monday date for the given week number.
+ * Prefers the API-anchored `week_dates` map (so labels match what was on the
+ * generation cycle, e.g. recs created on May 6 → Week 1 = May 11 forever).
+ * Falls back to "next Monday from today + (N-1) weeks" only when no stored
+ * date exists yet (rare — only before the first API call resolves).
+ */
 function getWeekMonday(weekNumber: number): string {
+  const stored = _apiWeekDates[`week_${weekNumber}` as keyof WeekDateMap];
+  if (stored) {
+    return new Date(stored + 'T00:00:00Z').toLocaleDateString('en-GB', {
+      day: 'numeric', month: 'long', timeZone: 'UTC',
+    });
+  }
   const date = new Date();
   const day = date.getDay(); // 0=Sun … 6=Sat
   const daysToNextMonday = (8 - day) % 7; // 0 if today IS Monday
@@ -158,6 +206,87 @@ function resolveParam(
   return String(member?.[field] ?? '');
 }
 
+/**
+ * "Select only members whose last send of this template failed" button.
+ * Phone-normalized match against `allMembers` so we only flip checkboxes for
+ * members the recipient picker actually has.
+ */
+function FailedRecipientsButton({
+  templateName,
+  allMembers,
+  onApply,
+}: {
+  templateName: string;
+  allMembers: any[];
+  onApply: (memberIds: string[]) => void;
+}) {
+  const [count, setCount] = React.useState<number | null>(null);
+  const [loading, setLoading] = React.useState(false);
+
+  // Discover how many failed last time — small badge, no network on every render
+  React.useEffect(() => {
+    if (!templateName) return;
+    let cancelled = false;
+    fetch(
+      `/api/whatsapp-conversations/broadcasts/template-recipients?` +
+        `template_name=${encodeURIComponent(templateName)}&status=failed`,
+      { cache: 'no-store' },
+    )
+      .then(r => r.json())
+      .then(json => { if (!cancelled && json?.success) setCount(json.count); })
+      .catch(() => { /* silent — feature is optional */ });
+    return () => { cancelled = true; };
+  }, [templateName]);
+
+  if (count === null || count === 0) return null;
+
+  const apply = async () => {
+    setLoading(true);
+    try {
+      const r = await fetch(
+        `/api/whatsapp-conversations/broadcasts/template-recipients?` +
+          `template_name=${encodeURIComponent(templateName)}&status=failed`,
+        { cache: 'no-store' },
+      );
+      const json = await r.json();
+      if (!json?.success) return;
+      // Normalize digits and match member ids
+      const digitsOnly = (s: string) => (s || '').replace(/\D/g, '');
+      const failedDigits = new Set(
+        (json.recipients || []).map((rec: any) => digitsOnly(rec.phone)).filter(Boolean),
+      );
+      const matchingIds = allMembers
+        .filter((m: any) => {
+          const d = digitsOnly(m.whatsapp_phone || m.phone || '');
+          // suffix match — accommodates +971 vs 0... vs raw digits
+          return d && Array.from(failedDigits).some(fd =>
+            (fd as string).endsWith(d.slice(-9)) || d.endsWith((fd as string).slice(-9))
+          );
+        })
+        .map((m: any) => m.id);
+      onApply(matchingIds);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={apply}
+      disabled={loading}
+      className="mt-2 w-full flex items-center justify-between p-3 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 transition-colors disabled:opacity-50"
+    >
+      <span className="text-sm font-medium text-rose-700">
+        ⚠ Resend to failed only ({count})
+      </span>
+      <span className="text-xs text-rose-500">
+        {loading ? 'Selecting…' : 'Preselect →'}
+      </span>
+    </button>
+  );
+}
+
 function highlightBody(body: string): React.ReactNode[] {
   return body.split(/(\{\{[^}]+\}\})/).map((part, i) =>
     /^\{\{[^}]+\}\}$/.test(part)
@@ -210,11 +339,14 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
   const [resolvingMedia, setResolvingMedia] = useState(false);
   const [memberRecData, setMemberRecData] = useState<MemberRecData>({});
 
-  // Fetch per-member recommendation data for parameter mapping
+  // Fetch per-member recommendation data + generation-anchored week dates
   useEffect(() => {
     fetch('/api/community-roi/recommendations/member-data')
       .then(r => r.json())
-      .then(json => { if (json?.success && json.data) setMemberRecData(json.data); })
+      .then(json => {
+        if (json?.success && json.data) setMemberRecData(json.data);
+        if (json?.week_dates) _apiWeekDates = json.week_dates;
+      })
       .catch(() => {}); // silent — recs just won't be available in preview
   }, []);
 
@@ -352,6 +484,14 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
         }))
         .filter(m => m.phone); // skip members with no phone — WABA will reject them anyway
 
+      // Templates that attach each member's OWN cohesion-report PDF as the
+      // document header (resolved per-recipient by the WABA service) instead
+      // of a single shared document.
+      const MEMBER_REPORT_TEMPLATES = new Set(['cohesion_report_with_sheet']);
+      const attachMemberReport =
+        selectedTemplate.header_type === 'document' &&
+        MEMBER_REPORT_TEMPLATES.has(selectedTemplate.name);
+
       fetchWithTenant('/api/whatsapp-conversations/conversations/send-template-to-members', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -360,7 +500,10 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
           template_name: selectedTemplate.name,
           language_code: selectedTemplate.language_code || 'en',
           header_type:   selectedTemplate.header_type || '',
-          header_url:    headerMediaUrl,
+          // In per-member mode the WABA service supplies each member's document,
+          // so the shared header_url is irrelevant (omit to avoid confusion).
+          header_url:    attachMemberReport ? '' : headerMediaUrl,
+          attach_member_report: attachMemberReport,
         }),
       })
         .then(r => r.json())
@@ -368,7 +511,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
           if (data.failed > 0) {
             console.warn(`[TemplateSend] ${data.sent} sent, ${data.failed} failed`, data.results);
           } else {
-            console.log(`[TemplateSend] Complete — ${data.sent} sent`);
+            console.warn(`[TemplateSend] Complete — ${data.sent} sent`);
           }
         })
         .catch(err => console.error('[TemplateSend] Error:', err));
@@ -400,8 +543,10 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
   // ─── STEP 1: Template Selection ────────────────────────────────────────────
   if (step === 'template') {
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-2xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] flex flex-col">
+      <ModalPortal>
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
+        <div className="relative bg-white rounded-2xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+          <CloseButton onClose={onClose} />
           <h2 className="text-2xl font-bold text-slate-900 mb-1">Send Message</h2>
           <p className="text-sm text-slate-500 mb-5">Select a Meta-approved template to send</p>
 
@@ -432,7 +577,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
                 const isSelected = selectedTemplate?.name === t.name;
                 return (
                   <button
-                    key={t.name}
+                    key={`${t.name}-${t.language ?? ''}`}
                     onClick={() => setSelectedTemplate(t)}
                     className={`w-full text-left p-4 border rounded-xl transition ${
                       isSelected
@@ -513,6 +658,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
           </div>
         </div>
       </div>
+      </ModalPortal>
     );
   }
 
@@ -521,12 +667,19 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
     const paramCount = selectedTemplate?.parameter_count ?? 0;
 
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-2xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] flex flex-col">
+      <ModalPortal>
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
+        <div className="relative bg-white rounded-2xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+          <CloseButton onClose={onClose} />
           <h2 className="text-2xl font-bold text-slate-900 mb-1">Map Parameters</h2>
           <p className="text-sm text-slate-500 mb-5">
             Template: <span className="font-semibold text-indigo-600">{displayName(selectedTemplate?.name ?? '')}</span>
           </p>
+
+          {/* Scrollable middle: template body, media header, parameter rows,
+              and live preview scroll together so long templates can't squeeze
+              the parameter dropdowns out of view. Header + footer stay pinned. */}
+          <div className="flex-1 min-h-0 overflow-y-auto -mr-2 pr-2">
 
           {/* Template body with highlighted placeholders */}
           <div className="mb-5 p-3 bg-slate-50 border border-slate-200 rounded-xl">
@@ -575,7 +728,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
           )}
 
           {/* One row per {{N}} parameter */}
-          <div className="flex-1 min-h-0 overflow-y-auto space-y-3 mb-4">
+          <div className="space-y-3 mb-4">
             {Array.from({ length: paramCount }, (_, i) => {
               const paramNum = i + 1;
               const mapping  = paramMapping[i] ?? { field: 'name', customValue: '' };
@@ -679,7 +832,9 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
             </div>
           )}
 
-          <div className="flex gap-3 justify-end">
+          </div>{/* end scrollable middle */}
+
+          <div className="flex gap-3 justify-end pt-4">
             <button onClick={() => setStep('template')} className="px-4 py-2 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg font-medium transition flex items-center gap-1">
               <ChevronLeft className="w-4 h-4" /> Back
             </button>
@@ -692,14 +847,17 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
           </div>
         </div>
       </div>
+      </ModalPortal>
     );
   }
 
   // ─── STEP 3: Member Selection ───────────────────────────────────────────────
   if (step === 'members') {
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-2xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+      <ModalPortal>
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
+        <div className="relative bg-white rounded-2xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+          <CloseButton onClose={onClose} />
           <h2 className="text-2xl font-bold text-slate-900 mb-1">Select Recipients</h2>
           <p className="text-sm text-slate-500 mb-5">
             Template: <span className="font-semibold text-indigo-600">{displayName(selectedTemplate?.name ?? '')}</span>
@@ -715,6 +873,17 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
               />
               <span className="font-medium text-slate-900">Send to all {allMembers.length} members</span>
             </label>
+
+            {/* Quick filters — preselect recipients by prior broadcast outcome */}
+            <FailedRecipientsButton
+              templateName={selectedTemplate?.name || ''}
+              allMembers={allMembers}
+              onApply={(ids) => {
+                if (ids.length === 0) return;
+                setSelectAll(false);
+                setSelectedMembers(ids);
+              }}
+            />
           </div>
 
           {!selectAll && (
@@ -779,13 +948,16 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
           </div>
         </div>
       </div>
+      </ModalPortal>
     );
   }
 
   // ─── STEP 4: Confirm / Schedule ────────────────────────────────────────────
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl p-8 max-w-2xl w-full mx-4">
+    <ModalPortal>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
+      <div className="relative bg-white rounded-2xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <CloseButton onClose={onClose} />
         <h2 className="text-2xl font-bold text-slate-900 mb-5">
           {sendMode === 'instant' ? 'Confirm Send' : 'Schedule Message'}
         </h2>
@@ -859,6 +1031,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 };
 

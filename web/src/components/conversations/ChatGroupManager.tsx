@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { safeStorage } from '@lad/shared/storage';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
 import {
   Tooltip,
@@ -50,6 +51,8 @@ export interface ChatGroup {
   color: string;
   description: string | null;
   conversation_count: number;
+  /** Count of chat_group_members rows — what the backend's getChatGroups returns. */
+  member_count?: number;
   created_at: string | null;
   /** Present for groups synced from native WhatsApp groups via Baileys */
   metadata?: {
@@ -92,7 +95,7 @@ function authHeaders(): Record<string, string> {
 }
 
 async function fetchGroups(channel?: 'personal' | 'waba'): Promise<ChatGroup[]> {
-  // Personal WA groups are stored in the Node.js tenant DB, not the WABA Python service.
+  // WAPA groups are stored in the Node.js tenant DB, not the WABA Python service.
   // Append ?channel=personal so the proxy routes to the correct backend.
   const url = channel === 'personal' ? `${API_BASE}?channel=personal` : API_BASE;
   const res = await fetch(url, { headers: authHeaders() });
@@ -191,7 +194,7 @@ const CONTACT_SOURCES: ContactSource[] = [
   },
   {
     key: 'personal_wa',
-    label: 'Personal WA',
+    label: 'WAPA',
     color: '#25D366',
     channel: 'personal',
     fetchContacts: async (page, search) => {
@@ -353,8 +356,12 @@ export function ChatGroupManager({
     }
   }, [open]);
 
-  const filteredGroups = searchQuery
-    ? groups.filter((g) => g.name.toLowerCase().includes(searchQuery.toLowerCase()))
+  // Groups list is bounded (typically <50 per tenant) so we keep this filter
+  // client-side, but debounce the input so the .filter() doesn't run on every
+  // keystroke — matches the pattern used everywhere else.
+  const debouncedSearch = useDebouncedValue(searchQuery.trim().toLowerCase(), 200);
+  const filteredGroups = debouncedSearch
+    ? groups.filter((g) => g.name.toLowerCase().includes(debouncedSearch))
     : groups;
 
   // Load contacts from a source
@@ -509,7 +516,7 @@ export function ChatGroupManager({
         const refreshed = await fetchGroups(channel);
         setGroups(refreshed);
       } else {
-        setSyncMessage(data.error || 'Sync failed — is a Personal WA account connected?');
+        setSyncMessage(data.error || 'Sync failed — is a WAPA account connected?');
       }
     } catch {
       setSyncMessage('Failed to reach the service. Check your connection.');
@@ -868,7 +875,7 @@ export function ChatGroupManager({
                                                 background: ch === 'personal' ? '#dcfce7' : ch === 'waba' ? '#d1fae5' : '#dbeafe',
                                                 color:      ch === 'personal' ? '#15803d' : ch === 'waba' ? '#065f46' : '#1d4ed8',
                                               }}>
-                                              {ch === 'personal' ? 'Personal WA' : ch === 'waba' ? 'WA Business' : ch.toUpperCase()}
+                                              {ch === 'personal' ? 'WAPA' : ch === 'waba' ? 'WA Business' : ch.toUpperCase()}
                                             </span>
                                           );
                                         })()}

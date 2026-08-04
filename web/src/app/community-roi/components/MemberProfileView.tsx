@@ -47,6 +47,7 @@ import {
 import { OutreachAnalysis } from './OutreachAnalysis'
 import { EngagementFeed } from './EngagementFeed'
 import { ActivityHeatmap } from './ActivityHeatmap'
+import { MemberMessageStatusCard } from './MemberMessageStatusCard'
 import { UUID } from '@lad/frontend-features/community-roi/types'
 import { formatDistanceToNow, format, parseISO } from 'date-fns'
 import { useMemo, useState, useEffect, useCallback } from 'react'
@@ -588,6 +589,9 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
           {/* Outreach Analysis Component */}
           <OutreachAnalysis memberId={memberId} />
 
+          {/* Template Broadcast Delivery — sent / delivered / read / failed */}
+          <MemberMessageStatusCard memberName={member.name} memberPhone={member.phone} />
+
           {/* ── Member Intelligence Section ─────────────────────────────── */}
           <Card className="rounded-[2rem] border-slate-100 shadow-sm overflow-hidden bg-white">
             <CardHeader className="p-6 pb-4 border-b border-slate-50">
@@ -748,7 +752,7 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
                                   {i + 1}
                                 </div>
                                 <p className="text-xs text-slate-700 leading-relaxed italic line-clamp-4">
-                                  "{String(text).slice(0, 280)}"
+                                  &quot;{String(text).slice(0, 280)}&quot;
                                 </p>
                               </div>
                             </div>

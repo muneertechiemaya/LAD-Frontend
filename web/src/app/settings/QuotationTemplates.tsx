@@ -47,13 +47,16 @@ interface QuotationTemplatesProps {
 }
 
 export const QuotationTemplates: React.FC<QuotationTemplatesProps> = ({
-  templates,
+  templates = [],
   onUpload,
   onDelete,
   onPreview,
   onSetDefault,
-  placeholderList
+  placeholderList = []
 }) => {
+  const safeTemplates = Array.isArray(templates) ? templates : [];
+  const safePlaceholderList = Array.isArray(placeholderList) ? placeholderList : [];
+
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isPlaceholderModalOpen, setIsPlaceholderModalOpen] = useState(false);
   const [placeholders, setPlaceholders] = useState<Placeholder[]>([]);
@@ -149,7 +152,7 @@ export const QuotationTemplates: React.FC<QuotationTemplatesProps> = ({
 
         <div className="p-4 sm:p-8">
           <div className="space-y-4 sm:space-y-6">
-            {templates.map((template) => (
+            {safeTemplates.map((template) => (
                 <div key={template.id} className="p-4 sm:p-6 bg-white border border-slate-200 rounded-2xl sm:rounded-3xl group transition-all hover:border-blue-200 hover:shadow-md">
                   <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
@@ -190,7 +193,7 @@ export const QuotationTemplates: React.FC<QuotationTemplatesProps> = ({
                   </div>
                 </div>
             ))}
-            {templates.length === 0 && (
+            {safeTemplates.length === 0 && (
                 <div className="py-12 sm:py-20 border-2 border-dashed border-slate-100 rounded-[30px] sm:rounded-[40px] flex flex-col items-center justify-center text-slate-400 text-center px-4">
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-slate-50 rounded-2xl flex items-center justify-center mb-4">
                     <FileText className="w-6 h-6 sm:w-8 sm:h-8 opacity-20" />

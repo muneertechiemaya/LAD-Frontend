@@ -63,9 +63,20 @@ export async function POST(req: NextRequest) {
         // @ts-ignore
         duplex: 'half',
       });
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        return NextResponse.json(data, { status: response.status });
+        console.error('[upload-media-proxy] Personal WA backend rejected media upload:', {
+          status: response.status,
+          error: data?.detail || data?.error || data,
+        });
+        return NextResponse.json(
+          {
+            success: false,
+            error: data?.detail || data?.error || `WAPA media upload failed (${response.status})`,
+            upstream: data,
+          },
+          { status: response.status }
+        );
       }
       // Map the LAD_backend response to the format the frontend expects
       // frontend reads data.media_id — use the file URL as the "media_id" for personal channel

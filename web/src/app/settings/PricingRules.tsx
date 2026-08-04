@@ -18,14 +18,18 @@ interface PricingRulesProps {
 }
 
 export const PricingRules: React.FC<PricingRulesProps> = ({
-  pricingRules,
-  concepts,
-  requirementConfigs,
+  pricingRules = [],
+  concepts = [],
+  requirementConfigs = [],
   tenantId,
   onSave,
   onDelete,
   afterSave
 }) => {
+  const safePricingRules = Array.isArray(pricingRules) ? pricingRules : [];
+  const safeConcepts = Array.isArray(concepts) ? concepts : [];
+  const safeRequirementConfigs = Array.isArray(requirementConfigs) ? requirementConfigs : [];
+
   const [editingRule, setEditingRule] = useState<Partial<PricingRule> | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -76,14 +80,14 @@ export const PricingRules: React.FC<PricingRulesProps> = ({
   };
 
   const getConceptName = (id: string) => {
-    return concepts.find(c => c.id === id)?.name || 'Unknown';
+    return safeConcepts.find(c => c.id === id)?.name || 'Unknown';
   };
 
   const getConditionLabel = (rule: Partial<PricingRule> | any) => {
     if (rule.target_type === 'package') {
-      return concepts.find(c => c.id === rule.condition_field)?.name || 'Unknown Package';
+      return safeConcepts.find(c => c.id === rule.condition_field)?.name || 'Unknown Package';
     }
-    const config = requirementConfigs.find(c => c.id === rule.condition_field);
+    const config = safeRequirementConfigs.find(c => c.id === rule.condition_field);
     return config ? config.label : (rule.condition_field === 'pax' ? 'people' : rule.condition_field);
   };
 
@@ -176,7 +180,7 @@ export const PricingRules: React.FC<PricingRulesProps> = ({
         </div>
 
         <div className="space-y-3 sm:space-y-4">
-          {pricingRules.length === 0 ? (
+          {safePricingRules.length === 0 ? (
               <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl sm:rounded-3xl p-8 sm:p-12 text-center">
                 <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white rounded-xl sm:rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
                   <Gavel className="w-6 h-6 sm:w-8 sm:h-8 text-gray-300" />
@@ -191,7 +195,7 @@ export const PricingRules: React.FC<PricingRulesProps> = ({
                 </button>
               </div>
           ) : (
-              pricingRules.sort((a, b) => a.priority - b.priority).map(rule => (
+              [...safePricingRules].sort((a, b) => a.priority - b.priority).map(rule => (
                   <div
                       key={rule.id}
                       className={cn(

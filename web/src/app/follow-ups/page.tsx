@@ -554,7 +554,7 @@ export default function FollowUpsPage() {
                       <div>
                         <h3 className="font-medium text-gray-900">Automated ICP Follow-ups</h3>
                         <p className="text-sm text-gray-500 mt-0.5">
-                          Automatically follow up with members who haven't completed their profile
+                          Automatically follow up with members who haven&apos;t completed their profile
                         </p>
                       </div>
                       <button
@@ -702,7 +702,7 @@ export default function FollowUpsPage() {
                                 className="w-full appearance-none border border-gray-200 rounded-lg px-3 py-2.5 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-white"
                               >
                                 {templates.map((t) => (
-                                  <option key={t.name} value={t.name}>
+                                  <option key={`${t.name}-${t.language}`} value={t.name}>
                                     {t.name} ({t.language})
                                   </option>
                                 ))}

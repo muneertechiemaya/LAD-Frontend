@@ -249,8 +249,15 @@ export function TemplatePicker({
     // WABA handles rate-limiting server-side — pass zeroes so the backend sends
     // without artificial throttling. Personal WA uses the user-configured schedule
     // to avoid account restrictions from rapid bulk sends.
+    // Guard against NaN values (a cleared number input puts NaN into state).
+    // Fall back to the same defaults the useState hooks use above.
     const scheduleParams = channel === 'personal'
-      ? { batchSize, delayMin, delayRandom, dailyLimit }
+      ? {
+          batchSize:   Number.isFinite(batchSize)   ? batchSize   : 5,
+          delayMin:    Number.isFinite(delayMin)    ? delayMin    : 120,
+          delayRandom: Number.isFinite(delayRandom) ? delayRandom : 30,
+          dailyLimit:  Number.isFinite(dailyLimit)  ? dailyLimit  : 250,
+        }
       : { batchSize: 0, delayMin: 0, delayRandom: 0, dailyLimit: 0 };
     onSend(
       selectedTemplate.name,
@@ -305,26 +312,10 @@ export function TemplatePicker({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:w-[90vw] sm:h-[90vh] flex flex-col p-0 overflow-hidden">
         <DialogHeader>
-          <div className="flex items-center justify-between w-full">
-            <DialogTitle className="flex items-center gap-3">
-              <MessageSquare className="h-6 w-6 text-orange-600" />
-              Send Template Message
-              <Badge variant="secondary" className="bg-orange-50 text-orange-700 border-orange-100 px-3">
-                {selectedCount} conversation{selectedCount !== 1 ? 's' : ''}
-              </Badge>
-            </DialogTitle>
-            
-            {channel === 'waba' && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-9 text-xs px-3 rounded-lg border-orange-200 text-orange-700 hover:bg-orange-50 transition-all"
-                onClick={() => setShowCreateModal(true)}
-              >
-                <Plus className="w-3.5 h-3.5 mr-1.5" /> New template
-              </Button>
-            )}
-          </div>
+          <DialogTitle className="flex items-center gap-3">
+            <MessageSquare className="h-6 w-6 text-orange-600" />
+            Send Template Message
+          </DialogTitle>
         </DialogHeader>
 
         <CreateWabaTemplateModal
@@ -340,16 +331,26 @@ export function TemplatePicker({
           {!selectedTemplate ? (
             <>
               {/* Search */}
-              <div className="px-8 pt-6 pb-2">
-                <div className="relative">
+              <div className="px-8 pt-6 pb-2 flex items-center gap-3">
+                <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search templates..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="pl-9 h-11 rounded-xl bg-gray-50 border-gray-100"
+                    className="pl-9 h-11 rounded-xl bg-gray-50 dark:bg-[#2e2f2f] border-gray-100 dark:border-[#3d3d3d] dark:text-white dark:placeholder:text-[#8696a0]"
                   />
                 </div>
+                {channel === 'waba' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-11 text-xs px-3.5 rounded-xl border-orange-200 text-orange-700 hover:bg-orange-100 hover:text-orange-800 dark:border-orange-500/30 dark:text-orange-400 dark:hover:bg-orange-500/10 transition-all shrink-0 font-medium"
+                    onClick={() => setShowCreateModal(true)}
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1.5" /> New template
+                  </Button>
+                )}
               </div>
 
               {/* Template list */}
@@ -373,11 +374,11 @@ export function TemplatePicker({
                     {filtered.map((template) => (
                       <div
                         key={`${template.name}-${template.language}`}
-                        className="p-3 rounded-xl hover:bg-orange-50/50 cursor-pointer transition-all border border-transparent hover:border-orange-100 group"
+                        className="p-3 rounded-xl hover:bg-orange-50/50 dark:hover:bg-[#2e2f2f] cursor-pointer transition-all border border-transparent hover:border-orange-100 dark:hover:border-[#3d3d3d] group"
                         onClick={() => handleSelectTemplate(template)}
                       >
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm font-bold text-gray-900 group-hover:text-orange-700 transition-colors">{template.name}</span>
+                          <span className="text-sm font-bold text-gray-900 dark:text-white group-hover:text-orange-700 dark:group-hover:text-orange-400 transition-colors">{template.name}</span>
                           <Badge
                             variant="outline"
                             className={cn(
@@ -404,17 +405,17 @@ export function TemplatePicker({
             <div className="flex-1 flex flex-col min-h-0 overflow-hidden px-8 py-6">
               <div className="flex-1 overflow-y-auto space-y-6 pr-2">
                 {/* Back button + template info */}
-                <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                <div className="flex items-center gap-3 bg-gray-50 dark:bg-[#2e2f2f] p-3 rounded-xl border border-gray-100 dark:border-[#3d3d3d]">
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 px-2 hover:bg-white shadow-sm"
+                    className="h-8 px-2 hover:bg-gray-200/50 dark:hover:bg-[#3d3d3d] shadow-sm"
                     onClick={() => setSelectedTemplate(null)}
                   >
-                    <ChevronDown className="h-4 w-4 rotate-90" />
+                    <ChevronDown className="h-4 w-4 rotate-90 text-gray-700 dark:text-gray-200" />
                   </Button>
                   <div className="flex flex-col">
-                    <span className="text-sm font-bold text-gray-900">{selectedTemplate.name}</span>
+                    <span className="text-sm font-bold text-gray-900 dark:text-white">{selectedTemplate.name}</span>
                     <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">{selectedTemplate.category}</span>
                   </div>
                 </div>
@@ -431,9 +432,9 @@ export function TemplatePicker({
                         const label       = isNaN(Number(paramName)) ? `{{${paramName}}}` : `Parameter {{${paramName}}}`;
                         const ctx         = getParamContext(selectedTemplate.body, paramName);
                         return (
-                          <div key={i} className="space-y-2 p-4 rounded-xl border border-gray-100 bg-white shadow-sm">
+                          <div key={i} className="space-y-2 p-4 rounded-xl border border-gray-100 dark:border-[#3d3d3d] bg-white dark:bg-[#2e2f2f] shadow-sm">
                             <div className="flex items-center justify-between">
-                              <span className="text-xs font-bold text-gray-700 font-mono">{label}</span>
+                              <span className="text-xs font-bold text-gray-700 dark:text-gray-200 font-mono">{label}</span>
                               {ctx && <span className="text-[10px] text-muted-foreground font-mono italic opacity-60">{ctx}</span>}
                             </div>
                             
@@ -449,7 +450,7 @@ export function TemplatePicker({
                                   <SelectItem key={o.value} value={o.value}>
                                     <div className="flex flex-col">
                                       <span className="font-bold">{o.label}</span>
-                                      <span className="text-[10px] text-muted-foreground">{o.hint}</span>
+                                      <span className="text-[10px]">{o.hint}</span>
                                     </div>
                                   </SelectItem>
                                 ))}
@@ -475,7 +476,7 @@ export function TemplatePicker({
                 {['image', 'document', 'video'].includes(selectedTemplate.header_type) && (
                   <div className="space-y-3">
                     <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Header {selectedTemplate.header_type}</h4>
-                    <div className="p-4 rounded-xl border border-gray-100 bg-white shadow-sm space-y-3">
+                    <div className="p-4 rounded-xl border border-gray-100 dark:border-[#3d3d3d] bg-white dark:bg-[#2e2f2f] shadow-sm space-y-3">
                       {resolvingMedia ? (
                         <div className="flex items-center gap-3 py-4 text-sm text-muted-foreground">
                           <Loader2 className="h-5 w-5 animate-spin text-orange-500" />
@@ -510,24 +511,30 @@ export function TemplatePicker({
                     <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Name Personalization</h4>
                     <div className="grid grid-cols-2 gap-3">
                       <button
+                        type="button"
                         onClick={() => setNameFormat('first')}
                         className={cn(
                           "p-3 rounded-xl border transition-all text-left group",
-                          nameFormat === 'first' ? "border-orange-500 bg-orange-50/50 ring-1 ring-orange-200" : "border-gray-100 hover:border-orange-200"
+                          nameFormat === 'first'
+                            ? "border-orange-500 bg-orange-50/50 dark:bg-orange-950/40 ring-1 ring-orange-200 dark:ring-orange-500/30"
+                            : "border-gray-100 dark:border-[#3d3d3d] bg-white dark:bg-[#2e2f2f] hover:border-orange-200 dark:hover:border-orange-500/40"
                         )}
                       >
-                        <span className={cn("block text-sm font-bold", nameFormat === 'first' ? "text-orange-700" : "text-gray-900")}>First Name</span>
-                        <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight">e.g. Naveen</span>
+                        <span className={cn("block text-sm font-bold", nameFormat === 'first' ? "text-orange-700 dark:text-orange-400" : "text-gray-900 dark:text-white")}>First Name</span>
+                        <span className={cn("text-[10px] font-medium uppercase tracking-tight", nameFormat === 'first' ? "text-orange-600/80 dark:text-orange-300/80" : "text-muted-foreground dark:text-gray-400")}>e.g. Naveen</span>
                       </button>
                       <button
+                        type="button"
                         onClick={() => setNameFormat('full')}
                         className={cn(
                           "p-3 rounded-xl border transition-all text-left group",
-                          nameFormat === 'full' ? "border-orange-500 bg-orange-50/50 ring-1 ring-orange-200" : "border-gray-100 hover:border-orange-200"
+                          nameFormat === 'full'
+                            ? "border-orange-500 bg-orange-50/50 dark:bg-orange-950/40 ring-1 ring-orange-200 dark:ring-orange-500/30"
+                            : "border-gray-100 dark:border-[#3d3d3d] bg-white dark:bg-[#2e2f2f] hover:border-orange-200 dark:hover:border-orange-500/40"
                         )}
                       >
-                        <span className={cn("block text-sm font-bold", nameFormat === 'full' ? "text-orange-700" : "text-gray-900")}>Full Name</span>
-                        <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight">e.g. Naveen Reddy</span>
+                        <span className={cn("block text-sm font-bold", nameFormat === 'full' ? "text-orange-700 dark:text-orange-400" : "text-gray-900 dark:text-white")}>Full Name</span>
+                        <span className={cn("text-[10px] font-medium uppercase tracking-tight", nameFormat === 'full' ? "text-orange-600/80 dark:text-orange-300/80" : "text-muted-foreground dark:text-gray-400")}>e.g. Naveen Reddy</span>
                       </button>
                     </div>
                   </div>
@@ -536,9 +543,9 @@ export function TemplatePicker({
                 {/* Preview */}
                 <div className="space-y-3">
                   <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Message Preview</h4>
-                  <div className="p-6 rounded-2xl bg-white border border-gray-100 shadow-sm relative overflow-hidden">
+                  <div className="p-6 rounded-2xl bg-white dark:bg-[#2e2f2f] border border-gray-100 dark:border-[#3d3d3d] shadow-sm relative overflow-hidden">
                     <div className="absolute top-0 left-0 w-1.5 h-full bg-orange-400" />
-                    <p className="text-sm leading-relaxed text-gray-800 whitespace-pre-wrap font-medium">
+                    <p className="text-sm leading-relaxed text-gray-800 dark:text-gray-200 whitespace-pre-wrap font-medium">
                       {previewBody}
                     </p>
                   </div>
@@ -554,8 +561,12 @@ export function TemplatePicker({
                           <label className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">Batch Size</label>
                           <Input
                             type="number"
-                            value={batchSize}
-                            onChange={e => setBatchSize(parseInt(e.target.value))}
+                            value={Number.isFinite(batchSize) ? batchSize : ''}
+                            onChange={e => {
+                              const raw = e.target.value;
+                              const n = parseInt(raw, 10);
+                              setBatchSize(raw === '' || Number.isNaN(n) ? NaN : n);
+                            }}
                             className="h-10 rounded-lg border-amber-200 bg-white"
                           />
                         </div>
@@ -563,8 +574,12 @@ export function TemplatePicker({
                           <label className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">Delay (s)</label>
                           <Input
                             type="number"
-                            value={delayMin}
-                            onChange={e => setDelayMin(parseInt(e.target.value))}
+                            value={Number.isFinite(delayMin) ? delayMin : ''}
+                            onChange={e => {
+                              const raw = e.target.value;
+                              const n = parseInt(raw, 10);
+                              setDelayMin(raw === '' || Number.isNaN(n) ? NaN : n);
+                            }}
                             className="h-10 rounded-lg border-amber-200 bg-white"
                           />
                         </div>
@@ -572,8 +587,12 @@ export function TemplatePicker({
                           <label className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">Daily Cap</label>
                           <Input
                             type="number"
-                            value={dailyLimit}
-                            onChange={e => setDailyLimit(parseInt(e.target.value))}
+                            value={Number.isFinite(dailyLimit) ? dailyLimit : ''}
+                            onChange={e => {
+                              const raw = e.target.value;
+                              const n = parseInt(raw, 10);
+                              setDailyLimit(raw === '' || Number.isNaN(n) ? NaN : n);
+                            }}
                             className="h-10 rounded-lg border-amber-200 bg-white"
                           />
                         </div>
@@ -590,7 +609,9 @@ export function TemplatePicker({
           <div className="flex items-center justify-between w-full">
             <div className="text-sm font-medium text-muted-foreground">
               {selectedTemplate ? (
-                <span>Ready to send to {selectedCount}</span>
+                <span>
+                  Ready to send {selectedCount} {selectedCount === 1 ? 'conversation' : 'conversations'}.
+                </span>
               ) : (
                 <span>Select a template to continue</span>
               )}

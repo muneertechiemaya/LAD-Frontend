@@ -9,6 +9,7 @@ import {
   Save,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
   FlaskConical,
   Bot,
   User,
@@ -78,6 +79,20 @@ const CHANNELS = [
 ] as const;
 
 type ChannelValue = typeof CHANNELS[number]["value"];
+
+// ── Conversation stages (WABA state machine) ───────────────────────────────────
+// Lets a tester preview how a sectioned ("## STAGE:") prompt is scoped, and how
+// the bot replies in each stage. Sent as `context_status` to the playground
+// /chat endpoint; the live pipeline computes this per turn from the state
+// machine. Stateless preview — does NOT run the real transitions or booking
+// handlers (those only exist in process_inbound_message on the live pipeline).
+const STAGES: { value: string; label: string }[] = [
+  { value: "greeting",            label: "Greeting" },
+  { value: "info_gathering",      label: "Info gathering" },
+  { value: "booking_in_progress", label: "Booking in progress" },
+  { value: "booking_completed",   label: "Booking completed" },
+  { value: "cancelled",           label: "Cancelled" },
+];
 
 function getChannelConfig(channel: string) {
   return CHANNELS.find((c) => c.value === channel) ?? CHANNELS[0];
@@ -202,6 +217,10 @@ export function AIPlayground({ onClose }: AIPlaygroundProps) {
   const [knowledgeBase, setKnowledgeBase]     = useState<string>("");
   const [showKnowledgeBase, setShowKnowledgeBase] = useState(false);
   const [showPromptDropdown, setShowPromptDropdown] = useState(false);
+  // Conversation-stage selector (WABA) — previews stage-scoped prompts.
+  const [selectedStage, setSelectedStage] = useState<string>("greeting");
+  // Echo of what the backend actually scoped to (stage + assembled prompt size).
+  const [stageInfo, setStageInfo] = useState<{ stage: string; chars: number } | null>(null);
 
   // Chat state
   const [messages, setMessages]   = useState<ChatMessage[]>([]);
@@ -373,11 +392,18 @@ export function AIPlayground({ onClose }: AIPlaygroundProps) {
           conversation_history: messages.map((m) => ({ role: m.role, content: m.content })),
           knowledge_base:       knowledgeBase || undefined,
           ai_model:             settings?.ai_model,
+          context_status:       selectedStage,
         }),
       });
       const data = await res.json();
 
       if (data.success && data.response) {
+        // Surface what the backend scoped the prompt to (stage + char count),
+        // so the tester can confirm e.g. booking_completed dropped the
+        // greeting/slot prose.
+        if (data.stage_used) {
+          setStageInfo({ stage: data.stage_used, chars: data.system_prompt_chars ?? 0 });
+        }
         setMessages([
           ...history,
           {
@@ -398,7 +424,7 @@ export function AIPlayground({ onClose }: AIPlaygroundProps) {
       setIsSending(false);
       setTimeout(() => inputRef.current?.focus(), 50);
     }
-  }, [inputValue, isSending, messages, systemPrompt, selectedPromptId, knowledgeBase, settings]);
+  }, [inputValue, isSending, messages, systemPrompt, selectedPromptId, knowledgeBase, settings, selectedStage]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -436,22 +462,32 @@ export function AIPlayground({ onClose }: AIPlaygroundProps) {
       animate={{ x: 0, opacity: 1 }}
       exit={{ x: "100%", opacity: 0 }}
       transition={{ duration: 0.25, ease: "easeOut" }}
-      className="fixed right-0 top-0 h-full w-full sm:w-[480px] z-50 flex flex-col bg-background border-l border-border shadow-2xl"
+      className="fixed right-0 top-0 h-full w-full sm:w-[480px] z-[110] flex flex-col bg-white dark:bg-[#030a21] border-l border-gray-200 dark:border-blue-950/60 shadow-2xl text-gray-900 dark:text-white"
     >
       {/* ── Header ────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card shrink-0">
-        <div className="flex items-center gap-2">
-          <FlaskConical className="h-5 w-5 text-primary" />
-          <h2 className="font-semibold text-sm">AI Playground</h2>
-          <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-            {settings?.ai_model || "claude-sonnet-4-6"}
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card shrink-0">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 sm:hidden -ml-2 text-muted-foreground hover:text-foreground"
+          onClick={onClose}
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </Button>
+
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <FlaskConical className="h-5 w-5 text-[#0B1957] dark:text-white shrink-0" />
+          <h2 className="font-semibold text-sm truncate">AI Playground</h2>
+          <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full hidden xs:inline-block">
+            {settings?.ai_model || "claude-sonnet"}
           </span>
         </div>
-        <div className="flex items-center gap-1">
+
+        <div className="flex items-center gap-1 shrink-0">
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={loadConfig} title="Reload config">
             <RefreshCw className="h-3.5 w-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 hidden sm:inline-flex" onClick={onClose}>
             <X className="h-4 w-4" />
           </Button>
         </div>
@@ -495,6 +531,30 @@ export function AIPlayground({ onClose }: AIPlaygroundProps) {
                   );
                 })}
               </div>
+
+              {/* ── Conversation stage (preview stage-scoped prompt) ─── */}
+              {(selectedChannel === "whatsapp" || selectedChannel === "all") && (
+                <div className="flex items-center gap-2 mb-2">
+                  <label className="text-[11px] font-medium text-muted-foreground shrink-0">
+                    Stage
+                  </label>
+                  <select
+                    value={selectedStage}
+                    onChange={(e) => setSelectedStage(e.target.value)}
+                    title="Preview how a sectioned (## STAGE:) prompt scopes + how the bot replies in this stage. Stateless — does not run real transitions or bookings."
+                    className="flex-1 text-xs bg-background border border-border rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary/50"
+                  >
+                    {STAGES.map((s) => (
+                      <option key={s.value} value={s.value}>{s.label}</option>
+                    ))}
+                  </select>
+                  {stageInfo && (
+                    <span className="text-[10px] text-muted-foreground shrink-0 whitespace-nowrap">
+                      scoped: {stageInfo.stage} · {stageInfo.chars} chars
+                    </span>
+                  )}
+                </div>
+              )}
 
               {/* ── Prompt dropdown (filtered by channel) ──────────── */}
               <div className="relative" ref={dropdownRef}>
@@ -543,8 +603,8 @@ export function AIPlayground({ onClose }: AIPlaygroundProps) {
                           <button
                             key={p.id}
                             onClick={() => handleSelectPrompt(p)}
-                            className={`w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors flex items-center gap-2 ${
-                              p.name === selectedPromptName ? "bg-accent" : ""
+                            className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-200 dark:hover:bg-[#2EE6A6] transition-colors flex items-center gap-2 ${
+                              p.name === selectedPromptName ? "bg-slate-200 dark:bg-[#2EE6A6]" : ""
                             }`}
                           >
                             {/* Channel icon */}
@@ -687,14 +747,14 @@ export function AIPlayground({ onClose }: AIPlaygroundProps) {
                 <div
                   className={`shrink-0 h-7 w-7 rounded-full flex items-center justify-center ${
                     msg.role === "user"
-                      ? "bg-primary text-primary-foreground"
+                      ? "bg-primary text-primary-foreground dark:text-white"
                       : "bg-muted text-muted-foreground"
                   }`}
                 >
                   {msg.role === "user" ? <User className="h-3.5 w-3.5" /> : <Bot className="h-3.5 w-3.5" />}
                 </div>
                 {msg.role === "user" ? (
-                  <div className="max-w-[80%] bg-primary text-primary-foreground rounded-2xl rounded-tr-sm px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap">
+                  <div className="max-w-[80%] bg-primary text-primary-foreground dark:text-white rounded-2xl rounded-tr-sm px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap">
                     {msg.content}
                   </div>
                 ) : (
@@ -716,7 +776,7 @@ export function AIPlayground({ onClose }: AIPlaygroundProps) {
                               would attach
                             </span>
                             <span className="text-muted-foreground text-[10px] truncate max-w-[120px]">
-                              triggered: "{att.matched_keyword}"
+                              triggered: &quot;{att.matched_keyword}&quot;
                             </span>
                           </div>
                         ))}

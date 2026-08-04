@@ -49,6 +49,8 @@ export interface Message {
   humanAgentId?: string;
   /** Template name if this message was sent via a WhatsApp template */
   templateName?: string;
+  /** Whether the user has starred this message (persisted in message metadata). */
+  starred?: boolean;
 
   // ── Location message fields ──────────────────────────────────────────────
   /** GPS latitude for location messages */
@@ -137,6 +139,9 @@ export interface Conversation {
   conversationState?: ConversationState;
   leadId?: string;
   messageCount?: number;
+  /** User-marked favourite, persisted in conversations.metadata.is_favorite. */
+  is_favorite?: boolean;
+  isFavorite?: boolean;
 }
 
 // ============================
@@ -161,6 +166,8 @@ export interface ConversationListFilters {
   hide_empty?: boolean;
   /** Server-side sort order. Defaults to 'date' on the backend if omitted. */
   sort_by?: ConversationSortBy;
+  /** Restrict to conversations carrying at least one of these label UUIDs. */
+  label_ids?: string[];
   limit?: number;
   offset?: number;
 }
@@ -223,6 +230,9 @@ export interface UseConversationsReturn {
   setContextStatusFilter: (filter: string) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
+  /** Currently selected label UUIDs — server returns only matching conversations. */
+  selectedLabelIds: string[];
+  setSelectedLabelIds: (ids: string[]) => void;
   /** When true, conversations with no messages yet are hidden from the list. */
   hideEmpty: boolean;
   setHideEmpty: (hide: boolean) => void;
@@ -235,9 +245,9 @@ export interface UseConversationsReturn {
     linkedin: number;
     gmail: number;
   };
-  sendMessage: (payload: RichMessagePayload) => void;
+  sendMessage: (payload: RichMessagePayload) => Promise<Message | void>;
   markAsResolved: (id: string) => void;
-  muteConversation: (id: string) => void;
+  muteConversation: (id?: string) => void;
   isLoading: boolean;
   error: Error | null;
   refetch: () => void;

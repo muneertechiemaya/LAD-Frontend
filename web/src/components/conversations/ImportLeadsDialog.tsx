@@ -61,7 +61,7 @@ interface ImportLeadsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onImportComplete: () => void;
-  channel?: 'personal' | 'waba' | 'gmail' | 'outlook';
+  channel?: 'personal' | 'waba' | 'gmail' | 'outlook' | 'custom';
   /** If provided (email mode), imported contacts are also added to this email group */
   emailGroupId?: string;
 }
@@ -204,9 +204,51 @@ function autoFixPhone(phone: string, countryCode: string): string {
   return countryCode + cleaned;
 }
 
+// Turn an API error body into a readable string. FastAPI validation errors
+// come back as `detail: [{ type, loc, msg, input, ctx }]` — rendering that
+// array/object directly as a React child throws "Objects are not valid as a
+// React child" (#31) and crashes the page. Flatten it to "field: message".
+function formatApiError(data: unknown): string {
+  const d = (data as { detail?: unknown; error?: unknown })?.detail
+    ?? (data as { error?: unknown })?.error;
+  if (Array.isArray(d)) {
+    return d
+      .map((e) => {
+        const it = e as { loc?: unknown[]; msg?: string };
+        const field = Array.isArray(it.loc)
+          ? it.loc.filter((x) => x !== 'body').join('.')
+          : '';
+        return field ? `${field}: ${it.msg ?? ''}` : (it.msg ?? '');
+      })
+      .filter(Boolean)
+      .join('; ');
+  }
+  if (typeof d === 'string') return d;
+  if (d && typeof d === 'object') return (d as { msg?: string }).msg || 'Request failed';
+  return 'Unknown error';
+}
+
+// Clean up common email artifacts so one messy row doesn't 422 the whole
+// import: unwrap "Name <a@b.com>", strip surrounding quotes/spaces and stray
+// leading/trailing dots/commas/semicolons (e.g. "a@b.com." → "a@b.com").
+function sanitizeEmail(raw: string): string {
+  let e = (raw || '').trim();
+  const angle = e.match(/<([^>]+)>/);
+  if (angle) e = angle[1];
+  e = e.replace(/^["'\s.,;:]+|["'\s.,;:]+$/g, '').trim();
+  return e.toLowerCase();
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function isValidEmail(e: string): boolean {
+  return EMAIL_RE.test(e);
+}
+
 // ── Component ────────────────────────────────────────────────────
 
 export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channel, emailGroupId }: ImportLeadsDialogProps) {
+  const inputBorderClass = "border border-gray-300 dark:border-slate-700 bg-white dark:bg-[#00051d] text-foreground dark:text-white focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:border-blue-500 focus:border-blue-500 focus-visible:outline-none";
+
   // Email mode: channel is 'gmail' or 'outlook'
   const isEmailMode = channel === 'gmail' || channel === 'outlook';
   const [activeTab, setActiveTab] = useState('single');
@@ -216,14 +258,18 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{
     success: boolean;
+    total: number;
     imported: number;
     conversations: number;
     conversationIds?: string[];
-    errors: { name: string; error: string }[];
-    skipped: { name: string; reason: string }[];
+    errors: { name: string; phone?: string; error: string }[];
+    skipped: { name: string; phone?: string; reason: string }[];
+    duplicates: { name: string; phone?: string; reason: string }[];
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const excelInputRef = useRef<HTMLInputElement>(null);
+  // Feedback for the Excel-upload parser (empty = no problem).
+  const [excelError, setExcelError] = useState<string>('');
   const [broadcastName, setBroadcastName] = useState('');
   const [showBroadcastPrompt, setShowBroadcastPrompt] = useState(false);
   const [showAddToGroupPrompt, setShowAddToGroupPrompt] = useState(false);
@@ -268,12 +314,25 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
   useEffect(() => {
     if (!open) return;
     if (isEmailMode) {
-      // Email mode: load email broadcast groups
-      fetch(`${EMAIL_API}/groups?channel=${channel}`, {
+      // Email mode: load broadcast groups. Gmail/Outlook route through
+      // LAD-Email-Comms (single-object response shape: {groups: [...]}).
+      // Custom SMTP still uses the legacy WABA-Comms envelope
+      // {success, data: [...]}.
+      const isHosted = channel === 'gmail' || channel === 'outlook';
+      const url = isHosted
+        ? `/api/email-comms/groups?channel=${channel}`
+        : `${EMAIL_API}/groups?channel=${channel}`;
+      fetch(url, {
         headers: { 'Authorization': `Bearer ${safeStorage.getItem('token') || ''}` },
       })
         .then((r) => r.json())
-        .then((data) => { if (data.success) setGroups(data.data || []); })
+        .then((data) => {
+          if (isHosted) {
+            setGroups(data.groups || []);
+          } else if (data.success) {
+            setGroups(data.data || []);
+          }
+        })
         .catch(() => {});
     } else {
       // WhatsApp mode: load chat groups
@@ -441,55 +500,95 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
         await workbook.xlsx.load(buffer);
         const worksheet = workbook.worksheets[0];
 
-        if (!worksheet || !worksheet.rowCount || worksheet.rowCount < 2) return;
+        setExcelError('');
+        if (!worksheet || !worksheet.rowCount || worksheet.rowCount < 2) {
+          setExcelError('That sheet has no data rows. Add contacts below the header row and re-upload.');
+          return;
+        }
 
-        // Parse header
-        const headerRow = worksheet.getRow(1);
-        const headers = headerRow.values
-          ?.map((h) => String(h || '').trim().toLowerCase().replace(/['"]/g, ''))
-          .filter((h) => h) || [];
+        // Normalise any cell value to a trimmed string. Excel auto-converts
+        // emails/URLs to hyperlinks, so exceljs returns objects like
+        // { text, hyperlink } (also richText / formula { result }) — a plain
+        // String() on those yields "[object Object]", which is why email
+        // uploads were silently dropped. Unwrap them here.
+        const cellText = (v: unknown): string => {
+          if (v == null) return '';
+          if (typeof v === 'object') {
+            const o = v as Record<string, unknown>;
+            const rt = Array.isArray(o.richText)
+              ? (o.richText as { text?: string }[]).map((r) => r.text ?? '').join('')
+              : undefined;
+            return String(o.text ?? rt ?? o.result ?? o.hyperlink ?? '').trim();
+          }
+          return String(v).trim();
+        };
+        const norm = (v: unknown) => cellText(v).toLowerCase().replace(/['"]/g, '');
 
-        const nameIdx = headers.findIndex((h) => h === 'name' || h === 'full name' || h === 'fullname');
-        const phoneIdx = headers.findIndex((h) => h === 'phone' || h === 'whatsapp' || h === 'mobile' || h === 'phone number');
-        const emailIdx = headers.findIndex((h) => h === 'email' || h === 'email address');
-        const companyIdx = headers.findIndex((h) => h === 'company' || h === 'organization' || h === 'org');
-        const linkedinIdx = headers.findIndex((h) => h === 'linkedin' || h === 'linkedin_url' || h === 'linkedin url');
-        const instagramIdx = headers.findIndex((h) => h === 'instagram' || h === 'instagram_url' || h === 'instagram url');
-        const sourceIdx = headers.findIndex((h) => h === 'source');
+        // Build header → 1-based column-number map (gap-safe; never compacted).
+        const col: Record<string, number> = {};
+        worksheet.getRow(1).eachCell({ includeEmpty: false }, (cell, colNumber) => {
+          const h = norm(cell.value);
+          if (h && !(h in col)) col[h] = colNumber;
+        });
+        const pick = (...names: string[]) => {
+          for (const n of names) if (col[n]) return col[n];
+          return 0;
+        };
+        const nameCol      = pick('name', 'full name', 'fullname', 'contact name');
+        const phoneCol     = pick('phone', 'whatsapp', 'mobile', 'phone number');
+        const emailCol     = pick('email', 'email address', 'e-mail');
+        const companyCol   = pick('company', 'organization', 'org');
+        const linkedinCol  = pick('linkedin', 'linkedin_url', 'linkedin url');
+        const instagramCol = pick('instagram', 'instagram_url', 'instagram url');
+        const sourceCol    = pick('source');
+
+        if (!nameCol) {
+          setExcelError('No "name" column found in the header row. Use Download Template to see the expected columns.');
+          return;
+        }
+
+        const readCell = (row: ReturnType<typeof worksheet.getRow>, c: number) =>
+          c ? cellText(row.getCell(c).value) : '';
 
         const parsedLeads: LeadEntry[] = [];
         for (let i = 2; i <= worksheet.rowCount; i++) {
           const row = worksheet.getRow(i);
-          const cells = row.values || [];
-          const name = nameIdx >= 0 ? String(cells[nameIdx + 1] || '').trim() : '';
+          const name = readCell(row, nameCol);
           if (!name) continue;
-
           parsedLeads.push({
             id: crypto.randomUUID(),
             name,
-            phone: phoneIdx >= 0 ? String(cells[phoneIdx + 1] || '').trim() : '',
-            email: emailIdx >= 0 ? String(cells[emailIdx + 1] || '').trim() : '',
-            company: companyIdx >= 0 ? String(cells[companyIdx + 1] || '').trim() : '',
-            linkedin_url: linkedinIdx >= 0 ? String(cells[linkedinIdx + 1] || '').trim() : '',
-            instagram_url: instagramIdx >= 0 ? String(cells[instagramIdx + 1] || '').trim() : '',
-            source: sourceIdx >= 0 ? String(cells[sourceIdx + 1] || '').trim() : 'excel_import',
+            phone: readCell(row, phoneCol),
+            email: readCell(row, emailCol),
+            company: readCell(row, companyCol),
+            linkedin_url: readCell(row, linkedinCol),
+            instagram_url: readCell(row, instagramCol),
+            source: readCell(row, sourceCol) || 'excel_import',
           });
         }
 
-        if (parsedLeads.length > 0) {
-          setLeads(parsedLeads);
-          setSelectedIds(new Set());
-          setActiveTab('single');
+        if (parsedLeads.length === 0) {
+          setExcelError('No rows with a name were found.');
+          return;
         }
+        // Email groups need an email per contact — surface it early rather
+        // than silently importing 0.
+        if (isEmailMode && !parsedLeads.some((l) => l.email.trim())) {
+          setExcelError('None of the rows have an email address — email groups need an "email" column.');
+        }
+        setLeads(parsedLeads);
+        setSelectedIds(new Set());
+        setActiveTab('single');
       } catch (err) {
         console.error('Failed to parse Excel file:', err);
+        setExcelError('Could not read that file. Make sure it is a valid .xlsx export.');
       }
     };
     reader.readAsArrayBuffer(file);
 
     // Reset input
     if (excelInputRef.current) excelInputRef.current.value = '';
-  }, []);
+  }, [isEmailMode]);
 
   // Download template
   const downloadTemplate = useCallback(async () => {
@@ -575,7 +674,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        setScrapeError(data.error || data.detail || `Failed (${res.status})`);
+        setScrapeError(formatApiError(data) || `Failed (${res.status})`);
         return;
       }
 
@@ -628,26 +727,60 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
     try {
       // ── Email mode ─────────────────────────────────────────────────────────
       if (isEmailMode) {
-        const res = await fetch(`${EMAIL_API}/contacts`, {
+        // Gmail/Outlook → LAD-Email-Comms POST /contacts. That endpoint
+        // atomically bulk-upserts + assigns to a group if group_id is
+        // supplied, so we don't need the follow-up /groups/:id/contacts
+        // call. Custom SMTP still uses the legacy WABA envelope path.
+        const isHosted = channel === 'gmail' || channel === 'outlook';
+        const url = isHosted
+          ? `/api/email-comms/contacts`
+          : `${EMAIL_API}/contacts`;
+        // Sanitize + validate emails client-side so one malformed row (e.g. a
+        // trailing period) can't 422 the entire batch. Fixable artifacts are
+        // cleaned; rows still invalid afterwards are dropped and reported.
+        const cleaned = validLeads
+          .map((l) => ({ l, email: sanitizeEmail(l.email) }))
+          .filter((c) => isValidEmail(c.email));
+        const skippedInvalid = validLeads.length - cleaned.length;
+        if (cleaned.length === 0) {
+          setImportResult({
+            success: false, total: validLeads.length, imported: 0, conversations: 0,
+            errors: [{ name: 'Import', error: 'No valid email addresses after cleaning — check the email column.' }],
+            skipped: [], duplicates: [],
+          });
+          setImporting(false);
+          return;
+        }
+        const res = await fetch(url, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${safeStorage.getItem('token') || ''}`,
           },
           body: JSON.stringify({
-            contacts: validLeads.map((l) => ({
-              name: l.name.trim(),
-              email: l.email.trim(),
-              company: l.company.trim() || null,
+            contacts: cleaned.map((c) => ({
+              name: c.l.name.trim(),
+              email: c.email,
+              company: c.l.company.trim() || null,
             })),
             channel,
             ...(emailGroupId ? { group_id: emailGroupId } : {}),
           }),
         });
         const data = await res.json();
-        if (data.success) {
-          // If group assignment requested and we have contact_ids, add them to the group
-          if (emailGroupId && data.data?.contact_ids?.length > 0) {
+
+        // Normalise the two response shapes:
+        //   * LAD-Email-Comms: {imported, duplicates, contact_ids,
+        //                       added_to_group}
+        //   * Legacy WABA:     {success, data: {imported, contact_ids,
+        //                       errors, skipped}}
+        const ok = isHosted ? res.ok : !!data.success;
+        const inner = isHosted ? data : (data.data ?? {});
+
+        if (ok) {
+          // For legacy provider, still need to add contacts to the group
+          // after import — LAD-Email-Comms already did it atomically.
+          if (!isHosted && emailGroupId && inner?.contact_ids?.length > 0) {
             try {
               await fetch(`${EMAIL_API}/groups/${emailGroupId}/contacts`, {
                 method: 'POST',
@@ -655,7 +788,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                   'Content-Type': 'application/json',
                   'Authorization': `Bearer ${safeStorage.getItem('token') || ''}`,
                 },
-                body: JSON.stringify({ contact_ids: data.data.contact_ids }),
+                body: JSON.stringify({ contact_ids: inner.contact_ids }),
               });
             } catch { /* non-fatal */ }
           }
@@ -664,19 +797,35 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
           } else {
             setImportResult({
               success: true,
-              imported: data.data.imported ?? validLeads.length,
+              total: validLeads.length,
+              imported: inner.imported ?? validLeads.length,
               conversations: 0,
-              errors: (data.data.errors || []).map((e: any) => ({ name: e.name || e.email || 'Contact', error: e.error })),
-              skipped: data.data.skipped ? [{ name: `${data.data.skipped} contact(s)`, reason: 'missing name or email' }] : [],
+              errors: (inner.errors || []).map((e: { name?: string; email?: string; error: string }) => ({
+                name: e.name || e.email || 'Contact',
+                error: e.error,
+              })),
+              skipped: [
+                ...(isHosted && inner.duplicates
+                  ? [{ name: `${inner.duplicates} contact(s)`, reason: 'already in address book' }]
+                  : []),
+                ...(!isHosted && inner.skipped
+                  ? [{ name: `${inner.skipped} contact(s)`, reason: 'missing name or email' }]
+                  : []),
+                ...(skippedInvalid > 0
+                  ? [{ name: `${skippedInvalid} contact(s)`, reason: 'invalid email address' }]
+                  : []),
+              ],
+              duplicates: [],
               conversationIds: [],
             });
           }
         } else {
           if (!runInBackground) {
             setImportResult({
-              success: false, imported: 0, conversations: 0,
-              errors: [{ name: 'Import', error: data.error || data.detail || 'Unknown error' }],
+              success: false, total: validLeads.length, imported: 0, conversations: 0,
+              errors: [{ name: 'Import', error: formatApiError(data) }],
               skipped: [],
+              duplicates: [],
             });
           }
         }
@@ -712,28 +861,32 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
         } else {
           setImportResult({
             success: true,
+            total: data.data.total ?? validLeads.length,
             imported: data.data.imported,
             conversations: data.data.conversations_created,
             errors: data.data.errors || [],
             skipped: data.data.skipped || [],
+            duplicates: data.data.duplicates || [],
             conversationIds: data.data.conversation_ids || [],
           });
         }
       } else {
         if (!runInBackground) {
           setImportResult({
-            success: false, imported: 0, conversations: 0,
+            success: false, total: validLeads.length, imported: 0, conversations: 0,
             errors: [{ name: 'Import', error: data.error || 'Unknown error' }],
             skipped: [],
+            duplicates: [],
           });
         }
       }
     } catch (err) {
       if (!runInBackground) {
         setImportResult({
-          success: false, imported: 0, conversations: 0,
+          success: false, total: validLeads.length, imported: 0, conversations: 0,
           errors: [{ name: 'Import', error: String(err) }],
           skipped: [],
+          duplicates: [],
         });
       }
     } finally {
@@ -783,8 +936,8 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:w-[90vw] h-auto max-h-[90vh] flex flex-col p-0 gap-0">
-        <DialogHeader>
+      <DialogContent className="z-[6000] sm:w-[90vw] sm:max-w-5xl h-auto max-h-[90vh] flex flex-col p-0 gap-0 border bg-white dark:bg-[#000724] border-slate-200 dark:border-slate-800">
+        <DialogHeader className="border-b bg-white dark:bg-[#000724] border-gray-100 dark:border-slate-800/80">
           <DialogTitle className="flex items-center gap-3">
             <div className="p-2 rounded-full bg-orange-50 text-orange-600 border border-orange-100 shadow-sm flex items-center justify-center w-10 h-10">
               <UserPlus className="h-6 w-6 stroke-[2.5px]" />
@@ -793,19 +946,32 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
           </DialogTitle>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden bg-gray-50/30">
-          <TabsList className="mx-8 mt-6 w-auto self-start">
-            <TabsTrigger value="single" className="text-xs gap-1.5">
-              <UserPlus className="h-3.5 w-3.5" />
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="flex-1 flex flex-col overflow-hidden bg-gray-50/30 dark:bg-[#000724]"
+        >
+          <TabsList className="mx-3 sm:mx-8 mt-4 sm:mt-6 max-w-[calc(100%-1.5rem)] sm:max-w-full overflow-x-auto justify-start flex-nowrap shrink-0 bg-blue-600 dark:bg-blue-600/90 p-1 rounded-xl h-auto gap-1 border border-blue-500/40 shadow-sm">
+            <TabsTrigger
+              value="single"
+              className="text-xs px-3 py-1.5 gap-1.5 rounded-lg text-blue-100 hover:text-white hover:bg-white/10 data-[state=active]:bg-white data-[state=active]:text-slate-800 dark:data-[state=active]:bg-[#00051d] dark:data-[state=active]:text-slate-300 font-medium data-[state=active]:font-semibold data-[state=active]:shadow-sm transition-all shrink-0 whitespace-nowrap"
+            >
+              <UserPlus className="h-3.5 w-3.5 shrink-0" />
               Add Leads
             </TabsTrigger>
-            <TabsTrigger value="excel" className="text-xs gap-1.5">
-              <FileSpreadsheet className="h-3.5 w-3.5" />
+            <TabsTrigger
+              value="excel"
+              className="text-xs px-3 py-1.5 gap-1.5 rounded-lg text-blue-100 hover:text-white hover:bg-white/10 data-[state=active]:bg-white data-[state=active]:text-slate-800 dark:data-[state=active]:bg-[#00051d] dark:data-[state=active]:text-slate-300 font-medium data-[state=active]:font-semibold data-[state=active]:shadow-sm transition-all shrink-0 whitespace-nowrap"
+            >
+              <FileSpreadsheet className="h-3.5 w-3.5 shrink-0" />
               Excel Upload
             </TabsTrigger>
             {!isEmailMode && (
-              <TabsTrigger value="url" className="text-xs gap-1.5">
-                <Globe className="h-3.5 w-3.5" />
+              <TabsTrigger
+                value="url"
+                className="text-xs px-3 py-1.5 gap-1.5 rounded-lg text-blue-100 hover:text-white hover:bg-white/10 data-[state=active]:bg-white data-[state=active]:text-slate-800 dark:data-[state=active]:bg-[#00051d] dark:data-[state=active]:text-slate-300 font-medium data-[state=active]:font-semibold data-[state=active]:shadow-sm transition-all shrink-0 whitespace-nowrap"
+              >
+                <Globe className="h-3.5 w-3.5 shrink-0" />
                 Scrape from URL
               </TabsTrigger>
             )}
@@ -813,18 +979,28 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
 
 
           {/* ── Excel Upload Tab ─────────────────────── */}
-          <TabsContent value="excel" className="px-8 py-6 flex-1">
-            <div className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary/50 transition-colors">
+          <TabsContent value="excel" className="px-3 sm:px-8 py-4 sm:py-6 flex-1">
+            <div className="border-2 border-dashed rounded-xl p-4 sm:p-8 text-center transition-colors border-border dark:border-slate-800 dark:bg-[#00051d]/50 hover:border-blue-500/50">
               <Upload className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
               <p className="text-sm font-medium mb-1">Upload Excel file (.xlsx)</p>
               <p className="text-xs text-muted-foreground mb-4">
-                Required: <span className="font-medium">name</span>. Optional: phone, email, company, linkedin, instagram, source
+                {isEmailMode ? (
+                  <>Required: <span className="font-medium">name</span>, <span className="font-medium">email</span>. Optional: company, phone, source</>
+                ) : (
+                  <>Required: <span className="font-medium">name</span>. Optional: phone, email, company, linkedin, instagram, source</>
+                )}
               </p>
-              <div className="flex gap-2 justify-center">
+              {excelError && (
+                <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg p-2.5 mb-4 text-left">
+                  {excelError}
+                </p>
+              )}
+              <div className="flex flex-col sm:flex-row gap-2 justify-center items-stretch sm:items-center">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => excelInputRef.current?.click()}
+                  className="w-full sm:w-auto justify-center"
                 >
                   <FileSpreadsheet className="h-4 w-4 mr-2" />
                   Choose Excel File
@@ -833,6 +1009,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                   variant="outline"
                   size="sm"
                   onClick={downloadTemplate}
+                  className="w-full sm:w-auto justify-center"
                 >
                   <Download className="h-4 w-4 mr-2" />
                   Download Template
@@ -849,23 +1026,23 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
           </TabsContent>
 
           {/* ── URL Scrape Tab ───────────────────────── */}
-          <TabsContent value="url" className="px-4 py-3 flex-1">
-            <div className="border-2 border-dashed border-border rounded-xl p-6">
+          <TabsContent value="url" className="px-3 sm:px-4 py-3 flex-1">
+            <div className="border-2 border-dashed rounded-xl p-3.5 sm:p-6 border-border dark:border-slate-800 dark:bg-[#00051d]/50">
               <div className="flex items-start gap-3 mb-4">
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                  <Sparkles className="h-5 w-5 text-primary" />
+                <div className="h-10 w-10 rounded-full bg-blue-500/10 dark:bg-blue-400/10 flex items-center justify-center shrink-0">
+                  <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium mb-0.5">Extract contacts from any webpage</p>
                   <p className="text-xs text-muted-foreground">
-                    Paste a URL — member directories, team pages, chapter listings, etc. We'll fetch the
+                    Paste a URL — member directories, team pages, chapter listings, etc. We&apos;ll fetch the
                     page (JavaScript-rendered pages supported) and use AI to pull out names, phones,
                     emails, companies, and social profiles.
                   </p>
                 </div>
               </div>
 
-              <div className="flex gap-2 mb-3">
+              <div className="flex flex-col sm:flex-row gap-2 mb-3">
                 <div className="relative flex-1">
                   <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -873,7 +1050,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                     value={scrapeUrl}
                     onChange={(e) => { setScrapeUrl(e.target.value); setScrapeError(''); }}
                     disabled={scraping}
-                    className="pl-9 h-9 text-sm"
+                    className={cn("pl-9 h-9 text-sm", inputBorderClass)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !scraping && scrapeUrl.trim()) {
                         handleScrapeUrl();
@@ -885,7 +1062,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                   size="sm"
                   onClick={handleScrapeUrl}
                   disabled={scraping || !scrapeUrl.trim()}
-                  className="gap-1.5 shrink-0"
+                  className="gap-1.5 shrink-0 w-full sm:w-auto justify-center"
                 >
                   {scraping ? (
                     <>
@@ -929,8 +1106,8 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
           </TabsContent>
 
           {/* ── Single/List Add Tab ────────────────── */}
-          <TabsContent value="single" className="flex-1 flex flex-col min-h-0 px-8 py-6">
-            <div className="flex-1 min-h-0 overflow-y-auto pr-2">
+          <TabsContent value="single" className="flex-1 flex flex-col min-h-0 px-3 sm:px-8 py-4 sm:py-6">
+            <div className="flex-1 min-h-0 overflow-y-auto pr-1 sm:pr-2">
               <div className="space-y-3">
                 {leads.map((lead, idx) => (
                   <LeadRow
@@ -952,7 +1129,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
             <Button
               variant="ghost"
               size="sm"
-              className="mt-2 w-full text-xs text-primary justify-center gap-1.5 border border-dashed border-primary/30 hover:border-primary/60"
+              className="mt-2 w-full text-xs text-blue-600 dark:text-blue-400 justify-center gap-1.5 border border-dashed border-blue-400/40 dark:border-blue-500/40 hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-950/30 transition-all"
               onClick={addLead}
             >
               <Plus className="h-3.5 w-3.5" />
@@ -963,7 +1140,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
 
         {/* ── Invalid Records Banner ──────────────── */}
         {hasValidationErrors && !importResult?.success && (
-          <div className="mx-8 mb-4 rounded-xl bg-amber-50 border border-amber-200 overflow-hidden shadow-sm">
+          <div className="mx-3 sm:mx-8 mb-4 rounded-xl bg-amber-50 border border-amber-200 overflow-hidden shadow-sm">
             {/* Top row: summary + bulk actions */}
             <div className="px-3 py-2 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 text-amber-700 min-w-0">
@@ -1019,7 +1196,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
 
         {/* ── Broadcast Assignment (pre-import only) ──────────────── */}
         {groups.length > 0 && !importResult?.success && !isEmailMode && (
-          <div className="px-4 py-3 border-t border-border">
+          <div className="px-4 py-3 border-t border-border dark:border-slate-800/80">
             <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">
               Assign to Broadcasts
             </p>
@@ -1033,8 +1210,8 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                     className={cn(
                       'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all border',
                       selected
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-muted/50 text-muted-foreground border-border dark:border-slate-800 hover:border-blue-500/50'
                     )}
                   >
                     <span
@@ -1062,36 +1239,76 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
               <div className="space-y-3">
                 <div className="flex items-start gap-2">
                   <Check className="h-4 w-4 mt-0.5 shrink-0" />
-                  <div className="space-y-1 min-w-0">
+                  <div className="space-y-2 min-w-0 w-full">
                     <span className="block">
-                      Imported <strong>{importResult.imported}</strong> lead{importResult.imported !== 1 ? 's' : ''},{' '}
-                      created <strong>{importResult.conversations}</strong> conversation{importResult.conversations !== 1 ? 's' : ''}
+                      <strong>{importResult.imported}</strong> of <strong>{importResult.total}</strong> lead{importResult.total !== 1 ? 's' : ''} imported
+                      {importResult.conversations > 0 && (
+                        <> — <strong>{importResult.conversations}</strong> new conversation{importResult.conversations !== 1 ? 's' : ''} created</>
+                      )}
+                      {importResult.duplicates.length > 0 && (
+                        <>, <strong>{importResult.duplicates.length}</strong> linked to existing</>
+                      )}
                     </span>
-                    {importResult.skipped.length > 0 && (
-                      <details className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
-                        <summary className="cursor-pointer font-medium select-none">
-                          ⚠ {importResult.skipped.length} record{importResult.skipped.length !== 1 ? 's' : ''} skipped (no phone number)
-                        </summary>
-                        <ul className="mt-1.5 space-y-0.5 max-h-28 overflow-y-auto">
-                          {importResult.skipped.map((s, i) => (
-                            <li key={i} className="flex items-start gap-1.5">
-                              <span className="shrink-0 text-amber-500">·</span>
-                              <span><strong>{s.name}</strong> — {s.reason}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </details>
+
+                    {(importResult.skipped.length > 0 || importResult.errors.length > 0) && (
+                      <div className="rounded-md border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-800">
+                        <p className="font-semibold mb-1.5">
+                          {importResult.skipped.length + importResult.errors.length} number{(importResult.skipped.length + importResult.errors.length) !== 1 ? 's were' : ' was'} excluded
+                        </p>
+                        {importResult.skipped.length > 0 && (
+                          <details open className="mb-1">
+                            <summary className="cursor-pointer font-medium select-none">
+                              ⚠ {importResult.skipped.length} skipped (validation)
+                            </summary>
+                            <ul className="mt-1 ml-3 space-y-0.5 max-h-32 overflow-y-auto">
+                              {importResult.skipped.map((s, i) => (
+                                <li key={i} className="flex items-start gap-1.5">
+                                  <span className="shrink-0 text-amber-500">·</span>
+                                  <span className="break-all">
+                                    <strong>{s.name}</strong>
+                                    {s.phone ? <span className="text-amber-700/80"> ({s.phone})</span> : null}
+                                    {' — '}{s.reason}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          </details>
+                        )}
+                        {importResult.errors.length > 0 && (
+                          <details open className="text-red-700">
+                            <summary className="cursor-pointer font-medium select-none">
+                              ✕ {importResult.errors.length} failed (error)
+                            </summary>
+                            <ul className="mt-1 ml-3 space-y-0.5 max-h-32 overflow-y-auto">
+                              {importResult.errors.map((e, i) => (
+                                <li key={i} className="flex items-start gap-1.5">
+                                  <span className="shrink-0 text-red-400">·</span>
+                                  <span className="break-all">
+                                    <strong>{e.name}</strong>
+                                    {e.phone ? <span className="text-red-600/80"> ({e.phone})</span> : null}
+                                    {' — '}{e.error}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          </details>
+                        )}
+                      </div>
                     )}
-                    {importResult.errors.length > 0 && (
-                      <details className="text-xs text-red-700 bg-red-50 border border-red-200 rounded p-2">
+
+                    {importResult.duplicates.length > 0 && (
+                      <details className="rounded-md border border-blue-200 bg-blue-50 p-2.5 text-xs text-blue-800">
                         <summary className="cursor-pointer font-medium select-none">
-                          ✕ {importResult.errors.length} record{importResult.errors.length !== 1 ? 's' : ''} failed
+                          ℹ {importResult.duplicates.length} already existed — linked to existing conversation{importResult.duplicates.length !== 1 ? 's' : ''}
                         </summary>
-                        <ul className="mt-1.5 space-y-0.5 max-h-28 overflow-y-auto">
-                          {importResult.errors.map((e, i) => (
+                        <ul className="mt-1 ml-3 space-y-0.5 max-h-32 overflow-y-auto">
+                          {importResult.duplicates.map((d, i) => (
                             <li key={i} className="flex items-start gap-1.5">
-                              <span className="shrink-0 text-red-400">·</span>
-                              <span><strong>{e.name}</strong> — {e.error}</span>
+                              <span className="shrink-0 text-blue-500">·</span>
+                              <span className="break-all">
+                                <strong>{d.name}</strong>
+                                {d.phone ? <span className="text-blue-700/80"> ({d.phone})</span> : null}
+                              </span>
                             </li>
                           ))}
                         </ul>
@@ -1194,7 +1411,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                       value={broadcastName}
                       onChange={(e) => { setBroadcastName(e.target.value); setBroadcastCreateError(''); }}
                       disabled={creatingBroadcast}
-                      className="h-8 text-xs"
+                      className={cn("h-8 text-xs", inputBorderClass)}
                       autoFocus
                     />
                     {broadcastCreateError && (
@@ -1303,7 +1520,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
         )}
 
         {/* ── Footer ─────────────────────────────── */}
-        <DialogActions>
+        <DialogActions className="border-t bg-gray-50/50 dark:bg-[#000724] border-gray-100 dark:border-slate-800/80">
           {!importResult?.success ? (
             <div className="flex flex-col w-full space-y-4">
               {/* Run in background toggle — only shown when importing more than 1 lead */}
@@ -1314,13 +1531,13 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                   className={cn(
                     'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border transition-colors text-left text-xs',
                     runInBackground
-                      ? 'border-primary/40 bg-primary/5 text-primary'
-                      : 'border-border bg-muted/30 text-muted-foreground hover:border-primary/30 hover:bg-muted/50'
+                      ? 'border-blue-500/40 bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                      : 'border-border bg-muted/30 text-muted-foreground hover:border-blue-500/30 hover:bg-muted/50'
                   )}
                 >
                   <div className={cn(
                     'h-4 w-4 rounded border flex items-center justify-center shrink-0 transition-colors',
-                    runInBackground ? 'bg-primary border-primary text-white' : 'border-muted-foreground/40'
+                    runInBackground ? 'bg-blue-600 border-blue-600 text-white' : 'border-muted-foreground/40'
                   )}>
                     {runInBackground && <Check className="h-2.5 w-2.5" />}
                   </div>
@@ -1412,16 +1629,17 @@ interface LeadRowProps {
 function LeadRow({ lead, index, errors, isSelected, onUpdate, onRemove, onToggleSelect, canRemove, isEmailMode }: LeadRowProps) {
   const channels = detectChannels(lead);
   const hasErrors = Object.keys(errors).length > 0;
+  const inputBorderClass = "border border-gray-300 dark:border-slate-700 bg-white dark:bg-[#00051d] text-foreground dark:text-white focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:border-blue-500 focus:border-blue-500 focus-visible:outline-none";
 
   return (
     <div
       className={cn(
-        'p-3 rounded-xl border bg-card transition-colors',
+        'p-2.5 sm:p-3 rounded-xl border transition-colors bg-white dark:bg-[#00051d]',
         hasErrors
           ? isSelected
             ? 'border-red-400 bg-red-50/60 ring-2 ring-red-200'
             : 'border-red-300 bg-red-50/30 hover:border-red-400'
-          : 'border-border hover:border-primary/20'
+          : 'border-border dark:border-slate-800/80 hover:border-blue-500/30'
       )}
     >
       <div className="flex items-center justify-between mb-2.5">
@@ -1475,13 +1693,13 @@ function LeadRow({ lead, index, errors, isSelected, onUpdate, onRemove, onToggle
       </div>
 
       {/* Row 1: Name + Company */}
-      <div className="grid grid-cols-2 gap-2 mb-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
         <div className="relative">
           <Input
             placeholder="Full name *"
             value={lead.name}
             onChange={(e) => onUpdate(lead.id, 'name', e.target.value)}
-            className="h-8 text-sm pl-3"
+            className={cn("h-8 text-sm pl-3", inputBorderClass)}
           />
         </div>
         <div className="relative">
@@ -1490,7 +1708,7 @@ function LeadRow({ lead, index, errors, isSelected, onUpdate, onRemove, onToggle
             placeholder="Company"
             value={lead.company}
             onChange={(e) => onUpdate(lead.id, 'company', e.target.value)}
-            className="h-8 text-sm pl-8"
+            className={cn("h-8 text-sm pl-8", inputBorderClass)}
           />
         </div>
       </div>
@@ -1510,6 +1728,7 @@ function LeadRow({ lead, index, errors, isSelected, onUpdate, onRemove, onToggle
                 onChange={(e) => onUpdate(lead.id, 'email', e.target.value)}
                 className={cn(
                   'h-8 text-sm pl-8',
+                  inputBorderClass,
                   errors.email && 'border-red-400 focus-visible:ring-red-300'
                 )}
               />
@@ -1520,7 +1739,7 @@ function LeadRow({ lead, index, errors, isSelected, onUpdate, onRemove, onToggle
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-2 mb-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
           <div className="space-y-1">
             <div className="relative">
               <Phone className={cn(
@@ -1528,11 +1747,16 @@ function LeadRow({ lead, index, errors, isSelected, onUpdate, onRemove, onToggle
                 errors.phone ? 'text-red-400' : 'text-green-500'
               )} />
               <Input
+                type="tel"
                 placeholder="+971501234567"
                 value={lead.phone}
-                onChange={(e) => onUpdate(lead.id, 'phone', e.target.value)}
+                onChange={(e) => {
+                  const cleaned = e.target.value.replace(/[^\d+]/g, '').replace(/(?!^)\+/g, '');
+                  onUpdate(lead.id, 'phone', cleaned);
+                }}
                 className={cn(
                   'h-8 text-sm pl-8',
+                  inputBorderClass,
                   errors.phone && 'border-red-400 focus-visible:ring-red-300'
                 )}
               />
@@ -1553,6 +1777,7 @@ function LeadRow({ lead, index, errors, isSelected, onUpdate, onRemove, onToggle
                 onChange={(e) => onUpdate(lead.id, 'email', e.target.value)}
                 className={cn(
                   'h-8 text-sm pl-8',
+                  inputBorderClass,
                   errors.email && 'border-red-400 focus-visible:ring-red-300'
                 )}
               />
@@ -1566,7 +1791,7 @@ function LeadRow({ lead, index, errors, isSelected, onUpdate, onRemove, onToggle
 
       {/* Row 3: LinkedIn + Instagram — hidden in email mode */}
       {!isEmailMode && (
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <div className="space-y-1">
             <div className="relative">
               <Linkedin className={cn(
@@ -1579,6 +1804,7 @@ function LeadRow({ lead, index, errors, isSelected, onUpdate, onRemove, onToggle
                 onChange={(e) => onUpdate(lead.id, 'linkedin_url', e.target.value)}
                 className={cn(
                   'h-8 text-sm pl-8',
+                  inputBorderClass,
                   errors.linkedin_url && 'border-red-400 focus-visible:ring-red-300'
                 )}
               />
@@ -1599,6 +1825,7 @@ function LeadRow({ lead, index, errors, isSelected, onUpdate, onRemove, onToggle
                 onChange={(e) => onUpdate(lead.id, 'instagram_url', e.target.value)}
                 className={cn(
                   'h-8 text-sm pl-8',
+                  inputBorderClass,
                   errors.instagram_url && 'border-red-400 focus-visible:ring-red-300'
                 )}
               />

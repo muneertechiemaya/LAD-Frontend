@@ -32,6 +32,7 @@ interface AuthContextType {
   logout: () => void;
   getToken: () => Promise<string | null>;
   hasFeature: (featureKey: string) => boolean;
+  refreshUser: (newUser: User) => void;
 }
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -132,16 +133,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const getToken = async (): Promise<string | null> => {
     return token;
   };
-  // Feature checking based on user capabilities and tenant features
+  // Sync AuthContext with a user payload that was already fetched elsewhere
+  // (e.g. by Login.tsx via authService.getCurrentUser). Avoids a duplicate
+  // /api/auth/me call while ensuring the sidebar and feature checks see the
+  // user immediately after login instead of only after a page refresh.
+  const refreshUser = (newUser: User) => {
+    setUser(newUser);
+    safeStorage.setItem('auth', JSON.stringify({
+      user: newUser,
+      isAuthenticated: true,
+      theme: 'light',
+    }));
+    safeStorage.setItem('user', JSON.stringify(newUser));
+  };
+  // Tenant feature check. tenant_features is the entitlement gate — a feature
+  // is available to a user only if it's enabled for their tenant, regardless
+  // of role (owner/admin included). User-level capabilities are a separate
+  // axis for within-tenant access and must not bypass the tenant gate here.
   const hasFeature = (featureKey: string): boolean => {
-    if (!user) {
-      return false;
-    }
-    // Check both capabilities and tenant features
-    const userCapabilities = user.capabilities || [];
+    if (!user) return false;
     const userTenantFeatures = user.tenantFeatures || [];
-    // Feature can be enabled via either capabilities or tenant features
-    return userCapabilities.includes(featureKey) || userTenantFeatures.includes(featureKey);
+    return userTenantFeatures.includes(featureKey);
   };
   const value = {
     user,
@@ -152,6 +164,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logout,
     getToken,
     hasFeature,
+    refreshUser,
   };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

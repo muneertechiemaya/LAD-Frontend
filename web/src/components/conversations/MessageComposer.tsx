@@ -50,6 +50,11 @@ export interface MessageComposerProps {
    *  When omitted, falls back to inferring from `channel` (always 'waba' for 'whatsapp'). */
   backendChannel?: 'personal' | 'waba';
   onSendMessage:   (payload: RichMessagePayload) => void;
+  /** Broadcast-mode template send (no conversationId). When set, picking a
+   *  template calls this instead of the per-conversation send endpoint. */
+  onSendTemplate?: (templateName: string, languageCode: string, parameters: string[]) => void | Promise<void>;
+  /** Broadcast-mode target count (selected groups) — shown in the template dialog. */
+  broadcastTargetCount?: number;
   disabled?:       boolean;
   contactName?:    string;
   conversationId?: string;
@@ -122,7 +127,7 @@ function PollModal({ onClose, onSend }: { onClose: () => void; onSend: (p: RichM
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl mx-4 overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-[#0b1957] flex items-center justify-center"><BarChart2 className="w-4 h-4 text-white"/></div>
@@ -156,7 +161,6 @@ function PollModal({ onClose, onSend }: { onClose: () => void; onSend: (p: RichM
           </div>
         </div>
         <div className="px-5 py-4 border-t border-gray-100 flex gap-2 justify-end">
-          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-500 rounded-xl">Cancel</button>
           <button onClick={handleSend} disabled={!question.trim() || options.filter(o=>o.trim()).length<2}
             className="px-4 py-2 text-sm font-semibold bg-[#0b1957] text-white rounded-xl hover:bg-[#0a1540] disabled:opacity-40">
             Send Poll
@@ -188,7 +192,7 @@ function ContactModal({ onClose, onSend }: { onClose: () => void; onSend: (p: Ri
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl mx-4 overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-teal-500 flex items-center justify-center"><Phone className="w-4 h-4 text-white"/></div>
@@ -206,7 +210,6 @@ function ContactModal({ onClose, onSend }: { onClose: () => void; onSend: (p: Ri
           ))}
         </div>
         <div className="px-5 py-4 border-t border-gray-100 flex gap-2 justify-end">
-          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-500 rounded-xl">Cancel</button>
           <button onClick={handleSend} disabled={!name.trim()||!phone.trim()}
             className="px-4 py-2 text-sm font-semibold bg-teal-500 text-white rounded-xl hover:bg-teal-600 disabled:opacity-40">
             Share Contact
@@ -236,7 +239,7 @@ function EventModal({ onClose, onSend }: { onClose: () => void; onSend: (p: Rich
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl mx-4 overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center"><Calendar className="w-4 h-4 text-white"/></div>
@@ -274,7 +277,6 @@ function EventModal({ onClose, onSend }: { onClose: () => void; onSend: (p: Rich
           </div>
         </div>
         <div className="px-5 py-4 border-t border-gray-100 flex gap-2 justify-end">
-          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-500 rounded-xl">Cancel</button>
           <button onClick={handleSend} disabled={!title.trim()||!date}
             className="px-4 py-2 text-sm font-semibold bg-indigo-500 text-white rounded-xl hover:bg-indigo-600 disabled:opacity-40">
             Share Event
@@ -313,7 +315,7 @@ function LocationModal({ onClose, onSend }: { onClose: () => void; onSend: (p: R
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl mx-4 overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center"><MapPin className="w-4 h-4 text-white"/></div>
@@ -347,7 +349,6 @@ function LocationModal({ onClose, onSend }: { onClose: () => void; onSend: (p: R
           </div>
         </div>
         <div className="px-5 py-4 border-t border-gray-100 flex gap-2 justify-end">
-          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-500 rounded-xl">Cancel</button>
           <button onClick={handleSend} disabled={!coords && !manual.trim()}
             className="px-4 py-2 text-sm font-semibold bg-green-500 text-white rounded-xl hover:bg-green-600 disabled:opacity-40">
             Share Location
@@ -379,23 +380,23 @@ function StickerPicker({ onSelect, onClose }: { onSelect: (s: string) => void; o
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden flex flex-col max-h-96">
+      <div className="bg-white dark:bg-[#233138] rounded-2xl shadow-2xl w-full max-w-5xl mx-4 overflow-hidden flex flex-col max-h-96">
         {/* Header */}
-        <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between shrink-0">
-          <h3 className="font-semibold text-[#1E293B]">Stickers</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+        <div className="px-5 py-3 border-b border-gray-100 dark:border-[#2a3942] flex items-center justify-between shrink-0">
+          <h3 className="font-semibold text-[#1E293B] dark:text-[#e9edef]">Stickers</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Search bar */}
-        <div className="px-4 py-2 border-b border-gray-100 shrink-0">
+        <div className="px-4 py-2 border-b border-gray-100 dark:border-[#2a3942] shrink-0">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search via sticker store"
-            className="w-full px-3 py-2 bg-gray-100 rounded-full text-sm text-gray-700 placeholder-gray-500 focus:outline-none"
+            className="w-full px-3 py-2 bg-gray-100 dark:bg-[#2a3942] rounded-full text-sm text-gray-700 dark:text-[#e9edef] placeholder-gray-500 dark:placeholder:text-[#8696a0] focus:outline-none"
           />
         </div>
 
@@ -409,7 +410,7 @@ function StickerPicker({ onSelect, onClose }: { onSelect: (s: string) => void; o
                   onSelect(emoji);
                   onClose();
                 }}
-                className="w-10 h-10 flex items-center justify-center text-2xl hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                className="w-10 h-10 flex items-center justify-center text-2xl hover:bg-gray-100 dark:hover:bg-[#2a3942] rounded-lg transition-colors cursor-pointer"
                 title={emoji}
               >
                 {emoji}
@@ -419,15 +420,15 @@ function StickerPicker({ onSelect, onClose }: { onSelect: (s: string) => void; o
         </div>
 
         {/* Pack tabs at bottom */}
-        <div className="px-2 py-2 border-t border-gray-100 flex items-center gap-1 overflow-x-auto shrink-0">
+        <div className="px-2 py-2 border-t border-gray-100 dark:border-[#2a3942] flex items-center gap-1 overflow-x-auto shrink-0">
           {packs.map(([key, pack]) => (
             <button
               key={key}
               onClick={() => setActivePack(key)}
               className={`px-3 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${
                 activePack === key
-                  ? 'bg-blue-100 text-blue-600'
-                  : 'hover:bg-gray-100 text-gray-600'
+                  ? 'bg-blue-100 dark:bg-[#0b1957] text-blue-600 dark:text-white'
+                  : 'hover:bg-gray-100 dark:hover:bg-[#2a3942] text-gray-600 dark:text-[#8696a0]'
               }`}
             >
               {pack.label.split(' ')[0]}
@@ -440,12 +441,13 @@ function StickerPicker({ onSelect, onClose }: { onSelect: (s: string) => void; o
 }
 
 export const MessageComposer = memo(function MessageComposer({
-  channel, backendChannel: backendChannelProp, onSendMessage, disabled = false, contactName, conversationId, owner,
+  channel, backendChannel: backendChannelProp, onSendMessage, onSendTemplate, broadcastTargetCount, disabled = false, contactName, conversationId, owner,
 }: MessageComposerProps) {
   // Resolve which backend this conversation belongs to.
-  // Explicit backendChannel prop takes priority; falls back to inferring from channel.
-  const resolvedBackendChannel: 'personal' | 'waba' =
-    backendChannelProp ?? (channel === 'whatsapp' ? 'waba' : 'waba');
+  // Explicit backendChannel prop takes priority. Every real caller (ChatWindow
+  // via ConversationsPage) passes it as 'personal' | 'waba'; 'waba' is only a
+  // safety default for the unreachable no-prop case.
+  const resolvedBackendChannel: 'personal' | 'waba' = backendChannelProp ?? 'waba';
 
   // ── State ────────────────────────────────────────────────────────────────
   const [message,            setMessage]            = useState('');
@@ -601,7 +603,24 @@ export const MessageComposer = memo(function MessageComposer({
     headerType: string,
     headerUrl: string,
   ) => {
-    if (!conversationId) return;
+    // Broadcast mode (no conversation): hand the template name + params to the
+    // parent, which fans it out to the selected groups.
+    if (!conversationId) {
+      if (!onSendTemplate) return;
+      setTemplateSending(true);
+      setTemplateSendResult(null);
+      try {
+        await onSendTemplate(templateName, languageCode, parameters || []);
+        setTemplateSendResult({ success: true, message: `Template "${templateName}" queued` });
+        setTimeout(() => setIsTemplatePickerOpen(false), 400);
+        setTimeout(() => setTemplateSendResult(null), 3000);
+      } catch (err: any) {
+        setTemplateSendResult({ success: false, message: err?.message || 'Failed to send template' });
+      } finally {
+        setTemplateSending(false);
+      }
+      return;
+    }
     setTemplateSending(true);
     setTemplateSendResult(null);
     setTemplateSendProgress({ sent: 0, total: 1, running: true });
@@ -660,7 +679,7 @@ export const MessageComposer = memo(function MessageComposer({
     } finally {
       setTemplateSending(false);
     }
-  }, [conversationId, channel, resolvedBackendChannel]);
+  }, [conversationId, channel, resolvedBackendChannel, onSendTemplate]);
 
   const handleAttachItem = useCallback((id: string) => {
     setShowAttachMenu(false);
@@ -674,6 +693,7 @@ export const MessageComposer = memo(function MessageComposer({
       case 'poll':     setShowPoll(true);             break;
       case 'sticker':  setShowStickers(true);         break;
       case 'event':    setShowEvent(true);            break;
+      case 'template': setIsTemplatePickerOpen(true); break;
     }
   }, []);
 
@@ -681,7 +701,7 @@ export const MessageComposer = memo(function MessageComposer({
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="border-t border-border bg-white p-3 whatsapp-chat-bg">
+    <div className="border-t border-border dark:border-[#2a3942] bg-[#f0f2f5] dark:bg-[#202c33] p-3 whatsapp-chat-bg">
 
       {/* ── Modals ── */}
       <AlertDialog open={showTakeoverDialog} onOpenChange={setShowTakeoverDialog}>
@@ -747,30 +767,35 @@ export const MessageComposer = memo(function MessageComposer({
 
       <div className="flex items-end gap-2">
 
-        {/* ── Agent type toggle ── */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon"
-              className={cn('h-9 w-9 flex-shrink-0',
-                agentType === 'human' ? 'text-orange-500 hover:text-orange-600' : 'text-green-500 hover:text-green-600')}
-              disabled={disabled}
-              title={agentType === 'human' ? 'Human agent controls this chat' : 'AI agent controls this chat'}>
-              {agentType === 'human' ? <User className="h-5 w-5"/> : <Bot className="h-5 w-5"/>}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="bg-popover z-50">
-            <DropdownMenuItem onClick={()=>handleAgentTypeChange('human')} className={cn(agentType==='human'&&'bg-accent')}>
-              <User className="h-4 w-4 mr-2"/> Human Agent
-              {agentType==='human' && <span className="ml-auto text-xs text-muted-foreground">Active</span>}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={()=>handleAgentTypeChange('ai')} className={cn(agentType==='ai'&&'bg-accent')}>
-              <Bot className="h-4 w-4 mr-2"/> AI Agent
-              {agentType==='ai' && <span className="ml-auto text-xs text-muted-foreground">Active</span>}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {/* ── Agent type toggle (chat only — hidden for group broadcast) ── */}
+        {conversationId && (
+        <div className="hidden lg:block">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon"
+                className={cn('h-9 w-9 flex-shrink-0 hover:bg-gray-100 dark:hover:bg-[#2a3942]',
+                  agentType === 'human' ? 'text-orange-500 hover:text-orange-600' : 'text-green-500 hover:text-green-600')}
+                disabled={disabled}
+                title={agentType === 'human' ? 'Human agent controls this chat' : 'AI agent controls this chat'}>
+                {agentType === 'human' ? <User className="h-5 w-5"/> : <Bot className="h-5 w-5"/>}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="bg-popover z-50">
+              <DropdownMenuItem onClick={()=>handleAgentTypeChange('human')} className={cn(agentType==='human'&&'bg-accent')}>
+                <User className="h-4 w-4 mr-2"/> Human Agent
+                {agentType==='human' && <span className="ml-auto text-xs text-muted-foreground">Active</span>}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={()=>handleAgentTypeChange('ai')} className={cn(agentType==='ai'&&'bg-accent')}>
+                <Bot className="h-4 w-4 mr-2"/> AI Agent
+                {agentType==='ai' && <span className="ml-auto text-xs text-muted-foreground">Active</span>}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        )}
 
-        {/* ── "+" Attachment menu ── */}
+        {/* ── "+" Attachment menu (always visible — the only path to Send Template
+              in broadcast mode, so it must work on mobile too) ── */}
         <div ref={attachBtnRef} className="relative flex-shrink-0">
           <button
             onClick={()=>{ if (!disabled) setShowAttachMenu(v=>!v); }}
@@ -779,22 +804,30 @@ export const MessageComposer = memo(function MessageComposer({
               'h-9 w-9 rounded-full flex items-center justify-center transition-all duration-200',
               showAttachMenu
                 ? 'bg-[#0b1957] text-white rotate-45'
-                : 'text-[#64748B] hover:bg-gray-100 hover:text-[#1E293B]'
+                : 'text-[#64748B] dark:text-[#8696a0] hover:bg-gray-100 dark:hover:bg-[#2a3942] hover:text-[#1E293B] dark:hover:text-[#e9edef]'
             )}>
             <Plus className="h-5 w-5"/>
           </button>
 
           {showAttachMenu && (
-            <div className="absolute bottom-full left-0 mb-2 w-64 bg-white border border-gray-200 rounded-2xl shadow-xl p-3 z-40">
-              <p className="text-[10px] font-semibold text-[#94A3B8] uppercase tracking-wide mb-2 px-1">Attach</p>
+            <div className="absolute bottom-full left-0 mb-2 w-64 bg-white dark:bg-[#233138] border border-gray-200 dark:border-[#2a3942] rounded-2xl shadow-xl p-3 z-40">
+              <p className="text-[10px] font-semibold text-[#94A3B8] dark:text-[#8696a0] uppercase tracking-wide mb-2 px-1">Attach</p>
               <div className="grid grid-cols-3 gap-1">
-                {ATTACH_ITEMS.map(item => (
+                {[
+                  // Sticker is emoji-text (inserted into the message input), so it
+                  // broadcasts fine as text — keep it in every mode. Broadcast mode
+                  // additionally offers Send Template.
+                  ...ATTACH_ITEMS,
+                  ...(onSendTemplate && !conversationId
+                    ? [{ id: 'template', label: 'Send Template', icon: <LayoutTemplate className="w-6 h-6 text-white" />, bg: 'bg-[#0b1957]' } as AttachItem]
+                    : []),
+                ].map(item => (
                   <button key={item.id} onClick={()=>handleAttachItem(item.id)}
-                    className="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-gray-50 transition-colors group">
+                    className="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-[#2a3942] transition-colors group">
                     <div className={cn('w-12 h-12 rounded-full flex items-center justify-center shadow-sm transition-transform group-hover:scale-105', item.bg)}>
                       {item.icon}
                     </div>
-                    <span className="text-[10px] text-[#64748B] font-medium leading-tight text-center">{item.label}</span>
+                    <span className="text-[10px] text-[#64748B] dark:text-[#e9edef] font-medium leading-tight text-center">{item.label}</span>
                   </button>
                 ))}
               </div>
@@ -802,25 +835,29 @@ export const MessageComposer = memo(function MessageComposer({
           )}
         </div>
 
-        {/* ── Template Picker (replaces Quick Replies) ── */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-9 w-9 flex-shrink-0 text-muted-foreground hover:text-foreground"
-          disabled={disabled || !conversationId}
-          title="Send template message"
-          onClick={() => setIsTemplatePickerOpen(true)}
-        >
-          <LayoutTemplate className="h-5 w-5" />
-        </Button>
+        {/* ── Template shortcut button (chat only; broadcast opens the picker from the + menu) ── */}
+        {conversationId && (
+        <div className="hidden lg:block">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 flex-shrink-0 text-muted-foreground dark:text-[#8696a0] hover:text-foreground dark:hover:text-[#e9edef] hover:bg-gray-100 dark:hover:bg-[#2a3942]"
+            disabled={disabled || !conversationId}
+            title="Send template message"
+            onClick={() => setIsTemplatePickerOpen(true)}
+          >
+            <LayoutTemplate className="h-5 w-5" />
+          </Button>
+        </div>
+        )}
         <TemplatePicker
           open={isTemplatePickerOpen}
           onOpenChange={setIsTemplatePickerOpen}
-          selectedCount={1}
+          selectedCount={conversationId ? 1 : Math.max(1, broadcastTargetCount ?? 1)}
           onSend={handleTemplateSendFromComposer}
           sending={templateSending}
           sendProgress={templateSendProgress}
-          channel={channel === 'whatsapp' ? 'waba' : (channel as 'personal' | 'waba')}
+          channel={resolvedBackendChannel}
           isBulkSend={false}
         />
 
@@ -839,16 +876,16 @@ export const MessageComposer = memo(function MessageComposer({
             disabled={disabled}
             className={cn(
               'min-h-[40px] max-h-[150px] resize-none py-2.5 px-4 rounded-2xl',
-              'bg-white border border-gray-300 focus-visible:ring-1 focus-visible:ring-[#25D366]/30'
+              'bg-white dark:bg-[#2a3942] text-foreground dark:text-[#e9edef] placeholder:text-gray-400 dark:placeholder:text-[#8696a0] border border-gray-300 dark:border-transparent focus-visible:ring-1 focus-visible:ring-[#25D366]/30 focus:outline-none'
             )}
             rows={1}
           />
         </div>
 
         {/* ── Sticker / Emoji button ── */}
-        <div className="relative flex-shrink-0">
+        <div className="relative flex-shrink-0 hidden lg:block">
           <Button variant="ghost" size="icon"
-            className="h-9 w-9 text-muted-foreground hover:text-foreground"
+            className="h-9 w-9 text-muted-foreground dark:text-[#8696a0] hover:text-foreground dark:hover:text-[#e9edef] hover:bg-gray-100 dark:hover:bg-[#2a3942]"
             disabled={disabled}
             onClick={()=>setShowStickers(v=>!v)}>
             <Smile className="h-5 w-5"/>
@@ -883,11 +920,13 @@ export const MessageComposer = memo(function MessageComposer({
         </div>
       )}
 
-      {/* ── Hint bar ── */}
-      <p className="text-[10px] text-muted-foreground mt-2 px-1">
-        Enter to send · Shift+Enter for new line
-        {agentType === 'human' && <span className="ml-2 text-orange-500 font-medium">· You have manual control</span>}
-      </p>
+      {/* ── Hint bar (chat only — hidden for group broadcast) ── */}
+      {conversationId && (
+        <p className="text-[10px] text-muted-foreground dark:text-[#8696a0] mt-2 px-1 hidden lg:block">
+          Enter to send · Shift+Enter for new line
+          {agentType === 'human' && <span className="ml-2 text-orange-500 font-medium">· You have manual control</span>}
+        </p>
+      )}
     </div>
   );
 });

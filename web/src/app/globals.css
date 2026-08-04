@@ -23,6 +23,104 @@
   }
 }
 
+/* ------------------------------
+   LEGAL / POLICY PAGES PROSE
+   Readable typography for Privacy Policy, Terms of Service & Cookies Policy.
+------------------------------ */
+.legal-prose {
+  color: #374151; /* gray-700 */
+  font-size: 1rem;
+  line-height: 1.75;
+}
+.dark .legal-prose {
+  color: #d1d5db; /* gray-300 */
+}
+.legal-prose > :first-child {
+  margin-top: 0;
+}
+.legal-prose h2 {
+  color: #0b1957;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+  scroll-margin-top: 6rem;
+}
+.dark .legal-prose h2 {
+  color: #ffffff;
+}
+.legal-prose h3 {
+  color: #0b1957;
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-top: 1.75rem;
+  margin-bottom: 0.75rem;
+}
+.dark .legal-prose h3 {
+  color: #e5e7eb; /* gray-200 */
+}
+.legal-prose p {
+  margin-bottom: 1.1rem;
+}
+.legal-prose ul,
+.legal-prose ol {
+  margin: 0 0 1.1rem 1.4rem;
+}
+.legal-prose ul {
+  list-style: disc;
+}
+.legal-prose ol {
+  list-style: decimal;
+}
+.legal-prose li {
+  margin-bottom: 0.5rem;
+  padding-left: 0.25rem;
+}
+.legal-prose a {
+  color: #2563eb; /* blue-600 */
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.dark .legal-prose a {
+  color: #93c5fd; /* blue-300 */
+}
+.legal-prose a:hover {
+  opacity: 0.8;
+}
+.legal-prose strong {
+  color: #0b1957;
+  font-weight: 600;
+}
+.dark .legal-prose strong {
+  color: #ffffff;
+}
+.legal-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+}
+.legal-prose th,
+.legal-prose td {
+  border: 1px solid #e5e7eb;
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+}
+.dark .legal-prose th,
+.dark .legal-prose td {
+  border-color: #374151;
+}
+.legal-prose th {
+  background: #f9fafb;
+  font-weight: 600;
+  color: #0b1957;
+}
+.dark .legal-prose th {
+  background: #1a2f6b;
+  color: #ffffff;
+}
+
   :root {
     --radius: 0.625rem;
 
@@ -146,10 +244,10 @@
   }
 
   .message-bubble-outgoing {
-    background: #0b1957;
-    color: #ffffff;
+    background: #d9fdd3;
+    color: #111b21;
     border-radius: 8px 0 8px 8px;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.18);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.13);
   }
 
   /* ── Chat window background ────────────────────────────────────────────── */
@@ -159,6 +257,16 @@
 
   .dark .whatsapp-chat-bg {
     background-color: #000724;
+  }
+
+  .dark .message-bubble-incoming {
+    background-color: #202c33;
+    color: #e9edef;
+  }
+
+  .dark .message-bubble-outgoing {
+    background-color: #005c4b;
+    color: #e9edef;
   }
 
   /* ── Chat message typography (WhatsApp-style) ──────────────────────────── */
@@ -209,8 +317,25 @@
   }
 
   /* Scrollbar styling */
-  .custom-scrollbar::-webkit-scrollbar {
+  ::-webkit-scrollbar {
     width: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-200 rounded-full hover:bg-gray-300 transition-colors;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #e5e7eb transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 3px;
   }
 
   .custom-scrollbar::-webkit-scrollbar-track {
@@ -218,7 +343,41 @@
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-border rounded-full hover:bg-muted-foreground/30;
+    @apply bg-gray-200 rounded-full hover:bg-gray-300 transition-colors;
+  }
+
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #e5e7eb transparent;
+  }
+  
+  /* Global dark mode scrollbar — applies to ALL scrollable elements */
+  .dark *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .dark *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .dark *::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 9999px;
+  }
+
+  .dark *::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.25);
+  }
+
+  .dark *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  /* Firefox dark mode scrollbar */
+  .dark * {
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+    scrollbar-width: thin;
   }
 
   /* Hide scrollbar completely */
@@ -285,6 +444,15 @@
     }
   }
 
+  @keyframes top-progress-slide {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(400%);
+    }
+  }
+
   .animate-fade-in-up {
     animation: fade-in-up 0.3s ease-out forwards;
   }
@@ -297,11 +465,16 @@
     animation: message-pop 0.2s ease-out forwards;
   }
 
+  .animate-top-progress {
+    animation: top-progress-slide 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+
   /* Reduced motion support */
   @media (prefers-reduced-motion: reduce) {
     .animate-fade-in-up,
     .animate-slide-in-right,
-    .animate-message-pop {
+    .animate-message-pop,
+    .animate-top-progress {
       animation: none;
     }
   }

@@ -15,7 +15,11 @@ export const OPEN_ROUTES = {
   auth: ['/login', '/register', '/forgot-password', '/api/auth', '/api/webhooks'],
   
   // Public pages
-  public: ['/', '/pricing', '/favicon.ico', '/api/recording-proxy', '/landing', '/contact'],
+  public: ['/', '/pricing', '/favicon.ico', '/api/recording-proxy', '/landing', '/contact', '/privacy-policy', '/terms-of-service', '/cookies-policy', '/account-deletion-policy', '/home-redesign',
+    // Founding-group landing page, its short /apply entry point, and the route
+    // handler the form posts to. All must be open: the whole point is that a
+    // stranger clicking a link in an InMail can reach them.
+    '/community', '/apply', '/api/community-signup'],
   
   // Health checks & public APIs
   health: ['/api/health'],
@@ -36,9 +40,13 @@ export const AUTH_ROUTES = [
   '/wallet',
   '/make-call',
   '/pipeline',
+  '/crm',
+  '/prospects',
   '/onboarding',
   '/community-roi',
   '/follow-ups',
+  '/instagram', // Instagram management (accounts, AI replies, comments, goals)
+  '/admin', // Internal admin tooling (platform observability monitor, blog, submissions) — super-admin gated
   '/api/protected', // Mark all protected API routes with /api/protected prefix
 ];
 
