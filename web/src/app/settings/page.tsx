@@ -705,11 +705,12 @@ const SettingsPage: React.FC = () => {
                         className="border-t border-slate-50 dark:border-slate-800 bg-white dark:bg-slate-900"
                       >
                         <div className="p-8">
-                          <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-50 dark:border-slate-800">
+                          {/* Hid the label because it is reduntant */}
+                          {/* <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-50 dark:border-slate-800">
                             <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
                               {sub.label}
                             </h3>
-                          </div>
+                          </div> */}
 
                           {sub.id === 'lead_config' && (
                             <LeadRequirements
@@ -892,9 +893,9 @@ const SettingsPage: React.FC = () => {
                             e.target.value = "";
                           }}
                         >
-                          <option value="">Add a service...</option>
+                          <option value="" className="dark:bg-slate-800 dark:text-slate-100">Add a service...</option>
                           {requirementConfigs.filter(c => !selectedConceptServices.includes(c.id)).map(config => (
-                            <option key={config.id} value={config.id}>{config.label}</option>
+                            <option key={config.id} value={config.id} className="dark:bg-slate-800 dark:text-slate-100">{config.label}</option>
                           ))}
                         </select>
 
