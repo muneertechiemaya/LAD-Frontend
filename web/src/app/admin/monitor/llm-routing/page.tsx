@@ -13,19 +13,10 @@ import type { LlmRoutingEntry, LlmProvider } from '@lad/frontend-features/lad-mo
  * exception, added when a tenant needs a specific model for a specific job.
  */
 
-// The billing feature keys that are worth routing. Kept as a curated list rather
-// than every key in use: most are internal one-shot extractions where the model
-// choice does not matter, and offering all ~30 makes the picker unusable.
-const ROUTABLE_FEATURES: { key: string; label: string; hint: string }[] = [
-  { key: 'linkedin-message-generation', label: 'LinkedIn message generation', hint: 'Connection requests + follow-up copy' },
-  { key: 'linkedin-ai-agent', label: 'LinkedIn AI agent replies', hint: 'Inbound DM auto-replies' },
-  { key: 'linkedin-profile-audit', label: 'LinkedIn profile audit', hint: 'Audit report generation' },
-  { key: 'web-research', label: 'Company web research', hint: 'Research summarisation' },
-  { key: 'company-overview-synthesis', label: 'Company overview synthesis', hint: 'ABM account briefs' },
-  { key: 'chat-prompt-generation', label: 'Chat prompt generation', hint: '"Generate with AI" in Chat Settings' },
-  { key: 'email-generation', label: 'Email generation', hint: 'Campaign email copy' },
-  { key: '*', label: 'All other features (tenant default)', hint: 'Applies where no feature-specific rule exists' },
-];
+// The feature catalogue comes from /meta, not from here. A hardcoded list in
+// the frontend drifts from what the backend can actually route — and worse, it
+// offered features whose call sites ignore routing entirely, so the rule saved
+// and did nothing.
 
 const PROVIDER_LABEL: Record<LlmProvider, string> = {
   anthropic: 'Claude',
@@ -130,15 +121,20 @@ export default function MonitorLlmRoutingPage() {
 
       {tenantId && (
         <div className="space-y-2">
-          {ROUTABLE_FEATURES.map((f) => {
+          {(meta?.features ?? []).map((f) => {
             const rule = configured.get(f.key);
             const locked = meta?.nonRoutableFeatures?.[f.key];
+            const notWired = !f.wired;
             const isEditing = editing === f.key;
 
             return (
               <div
                 key={f.key}
-                className="rounded-lg border border-gray-200 p-3 dark:border-gray-700"
+                className={`rounded-lg border p-3 dark:border-gray-700 ${
+                  locked || notWired
+                    ? 'border-gray-100 opacity-60 dark:border-gray-800'
+                    : 'border-gray-200'
+                }`}
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -147,12 +143,17 @@ export default function MonitorLlmRoutingPage() {
                       <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                         {f.label}
                       </span>
-                      {locked && <Lock className="h-3 w-3 text-gray-400" />}
+                      {(locked || notWired) && <Lock className="h-3 w-3 text-gray-400" />}
                     </div>
-                    <p className="mt-0.5 text-xs text-gray-500">{locked || f.hint}</p>
+                    <p className="mt-0.5 text-xs text-gray-500">
+                      {locked
+                        || (notWired
+                          ? `${f.hint} — not yet wired to routing; a rule here would be ignored.`
+                          : f.hint)}
+                    </p>
                   </div>
 
-                  {!locked && !isEditing && (
+                  {!locked && !notWired && !isEditing && (
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => startEdit(f.key)}

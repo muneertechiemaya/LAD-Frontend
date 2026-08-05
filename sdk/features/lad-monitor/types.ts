@@ -477,8 +477,22 @@ export interface LlmSelectableModel {
   output: number | null;
 }
 
+/** A feature the console lists, and whether a rule on it would do anything. */
+export interface LlmRoutingFeatureMeta {
+  key: string;
+  label: string;
+  hint: string;
+  /**
+   * False until the call site goes through generateWithChain(). A rule on an
+   * unwired feature would save and be ignored, so the console disables it.
+   */
+  wired: boolean;
+}
+
 export interface LlmRoutingMeta {
   providers: LlmProvider[];
+  /** The full catalogue, owned by the backend so the UI cannot drift from it. */
+  features: LlmRoutingFeatureMeta[];
   /**
    * provider -> models that provider actually serves. The console renders these
    * as a dropdown, so an admin cannot type a retired or misspelled id, or pair
