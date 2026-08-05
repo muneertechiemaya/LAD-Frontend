@@ -2072,7 +2072,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     }
     setSignalSampling(true); setSignalError(null); setSignalLive(null);
     const srcCfg = configs[SOURCE_STEP_ID] || {};
-    const hint = [signal, signalDraft.titles, srcCfg.industries, srcCfg.locations]
+    const hint = [signal, signalDraft.titles, srcCfg.industries, srcCfg.location]
       .filter(Boolean).join(', ');
     const route = signalRoute(signal).route;
     const { keywords } = signalSearchKeywords(signal, csvList(signalDraft.titles), route);
@@ -2099,7 +2099,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             ...blankSampleJob(shape.label),
             job_title: shape.title(signal),
             company_name: String(a.company || 'Northwind Logistics'),
-            location: String(a.location || srcCfg.locations || 'Dubai, UAE'),
+            location: String(a.location || srcCfg.location || 'Dubai, UAE'),
             seniority: shape.seniority,
             posted_at: isoDaysAgo(shape.ageDays),
           };
@@ -4020,12 +4020,32 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 worldwide and then keep only the people whose own profile says
                 they are there. A narrow location can therefore come back empty
                 even when the signal exists somewhere.
+
+                That is the POSTS route, and it was the only route when this copy
+                was written. On the JOBS route the field does nothing at all: the
+                Unipile jobs search filters by LinkedIn location IDs, not typed
+                place names, and no resolver is wired — the backend logs a
+                warning and searches worldwide. Nobody sees a server log, so a
+                user who types "Dubai" here would believe they had scoped the
+                search. Hence the split.
               */}
-              <p className="text-[11px] text-muted-foreground">
-                Leave blank to search worldwide. LinkedIn can’t filter posts by place, so Mr LAD
-                searches everywhere and then keeps only people whose profile location matches —
-                a very specific place may find fewer leads.
-              </p>
+              {signalRoute(cfg.signal_query || '').route === 'jobs' ? (
+                <div className="rounded-md border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 px-2.5 py-2">
+                  <p className="text-[11px] leading-snug text-amber-900 dark:text-amber-200">
+                    <strong>Your signal searches job listings, and this location is not applied there.</strong>{' '}
+                    The jobs search needs LinkedIn&apos;s own location IDs rather than a typed place name, so
+                    results come back <strong>worldwide</strong>. Either filter the leads afterwards, or
+                    reword the signal so it looks for what people <em>posted about</em> rather than for open
+                    roles — location does work on that route.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-[11px] text-muted-foreground">
+                  Leave blank to search worldwide. LinkedIn can’t filter posts by place, so Mr LAD
+                  searches everywhere and then keeps only people whose profile location matches —
+                  a very specific place may find fewer leads.
+                </p>
+              )}
             </div>
             <p className="text-xs text-muted-foreground">Runs daily until the campaign ends, enrolling up to {perDay}/day of newly-signalled leads.</p>
           </>)}
@@ -5901,10 +5921,10 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     const srcCfg = configs[SOURCE_STEP_ID] || {};
     const signal = signalDraft.signal.trim();
     const titles = csvList(signalDraft.titles);
-    // The signal node has no location field of its own. When one is present it
-    // is left over from a LinkedIn Search config on the same source slot, and
-    // the signal search does not read it — say so rather than imply a filter.
-    const location = String(srcCfg.locations || '').trim();
+    // The signal node's own Location field (`location`, singular — `locations`
+    // is the LinkedIn Search field). Real and user-set, so what this screen says
+    // about it has to match what the node does on each route.
+    const location = String(srcCfg.location || '').trim();
     const routing = signalRoute(signal);
     const isJobs = routing.route === 'jobs';
     const { keywords, titlesOverride } = signalSearchKeywords(signal, titles, routing.route);
@@ -6039,9 +6059,8 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               back <strong>worldwide</strong>. Filter the leads afterwards, or reword the signal so it routes
               to posts, where location does work.</>
             ) : (
-              <> — applied on the posts route, by checking each matching author&apos;s profile location after
-              the search. LinkedIn cannot scope a post search geographically, so a narrow location can come
-              back empty even when posts exist.</>
+              <> — applied, by keeping only authors whose own profile places them there. Because the search
+              itself is worldwide, a very specific place can come back empty even when the signal exists.</>
             )}
           </div>
         )}
