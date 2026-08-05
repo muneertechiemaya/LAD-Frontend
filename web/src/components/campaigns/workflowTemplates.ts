@@ -80,7 +80,7 @@ export const EXPORT_DEFAULT_COLUMNS = [
   'full_name', 'title', 'company_name', 'email', 'phone', 'linkedin_url', 'status', 'last_action', 'last_action_at',
 ];
 
-export type TemplateSourceKey = 'zoho_recurring' | 'zoho_once' | 'ghl_once' | 'linkedin_search' | 'linkedin_signal' | 'file_import';
+export type TemplateSourceKey = 'zoho_recurring' | 'zoho_once' | 'ghl_recurring' | 'ghl_once' | 'linkedin_search' | 'linkedin_signal' | 'file_import';
 
 export type TemplateNode = {
   type: StepType;

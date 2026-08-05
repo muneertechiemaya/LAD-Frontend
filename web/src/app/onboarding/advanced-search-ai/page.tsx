@@ -102,6 +102,63 @@ interface LeadProfile {
     inferred?: Record<string, any>;
     inferred_nationality?: string;
     nationality_confidence?: number;
+    /**
+     * Only present on signal_detection leads, where the lead IS the author of a
+     * LinkedIn post. Without it a post-derived lead renders identically to a
+     * Sales Navigator one and there is no way back to the post that produced it.
+     * Shape comes from SignalDetectionService._postsToLeads.
+     */
+    signal_context?: {
+        signal_type?: string;
+        signal_strength?: string;
+        urgency?: string;
+        /** Empty on job-sourced leads: the person did not write anything. */
+        pain_points?: string[];
+        post_url?: string;
+        posted_at?: string;
+        /** Job-sourced leads carry a listing link instead; key TBD — see signalContextLink. */
+        [key: string]: any;
+    };
+}
+
+/**
+ * The link on a signal lead — a feed post or a job listing.
+ *
+ * Signal Search has two sources. On the jobs route a match yields a COMPANY
+ * rather than a post author, so the lead's link is a job listing.
+ * `signal_context.source_type` ('linkedin_job' | 'linkedin_post') is the
+ * discriminator and is the primary path; the backend backfilled the post value
+ * onto the existing route so both can be branched positively.
+ *
+ * `post_url` is deliberately absent on job leads and `job_url` carries the
+ * permalink, so the URL-sniffing fallback is correct on its own — it is kept for
+ * anything emitted before source_type existed. Returns null when there is no
+ * link at all.
+ */
+const JOB_LINK_KEYS = ['job_url', 'job_link', 'job_posting_url', 'jobs_url', 'listing_url', 'job_post_url'];
+
+function signalContextLink(ctx: LeadProfile['signal_context']): { url: string; label: string } | null {
+    if (!ctx || typeof ctx !== 'object') return null;
+    const bag = ctx as Record<string, any>;
+    const firstString = (keys: string[]) => {
+        for (const k of keys) {
+            const v = bag[k];
+            if (typeof v === 'string' && v.trim()) return v.trim();
+        }
+        return '';
+    };
+    const jobUrl = firstString(JOB_LINK_KEYS);
+    const postUrl = firstString(['post_url']);
+    const sourceType = String(bag.source_type || '').toLowerCase();
+    if (sourceType === 'linkedin_job') {
+        return jobUrl || postUrl ? { url: jobUrl || postUrl, label: 'View job' } : null;
+    }
+    if (sourceType === 'linkedin_post') {
+        return postUrl || jobUrl ? { url: postUrl || jobUrl, label: 'View post' } : null;
+    }
+    if (jobUrl) return { url: jobUrl, label: 'View job' };
+    if (postUrl) return { url: postUrl, label: 'View post' };
+    return null;
 }
 
 interface ParsedInboundLead {
@@ -359,12 +416,37 @@ function resolveProfileUrl(item: any): string {
 }
 
 /**
+ * Put an icp_score onto the 0-100 scale this page renders and filters against.
+ *
+ * 0-100 is the authoritative scale: /search/unified defaults icp_min_score to
+ * 50, ICPLeadQualificationService prompts Gemini for "0-100", and the column is
+ * NUMERIC(5,2). But not every module that feeds the same list obeys it — the
+ * signal_detection, abm and competitor_intent branches pass their internal
+ * 0.0-1.0 relevance straight through as icp_score (SignalDetectionService
+ * `icp_score: l._match_score`, ABMSearchService, CompetitiveIntelService).
+ * Those leads arrived as 0.95 and rendered as "0.95%", could never clear the
+ * >= 70 "strong" bar, and were never auto-selected by the >= 50 seed.
+ *
+ * So: anything in (0, 1] is read as a fraction and scaled. A genuine 0-100
+ * score of exactly 1 becomes 100 — that is the one ambiguous input, and a lead
+ * scored 1/100 is noise either way. Idempotent, so applying it again at a
+ * render site is harmless.
+ */
+function normalizeIcpScore(raw: unknown): number | undefined {
+    if (raw === null || raw === undefined || raw === '') return undefined;
+    const n = Number(raw); // pg NUMERIC can arrive as a string
+    if (!Number.isFinite(n) || n < 0) return undefined;
+    return Math.round(n > 0 && n <= 1 ? n * 100 : n);
+}
+
+/**
  * Compute the display match level from the actual icp_score.
  * Gemini's match_level label can be inconsistent (e.g. 'weak' for score 52).
  * Using the score directly ensures the badge colour reflects what the user sees.
+ * Normalises first — a 0-1 score would otherwise never be 'strong'.
  */
 function scoreToMatchLevel(score: number | undefined): 'strong' | 'moderate' {
-    if ((score ?? 0) >= 70) return 'strong';
+    if ((normalizeIcpScore(score) ?? 0) >= 70) return 'strong';
     return 'moderate'; // yellow for everything else — never show red on lead badges
 }
 
@@ -3446,7 +3528,11 @@ export default function AdvancedSearchAIPage() {
                     if (dms.length > 0) {
                         parts.push(`**Key Decision Makers & ICP Scores:**`);
                         dms.slice(0, 6).forEach((dm: any) => {
-                            const score = dm.icp_score >= 80 ? `🟢 ${dm.icp_score}/100` : dm.icp_score >= 60 ? `🟡 ${dm.icp_score}/100` : `🟠 ${dm.icp_score}/100`;
+                            // Same 0-1 vs 0-100 hazard as the lead badges: the ABM
+                            // company_search path stamps a 0.8 float over the real
+                            // 0-100 score its own ICP scorer produced.
+                            const n = normalizeIcpScore(dm.icp_score) ?? 0;
+                            const score = n >= 80 ? `🟢 ${n}/100` : n >= 60 ? `🟡 ${n}/100` : `🟠 ${n}/100`;
                             parts.push(`• **${dm.name || 'Unknown'}** — ${dm.title || 'N/A'}${dm.department ? ` · ${dm.department}` : ''} ${score}${dm.linkedin_url ? ` · [LinkedIn](${dm.linkedin_url})` : ''}`);
                             if (dm.icp_rationale) parts.push(`  _${dm.icp_rationale}_`);
                         });
@@ -3700,7 +3786,7 @@ export default function AdvancedSearchAIPage() {
                                         locked: idx >= 5,
                                         phone: item.phone || item.company_phone || '',
                                         email: item.email || '',
-                                        icp_score: item.icp_score != null ? item.icp_score : undefined,
+                                        icp_score: normalizeIcpScore(item.icp_score),
                                         match_level: item.match_level || undefined,
                                         icp_reasoning: item.icp_reasoning || undefined,
                                         enriched_profile: item.enriched_profile || undefined,
@@ -3817,7 +3903,7 @@ export default function AdvancedSearchAIPage() {
                                 locked: idx >= 5,
                                 phone: item.phone || item.company_phone || '',
                                 email: item.email || '',
-                                icp_score: item.icp_score != null ? item.icp_score : undefined,
+                                icp_score: normalizeIcpScore(item.icp_score),
                                 match_level: item.match_level || undefined,
                                 icp_reasoning: item.icp_reasoning || undefined,
                                 enriched_profile: item.enriched_profile || undefined,
@@ -4039,6 +4125,12 @@ export default function AdvancedSearchAIPage() {
             // True when 0 results is a transient provider rate-limit (HTTP 429),
             // not an empty match set — surfaced so we tell the user to retry.
             let searchRateLimited = false;
+            // Which module the backend actually routed to, and its display name.
+            // The unified endpoint picks between advanced_search, abm,
+            // signal_detection and competitor_intent per query, so the result
+            // banner cannot name one of them from the client side.
+            let searchModule = '';
+            let searchModuleLabel = '';
 
             // Determine effective search query for confirmed searches.
             // When user confirms a preview with "yes", "ok", etc., always use the pre-extracted intent
@@ -4056,18 +4148,43 @@ export default function AdvancedSearchAIPage() {
                 ext = confirmedForSearch.intent;
                 searchQuery = confirmedForSearch.originalQuery || text;
             } else {
-                // For non-confirmed (lead-chat triggered) searches, build a compact query
-                // from only core keywords + locations (not job titles or industries which are
-                // passed as structured targeting and would bloat the query string).
+                // For non-confirmed (lead-chat triggered) searches, lead with what the
+                // user actually typed and top it up with accumulated targeting.
+                //
+                // This used to send ONLY the extracted keywords + companies + first
+                // location, which quietly deleted the user's phrasing. The backend
+                // classifies the module off this string and keys on activity language —
+                // "posting about", "recently raised", "just promoted". Extraction keeps
+                // none of that, so "founders posting about hiring SDRs" arrived as
+                // "hiring sales development reps" and routed to advanced_search: a plain
+                // people-search instead of the signal detection the user asked for. The
+                // backend cannot recover a word the frontend removed.
+                //
+                // The rebuild still has a job, which is why the accumulated terms are
+                // kept: on a REFINEMENT turn the message is a delta ("make it Dubai
+                // only"), and searching that fragment alone would drop the intent built
+                // up over the conversation. isFirstMessage is true only for the very
+                // first message of the session, so this branch covers brand-new queries
+                // too — those are exactly the ones that must survive verbatim.
+                //
+                // Length is not a concern here: `targeting` is always sent alongside, so
+                // the backend takes the fast path and LinkedIn keywords come from
+                // intent.keywords. The query is a queryHint of last resort there
+                // (LinkedInSearchService.fullSearchWithIntent) and the classifier's input
+                // everywhere else. Job titles and industries are still left out — those
+                // are what bloated the string, and they travel as structured targeting.
                 if (shouldRunSearch && ext && !isFirstMessage) {
                     const kwArr = Array.isArray(ext.keywords)
                         ? ext.keywords
                         : (ext.keywords ? [ext.keywords] : []);
-                    searchQuery = [
+                    const typed = text.trim();
+                    const typedLower = typed.toLowerCase();
+                    const topUp = [
                         ...kwArr,
                         ...(ext.company_names || []),
                         ...(ext.locations?.slice(0, 1) || []),   // first location only
-                    ].filter(Boolean).join(' ') || text;
+                    ].filter((t): t is string => !!t && !typedLower.includes(String(t).toLowerCase()));
+                    searchQuery = [typed, ...topUp].filter(Boolean).join(' ') || text;
                 } else {
                     searchQuery = text;
                 }
@@ -4185,6 +4302,8 @@ export default function AdvancedSearchAIPage() {
                     icpWasApplied = !!d.icp_applied;
                     excludedAlreadyContacted = Number(d.excluded_already_contacted) || 0;
                     searchRateLimited = !!d.rate_limited;
+                    searchModule = d.module_used || '';
+                    searchModuleLabel = d.module_label || '';
                     if (Array.isArray(d.results) && d.results.length > 0) {
                         rawSearchResults = d.results;
                         realLeads = d.results.map((item: any, idx: number) => {
@@ -4202,11 +4321,12 @@ export default function AdvancedSearchAIPage() {
                                 industry: item.industry || '',
                                 network_distance: item.network_distance || '',
                                 locked: idx >= 5,
-                                icp_score: item.icp_score != null ? item.icp_score : undefined,
+                                icp_score: normalizeIcpScore(item.icp_score),
                                 match_level: item.match_level || undefined,
                                 icp_reasoning: item.icp_reasoning || undefined,
                                 enriched_profile: item.enriched_profile || undefined,
                                 inferred: item.inferred || undefined,
+                                signal_context: item.signal_context || undefined,
                             };
                         });
                         setLeads(realLeads);
@@ -4246,7 +4366,7 @@ export default function AdvancedSearchAIPage() {
                                             if (!s || s.icp_score == null) return l;
                                             return {
                                                 ...l,
-                                                icp_score:        s.icp_score,
+                                                icp_score:        normalizeIcpScore(s.icp_score),
                                                 match_level:      s.match_level || l.match_level,
                                                 icp_reasoning:    s.icp_reasoning || l.icp_reasoning,
                                                 enriched_profile: s.enriched_profile || l.enriched_profile,
@@ -4257,7 +4377,7 @@ export default function AdvancedSearchAIPage() {
                                         // had scoring been synchronous — unless they've
                                         // already started picking, in which case leave it.
                                         seedDefaultSelection(
-                                            realLeads.map(l => ({ ...l, icp_score: scoreMap[l.id]?.icp_score ?? l.icp_score })),
+                                            realLeads.map(l => ({ ...l, icp_score: normalizeIcpScore(scoreMap[l.id]?.icp_score) ?? l.icp_score })),
                                             true
                                         );
                                     }
@@ -4345,7 +4465,7 @@ export default function AdvancedSearchAIPage() {
                                 industry: item.industry || '',
                                 network_distance: item.network_distance || '',
                                 locked: false,
-                                icp_score: item.icp_score != null ? item.icp_score : undefined,
+                                icp_score: normalizeIcpScore(item.icp_score),
                                 match_level: item.match_level || undefined,
                                 icp_reasoning: item.icp_reasoning || undefined,
                                 enriched_profile: item.enriched_profile || undefined,
@@ -4387,6 +4507,34 @@ export default function AdvancedSearchAIPage() {
                 } catch (e) { console.warn('[Search] extract-intent err', e); }
             }
 
+            /**
+             * Where the leads in this result set actually came from.
+             *
+             * This used to read "on LinkedIn via Sales Navigator" unconditionally.
+             * /search/unified routes each query to one of four modules, so that line
+             * printed over ABM, competitor-intent and post-signal runs as well — a
+             * signal_detection run that had matched LinkedIn posts announced itself as
+             * a Sales Navigator search, which is how the source of a set of leads
+             * became impossible to tell from the chat. The response says which module
+             * ran; say that instead of guessing.
+             */
+            const searchSourceLabel = (): string => {
+                switch (searchModule) {
+                    case 'signal_detection':
+                        return 'from LinkedIn posts matching your signal (Intent Signal Search)';
+                    case 'abm':
+                        return 'at the account you named (Target Specific Account)';
+                    case 'competitor_intent':
+                        return 'from competitor intent signals (Competitor Prospect Search)';
+                    case 'advanced_search':
+                        return useSalesNav ? 'on LinkedIn via Sales Navigator' : 'on LinkedIn';
+                    default:
+                        // Unknown/absent module_used — name the label if the backend sent
+                        // one, and otherwise stay vague rather than invent a source.
+                        return searchModuleLabel ? `via ${searchModuleLabel}` : 'on LinkedIn';
+                }
+            };
+
             // ── Build final AI response text ──
             let finalText = aiResponseText; // May be set by lead-chat above
 
@@ -4398,7 +4546,7 @@ export default function AdvancedSearchAIPage() {
                     // First message: build summary
                     finalText = buildSummary(ext);
                     if (realLeads.length > 0) {
-                        finalText += `\n\n🔍 **Found ${searchTotal} real leads** on LinkedIn via Sales Navigator.`;
+                        finalText += `\n\n🔍 **Found ${searchTotal} real leads** on LinkedIn via ${searchSourceLabel()}.`;
                         if (icpWasApplied) {
                             const strongCount = realLeads.filter(l => l.match_level === 'strong').length;
                             const moderateCount = realLeads.filter(l => l.match_level === 'moderate').length;
@@ -4407,14 +4555,14 @@ export default function AdvancedSearchAIPage() {
                     }
                     if (realLeads.length > 0) setTimeout(() => setShowPanel('leads'), 500);
                 } else if (realLeads.length > 0) {
-                    finalText = `Searching LinkedIn for leads...\n\n🔍 **Found ${searchTotal} leads** matching your search.`;
+                    finalText = `Searching LinkedIn for leads...\n\n🔍 **Found ${searchTotal} leads** ${searchSourceLabel()}.`;
                     setTimeout(() => setShowPanel('leads'), 500);
                 } else {
                     finalText = "I'm here to help you find the perfect leads! Try describing what you need — for example:\n\n• **Find a person:** \"John Smith, CTO at Stripe\"\n• **People at a company:** \"Find all people in Tesla\"\n• **Decision makers:** \"Find decision makers at Google\"\n• **Specific role:** \"Find founders at techiemaya\"\n• **Industry search:** \"Marketing directors at fintech startups in London\"";
                 }
             } else if (realLeads.length > 0) {
                 // lead-chat triggered a search and got results
-                finalText += `\n\n🔍 **Found ${searchTotal} leads** matching your criteria.`;
+                finalText += `\n\n🔍 **Found ${searchTotal} leads** ${searchSourceLabel()}.`;
                 setTimeout(() => setShowPanel('leads'), 500);
             }
 
@@ -4639,7 +4787,7 @@ export default function AdvancedSearchAIPage() {
                         industry: item.industry || '',
                         network_distance: item.network_distance || '',
                         locked: idx >= 5,
-                        icp_score: item.icp_score != null ? item.icp_score : undefined,
+                        icp_score: normalizeIcpScore(item.icp_score),
                         match_level: item.match_level || undefined,
                         icp_reasoning: item.icp_reasoning || undefined,
                         enriched_profile: item.enriched_profile || undefined,
@@ -4988,7 +5136,7 @@ export default function AdvancedSearchAIPage() {
                         locked: (existingCount + idx) >= 5,
                         phone: item.phone || '',
                         email: item.email || '',
-                        icp_score: item.icp_score != null ? item.icp_score : undefined,
+                        icp_score: normalizeIcpScore(item.icp_score),
                         match_level: item.match_level || undefined,
                         icp_reasoning: item.icp_reasoning || undefined,
                         enriched_profile: item.enriched_profile || undefined,
@@ -5079,7 +5227,7 @@ export default function AdvancedSearchAIPage() {
                         industry: item.industry || '',
                         network_distance: item.network_distance || '',
                         locked: (existingCount + idx) >= 5,
-                        icp_score: item.icp_score != null ? item.icp_score : undefined,
+                        icp_score: normalizeIcpScore(item.icp_score),
                         match_level: item.match_level || undefined,
                         icp_reasoning: item.icp_reasoning || undefined,
                         enriched_profile: item.enriched_profile || undefined,
@@ -6373,7 +6521,7 @@ export default function AdvancedSearchAIPage() {
                                                         )}
                                                         {!targetingFiltersActive && lead.icp_score !== undefined && (
                                                           <span className={`inline-flex items-center gap-[3px] px-[8px] py-[2px] rounded-[12px] text-[11px] font-bold ${scoreToMatchLevel(lead.icp_score) === 'strong' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300' : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-300'}`}>
-                                                                {scoreToMatchLevel(lead.icp_score) === 'strong' ? '🟢' : '🟡'} {lead.icp_score}%
+                                                                {scoreToMatchLevel(lead.icp_score) === 'strong' ? '🟢' : '🟡'} {normalizeIcpScore(lead.icp_score)}%
                                                             </span>
                                                         )}
                                                         {/* Scoring still in flight (defer_icp): hold the chip's place with a
@@ -6404,6 +6552,46 @@ export default function AdvancedSearchAIPage() {
                                                             </span>
                                                         </div>
                                                     )}
+                                                    {/* Signal-derived lead: show WHY it surfaced and link back to the
+                                                        source. Signal leads are otherwise indistinguishable from Sales
+                                                        Nav ones, and the post (or job listing) is the whole reason this
+                                                        person is here.
+
+                                                        Every part is individually optional. Job-sourced leads have no
+                                                        pain_points — nobody wrote anything — so the chip row must not
+                                                        render an empty strip; hence the guard on the whole block below
+                                                        rather than on signal_context alone. */}
+                                                    {(() => {
+                                                        const ctx = lead.signal_context;
+                                                        if (!ctx) return null;
+                                                        const pains = (ctx.pain_points || []).filter(Boolean).slice(0, 3);
+                                                        const link = signalContextLink(ctx);
+                                                        if (!ctx.signal_type && !pains.length && !link) return null;
+                                                        return (
+                                                            <div className="flex gap-[4px] flex-wrap items-center mt-[4px]">
+                                                                {ctx.signal_type && (
+                                                                    <span className="inline-flex items-center gap-[3px] px-[7px] py-[1px] rounded-[10px] text-[10px] font-semibold bg-sky-50 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
+                                                                        📡 {ctx.signal_type.replace(/_/g, ' ')}
+                                                                        {ctx.signal_strength && (
+                                                                            <span className="opacity-60 ml-[2px]">·{ctx.signal_strength}</span>
+                                                                        )}
+                                                                    </span>
+                                                                )}
+                                                                {pains.map((pp, pi) => (
+                                                                    <span key={pi} className="px-[6px] py-[1px] rounded-[8px] text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600">
+                                                                        {pp}
+                                                                    </span>
+                                                                ))}
+                                                                {link && (
+                                                                    <a href={link.url} target="_blank" rel="noopener noreferrer"
+                                                                        onClick={e => e.stopPropagation()}
+                                                                        className="text-[10px] font-semibold text-sky-700 dark:text-sky-400 hover:underline">
+                                                                        {link.label} ↗
+                                                                    </a>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })()}
                                                     {!targetingFiltersActive && lead.icp_reasoning && (
                                                         <div className="text-[11px] text-gray-500 dark:text-slate-300 mt-[4px] italic leading-relaxed">
                                                             {lead.icp_reasoning}
@@ -6539,7 +6727,7 @@ export default function AdvancedSearchAIPage() {
                                                                         background: scoreToMatchLevel(lead.icp_score) === 'strong' ? '#dcfce7' : '#fef9c3',
                                                                         color: scoreToMatchLevel(lead.icp_score) === 'strong' ? '#166534' : '#854d0e',
                                                                     }}>
-                                                                        {scoreToMatchLevel(lead.icp_score) === 'strong' ? '🟢' : '🟡'} {lead.icp_score}%
+                                                                        {scoreToMatchLevel(lead.icp_score) === 'strong' ? '🟢' : '🟡'} {normalizeIcpScore(lead.icp_score)}%
                                                                     </span>
                                                                 )}
                                                             </div>
