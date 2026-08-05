@@ -3315,9 +3315,14 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           // (Mr LAD writes the touch from the conversation at send time).
           const body = (t.message || '').trim();
           const n = idx + 1;
+          // Structured LinkedIn touch types (industry_trend | company_page_post)
+          // — the backend step-executor reuses the auto-follow-up research +
+          // persona generation when this is set. Only forward the two supported
+          // modes so other touch_type values (e.g. lead_report) fall through.
+          const liTouchType = (t.touch_type === 'industry_trend' || t.touch_type === 'company_page_post') ? t.touch_type : undefined;
           if (fuChannel === 'email') steps.push({ type: 'email_send', title: `Follow-up ${n} (email)`, channel: 'email', order_index: order++, config: { subject: '', body, template_id: tid, ...d } });
           else if (fuChannel === 'whatsapp') steps.push({ type: 'whatsapp_send', title: `Follow-up ${n} (WhatsApp)`, channel: 'whatsapp', order_index: order++, config: { whatsappMessage: body, whatsapp_template_id: tid, ...d } });
-          else steps.push({ type: 'linkedin_message', title: `Follow-up ${n} (LinkedIn)`, channel: 'linkedin', order_index: order++, config: { message: body, template_id: tid, ...d } });
+          else steps.push({ type: 'linkedin_message', title: `Follow-up ${n} (LinkedIn)`, channel: 'linkedin', order_index: order++, config: { message: body, template_id: tid, ...(liTouchType ? { touch_type: liTouchType } : {}), ...d } });
         });
       }
 
@@ -4184,23 +4189,43 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                         <span className="text-xs text-muted-foreground">hours (≈ {Math.round((h / 24) * 10) / 10}d) after {i === 0 ? 'the previous step' : `touch ${i}`}</span>
                       </div>
                       <select className={`${field} h-8`}
-                        value={t.touch_type === 'lead_report' ? '__lead_report__' : (t.template_id || '')}
+                        value={
+                          t.touch_type === 'lead_report' ? '__lead_report__'
+                          : t.touch_type === 'industry_trend' ? '__industry_trend__'
+                          : t.touch_type === 'company_page_post' ? '__company_post__'
+                          : (t.template_id || '')
+                        }
                         onChange={(e) => {
                           const v = e.target.value;
-                          // The report option is a TOUCH TYPE, not a template —
-                          // the backend branches on touch_type, so setting one
-                          // must clear the other or the row carries both and the
+                          // These options are TOUCH TYPES, not templates — the
+                          // backend branches on touch_type, so selecting one must
+                          // clear template_id or the row carries both and the
                           // template path wins.
                           if (v === '__lead_report__') setTouch(i, { touch_type: 'lead_report', template_id: undefined });
+                          else if (v === '__industry_trend__') setTouch(i, { touch_type: 'industry_trend', template_id: undefined });
+                          else if (v === '__company_post__') setTouch(i, { touch_type: 'company_page_post', template_id: undefined });
                           else setTouch(i, { touch_type: undefined, template_id: v || undefined });
                         }}>
                         <option value="">AI-generated (default)</option>
                         {reportBeforeFollowup && (
                           <option value="__lead_report__">Attach the audit report</option>
                         )}
+                        {channel === 'linkedin' && (
+                          <>
+                            <option value="__industry_trend__">Research the prospect&apos;s industry trend</option>
+                            <option value="__company_post__">Share a post from our company page</option>
+                          </>
+                        )}
                         {tmpls.map((tm: any) => <option key={tm.id} value={tm.id}>{tmplName(tm)}</option>)}
                       </select>
-                      {!t.template_id && (
+                      {(t.touch_type === 'industry_trend' || t.touch_type === 'company_page_post') && (
+                        <p className="text-[11px] leading-snug text-muted-foreground">
+                          {t.touch_type === 'industry_trend'
+                            ? 'Mr LAD researches a current trend in the prospect’s industry and writes the touch, grounded in your persona.'
+                            : 'Mr LAD picks a relevant recent post from your connected company page, shares the link, and invites the prospect to follow. The page comes from your LinkedIn follow-up settings.'}
+                        </p>
+                      )}
+                      {!t.template_id && t.touch_type !== 'industry_trend' && t.touch_type !== 'company_page_post' && (
                         <textarea className={`${field} min-h-[64px]`} value={t.message || ''} onChange={(e) => setTouch(i, { message: e.target.value })}
                           placeholder={`Message for touch ${i + 1} — leave blank to let Mr LAD draft it`} />
                       )}

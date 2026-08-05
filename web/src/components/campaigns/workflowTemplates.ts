@@ -370,9 +370,10 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
       // ── Day 14 · the trend touch ───────────────────────────────────────────
       // Written as a plain DM rather than a followup_sequence touch on purpose:
       // the follow-up macro always emits AFTER every outreach step, so a touch
-      // placed here would actually fire after the break-up email — and its
-      // `touch_type` is dropped at launch (that machinery belongs to the
-      // scheduled follow-ups in Chat Settings, not to campaign steps).
+      // placed here would actually fire after the break-up email — the ordering,
+      // not the touch_type, is why this stays a hand-written step. (Structured
+      // touch types on campaign follow-ups ARE honoured at launch now — see the
+      // followup_sequence expansion in CustomWorkflowBuilder.)
       {
         type: 'linkedin_message', title: 'Trend touch', description: 'Day 14 · industry, not product',
         cfg: {
