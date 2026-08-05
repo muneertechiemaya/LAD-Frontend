@@ -1,7 +1,7 @@
 import { memo, useState, useEffect, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Conversation, ContactTag, Label, ConversationNote } from '@/types/conversation';
-import { getCurrentUser } from '@/lib/auth';
+import { usePhoneMasking } from '@/hooks/usePhoneMasking';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -164,22 +164,11 @@ export const ConversationContextPanel = memo(function ConversationContextPanel({
     await handleDelete();
   };
 
-  // Phone masking — loaded from current user's profile
-  const [maskPhoneNumbers, setMaskPhoneNumbers] = useState(false);
-  useEffect(() => {
-    getCurrentUser()
-      .then((u: any) => setMaskPhoneNumbers(!!(u?.maskPhoneNumber ?? u?.user?.maskPhoneNumber)))
-      .catch(() => {});
-  }, []);
-
-  const displayPhone = useCallback((phone: string) => {
-    if (!maskPhoneNumbers || !phone) return phone;
-    const digits = phone.replace(/\D/g, '');
-    if (digits.length < 4) return '••••';
-    const visible = digits.slice(-4);
-    const masked = Array(digits.length - 4).fill('•').join('');
-    return `+${masked}${visible}`;
-  }, [maskPhoneNumbers]);
+  // Phone masking — per-viewer setting, shared with every other surface that
+  // renders a contact number (conversation list, group members, starred
+  // messages). Previously a private callback here, which is why this panel was
+  // the ONLY place masking took effect.
+  const { displayPhone } = usePhoneMasking();
 
   // Labels state
   const [allLabels, setAllLabels] = useState<Label[]>([]);
