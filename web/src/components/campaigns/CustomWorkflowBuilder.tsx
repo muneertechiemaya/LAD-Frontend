@@ -493,25 +493,25 @@ const SIGNAL_STOPWORDS = [
  * `words` is what the local preview matches on to label a post's type.
  */
 const SIGNAL_TYPE_HINTS: { type: string; label: string; phrasing: string; wellness?: boolean; words: string[] }[] = [
-  { type: 'hiring', label: 'Hiring', phrasing: 'posting about hiring',
+  { type: 'hiring', label: 'Hiring', phrasing: 'posting jobs',
     words: ['hiring', 'we are hiring', 'job opening', 'open position', 'open role', 'join our team', 'recruiting', 'vacancy'] },
   { type: 'funding', label: 'Funding', phrasing: 'announcing new funding',
     words: ['raised', 'funding', 'series a', 'series b', 'seed round', 'investment', 'valuation', 'investors'] },
   { type: 'product', label: 'Product launch', phrasing: 'launching a new product',
     words: ['launch', 'launched', 'new product', 'new feature', 'release', 'shipping', 'now live'] },
-  { type: 'leadership', label: 'Leadership change', phrasing: 'announcing a new leadership hire or promotion',
+  { type: 'leadership', label: 'Leadership change', phrasing: 'posting about a promotion or a new leadership hire',
     words: ['joining as', 'appointed', 'promoted', 'new role', 'stepping into', 'welcome aboard'] },
   { type: 'expansion', label: 'Expansion', phrasing: 'opening a new office or entering a new market',
     words: ['new office', 'expanding', 'expansion', 'new market', 'opening in', 'entering the'] },
-  { type: 'pain_point', label: 'Pain point', phrasing: 'describing a business problem they are struggling with',
+  { type: 'pain_point', label: 'Pain point', phrasing: 'complaining about a business problem',
     words: ['struggling', 'frustrated', 'bottleneck', 'manual', 'headache', 'broken', 'wasting', 'challenge', 'nightmare'] },
   { type: 'fitness_goal', label: 'Fitness goal', wellness: true, phrasing: 'posting about their fitness or training goals',
     words: ['workout', 'gym', 'exercise', 'training', 'marathon', 'fitness', 'crossfit', 'running', 'yoga', 'pilates'] },
-  { type: 'health_challenge', label: 'Health challenge', wellness: true, phrasing: 'mentioning back pain, posture or mobility problems',
+  { type: 'health_challenge', label: 'Health challenge', wellness: true, phrasing: 'posting about back pain, posture or mobility problems',
     words: ['back pain', 'posture', 'flexibility', 'injury', 'recovery', 'mobility', 'chronic pain'] },
   { type: 'wellness_need', label: 'Wellness need', wellness: true, phrasing: 'talking about burnout, stress or work-life balance',
     words: ['wellness', 'mindfulness', 'meditation', 'stress relief', 'work-life balance', 'burnout', 'self-care'] },
-  { type: 'lifestyle_change', label: 'Lifestyle change', wellness: true, phrasing: 'starting a personal transformation or new habit',
+  { type: 'lifestyle_change', label: 'Lifestyle change', wellness: true, phrasing: 'posting about starting a personal transformation',
     words: ['life change', 'transformation', 'started', 'journey', 'committed to', 'dedicated to'] },
 ];
 
@@ -889,6 +889,72 @@ function signalRoute(signalQuery: string): { route: SignalRoute; reason: string 
     route: 'undecided',
     reason: 'This matches neither the jobs nor the posts vocabulary, so an AI call decides at run time. It defaults to posts if that is inconclusive.',
   };
+}
+
+/**
+ * Add a signal type's phrasing to some wording, idempotently.
+ *
+ * Pure and shared: the node config edits `cfg.signal_query`, the test panel
+ * edits `signalDraft.signal`, and both need the same append. Returns the
+ * wording unchanged when it already contains the phrasing, so tapping a chip
+ * twice is a no-op rather than a duplicated clause.
+ */
+function withSignalPhrasing(current: string, phrasing: string): string {
+  const cur = String(current || '').trim();
+  if (cur.toLowerCase().includes(phrasing.toLowerCase())) return cur;
+  return cur ? `${cur}, ${phrasing}` : `Companies ${phrasing}`;
+}
+
+/**
+ * The signal-type chips, rendered wherever signal wording is composed.
+ *
+ * ONE definition on purpose. The vocabulary is read off the backend
+ * (LinkedInPostAnalysisService's SIGNAL_TYPES plus the per-type rules in
+ * _buildPrompt) and the whole value of that is being able to say it mirrors the
+ * classifier. Two copies would drift, and the drifted one would still be
+ * claiming to mirror it.
+ *
+ * `compact` only shortens the explanation — the node drawer is narrower than the
+ * test drawer — and never changes the vocabulary or the substance. The claim it
+ * makes (these are not a filter) is the thing stopping a user believing they
+ * have narrowed a search, so it survives in both lengths.
+ */
+function SignalTypeChips({ value, onChange, compact = false }: {
+  value: string;
+  onChange: (next: string) => void;
+  compact?: boolean;
+}) {
+  const tap = (phrasing: string) => onChange(withSignalPhrasing(value, phrasing));
+  return (
+    <div>
+      <div className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+        Common signals — tap to add the wording
+      </div>
+      <div className="flex flex-wrap gap-1">
+        {SIGNAL_TYPE_HINTS.filter((t) => !t.wellness).map((t) => (
+          <button key={t.type} type="button" onClick={() => tap(t.phrasing)}
+            className="px-2 py-0.5 rounded-full bg-card border border-border text-[11px] font-semibold text-foreground hover:border-[#0b1957]/40 transition-colors">
+            {t.label}
+          </button>
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-1 mt-1">
+        {SIGNAL_TYPE_HINTS.filter((t) => t.wellness).map((t) => (
+          <button key={t.type} type="button" onClick={() => tap(t.phrasing)}
+            className="px-2 py-0.5 rounded-full bg-muted/50 border border-border text-[11px] text-muted-foreground hover:text-foreground hover:border-[#0b1957]/40 transition-colors">
+            {t.label}
+          </button>
+        ))}
+      </div>
+      <p className="text-[10.5px] text-muted-foreground leading-snug mt-1">
+        {compact
+          ? <>The classifier reads the type <em>out of</em> each post — nothing filters a search to one type, so these edit your wording.</>
+          : <>These are the signal types the classifier can report. It reads the type <em>out of</em> each
+            post — there is no setting that filters a search to one type — so these chips edit your wording
+            rather than pretending to be a filter.</>}
+      </p>
+    </div>
+  );
 }
 
 /** One sample job listing. A listing has no author — that is the whole point. */
@@ -1512,7 +1578,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   // opens on what the user already configured, then editable in place — tuning
   // wording is the entire job, and making them go back to the node to try a
   // rewording would kill the loop this screen exists to close.
-  const [signalDraft, setSignalDraft] = useState<{ signal: string; titles: string }>({ signal: '', titles: '' });
+  const [signalDraft, setSignalDraft] = useState<{ signal: string; titles: string; location: string }>({ signal: '', titles: '', location: '' });
   const [signalPosts, setSignalPosts] = useState<SamplePost[]>([]);
   /** Jobs-path equivalents of signalPosts / signalResults. */
   const [signalJobs, setSignalJobs] = useState<SampleJob[]>([]);
@@ -1641,6 +1707,9 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     setSignalDraft((prev) => ({
       signal: prev.signal || (cfg.signal_query || ''),
       titles: prev.titles || (cfg.decision_maker_titles || ''),
+      // `location`, singular — the signal node's own key. `locations` is the
+      // LinkedIn Search field and is a different setting entirely.
+      location: prev.location || (cfg.location || ''),
     }));
   }, [testOpen, source, configs]);
 
@@ -2072,7 +2141,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     }
     setSignalSampling(true); setSignalError(null); setSignalLive(null);
     const srcCfg = configs[SOURCE_STEP_ID] || {};
-    const hint = [signal, signalDraft.titles, srcCfg.industries, srcCfg.location]
+    const hint = [signal, signalDraft.titles, srcCfg.industries, signalDraft.location]
       .filter(Boolean).join(', ');
     const route = signalRoute(signal).route;
     const { keywords } = signalSearchKeywords(signal, csvList(signalDraft.titles), route);
@@ -2099,7 +2168,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             ...blankSampleJob(shape.label),
             job_title: shape.title(signal),
             company_name: String(a.company || 'Northwind Logistics'),
-            location: String(a.location || srcCfg.location || 'Dubai, UAE'),
+            location: String(a.location || signalDraft.location || 'Dubai, UAE'),
             seniority: shape.seniority,
             posted_at: isoDaysAgo(shape.ageDays),
           };
@@ -3984,6 +4053,27 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   writer is the lead) while "posting jobs" is a listing. Getting
                   that backwards sends the user to a source with no results. */}
               <p className="text-[11px] text-muted-foreground">Describe the hiring or buying signal. &ldquo;Posting <strong>jobs</strong> for…&rdquo; searches LinkedIn <strong>job listings</strong>; &ldquo;posted <strong>about</strong>…&rdquo;, funding, launches and pain points search <strong>posts</strong>.</p>
+              {/* The chips belong here, where the wording is actually written —
+                  they were only reachable from Test run, which is a later step.
+                  Same component the test panel renders. */}
+              <SignalTypeChips
+                value={cfg.signal_query || ''}
+                onChange={(next) => setCfg(editingId, { signal_query: next })}
+                compact />
+              {/* One line, because tapping "Hiring" silently changes which source
+                  runs — and the Location helper below already talks about "the
+                  jobs route", which reads as a non-sequitur if the route was
+                  never named. Deliberately a line and not the test panel's box. */}
+              {!!(cfg.signal_query || '').trim() && (() => {
+                const r = signalRoute(cfg.signal_query || '').route;
+                return (
+                  <p className={`text-[11px] font-medium ${r === 'jobs' ? 'text-sky-700 dark:text-sky-400' : 'text-muted-foreground'}`}>
+                    {r === 'jobs' ? '→ Searches the LinkedIn jobs portal (each match is a company)'
+                      : r === 'undecided' ? '→ Source decided at run time by AI; defaults to posts'
+                        : '→ Searches LinkedIn posts (each match is the post’s author)'}
+                  </p>
+                );
+              })()}
             </div>
             <div className="space-y-1">
               <label className="text-xs font-medium text-foreground">Decision-maker titles (optional)</label>
@@ -5921,10 +6011,11 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     const srcCfg = configs[SOURCE_STEP_ID] || {};
     const signal = signalDraft.signal.trim();
     const titles = csvList(signalDraft.titles);
-    // The signal node's own Location field (`location`, singular — `locations`
-    // is the LinkedIn Search field). Real and user-set, so what this screen says
-    // about it has to match what the node does on each route.
-    const location = String(srcCfg.location || '').trim();
+    // Editable here like the signal and the titles, because location is the
+    // third input that decides the outcome and was the only one you could not
+    // try. `location`, singular — the signal node's own key; `locations` is the
+    // LinkedIn Search field and a different setting.
+    const location = signalDraft.location.trim();
     const routing = signalRoute(signal);
     const isJobs = routing.route === 'jobs';
     const { keywords, titlesOverride } = signalSearchKeywords(signal, titles, routing.route);
@@ -5932,17 +6023,9 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     const jobById = new Map(signalJobs.map((j) => [j.id, j]));
     // The draft has drifted from the node — offer to keep the better wording.
     const draftDiffers = signal !== String(srcCfg.signal_query || '').trim()
-      || signalDraft.titles.trim() !== String(srcCfg.decision_maker_titles || '').trim();
+      || signalDraft.titles.trim() !== String(srcCfg.decision_maker_titles || '').trim()
+      || signalDraft.location.trim() !== String(srcCfg.location || '').trim();
     const busy = signalSampling || signalLiveRunning;
-
-    /** Append a type's phrasing to the signal wording, if it isn't there already. */
-    const applyPhrasing = (phrasing: string) => {
-      setSignalDraft((prev) => {
-        const cur = prev.signal.trim();
-        if (cur.toLowerCase().includes(phrasing.toLowerCase())) return prev;
-        return { ...prev, signal: cur ? `${cur}, ${phrasing}` : `Companies ${phrasing}` };
-      });
-    };
 
     return (<>
       <div className="rounded-lg border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/30 p-2.5 text-[12px] leading-relaxed text-emerald-900 dark:text-emerald-200 space-y-1.5">
@@ -5967,6 +6050,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               onClick={() => setCfg(SOURCE_STEP_ID, {
                 signal_query: signalDraft.signal,
                 decision_maker_titles: signalDraft.titles,
+                location: signalDraft.location,
               })}
               className="text-[11px] font-semibold text-[#0b1957] dark:text-sky-400 hover:underline">
               Save to source node
@@ -6004,33 +6088,10 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           </div>
         )}
 
-        {/* Type chips. NOT a filter — see SIGNAL_TYPE_HINTS. */}
-        <div>
-          <div className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-            Common signals — tap to add the wording
-          </div>
-          <div className="flex flex-wrap gap-1">
-            {SIGNAL_TYPE_HINTS.filter((t) => !t.wellness).map((t) => (
-              <button key={t.type} type="button" onClick={() => applyPhrasing(t.phrasing)}
-                className="px-2 py-0.5 rounded-full bg-card border border-border text-[11px] font-semibold text-foreground hover:border-[#0b1957]/40 transition-colors">
-                {t.label}
-              </button>
-            ))}
-          </div>
-          <div className="flex flex-wrap gap-1 mt-1">
-            {SIGNAL_TYPE_HINTS.filter((t) => t.wellness).map((t) => (
-              <button key={t.type} type="button" onClick={() => applyPhrasing(t.phrasing)}
-                className="px-2 py-0.5 rounded-full bg-muted/50 border border-border text-[11px] text-muted-foreground hover:text-foreground hover:border-[#0b1957]/40 transition-colors">
-                {t.label}
-              </button>
-            ))}
-          </div>
-          <p className="text-[10.5px] text-muted-foreground leading-snug mt-1">
-            These are the signal types the classifier can report. It reads the type <em>out of</em> each
-            post — there is no setting that filters a search to one type — so these chips edit your wording
-            rather than pretending to be a filter.
-          </p>
-        </div>
+        {/* Same chips the node config shows — one definition, see SignalTypeChips. */}
+        <SignalTypeChips
+          value={signalDraft.signal}
+          onChange={(next) => setSignalDraft((p) => ({ ...p, signal: next }))} />
 
         <div className="space-y-1">
           <label className="text-[11px] font-medium text-muted-foreground">Decision-maker titles</label>
@@ -6043,27 +6104,41 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           </p>
         </div>
 
-        {/* Location behaves COMPLETELY differently per route, and the jobs case
+        {/* Always rendered, never gated on being non-empty. Blank is not "no
+            information" — it means worldwide, and on the jobs route the gap
+            between "I scoped this to Dubai" and "this searched everywhere" is
+            exactly what the user needs told.
+
+            Location behaves COMPLETELY differently per route, and the jobs case
             is the one that burns people: the Unipile jobs API needs LinkedIn
             location IDs rather than free text and no resolver is wired, so the
             location is dropped and the search is worldwide. The backend logs a
             warning the user will never see, which is why it is said here. */}
-        {!!location && (
-          <div className={`rounded-lg border p-2 text-[10.5px] leading-snug ${isJobs
-            ? 'border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200'
-            : 'border-border bg-muted/30 text-muted-foreground'}`}>
-            <strong className={isJobs ? '' : 'text-foreground'}>Location: {location}</strong>
-            {isJobs ? (
-              <> — <strong>not applied on the jobs route.</strong> The jobs search needs LinkedIn&apos;s own
-              location IDs rather than a typed place name, and that lookup is not wired yet, so results come
-              back <strong>worldwide</strong>. Filter the leads afterwards, or reword the signal so it routes
-              to posts, where location does work.</>
-            ) : (
-              <> — applied, by keeping only authors whose own profile places them there. Because the search
-              itself is worldwide, a very specific place can come back empty even when the signal exists.</>
-            )}
-          </div>
-        )}
+        <div className="space-y-1">
+          <label className="text-[11px] font-medium text-muted-foreground">Location</label>
+          <Input value={signalDraft.location} placeholder="Blank = worldwide"
+            onChange={(e) => setSignalDraft((p) => ({ ...p, location: e.target.value }))} />
+          {isJobs ? (
+            // Shown whether or not a location is set: someone who fills this in
+            // later should already know it does nothing here. Worded so an empty
+            // field reads as a heads-up rather than a mistake they have made.
+            <div className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 p-2 text-[10.5px] leading-snug text-amber-900 dark:text-amber-200">
+              <strong>Location is not applied on the jobs route.</strong> The jobs search needs
+              LinkedIn&apos;s own location IDs rather than a typed place name, and that lookup is not wired
+              yet — so this searches <strong>worldwide</strong>
+              {location ? <> and &ldquo;{location}&rdquo; is ignored</> : null}. Filter the leads afterwards,
+              or reword the signal so it looks for what people posted about, where location does work.
+            </div>
+          ) : (
+            <p className="text-[10.5px] text-muted-foreground leading-snug">
+              {location
+                ? <>Applied, by keeping only authors whose own profile places them there. Because the search
+                  itself is worldwide, a very specific place can come back empty even when the signal exists.</>
+                : <>Blank searches worldwide. Set a place and only people whose LinkedIn profile puts them
+                  there are enrolled.</>}
+            </p>
+          )}
+        </div>
 
         {/* What the search will really run on. */}
         <div className="rounded-lg border border-border bg-muted/30 p-2.5">
