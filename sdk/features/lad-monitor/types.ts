@@ -449,3 +449,35 @@ export interface CommunitySignupsResponse {
   summary: Partial<Record<SignupStatus, number>>;
   count: number;
 }
+
+// ── LLM routing (per-tenant, per-feature model selection) ───────────────────
+
+export type LlmProvider = 'anthropic' | 'openai' | 'gemini' | 'deepseek';
+
+/** One hop in a chain. Index 0 is the primary; the rest are fallbacks in order. */
+export interface LlmRoutingEntry {
+  provider: LlmProvider;
+  model: string;
+  /** Present on reads; the API derives it from array order on writes. */
+  priority?: number;
+  isActive?: boolean;
+}
+
+export interface LlmRoutingFeature {
+  featureKey: string;
+  chain: LlmRoutingEntry[];
+  updatedAt?: string;
+  updatedBy?: string | null;
+}
+
+export interface LlmRoutingMeta {
+  providers: LlmProvider[];
+  /** feature_key -> why it cannot be routed (provider-locked capability). */
+  nonRoutableFeatures: Record<string, string>;
+}
+
+/** Verdict from the dry-run endpoint. `ok: false` carries the reason. */
+export interface LlmRoutingValidation {
+  ok: boolean;
+  error?: string;
+}
