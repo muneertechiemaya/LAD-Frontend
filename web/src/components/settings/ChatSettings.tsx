@@ -499,10 +499,10 @@ function EmailAgentCard({ showToast }: { showToast: (msg: string, type: 'success
   };
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-      <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm dark:bg-[#030a21]/60 dark:border-blue-950/40">
+      <div className="px-5 py-4 border-b border-gray-100 dark:border-blue-950/40 flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-gray-900">Email agent (Gmail &amp; Outlook)</h3>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Email agent (Gmail &amp; Outlook)</h3>
           <p className="text-xs text-gray-500 mt-0.5">
             Automatically replies to new emails in your connected inboxes using the prompt
             below — same AI brain as your WhatsApp agent. Replies stay in the original thread.
@@ -533,7 +533,7 @@ function EmailAgentCard({ showToast }: { showToast: (msg: string, type: 'success
           in Settings → Integrations. The agent only answers mail received after it&apos;s enabled.
         </p>
         <div>
-          <label className="text-xs font-medium text-gray-700">System prompt</label>
+          <label className="text-xs font-medium text-gray-700 dark:text-gray-500">System prompt</label>
           <textarea
             value={promptText}
             onChange={(e) => setPromptText(e.target.value)}
@@ -544,7 +544,7 @@ function EmailAgentCard({ showToast }: { showToast: (msg: string, type: 'success
               'pricing and availability using the knowledge base. Be concise and professional. ' +
               'If the sender asks for anything you are unsure about, say a team member will follow up.'
             }
-            className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-red-400 disabled:bg-gray-50"
+            className="mt-1 w-full rounded-lg border border-gray-200 dark:border-blue-950/60 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-red-400 disabled:bg-gray-50"
           />
           <p className="mt-1 text-[11px] text-gray-500">
             The knowledge base and tone from your chat settings are added automatically.
@@ -2923,7 +2923,7 @@ export function ChatSettings() {
       {/* One quiet strip so hidden settings are discoverable — the settings
           themselves are kept and reappear once the channel is reconnected. */}
       {channelsLoaded && hiddenChannels.length > 0 && (
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm px-5 py-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="bg-white dark:bg-[#030a21]/60 rounded-lg border border-gray-200 dark:border-blue-950/40 shadow-sm px-5 py-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0">
             <EyeOff className="h-4 w-4 text-gray-400 flex-shrink-0" />
             <p className="text-sm text-gray-500">

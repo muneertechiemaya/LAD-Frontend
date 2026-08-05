@@ -16,9 +16,12 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Target, Save, CheckCircle2, AlertTriangle, Building2, MapPin, Clock, Upload } from 'lucide-react';
 import {
   useBusinessProfile,
+  uploadCompanyLogo,
   BUSINESS_PROFILE_COMPANY_HALF,
   BUSINESS_PROFILE_ICP_HALF,
+  BUSINESS_PROFILE_OFFER_HALF,
   BUSINESS_PROFILE_OPTIONAL_FIELDS,
+  computeOfferCompleteness,
   type BusinessProfile,
 } from '@lad/frontend-features/ai-icp-assistant';
 import { useBusinessHours, useUpdateBusinessHours } from '@lad/frontend-features/settings';
@@ -78,6 +81,17 @@ const FIELD_COPY: Record<string, { label: string; hint?: string; multiline?: boo
   geographicFocus:    { label: 'Geographic focus',     placeholder: 'GCC, MENA' },
   competitors:        { label: 'Competitors',          hint: 'Optional — names help the AI position you.' },
   campaignTone:       { label: 'Campaign tone',        placeholder: 'Friendly, direct, low-jargon' },
+
+  // Offer half — grounding for generated landing pages and lead reports.
+  icpSegments:        { label: 'Buyer segments',       multiline: true, hint: 'The 2–4 distinct types of buyer you sell to, one per line.', placeholder: 'Owner-led firm, 20–80 staff — you are the whole sales team\nGrowing operator, 80–300 staff — one or two people carrying a target' },
+  costOfInaction:     { label: 'Cost of doing nothing', multiline: true, hint: 'What actually goes wrong for a client who leaves this another year.' },
+  discoveryQuestions: { label: 'Discovery questions',  multiline: true, hint: 'The questions you ask on a first call, one per line. Used to let readers diagnose themselves.' },
+  deliveryProcess:    { label: 'What happens after they sign', multiline: true, hint: 'The first three or four steps, and roughly how long each takes.' },
+  proofPoints:        { label: 'Evidenced results',    multiline: true, hint: 'The only place a number on a generated page can come from. Only figures you could defend if challenged — leave blank rather than estimate, and pages will carry no numbers.', placeholder: '40% reply rate across 2,000 prospects in the last 30 days' },
+  notAGoodFit:        { label: 'Who is not a good fit', multiline: true, hint: 'The clients you turn away. Stating it plainly reads as confidence.' },
+  commonObjections:   { label: 'Common objections',    multiline: true, hint: 'What you hear most often, and your answer. One per line.' },
+  differentiators:    { label: 'Why buyers pick you',  multiline: true, hint: 'What you can say that a competitor honestly cannot.' },
+  guarantee:          { label: 'Guarantee / risk reversal', multiline: true, hint: 'Any trial, pilot or guarantee that lowers the risk of saying yes. Leave blank if none.' },
 };
 
 const SECTIONS: { title: string; subtitle: string; keys: ReadonlyArray<Key> }[] = [
@@ -99,6 +113,12 @@ const SECTIONS: { title: string; subtitle: string; keys: ReadonlyArray<Key> }[] 
       ...BUSINESS_PROFILE_ICP_HALF.filter((k) => BUSINESS_PROFILE_OPTIONAL_FIELDS.has(k)),
     ],
   },
+  {
+    title: 'Offer',
+    subtitle:
+      'Only needed if you generate landing pages or client reports. Each answer adds a section to those pages; anything left blank is simply left out. Counted separately from the profile above.',
+    keys: BUSINESS_PROFILE_OFFER_HALF,
+  },
 ];
 
 export const BusinessProfileSettings: React.FC = () => {
@@ -108,9 +128,15 @@ export const BusinessProfileSettings: React.FC = () => {
   const [savedAt, setSavedAt] = useState<number | null>(null);
 
   // ── Company basics (merged in from the former Company tab) ────────────────
-  // Logo + location persist to the settings store (Redux); business hours
-  // persist to the DB via the settings API. These are operational fields with
-  // no equivalent in the 14-field ICP, so they live in their own section.
+  // Logo + location are DB-backed through the same `icp_data` blob as the rest
+  // of the profile (as `companyLogoUrl` / `companyLocation`, both outside the
+  // canonical field list so they don't move the "X / 14" denominator).
+  // Business hours persist separately via the settings API.
+  //
+  // Both used to live in Redux/localStorage only: the logo was a blob URL that
+  // died with the tab and the location never left the browser.
+  // The Redux dispatches are kept so the header avatar and any other consumer
+  // of `settings` update immediately — Redux is now a mirror, not the store.
   const dispatch = useDispatch();
   const settings = useSelector(selectSettings);
   const { data: savedBH } = useBusinessHours();
@@ -118,22 +144,47 @@ export const BusinessProfileSettings: React.FC = () => {
   const [hoursOpen, setHoursOpen] = useState(false);
   const [location, setLocation] = useState('');
   const [locationSavedAt, setLocationSavedAt] = useState<number | null>(null);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoError, setLogoError] = useState<string | null>(null);
 
+  // Seed from the server profile once loaded, falling back to whatever Redux
+  // still holds from a pre-fix session so nothing visibly disappears.
   useEffect(() => {
-    setLocation(settings.companyLocation || '');
-  }, [settings.companyLocation]);
+    if (loading) return;
+    const stored = typeof profile.companyLocation === 'string' ? profile.companyLocation : '';
+    setLocation(stored || settings.companyLocation || '');
+    if (typeof profile.companyLogoUrl === 'string' && profile.companyLogoUrl) {
+      dispatch(setCompanyLogo(profile.companyLogoUrl));
+    }
+  }, [loading, profile.companyLocation, profile.companyLogoUrl, settings.companyLocation, dispatch]);
 
-  const onLogoPick = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onLogoPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    // NOTE: parity with the old Company tab — preview-only via object URL, drives
-    // the header avatar for the session. Server-side logo persistence is a
-    // separate follow-up (needs an upload endpoint).
-    if (file) dispatch(setCompanyLogo(URL.createObjectURL(file)));
+    e.target.value = ''; // allow re-picking the same file after a failure
+    if (!file) return;
+    setLogoUploading(true);
+    setLogoError(null);
+    try {
+      const url = await uploadCompanyLogo(file);
+      // The endpoint already merged companyLogoUrl into icp_data; mirror it
+      // locally so the avatar and the next save() both see the new value.
+      dispatch(setCompanyLogo(url));
+      await save({ companyLogoUrl: url });
+    } catch (err) {
+      setLogoError(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setLogoUploading(false);
+    }
   };
 
-  const saveLocation = () => {
+  const saveLocation = async () => {
     dispatch(setCompanyLocation(location));
-    setLocationSavedAt(Date.now());
+    try {
+      await save({ companyLocation: location });
+      setLocationSavedAt(Date.now());
+    } catch {
+      /* error surfaces via the hook's `error` in the footer */
+    }
   };
 
   useEffect(() => {
@@ -152,6 +203,9 @@ export const BusinessProfileSettings: React.FC = () => {
       setHydrated(true);
     }
   }, [loading, hydrated, profile]);
+
+  // Live off the form, not the saved profile, so the count moves as they type.
+  const offerCompleteness = computeOfferCompleteness(form as BusinessProfile);
 
   const setField = (k: Key, v: string) => setForm((p) => ({ ...p, [k]: v }));
 
@@ -285,11 +339,25 @@ export const BusinessProfileSettings: React.FC = () => {
             </div>
             <div>
               <span className="text-[12px] font-semibold text-[#172560] dark:text-slate-200 block mb-1.5">Company logo</span>
-              <label className="inline-flex items-center gap-1.5 px-3 h-9 rounded-lg border border-slate-200 dark:border-slate-700 text-[12px] font-medium text-[#0B1957] dark:text-blue-400 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition">
+              <label
+                className={`inline-flex items-center gap-1.5 px-3 h-9 rounded-lg border border-slate-200 dark:border-slate-700 text-[12px] font-medium text-[#0B1957] dark:text-blue-400 transition ${
+                  logoUploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800'
+                }`}
+              >
                 <Upload className="w-3.5 h-3.5" />
-                Upload
-                <input type="file" accept="image/*" className="hidden" onChange={onLogoPick} />
+                {logoUploading ? 'Uploading…' : 'Upload'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={logoUploading}
+                  onChange={onLogoPick}
+                />
               </label>
+              <span className="block text-[11px] text-slate-400 dark:text-slate-500 mt-1">PNG or JPG, up to 2MB.</span>
+              {logoError && (
+                <span className="block text-[11px] text-red-600 dark:text-red-400 mt-0.5">{logoError}</span>
+              )}
             </div>
           </div>
 
@@ -340,7 +408,17 @@ export const BusinessProfileSettings: React.FC = () => {
       {/* Sections */}
       {SECTIONS.map((section) => (
         <div key={section.title} className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-gray-200 dark:border-slate-800 p-6">
-          <h3 className="text-gray-900 dark:text-slate-100 text-base font-semibold">{section.title}</h3>
+          <h3 className="text-gray-900 dark:text-slate-100 text-base font-semibold inline-flex items-center gap-2">
+            {section.title}
+            {/* Offer carries its own denominator. Folding it into the headline
+                "X / 14" would mark every existing tenant incomplete overnight
+                for fields they may never need. */}
+            {section.title === 'Offer' && (
+              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                {offerCompleteness.filled} / {offerCompleteness.total}
+              </span>
+            )}
+          </h3>
           <p className="text-gray-500 dark:text-slate-300 text-xs mt-0.5 mb-4">{section.subtitle}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {section.keys.map((k) => {

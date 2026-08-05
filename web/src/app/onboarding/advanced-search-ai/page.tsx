@@ -30,6 +30,12 @@ import { AgentBuilderKeyframesConfirm } from "@/components/voice-agent/playgroun
 import { AgentBuilderBrandDNA } from "@/components/voice-agent/playground/builder-steps/AgentBuilderBrandDNA";
 import { useAuth } from '@/contexts/AuthContext';
 import CustomWorkflowBuilder from '@/components/campaigns/CustomWorkflowBuilder';
+import {
+    WORKFLOW_TEMPLATES, WorkflowTemplate,
+    templateWizardInputs, splitWizardAnswers, templateSearchQuery, templateToPreviewSteps,
+} from '@/components/campaigns/workflowTemplates';
+import type { TemplateInput } from '@/components/campaigns/workflowTemplates';
+import { TemplateIcon } from '@/components/campaigns/TemplateIcon';
 import { useEmailTemplates, useCreateEmailTemplate } from '@lad/frontend-features/email-templates';
 import { useConnectedEmailSenders } from '@lad/frontend-features/email-senders';
 import {
@@ -41,6 +47,7 @@ import {
     useBilling,
     useBusinessProfile,
     computeCompleteness,
+    computeOfferCompleteness,
     type BusinessProfile,
 } from '@lad/frontend-features/ai-icp-assistant';
 import { getCampaign, updateCampaign, updateCampaignSteps, startCampaign } from '@lad/frontend-features/campaigns';
@@ -95,6 +102,63 @@ interface LeadProfile {
     inferred?: Record<string, any>;
     inferred_nationality?: string;
     nationality_confidence?: number;
+    /**
+     * Only present on signal_detection leads, where the lead IS the author of a
+     * LinkedIn post. Without it a post-derived lead renders identically to a
+     * Sales Navigator one and there is no way back to the post that produced it.
+     * Shape comes from SignalDetectionService._postsToLeads.
+     */
+    signal_context?: {
+        signal_type?: string;
+        signal_strength?: string;
+        urgency?: string;
+        /** Empty on job-sourced leads: the person did not write anything. */
+        pain_points?: string[];
+        post_url?: string;
+        posted_at?: string;
+        /** Job-sourced leads carry a listing link instead; key TBD — see signalContextLink. */
+        [key: string]: any;
+    };
+}
+
+/**
+ * The link on a signal lead — a feed post or a job listing.
+ *
+ * Signal Search has two sources. On the jobs route a match yields a COMPANY
+ * rather than a post author, so the lead's link is a job listing.
+ * `signal_context.source_type` ('linkedin_job' | 'linkedin_post') is the
+ * discriminator and is the primary path; the backend backfilled the post value
+ * onto the existing route so both can be branched positively.
+ *
+ * `post_url` is deliberately absent on job leads and `job_url` carries the
+ * permalink, so the URL-sniffing fallback is correct on its own — it is kept for
+ * anything emitted before source_type existed. Returns null when there is no
+ * link at all.
+ */
+const JOB_LINK_KEYS = ['job_url', 'job_link', 'job_posting_url', 'jobs_url', 'listing_url', 'job_post_url'];
+
+function signalContextLink(ctx: LeadProfile['signal_context']): { url: string; label: string } | null {
+    if (!ctx || typeof ctx !== 'object') return null;
+    const bag = ctx as Record<string, any>;
+    const firstString = (keys: string[]) => {
+        for (const k of keys) {
+            const v = bag[k];
+            if (typeof v === 'string' && v.trim()) return v.trim();
+        }
+        return '';
+    };
+    const jobUrl = firstString(JOB_LINK_KEYS);
+    const postUrl = firstString(['post_url']);
+    const sourceType = String(bag.source_type || '').toLowerCase();
+    if (sourceType === 'linkedin_job') {
+        return jobUrl || postUrl ? { url: jobUrl || postUrl, label: 'View job' } : null;
+    }
+    if (sourceType === 'linkedin_post') {
+        return postUrl || jobUrl ? { url: postUrl || jobUrl, label: 'View post' } : null;
+    }
+    if (jobUrl) return { url: jobUrl, label: 'View job' };
+    if (postUrl) return { url: postUrl, label: 'View post' };
+    return null;
 }
 
 interface ParsedInboundLead {
@@ -152,6 +216,8 @@ interface ChatMsg {
     targeting?: LeadTargeting;
     loading?: boolean;
     options?: { label: string; value: string }[];
+    /** Rich "Accelerators" wizard card (template pipelines launched from chat). */
+    roleCard?: { key: string; stage: 'intro' | 'question' | 'summary' | 'file'; qIdx?: number; nudge?: boolean; answers?: Record<string, string> };
     leads?: LeadProfile[];
     inboundAction?: 'download' | 'upload' | 'summary';
     inboundSummary?: { total: number; linkedin: number; email: number; whatsapp: number; phone: number; website: number };
@@ -159,6 +225,23 @@ interface ChatMsg {
     sources?: Array<{ title: string; url: string }>;
     leadDetailForm?: boolean;
     outreach_journey?: OutreachStep[];
+}
+
+/**
+ * A lead source this wizard has no UI for (today: the recurring Zoho CRM
+ * import). Read off the saved campaign on edit hydration and written straight
+ * back out at save time so editing the outreach steps here never rewrites which
+ * system the campaign pulls leads from.
+ */
+interface PersistedLeadSource {
+    /** lead_generation step config.source — e.g. 'zoho_contacts'. */
+    source: string;
+    /** Campaign-level config.data_source mirror. */
+    data_source?: string;
+    /** Zoho-specific: which modules to import ('contacts' | 'contacts_leads'). */
+    zoho_modules?: string;
+    /** Zoho-specific: only import records carrying this tag. */
+    zoho_tag?: string;
 }
 
 interface OutreachStep {
@@ -333,12 +416,37 @@ function resolveProfileUrl(item: any): string {
 }
 
 /**
+ * Put an icp_score onto the 0-100 scale this page renders and filters against.
+ *
+ * 0-100 is the authoritative scale: /search/unified defaults icp_min_score to
+ * 50, ICPLeadQualificationService prompts Gemini for "0-100", and the column is
+ * NUMERIC(5,2). But not every module that feeds the same list obeys it — the
+ * signal_detection, abm and competitor_intent branches pass their internal
+ * 0.0-1.0 relevance straight through as icp_score (SignalDetectionService
+ * `icp_score: l._match_score`, ABMSearchService, CompetitiveIntelService).
+ * Those leads arrived as 0.95 and rendered as "0.95%", could never clear the
+ * >= 70 "strong" bar, and were never auto-selected by the >= 50 seed.
+ *
+ * So: anything in (0, 1] is read as a fraction and scaled. A genuine 0-100
+ * score of exactly 1 becomes 100 — that is the one ambiguous input, and a lead
+ * scored 1/100 is noise either way. Idempotent, so applying it again at a
+ * render site is harmless.
+ */
+function normalizeIcpScore(raw: unknown): number | undefined {
+    if (raw === null || raw === undefined || raw === '') return undefined;
+    const n = Number(raw); // pg NUMERIC can arrive as a string
+    if (!Number.isFinite(n) || n < 0) return undefined;
+    return Math.round(n > 0 && n <= 1 ? n * 100 : n);
+}
+
+/**
  * Compute the display match level from the actual icp_score.
  * Gemini's match_level label can be inconsistent (e.g. 'weak' for score 52).
  * Using the score directly ensures the badge colour reflects what the user sees.
+ * Normalises first — a 0-1 score would otherwise never be 'strong'.
  */
 function scoreToMatchLevel(score: number | undefined): 'strong' | 'moderate' {
-    if ((score ?? 0) >= 70) return 'strong';
+    if ((normalizeIcpScore(score) ?? 0) >= 70) return 'strong';
     return 'moderate'; // yellow for everything else — never show red on lead badges
 }
 
@@ -610,7 +718,7 @@ export default function AdvancedSearchAIPage() {
     // Unified single-screen mode - always show chat interface
     // const [screen, setScreen] = useState<'landing' | 'chat'>('landing');
     const [messages, setMessages] = useState<ChatMsg[]>([]);
-    // Edit mode: set when "Edit Workflow" routes here with ?campaignId=<id>.
+    // Edit mode: set when "Edit Accelerator" routes here with ?campaignId=<id>.
     const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
     const editHydratedRef = useRef(false);
     const [input, setInput] = useState('');
@@ -655,6 +763,9 @@ export default function AdvancedSearchAIPage() {
     const [leads, setLeads] = useState<LeadProfile[]>([]);
     const [filteredLeads, setFilteredLeads] = useState<LeadProfile[]>([]);   // below ICP threshold
     const [showFilteredLeads, setShowFilteredLeads] = useState(false);        // toggle "Show all"
+    // True between "leads rendered" and "ICP scores arrived" when the search ran
+    // with defer_icp. Drives the pulsing dot that stands in for the score chip.
+    const [icpScoringPending, setIcpScoringPending] = useState(false);
     // Per-lead selection: which prospects the user has checked to enroll into the
     // campaign. The list now spans the full ICP range (0–100); the user picks the
     // exact prospects rather than relying on a score cutoff. Keyed by lead.id.
@@ -717,6 +828,18 @@ export default function AdvancedSearchAIPage() {
     // once inboundMode/pendingContact are in scope) so the reconcile callbacks read
     // the latest value without a stale closure or a temporal-dead-zone reference.
     const includeLeadSourceRef = useRef(true);
+
+    // The campaign's REAL lead source, when it is something this form has no UI
+    // for — today a recurring Zoho import (source:'zoho_contacts', built in the
+    // Custom Workflow Builder or the /crm/zoho modal). This form only ever emits
+    // source:'linkedin_search', and saving does a destructive step replace, so
+    // without this an edit here silently converts a Zoho-sourced campaign into a
+    // LinkedIn search: the daily import stops and no new CRM contact is ever
+    // enrolled again. Captured on edit hydration, re-emitted verbatim on save.
+    // State, not a ref: the launch payload is built inside CheckpointFormInline,
+    // so this has to reach the child as a prop and re-render it once hydration
+    // resolves the source.
+    const [persistedLeadSource, setPersistedLeadSource] = useState<PersistedLeadSource | null>(null);
     const _applyCpCfg = useCallback((patch: Partial<{ actions: string[]; nextChannels: string[]; triggerCondition: string }>) => {
         const cur = useOnboardingStore.getState().workflowPreview as unknown as SyncStep[];
         setWorkflowPreview(applyConfig(cur, patch, { includeLeadSource: includeLeadSourceRef.current }) as any);
@@ -954,8 +1077,16 @@ export default function AdvancedSearchAIPage() {
     }, []);
 
     const [showMediaModal, setShowMediaModal] = useState(false);
-    // Custom Workflow Builder (n8n-style) — full-screen takeover opened from the "+" menu.
+    // Custom Accelerator builder (node graph) — full-screen takeover opened from the "+" menu.
     const [showCustomWorkflow, setShowCustomWorkflow] = useState(false);
+    // "Roles" — prebuilt pipeline templates launched from chat. The wizard asks
+    // each template's inputs in the chat thread, then hands off to the embedded
+    // CustomWorkflowBuilder (initialTemplateKey/initialSourceCfg/autoLaunch) so
+    // the launch path is the builder's own — no duplicated payload logic.
+    const [builderTemplate, setBuilderTemplate] = useState<{ key: string; sourceCfg: Record<string, string>; nodeCfg: Record<string, any>; autoLaunch: boolean } | null>(null);
+    const roleWizardRef = useRef<{ key: string; idx: number; answers: Record<string, string> } | null>(null);
+    /** Audience preview for the pending Accelerator — keyed off the summary card's CTA. */
+    const [rolePreviewing, setRolePreviewing] = useState(false);
 
     interface MediaChatMsg {
         id: string;
@@ -1148,10 +1279,15 @@ export default function AdvancedSearchAIPage() {
     const [pgIsComplete, setPgIsComplete] = useState(false);
     const [pgSuggesting, setPgSuggesting] = useState(false);  // AI suggestion loading
     const pgMessagesEndRef = useRef<HTMLDivElement>(null);
-    // The 17-key business profile (14 core + 3 optional). Persisted server-side
-    // by /api/ai-playground/chat on every turn — the hook handles the initial
-    // load + exposes the shared completeness math used by Settings and the
-    // wizard's Company step.
+    // The 22-key business profile (14 required + 8 optional). Persisted
+    // server-side by /api/ai-playground/chat on every turn — the hook handles
+    // the initial load + exposes the shared completeness math used by Settings
+    // and the wizard's Company step.
+    //
+    // This map is also the hydration allow-list (see the effect below, which
+    // iterates Object.keys) — any canonical key missing here is silently
+    // dropped on load even when the server has it. Keep it in sync with
+    // BUSINESS_PROFILE_ALL_FIELDS.
     const { profile: loadedProfile, loading: profileLoading } = useBusinessProfile();
     const [businessProfile, setBusinessProfile] = useState<Record<string, string>>({
         companyName: '', industry: '', website: '', companyDescription: '',
@@ -1159,6 +1295,12 @@ export default function AdvancedSearchAIPage() {
         icpCompanySize: '', icpLocations: '', icpPainPoints: '',
         sampleConversation: '', operatingHours: '', timezone: '',
         geographicFocus: '', valueProposition: '', competitors: '', campaignTone: '',
+        // Agent identity, CTA link and the tenant's own contact details. The
+        // chat now asks for these (flow steps 15-16 of the playground prompt);
+        // before they were absent here AND from the prompt, so they could never
+        // be captured or displayed by this surface.
+        personaName: '', personaTitle: '', bookingLink: '',
+        contactEmail: '', contactPhone: '',
     });
     const [bpHydrated, setBpHydrated] = useState(false);
     const [openSummaries, setOpenSummaries] = useState<Set<number>>(new Set());
@@ -1438,7 +1580,12 @@ export default function AdvancedSearchAIPage() {
     // ── Lead selection (checkbox) helpers ───────────────────────────────────
     // The checkbox is the authoritative include signal: only checked leads are
     // enrolled into the campaign at launch (see CheckpointFormInline.launchCampaign).
+    // Set as soon as the user touches a checkbox. Deferred ICP scoring re-seeds
+    // the default selection when scores land; without this it would stomp on any
+    // picking the user did during the couple of seconds scoring was still running.
+    const selectionTouchedRef = useRef(false);
     const toggleLeadSelection = (leadId: string) => {
+        selectionTouchedRef.current = true;
         setSelectedLeadIds(prev => {
             const next = new Set(prev);
             if (next.has(leadId)) next.delete(leadId); else next.add(leadId);
@@ -1446,14 +1593,19 @@ export default function AdvancedSearchAIPage() {
         });
     };
     const selectAllLeads = () => {
+        selectionTouchedRef.current = true;
         setSelectedLeadIds(new Set(leads.map(l => l.id)));
     };
     const clearLeadSelection = () => {
+        selectionTouchedRef.current = true;
         setSelectedLeadIds(new Set());
     };
     // Seed default selection (leads scoring >= 50 pre-checked) for a fresh result
     // set, replacing any prior selection. Used when a new search populates `leads`.
-    const seedDefaultSelection = (list: LeadProfile[]) => {
+    // `respectUserEdits` is passed by the deferred-ICP re-seed, which must not
+    // overwrite picks the user already made while scoring was in flight.
+    const seedDefaultSelection = (list: LeadProfile[], respectUserEdits = false) => {
+        if (respectUserEdits && selectionTouchedRef.current) return;
         // A single-result search is almost always the specific person the user
         // asked for — check them regardless of ICP score so launch never
         // discards the only lead found (an ICP of "one person's name" scores
@@ -1670,7 +1822,7 @@ export default function AdvancedSearchAIPage() {
     useEffect(() => { if (tgStep >= 0) endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [tgStep]);
 
     // ── Edit mode: hydrate the setup flow from an existing campaign ──────────────
-    // "Edit Workflow" routes here with ?campaignId=<id>. The setup flow already
+    // "Edit Accelerator" routes here with ?campaignId=<id>. The setup flow already
     // persists the chat (config.conversation_history) and the config-step
     // selections (config.checkpoint_selections), so we reload them and open the
     // checkpoint form pre-filled. Saving then updates THIS campaign (gated in
@@ -1687,6 +1839,42 @@ export default function AdvancedSearchAIPage() {
             try {
                 const camp: any = await getCampaign(cid);
                 const cfg = camp?.config || {};
+                // Campaigns built in the Custom Workflow Builder are not
+                // expressible in the chat checkpoint form — its fields cover the
+                // guided flow's steps, not arbitrary builder nodes. Hydrating
+                // them here left the user on the search screen with the campaign
+                // apparently gone, so hand straight over to the builder instead.
+                if (cfg.builder === 'custom_workflow') {
+                    setEditingCampaignId(cid);
+                    setBuilderTemplate(null);
+                    setShowCustomWorkflow(true);
+                    return;
+                }
+                // Capture a lead source this form can't express (recurring Zoho
+                // import) BEFORE hydrating, so the save path can re-emit it
+                // instead of overwriting it with a LinkedIn search. Campaigns
+                // from the /crm/zoho modal carry no `builder` flag, so they fall
+                // through the handoff above and land here. Step config can come
+                // back as a JSON string, so parse defensively.
+                {
+                    const rawLeadGen = (camp?.steps || []).find((s: any) => (s.type || s.step_type) === 'lead_generation')?.config;
+                    let leadGenCfg: any = rawLeadGen;
+                    if (typeof rawLeadGen === 'string') {
+                        try { leadGenCfg = JSON.parse(rawLeadGen); } catch { leadGenCfg = null; }
+                    }
+                    const persistedSource = leadGenCfg?.source || cfg.data_source;
+                    // 'linkedin_search' is what this form itself emits, and
+                    // direct-contact / csv_import campaigns are already handled by
+                    // isDirectContact / inboundMode — only carry sources beyond those.
+                    if (persistedSource && !['linkedin_search', 'direct_contact', 'csv_import'].includes(persistedSource)) {
+                        setPersistedLeadSource({
+                            source: persistedSource,
+                            data_source: cfg.data_source || persistedSource,
+                            zoho_modules: leadGenCfg?.zoho_modules || cfg.zoho_modules || undefined,
+                            zoho_tag: leadGenCfg?.zoho_tag || cfg.zoho_tag || undefined,
+                        });
+                    }
+                }
                 const cs = cfg.checkpoint_selections || {};
                 // Restore the chat thread.
                 const hist = Array.isArray(cfg.conversation_history) ? cfg.conversation_history : [];
@@ -3340,7 +3528,11 @@ export default function AdvancedSearchAIPage() {
                     if (dms.length > 0) {
                         parts.push(`**Key Decision Makers & ICP Scores:**`);
                         dms.slice(0, 6).forEach((dm: any) => {
-                            const score = dm.icp_score >= 80 ? `🟢 ${dm.icp_score}/100` : dm.icp_score >= 60 ? `🟡 ${dm.icp_score}/100` : `🟠 ${dm.icp_score}/100`;
+                            // Same 0-1 vs 0-100 hazard as the lead badges: the ABM
+                            // company_search path stamps a 0.8 float over the real
+                            // 0-100 score its own ICP scorer produced.
+                            const n = normalizeIcpScore(dm.icp_score) ?? 0;
+                            const score = n >= 80 ? `🟢 ${n}/100` : n >= 60 ? `🟡 ${n}/100` : `🟠 ${n}/100`;
                             parts.push(`• **${dm.name || 'Unknown'}** — ${dm.title || 'N/A'}${dm.department ? ` · ${dm.department}` : ''} ${score}${dm.linkedin_url ? ` · [LinkedIn](${dm.linkedin_url})` : ''}`);
                             if (dm.icp_rationale) parts.push(`  _${dm.icp_rationale}_`);
                         });
@@ -3594,7 +3786,7 @@ export default function AdvancedSearchAIPage() {
                                         locked: idx >= 5,
                                         phone: item.phone || item.company_phone || '',
                                         email: item.email || '',
-                                        icp_score: item.icp_score != null ? item.icp_score : undefined,
+                                        icp_score: normalizeIcpScore(item.icp_score),
                                         match_level: item.match_level || undefined,
                                         icp_reasoning: item.icp_reasoning || undefined,
                                         enriched_profile: item.enriched_profile || undefined,
@@ -3711,7 +3903,7 @@ export default function AdvancedSearchAIPage() {
                                 locked: idx >= 5,
                                 phone: item.phone || item.company_phone || '',
                                 email: item.email || '',
-                                icp_score: item.icp_score != null ? item.icp_score : undefined,
+                                icp_score: normalizeIcpScore(item.icp_score),
                                 match_level: item.match_level || undefined,
                                 icp_reasoning: item.icp_reasoning || undefined,
                                 enriched_profile: item.enriched_profile || undefined,
@@ -3933,6 +4125,12 @@ export default function AdvancedSearchAIPage() {
             // True when 0 results is a transient provider rate-limit (HTTP 429),
             // not an empty match set — surfaced so we tell the user to retry.
             let searchRateLimited = false;
+            // Which module the backend actually routed to, and its display name.
+            // The unified endpoint picks between advanced_search, abm,
+            // signal_detection and competitor_intent per query, so the result
+            // banner cannot name one of them from the client side.
+            let searchModule = '';
+            let searchModuleLabel = '';
 
             // Determine effective search query for confirmed searches.
             // When user confirms a preview with "yes", "ok", etc., always use the pre-extracted intent
@@ -3950,18 +4148,43 @@ export default function AdvancedSearchAIPage() {
                 ext = confirmedForSearch.intent;
                 searchQuery = confirmedForSearch.originalQuery || text;
             } else {
-                // For non-confirmed (lead-chat triggered) searches, build a compact query
-                // from only core keywords + locations (not job titles or industries which are
-                // passed as structured targeting and would bloat the query string).
+                // For non-confirmed (lead-chat triggered) searches, lead with what the
+                // user actually typed and top it up with accumulated targeting.
+                //
+                // This used to send ONLY the extracted keywords + companies + first
+                // location, which quietly deleted the user's phrasing. The backend
+                // classifies the module off this string and keys on activity language —
+                // "posting about", "recently raised", "just promoted". Extraction keeps
+                // none of that, so "founders posting about hiring SDRs" arrived as
+                // "hiring sales development reps" and routed to advanced_search: a plain
+                // people-search instead of the signal detection the user asked for. The
+                // backend cannot recover a word the frontend removed.
+                //
+                // The rebuild still has a job, which is why the accumulated terms are
+                // kept: on a REFINEMENT turn the message is a delta ("make it Dubai
+                // only"), and searching that fragment alone would drop the intent built
+                // up over the conversation. isFirstMessage is true only for the very
+                // first message of the session, so this branch covers brand-new queries
+                // too — those are exactly the ones that must survive verbatim.
+                //
+                // Length is not a concern here: `targeting` is always sent alongside, so
+                // the backend takes the fast path and LinkedIn keywords come from
+                // intent.keywords. The query is a queryHint of last resort there
+                // (LinkedInSearchService.fullSearchWithIntent) and the classifier's input
+                // everywhere else. Job titles and industries are still left out — those
+                // are what bloated the string, and they travel as structured targeting.
                 if (shouldRunSearch && ext && !isFirstMessage) {
                     const kwArr = Array.isArray(ext.keywords)
                         ? ext.keywords
                         : (ext.keywords ? [ext.keywords] : []);
-                    searchQuery = [
+                    const typed = text.trim();
+                    const typedLower = typed.toLowerCase();
+                    const topUp = [
                         ...kwArr,
                         ...(ext.company_names || []),
                         ...(ext.locations?.slice(0, 1) || []),   // first location only
-                    ].filter(Boolean).join(' ') || text;
+                    ].filter((t): t is string => !!t && !typedLower.includes(String(t).toLowerCase()));
+                    searchQuery = [typed, ...topUp].filter(Boolean).join(' ') || text;
                 } else {
                     searchQuery = text;
                 }
@@ -4036,6 +4259,9 @@ export default function AdvancedSearchAIPage() {
                     // Return the full ICP range (0–100) so the user can pick prospects
                     // via checkboxes rather than being capped at the backend's default 50.
                     icp_min_score: 0,
+                    // Don't block the response on ICP scoring — leads render as soon as
+                    // LinkedIn answers, and scoreIcp() fills the scores in afterwards.
+                    defer_icp: true,
                 });
 
                 // Extract and set activities from response
@@ -4076,6 +4302,8 @@ export default function AdvancedSearchAIPage() {
                     icpWasApplied = !!d.icp_applied;
                     excludedAlreadyContacted = Number(d.excluded_already_contacted) || 0;
                     searchRateLimited = !!d.rate_limited;
+                    searchModule = d.module_used || '';
+                    searchModuleLabel = d.module_label || '';
                     if (Array.isArray(d.results) && d.results.length > 0) {
                         rawSearchResults = d.results;
                         realLeads = d.results.map((item: any, idx: number) => {
@@ -4093,17 +4321,75 @@ export default function AdvancedSearchAIPage() {
                                 industry: item.industry || '',
                                 network_distance: item.network_distance || '',
                                 locked: idx >= 5,
-                                icp_score: item.icp_score != null ? item.icp_score : undefined,
+                                icp_score: normalizeIcpScore(item.icp_score),
                                 match_level: item.match_level || undefined,
                                 icp_reasoning: item.icp_reasoning || undefined,
                                 enriched_profile: item.enriched_profile || undefined,
                                 inferred: item.inferred || undefined,
+                                signal_context: item.signal_context || undefined,
                             };
                         });
                         setLeads(realLeads);
+                        // Fresh result set — the user hasn't picked anything in it yet.
+                        selectionTouchedRef.current = false;
                         seedDefaultSelection(realLeads);
                         searchTotal = d.total || realLeads.length;
                         setLastModuleUsed(d.module_used || 'advanced_search');
+
+                        // ── Deferred ICP scoring ──────────────────────────────────────────
+                        // The search returned before Gemini scored anything (defer_icp), so
+                        // the leads above are already on screen. Score them in the background
+                        // and merge by id — never rebuild or reorder the list, because the
+                        // user may already be ticking checkboxes while this runs.
+                        if (d.icp_pending && realLeads.length > 0 && icpDesc) {
+                            setIcpScoringPending(true);
+                            (async () => {
+                                try {
+                                    const scoreResult = await linkedInSearch.scoreIcp(
+                                        realLeads,
+                                        icpDesc,
+                                        effectiveTargeting ? {
+                                            nationality:      effectiveTargeting.decision_maker_nationality,
+                                            experience_level: effectiveTargeting.decision_maker_experience_level,
+                                            skills:           effectiveTargeting.decision_maker_skills,
+                                            education:        effectiveTargeting.decision_maker_education,
+                                            company_size:     effectiveTargeting.company_size,
+                                        } : null
+                                    );
+                                    if (scoreResult?.success && Array.isArray(scoreResult.results)) {
+                                        const scoreMap: Record<string, any> = {};
+                                        for (const r of scoreResult.results) {
+                                            if (r.id) scoreMap[r.id] = r;
+                                        }
+                                        setLeads(prev => prev.map(l => {
+                                            const s = scoreMap[l.id];
+                                            if (!s || s.icp_score == null) return l;
+                                            return {
+                                                ...l,
+                                                icp_score:        normalizeIcpScore(s.icp_score),
+                                                match_level:      s.match_level || l.match_level,
+                                                icp_reasoning:    s.icp_reasoning || l.icp_reasoning,
+                                                enriched_profile: s.enriched_profile || l.enriched_profile,
+                                            };
+                                        }));
+                                        // Now that real scores exist, apply the default
+                                        // ≥50 pre-check the user would have seen up front
+                                        // had scoring been synchronous — unless they've
+                                        // already started picking, in which case leave it.
+                                        seedDefaultSelection(
+                                            realLeads.map(l => ({ ...l, icp_score: normalizeIcpScore(scoreMap[l.id]?.icp_score) ?? l.icp_score })),
+                                            true
+                                        );
+                                    }
+                                } catch (scoreErr) {
+                                    console.warn('[ICP] Deferred scoring failed', scoreErr);
+                                } finally {
+                                    setIcpScoringPending(false);
+                                }
+                            })();
+                        } else {
+                            setIcpScoringPending(false);
+                        }
 
                         // ── Nationality annotation + secondary filter ─────────────────────
                         // The backend already filters by nationality via LLM name inference.
@@ -4122,24 +4408,35 @@ export default function AdvancedSearchAIPage() {
                                         for (const r of inferResult.results) {
                                             if (r.id) natMap[r.id] = { nationality: r.nationality || '', confidence: r.confidence || 0 };
                                         }
-                                        const annotated = realLeads.map(l => ({
+                                        const normalise = (s: string) => s.toLowerCase().trim();
+                                        const targetNats = nationalityFilters.map(normalise);
+                                        const isMatch = (nat?: string) =>
+                                            // Keep if: (a) inferred nationality matches, OR
+                                            //           (b) nationality is unknown/ambiguous (trust backend filter)
+                                            !nat || targetNats.some(t =>
+                                                normalise(nat).includes(t) || t.includes(normalise(nat))
+                                            );
+
+                                        const annotate = (l: LeadProfile) => ({
                                             ...l,
                                             inferred_nationality: natMap[l.id]?.nationality || undefined,
                                             nationality_confidence: natMap[l.id]?.confidence || undefined,
-                                        }));
-                                        const normalise = (s: string) => s.toLowerCase().trim();
-                                        const targetNats = nationalityFilters.map(normalise);
-                                        const matching = annotated.filter(l =>
-                                            // Keep if: (a) inferred nationality matches, OR
-                                            //           (b) nationality is unknown/ambiguous (trust backend filter)
-                                            !l.inferred_nationality ||
-                                            (l.inferred_nationality && targetNats.some(t =>
-                                                normalise(l.inferred_nationality!).includes(t) || t.includes(normalise(l.inferred_nationality!))
-                                            ))
-                                        );
-                                        const nonMatching = annotated.filter(l => !matching.find(m => m.id === l.id));
-                                        // Update leads with nationality annotations and remove confirmed non-matches
-                                        setLeads(matching);
+                                        });
+
+                                        // Annotate off the CURRENT list rather than rebuilding
+                                        // from the `realLeads` snapshot — deferred ICP scoring
+                                        // writes to this same state, and a snapshot rebuild
+                                        // would discard whichever of the two landed first.
+                                        setLeads(prev => prev
+                                            .filter(l => isMatch(natMap[l.id]?.nationality))
+                                            .map(annotate));
+
+                                        // Confirmed non-matches move to the "filtered out"
+                                        // bucket, which ICP scoring never touches — so taking
+                                        // them from the snapshot is safe.
+                                        const nonMatching = realLeads
+                                            .filter(l => !isMatch(natMap[l.id]?.nationality))
+                                            .map(annotate);
                                         if (nonMatching.length > 0) {
                                             setFilteredLeads(prev => [...nonMatching, ...prev]);
                                         }
@@ -4168,7 +4465,7 @@ export default function AdvancedSearchAIPage() {
                                 industry: item.industry || '',
                                 network_distance: item.network_distance || '',
                                 locked: false,
-                                icp_score: item.icp_score != null ? item.icp_score : undefined,
+                                icp_score: normalizeIcpScore(item.icp_score),
                                 match_level: item.match_level || undefined,
                                 icp_reasoning: item.icp_reasoning || undefined,
                                 enriched_profile: item.enriched_profile || undefined,
@@ -4210,6 +4507,34 @@ export default function AdvancedSearchAIPage() {
                 } catch (e) { console.warn('[Search] extract-intent err', e); }
             }
 
+            /**
+             * Where the leads in this result set actually came from.
+             *
+             * This used to read "on LinkedIn via Sales Navigator" unconditionally.
+             * /search/unified routes each query to one of four modules, so that line
+             * printed over ABM, competitor-intent and post-signal runs as well — a
+             * signal_detection run that had matched LinkedIn posts announced itself as
+             * a Sales Navigator search, which is how the source of a set of leads
+             * became impossible to tell from the chat. The response says which module
+             * ran; say that instead of guessing.
+             */
+            const searchSourceLabel = (): string => {
+                switch (searchModule) {
+                    case 'signal_detection':
+                        return 'from LinkedIn posts matching your signal (Intent Signal Search)';
+                    case 'abm':
+                        return 'at the account you named (Target Specific Account)';
+                    case 'competitor_intent':
+                        return 'from competitor intent signals (Competitor Prospect Search)';
+                    case 'advanced_search':
+                        return useSalesNav ? 'on LinkedIn via Sales Navigator' : 'on LinkedIn';
+                    default:
+                        // Unknown/absent module_used — name the label if the backend sent
+                        // one, and otherwise stay vague rather than invent a source.
+                        return searchModuleLabel ? `via ${searchModuleLabel}` : 'on LinkedIn';
+                }
+            };
+
             // ── Build final AI response text ──
             let finalText = aiResponseText; // May be set by lead-chat above
 
@@ -4221,7 +4546,7 @@ export default function AdvancedSearchAIPage() {
                     // First message: build summary
                     finalText = buildSummary(ext);
                     if (realLeads.length > 0) {
-                        finalText += `\n\n🔍 **Found ${searchTotal} real leads** on LinkedIn via Sales Navigator.`;
+                        finalText += `\n\n🔍 **Found ${searchTotal} real leads** on LinkedIn via ${searchSourceLabel()}.`;
                         if (icpWasApplied) {
                             const strongCount = realLeads.filter(l => l.match_level === 'strong').length;
                             const moderateCount = realLeads.filter(l => l.match_level === 'moderate').length;
@@ -4230,14 +4555,14 @@ export default function AdvancedSearchAIPage() {
                     }
                     if (realLeads.length > 0) setTimeout(() => setShowPanel('leads'), 500);
                 } else if (realLeads.length > 0) {
-                    finalText = `Searching LinkedIn for leads...\n\n🔍 **Found ${searchTotal} leads** matching your search.`;
+                    finalText = `Searching LinkedIn for leads...\n\n🔍 **Found ${searchTotal} leads** ${searchSourceLabel()}.`;
                     setTimeout(() => setShowPanel('leads'), 500);
                 } else {
                     finalText = "I'm here to help you find the perfect leads! Try describing what you need — for example:\n\n• **Find a person:** \"John Smith, CTO at Stripe\"\n• **People at a company:** \"Find all people in Tesla\"\n• **Decision makers:** \"Find decision makers at Google\"\n• **Specific role:** \"Find founders at techiemaya\"\n• **Industry search:** \"Marketing directors at fintech startups in London\"";
                 }
             } else if (realLeads.length > 0) {
                 // lead-chat triggered a search and got results
-                finalText += `\n\n🔍 **Found ${searchTotal} leads** matching your criteria.`;
+                finalText += `\n\n🔍 **Found ${searchTotal} leads** ${searchSourceLabel()}.`;
                 setTimeout(() => setShowPanel('leads'), 500);
             }
 
@@ -4302,13 +4627,236 @@ export default function AdvancedSearchAIPage() {
         } finally { setBusy(false); }
     }, [busy, messages, convId, targeting, pendingIntent, pendingSearchConfirmation, pendingLocationRequest, pendingImportLocation, finishInboundImport, webSearchEnabled]);
 
+    // ── Roles wizard ───────────────────────────────────────────────────────
+    const rolePushAi = useCallback((text: string, options?: { label: string; value: string }[]) => {
+        setMessages(p => [...p, { id: `a-role-${Date.now()}-${p.length}`, role: 'ai', text, ts: new Date(), options }]);
+    }, []);
+
+    const pushRoleCard = useCallback((card: NonNullable<ChatMsg['roleCard']>) => {
+        setMessages(p => [...p, { id: `a-role-${Date.now()}-${p.length}`, role: 'ai', text: '', ts: new Date(), roleCard: card }]);
+    }, []);
+
+    const startRole = useCallback((t: WorkflowTemplate) => {
+        setMessages(p => [...p, { id: `u-role-${Date.now()}`, role: 'user', text: `Role: ${t.name}`, ts: new Date() }]);
+        if (t.requiresFile) {
+            roleWizardRef.current = null;
+            pushRoleCard({ key: t.key, stage: 'file' });
+            return;
+        }
+        roleWizardRef.current = { key: t.key, idx: 0, answers: {} };
+        if (!templateWizardInputs(t).length) {
+            pushRoleCard({ key: t.key, stage: 'summary', answers: {} });
+            return;
+        }
+        pushRoleCard({ key: t.key, stage: 'intro', qIdx: 0 });
+    }, [pushRoleCard]);
+
+    const handleRoleAnswer = useCallback((text: string) => {
+        const wiz = roleWizardRef.current;
+        if (!wiz) return;
+        const tpl = WORKFLOW_TEMPLATES.find(t => t.key === wiz.key);
+        if (!tpl) { roleWizardRef.current = null; return; }
+        const inputs = templateWizardInputs(tpl);
+        // Every earlier card stays in the transcript with its buttons live, so a
+        // click can arrive for a question the wizard has already moved past —
+        // and after the last one `idx` sits at `inputs.length`. Bail before
+        // echoing a user bubble, so a stale click is a no-op rather than a
+        // phantom reply or a crash on `inputs[idx].target`.
+        const inp = inputs[wiz.idx];
+        if (!inp) return;
+        setMessages(p => [...p, { id: `u-role-${Date.now()}`, role: 'user', text, ts: new Date() }]);
+        // The copy gate branches rather than storing anything: only an explicit
+        // yes walks the message questions, anything else jumps to the summary
+        // with the template's own copy intact.
+        if (inp.target === 'gate') {
+            const wantsToWrite = /^(y|yes|yeah|yep|sure|ok(ay)?|please|write|edit|customi[sz]e)/i.test(text.trim());
+            wiz.idx = wantsToWrite ? wiz.idx + 1 : inputs.length;
+            if (wiz.idx < inputs.length) pushRoleCard({ key: tpl.key, stage: 'question', qIdx: wiz.idx });
+            else pushRoleCard({ key: tpl.key, stage: 'summary', answers: { ...wiz.answers } });
+            return;
+        }
+        const skipped = !!inp.optional && /^(skip|no|none|-)$/i.test(text.trim());
+        const val = skipped ? '' : text.trim();
+        if (!val && !inp.optional) {
+            pushRoleCard({ key: tpl.key, stage: 'question', qIdx: wiz.idx, nudge: true });
+            return;
+        }
+        if (val) wiz.answers[inp.key] = val;
+        wiz.idx += 1;
+        if (wiz.idx < inputs.length) {
+            pushRoleCard({ key: tpl.key, stage: 'question', qIdx: wiz.idx });
+            return;
+        }
+        pushRoleCard({ key: tpl.key, stage: 'summary', answers: { ...wiz.answers } });
+    }, [pushRoleCard]);
+
     const onChatSend = useCallback(() => {
         if (!input.trim() || busy) return;
+        if (roleWizardRef.current) {
+            const t = input.trim();
+            setInput('');
+            if (taRef.current) taRef.current.style.height = 'auto';
+            handleRoleAnswer(t);
+            return;
+        }
         doSend(input.trim()); setInput('');
         if (taRef.current) taRef.current.style.height = 'auto';
-    }, [input, busy, doSend]);
+    }, [input, busy, doSend, handleRoleAnswer]);
 
     const onOptClick = useCallback(async (v: string) => {
+        // ── Roles wizard actions ──────────────────────────────────────────
+        // Copy gate answered by button — routed through the same handler as a
+        // typed reply so the wizard has one advance path.
+        if (v === '__role_gate_yes__' || v === '__role_gate_no__') {
+            handleRoleAnswer(v === '__role_gate_yes__' ? 'yes' : 'skip');
+            return;
+        }
+        // A quick-reply chip on a wizard question. Routed through the same
+        // handler as a typed reply so there is still one advance path — the
+        // chip is a shortcut for typing, not a second way through the wizard.
+        if (v.startsWith('__role_answer__:')) {
+            handleRoleAnswer(v.slice('__role_answer__:'.length));
+            return;
+        }
+        if (v === '__role_cancel__') {
+            roleWizardRef.current = null;
+            rolePushAi('No problem — Accelerator setup cancelled. Pick another from the **Accelerators** menu any time.');
+            return;
+        }
+        if (v.startsWith('__role_builder__:')) {
+            const key = v.slice('__role_builder__:'.length);
+            setBuilderTemplate({ key, sourceCfg: {}, nodeCfg: {}, autoLaunch: false });
+            setShowCustomWorkflow(true);
+            return;
+        }
+        // Preview the audience in the leads panel WITHOUT launching: same
+        // /search/unified call the chat uses, driven by the Accelerator's targeting.
+        // The wizard stays open so the summary CTAs remain usable afterwards.
+        if (v === '__role_preview__') {
+            const wiz = roleWizardRef.current;
+            if (!wiz || rolePreviewing) return;
+            const tpl = WORKFLOW_TEMPLATES.find(t => t.key === wiz.key);
+            if (!tpl) return;
+            const { sourceCfg } = splitWizardAnswers(tpl, wiz.answers);
+            const query = templateSearchQuery(tpl, sourceCfg);
+            if (!query) {
+                rolePushAi('This Accelerator doesn\'t search LinkedIn for its leads, so there\'s nothing to preview yet.');
+                return;
+            }
+            setRolePreviewing(true);
+            setIsSearching(true);
+            rolePushAi(`🔍 Previewing who this Accelerator would reach — searching for **${query}**…`);
+            try {
+                // Same structured targeting the Accelerator's source node will run with,
+                // so the preview reflects the real audience rather than an
+                // approximation of it.
+                const csv = (s?: string) => (s || '').split(',').map(x => x.trim()).filter(Boolean);
+                // Industry Roles pre-fill titles/industries on the template itself;
+                // wizard answers only override what the user was asked.
+                const effCfg = { ...(tpl.source?.cfg || {}), ...sourceCfg } as Record<string, string>;
+                const previewTargeting = tpl.source?.key === 'linkedin_search' ? {
+                    job_titles: csv(effCfg.job_titles),
+                    industries: csv(effCfg.industries),
+                    locations: csv(effCfg.locations),
+                } : undefined;
+                const bizCtx = getBusinessContext();
+                const d = await linkedInSearch.searchUnified({
+                    query,
+                    count: leadCount,
+                    targeting: previewTargeting,
+                    icp_description: bizCtx
+                        ? `## Search Target (WHO to find):\n${query}\n\n## Seller Context (WHAT they sell — use only to assess relevance, not to redefine the target):\n${bizCtx}`
+                        : query,
+                    useSalesNav,
+                    // Full 0–100 range: the preview is for judging fit, not enrolling.
+                    icp_min_score: 0,
+                });
+                const results: any[] = Array.isArray(d?.results) ? d.results : [];
+                const previewLeads: LeadProfile[] = results.map((item: any, idx: number) => {
+                    const profileUrl = resolveProfileUrl(item);
+                    return {
+                        id: item.id || item.provider_id || `role-preview-${idx}`,
+                        name: item.name || `${item.first_name || ''} ${item.last_name || ''}`.trim() || (profileUrl ? 'LinkedIn User' : 'Contact'),
+                        first_name: item.first_name || '',
+                        last_name: item.last_name || '',
+                        headline: item.headline || '',
+                        location: item.location || '',
+                        current_company: item.current_company || '',
+                        profile_url: profileUrl,
+                        profile_picture: item.profile_picture || '',
+                        industry: item.industry || '',
+                        network_distance: item.network_distance || '',
+                        locked: idx >= 5,
+                        icp_score: normalizeIcpScore(item.icp_score),
+                        match_level: item.match_level || undefined,
+                        icp_reasoning: item.icp_reasoning || undefined,
+                        enriched_profile: item.enriched_profile || undefined,
+                        inferred: item.inferred || undefined,
+                    };
+                });
+                if (previewLeads.length === 0) {
+                    rolePushAi('No profiles came back for that targeting. Widen the titles or location — say **cancel** and pick the Accelerator again, or open it in the builder to edit the search.');
+                } else {
+                    setLeads(previewLeads);
+                    seedDefaultSelection(previewLeads);
+                    setTotalResults(d?.total || previewLeads.length);
+                    setShowPanel('leads');
+                    rolePushAi(`👀 Found **${d?.total || previewLeads.length}** matching profiles — they're in the **Leads** panel on the right. Happy with them? Activate the Accelerator below.`);
+                }
+            } catch (e) {
+                console.warn('[role-preview] search failed:', e);
+                rolePushAi('⚠️ The preview search failed. You can still activate the Accelerator — it runs its own search when it launches.');
+            } finally {
+                setIsSearching(false);
+                setRolePreviewing(false);
+                // Re-render the summary card so Activate / Review stay one click away.
+                pushRoleCard({ key: wiz.key, stage: 'summary', answers: { ...wiz.answers } });
+            }
+            return;
+        }
+        // Full builder, on demand — for editing a node rather than just reading
+        // the pipeline. Works after a review too: the answers were kept.
+        if (v === '__role_openbuilder__') {
+            const wiz = roleWizardRef.current;
+            const tpl = wiz ? WORKFLOW_TEMPLATES.find(t => t.key === wiz.key) : null;
+            if (wiz && tpl) {
+                const { sourceCfg, nodeCfg } = splitWizardAnswers(tpl, wiz.answers);
+                setBuilderTemplate({ key: wiz.key, sourceCfg, nodeCfg, autoLaunch: false });
+                roleWizardRef.current = null;
+            }
+            setShowCustomWorkflow(true);
+            return;
+        }
+        if (v === '__role_launch__' || v === '__role_review__') {
+            const wiz = roleWizardRef.current;
+            if (!wiz) return;
+            const tpl = WORKFLOW_TEMPLATES.find(t => t.key === wiz.key);
+            roleWizardRef.current = null;
+            // Targeting answers seed the source drawer; message answers seed the
+            // node they belong to (InMail subject/body, each follow-up touch).
+            const { sourceCfg, nodeCfg } = tpl
+                ? splitWizardAnswers(tpl, wiz.answers)
+                : { sourceCfg: wiz.answers, nodeCfg: {} };
+
+            // Review stays on this page: the pipeline renders in the right-hand
+            // Workflow panel, which reads the same store the builder writes to.
+            // Sending the user to a full-screen builder to look at what they
+            // just described loses the conversation they built it from.
+            if (v === '__role_review__' && tpl) {
+                const { steps } = templateToPreviewSteps(tpl, { sourceCfgOverride: sourceCfg, nodeCfgOverride: nodeCfg });
+                setWorkflowPreview(steps as never);
+                // Remembered so "Open full builder" later carries the same answers.
+                setBuilderTemplate({ key: wiz.key, sourceCfg, nodeCfg, autoLaunch: false });
+                setShowPanel('workflow');
+                rolePushAi('Here\'s your Accelerator in the **Workflow** panel — every step, in order. Open the full builder if you want to edit a node, or hit **Activate & launch** above when it looks right.');
+                return;
+            }
+
+            setBuilderTemplate({ key: wiz.key, sourceCfg, nodeCfg, autoLaunch: v === '__role_launch__' });
+            setShowCustomWorkflow(true);
+            rolePushAi('🚀 Building and launching your Accelerator — you\'ll land on the campaigns page when it\'s live.');
+            return;
+        }
         // Special action: submit lead detail form data
         if (v.startsWith('__submit_lead_details__:')) {
             try {
@@ -4424,7 +4972,7 @@ export default function AdvancedSearchAIPage() {
         }
         if (v.toLowerCase().includes('refine')) setChatBlocked(false);
         doSend(v);
-    }, [doSend, targeting, pendingContact, setCpStep, isMobile]);
+    }, [doSend, targeting, pendingContact, setCpStep, isMobile, rolePreviewing, leadCount, useSalesNav, linkedInSearch, rolePushAi, pushRoleCard, handleRoleAnswer]);
 
     const handleTargetingConfirm = useCallback(async () => {
         // Build the updated targeting object with new filter values
@@ -4588,7 +5136,7 @@ export default function AdvancedSearchAIPage() {
                         locked: (existingCount + idx) >= 5,
                         phone: item.phone || '',
                         email: item.email || '',
-                        icp_score: item.icp_score != null ? item.icp_score : undefined,
+                        icp_score: normalizeIcpScore(item.icp_score),
                         match_level: item.match_level || undefined,
                         icp_reasoning: item.icp_reasoning || undefined,
                         enriched_profile: item.enriched_profile || undefined,
@@ -4679,7 +5227,7 @@ export default function AdvancedSearchAIPage() {
                         industry: item.industry || '',
                         network_distance: item.network_distance || '',
                         locked: (existingCount + idx) >= 5,
-                        icp_score: item.icp_score != null ? item.icp_score : undefined,
+                        icp_score: normalizeIcpScore(item.icp_score),
                         match_level: item.match_level || undefined,
                         icp_reasoning: item.icp_reasoning || undefined,
                         enriched_profile: item.enriched_profile || undefined,
@@ -4850,6 +5398,10 @@ export default function AdvancedSearchAIPage() {
 
                     {/* Input bottom row */}
                     <div className="adv-input-foot">
+                      {/* Left cluster — keeps Accelerators pinned beside the + button
+                          (the foot is space-between, so ungrouped children
+                          would spread across the whole bar). */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         {/* + button with dropdown */}
                         <div style={{ position: 'relative' }}>
                             <button
@@ -4885,8 +5437,8 @@ export default function AdvancedSearchAIPage() {
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round"><circle cx="5" cy="6" r="3" /><circle cx="19" cy="6" r="3" /><circle cx="12" cy="18" r="3" /><path d="M7.5 8L10 15M16.5 8L14 15" /></svg>
                                         </div>
                                         <div>
-                                            <div className="adv-attach-label">Custom workflow</div>
-                                            <div className="adv-attach-sub">Source → outreach nodes, n8n-style</div>
+                                            <div className="adv-attach-label">Custom Accelerator</div>
+                                            <div className="adv-attach-sub">Source → outreach nodes</div>
                                         </div>
                                     </div>
                                     <div className={`adv-attach-item${webSearchEnabled ? ' adv-attach-active' : ''}`} onClick={() => { setWebSearchEnabled(!webSearchEnabled); setShowAttachMenu(false); }}>
@@ -4912,6 +5464,10 @@ export default function AdvancedSearchAIPage() {
                             )}
                         </div>
 
+                        {/* Accelerators — prebuilt pipeline templates, configured via chat wizard */}
+                        <RolesLauncher onPick={startRole} />
+                      </div>
+
                         {/* Send button */}
                         <button
                             className="adv-send-circle"
@@ -4928,6 +5484,9 @@ export default function AdvancedSearchAIPage() {
                 </div>
 
                 {/* Suggestion chips */}
+                {/* Suggestion chips — split into two explicit rows (3 + 2) so the
+                    layout is two lines at any width, not dependent on wrapping. */}
+                <div className="adv-chips-stack">
                 <div className="adv-chips-row">
                     <button className="adv-chip" onClick={() => { setInput('Connect me with founders in trading companies in UAE'); taRef.current?.focus(); }}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
@@ -4941,6 +5500,8 @@ export default function AdvancedSearchAIPage() {
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /></svg>
                         VP of Sales in UK SaaS
                     </button>
+                </div>
+                <div className="adv-chips-row adv-chips-row-2">
                     <button className="adv-chip" onClick={() => { setInput(ICP_LEADS_PROMPT); taRef.current?.focus(); }}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" /></svg>
                         Get leads from my active ICP
@@ -4949,6 +5510,7 @@ export default function AdvancedSearchAIPage() {
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
                         Media Generation
                     </button>
+                </div>
                 </div>
 
                 {/* Recent searches */}
@@ -5318,7 +5880,7 @@ export default function AdvancedSearchAIPage() {
                                                 : 'Qualifying...'
                                         }
                                         : m;
-                                    return <Bubble key={m.id} msg={displayMsg} onOpt={onOptClick} onShowPanel={setShowPanel} onStartCheckpoints={() => setCpStep(0)} onLetAgentDeal={letAgentDeal} agentDealLoading={agentDealLoading} onStartTargeting={() => { setTgStep(0); setChatBlocked(false); }} hasPanel={!!showPanel} leadsCount={leads.length} filteredLeadsCount={filteredLeads.length} onUploadClick={() => fileInputRef.current?.click()} useSalesNav={useSalesNav} isMobile={isMobile} />;
+                                    return <Bubble key={m.id} msg={displayMsg} onOpt={onOptClick} onShowPanel={setShowPanel} onStartCheckpoints={() => setCpStep(0)} onLetAgentDeal={letAgentDeal} agentDealLoading={agentDealLoading} onStartTargeting={() => { setTgStep(0); setChatBlocked(false); }} hasPanel={!!showPanel} leadsCount={leads.length} filteredLeadsCount={filteredLeads.length} onUploadClick={() => fileInputRef.current?.click()} useSalesNav={useSalesNav} isMobile={isMobile} rolePreviewing={rolePreviewing} roleIcp={businessProfile} />;
                                 })
                             )}
                             {/* Import leads prompt — shown when conversation is about existing client relationships */}
@@ -5375,6 +5937,7 @@ export default function AdvancedSearchAIPage() {
                             <div className="adv-msgs-inner">
                                 <CheckpointFormInline
                                     editingCampaignId={editingCampaignId}
+                                    persistedLeadSource={persistedLeadSource}
                                     onLetAgentDeal={letAgentDeal}
                                     agentDealLoading={agentDealLoading}
                                     step={cpStep}
@@ -5507,6 +6070,12 @@ export default function AdvancedSearchAIPage() {
                                     placeholder={mediaMode ? (mb.step === 'builder-image-output' ? 'Type feedback to refine generated images...' : mediaPlaceholder) : (creditBalance !== null && creditBalance <= 0 && msgCount >= 10 ? 'Message limit reached — add credits to continue' : (typedPlaceholder || 'Ask Mr LAD...'))}
                                     className="adv-chat-ta" />
                                 <div className="adv-chat-input-foot">
+                                  {/* Left cluster — Accelerators sits beside +.
+                                      The flanks share `adv-foot-side` so they resolve to equal
+                                      widths, which is what puts Premium Search on the true centre
+                                      line of the box. Under space-between alone it only centred in
+                                      the leftover gap, so this wide cluster shoved it right. */}
+                                  <div className="adv-foot-side" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                     <div style={{ position: 'relative' }}>
                                         {mediaMode ? (
                                             <button 
@@ -5546,8 +6115,8 @@ export default function AdvancedSearchAIPage() {
                                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round"><circle cx="5" cy="6" r="3" /><circle cx="19" cy="6" r="3" /><circle cx="12" cy="18" r="3" /><path d="M7.5 8L10 15M16.5 8L14 15" /></svg>
                                                             </div>
                                                             <div>
-                                                                <div className="adv-attach-label">Custom workflow</div>
-                                                                <div className="adv-attach-sub">Source → outreach nodes, n8n-style</div>
+                                                                <div className="adv-attach-label">Custom Accelerator</div>
+                                                                <div className="adv-attach-sub">Source → outreach nodes</div>
                                                             </div>
                                                         </div>
                                                         <div className="adv-attach-divider" />
@@ -5565,6 +6134,10 @@ export default function AdvancedSearchAIPage() {
                                             </>
                                         )}
                                     </div>
+                                    {!mediaMode && (
+                                        <RolesLauncher onPick={startRole} />
+                                    )}
+                                  </div>
                                     {/* Premium Search or Mic Button based on mediaMode */}
                                     {mediaMode ? (
                                         <button
@@ -5617,9 +6190,13 @@ export default function AdvancedSearchAIPage() {
                                             {useSalesNav ? 'Premium Search ON' : 'Premium Search'}
                                         </button>
                                     )}
-                                    <button 
-                                        className="adv-send-circle adv-send-sm" 
-                                        disabled={mediaMode ? ((!input.trim() && (!mb.references || mb.references.length === 0)) || mb.generating || mb.step === 'loading' || (mb.step === 'builder-brand-dna' && !brandDnaRequestedChanges)) : (!input.trim() || busy || (creditBalance !== null && creditBalance <= 0 && msgCount >= 10))} 
+                                    {/* Right flank — a wrapper, not flex on the button itself:
+                                        a flex-basis would override adv-send-sm's fixed 34px and
+                                        stretch the send circle into an oval. */}
+                                    <div className="adv-foot-side" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                                    <button
+                                        className="adv-send-circle adv-send-sm"
+                                        disabled={mediaMode ? ((!input.trim() && (!mb.references || mb.references.length === 0)) || mb.generating || mb.step === 'loading' || (mb.step === 'builder-brand-dna' && !brandDnaRequestedChanges)) : (!input.trim() || busy || (creditBalance !== null && creditBalance <= 0 && msgCount >= 10))}
                                         onClick={mediaMode ? () => { if (input.trim() || (mb.references && mb.references.length > 0)) { submitMediaInput(input.trim()); setInput(''); if (taRef.current) taRef.current.style.height = 'auto'; } } : onChatSend}
                                         style={{ 
                                             background: (mediaMode ? ((!input.trim() && (!mb.references || mb.references.length === 0)) || mb.generating || mb.step === 'loading' || (mb.step === 'builder-brand-dna' && !brandDnaRequestedChanges)) : (!input.trim() || busy || (creditBalance !== null && creditBalance <= 0 && msgCount >= 10))) ? '#e5e7eb' : '#172560', 
@@ -5628,6 +6205,7 @@ export default function AdvancedSearchAIPage() {
                                     >
                                         {mediaMode && mb.generating ? <div className="adv-spinner" /> : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>}
                                     </button>
+                                    </div>
                                 </div>
                                 {!mediaMode && (
                                     <div className="adv-msg-counter">{creditBalance !== null && creditBalance > 0 ? `${msgCount} messages used` : `${msgCount}/10 messages used`}</div>
@@ -5943,8 +6521,19 @@ export default function AdvancedSearchAIPage() {
                                                         )}
                                                         {!targetingFiltersActive && lead.icp_score !== undefined && (
                                                           <span className={`inline-flex items-center gap-[3px] px-[8px] py-[2px] rounded-[12px] text-[11px] font-bold ${scoreToMatchLevel(lead.icp_score) === 'strong' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300' : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-300'}`}>
-                                                                {scoreToMatchLevel(lead.icp_score) === 'strong' ? '🟢' : '🟡'} {lead.icp_score}%
+                                                                {scoreToMatchLevel(lead.icp_score) === 'strong' ? '🟢' : '🟡'} {normalizeIcpScore(lead.icp_score)}%
                                                             </span>
+                                                        )}
+                                                        {/* Scoring still in flight (defer_icp): hold the chip's place with a
+                                                            pulsing dot so the row doesn't reflow when the real score lands. */}
+                                                        {!targetingFiltersActive && lead.icp_score === undefined && icpScoringPending && (
+                                                          <span
+                                                            className="adv-icp-pending inline-flex items-center gap-[5px] px-[8px] py-[2px] rounded-[12px] text-[11px] font-bold bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+                                                            title="Scoring this lead against your ICP…"
+                                                          >
+                                                            <span className="adv-icp-pending-dot" />
+                                                            Scoring
+                                                          </span>
                                                         )}
                                                     </div>
                                                     <div className="adv-lead-title">
@@ -5963,6 +6552,46 @@ export default function AdvancedSearchAIPage() {
                                                             </span>
                                                         </div>
                                                     )}
+                                                    {/* Signal-derived lead: show WHY it surfaced and link back to the
+                                                        source. Signal leads are otherwise indistinguishable from Sales
+                                                        Nav ones, and the post (or job listing) is the whole reason this
+                                                        person is here.
+
+                                                        Every part is individually optional. Job-sourced leads have no
+                                                        pain_points — nobody wrote anything — so the chip row must not
+                                                        render an empty strip; hence the guard on the whole block below
+                                                        rather than on signal_context alone. */}
+                                                    {(() => {
+                                                        const ctx = lead.signal_context;
+                                                        if (!ctx) return null;
+                                                        const pains = (ctx.pain_points || []).filter(Boolean).slice(0, 3);
+                                                        const link = signalContextLink(ctx);
+                                                        if (!ctx.signal_type && !pains.length && !link) return null;
+                                                        return (
+                                                            <div className="flex gap-[4px] flex-wrap items-center mt-[4px]">
+                                                                {ctx.signal_type && (
+                                                                    <span className="inline-flex items-center gap-[3px] px-[7px] py-[1px] rounded-[10px] text-[10px] font-semibold bg-sky-50 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
+                                                                        📡 {ctx.signal_type.replace(/_/g, ' ')}
+                                                                        {ctx.signal_strength && (
+                                                                            <span className="opacity-60 ml-[2px]">·{ctx.signal_strength}</span>
+                                                                        )}
+                                                                    </span>
+                                                                )}
+                                                                {pains.map((pp, pi) => (
+                                                                    <span key={pi} className="px-[6px] py-[1px] rounded-[8px] text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600">
+                                                                        {pp}
+                                                                    </span>
+                                                                ))}
+                                                                {link && (
+                                                                    <a href={link.url} target="_blank" rel="noopener noreferrer"
+                                                                        onClick={e => e.stopPropagation()}
+                                                                        className="text-[10px] font-semibold text-sky-700 dark:text-sky-400 hover:underline">
+                                                                        {link.label} ↗
+                                                                    </a>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })()}
                                                     {!targetingFiltersActive && lead.icp_reasoning && (
                                                         <div className="text-[11px] text-gray-500 dark:text-slate-300 mt-[4px] italic leading-relaxed">
                                                             {lead.icp_reasoning}
@@ -6098,7 +6727,7 @@ export default function AdvancedSearchAIPage() {
                                                                         background: scoreToMatchLevel(lead.icp_score) === 'strong' ? '#dcfce7' : '#fef9c3',
                                                                         color: scoreToMatchLevel(lead.icp_score) === 'strong' ? '#166534' : '#854d0e',
                                                                     }}>
-                                                                        {scoreToMatchLevel(lead.icp_score) === 'strong' ? '🟢' : '🟡'} {lead.icp_score}%
+                                                                        {scoreToMatchLevel(lead.icp_score) === 'strong' ? '🟢' : '🟡'} {normalizeIcpScore(lead.icp_score)}%
                                                                     </span>
                                                                 )}
                                                             </div>
@@ -6219,7 +6848,7 @@ export default function AdvancedSearchAIPage() {
                               {/* Workflow panel header */}
                               <div className="flex-shrink-0 border-b border-gray-200 bg-white px-5 py-4 dark:border-gray-800 dark:bg-[#000724]">
                                   <div className="mb-1 text-[17px] font-extrabold text-gray-900 dark:text-slate-300">
-                                      Campaign Workflow
+                                      Campaign Accelerator
                                   </div>
                                   <div className="text-[12.5px] text-gray-500 dark:text-slate-300">
                                       Live preview of your outreach sequence
@@ -6304,6 +6933,26 @@ export default function AdvancedSearchAIPage() {
                                               style={{ width: `${pct}%` }}
                                             />
                                             </div>
+
+                                            {/* Offer progress — shown only once the 14 are done, which is
+                                                also when the chat starts asking the offer questions. Without
+                                                it the bar reads 100% while the assistant carries on asking,
+                                                which looks like a bug. Separate denominator on purpose: these
+                                                fields only matter to generated pages and reports. */}
+                                            {(() => {
+                                                const o = computeOfferCompleteness(businessProfile as BusinessProfile);
+                                                if (!pgIsComplete && o.filled === 0) return null;
+                                                return (
+                                                    <div className="mt-2 flex justify-between items-center">
+                                                        <span className="text-[11px] font-semibold text-gray-400 dark:text-gray-500">
+                                                            Offer details <span className="font-normal">(for landing pages &amp; reports)</span>
+                                                        </span>
+                                                        <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500">
+                                                            {o.filled}/{o.total}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })()}
 
                                             {/* Edit affordance — once any field is filled, the tenant can jump
                                                 to the full editor (Settings → Business Profile) to change any of
@@ -6961,10 +7610,17 @@ export default function AdvancedSearchAIPage() {
             )}
 
             {/* ── Contact Picker Modal ── */}
-            {/* ── Custom Workflow Builder (n8n-style) — full-screen takeover from the "+" menu ── */}
+            {/* ── Custom Accelerator builder (node graph) — full-screen takeover from the "+" menu ── */}
             {showCustomWorkflow && (
                 <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: '#F8F9FE' }}>
-                    <CustomWorkflowBuilder onClose={() => setShowCustomWorkflow(false)} />
+                    <CustomWorkflowBuilder
+                        onClose={() => { setShowCustomWorkflow(false); setBuilderTemplate(null); setEditingCampaignId(null); }}
+                        initialTemplateKey={builderTemplate?.key}
+                        initialSourceCfg={builderTemplate?.sourceCfg}
+                        initialNodeCfg={builderTemplate?.nodeCfg}
+                        autoLaunch={builderTemplate?.autoLaunch}
+                        editCampaignId={editingCampaignId || undefined}
+                    />
                 </div>
             )}
 
@@ -7130,7 +7786,342 @@ export default function AdvancedSearchAIPage() {
    CHAT BUBBLE
    ═══════════════════════════════════════════════ */
 
-function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, agentDealLoading, onStartTargeting, hasPanel, leadsCount, filteredLeadsCount, onUploadClick, useSalesNav, isMobile }: { msg: ChatMsg; onOpt: (v: string) => void; onShowPanel: (panel: 'leads' | 'workflow') => void; onStartCheckpoints: () => void; onLetAgentDeal?: () => void; agentDealLoading?: boolean; onStartTargeting: () => void; hasPanel: boolean; leadsCount: number; filteredLeadsCount?: number; onUploadClick?: () => void; useSalesNav?: boolean; isMobile?: boolean }) {
+
+// ── "Roles" — template pipelines launched from chat ─────────────────────────
+/** Pipeline chips row: step chips in the template's accent, joined by arrows. */
+function RoleChain({ tpl, compact = false }: { tpl: WorkflowTemplate; compact?: boolean }) {
+    const items = compact ? tpl.chain.slice(0, 3) : tpl.chain;
+    return (
+        <div className="flex flex-wrap items-center gap-y-1.5" style={{ columnGap: 4 }}>
+            {items.map((c, i) => (
+                <React.Fragment key={i}>
+                    {i > 0 && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>}
+                    <span className={`${compact ? 'text-[9.5px]' : 'text-[10.5px]'} font-semibold px-2 py-[3px] rounded-full whitespace-nowrap`}
+                        style={{ background: `${tpl.accent}12`, color: tpl.accent }}>{c}</span>
+                </React.Fragment>
+            ))}
+            {compact && tpl.chain.length > 3 && (
+                <span className="text-[9.5px] font-semibold text-slate-400 pl-0.5">+{tpl.chain.length - 3}</span>
+            )}
+        </div>
+    );
+}
+
+/** "Accelerators" pill + dropdown of template cards. Self-contained open/close state.
+ *  NOTE: the component and its CSS keep the older `roles` naming — renaming those
+ *  is churn with no user-visible effect, and `.adv-roles-btn` is referenced in
+ *  four style blocks. */
+function RolesLauncher({ onPick }: { onPick: (t: WorkflowTemplate) => void }) {
+    const [open, setOpen] = React.useState(false);
+    React.useEffect(() => {
+        if (!open) return;
+        const h = () => setOpen(false);
+        document.addEventListener('click', h);
+        return () => document.removeEventListener('click', h);
+    }, [open]);
+    return (
+        <div style={{ position: 'relative' }}>
+            <button type="button" className="adv-roles-btn" title="Accelerate LAD with prebuilt pipeline"
+                onClick={(e) => { e.stopPropagation(); setOpen(!open); }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>
+                Accelerators
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ opacity: .55, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}><path d="m6 9 6 6 6-6" /></svg>
+            </button>
+            {open && (
+                <div className="adv-roles-menu" onClick={(e) => e.stopPropagation()}>
+                    <div className="px-2.5 pt-1.5 pb-2 flex items-center justify-between">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Pick an Accelerator</span>
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">{WORKFLOW_TEMPLATES.length} pipelines</span>
+                    </div>
+                    {(() => {
+                        const card = (t: WorkflowTemplate) => (
+                            <button key={t.key} type="button"
+                                className="w-full text-left rounded-xl p-2.5 flex gap-2.5 items-start transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60 border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
+                                onClick={() => { setOpen(false); onPick(t); }}>
+                                <span className="h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: `${t.accent}14` }}>
+                                    <TemplateIcon tplKey={t.key} color={t.accent} size={15} />
+                                </span>
+                                <span className="min-w-0 flex-1">
+                                    <span className="block text-[13px] font-semibold text-slate-900 dark:text-white leading-tight">{t.name}</span>
+                                    <span className="block text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">{t.tagline}</span>
+                                    <span className="block mt-1.5"><RoleChain tpl={t} compact /></span>
+                                </span>
+                                <svg className="mt-2 flex-shrink-0 text-slate-300 dark:text-slate-600" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m9 18 6-6-6-6" /></svg>
+                            </button>
+                        );
+                        const sec = (label: string) => (
+                            <div className="flex items-center gap-2 px-2.5 pt-2 pb-1">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">{label}</span>
+                                <span className="flex-1 h-px bg-slate-100 dark:bg-slate-800" />
+                            </div>
+                        );
+                        const general = WORKFLOW_TEMPLATES.filter((t) => t.category === 'general');
+                        const industry = WORKFLOW_TEMPLATES.filter((t) => t.category === 'industry');
+                        return (<>
+                            {sec('General')}
+                            {general.map(card)}
+                            {sec('By industry')}
+                            {industry.map(card)}
+                        </>);
+                    })()}
+                </div>
+            )}
+        </div>
+    );
+}
+
+/** Rich wizard card rendered inside AI bubbles (msg.roleCard). */
+/**
+ * Quick replies for one wizard question.
+ *
+ * Every chip is grounded in something real — the template's own preset, or the
+ * tenant's saved ICP — so none of them invents a taxonomy for the user to pick
+ * from. A question with nothing real to offer simply stays free text.
+ */
+function roleQuickReplies(
+    q: TemplateInput | undefined,
+    tpl: WorkflowTemplate,
+    icp?: Record<string, string>,
+): { label: string; value: string; hint?: string }[] {
+    if (!q || q.target === 'gate') return [];
+    const out: { label: string; value: string; hint?: string }[] = [];
+
+    // The tenant's saved ICP, offered only where it answers THIS question.
+    // Chosen by the user rather than injected: elsewhere these fields are
+    // deliberately kept out of search context because they would silently
+    // override a fresh query — clicking a chip is an explicit choice.
+    const icpFor: Record<string, string | undefined> = {
+        job_titles: icp?.icpJobTitles,
+        industries: icp?.industry,
+        locations: icp?.icpLocations || icp?.geographicFocus,
+    };
+    const fromIcp = (icpFor[q.key] || '').trim();
+    if (fromIcp) out.push({ label: 'Use my ICP', value: fromIcp, hint: fromIcp });
+
+    // Skipping keeps whatever the template already carries, so say what that is
+    // rather than making "skip" a blind choice.
+    const preset = String((tpl.source?.cfg as Record<string, string> | undefined)?.[q.key] || '').trim();
+    if (q.optional) {
+        if (q.target === 'node') out.push({ label: 'Let Mr LAD write it', value: 'skip' });
+        else if (preset && preset !== fromIcp) out.push({ label: 'Keep the suggested', value: 'skip', hint: preset });
+        else out.push({ label: 'Skip', value: 'skip' });
+    }
+    return out;
+}
+
+function RoleCardView({ card, onOpt, previewing, icp }: { card: NonNullable<ChatMsg['roleCard']>; onOpt: (v: string) => void; previewing?: boolean; icp?: Record<string, string> }) {
+    const tpl = WORKFLOW_TEMPLATES.find((t) => t.key === card.key);
+    if (!tpl) return null;
+    const accent = tpl.accent;
+    const inputs = templateWizardInputs(tpl);
+    const total = inputs.length;
+    const qIdx = Math.min(card.qIdx ?? 0, Math.max(0, total - 1));
+    const q = inputs[qIdx];
+    // Tiny **bold** renderer — questions carry markdown-style emphasis.
+    const md = (t: string) => t.split('**').map((part, i) => (i % 2
+        ? <strong key={i} className="adv-role-q-strong">{part}</strong>
+        : <React.Fragment key={i}>{part}</React.Fragment>));
+    const isQuestionStage = card.stage === 'intro' || card.stage === 'question';
+
+    return (
+        <div className="mt-1 w-full max-w-[540px] rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-[0_2px_16px_rgba(15,23,42,0.06)] overflow-hidden">
+            {/* Accent hairline */}
+            <div style={{ height: 3, background: `linear-gradient(90deg, ${accent}, ${accent}55)` }} />
+            {/* Header */}
+            <div className="flex items-start gap-3 px-4 pt-3.5 pb-3">
+                <span className="h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${accent}14` }}>
+                    <TemplateIcon tplKey={tpl.key} color={accent} size={17} />
+                </span>
+                <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                        <span className="text-[14px] font-bold text-slate-900 dark:text-white leading-tight">{tpl.name}</span>
+                        <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full" style={{ background: `${accent}14`, color: accent }}>Accelerator</span>
+                    </div>
+                    <div className="text-[11.5px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">{tpl.tagline}</div>
+                </div>
+            </div>
+            {/* Pipeline */}
+            {(card.stage === 'intro' || card.stage === 'summary' || card.stage === 'file') && (
+                <div className="px-4 pb-3"><RoleChain tpl={tpl} /></div>
+            )}
+
+            {/* Question stages */}
+            {isQuestionStage && (
+                <div className="px-4 pb-4 pt-1 border-t border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-2.5 mt-2.5 mb-2">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 whitespace-nowrap">Step {qIdx + 1} of {total}</span>
+                        <div className="flex-1 h-1 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                            <div className="h-full rounded-full transition-all" style={{ width: `${(qIdx / Math.max(1, total)) * 100}%`, background: accent }} />
+                        </div>
+                    </div>
+                    {card.nudge && (
+                        <div className="flex items-center gap-1.5 text-[11.5px] font-medium text-amber-600 dark:text-amber-400 mb-1.5">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 9v4M12 17h.01" /><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /></svg>
+                            This one&apos;s required to launch the Accelerator
+                        </div>
+                    )}
+                    {/* The question itself — highlighted in the same navy as the
+                        user's own replies, with a pulsing "?" to pull the eye. */}
+                    <div className="adv-role-q">
+                        <span className="adv-role-q-mark" aria-hidden="true">?</span>
+                        <span className="adv-role-q-text">{md(q?.question || '')}</span>
+                    </div>
+                    {/* The copy gate is a two-way choice — answer it by button
+                        rather than making the user type "yes". */}
+                    {q?.target === 'gate' && (
+                        <div className="flex flex-wrap items-center gap-2 mt-2.5">
+                            <button type="button" onClick={() => onOpt('__role_gate_yes__')}
+                                className="px-4 py-2 rounded-xl text-[12.5px] font-semibold text-white transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                                style={{ background: accent, boxShadow: `0 4px 14px ${accent}40` }}>
+                                Write them myself
+                            </button>
+                            <button type="button" onClick={() => onOpt('__role_gate_no__')}
+                                className="px-3.5 py-2 rounded-xl text-[12.5px] font-semibold border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                                Use the suggested copy
+                            </button>
+                        </div>
+                    )}
+                    {/* What "skip" keeps — so message copy is never a blind choice. */}
+                    {q?.suggestion ? (
+                        <div className="mt-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/40 px-3 py-2">
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">Suggested — kept if you skip</div>
+                            <div className="text-[12px] text-slate-600 dark:text-slate-300 leading-snug whitespace-pre-wrap">{q.suggestion}</div>
+                        </div>
+                    ) : q?.target === 'node' ? (
+                        <div className="mt-2.5 text-[11.5px] text-slate-500 dark:text-slate-400">
+                            Skip and Mr LAD writes this one from the lead&apos;s profile and the conversation so far.
+                        </div>
+                    ) : null}
+                    {/* Quick replies — a shortcut for typing, never the only way
+                        to answer, so the free-text hint below stays. */}
+                    {(() => {
+                        const chips = roleQuickReplies(q, tpl, icp);
+                        if (!chips.length) return null;
+                        return (
+                            <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+                                {chips.map((c) => (
+                                    <button key={c.label} type="button" onClick={() => onOpt(`__role_answer__:${c.value}`)}
+                                        title={c.hint}
+                                        className="max-w-full inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700 text-[12px] font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-colors">
+                                        <span className="flex-shrink-0">{c.label}</span>
+                                        {c.hint && (
+                                            <span className="text-[11px] font-normal text-slate-400 dark:text-slate-500 truncate max-w-[190px]">
+                                                {c.hint}
+                                            </span>
+                                        )}
+                                    </button>
+                                ))}
+                            </div>
+                        );
+                    })()}
+                    {q?.target !== 'gate' && (
+                        <div className="flex items-center gap-1.5 mt-2.5 text-[11px] text-slate-400 dark:text-slate-500">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 4v7a4 4 0 0 1-4 4H4" /><path d="m9 10-5 5 5 5" /></svg>
+                            Type your answer below{q?.optional ? ' — or pick an option above' : ''}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* File hand-off */}
+            {card.stage === 'file' && (
+                <div className="px-4 pb-4 pt-3 border-t border-slate-100 dark:border-slate-800">
+                    <div className="text-[13px] text-slate-700 dark:text-slate-200 leading-relaxed">
+                        This Accelerator starts from a <strong className="font-semibold">file upload</strong>. I&apos;ll open the workflow builder with the whole pipeline pre-built — upload your CSV/Excel in the source node and hit Launch.
+                    </div>
+                    <div className="flex items-center gap-2 mt-3.5">
+                        <button type="button" onClick={() => onOpt(`__role_builder__:${tpl.key}`)}
+                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12.5px] font-semibold text-white transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                            style={{ background: accent, boxShadow: `0 4px 14px ${accent}40` }}>
+                            Open builder
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                        </button>
+                        <button type="button" onClick={() => onOpt('__role_cancel__')}
+                            className="px-3.5 py-2 rounded-xl text-[12.5px] font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Cancel</button>
+                    </div>
+                </div>
+            )}
+
+            {/* Summary + launch CTAs */}
+            {card.stage === 'summary' && (() => {
+                const answers = card.answers || {};
+                // Targeting rows show only what was answered. Message rows always
+                // show — with the answer, the template's suggestion, or the
+                // AI-drafted note — so nothing goes out unseen.
+                const targetingRows = inputs.filter((i) => (!i.target || i.target === 'source') && answers[i.key]);
+                const messageRows = inputs.filter((i) => i.target === 'node');
+                const rowLabel = (i: TemplateInput) => i.label || i.key.replace(/_/g, ' ');
+                const previewQuery = templateSearchQuery(tpl, splitWizardAnswers(tpl, answers).sourceCfg);
+                return (
+                <div className="px-4 pb-4 pt-3 border-t border-slate-100 dark:border-slate-800">
+                    {(targetingRows.length > 0 || messageRows.length > 0) ? (
+                        <div className="space-y-1.5 mb-3">
+                            {targetingRows.map((i) => (
+                                <div key={i.key} className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 px-3 py-2">
+                                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 whitespace-nowrap">{rowLabel(i)}</span>
+                                    <span className="text-[12.5px] font-medium text-slate-800 dark:text-slate-100 text-right truncate">{answers[i.key]}</span>
+                                </div>
+                            ))}
+                            {messageRows.map((i) => {
+                                const copy = answers[i.key] || i.suggestion || '';
+                                return (
+                                    <div key={i.key} className="rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 px-3 py-2">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 whitespace-nowrap">{rowLabel(i)}</span>
+                                            {!answers[i.key] && (
+                                                <span className="text-[9.5px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-slate-200/70 dark:bg-slate-700/60 text-slate-500 dark:text-slate-300">
+                                                    {copy ? 'suggested' : 'AI-written'}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="text-[12px] text-slate-700 dark:text-slate-200 leading-snug whitespace-pre-wrap line-clamp-3">
+                                            {copy || 'Mr LAD drafts this at send time from the lead\'s profile and the thread.'}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className="text-[13px] text-slate-600 dark:text-slate-300 mb-3">Nothing to configure — this Accelerator is ready to go.</div>
+                    )}
+                    <div className="flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500 mb-3.5">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
+                        Defaults: 25 leads/day · 30 days — adjustable in the builder
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                        {previewQuery && (
+                            <button type="button" disabled={previewing} onClick={() => onOpt('__role_preview__')}
+                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12.5px] font-semibold border transition-colors disabled:opacity-60 disabled:cursor-wait"
+                                style={{ borderColor: `${accent}55`, color: accent, background: `${accent}0f` }}>
+                                {previewing ? (
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="animate-spin"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
+                                ) : (
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.2-3.2" /></svg>
+                                )}
+                                {previewing ? 'Searching…' : 'Preview leads'}
+                            </button>
+                        )}
+                        <button type="button" onClick={() => onOpt('__role_launch__')}
+                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12.5px] font-semibold text-white transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                            style={{ background: accent, boxShadow: `0 4px 14px ${accent}40` }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" /><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" /></svg>
+                            Activate &amp; launch
+                        </button>
+                        <button type="button" onClick={() => onOpt('__role_review__')}
+                            className="px-3.5 py-2 rounded-xl text-[12.5px] font-semibold border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">Review workflow</button>
+                        <button type="button" onClick={() => onOpt('__role_openbuilder__')}
+                            className="px-3 py-2 rounded-xl text-[12.5px] font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Open builder</button>
+                        <button type="button" onClick={() => onOpt('__role_cancel__')}
+                            className="px-3 py-2 rounded-xl text-[12.5px] font-medium text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Cancel</button>
+                    </div>
+                </div>
+                );
+            })()}
+        </div>
+    );
+}
+
+function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, agentDealLoading, onStartTargeting, hasPanel, leadsCount, filteredLeadsCount, onUploadClick, useSalesNav, isMobile, rolePreviewing, roleIcp }: { msg: ChatMsg; onOpt: (v: string) => void; onShowPanel: (panel: 'leads' | 'workflow') => void; onStartCheckpoints: () => void; onLetAgentDeal?: () => void; agentDealLoading?: boolean; onStartTargeting: () => void; hasPanel: boolean; leadsCount: number; filteredLeadsCount?: number; onUploadClick?: () => void; useSalesNav?: boolean; isMobile?: boolean; rolePreviewing?: boolean; roleIcp?: Record<string, string> }) {
     const user = useSelector((state: any) => state.auth?.user);
     const displayName = user?.name || "User";
     const userInitial = displayName.charAt(0).toUpperCase();
@@ -7193,8 +8184,11 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                     <span className="adv-ai-name-dot" />
                 </div>
 
+                {/* Accelerators wizard card — rendered under the LAD in Action label. */}
+                {msg.roleCard && <RoleCardView card={msg.roleCard} onOpt={onOpt} previewing={rolePreviewing} icp={roleIcp} />}
+
                 {/* ── Rich markdown-aware renderer ── */}
-                <div className="adv-ai-text" style={{ marginBottom: msg.targeting ? "16px" : "0" }}>
+                <div className="adv-ai-text" style={{ marginBottom: msg.targeting ? "16px" : "0", display: msg.roleCard && !msg.text ? 'none' : undefined }}>
                     {msg.text.split('\n').map((line, i) => {
                         // ── Inline rich text parser: **bold**, *italic*, `code` ──────
                         const renderInline = (raw: string) => {
@@ -7345,7 +8339,7 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-indigo-900 dark:text-blue-300" strokeWidth="2"><circle cx="12" cy="5" r="2" /><circle cx="5" cy="19" r="2" /><circle cx="19" cy="19" r="2" /><path d="M12 7v4M9.5 17.5L12 11l2.5 6.5" /></svg>
                           </div>
                           <div className="flex-1">
-                              <div className="text-[13px] font-bold text-gray-900 dark:text-gray-100">Workflow</div>
+                              <div className="text-[13px] font-bold text-gray-900 dark:text-gray-100">Accelerator</div>
                               <div className="text-[11px] text-indigo-900 dark:text-blue-300 font-medium">Live preview</div>
                           </div>
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-gray-400 dark:text-gray-500" strokeWidth="2"><path d="M9 18l6-6-6-6" /></svg>
@@ -7767,6 +8761,7 @@ function CheckpointFormInline({
     enableAiConnectionPersonalization, setEnableAiConnectionPersonalization,
     enableAiFollowupPersonalization, setEnableAiFollowupPersonalization,
     editingCampaignId,
+    persistedLeadSource,
     onLetAgentDeal, agentDealLoading,
 }: {
     step: number; setStep: (s: number) => void;
@@ -7817,6 +8812,7 @@ function CheckpointFormInline({
     enableAiConnectionPersonalization: boolean; setEnableAiConnectionPersonalization: (v: boolean) => void;
     enableAiFollowupPersonalization: boolean; setEnableAiFollowupPersonalization: (v: boolean) => void;
     editingCampaignId?: string | null;
+    persistedLeadSource?: PersistedLeadSource | null;
     onLetAgentDeal: () => void; agentDealLoading: boolean;
 }) {
     const totalSteps = CP_QUESTIONS.length;
@@ -8715,7 +9711,12 @@ function CheckpointFormInline({
                     : (goodMatchLeads.length > 0 ? goodMatchLeads : undefined),
                 inbound_lead_ids: resolvedInboundLeadIds,
                 config: {
-                    data_source: inboundMode ? 'csv_import' : (isDirectContact ? 'direct_contact' : 'linkedin_search'),
+                    // A preserved source (recurring Zoho import) wins: this form
+                    // edits the outreach sequence, never where leads come from.
+                    data_source: persistedLeadSource?.data_source
+                        || (inboundMode ? 'csv_import' : (isDirectContact ? 'direct_contact' : 'linkedin_search')),
+                    ...(persistedLeadSource?.zoho_modules ? { zoho_modules: persistedLeadSource.zoho_modules } : {}),
+                    ...(persistedLeadSource?.zoho_tag ? { zoho_tag: persistedLeadSource.zoho_tag } : {}),
                     search_intent: (inboundMode || isDirectContact) ? null : t, search_query: (inboundMode || isDirectContact) ? '' : (t.keywords?.join(' ') || ''),
                     leads_per_day: safeLeadsPerDay, daily_lead_limit: safeLeadsPerDay, linkedin_daily_limit: LINKEDIN_DAILY_LIMIT, linkedin_weekly_limit: LINKEDIN_WEEKLY_LIMIT, working_days: 'monday-friday', campaign_days: campaignDays,
                     linkedin_actions: actions, connection_message: connMsg || '', followup_message: followMsg || '',
@@ -8752,8 +9753,15 @@ function CheckpointFormInline({
                 steps: [
                     // Only include LinkedIn lead generation step for LinkedIn search campaigns.
                     // Direct contact and inbound lead campaigns skip this — leads are provided via initial_leads instead.
-                    ...(!isDirectContact && !inboundMode ? [{
-                        type: 'lead_generation', title: 'LinkedIn Lead Search', channel: 'linkedin', order_index: 0, config: {
+                    // A preserved source (Zoho recurring import) always emits the
+                    // step: saving here replaces every step, so dropping it would
+                    // leave the campaign with no lead source at all.
+                    ...((!isDirectContact && !inboundMode) || persistedLeadSource ? [{
+                        type: 'lead_generation',
+                        title: persistedLeadSource?.source === 'zoho_contacts' ? 'Zoho Contact Import' : 'LinkedIn Lead Search',
+                        channel: persistedLeadSource?.source === 'zoho_contacts' ? 'zoho' : 'linkedin',
+                        order_index: 0,
+                        config: {
                             source: 'linkedin_search',
                             leadGenerationFilters: {
                                 keywords: t.keywords?.join(' ') || '',
@@ -8765,6 +9773,14 @@ function CheckpointFormInline({
                             leadGenerationLimit: safeLeadsPerDay,
                             icp_input: initialIcpInput,
                             icp_threshold: icpMin,
+                            // Spread LAST so the campaign's real source survives the
+                            // 'linkedin_search' default above. Backend routes on
+                            // config.source (LeadGenerationService.executeLeadGeneration).
+                            ...(persistedLeadSource ? {
+                                source: persistedLeadSource.source,
+                                ...(persistedLeadSource.zoho_modules ? { zoho_modules: persistedLeadSource.zoho_modules } : {}),
+                                ...(persistedLeadSource.zoho_tag ? { zoho_tag: persistedLeadSource.zoho_tag } : {}),
+                            } : {}),
                         }
                     }] : []),
                     ...actionSteps,
@@ -8878,6 +9894,23 @@ function CheckpointFormInline({
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                     </button>
                 </div>
+
+                {/* Lead source this form can't edit (recurring Zoho import).
+                    Shown so it's obvious the campaign isn't LinkedIn-sourced —
+                    the steps below only change the outreach sequence, and the
+                    source is carried through the save untouched. */}
+                {persistedLeadSource && (
+                    <div
+                        className="text-gray-600 dark:text-gray-300"
+                        style={{ fontSize: '12px', marginBottom: '12px', padding: '8px 10px', borderRadius: '8px', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.25)', lineHeight: 1.5 }}
+                    >
+                        <strong>Lead source: {persistedLeadSource.source === 'zoho_contacts' ? 'Zoho CRM import' : persistedLeadSource.source}</strong>
+                        {persistedLeadSource.zoho_tag ? ` · tag "${persistedLeadSource.zoho_tag}"` : ''}
+                        {persistedLeadSource.zoho_modules === 'contacts_leads' ? ' · contacts + leads' : ''}
+                        <br />
+                        Editing here changes the outreach sequence only — the source is kept as-is.
+                    </div>
+                )}
 
                 {/* Question header */}
                 <div
@@ -12075,7 +13108,9 @@ const css = `
             .adv-send-circle {width:40px; height:40px; border-radius:50%; border:none; display:flex; align-items:center; justify-content:center; transition:all .15s; flex-shrink:0; cursor:pointer; }
             .adv-send-circle:disabled {cursor:default; }
             /* ── SUGGESTION CHIPS ── */
+            .adv-chips-stack {display:flex; flex-direction:column; align-items:center; width:100%; }
             .adv-chips-row {display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-top:20px; max-width:680px; animation:fadeUp .4s ease .24s both; }
+            .adv-chips-row-2 {margin-top:10px; animation-delay:.3s; }
             .adv-chip {display:flex; align-items:center; gap:6px; border:1px solid #c2d6eb; border-radius:22px; padding:8px 16px; font-size:13px; font-weight:500; color:#0b1957; background:rgba(255,255,255,.75); cursor:pointer; transition:all .15s; }
             .adv-chip:hover {background:#e0eaf5; border-color:#0b1957; }
             /* ── RECENT SEARCHES ── */
@@ -12099,6 +13134,21 @@ const css = `
             .adv-bubble {padding:6px 0; }
             .adv-bubble-user {display:flex; justify-content:flex-end; margin-bottom:4px; }
             .adv-user-msg {background:#0b1957; color:#fff; border-radius:20px 20px 4px 20px; padding:12px 18px; max-width:72%; font-size:14.5px; line-height:1.65; box-shadow:0 2px 14px rgba(11,25,87,.2); font-weight:450; }
+            /* ── Accelerators wizard: highlighted question ───────────────────
+               Same #0b1957 navy as .adv-user-msg so the question reads as the
+               other half of the conversation, with a pulsing "?" badge. */
+            .adv-role-q {display:flex; align-items:flex-start; gap:10px; background:#0b1957; color:#fff; border-radius:14px; padding:12px 14px; margin-top:2px; box-shadow:0 2px 14px rgba(11,25,87,.2); font-size:13.5px; line-height:1.6; font-weight:450; }
+            .adv-role-q-text {min-width:0; flex:1; }
+            .adv-role-q-strong {font-weight:700; color:#fff; }
+            .adv-role-q-mark {flex-shrink:0; width:22px; height:22px; border-radius:50%; background:rgba(255,255,255,.16); color:#fff; font-size:13px; font-weight:800; line-height:22px; text-align:center; margin-top:1px; animation:advRoleQPulse 1.8s ease-in-out infinite; }
+            @keyframes advRoleQPulse {
+                0%, 100% {transform:scale(1); box-shadow:0 0 0 0 rgba(255,255,255,.34); }
+                50%      {transform:scale(1.12); box-shadow:0 0 0 7px rgba(255,255,255,0); }
+            }
+            @media (prefers-reduced-motion: reduce) {
+                .adv-role-q-mark {animation:none; }
+            }
+            .dark .adv-role-q {background:#16305e; }
             .adv-bubble-ai {display:flex; gap:12px; align-items:flex-start; margin-bottom:4px; }
             .adv-ai-avatar {width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,#0b1957 0%,#1a3a8f 100%); display:flex; align-items:center; justify-content:center; flex-shrink:0; color:#fff; font-size:15px; box-shadow:0 3px 10px rgba(11,25,87,.28); }
             .adv-ai-avatar-viz {background:transparent; box-shadow:none; overflow:visible; }
@@ -12141,8 +13191,19 @@ const css = `
             .adv-chat-ta {width:100%; resize:none; border:none; outline:none; background:transparent; font-size:16px; color:#111827; font-family:inherit; line-height:1.6; padding:0; max-height:120px; }
             .adv-chat-ta::placeholder {color:#0b1957; font-weight:400; }
             .adv-chat-input-foot {display:flex; align-items:center; justify-content:space-between; margin-top:10px; padding-top:8px; border-top:1px solid #f3f4f6; }
+            /* Equal-width flanks put the middle child (Premium Search / the mic)
+               on the box's true centre line. flex-basis 0 means the two sides split
+               the free space evenly regardless of how wide their contents are.
+               No min-width:0 on purpose: the default min-width:auto stops either
+               flank shrinking under its content, so on a narrow window the pill
+               drifts off centre rather than sliding under the Accelerators button. */
+            .adv-foot-side {flex:1 1 0; }
+            .adv-chat-input-foot > .adv-premium-btn {flex:0 0 auto; }
             .adv-chat-attach-btn {width:32px; height:32px; border-radius:50%; border:1.5px solid #e5e7eb; background:#fff; color:#374151; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .15s; }
             .adv-chat-attach-btn:hover {background:#e0eaf5; border-color:#c2d6eb; color:#0b1957; }
+            .adv-roles-btn {display:inline-flex; align-items:center; gap:6px; white-space:nowrap; padding:7px 14px; border-radius:999px; border:1.5px solid #e5e7eb; background:#fff; color:#0b1957; font-size:12px; font-weight:600; cursor:pointer; transition:all .15s ease; }
+            .adv-roles-btn:hover {border-color:#0b1957; box-shadow:0 4px 14px rgba(11,25,87,.14); transform:translateY(-1px); }
+            .adv-roles-menu {position:absolute; bottom:calc(100% + 10px); left:50%; transform:translateX(-50%); background:#fff; border:1px solid #e5e7eb; border-radius:18px; padding:8px; width:370px; max-width:calc(100vw - 32px); max-height:440px; overflow-y:auto; box-shadow:0 16px 48px rgba(15,23,42,.16); z-index:100; animation:fadeUp .15s ease both; }
             .adv-model-label {display:flex; align-items:center; gap:4px; font-size:12px; color:#9ca3af; font-weight:500; cursor:pointer; }
             .adv-model-label:hover {color:#374151; }
             .adv-send-sm {width:34px!important; height:34px!important; }
@@ -12232,6 +13293,10 @@ const css = `
             .adv-lead-info {flex:1; min-width:0; }
             .adv-lead-name {font-size:14px; font-weight:700; color:#111827; display:flex; align-items:center; gap:4px; }
             .adv-verified {background:#10b981; color:#fff; border-radius:50%; width:16px; height:16px; display:inline-flex; align-items:center; justify-content:center; font-size:9px; font-weight:800; }
+            /* Placeholder chip shown while deferred ICP scoring is still running. */
+            .adv-icp-pending-dot {width:7px; height:7px; border-radius:50%; background:#10b981; flex-shrink:0; animation:adv-icp-blink 1.1s ease-in-out infinite; }
+            @keyframes adv-icp-blink {0%,100% {opacity:1; transform:scale(1); } 50% {opacity:.25; transform:scale(.75); } }
+            @media (prefers-reduced-motion: reduce) { .adv-icp-pending-dot {animation:none; opacity:.6; } }
             .adv-lead-title {font-size:12px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:10px}
             .adv-lead-company {font-size:12px; font-weight:600; color:#374151; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
             .adv-lead-platform {margin-top:4px; display:flex; gap:4px; }
@@ -12286,11 +13351,14 @@ const css = `
             /* ── GEMINI SUGGESTION CHIPS ── */
             .adv-gemini-chips {
                 display: flex;
+                flex-wrap: wrap;              /* multi-line instead of a 1-line scroller */
                 gap: 10px;
                 padding: 0 20px 20px;
                 width: 100%;
-                max-width: 100%;
-                overflow-x: auto;
+                /* Cap the row so the 6 chips break over 2-3 centred lines instead
+                   of stretching edge-to-edge on wide screens. */
+                max-width: 880px;
+                margin: 0 auto;
                 -webkit-overflow-scrolling: touch;
                 scrollbar-width: none;
                 animation: fadeUp 0.5s ease 0.15s both;
@@ -12312,7 +13380,8 @@ const css = `
                 cursor: pointer;
                 transition: color .2s, border-color .2s, transform .2s cubic-bezier(.2,.7,.2,1), box-shadow .2s;
                 white-space: nowrap;
-                flex: 0 0 auto;
+                flex: 0 1 auto;               /* allow the row to break between chips */
+                max-width: 100%;
             }
             .adv-gemini-chip svg {
                 width: 26px;
@@ -12392,6 +13461,9 @@ const css = `
                 .adv-input-central-group { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; }
                 .adv-chat-ta { width: 100% !important; border: none !important; background: none !important; font-size: 11px !important; text-align: left !important; padding: 2px 0 !important; min-height: 24px !important; height: 24px !important; line-height: 24px !important; }
                 .adv-chat-input-foot { padding: 4px 0 2px !important; margin-top: 4px !important; border: none !important; background: none !important; justify-content: space-between !important; gap: 10px !important; }
+                /* Mobile keeps the tuned space-between layout — at this width equal
+                   flanks would squeeze the pill against its 95px min-width. */
+                .adv-foot-side { flex: 0 1 auto !important; }
                 .adv-premium-btn { width: auto !important; min-width: 95px !important; justify-content: center !important; padding: 3px 10px !important; margin: 0 !important; font-size: 10px !important; }
                 .adv-chat-attach-btn, .adv-send-sm { width: 28px !important; height: 28px !important; }
                 .adv-chat-attach-btn svg, .adv-send-sm svg { width: 13px !important; height: 13px !important; }
@@ -12519,6 +13591,7 @@ const css = `
                 .adv-center { padding: 0 0 60px !important; align-items: center !important; }
                 .adv-input-outer { width: 92% !important; max-width: 92% !important; margin: 0 auto 40px !important; }
                 .adv-title { font-size: 24px !important; width: 88%; margin: 0 auto 24px !important; text-align: center; }
+                .adv-chips-row-2 { margin-top: 0 !important; }
                 .adv-chips-row { 
                     display: grid !important; 
                     grid-template-columns: repeat(2, 1fr) !important; 
@@ -12714,6 +13787,9 @@ const css = `
 
             /* ATTACH & UNLOCK BUTTONS */
             .dark .adv-chat-attach-btn { background: #1A2A43; border: 1px solid #484b4f; color: #ffffff; box-shadow: none; }
+            .dark .adv-roles-btn { background: #1A2A43; border-color: #484b4f; color: #ffffff; }
+            .dark .adv-roles-btn:hover { border-color: #5b7cff; box-shadow: 0 4px 14px rgba(43,124,255,.18); }
+            .dark .adv-roles-menu { background: #0f1b33; border-color: #31415f; }
             .dark .adv-chat-attach-btn svg { stroke: #ffffff; }
             .dark .adv-chat-attach-btn:hover { background: #253456; border-color: #484b4f; }
             .dark .adv-unlock-btn { background: #2B7CFF; color: #000724; }

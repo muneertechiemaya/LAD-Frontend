@@ -163,3 +163,8 @@ export {
   deleteMessageTemplate as deleteInstagramMessageTemplate,
 } from './instagram-message-templates';
 
+// ── Strategies (saved + shareable workflow playbooks) ────────────────────────
+// Exported wholesale rather than aliased: unlike the two message-template
+// sub-features, these names ("Strategy") don't collide with anything else here.
+export * from './strategies';
+
