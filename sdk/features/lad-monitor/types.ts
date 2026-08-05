@@ -470,8 +470,21 @@ export interface LlmRoutingFeature {
   updatedBy?: string | null;
 }
 
+/** A model the console may offer, with its rate per 1M tokens. */
+export interface LlmSelectableModel {
+  model: string;
+  input: number | null;
+  output: number | null;
+}
+
 export interface LlmRoutingMeta {
   providers: LlmProvider[];
+  /**
+   * provider -> models that provider actually serves. The console renders these
+   * as a dropdown, so an admin cannot type a retired or misspelled id, or pair
+   * a model with the wrong provider.
+   */
+  models: Record<LlmProvider, LlmSelectableModel[]>;
   /** feature_key -> why it cannot be routed (provider-locked capability). */
   nonRoutableFeatures: Record<string, string>;
 }

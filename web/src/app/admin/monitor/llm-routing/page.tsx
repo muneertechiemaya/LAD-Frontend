@@ -212,8 +212,14 @@ export default function MonitorLlmRoutingPage() {
                         <select
                           value={entry.provider}
                           onChange={(e) => {
+                            const provider = e.target.value as LlmProvider;
                             const next = [...draft];
-                            next[i] = { ...next[i], provider: e.target.value as LlmProvider };
+                            // Drop the model if the new provider does not serve it —
+                            // leaving it would show an empty select and fail on save.
+                            const stillValid = (meta?.models?.[provider] ?? []).some(
+                              (m) => m.model === next[i].model
+                            );
+                            next[i] = { provider, model: stillValid ? next[i].model : '' };
                             setDraft(next);
                           }}
                           className="rounded-lg border border-gray-200 px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
@@ -222,16 +228,25 @@ export default function MonitorLlmRoutingPage() {
                             <option key={p} value={p}>{PROVIDER_LABEL[p] ?? p}</option>
                           ))}
                         </select>
-                        <input
+                        <select
                           value={entry.model}
                           onChange={(e) => {
                             const next = [...draft];
                             next[i] = { ...next[i], model: e.target.value };
                             setDraft(next);
                           }}
-                          placeholder="model id, e.g. claude-sonnet-4-6"
-                          className="min-w-[200px] flex-1 rounded-lg border border-gray-200 px-2 py-1 font-mono text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
-                        />
+                          className="min-w-[260px] flex-1 rounded-lg border border-gray-200 px-2 py-1 font-mono text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+                        >
+                          <option value="">Select a model…</option>
+                          {(meta?.models?.[entry.provider] ?? []).map((m) => (
+                            <option key={m.model} value={m.model}>
+                              {m.model}
+                              {m.input != null && m.output != null
+                                ? `  ($${m.input}/$${m.output} per 1M)`
+                                : ''}
+                            </option>
+                          ))}
+                        </select>
                         <button
                           onClick={() => setDraft(draft.filter((_, j) => j !== i))}
                           disabled={draft.length === 1}
