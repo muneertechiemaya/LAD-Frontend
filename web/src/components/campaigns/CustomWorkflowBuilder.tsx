@@ -579,17 +579,19 @@ const SENIORITY_POINTS: Record<string, number> = {
  * sets intent.keywords, so two titles alone satisfied `>= 2` and the signal text
  * was never searched.
  *
- * FIXED on the backend branch fix/signal-search-lead-normalisation, which
- * distils the query terms first and unconditionally and appends titles as
- * wideners. That branch is UNMERGED, so the old behaviour is still what runs on
- * develop and on anything deployed today.
+ * FIXED and MERGED (LAD-Backend#485): _extractSignalKeywords now distils the
+ * query terms first and unconditionally, then appends titles as wideners,
+ * deduped and capped so the cap can only ever evict a widener. The signal
+ * wording can no longer be crowded out, at any number of titles.
  *
- * When it merges, flip this to false — that alone drops the banner AND switches
- * the keyword mirror below to the new ordering. Nothing else needs touching.
+ * Kept as a flag rather than deleted so the old shape stays documented and the
+ * mirror below can be flipped back if the backend change is ever reverted. The
+ * `true` branch is now dead in practice — delete both it and this constant once
+ * the fix has had a while to settle on develop.
  */
-// Annotated `boolean` rather than inferred `true` so flipping it does not make
+// Annotated `boolean` rather than inferred so flipping it does not make
 // TypeScript narrow the other branch away as dead code.
-const TITLES_CROWD_SIGNAL_WORDING: boolean = true;
+const TITLES_CROWD_SIGNAL_WORDING: boolean = false;
 
 const csvList = (v: any): string[] =>
   String(v || '').split(',').map((s) => s.trim()).filter(Boolean);
