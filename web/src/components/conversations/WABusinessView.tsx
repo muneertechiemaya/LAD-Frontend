@@ -2180,7 +2180,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
               onChange={e => setText(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={pendingFiles.length > 0 ? 'Add a caption (optional)…' : 'Type a message'}
-              className="flex-1 bg-transparent border-0 text-foreground dark:text-[#e9edef] py-2 px-1 text-[15px] focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-[#8696a0] dark:placeholder:text-[#a2a2a2] resize-none min-h-[24px] max-h-[120px] my-0.5 leading-normal"
+              className="flex-1 border-0 dark:bg-transparent text-foreground dark:text-[#e9edef] py-2 px-1 text-[15px] focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-[#8696a0] dark:placeholder:text-[#a2a2a2] resize-none min-h-[24px] max-h-[120px] my-0.5 leading-normal shadow-none"
               rows={1}
             />
           </div>
