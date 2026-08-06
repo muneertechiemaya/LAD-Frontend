@@ -1925,9 +1925,19 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
                 <ChevronLeft className="h-5 w-5" />
               </Button>
               <div className="flex items-center gap-3 cursor-pointer" onClick={onTogglePanel}>
-                <Avatar className="w-10 h-10">
+                <Avatar className="w-10 h-10 shrink-0">
                   <AvatarImage src={conversation.contact?.avatar} />
-                  <AvatarFallback>{conversation.contact?.name?.[0]}</AvatarFallback>
+                  <AvatarFallback 
+                    style={{
+                      '--av-bg-light': `color-mix(in srgb, ${getAvatarColor(conversation.contact?.phone || conversation.contact?.name || conversation.id)} 20%, white)`,
+                      '--av-text-light': `color-mix(in srgb, ${getAvatarColor(conversation.contact?.phone || conversation.contact?.name || conversation.id)} 70%, black)`,
+                      '--av-bg-dark': `color-mix(in srgb, ${getAvatarColor(conversation.contact?.phone || conversation.contact?.name || conversation.id)} 30%, black)`,
+                      '--av-text-dark': `color-mix(in srgb, ${getAvatarColor(conversation.contact?.phone || conversation.contact?.name || conversation.id)} 80%, white)`,
+                    } as React.CSSProperties}
+                    className="bg-[var(--av-bg-light)] text-[var(--av-text-light)] dark:bg-[var(--av-bg-dark)] dark:text-[var(--av-text-dark)]"
+                  >
+                    {conversation.contact?.name?.substring(0, 2).toUpperCase()}
+                  </AvatarFallback>
                 </Avatar>
                 <div>
                   <h3 className="font-medium text-[16px] text-foreground dark:text-white">{conversation.contact?.name}</h3>
