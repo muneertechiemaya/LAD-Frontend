@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { fetchWithTenant } from "@/lib/fetch-with-tenant";
+import { cn } from "@/lib/utils";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -215,7 +216,7 @@ const PROMPTS_API    = "/api/whatsapp-conversations/prompts";
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function AIPlayground({ onClose }: AIPlaygroundProps) {
+export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps) {
   // Config state
   const [settings, setSettings]               = useState<PlaygroundSettings | null>(null);
   const [prompts, setPrompts]                 = useState<PlaygroundPrompt[]>([]);
