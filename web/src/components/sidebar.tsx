@@ -579,14 +579,14 @@ export function Sidebar() {
       )}
       <aside
         className={cn(
-          "hidden md:flex flex-col shrink-0 h-screen border-r shadow-2xl",
+          "hidden md:flex flex-col shrink-0 h-screen border-r",
           "bg-white border-gray-200",
           isBlackGrayChannel
             ? "dark:bg-[#171717] dark:border-zinc-800"
             : "dark:bg-[#000724] dark:border-[#1a2a43]",
           "transition-all duration-500 ease-[cubic-bezier(.4,0,.2,1)]",
           "overflow-hidden fixed left-0 top-0 z-[5000]",
-          isExpanded ? "w-64" : "w-16",
+          isExpanded ? "w-64 shadow-2xl" : "w-16",
         )}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => { if (!isPinned) setIsHovered(false); }}
@@ -605,7 +605,7 @@ export function Sidebar() {
             fetchPriority="high"
             decoding="async"
             className={cn(
-              "object-contain drop-shadow-[0_4px_18px_rgba(0,0,0,0.45)] transition-all duration-500 ease-[cubic-bezier(.19,1,.22,1)]",
+              "object-contain transition-all duration-500 ease-[cubic-bezier(.19,1,.22,1)]",
               isExpanded ? "w-45 h-45" : "w-30 h-30",
             )}
             onError={(e) => {
@@ -685,10 +685,10 @@ export function Sidebar() {
                       "absolute inset-0 z-0 rounded-2xl",
                       "transition-all duration-400 ease-[cubic-bezier(.19,1,.22,1)]",
                       selfActive
-                        ? "bg-primary/95 backdrop-blur-xl shadow-[0_10px_30px_rgba(0,0,0,0.45)]"
+                        ? "bg-primary/95"
                         : childOnPath
                           ? "bg-primary/10 backdrop-blur-sm"  // soft tint — works on light & dark
-                          : "bg-transparent group-hover:bg-white/10 group-hover:backdrop-blur-sm group-hover:shadow-[0_8px_24px_rgba(0,0,0,0.38)]",
+                          : "bg-transparent group-hover:bg-white/10 group-hover:backdrop-blur-sm group-hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]",
                     )}
                   />
                   {/* Icon wrapper */}
