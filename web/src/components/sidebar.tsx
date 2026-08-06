@@ -125,6 +125,22 @@ export function Sidebar() {
   const [displayName, setDisplayName] = useState("User");
   const [isHydrated, setIsHydrated] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [activeConversationChannel, setActiveConversationChannel] = useState<string | null>(null);
+
+  // Listen for channel changes broadcasted from ConversationsPage
+  useEffect(() => {
+    const handleChannelChange = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      setActiveConversationChannel(detail?.channel ?? null);
+    };
+    window.addEventListener('conversations:channel-changed', handleChannelChange);
+    return () => window.removeEventListener('conversations:channel-changed', handleChannelChange);
+  }, []);
+
+  const isBlackGrayChannel =
+    pathname.startsWith('/conversations') &&
+    activeConversationChannel !== null &&
+    activeConversationChannel !== 'linkedin';
 
   // Load + persist pin preference (localStorage). Runs after hydration so
   // SSR HTML matches the initial client render (always unpinned on first
@@ -326,7 +342,14 @@ export function Sidebar() {
   return (
     <>
       {/* Mobile Top Bar */}
-      <div className="md:hidden fixed top-0 left-0 right-0 h-14 z-[60] bg-sidebar/95 backdrop-blur-2xl border-b border-sidebar-border flex items-center justify-between px-3">
+      <div
+        className={cn(
+          "md:hidden fixed top-0 left-0 right-0 h-14 z-[60] backdrop-blur-2xl border-b flex items-center justify-between px-3 transition-colors duration-300",
+          isBlackGrayChannel
+            ? "border-zinc-200 dark:border-zinc-800 bg-white/95 dark:bg-zinc-900"
+            : "border-sidebar-border bg-sidebar/95"
+        )}
+      >
         <button
           aria-label="Open menu"
           className="p-2 rounded-lg hover:bg-white/10 active:scale-95 transition"
@@ -352,7 +375,10 @@ export function Sidebar() {
       {/* Mobile Drawer */}
       <div
         className={cn(
-          "md:hidden fixed inset-y-0 left-0 w-[50%] bg-sidebar/95 backdrop-blur-2xl border-r border-sidebar-border shadow-2xl z-[70] flex flex-col",
+          "md:hidden fixed inset-y-0 left-0 w-[50%] backdrop-blur-2xl border-r shadow-2xl z-[70] flex flex-col transition-colors duration-300",
+          isBlackGrayChannel
+            ? "border-zinc-200 dark:border-zinc-800 bg-white/95 dark:bg-[#171717]"
+            : "border-sidebar-border bg-sidebar/95",
           "transition-transform duration-300 ease-out",
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full",
         )}
@@ -469,7 +495,7 @@ export function Sidebar() {
           })()}
         </nav>
         {/* Mobile User/Settings/Pricing/Logout */}
-        <div className="border-t border-sidebar-border p-3 space-y-2 mt-auto">
+        <div className={cn("border-t p-3 space-y-2 mt-auto border-sidebar-border", isBlackGrayChannel && "dark:border-zinc-800")}>
           {/* Tenant Selector */}
           <div className="mb-2">
             <span className="text-[10px] uppercase tracking-wider text-sidebar-foreground/40 font-bold px-3">Tenant</span>
@@ -553,8 +579,11 @@ export function Sidebar() {
       )}
       <aside
         className={cn(
-          "hidden md:flex flex-col shrink-0 h-screen border-r border-sidebar-border shadow-2xl",
-          "bg-white dark:bg-[#000724]",
+          "hidden md:flex flex-col shrink-0 h-screen border-r shadow-2xl",
+          "bg-white border-gray-200",
+          isBlackGrayChannel
+            ? "dark:bg-[#171717] dark:border-zinc-800"
+            : "dark:bg-[#000724] dark:border-[#1a2a43]",
           "transition-all duration-500 ease-[cubic-bezier(.4,0,.2,1)]",
           "overflow-hidden fixed left-0 top-0 z-[5000]",
           isExpanded ? "w-64" : "w-16",
@@ -796,7 +825,7 @@ export function Sidebar() {
           })()}
         </nav>
         {/* User Profile Inline Section */}
-        <div className="border-t border-sidebar-border mt-auto">
+        <div className={cn("border-t mt-auto border-sidebar-border", isBlackGrayChannel && "dark:border-zinc-800")}>
           {/* Avatar / profile row — click to toggle inline panel */}
           <div
             onClick={() => setIsUserPanelOpen((v) => !v)}
