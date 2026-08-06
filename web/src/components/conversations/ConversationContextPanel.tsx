@@ -51,6 +51,7 @@ import {
 } from 'lucide-react';
 import { ChannelIcon } from './ChannelIcon';
 import { AssignmentPanel } from './AssignmentPanel';
+import { InjuryReviewCard } from './InjuryReviewCard';
 import { MessageSettings } from './MessageSettings';
 import { mockInternalComments } from '@/data/mockConversations';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
@@ -707,6 +708,12 @@ export const ConversationContextPanel = memo(function ConversationContextPanel({
               <span>Conversation started {createdAt ? formatDistanceToNow(new Date(createdAt), { addSuffix: true }) : 'recently'}</span>
             </div>
           </div>
+
+          {/* Injury screening — staff gate that blocks the agent from showing
+              class times / booking until a reported injury is reviewed.
+              Self-hiding: renders nothing for tenants that don't screen for
+              injuries, or when there's no injury and nothing is blocked. */}
+          <InjuryReviewCard conversationId={conversation.id} backendChannel={backendChannel} />
 
           {/* Business Profile */}
           <div className="mb-6">
