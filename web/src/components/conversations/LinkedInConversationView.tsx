@@ -706,7 +706,7 @@ export function LinkedInConversationView({
           <div className="relative flex-1">
             <Search className="absolute left-2.5 md:left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground dark:text-slate-400" />
             <Input
-              placeholder="Search conversations..."
+              placeholder="Search"
               className="pl-8 md:pl-9 h-8 md:h-9 text-xs md:text-sm bg-secondary/50 dark:bg-slate-900/90 border border-transparent dark:border-slate-800/80 text-slate-900 dark:text-white placeholder:text-muted-foreground dark:placeholder:text-slate-400 shadow-none focus-visible:ring-1"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
