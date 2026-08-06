@@ -318,7 +318,7 @@ export function ConversationsPage() {
               className="fixed inset-0 z-40 bg-black/30 sm:hidden"
               onClick={() => setIsPlaygroundOpen(false)}
             />
-            <AIPlayground onClose={() => setIsPlaygroundOpen(false)} />
+            <AIPlayground onClose={() => setIsPlaygroundOpen(false)} variant="conversations" />
           </>
         )}
       </AnimatePresence>
