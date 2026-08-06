@@ -13,9 +13,9 @@ const variantStyles: Record<NonNullable<DateSeparatorProps['variant']>, string> 
   default:
     'bg-slate-100/90 text-slate-600 border-slate-200/80 dark:bg-slate-800/90 dark:text-slate-200 dark:border-slate-700/60',
   linkedin:
-    'bg-slate-100/90 text-slate-600 border-slate-200/80 dark:bg-[#1E293B]/90 dark:text-slate-300 dark:border-slate-700/60',
+    'bg-slate-100/90 text-slate-600 border-slate-200/80 dark:bg-slate-800/90 dark:text-slate-300 dark:border-slate-700/60',
   whatsapp:
-    'bg-[#f0f2f5]/95 text-[#54656f] border-[#e2e8f0]/80 dark:bg-[#1f2c34]/90 dark:text-slate-300 dark:border-slate-700/60',
+    'bg-zinc-100/95 text-zinc-600 border-transparent dark:bg-zinc-800 dark:text-zinc-300 dark:transparent',
 };
 
 export const DateSeparator = memo(function DateSeparator({
