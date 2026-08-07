@@ -1949,12 +1949,18 @@ export default function AdvancedSearchAIPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Sync credit balance from billing hook
+    // Sync credit balance from billing hook.
+    // On a billing FETCH ERROR the balance stays null — "unknown", not "zero".
+    // Every consumer below is written to fail OPEN on null (see the launch
+    // credit gate: `creditBalance == null || creditBalance >= requiredCredits`),
+    // so an unreachable billing service must not masquerade as an empty wallet:
+    // coercing to 0 here made `creditsOk` false and silently BLOCKED launch,
+    // which is exactly what that gate's comment says must never happen.
     useEffect(() => {
         if (billing.wallet?.availableBalance !== undefined) {
             setCreditBalance(billing.wallet.availableBalance ?? billing.wallet.currentBalance ?? 0);
         } else if (billing.error) {
-            setCreditBalance(0);
+            setCreditBalance(null);
         }
     }, [billing.wallet, billing.error]);
 
