@@ -3803,6 +3803,17 @@ export default function AdvancedSearchAIPage() {
                                         text: `✅ **Found ${prospectLeads.length} prospect${prospectLeads.length !== 1 ? 's' : ''}** for your query!\n\n${prospectLeads.filter(l => l.icp_score && l.icp_score >= 70).length > 0 ? `🎯 **${prospectLeads.filter(l => l.icp_score && l.icp_score >= 70).length} strong ICP matches** identified.\n\n` : ''}Results include contact details, LinkedIn profiles, and ICP scores.\n\n💡 Click **"Get More Leads"** to find additional prospects.`,
                                         ts: new Date(),
                                     }));
+                                } else if (!resp.ok || d.success === false) {
+                                    // A server-side failure is NOT an empty result set. The
+                                    // endpoint returns JSON on 500, so resp.json() succeeds and
+                                    // this used to fall through to "try rephrasing" — telling
+                                    // people to reword a query that was never the problem.
+                                    console.error('[ProspectSearch] server error', resp.status, d?.error, d?.detail);
+                                    setMessages(p => p.concat({
+                                        id: `a-err-${Date.now()}`, role: 'ai',
+                                        text: `⚠️ The search failed on our side — this isn't your query. Please try again in a moment; if it keeps happening, let support know.`,
+                                        ts: new Date(),
+                                    }));
                                 } else {
                                     setMessages(p => p.concat({
                                         id: `a-err-${Date.now()}`, role: 'ai',
@@ -3918,6 +3929,15 @@ export default function AdvancedSearchAIPage() {
                             setMessages(p => p.concat({
                                 id: `a-sr-${Date.now()}`, role: 'ai',
                                 text: `✅ **Found ${prospectLeads.length} prospect${prospectLeads.length !== 1 ? 's' : ''}** for your query!\n\n${strongMatches > 0 ? `🎯 **${strongMatches} strong ICP match${strongMatches !== 1 ? 'es' : ''}** identified.\n\n` : ''}Results include company contact details, LinkedIn profiles, and ICP scores.\n\n💡 Click **"Get More Leads"** to discover additional prospects.`,
+                                ts: new Date(),
+                            }));
+                        } else if (!resp.ok || d.success === false) {
+                            // See the sibling handler above: a 500 returns JSON, so this branch
+                            // must be split out or a server crash reads as "no matches".
+                            console.error('[ProspectSearch] server error', resp.status, d?.error, d?.detail);
+                            setMessages(p => p.concat({
+                                id: `a-err-${Date.now()}`, role: 'ai',
+                                text: `⚠️ The search failed on our side — this isn't your query. Please try again in a moment; if it keeps happening, let support know.`,
                                 ts: new Date(),
                             }));
                         } else {
