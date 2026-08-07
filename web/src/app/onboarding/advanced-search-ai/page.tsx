@@ -1203,7 +1203,7 @@ export default function AdvancedSearchAIPage() {
      * so it travels as the template itself, alongside the caveats the drafter
      * raised so they stay on screen next to the Launch button.
      */
-    const [builderAiDraft, setBuilderAiDraft] = useState<{ template: any; warnings: string[] } | null>(null);
+    const [builderAiDraft, setBuilderAiDraft] = useState<{ template: any; warnings: string[]; autoLaunch?: boolean } | null>(null);
     const roleWizardRef = useRef<{ key: string; idx: number; answers: Record<string, string> } | null>(null);
     /** Audience preview for the pending Accelerator — keyed off the summary card's CTA. */
     const [rolePreviewing, setRolePreviewing] = useState(false);
@@ -1235,6 +1235,14 @@ export default function AdvancedSearchAIPage() {
     } | null>(null);
     /** The finished draft, kept so "Open in builder" works after the card scrolls away. */
     const [wfDraft, setWfDraft] = useState<{ template: any; warnings: string[] } | null>(null);
+    /**
+     * Set while we are waiting for the user to name the finished sequence. A ref
+     * for the same reason as wfWizardRef: doSend reads it mid-callback. The name
+     * is asked AFTER drafting, not during the interview, because it shapes
+     * nothing about the pipeline — spending one of the five question slots on it
+     * would cost a question that actually changes the nodes.
+     */
+    const wfNamingRef = useRef<{ template: any; warnings: string[]; suggested: string } | null>(null);
 
     interface MediaChatMsg {
         id: string;
@@ -3476,6 +3484,7 @@ export default function AdvancedSearchAIPage() {
     /** Leave build mode and hand the user the builder, with nothing drafted. */
     const wfBailToBuilder = useCallback((text: string) => {
         wfWizardRef.current = null;
+        wfNamingRef.current = null;
         setWfDraft(null);
         wfPushAi(text);
         setBuilderTemplate(null);
@@ -3483,18 +3492,84 @@ export default function AdvancedSearchAIPage() {
     }, [wfPushAi]);
 
     /**
-     * Put a finished draft on the builder's canvas for review.
+     * Put a finished draft on the builder's canvas.
      *
      * The template is ad-hoc (the drafter invented it), so it cannot travel as
      * an `initialTemplateKey` the way an Accelerator does — it goes through the
-     * builder's own AI-draft apply path instead. `autoLaunch` is deliberately
-     * absent: review is the point.
+     * builder's own AI-draft apply path instead.
+     *
+     * `autoLaunch` runs the builder's OWN launch() the moment the draft lands.
+     * That is deliberate and it is the only honest way to launch from chat:
+     * launch() carries the credit gate, the LinkedIn-targeting check, the InMail
+     * entitlement probe, the publisher-only exemption and the sequence-issue
+     * guards. Re-implementing any of that here would mean campaigns launched
+     * from chat validate differently from campaigns launched from the canvas.
+     * If a guard trips, the builder is already on screen showing the reason.
      */
-    const openDraftInBuilder = useCallback((template: any, warnings: string[]) => {
+    const openDraftInBuilder = useCallback((template: any, warnings: string[], autoLaunch?: boolean) => {
         setBuilderTemplate(null);
-        setBuilderAiDraft({ template, warnings });
+        setBuilderAiDraft({ template, warnings, autoLaunch: !!autoLaunch });
         setShowCustomWorkflow(true);
     }, []);
+
+    /**
+     * Save the drafted pipeline as a reusable Strategy.
+     *
+     * Deliberately separate from launching: saving costs nothing and touches no
+     * leads, so it never needs the launch guards. The drafted template IS the
+     * definition shape the strategies API wants (it carries `nodes`).
+     */
+    const wfSaveStrategy = useCallback(async (template: any, name: string) => {
+        try {
+            const res = await fetchWithTenant('/api/campaigns/strategies', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name,
+                    description: template?.tagline || template?.notes || null,
+                    definition: template,
+                }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.status === 409) {
+                wfPushAi(`⚠️ You already have a saved sequence called **"${name}"**. Reply with a different name to save it under, or launch it as it is.`);
+                return false;
+            }
+            if (!res.ok || !data?.success) {
+                wfPushAi(`⚠️ I couldn't save that sequence${data?.error ? ` — ${data.error}` : ''}. The pipeline is still here, so you can launch it or open it in the builder.`);
+                return false;
+            }
+            return true;
+        } catch {
+            wfPushAi('⚠️ I couldn\'t reach the sequences service, so nothing was saved. The pipeline is still here.');
+            return false;
+        }
+    }, [wfPushAi]);
+
+    /**
+     * The sequence has a name — offer what you can actually do with it.
+     *
+     * Launch and Save are separate buttons because they are separate decisions:
+     * saving is free and reversible, launching spends credits and messages real
+     * people. "Save and launch" exists so wanting both is not two round trips.
+     */
+    const wfOfferLaunch = useCallback((template: any, warnings: string[], name: string) => {
+        const named = { ...template, name };
+        wfNamingRef.current = null;
+        setWfDraft({ template: named, warnings });
+        wfPushAi(
+            `**"${name}"** is ready.\n\n`
+            + 'Launching enrols leads and starts sending — everything else here is reversible.',
+            [
+                { label: `🚀 Launch "${name}"`, value: '__wf_launch__' },
+                { label: '💾 Save for later', value: '__wf_save__' },
+                { label: '💾🚀 Save and launch', value: '__wf_save_and_launch__' },
+                { label: '🛠️ Open in builder', value: '__wf_openbuilder__' },
+                { label: '❌ Discard', value: '__wf_cancel__' },
+            ],
+            warnings,
+        );
+    }, [wfPushAi]);
 
     /** Render the drafted pipeline into the right-hand Workflow panel. */
     const wfRenderPreview = useCallback((template: any) => {
@@ -3644,14 +3719,22 @@ export default function AdvancedSearchAIPage() {
                     '',
                 ];
                 if (template.notes) parts.push(`*${template.notes}*`, '');
-                parts.push('It\'s in the **Workflow** panel and open in the builder — **nothing has launched**. Review each step, then hit Launch there when it looks right.');
+                parts.push('It\'s in the **Workflow** panel on the right — **nothing has launched yet**.');
+                parts.push('');
+                parts.push('**What should this sequence be called?** Type a name, or keep the suggested one.');
+
+                // Ask for the name here rather than dropping the user into the
+                // builder: a launch needs a name anyway, and being handed a
+                // full-screen canvas is not an answer to "is this right?".
+                const suggested = String(template.name || 'AI workflow').slice(0, 60);
+                wfNamingRef.current = { template, warnings, suggested };
 
                 wfPushAi(parts.join('\n'), [
+                    { label: `✅ Use "${suggested}"`, value: '__wf_name__' },
                     { label: '🛠️ Open in builder', value: '__wf_openbuilder__' },
                     { label: '✏️ Describe it differently', value: '__wf_restart__' },
                     { label: '❌ Discard', value: '__wf_cancel__' },
                 ], warnings);
-                openDraftInBuilder(template, warnings);
                 return;
             }
 
@@ -3706,7 +3789,7 @@ export default function AdvancedSearchAIPage() {
         } finally {
             setBusy(false);
         }
-    }, [wfPushAi, wfBailToBuilder, wfRenderPreview, openDraftInBuilder, askWfQuestion]);
+    }, [wfPushAi, wfBailToBuilder, wfRenderPreview, askWfQuestion]);
 
     /**
      * Record one answer and advance. Exhausting the queue sends everything back
@@ -3750,6 +3833,7 @@ export default function AdvancedSearchAIPage() {
      */
     const enterWorkflowBuild = useCallback((description: string) => {
         roleWizardRef.current = null;
+        wfNamingRef.current = null;
         setWfDraft(null);
         wfWizardRef.current = { description, answers: {}, queue: [], idx: 0, asked: 0, rounds: 0 };
         wfPushAi('🛠️ That reads like a **pipeline**, not a lead search — so let\'s build it rather than search for it. A couple of quick questions and I\'ll draft it for you.');
@@ -3781,6 +3865,20 @@ export default function AdvancedSearchAIPage() {
             const parsedLeads = pendingImportLocation.parsed;
             setPendingImportLocation(null);
             await finishInboundImport(parsedLeads, isGlobal ? '' : reply, lid);
+            setBusy(false);
+            return;
+        }
+
+        // ── PRIORITY -1.5: Naming the finished sequence ──
+        // A drafted pipeline is waiting for a name, so this reply IS the name.
+        // Must run before the build-mode gate below, or a name like "LinkedIn
+        // outreach then follow up" would be read as a fresh pipeline
+        // description and restart the interview the user just finished.
+        if (wfNamingRef.current) {
+            const naming = wfNamingRef.current;
+            setMessages(p => p.filter(m => m.id !== lid));
+            const typed = text.trim().slice(0, 60);
+            wfOfferLaunch(naming.template, naming.warnings, typed || naming.suggested);
             setBusy(false);
             return;
         }
@@ -5141,7 +5239,7 @@ export default function AdvancedSearchAIPage() {
                 id: `a-${Date.now()}`, role: 'ai', text: '⚠️ Something went wrong. Please try again.', ts: new Date(),
             }));
         } finally { setBusy(false); }
-    }, [busy, messages, convId, targeting, pendingIntent, pendingSearchConfirmation, pendingLocationRequest, pendingImportLocation, finishInboundImport, webSearchEnabled, enterWorkflowBuild]);
+    }, [busy, messages, convId, targeting, pendingIntent, pendingSearchConfirmation, pendingLocationRequest, pendingImportLocation, finishInboundImport, webSearchEnabled, enterWorkflowBuild, wfOfferLaunch]);
 
     // ── Roles wizard ───────────────────────────────────────────────────────
     const rolePushAi = useCallback((text: string, options?: { label: string; value: string }[]) => {
@@ -5259,19 +5357,53 @@ export default function AdvancedSearchAIPage() {
             wfBailToBuilder('🛠️ Opened the Accelerator builder — pick your steps there and configure each one.');
             return;
         }
+        if (v === '__wf_name__') {
+            const naming = wfNamingRef.current;
+            if (!naming) return;   // stale click on a card the flow has moved past
+            setMessages(p => [...p, { id: `u-wf-${Date.now()}`, role: 'user', text: naming.suggested, ts: new Date() }]);
+            wfOfferLaunch(naming.template, naming.warnings, naming.suggested);
+            return;
+        }
+        if (v === '__wf_launch__' || v === '__wf_save__' || v === '__wf_save_and_launch__') {
+            const draft = wfDraft;
+            if (!draft) return;
+            const name = String(draft.template?.name || 'AI workflow');
+            void (async () => {
+                if (v !== '__wf_launch__') {
+                    const saved = await wfSaveStrategy(draft.template, name);
+                    if (!saved) return;   // the failure already explained itself
+                    wfPushAi(`💾 Saved **"${name}"** — you'll find it under your saved sequences.`);
+                    if (v === '__wf_save__') return;
+                }
+                // Hand the launch to the builder's own launch(), guards and all.
+                wfPushAi(`🚀 Launching **"${name}"** — opening the canvas so you can watch it start. If anything is missing, it'll say so there rather than failing quietly.`);
+                openDraftInBuilder(draft.template, draft.warnings, true);
+            })();
+            return;
+        }
         if (v === '__wf_openbuilder__') {
+            // Naming may still be open — the user chose the canvas over the chat.
+            const naming = wfNamingRef.current;
+            if (naming) {
+                wfNamingRef.current = null;
+                setWfDraft({ template: naming.template, warnings: naming.warnings });
+                openDraftInBuilder(naming.template, naming.warnings);
+                return;
+            }
             if (wfDraft) openDraftInBuilder(wfDraft.template, wfDraft.warnings);
             else { setBuilderTemplate(null); setShowCustomWorkflow(true); }
             return;
         }
         if (v === '__wf_restart__') {
             wfWizardRef.current = null;
+            wfNamingRef.current = null;
             setWfDraft(null);
             wfPushAi('Sure — describe the pipeline again and I\'ll draft it fresh. Say the steps in the order you want them to run.');
             return;
         }
         if (v === '__wf_cancel__') {
             wfWizardRef.current = null;
+            wfNamingRef.current = null;
             setWfDraft(null);
             wfPushAi('No problem — pipeline discarded. Nothing was launched. Describe another one any time, or search for leads as usual.');
             return;
@@ -5545,7 +5677,7 @@ export default function AdvancedSearchAIPage() {
         }
         if (v.toLowerCase().includes('refine')) setChatBlocked(false);
         doSend(v);
-    }, [doSend, targeting, pendingContact, setCpStep, isMobile, rolePreviewing, leadCount, useSalesNav, linkedInSearch, rolePushAi, pushRoleCard, handleRoleAnswer, handleWfAnswer, wfBailToBuilder, wfPushAi, wfDraft, openDraftInBuilder]);
+    }, [doSend, targeting, pendingContact, setCpStep, isMobile, rolePreviewing, leadCount, useSalesNav, linkedInSearch, rolePushAi, pushRoleCard, handleRoleAnswer, handleWfAnswer, wfBailToBuilder, wfPushAi, wfDraft, openDraftInBuilder, wfOfferLaunch, wfSaveStrategy]);
 
     const handleTargetingConfirm = useCallback(async () => {
         // Build the updated targeting object with new filter values
@@ -8221,7 +8353,7 @@ export default function AdvancedSearchAIPage() {
                         initialTemplateKey={builderTemplate?.key}
                         initialSourceCfg={builderTemplate?.sourceCfg}
                         initialNodeCfg={builderTemplate?.nodeCfg}
-                        autoLaunch={builderTemplate?.autoLaunch}
+                        autoLaunch={builderTemplate?.autoLaunch || builderAiDraft?.autoLaunch}
                         initialAiTemplate={builderAiDraft?.template}
                         initialAiWarnings={builderAiDraft?.warnings}
                         editCampaignId={editingCampaignId || undefined}
