@@ -2071,18 +2071,17 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
       <input ref={audioRef} type="file" multiple className="hidden" aria-label="Upload audio" onChange={handleFileChange} accept="audio/*" />
 
       {/* ── Template Picker ── */}
-      <div className="[&_.dark\:bg-\\[\\#111b21\\]]:dark:bg-[rgb(22,23,23)] [&_[class*='dark:bg-']>div]:dark:bg-[rgb(22,23,23)]">
-        <TemplatePicker
-          open={isTemplatePickerOpen}
-          onOpenChange={setIsTemplatePickerOpen}
-          selectedCount={1}
-          onSend={handleTemplateSend}
-          sending={templateSending}
-          sendProgress={templateSendProgress}
-          channel={backendChannel ?? 'waba'}
-          isBulkSend={false}
-        />
-      </div>
+      <TemplatePicker
+        open={isTemplatePickerOpen}
+        onOpenChange={setIsTemplatePickerOpen}
+        selectedCount={1}
+        onSend={handleTemplateSend}
+        sending={templateSending}
+        sendProgress={templateSendProgress}
+        channel={backendChannel ?? 'waba'}
+        isBulkSend={false}
+        variant="whatsapp"
+      />
 
       {/* Composer */}
       <div className="mt-4 p-3 px-4 bg-white dark:bg-[#161717] shrink-0 z-10 relative">
@@ -4537,22 +4536,20 @@ function WABASidebar({
       />
 
      {/* ── Template Picker Dialog ──────────────────────────────────────── */}
-      <style>{`.dark .template-modal-override { background-color: rgb(22,23,23) !important; }`}</style>
-      <div className="template-modal-override-root [&_[role='dialog']]:dark:!bg-[rgb(22,23,23)]">
-        <TemplatePicker
-          open={isTemplatePickerOpen}
-          onOpenChange={(open) => {
-            setIsTemplatePickerOpen(open);
-            if (!open) setGroupTemplateSendTarget(null);
-          }}
-          selectedCount={templatePickerCount}
-          onSend={handleTemplateSend}
-          sending={templateSending}
-          sendProgress={templateSendProgress}
-          channel={backendChannel ?? 'waba'}
-          isBulkSend={!!groupTemplateSendTarget}
-        />
-      </div>
+      <TemplatePicker
+        open={isTemplatePickerOpen}
+        onOpenChange={(open) => {
+          setIsTemplatePickerOpen(open);
+          if (!open) setGroupTemplateSendTarget(null);
+        }}
+        selectedCount={templatePickerCount}
+        onSend={handleTemplateSend}
+        sending={templateSending}
+        sendProgress={templateSendProgress}
+        channel={backendChannel ?? 'waba'}
+        isBulkSend={!!groupTemplateSendTarget}
+        variant="whatsapp"
+      />
 
       {/* ── Import Leads Dialog ─────────────────────────────────────────── */}
       <ImportLeadsDialog
