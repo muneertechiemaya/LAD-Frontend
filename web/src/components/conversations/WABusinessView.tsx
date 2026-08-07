@@ -3168,7 +3168,7 @@ function WABASidebar({
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
-                  className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-muted transition-colors"
+                  className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-muted dark:hover:bg-zinc-800 transition-colors"
                   onClick={() => {
                     setIsGroupsPanelOpen(true);
                     setSelectedGroupsPanelIds(new Set());
@@ -3188,7 +3188,7 @@ function WABASidebar({
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
-                  className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-muted transition-colors"
+                  className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-muted dark:hover:bg-zinc-800 transition-colors"
                   onClick={handleRefresh}
                   disabled={isRefreshing}
                   aria-label="Refresh conversations"
@@ -3205,7 +3205,7 @@ function WABASidebar({
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
-                  className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-muted transition-colors"
+                  className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-muted dark:hover:bg-zinc-800 transition-colors"
                   onClick={() => setIsNewChatOpen(true)}
                   aria-label="New Chat"
                 >
@@ -3223,7 +3223,7 @@ function WABASidebar({
                 <TooltipTrigger asChild>
                   <DropdownMenuTrigger asChild>
                     <button
-                      className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-muted transition-colors"
+                      className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-muted dark:hover:bg-zinc-800 transition-colors"
                       aria-label="More options"
                     >
                       <MoreVertical className="w-5 h-5" />
@@ -3236,32 +3236,32 @@ function WABASidebar({
               </Tooltip>
               <DropdownMenuContent
                 align="end"
-                className="w-52 bg-white dark:bg-[#161717] border border-border dark:border-0 text-foreground dark:text-[#d1d7db] py-2 shadow-lg"
+                className="w-52 bg-white dark:bg-[#161717] border border-border dark:border-zinc-800 text-foreground dark:text-[#d1d7db] py-2 shadow-lg"
               >
                 <DropdownMenuItem
-                  className="focus:bg-muted dark:focus:bg-muted hover:bg-muted dark:hover:bg-muted focus:text-foreground dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4"
+                  className="hover:bg-zinc-100 focus:bg-zinc-100 dark:hover:bg-zinc-800 dark:focus:bg-zinc-800 focus:text-foreground dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4 focus:outline-none"
                   onClick={() => setIsGroupManagerOpen(true)}
                 >
                   <Users className="w-4 h-4" /><span>Broadcast group</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  className="focus:bg-muted dark:focus:bg-muted hover:bg-muted dark:hover:bg-muted focus:text-foreground dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4"
+                  className="hover:bg-zinc-100 focus:bg-zinc-100 dark:hover:bg-zinc-800 dark:focus:bg-zinc-800 focus:text-foreground dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4 focus:outline-none"
                   onClick={() => onOpenStarred?.()}
                 >
                   <Star className="w-4 h-4" /><span>Starred messages</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  className="focus:bg-muted dark:focus:bg-muted hover:bg-muted dark:hover:bg-muted focus:text-foreground dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4"
+                  className="hover:bg-zinc-100 focus:bg-zinc-100 dark:hover:bg-zinc-800 dark:focus:bg-zinc-800 focus:text-foreground dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4 focus:outline-none"
                   onClick={() => setIsSelectMode(true)}
                 >
                   <CheckSquare className="w-4 h-4" /><span>Select chats</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem className="focus:bg-muted dark:focus:bg-muted hover:bg-muted dark:hover:bg-muted focus:text-foreground dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4">
+                <DropdownMenuItem className="hover:bg-zinc-100 focus:bg-zinc-100 dark:hover:bg-zinc-800 dark:focus:bg-zinc-800 focus:text-foreground dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4 focus:outline-none">
                   <ListChecks className="w-4 h-4" /><span>Mark all as read</span>
                 </DropdownMenuItem>
-                <DropdownMenuSeparator className="my-1 bg-border dark:bg-[#222d34]" />
+                <DropdownMenuSeparator className="my-1 bg-border dark:bg-zinc-800" />
                 <DropdownMenuItem
-                  className="focus:bg-muted dark:focus:bg-muted hover:bg-muted dark:hover:bg-muted focus:text-foreground dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4"
+                  className="hover:bg-zinc-100 focus:bg-zinc-100 dark:hover:bg-zinc-800 dark:focus:bg-zinc-800 focus:text-foreground dark:focus:text-white cursor-pointer py-2.5 px-4 flex items-center gap-4 focus:outline-none"
                   onClick={() => setShowMessageSettings(true)}
                 >
                   <Clock className="w-4 h-4" /><span>Message settings</span>
@@ -3302,7 +3302,7 @@ function WABASidebar({
               'px-3 py-1.5 rounded-full text-[14px] font-medium whitespace-nowrap shrink-0 transition-colors border',
               filterTab === tab
                 ? 'bg-[#d9fdd3] text-[#008069] border-border dark:bg-[#1a342a] dark:text-[#00a884] dark:border-[#00a884]/40'
-                : 'bg-muted/50 dark:bg-[#161717] dark:border-[#2e2f2f] text-muted-foreground dark:text-[#a2a2a2] hover:bg-muted dark:hover:bg-[#2a3942]'
+                : 'bg-muted/50 dark:bg-[#161717] dark:border-[#2e2f2f] text-muted-foreground dark:text-[#a2a2a2] hover:bg-muted dark:hover:bg-zinc-800'
             )}
           >
             {tab === 'unread' ? `Unread${unreadCount > 0 ? ` ${unreadCount}` : ''}` : tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -3318,7 +3318,7 @@ function WABASidebar({
               'px-3 py-1.5 rounded-full text-[14px] font-medium whitespace-nowrap shrink-0 transition-colors border flex items-center gap-1',
               hideEmpty
                 ? 'bg-[#d9fdd3] text-[#008069] border-border dark:bg-[#1a342a] dark:text-[#00a884] dark:border-[#00a884]/40'
-                : 'bg-muted/50 dark:bg-[#161717] dark:border-[#2e2f2f] text-muted-foreground dark:text-[#a2a2a2] hover:bg-muted dark:hover:bg-[#2a3942]'
+                : 'bg-muted/50 dark:bg-[#161717] dark:border-[#2e2f2f] text-muted-foreground dark:text-[#a2a2a2] hover:bg-muted dark:hover:bg-zinc-800'
             )}
           >
             {hideEmpty ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
@@ -3334,23 +3334,23 @@ function WABASidebar({
                 'px-3 py-1.5 rounded-full text-[14px] font-medium whitespace-nowrap shrink-0 transition-colors border flex items-center gap-1',
                 selectedLabelIds.length > 0
                   ? 'bg-[#d9fdd3] text-[#008069] border-border dark:bg-[#1a342a] dark:text-[#00a884] dark:border-[#00a884]/40'
-                  : 'bg-muted/50 dark:bg-[#161717] dark:border-[#2e2f2f] text-muted-foreground dark:text-[#a2a2a2] hover:bg-muted dark:hover:bg-[#2a3942]'
+                  : 'bg-muted/50 dark:bg-[#161717] dark:border-[#2e2f2f] text-muted-foreground dark:text-[#a2a2a2] hover:bg-muted dark:hover:bg-zinc-800'
               )}>
                 <Tag className="h-3.5 w-3.5" />
                 {selectedLabelIds.length > 0 ? `${selectedLabelIds.length} label${selectedLabelIds.length === 1 ? '' : 's'}` : 'Labels'}
                 <ChevronDown className="h-3 w-3 opacity-60" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56 max-h-80 overflow-y-auto bg-white dark:bg-[#161717] border border-border dark:border-0 shadow-lg">
-              <DropdownMenuLabel className="flex items-center justify-between text-xs">
+            <DropdownMenuContent align="start" className="w-56 max-h-80 overflow-y-auto bg-white dark:bg-[#161717] border border-border dark:border-zinc-800 shadow-lg">
+              <DropdownMenuLabel className="flex items-center justify-between text-xs text-muted-foreground dark:text-[#a2a2a2]">
                 <span>Filter by label</span>
                 {selectedLabelIds.length > 0 && onLabelFilterChange && (
                   <button onClick={() => onLabelFilterChange?.([])} className="text-[10px] text-muted-foreground hover:text-foreground">Clear</button>
                 )}
               </DropdownMenuLabel>
-              <DropdownMenuSeparator />
+              <DropdownMenuSeparator className="bg-border dark:bg-zinc-800" />
               {allLabels.length === 0 ? (
-                <DropdownMenuItem disabled className="text-xs text-muted-foreground">No labels yet</DropdownMenuItem>
+                <DropdownMenuItem disabled className="text-xs text-muted-foreground focus:outline-none">No labels yet</DropdownMenuItem>
               ) : (
                 allLabels.map((l) => (
                   <DropdownMenuCheckboxItem
@@ -3358,7 +3358,7 @@ function WABASidebar({
                     checked={selectedLabelIds.includes(l.id)}
                     onCheckedChange={() => toggleLabel(l.id)}
                     onSelect={(e) => e.preventDefault()}
-                    className="text-xs"
+                    className="text-xs hover:bg-zinc-100 focus:bg-zinc-100 dark:hover:bg-zinc-800 dark:focus:bg-zinc-800 focus:outline-none cursor-pointer"
                   >
                     <Tag className="h-3.5 w-3.5 mr-2 shrink-0" fill={l.color} style={{ color: l.color }} />
                     <span className="truncate">{l.name}</span>
@@ -3377,24 +3377,27 @@ function WABASidebar({
                 'px-3 py-1.5 rounded-full text-[14px] font-medium whitespace-nowrap shrink-0 transition-colors border flex items-center gap-1',
                 contextStatusFilter && contextStatusFilter !== 'all'
                   ? 'bg-[#00a884] text-white border-transparent'
-                  : 'bg-muted/50 dark:bg-[#161717] dark:border-[#2e2f2f] text-muted-foreground dark:text-[#a2a2a2] hover:bg-muted dark:hover:bg-[#2a3942]'
+                  : 'bg-muted/50 dark:bg-[#161717] dark:border-[#2e2f2f] text-muted-foreground dark:text-[#a2a2a2] hover:bg-muted dark:hover:bg-zinc-800'
               )}>
                 <Filter className="h-3.5 w-3.5" />
                 {contextStatusFilter && contextStatusFilter !== 'all' ? formatContextStatus(contextStatusFilter) : 'Stage'}
                 <ChevronDown className="h-3 w-3 opacity-60" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56 max-h-80 overflow-y-auto bg-white dark:bg-[#161717] border border-border dark:border-0 shadow-lg">
-              <DropdownMenuLabel className="flex items-center justify-between text-xs">
+            <DropdownMenuContent align="start" className="w-56 max-h-80 overflow-y-auto bg-white dark:bg-[#161717] border border-border dark:border-zinc-800 shadow-lg text-foreground dark:text-[#d1d7db]">
+              <DropdownMenuLabel className="flex items-center justify-between text-xs text-muted-foreground dark:text-[#a2a2a2]">
                 <span>Filter by stage</span>
                 {contextStatusFilter && contextStatusFilter !== 'all' && (
                   <button onClick={() => onContextStatusFilterChange('all')} className="text-[10px] text-muted-foreground hover:text-foreground">Clear</button>
                 )}
               </DropdownMenuLabel>
-              <DropdownMenuSeparator />
+              <DropdownMenuSeparator className="bg-border dark:bg-zinc-800" />
               <DropdownMenuItem
                 onClick={() => onContextStatusFilterChange('all')}
-                className={cn('text-xs cursor-pointer', (!contextStatusFilter || contextStatusFilter === 'all') && 'bg-[#e7fce3] text-[#008069] dark:bg-[#1a342a] dark:text-[#00a884]')}
+                className={cn(
+                  'text-xs cursor-pointer py-2 px-3 focus:outline-none hover:bg-zinc-100 focus:bg-zinc-100 dark:hover:bg-zinc-800 dark:focus:bg-zinc-800 focus:text-foreground dark:focus:text-white transition-colors',
+                  (!contextStatusFilter || contextStatusFilter === 'all') && 'bg-[#e7fce3] text-[#008069] dark:bg-[#1a342a] dark:text-[#00a884] font-medium'
+                )}
               >
                 All stages
               </DropdownMenuItem>
@@ -3404,11 +3407,14 @@ function WABASidebar({
                   <DropdownMenuItem
                     key={value}
                     onClick={() => onContextStatusFilterChange(value)}
-                    className={cn('text-xs cursor-pointer flex items-center gap-2', contextStatusFilter === value && 'bg-[#e7fce3] text-[#008069] dark:bg-[#1a342a] dark:text-[#00a884]')}
+                    className={cn(
+                      'text-xs cursor-pointer flex items-center gap-2 py-2 px-3 focus:outline-none hover:bg-zinc-100 focus:bg-zinc-100 dark:hover:bg-zinc-800 dark:focus:bg-zinc-800 focus:text-foreground dark:focus:text-white transition-colors',
+                      contextStatusFilter === value && 'bg-[#e7fce3] text-[#008069] dark:bg-[#1a342a] dark:text-[#00a884] font-medium'
+                    )}
                   >
                     <Tag className="h-3.5 w-3.5 shrink-0" fill={tagColor} style={{ color: tagColor }} />
                     <span className="truncate flex-1">{label}</span>
-                    {count > 0 && <span className="text-[10px] !hover:text-muted-foreground">{count}</span>}
+                    {count > 0 && <span className="text-[10px] opacity-70">{count}</span>}
                   </DropdownMenuItem>
                 );
               })}
@@ -3422,23 +3428,41 @@ function WABASidebar({
             <DropdownMenuTrigger asChild>
               <button className={cn(
                 'px-3 py-1.5 rounded-full text-[14px] font-medium whitespace-nowrap shrink-0 transition-colors border flex items-center gap-1',
-                'bg-muted/50 dark:bg-[#161717] dark:border-[#2e2f2f] text-muted-foreground dark:text-[#a2a2a2] hover:bg-muted dark:hover:bg-[#2a3942]'
+                'bg-muted/50 dark:bg-[#161717] dark:border-[#2e2f2f] text-muted-foreground dark:text-[#a2a2a2] hover:bg-muted dark:hover:bg-zinc-800'
               )}>
                 <ArrowDownUp className="h-3.5 w-3.5" />
                 {sortBy === 'message_count' ? 'Size' : sortBy === 'name' ? 'Name' : 'Date'}
                 <ChevronDown className="h-3 w-3 opacity-60" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44 bg-white dark:bg-[#161717] border border-border dark:border-0 shadow-lg text-foreground dark:text-[#d1d7db]">
-              <DropdownMenuLabel className="text-xs">Sort by</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => onSortByChange('date')} className={cn('text-xs cursor-pointer', sortBy === 'date' && 'bg-[#e7fce3] text-[#008069] dark:bg-[#1a342a] dark:text-[#00a884]')}>
+            <DropdownMenuContent align="end" className="w-44 bg-white dark:bg-[#161717] border border-border dark:border-zinc-800 shadow-lg text-foreground dark:text-[#d1d7db]">
+              <DropdownMenuLabel className="text-xs text-muted-foreground dark:text-[#a2a2a2]">Sort by</DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-border dark:bg-zinc-800" />
+              <DropdownMenuItem
+                onClick={() => onSortByChange('date')}
+                className={cn(
+                  'text-xs cursor-pointer py-2 px-3 focus:outline-none hover:bg-zinc-100 focus:bg-zinc-100 dark:hover:bg-zinc-800 dark:focus:bg-zinc-800 focus:text-foreground dark:focus:text-white transition-colors',
+                  sortBy === 'date' && 'bg-[#e7fce3] text-[#008069] dark:bg-[#1a342a] dark:text-[#00a884] font-medium'
+                )}
+              >
                 <Calendar className="h-3.5 w-3.5 mr-2" /> Date (most recent)
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onSortByChange('message_count')} className={cn('text-xs cursor-pointer', sortBy === 'message_count' && 'bg-[#e7fce3] text-[#008069] dark:bg-[#1a342a] dark:text-[#00a884]')}>
+              <DropdownMenuItem
+                onClick={() => onSortByChange('message_count')}
+                className={cn(
+                  'text-xs cursor-pointer py-2 px-3 focus:outline-none hover:bg-zinc-100 focus:bg-zinc-100 dark:hover:bg-zinc-800 dark:focus:bg-zinc-800 focus:text-foreground dark:focus:text-white transition-colors',
+                  sortBy === 'message_count' && 'bg-[#e7fce3] text-[#008069] dark:bg-[#1a342a] dark:text-[#00a884] font-medium'
+                )}
+              >
                 <Hash className="h-3.5 w-3.5 mr-2" /> Size (most messages)
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onSortByChange('name')} className={cn('text-xs cursor-pointer', sortBy === 'name' && 'bg-[#e7fce3] text-[#008069] dark:bg-[#1a342a] dark:text-[#00a884]')}>
+              <DropdownMenuItem
+                onClick={() => onSortByChange('name')}
+                className={cn(
+                  'text-xs cursor-pointer py-2 px-3 focus:outline-none hover:bg-zinc-100 focus:bg-zinc-100 dark:hover:bg-zinc-800 dark:focus:bg-zinc-800 focus:text-foreground dark:focus:text-white transition-colors',
+                  sortBy === 'name' && 'bg-[#e7fce3] text-[#008069] dark:bg-[#1a342a] dark:text-[#00a884] font-medium'
+                )}
+              >
                 <ArrowDownUp className="h-3.5 w-3.5 mr-2" /> Name (A → Z)
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -3449,7 +3473,7 @@ function WABASidebar({
         <TooltipProvider delayDuration={100}>
           <Tooltip>
             <TooltipTrigger asChild>
-              <button className="px-3 py-1.5 rounded-full bg-muted/50 dark:bg-[#202c33] text-muted-foreground dark:text-[#a2a2a2] text-[14px] font-normal flex items-center justify-center hover:bg-muted dark:hover:bg-zinc-800 shrink-0 border dark:border-[#2e2f2f]" aria-label="Create list">
+              <button className="px-3 py-1.5 rounded-full bg-muted/50 dark:bg-[#161717] text-muted-foreground dark:text-[#a2a2a2] text-[14px] font-normal flex items-center justify-center hover:bg-muted dark:hover:bg-zinc-800 shrink-0 border dark:border-[#2e2f2f]" aria-label="Create list">
                 <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
                 </svg>
