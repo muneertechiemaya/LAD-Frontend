@@ -9,6 +9,22 @@ import { logger } from '@/lib/logger';
  * Next answers 404 and the Business Hours modal cannot save.
  */
 
+// Confirmed live (QA loop, 2026-08-07): a cookied request to this route was
+// routed to the [feature]/[...path] catch-all instead of this file — 404
+// "Feature not found" — while an identical request WITHOUT cookies correctly
+// reached this handler (401 "Access token required"). Two other routes were
+// compared to isolate the cause: /api/auth/me (a static path, but reads
+// cookies DIRECTLY in the handler body) and personal-whatsapp/[...path] (a
+// dynamic path segment, cookies read via a helper like this file) both work
+// correctly. This route is the only one that is BOTH a fully static path AND
+// reads cookies only through an indirect helper (authHeaders below) — the one
+// combination where Next's static/dynamic route analysis apparently fails to
+// detect the cookie dependency and the route can be resolved as if it were
+// static, misrouting cookie-bearing requests. force-dynamic is the framework's
+// own escape hatch for exactly this ambiguity — already used elsewhere in this
+// codebase for the same reason.
+export const dynamic = 'force-dynamic';
+
 function getBackendBase() {
   const backendInternal = process.env.BACKEND_INTERNAL_URL || '';
   return backendInternal.replace(/\/$/, '');
