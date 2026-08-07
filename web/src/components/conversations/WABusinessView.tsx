@@ -2125,19 +2125,19 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
                 type="button"
                 onClick={() => setShowAttachMenu(v => !v)}
                 className={cn(
-                  'w-9 h-9 flex items-center justify-center rounded-full transition-all duration-200',
+                  'w-9 h-9 flex items-center justify-center rounded-full transition-all duration-200 hover:bg-zinc-400/10',
                   showAttachMenu ? 'text-[#00a884] rotate-45' : 'text-muted-foreground dark:text-[#8696a0] hover:text-foreground'
                 )}
               >
                 <Plus className="w-5 h-5" />
               </button>
               {showAttachMenu && (
-                <div className="absolute bottom-full left-0 mb-2 w-[200px] bg-white dark:bg-[#233138] rounded-2xl shadow-2xl overflow-hidden z-40 py-1">
+                <div className="absolute bottom-full left-0 mb-2 w-[200px] bg-white dark:bg-zinc-900 border border-transparent dark:border-zinc-800/80 rounded-2xl shadow-2xl overflow-hidden z-40 py-1">
                   {ATTACH_ITEMS.map(item => (
                     <button
                       key={item.id}
                       onClick={() => handleAttachItem(item.id)}
-                      className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-[#182229] transition-colors text-left"
+                      className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-zinc-800/80 transition-colors text-left"
                     >
                       <div className={cn('w-7 h-7 rounded-full flex items-center justify-center shrink-0', item.bg, item.color)}>
                         <span className="scale-75">{item.icon}</span>
