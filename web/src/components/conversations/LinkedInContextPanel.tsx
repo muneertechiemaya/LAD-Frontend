@@ -589,14 +589,18 @@ export function LinkedInContextPanel({ conversation, onClose }: Props) {
 
           {/* Assignment */}
           <TabsContent value="assignment" className="pt-3">
-            <div className="rounded-md border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-500/10 px-3 py-3">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
-                <div className="text-[11px] text-amber-800 dark:text-amber-200">
-                  <p className="font-semibold mb-0.5">Assignment for LinkedIn — coming soon</p>
-                  <p className="text-amber-700 dark:text-amber-300/80">
+            <div className="rounded-xl border border-amber-500/20 dark:border-amber-500/20 bg-amber-500/[0.06] dark:bg-amber-500/10 p-3.5 backdrop-blur-sm transition-colors">
+              <div className="flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 text-amber-500/90 dark:text-amber-400/90 flex-shrink-0 mt-0.5" />
+                <div className="text-[11px] leading-relaxed text-slate-700 dark:text-slate-300">
+                  <p className="font-semibold text-slate-900 dark:text-slate-100 mb-1">
+                    Assignment for LinkedIn — coming soon
+                  </p>
+                  <p className="text-slate-600 dark:text-slate-400">
                     Per-conversation assignment for LinkedIn requires the
-                    <code className="mx-1 px-1 rounded bg-amber-100 dark:bg-amber-900/50">/api/threads/…?channel=linkedin</code>
+                    <code className="mx-1 px-1.5 py-0.5 rounded bg-amber-300/[0.08] dark:bg-amber-950/[0.12] text-amber-800/80 dark:text-amber-300/80 font-mono text-[10px]">
+                      /api/threads/…?channel=linkedin
+                    </code>
                     endpoint. Available now for WhatsApp; LinkedIn parity is queued.
                   </p>
                 </div>
