@@ -4290,7 +4290,17 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               <label className="flex items-center gap-2 text-sm text-foreground"><input type="checkbox" className="h-4 w-4" checked={cfg.m_new_leads !== false} onChange={(e) => setCfg(editingId, { m_new_leads: e.target.checked })} /> New leads imported (24h)</label>
               <label className="flex items-center gap-2 text-sm text-foreground"><input type="checkbox" className="h-4 w-4" checked={cfg.m_pipeline !== false} onChange={(e) => setCfg(editingId, { m_pipeline: e.target.checked })} /> Lead pipeline status</label>
             </div>
-            <p className="text-xs text-muted-foreground">Sent by Mr LAD via your connected {(cfg.channel || 'email') === 'whatsapp' ? 'WhatsApp' : 'email'} account while the campaign is running.</p>
+            {/* The two channels genuinely differ now, so this is no longer one
+                sentence with a swapped noun. WhatsApp goes from the Mr LAD
+                number as a PDF — template body parameters cannot hold the
+                multi-line breakdown, and one message per lead would read as
+                spam. Email still sends from the tenant's own mailbox with the
+                breakdown inline, because it has neither constraint. */}
+            <p className="text-xs text-muted-foreground">
+              {(cfg.channel || 'email') === 'whatsapp'
+                ? 'Sent from the Mr LAD WhatsApp number as a PDF attachment — one message, however many leads there are.'
+                : 'Sent by Mr LAD via your connected email account while the campaign is running.'}
+            </p>
           </>)}
 
           {isZohoUpdate && (() => {
