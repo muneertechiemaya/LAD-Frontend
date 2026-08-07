@@ -36,10 +36,33 @@ type ExtendedConversation = Conversation & {
   labelIds?: Array<string | number>;
   owner?: string | null;
 };
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format, isToday, isYesterday, differenceInCalendarDays } from 'date-fns';
 import { useQueryClient } from '@tanstack/react-query';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
 import { cn, getAvatarColor } from '@/lib/utils';
+
+function formatWhatsAppSidebarTimestamp(rawTimestamp?: string | number | Date | null): string {
+  if (!rawTimestamp) return '';
+  const date = rawTimestamp instanceof Date ? rawTimestamp : new Date(rawTimestamp);
+  if (isNaN(date.getTime())) return '';
+
+  if (isToday(date)) {
+    return format(date, 'h:mm a').toLowerCase();
+  }
+
+  if (isYesterday(date)) {
+    return 'Yesterday';
+  }
+
+  const now = new Date();
+  const diffDays = differenceInCalendarDays(now, date);
+
+  if (diffDays > 0 && diffDays < 7) {
+    return format(date, 'EEEE');
+  }
+
+  return format(date, 'dd/MM/yyyy');
+}
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -3655,9 +3678,8 @@ function WABASidebar({
             if (isSelected && activeLastMsg) {
               lastMsg = activeLastMsg;
             }
-            const time = lastMsg
-              ? formatDistanceToNow(new Date(lastMsg.timestamp || (lastMsg as Message & { created_at?: string }).created_at || new Date()), { addSuffix: false })
-              : '';
+            const rawTimestamp = lastMsg?.timestamp || (lastMsg as Message & { created_at?: string })?.created_at;
+            const time = formatWhatsAppSidebarTimestamp(rawTimestamp);
 
             const avatarColor = getAvatarColor(conv.contact?.phone || conv.contact?.name || conv.id);
 
