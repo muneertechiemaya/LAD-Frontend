@@ -28,7 +28,7 @@ import {
   Users, Repeat, Search, X, HardDrive, Inbox, ListOrdered, BarChart3, GitFork, DatabaseZap,
   Wand2, Trash2, Radar, Split, Plus, Upload, FileSpreadsheet, Sparkles, Contact, Download, Megaphone, Zap, Globe, Telescope, Gauge, Shuffle, PenLine, Webhook, PenTool, ShieldCheck,
   Bookmark, LayoutTemplate, ExternalLink, FlaskConical, Play,
-  Instagram, UserCheck, FileText,
+  Instagram, UserCheck, FileText, AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -1462,8 +1462,21 @@ function useBuilderResources() {
   };
 }
 
-export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSourceCfg, initialNodeCfg, autoLaunch, editCampaignId }: {
+export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSourceCfg, initialNodeCfg, autoLaunch, initialAiTemplate, initialAiWarnings, editCampaignId }: {
   onClose: () => void;
+  /**
+   * A pipeline drafted from a description in the chat, applied to the canvas on
+   * mount. Unlike `initialTemplateKey` this is the template itself: it was
+   * invented for that description, so there is no key to look it up by. Never
+   * launched automatically — the draft is a starting point for review.
+   */
+  initialAiTemplate?: any;
+  /**
+   * Caveats the drafter raised about `initialAiTemplate` — e.g. a requested
+   * parallel branch flattened to sequential. Shown as a banner under the
+   * header, beside Launch, because that is where the user commits.
+   */
+  initialAiWarnings?: string[];
   /** Apply this template on mount (chat "Accelerators" wizard hands off here). */
   initialTemplateKey?: string;
   /** Answers collected in chat — merged into the source node's config. */
@@ -1561,6 +1574,14 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   const [aiText, setAiText] = useState('');
   /** Question id whose "something else" input is open, if any. */
   const [aiOtherFor, setAiOtherFor] = useState<string | null>(null);
+  /**
+   * Caveats about a chat-drafted pipeline, shown until dismissed.
+   *
+   * They belong next to Launch rather than only in the chat that produced them:
+   * they describe where the pipeline differs from what was asked for, and that
+   * is a fact about what is about to be spent and sent.
+   */
+  const [aiWarnings, setAiWarnings] = useState<string[]>(initialAiWarnings || []);
   const aiInputRef = useRef<HTMLTextAreaElement | null>(null);
 
   // ── Test run: simulate the current pipeline against one sample lead ───────
@@ -3673,6 +3694,23 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     applyTemplate(tpl, { silent: true, sourceCfgOverride: initialSourceCfg, nodeCfgOverride: initialNodeCfg });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialTemplateKey]);
+  /**
+   * A pipeline drafted in the chat lands on the canvas through the SAME apply
+   * path as a "Build with AI" draft made here — so what the chat produces and
+   * what this tab produces are the same object, configured the same way. The
+   * palette opens on the AI tab because that is where the draft's summary and
+   * its "adjust the steps" affordance live.
+   */
+  useEffect(() => {
+    if (!initialAiTemplate?.nodes?.length || appliedTplRef.current) return;
+    appliedTplRef.current = true;
+    setPaletteTab('ai');
+    applyAiTemplate(initialAiTemplate);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialAiTemplate]);
+  // Re-arm the banner if a fresh draft arrives while the builder is already
+  // open — a dismissed warning must not hide the NEXT draft's caveats.
+  useEffect(() => { setAiWarnings(initialAiWarnings || []); }, [initialAiWarnings]);
   useEffect(() => {
     if (!autoLaunch || !appliedTplRef.current || autoLaunchedRef.current) return;
     if (!source || launching) return;
@@ -6990,6 +7028,20 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           <button type="button" onClick={() => setEditingId(sequenceIssues[0].id)}
             className="flex-shrink-0 px-2.5 py-1 rounded-md bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200 text-xs font-semibold hover:bg-amber-200 dark:hover:bg-amber-900 transition-colors">
             Fix it
+          </button>
+        </div>
+      )}
+      {aiWarnings.length > 0 && (
+        <div className="mx-4 mt-3 rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-3 flex items-start gap-2">
+          <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-[2px] text-amber-700 dark:text-amber-300" />
+          <div className="flex-1 text-sm text-amber-900 dark:text-amber-200">
+            <strong className="font-semibold">Before you launch — how this differs from what you described:</strong>
+            <ul className="mt-1.5 space-y-1 list-disc pl-4">
+              {aiWarnings.map((w, i) => <li key={i} className="leading-snug">{w}</li>)}
+            </ul>
+          </div>
+          <button type="button" onClick={() => setAiWarnings([])} className="opacity-60 hover:opacity-100 flex-shrink-0" aria-label="Dismiss">
+            <X className="h-4 w-4" />
           </button>
         </div>
       )}

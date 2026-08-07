@@ -29,6 +29,7 @@ import { AgentBuilderVideoProgress } from "@/components/voice-agent/playground/b
 import { AgentBuilderKeyframesConfirm } from "@/components/voice-agent/playground/builder-steps/AgentBuilderKeyframesConfirm";
 import { AgentBuilderBrandDNA } from "@/components/voice-agent/playground/builder-steps/AgentBuilderBrandDNA";
 import { useAuth } from '@/contexts/AuthContext';
+import { fetchWithTenant } from '@/lib/fetch-with-tenant';
 import CustomWorkflowBuilder from '@/components/campaigns/CustomWorkflowBuilder';
 import {
     WORKFLOW_TEMPLATES, WorkflowTemplate,
@@ -218,6 +219,15 @@ interface ChatMsg {
     options?: { label: string; value: string }[];
     /** Rich "Accelerators" wizard card (template pipelines launched from chat). */
     roleCard?: { key: string; stage: 'intro' | 'question' | 'summary' | 'file'; qIdx?: number; nudge?: boolean; answers?: Record<string, string> };
+    /**
+     * Caveats the workflow drafter raised about the pipeline it built — e.g.
+     * "in parallel" collapsed to sequential because the engine is linear.
+     * Rendered as its own callout rather than folded into `text`: these are the
+     * difference between what the user asked for and what they are about to
+     * launch, and a paragraph in a chat bubble is exactly where that gets
+     * skimmed past.
+     */
+    wfWarnings?: string[];
     leads?: LeadProfile[];
     inboundAction?: 'download' | 'upload' | 'summary';
     inboundSummary?: { total: number; linkedin: number; email: number; whatsapp: number; phone: number; website: number };
@@ -251,6 +261,50 @@ interface OutreachStep {
     reason: string;
     recommended: boolean;
 }
+
+/**
+ * One clarifying question from POST /api/campaigns/workflow/interview.
+ *
+ * The catalog lives server-side (every question maps to a config key the
+ * builder actually reads); this mirrors the wire shape only for rendering.
+ */
+interface WfQuestion {
+    id: string;
+    question: string;
+    /** When present, rendered as tappable chips instead of a free-text reply. */
+    options?: string[];
+    /** Pre-filled answer the user can accept with one tap. */
+    default?: string;
+    /** Why the drafter needs this — shown under the question. */
+    why?: string;
+}
+
+/**
+ * Hard ceiling on the interview, independent of the backend's own 3–5 cap.
+ *
+ * The server is stateless and re-derives its questions from the answer map on
+ * every call, so a drafter that never reaches `done` would otherwise keep the
+ * user answering forever. These stop that: `WF_MAX_QUESTIONS` caps how many we
+ * will ASK, `WF_MAX_ROUNDS` caps how many times we will call the endpoint.
+ * Hitting either ends the interview honestly rather than silently looping.
+ */
+const WF_MAX_QUESTIONS = 8;
+const WF_MAX_ROUNDS = 6;
+
+/**
+ * Labels for the drafted pipeline's contact source, so the Workflow panel names
+ * it instead of showing a bare "Contact source" node. Mirrors the builder's own
+ * SOURCES list; the builder remains the authority once the draft opens there.
+ */
+const WF_SOURCE_LABELS: Record<string, { label: string; sub: string }> = {
+    linkedin_search:  { label: 'LinkedIn Search',            sub: 'Find new leads by keywords' },
+    linkedin_signal:  { label: 'LinkedIn Signal Search',     sub: 'Find leads from hiring/buying signals' },
+    file_import:      { label: 'File import (CSV / Excel)',  sub: 'Upload a list and map columns' },
+    zoho_once:        { label: 'Zoho CRM — one-time',        sub: 'Import synced contacts now' },
+    zoho_recurring:   { label: 'Zoho CRM — recurring',       sub: 'Import new contacts daily' },
+    ghl_once:         { label: 'GoHighLevel — one-time',     sub: 'Import synced contacts now' },
+    ghl_recurring:    { label: 'GoHighLevel — recurring',    sub: 'Import new contacts daily' },
+};
 
 /* ═══════════════════════════════════════════════
    UTILS
@@ -616,6 +670,55 @@ function parseRows(rows: string[][], resolve: (leads: ParsedInboundLead[]) => vo
 function isInboundIntent(text: string): boolean {
     const lower = text.toLowerCase();
     return /\b(i have leads|i have .* data|upload.*leads|inbound|import.*leads|have.*csv|have.*excel|already have.*leads|my leads|upload.*file|have.*spreadsheet|bulk.*upload)\b/i.test(lower);
+}
+
+/**
+ * Signals that a message describes a PIPELINE rather than an audience.
+ *
+ * Six independent families. A lead search trips none or one of them; a pipeline
+ * description trips several, because describing a pipeline means naming steps
+ * AND their order AND what happens between them.
+ */
+const PIPELINE_SIGNALS: { name: string; re: RegExp }[] = [
+    // Ordering between steps.
+    { name: 'sequencing', re: /\b(and\s+then|then\s+(send|start|message|email|wait|do|run|add|connect|follow)|after\s+(that|which|they|he|she|it)|once\s+(they|he|she|it|accepted?)|next\s*,|first\W+.*\bthen\b|finally\b)/i },
+    // A named outreach action, not a description of who to find.
+    { name: 'outreach_action', re: /\b(connection\s+request|connect\s+request|send\s+(them\s+|him\s+|her\s+|me\s+|the\s+|a\s+|an\s+)?(mail|email|message|dm|inmail|whatsapp|report)|invite\s+to\s+connect|profile\s+visit|voice\s+call|cold\s+call)\b/i },
+    // An explicit hold between steps.
+    { name: 'wait_gate', re: /\b(wait\s+(for|until|till|\d)|post[-\s]?acceptance|after\s+(they\s+)?accept|on\s+acceptance|when\s+(they|he|she)\s+(accepts?|replies|responds)|delay\s+of|\d+\s*(day|days|hour|hours)\s+(later|gap|delay|wait))\b/i },
+    // A human checkpoint.
+    { name: 'approval_gate', re: /\b(post\s+approval|after\s+(my\s+|your\s+)?approval|once\s+(i\s+)?approve|for\s+(my\s+)?approval|approve\s+(it|first|before)|send\s+me\s+the\s+report|review\s+before)\b/i },
+    // A cadence, not a single touch.
+    { name: 'followup', re: /\b(follow[-\s]?up\s+(sequence|series|cadence|messages?|touches?)|followup\s+sequence|drip\s+(sequence|campaign)|nurture\s+sequence|\d+\s+follow[-\s]?ups?)\b/i },
+    // Fan-out — the one the linear engine cannot honour, so worth detecting.
+    { name: 'parallel', re: /\b(in\s+parallel|at\s+the\s+same\s+time|simultaneously|both\s+.*\band\b.*\b(email|mail|linkedin|whatsapp)|side\s+by\s+side)\b/i },
+];
+
+/**
+ * True when the message reads as "build me this pipeline", not "find me these
+ * people".
+ *
+ * This exists because a pipeline description used to be swallowed by the
+ * handlers that run BEFORE the backend classifier gets a look: the ABM regex
+ * below matches a bare `research <anything>`, so
+ *
+ *   "…and research about them their company, send me the report post approval…"
+ *
+ * was researched as a company literally named "them their" and answered with a
+ * fabricated company profile. The classifier's `workflow_build` verdict cannot
+ * rescue a message that never reaches it.
+ *
+ * Deliberately strict: THREE distinct signal families, and only on a message
+ * long enough to be a description. "Find founders in Dubai" scores 0;
+ * "research Acme Corp" scores 0; "find CTOs then message them" scores 1 and
+ * still searches, exactly as it does today.
+ */
+function looksLikePipelineDescription(text: string): boolean {
+    const t = text.trim();
+    if (t.length < 60) return false;
+    let hits = 0;
+    for (const s of PIPELINE_SIGNALS) if (s.re.test(t)) hits++;
+    return hits >= 3;
 }
 
 /** Returns true when the user's reply is a confirmation of a search preview. */
@@ -1094,9 +1197,44 @@ export default function AdvancedSearchAIPage() {
     // CustomWorkflowBuilder (initialTemplateKey/initialSourceCfg/autoLaunch) so
     // the launch path is the builder's own — no duplicated payload logic.
     const [builderTemplate, setBuilderTemplate] = useState<{ key: string; sourceCfg: Record<string, string>; nodeCfg: Record<string, any>; autoLaunch: boolean } | null>(null);
+    /**
+     * An AI-drafted pipeline handed to the builder. Unlike an Accelerator this
+     * template has no key to look up — it was invented for this description —
+     * so it travels as the template itself, alongside the caveats the drafter
+     * raised so they stay on screen next to the Launch button.
+     */
+    const [builderAiDraft, setBuilderAiDraft] = useState<{ template: any; warnings: string[] } | null>(null);
     const roleWizardRef = useRef<{ key: string; idx: number; answers: Record<string, string> } | null>(null);
     /** Audience preview for the pending Accelerator — keyed off the summary card's CTA. */
     const [rolePreviewing, setRolePreviewing] = useState(false);
+
+    // ── BUILD MODE: "describe a pipeline, get a workflow" ──────────────────
+    // Entered when the message is a pipeline description rather than an
+    // audience (locally via looksLikePipelineDescription, or on the backend
+    // classifier's `workflow_build` verdict). While this ref is set the chat is
+    // conducting an interview: typed replies and option chips answer questions
+    // instead of running searches. Cleared on done, bail-out or cancel, which
+    // returns the chat to its normal behaviour.
+    //
+    // The endpoint is stateless — every call carries the description and the
+    // FULL merged answer map — so this ref is the only place the interview
+    // lives. A ref rather than state for the same reason roleWizardRef is one:
+    // doSend/onOptClick read it mid-callback and must see the latest value.
+    const wfWizardRef = useRef<{
+        description: string;
+        /** questionId → answer, merged and resent on every call. */
+        answers: Record<string, string>;
+        /** Questions from the last response, asked one at a time. */
+        queue: WfQuestion[];
+        /** Index into `queue` of the question currently on screen. */
+        idx: number;
+        /** Questions asked so far this interview — capped at WF_MAX_QUESTIONS. */
+        asked: number;
+        /** Calls made to the interview endpoint — capped at WF_MAX_ROUNDS. */
+        rounds: number;
+    } | null>(null);
+    /** The finished draft, kept so "Open in builder" works after the card scrolls away. */
+    const [wfDraft, setWfDraft] = useState<{ template: any; warnings: string[] } | null>(null);
 
     interface MediaChatMsg {
         id: string;
@@ -3309,6 +3447,315 @@ export default function AdvancedSearchAIPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [finishInboundImport]);
 
+    /* ── Workflow-build interview ──────────────────────────────────────────
+       "Describe a pipeline in chat and get a workflow."
+
+       The whole interview happens in THIS thread — the user asked for that
+       explicitly, and opening the builder to collect answers would throw away
+       the description they already typed. It reuses the confirm-card shape the
+       search preview uses (an AI bubble carrying `options` chips), so a
+       question reads like every other decision point on this page.
+
+       The endpoint is stateless: each call carries the original description
+       plus the full merged answer map, and either asks more (`done:false`) or
+       returns the finished template (`done:true`). Nothing here launches — the
+       draft opens in the builder for review, because a campaign spends real
+       credits and messages real people.
+       ────────────────────────────────────────────────────────────────────── */
+
+    const wfPushAi = useCallback((
+        text: string,
+        options?: { label: string; value: string }[],
+        wfWarnings?: string[],
+    ) => {
+        setMessages(p => [...p, {
+            id: `a-wf-${Date.now()}-${p.length}`, role: 'ai', text, ts: new Date(), options, wfWarnings,
+        }]);
+    }, []);
+
+    /** Leave build mode and hand the user the builder, with nothing drafted. */
+    const wfBailToBuilder = useCallback((text: string) => {
+        wfWizardRef.current = null;
+        setWfDraft(null);
+        wfPushAi(text);
+        setBuilderTemplate(null);
+        setShowCustomWorkflow(true);
+    }, [wfPushAi]);
+
+    /**
+     * Put a finished draft on the builder's canvas for review.
+     *
+     * The template is ad-hoc (the drafter invented it), so it cannot travel as
+     * an `initialTemplateKey` the way an Accelerator does — it goes through the
+     * builder's own AI-draft apply path instead. `autoLaunch` is deliberately
+     * absent: review is the point.
+     */
+    const openDraftInBuilder = useCallback((template: any, warnings: string[]) => {
+        setBuilderTemplate(null);
+        setBuilderAiDraft({ template, warnings });
+        setShowCustomWorkflow(true);
+    }, []);
+
+    /** Render the drafted pipeline into the right-hand Workflow panel. */
+    const wfRenderPreview = useCallback((template: any) => {
+        try {
+            const nodes: any[] = Array.isArray(template?.nodes) ? template.nodes : [];
+            const srcKey: string | undefined = template?.source?.key;
+            const srcDef = srcKey ? WF_SOURCE_LABELS[srcKey] : undefined;
+            const { steps } = templateToPreviewSteps({
+                key: `ai-${Date.now()}`,
+                name: template?.name || 'AI workflow',
+                tagline: template?.tagline || '',
+                chain: nodes.map(n => n.title),
+                source: srcKey ? {
+                    key: srcKey as never,
+                    cfg: template?.source?.cfg || {},
+                    title: srcDef?.label || 'Contact source',
+                    description: srcDef?.sub || '',
+                } : undefined,
+                nodes,
+                inputs: [],
+                accent: '#0b1957',
+                meta: { cycleDays: 30, channels: new Set(nodes.map(n => String(n.type).split('_')[0])).size },
+                category: 'general',
+            } as WorkflowTemplate);
+            setWorkflowPreview(steps as never);
+            setShowPanel('workflow');
+        } catch (e) {
+            // A preview that cannot be built must not block the draft — the
+            // builder renders the same template from the same nodes.
+            console.warn('[workflow-build] preview render failed', e);
+        }
+    }, [setWorkflowPreview]);
+
+    /** Show the question at the head of the queue as a confirm-style card. */
+    const askWfQuestion = useCallback(() => {
+        const wiz = wfWizardRef.current;
+        if (!wiz) return;
+        const q = wiz.queue[wiz.idx];
+        if (!q) return;
+
+        const parts: string[] = [];
+        // A running count is always true. The "of N" is only shown while this
+        // batch is still the whole interview: the server is stateless and may
+        // ask another round, at which point a fixed total would be a lie.
+        const showTotal = wiz.queue.length > 1 && wiz.asked < wiz.queue.length;
+        parts.push(`🛠️ **Building your pipeline** — question ${wiz.asked + 1}${showTotal ? ` of ${wiz.queue.length}` : ''}`);
+        parts.push('');
+        parts.push(q.question);
+        if (q.why) parts.push(`\n*${q.why}*`);
+        if (q.default) parts.push(`\nDefault: **${q.default}**`);
+        if (!q.options?.length) parts.push('\nType your answer below, or tap a button.');
+
+        const opts: { label: string; value: string }[] = [];
+        // Options become tappable chips; the default one is marked so it can be
+        // accepted with a single tap.
+        for (const o of (q.options || []).slice(0, 12)) {
+            opts.push({
+                label: q.default && o === q.default ? `✅ ${o} (default)` : o,
+                value: `__wf_answer__:${o}`,
+            });
+        }
+        // Skipping and accepting the default are the same action, so they are
+        // the same control — naming the value it will use makes the one-tap
+        // accept obvious without adding a second chip that does the same thing.
+        opts.push({
+            label: q.default ? `⏭️ Skip — use "${q.default}"` : '⏭️ Skip this one',
+            value: '__wf_skip__',
+        });
+        // The way out, on every question.
+        opts.push({ label: '🛠️ Build it myself instead', value: '__wf_bail__' });
+        wfPushAi(parts.join('\n'), opts);
+    }, [wfPushAi]);
+
+    /**
+     * Call the interview endpoint with the full answer map and act on the reply.
+     *
+     * Degrades rather than throws: a 404 means the backend half isn't deployed
+     * yet, and the honest answer there is "not available — here's the builder".
+     */
+    const wfCallInterview = useCallback(async (answers: Record<string, string>) => {
+        const wiz = wfWizardRef.current;
+        if (!wiz) return;
+        wiz.rounds += 1;
+        const loadingId = `l-wf-${Date.now()}`;
+        setMessages(p => [...p, { id: loadingId, role: 'ai', text: '', ts: new Date(), loading: true }]);
+        setBusy(true);
+        try {
+            const res = await fetchWithTenant('/api/campaigns/workflow/interview', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ description: wiz.description, answers }),
+            });
+            setMessages(p => p.filter(m => m.id !== loadingId));
+            // The user can bail out or cancel while this is in flight. Once they
+            // have, this reply belongs to an interview that no longer exists —
+            // answering it would drop a question card into a chat that has moved
+            // on, or reopen the builder they just closed.
+            if (wfWizardRef.current !== wiz) return;
+
+            // Not deployed here yet. Say so and offer the builder rather than
+            // hanging, throwing, or falling back to a lead search — a search is
+            // exactly the wrong answer to a pipeline description.
+            if (res.status === 404 || res.status === 501) {
+                wfWizardRef.current = null;
+                wfPushAi(
+                    '🛠️ Building a workflow from a description isn\'t available on this environment yet.\n\nYou can still build this pipeline yourself — the Accelerator builder has a **Build with AI** tab where you can paste the same description, or you can drag the steps in by hand.',
+                    [{ label: '🛠️ Open the builder', value: '__wf_bail__' }],
+                );
+                return;
+            }
+            let data: any = null;
+            try { data = await res.json(); } catch { /* non-JSON error body */ }
+            if (!res.ok || !data?.success) {
+                wfWizardRef.current = null;
+                wfPushAi(
+                    `⚠️ I couldn't build that workflow${data?.error ? ` — ${data.error}` : ''}. You can describe it again, or build it in the Accelerator builder.`,
+                    [{ label: '🛠️ Open the builder', value: '__wf_bail__' }],
+                );
+                return;
+            }
+
+            const warnings: string[] = Array.isArray(data.warnings) ? data.warnings.filter((w: any) => typeof w === 'string' && w.trim()) : [];
+
+            if (data.done) {
+                if (!data.template?.nodes?.length) {
+                    wfWizardRef.current = null;
+                    wfPushAi(
+                        '⚠️ The drafter finished but produced an empty pipeline. Try describing it again with the steps in order, or build it yourself.',
+                        [{ label: '🛠️ Open the builder', value: '__wf_bail__' }],
+                    );
+                    return;
+                }
+                wfWizardRef.current = null;
+                const template = data.template;
+                setWfDraft({ template, warnings });
+                wfRenderPreview(template);
+
+                const nodes: any[] = template.nodes;
+                // Numbered because the engine is linear — the order IS the
+                // pipeline, and a chip row would not say that.
+                const lines = nodes.map((n: any, i: number) =>
+                    `${i + 1}. **${n.title || n.type}**${n.description ? ` — ${n.description}` : ''}`);
+                const parts: string[] = [
+                    `✅ **Your pipeline is ready — "${template.name || 'AI workflow'}"**`,
+                    '',
+                    ...lines,
+                    '',
+                ];
+                if (template.notes) parts.push(`*${template.notes}*`, '');
+                parts.push('It\'s in the **Workflow** panel and open in the builder — **nothing has launched**. Review each step, then hit Launch there when it looks right.');
+
+                wfPushAi(parts.join('\n'), [
+                    { label: '🛠️ Open in builder', value: '__wf_openbuilder__' },
+                    { label: '✏️ Describe it differently', value: '__wf_restart__' },
+                    { label: '❌ Discard', value: '__wf_cancel__' },
+                ], warnings);
+                openDraftInBuilder(template, warnings);
+                return;
+            }
+
+            // Normalised at the boundary so every reader below can trust the
+            // shape: a question with no id or no text is unanswerable, and a
+            // non-string option would render as "[object Object]" on a chip.
+            const questions: WfQuestion[] = (Array.isArray(data.questions) ? data.questions : [])
+                .filter((q: any) => q && typeof q.id === 'string' && typeof q.question === 'string' && q.question.trim())
+                .map((q: any): WfQuestion => ({
+                    id: q.id,
+                    question: q.question,
+                    options: Array.isArray(q.options)
+                        ? q.options.filter((o: any) => typeof o === 'string' && o.trim())
+                        : undefined,
+                    default: typeof q.default === 'string' && q.default.trim() ? q.default : undefined,
+                    why: typeof q.why === 'string' && q.why.trim() ? q.why : undefined,
+                }));
+            if (!questions.length) {
+                // done:false with nothing to ask is a contract violation; treat it
+                // as "cannot finish" rather than sitting on a silent dead end.
+                wfWizardRef.current = null;
+                wfPushAi(
+                    '⚠️ I ran out of questions before the pipeline was finished. Open the builder and I\'ll pick it up from your description there.',
+                    [{ label: '🛠️ Open the builder', value: '__wf_bail__' }],
+                );
+                return;
+            }
+            // Runaway drafter: it keeps asking and never finishes. Both caps are
+            // checked HERE as well as at answer time, because a server that
+            // re-asks after every round would otherwise refill the queue
+            // indefinitely without either counter ever ending the interview.
+            if (wiz.rounds >= WF_MAX_ROUNDS || wiz.asked >= WF_MAX_QUESTIONS) {
+                wfBailToBuilder('🛠️ This is taking more back-and-forth than it should. I\'ve opened the builder so you can finish it directly — your description and answers are the starting point.');
+                return;
+            }
+            // Warnings can arrive mid-interview; surface them as they come
+            // rather than only at the end.
+            if (warnings.length) {
+                wfPushAi('Worth knowing before we go further:', undefined, warnings);
+            }
+            wiz.queue = questions;
+            wiz.idx = 0;
+            askWfQuestion();
+        } catch (e) {
+            setMessages(p => p.filter(m => m.id !== loadingId));
+            console.warn('[workflow-build] interview failed', e);
+            wfWizardRef.current = null;
+            wfPushAi(
+                '⚠️ I couldn\'t reach the workflow builder service. You can try again, or build the pipeline yourself.',
+                [{ label: '🛠️ Open the builder', value: '__wf_bail__' }],
+            );
+        } finally {
+            setBusy(false);
+        }
+    }, [wfPushAi, wfBailToBuilder, wfRenderPreview, openDraftInBuilder, askWfQuestion]);
+
+    /**
+     * Record one answer and advance. Exhausting the queue sends everything back
+     * for the next round; hitting the question cap ends the interview instead of
+     * letting a runaway drafter ask forever.
+     */
+    const handleWfAnswer = useCallback((value: string, opts?: { skipped?: boolean }) => {
+        const wiz = wfWizardRef.current;
+        if (!wiz) return;
+        const q = wiz.queue[wiz.idx];
+        // Earlier cards keep their buttons live, so a click can arrive for a
+        // question the interview has already moved past. Same guard as the
+        // Roles wizard: a stale click is a no-op, not a phantom reply.
+        if (!q) return;
+
+        // A skip takes the default when there is one and simply records nothing
+        // when there isn't — the server re-derives from what it has either way.
+        const answer = opts?.skipped ? (q.default || '') : value.trim();
+        if (answer) wiz.answers[q.id] = answer;
+        wiz.idx += 1;
+        wiz.asked += 1;
+
+        if (wiz.idx < wiz.queue.length) {
+            if (wiz.asked >= WF_MAX_QUESTIONS) {
+                // Stop asking, but still let the server finish from what it has.
+                wiz.queue = [];
+                wiz.idx = 0;
+                wfPushAi('That\'s enough to work with — drafting the pipeline now.');
+                void wfCallInterview({ ...wiz.answers });
+                return;
+            }
+            askWfQuestion();
+            return;
+        }
+        void wfCallInterview({ ...wiz.answers });
+    }, [askWfQuestion, wfCallInterview, wfPushAi]);
+
+    /**
+     * Enter build mode: this message describes a pipeline, so build one instead
+     * of searching for leads.
+     */
+    const enterWorkflowBuild = useCallback((description: string) => {
+        roleWizardRef.current = null;
+        setWfDraft(null);
+        wfWizardRef.current = { description, answers: {}, queue: [], idx: 0, asked: 0, rounds: 0 };
+        wfPushAi('🛠️ That reads like a **pipeline**, not a lead search — so let\'s build it rather than search for it. A couple of quick questions and I\'ll draft it for you.');
+        void wfCallInterview({});
+    }, [wfPushAi, wfCallInterview]);
+
     const doSend = useCallback(async (text: string, opts?: { targetingOverride?: LeadTargeting }) => {
         if (!text.trim() || busy) return;
         // ICP chip sentinel → run the SearchDispatcher (Apollo + Sales Nav on the active
@@ -3335,6 +3782,26 @@ export default function AdvancedSearchAIPage() {
             setPendingImportLocation(null);
             await finishInboundImport(parsedLeads, isGlobal ? '' : reply, lid);
             setBusy(false);
+            return;
+        }
+
+        // ── PRIORITY -1: Pipeline description → BUILD MODE ──
+        // This message describes a workflow, not an audience. It must be caught
+        // HERE, ahead of the ABM / web-search / lead-chat handlers below: the
+        // ABM regex matches a bare `research <anything>`, which is how
+        // "…research about them their company, send me the report post
+        // approval…" was answered with an invented company profile for a firm
+        // called "them their". The backend's `workflow_build` verdict (handled
+        // at the search response, below) cannot save a message that never
+        // reaches the classifier.
+        //
+        // looksLikePipelineDescription needs three independent pipeline signals
+        // to fire, so ordinary ICP, ABM and signal queries fall straight
+        // through to the flows they use today.
+        if (!wfWizardRef.current && looksLikePipelineDescription(text)) {
+            setMessages(p => p.filter(m => m.id !== lid));
+            setBusy(false);
+            enterWorkflowBuild(text);
             return;
         }
 
@@ -4307,6 +4774,19 @@ export default function AdvancedSearchAIPage() {
 
                 setIsSearching(false);
 
+                // ── Classifier verdict: this was a pipeline, not a search ──
+                // The unified endpoint routes to `workflow_build` when the query
+                // describes a workflow. It returns no people for that module, so
+                // rendering the usual result set would print a lead panel over an
+                // empty answer. Hand the description to the interview instead and
+                // leave the search path untouched for every other module.
+                if (d?.module_used === 'workflow_build') {
+                    setMessages(p => p.filter(m => m.id !== lid));
+                    setBusy(false);
+                    enterWorkflowBuild(text);
+                    return;
+                }
+
                 if (d) {
                     if (d.intent) {
                         const newExt: LeadTargeting = {
@@ -4661,7 +5141,7 @@ export default function AdvancedSearchAIPage() {
                 id: `a-${Date.now()}`, role: 'ai', text: '⚠️ Something went wrong. Please try again.', ts: new Date(),
             }));
         } finally { setBusy(false); }
-    }, [busy, messages, convId, targeting, pendingIntent, pendingSearchConfirmation, pendingLocationRequest, pendingImportLocation, finishInboundImport, webSearchEnabled]);
+    }, [busy, messages, convId, targeting, pendingIntent, pendingSearchConfirmation, pendingLocationRequest, pendingImportLocation, finishInboundImport, webSearchEnabled, enterWorkflowBuild]);
 
     // ── Roles wizard ───────────────────────────────────────────────────────
     const rolePushAi = useCallback((text: string, options?: { label: string; value: string }[]) => {
@@ -4735,11 +5215,68 @@ export default function AdvancedSearchAIPage() {
             handleRoleAnswer(t);
             return;
         }
+        // Build mode: a typed reply answers the question on screen rather than
+        // starting a search. Same shape as the Roles wizard above so there is
+        // one advance path per wizard, typed or tapped. Gated on there actually
+        // BEING a question on screen — between rounds the interview holds no
+        // question, and swallowing the reply there would echo the user with no
+        // answer coming back.
+        if (wfWizardRef.current && wfWizardRef.current.queue[wfWizardRef.current.idx]) {
+            const t = input.trim();
+            setInput('');
+            if (taRef.current) taRef.current.style.height = 'auto';
+            setMessages(p => [...p, { id: `u-wf-${Date.now()}`, role: 'user', text: t, ts: new Date() }]);
+            handleWfAnswer(t);
+            return;
+        }
         doSend(input.trim()); setInput('');
         if (taRef.current) taRef.current.style.height = 'auto';
-    }, [input, busy, doSend, handleRoleAnswer]);
+    }, [input, busy, doSend, handleRoleAnswer, handleWfAnswer]);
 
     const onOptClick = useCallback(async (v: string) => {
+        // ── Workflow-build interview actions ──────────────────────────────
+        // A chip is a shortcut for typing, so it routes through the same
+        // handleWfAnswer the composer does — one advance path per wizard.
+        //
+        // Every earlier question card stays in the transcript with its buttons
+        // live, so a click can arrive for a question the interview has already
+        // moved past. Checking for a current question BEFORE echoing keeps a
+        // stale click a no-op instead of a user bubble no answer ever follows.
+        if (v.startsWith('__wf_answer__:') || v === '__wf_skip__') {
+            const wiz = wfWizardRef.current;
+            const q = wiz?.queue[wiz.idx];
+            if (!q) return;
+            const skipped = v === '__wf_skip__';
+            const answer = skipped ? (q.default || '') : v.slice('__wf_answer__:'.length);
+            setMessages(p => [...p, {
+                id: `u-wf-${Date.now()}`, role: 'user',
+                text: answer || 'Skip', ts: new Date(),
+            }]);
+            handleWfAnswer(answer, { skipped });
+            return;
+        }
+        if (v === '__wf_bail__') {
+            wfBailToBuilder('🛠️ Opened the Accelerator builder — pick your steps there and configure each one.');
+            return;
+        }
+        if (v === '__wf_openbuilder__') {
+            if (wfDraft) openDraftInBuilder(wfDraft.template, wfDraft.warnings);
+            else { setBuilderTemplate(null); setShowCustomWorkflow(true); }
+            return;
+        }
+        if (v === '__wf_restart__') {
+            wfWizardRef.current = null;
+            setWfDraft(null);
+            wfPushAi('Sure — describe the pipeline again and I\'ll draft it fresh. Say the steps in the order you want them to run.');
+            return;
+        }
+        if (v === '__wf_cancel__') {
+            wfWizardRef.current = null;
+            setWfDraft(null);
+            wfPushAi('No problem — pipeline discarded. Nothing was launched. Describe another one any time, or search for leads as usual.');
+            return;
+        }
+
         // ── Roles wizard actions ──────────────────────────────────────────
         // Copy gate answered by button — routed through the same handler as a
         // typed reply so the wizard has one advance path.
@@ -5008,7 +5545,7 @@ export default function AdvancedSearchAIPage() {
         }
         if (v.toLowerCase().includes('refine')) setChatBlocked(false);
         doSend(v);
-    }, [doSend, targeting, pendingContact, setCpStep, isMobile, rolePreviewing, leadCount, useSalesNav, linkedInSearch, rolePushAi, pushRoleCard, handleRoleAnswer]);
+    }, [doSend, targeting, pendingContact, setCpStep, isMobile, rolePreviewing, leadCount, useSalesNav, linkedInSearch, rolePushAi, pushRoleCard, handleRoleAnswer, handleWfAnswer, wfBailToBuilder, wfPushAi, wfDraft, openDraftInBuilder]);
 
     const handleTargetingConfirm = useCallback(async () => {
         // Build the updated targeting object with new filter values
@@ -7680,11 +8217,13 @@ export default function AdvancedSearchAIPage() {
             {showCustomWorkflow && (
                 <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: '#F8F9FE' }}>
                     <CustomWorkflowBuilder
-                        onClose={() => { setShowCustomWorkflow(false); setBuilderTemplate(null); setEditingCampaignId(null); }}
+                        onClose={() => { setShowCustomWorkflow(false); setBuilderTemplate(null); setBuilderAiDraft(null); setEditingCampaignId(null); }}
                         initialTemplateKey={builderTemplate?.key}
                         initialSourceCfg={builderTemplate?.sourceCfg}
                         initialNodeCfg={builderTemplate?.nodeCfg}
                         autoLaunch={builderTemplate?.autoLaunch}
+                        initialAiTemplate={builderAiDraft?.template}
+                        initialAiWarnings={builderAiDraft?.warnings}
                         editCampaignId={editingCampaignId || undefined}
                     />
                 </div>
@@ -8498,6 +9037,29 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                           </div>
                       )}
                   </div>
+                )}
+
+                {/* ── Workflow-build caveats ──
+                    Where the drafted pipeline differs from what was asked for
+                    — most often "in parallel" flattened to sequential, because
+                    the engine runs one step at a time. Rendered as its own
+                    panel, above the buttons, so it is read before the decision
+                    rather than discovered after the campaign is live. */}
+                {msg.wfWarnings && msg.wfWarnings.length > 0 && (
+                    <div className="mt-3 rounded-xl border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-3">
+                        <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-amber-800 dark:text-amber-300">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" /><path d="M12 9v4" /><path d="M12 17h.01" /></svg>
+                            Read this before you launch
+                        </div>
+                        <ul className="mt-2 space-y-1.5 list-none p-0 m-0">
+                            {msg.wfWarnings.map((w, i) => (
+                                <li key={i} className="text-[13px] leading-snug text-amber-900 dark:text-amber-200 flex gap-2">
+                                    <span aria-hidden className="flex-shrink-0">•</span>
+                                    <span>{w}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
                 )}
 
                 {/* Option buttons from AI */}
