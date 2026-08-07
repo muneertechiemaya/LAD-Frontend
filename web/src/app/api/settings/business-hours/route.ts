@@ -15,8 +15,14 @@ function getBackendBase() {
 }
 
 function authHeaders(req: NextRequest): Record<string, string> {
+  // Matches the convention in api/personal-whatsapp/[...path]/route.ts — the
+  // login flow sets 'token', not 'access_token'; checking only access_token
+  // 401'd every request for a normal logged-in session (confirmed live: this
+  // route deployed and immediately 401'd on a real session whose cookie is
+  // named 'token').
   const token =
     req.cookies.get('access_token')?.value ||
+    req.cookies.get('token')?.value ||
     req.headers.get('authorization')?.replace('Bearer ', '');
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
