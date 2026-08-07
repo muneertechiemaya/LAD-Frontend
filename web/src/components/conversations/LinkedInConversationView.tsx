@@ -454,6 +454,50 @@ export function LinkedInConversationView({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
+  // Group messages by date and interleave DateSeparator items
+  const messagesWithDateSeparators = useMemo(() => {
+    const items: Array<
+      | { type: 'date'; date: Date; key: string }
+      | { type: 'message'; msg: LinkedInMessage; key: string }
+    > = [];
+    let lastDate: Date | null = null;
+
+    messages.forEach((msg) => {
+      const msgDate = new Date(msg.created_at);
+      const isValidDate = !isNaN(msgDate.getTime());
+
+      if (isValidDate && (!lastDate || !isSameDay(lastDate, msgDate))) {
+        items.push({
+          type: 'date',
+          date: msgDate,
+          key: `date-${msgDate.toISOString()}-${msg.id}`,
+        });
+        lastDate = msgDate;
+      }
+      items.push({
+        type: 'message',
+        msg,
+        key: msg.id,
+      });
+    });
+
+    return items;
+  }, [messages]);
+
+  const [isSmallMobile, setIsSmallMobile] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.innerWidth < 640;
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsSmallMobile(window.innerWidth < 640);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isMobileView = propIsMobile ?? isSmallMobile;
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
 
   // ── Load conversations ─────────────────────────────────────────────────────
@@ -1035,8 +1079,8 @@ export function LinkedInConversationView({
                   )}
                   placeholder={
                     chatEnabled
-                      ? 'Type a message… (Enter to send, Shift+Enter for newline)'
-                      : 'Chat unavailable — waiting for connection acceptance'
+                      ? (isMobileView ? 'Type a message…' : 'Type a message… (Enter to send, Shift+Enter for newline)')
+                      : (isMobileView ? 'Chat unavailable' : 'Chat unavailable - waiting for connection acceptance')
                   }
                   rows={1}
                   value={messageText}
