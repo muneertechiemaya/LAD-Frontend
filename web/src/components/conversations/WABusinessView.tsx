@@ -4560,6 +4560,7 @@ function WABASidebar({
           onRefresh?.();
           setImportRefreshTrigger((prev) => prev + 1);
         }}
+        variant="whatsapp"
       />
 
       <CreateBroadcastGroupModal
