@@ -28,7 +28,7 @@ import {
   Users, Repeat, Search, X, HardDrive, Inbox, ListOrdered, BarChart3, GitFork, DatabaseZap,
   Wand2, Trash2, Radar, Split, Plus, Upload, FileSpreadsheet, Sparkles, Contact, Download, Megaphone, Zap, Globe, Telescope, Gauge, Shuffle, PenLine, Webhook, PenTool, ShieldCheck,
   Bookmark, LayoutTemplate, ExternalLink, FlaskConical, Play,
-  Instagram, UserCheck, FileText,
+  Instagram, UserCheck, FileText, AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -1462,8 +1462,21 @@ function useBuilderResources() {
   };
 }
 
-export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSourceCfg, initialNodeCfg, autoLaunch, editCampaignId }: {
+export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSourceCfg, initialNodeCfg, autoLaunch, initialAiTemplate, initialAiWarnings, editCampaignId }: {
   onClose: () => void;
+  /**
+   * A pipeline drafted from a description in the chat, applied to the canvas on
+   * mount. Unlike `initialTemplateKey` this is the template itself: it was
+   * invented for that description, so there is no key to look it up by. Never
+   * launched automatically — the draft is a starting point for review.
+   */
+  initialAiTemplate?: any;
+  /**
+   * Caveats the drafter raised about `initialAiTemplate` — e.g. a requested
+   * parallel branch flattened to sequential. Shown as a banner under the
+   * header, beside Launch, because that is where the user commits.
+   */
+  initialAiWarnings?: string[];
   /** Apply this template on mount (chat "Accelerators" wizard hands off here). */
   initialTemplateKey?: string;
   /** Answers collected in chat — merged into the source node's config. */
@@ -1561,6 +1574,14 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   const [aiText, setAiText] = useState('');
   /** Question id whose "something else" input is open, if any. */
   const [aiOtherFor, setAiOtherFor] = useState<string | null>(null);
+  /**
+   * Caveats about a chat-drafted pipeline, shown until dismissed.
+   *
+   * They belong next to Launch rather than only in the chat that produced them:
+   * they describe where the pipeline differs from what was asked for, and that
+   * is a fact about what is about to be spent and sent.
+   */
+  const [aiWarnings, setAiWarnings] = useState<string[]>(initialAiWarnings || []);
   const aiInputRef = useRef<HTMLTextAreaElement | null>(null);
 
   // ── Test run: simulate the current pipeline against one sample lead ───────
@@ -3315,9 +3336,14 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           // (Mr LAD writes the touch from the conversation at send time).
           const body = (t.message || '').trim();
           const n = idx + 1;
+          // Structured LinkedIn touch types (industry_trend | company_page_post)
+          // — the backend step-executor reuses the auto-follow-up research +
+          // persona generation when this is set. Only forward the two supported
+          // modes so other touch_type values (e.g. lead_report) fall through.
+          const liTouchType = (t.touch_type === 'industry_trend' || t.touch_type === 'company_page_post') ? t.touch_type : undefined;
           if (fuChannel === 'email') steps.push({ type: 'email_send', title: `Follow-up ${n} (email)`, channel: 'email', order_index: order++, config: { subject: '', body, template_id: tid, ...d } });
           else if (fuChannel === 'whatsapp') steps.push({ type: 'whatsapp_send', title: `Follow-up ${n} (WhatsApp)`, channel: 'whatsapp', order_index: order++, config: { whatsappMessage: body, whatsapp_template_id: tid, ...d } });
-          else steps.push({ type: 'linkedin_message', title: `Follow-up ${n} (LinkedIn)`, channel: 'linkedin', order_index: order++, config: { message: body, template_id: tid, ...d } });
+          else steps.push({ type: 'linkedin_message', title: `Follow-up ${n} (LinkedIn)`, channel: 'linkedin', order_index: order++, config: { message: body, template_id: tid, ...(liTouchType ? { touch_type: liTouchType } : {}), ...d } });
         });
       }
 
@@ -3668,6 +3694,23 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     applyTemplate(tpl, { silent: true, sourceCfgOverride: initialSourceCfg, nodeCfgOverride: initialNodeCfg });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialTemplateKey]);
+  /**
+   * A pipeline drafted in the chat lands on the canvas through the SAME apply
+   * path as a "Build with AI" draft made here — so what the chat produces and
+   * what this tab produces are the same object, configured the same way. The
+   * palette opens on the AI tab because that is where the draft's summary and
+   * its "adjust the steps" affordance live.
+   */
+  useEffect(() => {
+    if (!initialAiTemplate?.nodes?.length || appliedTplRef.current) return;
+    appliedTplRef.current = true;
+    setPaletteTab('ai');
+    applyAiTemplate(initialAiTemplate);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialAiTemplate]);
+  // Re-arm the banner if a fresh draft arrives while the builder is already
+  // open — a dismissed warning must not hide the NEXT draft's caveats.
+  useEffect(() => { setAiWarnings(initialAiWarnings || []); }, [initialAiWarnings]);
   useEffect(() => {
     if (!autoLaunch || !appliedTplRef.current || autoLaunchedRef.current) return;
     if (!source || launching) return;
@@ -4184,23 +4227,43 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                         <span className="text-xs text-muted-foreground">hours (≈ {Math.round((h / 24) * 10) / 10}d) after {i === 0 ? 'the previous step' : `touch ${i}`}</span>
                       </div>
                       <select className={`${field} h-8`}
-                        value={t.touch_type === 'lead_report' ? '__lead_report__' : (t.template_id || '')}
+                        value={
+                          t.touch_type === 'lead_report' ? '__lead_report__'
+                          : t.touch_type === 'industry_trend' ? '__industry_trend__'
+                          : t.touch_type === 'company_page_post' ? '__company_post__'
+                          : (t.template_id || '')
+                        }
                         onChange={(e) => {
                           const v = e.target.value;
-                          // The report option is a TOUCH TYPE, not a template —
-                          // the backend branches on touch_type, so setting one
-                          // must clear the other or the row carries both and the
+                          // These options are TOUCH TYPES, not templates — the
+                          // backend branches on touch_type, so selecting one must
+                          // clear template_id or the row carries both and the
                           // template path wins.
                           if (v === '__lead_report__') setTouch(i, { touch_type: 'lead_report', template_id: undefined });
+                          else if (v === '__industry_trend__') setTouch(i, { touch_type: 'industry_trend', template_id: undefined });
+                          else if (v === '__company_post__') setTouch(i, { touch_type: 'company_page_post', template_id: undefined });
                           else setTouch(i, { touch_type: undefined, template_id: v || undefined });
                         }}>
                         <option value="">AI-generated (default)</option>
                         {reportBeforeFollowup && (
                           <option value="__lead_report__">Attach the audit report</option>
                         )}
+                        {channel === 'linkedin' && (
+                          <>
+                            <option value="__industry_trend__">Research the prospect&apos;s industry trend</option>
+                            <option value="__company_post__">Share a post from our company page</option>
+                          </>
+                        )}
                         {tmpls.map((tm: any) => <option key={tm.id} value={tm.id}>{tmplName(tm)}</option>)}
                       </select>
-                      {!t.template_id && (
+                      {(t.touch_type === 'industry_trend' || t.touch_type === 'company_page_post') && (
+                        <p className="text-[11px] leading-snug text-muted-foreground">
+                          {t.touch_type === 'industry_trend'
+                            ? 'Mr LAD researches a current trend in the prospect’s industry and writes the touch, grounded in your persona.'
+                            : 'Mr LAD picks a relevant recent post from your connected company page, shares the link, and invites the prospect to follow. The page comes from your LinkedIn follow-up settings.'}
+                        </p>
+                      )}
+                      {!t.template_id && t.touch_type !== 'industry_trend' && t.touch_type !== 'company_page_post' && (
                         <textarea className={`${field} min-h-[64px]`} value={t.message || ''} onChange={(e) => setTouch(i, { message: e.target.value })}
                           placeholder={`Message for touch ${i + 1} — leave blank to let Mr LAD draft it`} />
                       )}
@@ -4265,7 +4328,17 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               <label className="flex items-center gap-2 text-sm text-foreground"><input type="checkbox" className="h-4 w-4" checked={cfg.m_new_leads !== false} onChange={(e) => setCfg(editingId, { m_new_leads: e.target.checked })} /> New leads imported (24h)</label>
               <label className="flex items-center gap-2 text-sm text-foreground"><input type="checkbox" className="h-4 w-4" checked={cfg.m_pipeline !== false} onChange={(e) => setCfg(editingId, { m_pipeline: e.target.checked })} /> Lead pipeline status</label>
             </div>
-            <p className="text-xs text-muted-foreground">Sent by Mr LAD via your connected {(cfg.channel || 'email') === 'whatsapp' ? 'WhatsApp' : 'email'} account while the campaign is running.</p>
+            {/* The two channels genuinely differ now, so this is no longer one
+                sentence with a swapped noun. WhatsApp goes from the Mr LAD
+                number as a PDF — template body parameters cannot hold the
+                multi-line breakdown, and one message per lead would read as
+                spam. Email still sends from the tenant's own mailbox with the
+                breakdown inline, because it has neither constraint. */}
+            <p className="text-xs text-muted-foreground">
+              {(cfg.channel || 'email') === 'whatsapp'
+                ? 'Sent from the Mr LAD WhatsApp number as a PDF attachment — one message, however many leads there are.'
+                : 'Sent by Mr LAD via your connected email account while the campaign is running.'}
+            </p>
           </>)}
 
           {isZohoUpdate && (() => {
@@ -6955,6 +7028,20 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           <button type="button" onClick={() => setEditingId(sequenceIssues[0].id)}
             className="flex-shrink-0 px-2.5 py-1 rounded-md bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200 text-xs font-semibold hover:bg-amber-200 dark:hover:bg-amber-900 transition-colors">
             Fix it
+          </button>
+        </div>
+      )}
+      {aiWarnings.length > 0 && (
+        <div className="mx-4 mt-3 rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-3 flex items-start gap-2">
+          <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-[2px] text-amber-700 dark:text-amber-300" />
+          <div className="flex-1 text-sm text-amber-900 dark:text-amber-200">
+            <strong className="font-semibold">Before you launch — how this differs from what you described:</strong>
+            <ul className="mt-1.5 space-y-1 list-disc pl-4">
+              {aiWarnings.map((w, i) => <li key={i} className="leading-snug">{w}</li>)}
+            </ul>
+          </div>
+          <button type="button" onClick={() => setAiWarnings([])} className="opacity-60 hover:opacity-100 flex-shrink-0" aria-label="Dismiss">
+            <X className="h-4 w-4" />
           </button>
         </div>
       )}
