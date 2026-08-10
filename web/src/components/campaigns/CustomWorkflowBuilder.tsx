@@ -1541,6 +1541,35 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   const hydratedRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   // Zoho write-back node: the target module's field metadata (fetched lazily).
+  // Saved broadcast audiences. Loaded lazily — only a broadcast drawer needs
+  // them, and most workflows have no broadcast at all.
+  const [bcGroups, setBcGroups] = useState<{ id: string; name: string; member_count: number; is_active: boolean }[]>([]);
+  const [bcGroupsLoading, setBcGroupsLoading] = useState(false);
+  const [bcGroupsError, setBcGroupsError] = useState<string | null>(null);
+  const [bcBusy, setBcBusy] = useState<string | null>(null);
+
+  const loadBroadcastGroups = useCallback(async () => {
+    setBcGroupsLoading(true); setBcGroupsError(null);
+    try {
+      const res = await fetchWithTenant('/api/campaigns/broadcast-groups');
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json?.success) throw new Error(json?.error || 'Could not load groups');
+      setBcGroups(Array.isArray(json.data) ? json.data : []);
+    } catch (e: any) {
+      setBcGroupsError(e?.message || 'Could not load groups');
+    } finally {
+      setBcGroupsLoading(false);
+    }
+  }, []);
+
+  // Fetch on drawer open rather than on mount: most workflows never contain a
+  // broadcast, and this is a network call per builder session otherwise.
+  useEffect(() => {
+    if (editingId === WA_BROADCAST_STEP_ID || editingId === EMAIL_BROADCAST_STEP_ID) {
+      loadBroadcastGroups().catch(() => {});
+    }
+  }, [editingId, loadBroadcastGroups]);
+
   const [zohoFields, setZohoFields] = useState<any[]>([]);
   const [zohoFieldsLoading, setZohoFieldsLoading] = useState(false);
   const [zohoFieldsError, setZohoFieldsError] = useState<string | null>(null);
@@ -4482,12 +4511,91 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   <option value="campaign_leads">Everyone in this campaign</option>
                   <option value="group">A saved group</option>
                 </select></div>
-              {cfg.audience_source === 'group' && (
-                <div className="space-y-1"><label className="text-xs font-medium text-foreground">Group ID</label>
-                  <input className={field} value={cfg.group_id || ''} placeholder="Saved broadcast group"
-                    onChange={(e) => setCfg(eid, { group_id: e.target.value })} />
-                  <p className="text-[11px] text-muted-foreground">Group management UI is not built yet — paste an id for now.</p></div>
-              )}
+              {cfg.audience_source === 'group' && (() => {
+                const chosen = bcGroups.find((g) => g.id === cfg.group_id);
+                const createGroup = async () => {
+                  const name = window.prompt('Name this audience');
+                  if (!name || !name.trim()) return;
+                  setBcBusy('create');
+                  try {
+                    const res = await fetchWithTenant('/api/campaigns/broadcast-groups', {
+                      method: 'POST', headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ name: name.trim() }),
+                    });
+                    const json = await res.json().catch(() => ({}));
+                    if (!res.ok || !json?.success) { setBcGroupsError(json?.error || 'Could not create the group'); return; }
+                    setBcGroups((prev) => [json.data, ...prev]);
+                    setCfg(eid, { group_id: json.data.id });
+                  } finally { setBcBusy(null); }
+                };
+                const fillFromCampaign = async () => {
+                  if (!cfg.group_id || !editCampaignId) return;
+                  setBcBusy('fill');
+                  try {
+                    const res = await fetchWithTenant(`/api/campaigns/broadcast-groups/${cfg.group_id}/members`, {
+                      method: 'POST', headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ campaign_id: editCampaignId }),
+                    });
+                    const json = await res.json().catch(() => ({}));
+                    if (!res.ok || !json?.success) { setBcGroupsError(json?.error || 'Could not add members'); return; }
+                    const d = json.data || {};
+                    // Say what was skipped. A contact with no email, phone or
+                    // LinkedIn URL cannot be de-duplicated or reached, and an
+                    // import that silently keeps 140 of 200 is how an audience
+                    // quietly shrinks.
+                    setBcGroupsError(
+                      `Added ${d.added ?? 0}` +
+                      (d.duplicate ? `, ${d.duplicate} already in the group` : '') +
+                      (d.unreachable ? `, ${d.unreachable} skipped with no email, phone or LinkedIn` : '')
+                    );
+                    await loadBroadcastGroups();
+                  } finally { setBcBusy(null); }
+                };
+                return (
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-medium text-foreground">Saved audience</label>
+                      <div className="flex items-center gap-2">
+                        <button type="button" onClick={loadBroadcastGroups} disabled={bcGroupsLoading}
+                          className="text-[11px] font-medium text-[#0b1957] hover:underline disabled:opacity-40">Refresh</button>
+                        <button type="button" onClick={createGroup} disabled={!!bcBusy}
+                          className="text-[11px] font-medium text-[#0b1957] hover:underline disabled:opacity-40">New group</button>
+                      </div>
+                    </div>
+                    <select className={field} value={cfg.group_id || ''}
+                      onChange={(e) => setCfg(eid, { group_id: e.target.value })}>
+                      <option value="">— Choose an audience —</option>
+                      {bcGroups.map((g) => (
+                        <option key={g.id} value={g.id} disabled={!g.is_active}>
+                          {g.name} ({g.member_count}){g.is_active ? '' : ' — inactive'}
+                        </option>
+                      ))}
+                    </select>
+                    {bcGroupsLoading && <p className="text-[11px] text-muted-foreground">Loading audiences…</p>}
+                    {bcGroupsError && <p className="text-[11px] text-amber-700 dark:text-amber-500">{bcGroupsError}</p>}
+                    {!bcGroupsLoading && !bcGroups.length && !bcGroupsError && (
+                      <p className="text-[11px] text-muted-foreground">No saved audiences yet — create one, then add people to it.</p>
+                    )}
+                    {chosen && chosen.member_count === 0 && (
+                      <p className="text-[11px] text-amber-700 dark:text-amber-500">
+                        &ldquo;{chosen.name}&rdquo; has no members yet, so this broadcast would reach nobody.
+                      </p>
+                    )}
+                    {cfg.group_id && (
+                      editCampaignId ? (
+                        <button type="button" onClick={fillFromCampaign} disabled={!!bcBusy}
+                          className="text-[11px] font-medium text-[#0b1957] hover:underline disabled:opacity-40">
+                          {bcBusy === 'fill' ? 'Adding…' : "Add this campaign's leads to the audience"}
+                        </button>
+                      ) : (
+                        <p className="text-[11px] text-muted-foreground">
+                          Save and reopen this campaign to add its leads to the audience.
+                        </p>
+                      )
+                    )}
+                  </div>
+                );
+              })()}
               <div className="space-y-1"><label className="text-xs font-medium text-foreground">Maximum recipients (optional)</label>
                 <input className={field} type="number" min={1} value={cfg.max_recipients || ''} placeholder="No cap"
                   onChange={(e) => setCfg(eid, { max_recipients: e.target.value ? parseInt(e.target.value, 10) : undefined })} /></div>
