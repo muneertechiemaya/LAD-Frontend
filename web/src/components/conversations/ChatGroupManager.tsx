@@ -24,7 +24,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   Dialog,
@@ -1060,7 +1060,7 @@ export function ChatGroupManager({
         </div>
 
         {/* Groups list - WhatsApp style */}
-        <ScrollArea className={cn("flex-1 min-h-0", isWA ? "bg-white dark:bg-zinc-900" : "")}>
+        <ScrollArea className={cn("flex-1 min-h-0 w-full overflow-x-auto", isWA ? "bg-white dark:bg-zinc-900" : "")}>
           {loading ? (
             <div className="flex items-center justify-center py-16">
               <Loader2 className={cn("h-6 w-6 animate-spin", isWA ? "text-zinc-400 dark:text-zinc-500" : "text-muted-foreground")} />
@@ -1105,7 +1105,8 @@ export function ChatGroupManager({
                         value={editDesc}
                         onChange={(e) => setEditDesc(e.target.value)}
                         placeholder="Description"
-                        className={cn("h-7 text-xs", isWA ? "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 focus-visible:ring-1 focus-visible:ring-emerald-500/30" : "")}
+                        className={cn("h-7 text-xs max-w-[30vw]", isWA ? "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 focus-visible:ring-1 focus-visible:ring-emerald-500/30" : "")}
+                        style={{ maxWidth: '30vw' }}
                       />
                       <div className="flex items-center gap-1">
                         {COLOR_OPTIONS.map((c) => (
@@ -1199,13 +1200,23 @@ export function ChatGroupManager({
                           </div>
                         </div>
                         <div className="flex items-center gap-2 mt-0.5">
-                          <p className={cn("text-xs truncate flex items-center gap-1", isWA ? "text-zinc-500 dark:text-zinc-400" : "text-muted-foreground")}>
-                            <Users className="h-3 w-3 inline mr-1" />
-                            {group.metadata?.wa_group && group.metadata.participant_count
-                              ? `${group.metadata.participant_count} member${group.metadata.participant_count !== 1 ? 's' : ''}`
-                              : `${group.conversation_count} conversation${group.conversation_count !== 1 ? 's' : ''}`
-                            }
-                            {group.description ? ` · ${group.description}` : ''}
+                          <p className={cn("text-xs flex items-center gap-1 min-w-0", isWA ? "text-zinc-500 dark:text-zinc-400" : "text-muted-foreground")}>
+                            <Users className="h-3 w-3 inline mr-1 flex-shrink-0" />
+                            <span className="flex-shrink-0">
+                              {group.metadata?.wa_group && group.metadata.participant_count
+                                ? `${group.metadata.participant_count} member${group.metadata.participant_count !== 1 ? 's' : ''}`
+                                : `${group.conversation_count} conversation${group.conversation_count !== 1 ? 's' : ''}`
+                              }
+                            </span>
+                            {group.description && (
+                              <span
+                                className="truncate inline-block align-bottom max-w-[30vw]"
+                                style={{ maxWidth: '30vw' }}
+                                title={group.description}
+                              >
+                                {` · ${group.description}`}
+                              </span>
+                            )}
                           </p>
                         </div>
                       </div>
@@ -1267,6 +1278,7 @@ export function ChatGroupManager({
               ))}
             </div>
           )}
+          <ScrollBar orientation="horizontal" />
         </ScrollArea>
 
         {/* Sticky send-template bar — shown when groups are selected */}
