@@ -13,6 +13,13 @@ import {
   VerifiedTag, Pager, type CrmPagination,
 } from './shared';
 import { CRM_OWNERS, NOW, type CrmContact } from './data';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 // ── Building blocks ──────────────────────────────────────────────────────
 function TypePill({ type }: { type: CrmContact['type'] }) {
@@ -24,6 +31,15 @@ function TypePill({ type }: { type: CrmContact['type'] }) {
     inbound:  { label: 'Inbound',  color: '#a16207', bg: '#fef3c7' },
   };
   const m = map[type] ?? map.imported;
+
+  if (type === 'prospect') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-semibold rounded-full text-[#0B1957] bg-[#e8ebf7] dark:bg-[#2563eb] dark:text-white dark:rounded-md">
+        {m.label}
+      </span>
+    );
+  }
+
   return (
     <span
       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold"
@@ -279,8 +295,7 @@ function CrmTable<R extends CrmContact>({
               {title}
             </h3>
             <span
-              className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold tabular-nums"
-              style={{ background: T.badgeBg, color: T.primaryHead }}
+              className="inline-flex items-center px-2.5 py-0.5 text-[11px] font-semibold rounded-full text-[#0B1957] bg-[#e8ebf7] dark:bg-[#2563eb] dark:text-white dark:rounded-md tabular-nums"
             >
               {filtered.length}{filtered.length !== count ? ` / ${count}` : ''}
             </span>
@@ -330,11 +345,11 @@ function CrmTable<R extends CrmContact>({
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-slate-50/70 dark:bg-[#0e1a3a] border-b border-slate-100 dark:border-[#262831]">
+            <tr className="bg-slate-50/70 dark:bg-[#071131] border-b border-slate-100 dark:border-[#262831]">
               <th className="w-9 px-3 py-2.5">
                 <input
                   type="checkbox"
-                  className="rounded border-slate-300 dark:border-[#262831] focus:ring-[#0B1957]/30"
+                  className="rounded border-slate-300 focus:ring-[#0B1957]/30 dark:appearance-none dark:w-4 dark:h-4 dark:shrink-0 dark:rounded-[5px] dark:border-2 dark:border-[#1c2c4e] dark:bg-transparent dark:checked:bg-blue-600 dark:checked:border-blue-600 dark:focus-visible:ring-1 dark:focus-visible:ring-blue-500/50 dark:cursor-pointer dark:relative dark:checked:after:content-[''] dark:checked:after:absolute dark:checked:after:left-[4px] dark:checked:after:top-[0px] dark:checked:after:w-[4px] dark:checked:after:h-[8px] dark:checked:after:border-white dark:checked:after:border-r-2 dark:checked:after:border-b-2 dark:checked:after:rotate-45 dark:transition-all"
                   aria-label="Select all rows"
                 />
               </th>
@@ -364,7 +379,7 @@ function CrmTable<R extends CrmContact>({
                 <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                   <input
                     type="checkbox"
-                    className="rounded border-slate-300 dark:border-[#262831] focus:ring-[#0B1957]/30"
+                    className="rounded border-slate-300 focus:ring-[#0B1957]/30 dark:appearance-none dark:w-4 dark:h-4 dark:shrink-0 dark:rounded-[5px] dark:border-2 dark:border-[#1c2c4e] dark:bg-transparent dark:checked:bg-blue-600 dark:checked:border-blue-600 dark:focus-visible:ring-1 dark:focus-visible:ring-blue-500/50 dark:cursor-pointer dark:relative dark:checked:after:content-[''] dark:checked:after:absolute dark:checked:after:left-[4px] dark:checked:after:top-[0px] dark:checked:after:w-[4px] dark:checked:after:h-[8px] dark:checked:after:border-white dark:checked:after:border-r-2 dark:checked:after:border-b-2 dark:checked:after:rotate-45 dark:transition-all"
                     aria-label={`Select ${r.name}`}
                   />
                 </td>
@@ -420,21 +435,32 @@ function FilterDropdown({
   onChange: (v: string | null) => void;
 }) {
   return (
-    <div className="relative">
-      <select
-        value={value || ''}
-        onChange={(e) => onChange(e.target.value || null)}
-        className="h-9 pl-3 pr-8 rounded-lg text-[12.5px] border border-slate-200 dark:border-[#262831] bg-white dark:bg-[#000724] text-[#172560] dark:text-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#0B1957]/30"
-      >
-        <option value="">{label}: All</option>
+    <Select
+      value={value || "ALL"}
+      onValueChange={(val) => onChange(val === "ALL" ? null : val)}
+    >
+      <SelectTrigger className="h-9 pl-3 pr-8 rounded-lg text-[12.5px] border border-slate-200 dark:border-[#262831] bg-white dark:bg-[#000724] text-[#172560] dark:text-white focus:ring-2 focus:ring-[#0B1957]/30 shadow-none">
+        <SelectValue placeholder={`${label}: All`} />
+      </SelectTrigger>
+      
+      <SelectContent className="bg-white dark:bg-[#000724] border-slate-200 dark:border-[#262831]">
+        <SelectItem
+          value="ALL"
+          className="text-[12.5px] cursor-pointer focus:bg-primary/95 focus:text-white data-[state=checked]:bg-primary/95 data-[state=checked]:text-white"
+        >
+          {label}: All
+        </SelectItem>
         {options.map((o) => (
-          <option key={o.value} value={o.value}>
+          <SelectItem
+            key={o.value}
+            value={o.value}
+            className="text-[12.5px] cursor-pointer focus:bg-primary/95 focus:text-white data-[state=checked]:bg-primary/95 data-[state=checked]:text-white"
+          >
             {label}: {o.label}
-          </option>
+          </SelectItem>
         ))}
-      </select>
-      <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-    </div>
+      </SelectContent>
+    </Select>
   );
 }
 
