@@ -62,3 +62,16 @@ export type {
   RichMessageType,
   RichMessagePayload,
 } from './types';
+
+// Agent-response feedback (thumbs + learned corrections)
+export {
+  submitMessageFeedback,
+  getConversationFeedback,
+  feedbackKeys,
+} from './feedback';
+export type {
+  FeedbackRating,
+  MessageFeedback,
+  SubmitFeedbackRequest,
+  SubmitFeedbackResponse,
+} from './feedback';
