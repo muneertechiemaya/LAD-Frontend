@@ -238,7 +238,13 @@ export function ConversationsPage() {
         <Button
           variant={isPlaygroundOpen ? 'secondary' : 'ghost'}
           size="sm"
-          className={`gap-1.5 text-xs h-7 shrink-0 ${isPlaygroundOpen ? 'text-primary' : ''}`}
+          className={cn(
+            'gap-1.5 text-xs h-7 shrink-0',
+            isPlaygroundOpen && 'text-primary',
+            isBlackGrayDarkTheme
+              ? 'dark:hover:bg-black dark:hover:text-white'
+              : 'dark:hover:bg-[#2B7CFF] dark:hover:text-white'
+          )}
           onClick={() => setIsPlaygroundOpen((v) => !v)}
           title="Open AI Playground to test your system prompt"
         >
