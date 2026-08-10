@@ -1193,7 +1193,7 @@ export function LinkedInConversationView({
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="flex-shrink-0 h-10 w-10 p-0 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80 border border-slate-200 dark:border-slate-800"
+                            className="flex-shrink-0 h-10 w-10 p-0 rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80 border border-slate-200 dark:border-slate-800"
                             disabled={!chatEnabled}
                           >
                             <Plus className="h-5 w-5" />
