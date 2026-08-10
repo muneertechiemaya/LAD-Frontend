@@ -231,6 +231,19 @@ async function logoutAccount(accountId: string, tenantId: string | null): Promis
   }
 }
 
+/**
+ * Is the account still there after a disconnect?
+ *
+ * Disconnected used to be assumed the moment the request returned, so a logout
+ * that changed nothing server-side still painted the UI as disconnected — and
+ * the next page load, reading the same untouched state, showed Connected again.
+ * Re-reading the account list is what turns that silent failure into a message.
+ */
+async function isStillConnected(tenantId: string | null): Promise<boolean> {
+  const accounts = await listAccounts(tenantId);
+  return accounts.some((acc) => acc.status === 'connected');
+}
+
 /** Read the auth token from the `token` cookie. Null during SSR. */
 function readTokenCookie(): string | null {
   if (typeof document === 'undefined') return null;
@@ -507,12 +520,28 @@ export const WhatsAppIntegration: React.FC = () => {
   const handleLogout = useCallback(async () => {
     if (!account) return;
     setLoading(true);
-    await logoutAccount(account.id, tenantId);
+    const ok = await logoutAccount(account.id, tenantId);
     cleanup();
+
+    // Confirm against the server rather than assuming. A disconnect that fails
+    // silently must not look identical to one that worked — that gap is what
+    // made "disconnect, refresh, still connected" impossible to notice from the UI.
+    const stillConnected = ok ? await isStillConnected(tenantId) : true;
+
+    if (!ok || stillConnected) {
+      setStatus('connected');
+      setError(
+        'WhatsApp could not be disconnected — the connection is still active on the server. Please try again, and contact support if it persists.',
+      );
+      setLoading(false);
+      return;
+    }
+
     setAccount(null);
     setQrImage(null);
     setStatus('disconnected');
     setError(null);
+    setLinkState(await fetchLinkState(tenantId));
     setLoading(false);
   }, [account, tenantId, cleanup]);
 
