@@ -25,9 +25,11 @@ import {
   Cpu,
   Hash,
   BookOpen,
+  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { fetchWithTenant } from "@/lib/fetch-with-tenant";
+import { cn } from "@/lib/utils";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -65,6 +67,8 @@ interface ChatMessage {
 
 interface AIPlaygroundProps {
   onClose: () => void;
+  isWhatsApp?: boolean;
+  isConversations?: boolean;
 }
 
 // ── Channel config ─────────────────────────────────────────────────────────────
@@ -256,7 +260,7 @@ function parseAIResponse(raw: string): ParsedAIResponse {
 
 // ── AssistantBubble — AI reply with optional collapsible metadata ─────────────
 
-function AssistantBubble({ content }: { content: string }) {
+function AssistantBubble({ content, isWhatsApp = false }: { content: string; isWhatsApp?: boolean }) {
   const { text, metadata } = parseAIResponse(content);
   const isNoReply = text.startsWith("(No reply") || text.startsWith("[Structured response");
   const [showMeta, setShowMeta] = useState(isNoReply);
@@ -308,7 +312,11 @@ const PROMPTS_API    = "/api/whatsapp-conversations/prompts";
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function AIPlayground({ onClose }: AIPlaygroundProps) {
+export function AIPlayground({
+  onClose,
+  isWhatsApp = false,
+  isConversations = false,
+}: AIPlaygroundProps) {
   // Config state
   const [settings, setSettings]               = useState<PlaygroundSettings | null>(null);
   const [prompts, setPrompts]                 = useState<PlaygroundPrompt[]>([]);
