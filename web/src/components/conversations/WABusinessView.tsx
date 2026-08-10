@@ -3507,6 +3507,7 @@ function WABASidebar({
               selectedIds={selectedChatIds}
               onDone={exitSelectMode}
               channel={backendChannel}
+              variant="whatsapp"
             />
 
             <Tooltip>
@@ -4526,6 +4527,7 @@ function WABASidebar({
           handleGroupTemplateSend(group.id, group.conversation_count);
         }}
         channel={backendChannel}
+        variant="whatsapp"
       />
 
       {/* ── Message Settings Dialog (reply delay + inbound debounce) ─────── */}
