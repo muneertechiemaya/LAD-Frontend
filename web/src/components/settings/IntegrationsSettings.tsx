@@ -598,7 +598,7 @@ export const IntegrationsSettings: React.FC = () => {
           {activeView === 'whatsapp-personal' && (
             <div className="space-y-6">
               <WhatsAppIntegration />
-              <div className="text-card-foreground flex flex-col gap-6 py-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#000724]" style={{ minHeight: 400 }}>
+              <div className="text-card-foreground flex flex-col gap-6 py-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#071131]" style={{ minHeight: 400 }}>
                 <PersonalWaTemplateManager />
               </div>
             </div>
@@ -982,7 +982,7 @@ export const IntegrationsSettings: React.FC = () => {
               return (
                 <div
                   key={integration.id}
-                  className={`group relative flex flex-col rounded-xl border border-border bg-card p-5 transition-all ${
+                  className={`group relative flex flex-col rounded-xl border border-border bg-card dark:bg-[#071131] dark:border-blue-950/40 p-5 transition-all ${
                     integration.comingSoon || isLocked
                       ? 'opacity-75 cursor-default'
                       : 'hover:border-primary/30 hover:shadow-md cursor-pointer'
@@ -998,7 +998,7 @@ export const IntegrationsSettings: React.FC = () => {
                 >
                   {integration.comingSoon && (
                     <div className="absolute top-3 right-3">
-                      <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/50">
                         <Clock className="h-2.5 w-2.5" />
                         Coming Soon
                       </span>
@@ -1007,7 +1007,7 @@ export const IntegrationsSettings: React.FC = () => {
 
                   {!integration.comingSoon && isLocked && (
                     <div className="absolute top-3 right-3">
-                      <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/50">
                         <Lock className="h-2.5 w-2.5" />
                         Requires Credits
                       </span>
@@ -1018,11 +1018,11 @@ export const IntegrationsSettings: React.FC = () => {
                     <div className="absolute top-3 right-3">
                       <span className={`inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-0.5 rounded-full ${
                         status === 'connected'
-                          ? 'bg-green-50 text-green-700 border border-green-200'
-                          : 'bg-gray-50 text-gray-500 border border-gray-200'
+                          ? 'bg-green-50 text-green-700 border border-green-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/50'
+                          : 'bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800/80 dark:text-slate-300 dark:border-slate-700/60'
                       }`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${
-                          status === 'connected' ? 'bg-green-500' : 'bg-gray-400'
+                          status === 'connected' ? 'bg-green-500 dark:bg-emerald-400' : 'bg-gray-400 dark:bg-slate-400'
                         }`} />
                         {status === 'connected' ? 'Connected' : 'Disconnected'}
                       </span>
