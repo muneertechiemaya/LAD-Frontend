@@ -235,6 +235,53 @@ interface ChatMsg {
     sources?: Array<{ title: string; url: string }>;
     leadDetailForm?: boolean;
     outreach_journey?: OutreachStep[];
+    /**
+     * Live progress for an async lead-import discovery job. Rewritten in place on
+     * every poll (the message keeps a stable id), so the user watches one bar
+     * rather than accumulating a wall of status lines.
+     */
+    importProgress?: {
+        percent: number;
+        processed: number;
+        total: number;
+        found: number;
+        /** null while we have no measured rate yet — never render a fake ETA. */
+        etaLabel: string | null;
+        /**
+         * A full chunk has completed and produced nobody. Surfaced early and
+         * plainly: a run that finds nothing in its first companies almost never
+         * recovers, and the alternative is the user waiting out twenty silent
+         * minutes to reach the same answer.
+         */
+        warnNoResults?: boolean;
+    };
+}
+
+/** Stable id so each poll REWRITES the progress message instead of appending. */
+const IMPORT_PROGRESS_MSG_ID = 'import-discovery-progress';
+
+/**
+ * Seconds per uploaded row before we have measured anything.
+ *
+ * Discovery advances a chunk at a time, so `processedRows` sits at 0 for the
+ * first minute or two of a large sheet — with no prior the user would stare at
+ * "estimating…" for exactly the stretch where they most want a number.
+ *
+ * Measured on live runs: 23-31s/row on sheets where most rows resolve on the
+ * first search, but **47s/row** on a 31-company sheet where nearly every row
+ * missed and escalated (primary → 2 company-name variants → related titles ≈ 5.8
+ * searches/row at 2s pacing). Real sheets skew toward the miss-heavy case, so the
+ * prior sits near it: guessing low means promising 8 minutes and taking 20, which
+ * is worse than the reverse. Replaced by the observed rate the moment the first
+ * chunk lands.
+ */
+const IMPORT_SECONDS_PER_ROW_PRIOR = 40;
+
+/** "about 4 minutes" / "less than a minute" — deliberately coarse; this is an estimate. */
+function formatEta(seconds: number): string {
+    if (seconds <= 45) return 'less than a minute';
+    const mins = Math.round(seconds / 60);
+    return `about ${mins} minute${mins === 1 ? '' : 's'}`;
 }
 
 /**
@@ -3170,6 +3217,32 @@ export default function AdvancedSearchAIPage() {
                     processed: job.processedRows ?? 0, total: job.totalRows ?? 0,
                 });
 
+                // ── Live progress bar ──
+                // Discovery advances a CHUNK at a time, so `processedRows` steps in
+                // jumps rather than smoothly. Use the measured rate as soon as one
+                // chunk has landed, and the prior before that, so the estimate is
+                // real data whenever real data exists.
+                if (job.status === 'queued' || job.status === 'running') {
+                    const processed = job.processedRows ?? 0;
+                    const total = job.totalRows ?? 0;
+                    const remainingRows = Math.max(0, total - processed);
+                    const elapsedSec = (Date.now() - started) / 1000;
+                    const perRow = processed > 0
+                        ? elapsedSec / processed
+                        : IMPORT_SECONDS_PER_ROW_PRIOR;
+                    const found = Array.isArray(job.leads)
+                        ? job.leads.filter((r: any) => r.linkedin_url).length : 0;
+                    setMessages(p => p.map(m => m.id === IMPORT_PROGRESS_MSG_ID
+                        ? { ...m, importProgress: {
+                            percent: job.percent ?? 0,
+                            processed, total, found,
+                            etaLabel: remainingRows > 0 ? formatEta(perRow * remainingRows) : null,
+                            // One completed chunk with nothing to show for it.
+                            warnNoResults: processed >= 5 && found === 0,
+                          } }
+                        : m));
+                }
+
                 if (job.status === 'completed') {
                     const resolved: any[] = Array.isArray(job.leads) ? job.leads : [];
                     seedFromResolvedLeads(resolved);
@@ -3184,7 +3257,7 @@ export default function AdvancedSearchAIPage() {
                         job_titles: [], industries: [], locations: [],
                         keywords: [`${resolved.length} Inbound Lead${resolved.length === 1 ? '' : 's'}`],
                     });
-                    setMessages(p => [...p, {
+                    setMessages(p => [...p.filter(m => m.id !== IMPORT_PROGRESS_MSG_ID), {
                         id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
                         text: resolved.length === 0
                             ? `⚠️ **No people found.**\n\nI searched every role against every company on your sheet but LinkedIn returned no matches. This usually means the company names are registered entities rather than the trading names people use on their profiles, or the companies have little LinkedIn presence.`
@@ -3195,7 +3268,7 @@ export default function AdvancedSearchAIPage() {
                 }
 
                 if (job.status === 'failed') {
-                    setMessages(p => [...p, {
+                    setMessages(p => [...p.filter(m => m.id !== IMPORT_PROGRESS_MSG_ID), {
                         id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
                         text: `⚠️ **Lead discovery failed.**\n\n${job.error || 'The search could not be completed.'}\n\nYour uploaded rows are saved — try the import again, or continue with the leads already found.`,
                     }]);
@@ -3203,7 +3276,7 @@ export default function AdvancedSearchAIPage() {
                 }
 
                 if (Date.now() - started > MAX_MS) {
-                    setMessages(p => [...p, {
+                    setMessages(p => [...p.filter(m => m.id !== IMPORT_PROGRESS_MSG_ID), {
                         id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
                         text: `⏱️ Discovery is taking longer than expected. It's still running in the background — refresh in a few minutes to pick up the results.`,
                     }]);
@@ -3292,9 +3365,14 @@ export default function AdvancedSearchAIPage() {
                             id: saveData.jobId, status: saveData.jobStatus || 'queued',
                             percent: 0, processed: 0, total: saveData.total || parsed.length,
                         });
-                        setMessages(p => p.filter(m => m.id !== processingId).concat({
-                            id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
-                            text: `🔎 **Finding the right people at each company.**\n\nYour sheet lists companies and roles rather than named people, so I'm searching LinkedIn for each role at each company. This takes a couple of minutes for a large list — I'll update you as it progresses.`,
+                        const totalRows = saveData.total || parsed.length;
+                        setMessages(p => p.filter(m => m.id !== processingId && m.id !== IMPORT_PROGRESS_MSG_ID).concat({
+                            id: IMPORT_PROGRESS_MSG_ID, role: 'ai', ts: new Date(),
+                            text: `🔎 **Finding the right people at each company.**\n\nYour sheet lists companies and roles rather than named people, so I'm searching LinkedIn for each role at each company.`,
+                            importProgress: {
+                                percent: 0, processed: 0, total: totalRows, found: 0,
+                                etaLabel: formatEta(totalRows * IMPORT_SECONDS_PER_ROW_PRIOR),
+                            },
                         }));
                         pollImportJob(saveData.jobId);
                         return;   // the poller finishes the import
@@ -9332,6 +9410,51 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                       >
                           <Upload size={16} /> Upload CSV File
                       </button>
+                  </div>
+                )}
+
+                {/* ── Import discovery: live progress ──
+                    Discovery is minutes of paced LinkedIn searching, and the bar
+                    advances a chunk at a time. The stripe animates whenever work
+                    is in flight so a legitimately-flat bar still reads as "running"
+                    rather than "stuck" — the width only ever shows REAL progress. */}
+                {msg.importProgress && (
+                  <div className="mt-3 rounded-[10px] border border-blue-100 dark:border-blue-900/60 bg-blue-50/60 dark:bg-blue-950/30 px-3.5 py-3">
+                      <div className="flex items-center justify-between mb-2">
+                          <span className="text-[12px] font-semibold text-[#172560] dark:text-blue-200">
+                              Searching LinkedIn
+                          </span>
+                          <span className="text-[12px] font-bold tabular-nums text-[#172560] dark:text-blue-200">
+                              {msg.importProgress.percent}%
+                          </span>
+                      </div>
+                      <div
+                        className="h-2 w-full rounded-full bg-blue-100 dark:bg-blue-900/60 overflow-hidden"
+                        role="progressbar"
+                        aria-valuenow={msg.importProgress.percent}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-label="Lead discovery progress"
+                      >
+                          <div
+                            className="h-full rounded-full bg-[#172560] dark:bg-blue-500 transition-[width] duration-700 ease-out animate-pulse"
+                            style={{ width: `${Math.max(2, msg.importProgress.percent)}%` }}
+                          />
+                      </div>
+                      <div className="mt-2 text-[11.5px] text-gray-600 dark:text-gray-400">
+                          {msg.importProgress.processed} of {msg.importProgress.total} companies searched
+                          {msg.importProgress.found > 0 && <> · <span className="font-semibold text-emerald-700 dark:text-emerald-400">{msg.importProgress.found} found</span></>}
+                          {msg.importProgress.etaLabel && <> · {msg.importProgress.etaLabel} remaining</>}
+                      </div>
+                      {msg.importProgress.warnNoResults && (
+                          <div className="mt-2 pt-2 border-t border-blue-100 dark:border-blue-900/60 text-[11.5px] text-amber-800 dark:text-amber-300">
+                              <span className="font-semibold">No people found yet.</span>{' '}
+                              The search is still running, but nothing matched the first
+                              {' '}{msg.importProgress.processed} companies. This usually means LinkedIn
+                              can&apos;t match the company names as written, or the roles aren&apos;t on
+                              LinkedIn under those titles. You can let it finish or stop and adjust the sheet.
+                          </div>
+                      )}
                   </div>
                 )}
 
