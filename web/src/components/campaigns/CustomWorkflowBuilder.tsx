@@ -28,7 +28,7 @@ import {
   Users, Repeat, Search, X, HardDrive, Inbox, ListOrdered, BarChart3, GitFork, DatabaseZap,
   Wand2, Trash2, Radar, Split, Plus, Upload, FileSpreadsheet, Sparkles, Contact, Download, Megaphone, Zap, Globe, Telescope, Gauge, Shuffle, PenLine, Webhook, PenTool, ShieldCheck,
   Bookmark, LayoutTemplate, ExternalLink, FlaskConical, Play,
-  Instagram, UserCheck, FileText, AlertTriangle,
+  Instagram, UserCheck, FileText, AlertTriangle, CalendarCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,6 +40,7 @@ import {
   MEDIA_STEP_ID, MULTICOND_STEP_ID, AI_STEP_ID, ENRICH_STEP_ID, EXPORT_STEP_ID,
   AUTOPOST_STEP_ID, CONTENT_STEP_ID, APPROVAL_STEP_ID, AI_DEFAULT_INSTRUCTION, EXPORT_DEFAULT_COLUMNS,
   IG_AUTOPOST_STEP_ID, HUMAN_TASK_STEP_ID, REPORT_STEP_ID,
+  MINDBODY_STEP_ID, WA_BROADCAST_STEP_ID, EMAIL_BROADCAST_STEP_ID,
   SCRAPE_STEP_ID, RESEARCH_STEP_ID, SCORE_STEP_ID,
   SPLIT_STEP_ID, SETFIELD_STEP_ID, HTTP_STEP_ID, LANDING_STEP_ID, templateNodeKey, MACRO_STEP_IDS,
   templateToPreviewSteps,
@@ -1540,6 +1541,35 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   const hydratedRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   // Zoho write-back node: the target module's field metadata (fetched lazily).
+  // Saved broadcast audiences. Loaded lazily — only a broadcast drawer needs
+  // them, and most workflows have no broadcast at all.
+  const [bcGroups, setBcGroups] = useState<{ id: string; name: string; member_count: number; is_active: boolean }[]>([]);
+  const [bcGroupsLoading, setBcGroupsLoading] = useState(false);
+  const [bcGroupsError, setBcGroupsError] = useState<string | null>(null);
+  const [bcBusy, setBcBusy] = useState<string | null>(null);
+
+  const loadBroadcastGroups = useCallback(async () => {
+    setBcGroupsLoading(true); setBcGroupsError(null);
+    try {
+      const res = await fetchWithTenant('/api/campaigns/broadcast-groups');
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json?.success) throw new Error(json?.error || 'Could not load groups');
+      setBcGroups(Array.isArray(json.data) ? json.data : []);
+    } catch (e: any) {
+      setBcGroupsError(e?.message || 'Could not load groups');
+    } finally {
+      setBcGroupsLoading(false);
+    }
+  }, []);
+
+  // Fetch on drawer open rather than on mount: most workflows never contain a
+  // broadcast, and this is a network call per builder session otherwise.
+  useEffect(() => {
+    if (editingId === WA_BROADCAST_STEP_ID || editingId === EMAIL_BROADCAST_STEP_ID) {
+      loadBroadcastGroups().catch(() => {});
+    }
+  }, [editingId, loadBroadcastGroups]);
+
   const [zohoFields, setZohoFields] = useState<any[]>([]);
   const [zohoFieldsLoading, setZohoFieldsLoading] = useState(false);
   const [zohoFieldsError, setZohoFieldsError] = useState<string | null>(null);
@@ -1802,6 +1832,33 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       addWorkflowStep({ id: ANALYTICS_STEP_ID, type: 'analytics_report', channel: 'email', title: 'Analytics report', description: 'Daily · Email' });
     }
     setEditingId(ANALYTICS_STEP_ID);
+  };
+
+  const addMindBody = () => {
+    if (!workflowPreview.some((x) => x.id === MINDBODY_STEP_ID)) {
+      addWorkflowStep({ id: MINDBODY_STEP_ID, type: 'mindbody_action', channel: 'whatsapp', title: 'MindBody', description: 'Book a trial class' });
+      setCfg(MINDBODY_STEP_ID, { action: 'book_trial' });
+    }
+    setEditingId(MINDBODY_STEP_ID);
+  };
+
+  // Broadcasts run ONCE for the whole campaign, not per lead — the backend
+  // prunes them from the per-lead sequence and ticks them separately. Placement
+  // in the canvas is therefore cosmetic, which the drawer copy says out loud.
+  const addWaBroadcast = () => {
+    if (!workflowPreview.some((x) => x.id === WA_BROADCAST_STEP_ID)) {
+      addWorkflowStep({ id: WA_BROADCAST_STEP_ID, type: 'whatsapp_broadcast', channel: 'whatsapp', title: 'WhatsApp broadcast', description: 'One template to the whole audience' });
+      setCfg(WA_BROADCAST_STEP_ID, { audience_source: 'campaign_leads', template_language: 'en_US' });
+    }
+    setEditingId(WA_BROADCAST_STEP_ID);
+  };
+
+  const addEmailBroadcast = () => {
+    if (!workflowPreview.some((x) => x.id === EMAIL_BROADCAST_STEP_ID)) {
+      addWorkflowStep({ id: EMAIL_BROADCAST_STEP_ID, type: 'email_broadcast', channel: 'email', title: 'Email broadcast', description: 'One email to the whole audience' });
+      setCfg(EMAIL_BROADCAST_STEP_ID, { audience_source: 'campaign_leads' });
+    }
+    setEditingId(EMAIL_BROADCAST_STEP_ID);
   };
 
   const addZohoUpdate = () => {
@@ -2906,8 +2963,25 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     if (workflowPreview.some((s) => s.id === APPROVAL_STEP_ID) && !workflowPreview.some((s) => s.id === AUTOPOST_STEP_ID)) {
       issues.push({ id: APPROVAL_STEP_ID, message: 'The Approval node needs a LinkedIn post node — it gates what that node publishes.' });
     }
+    // Broadcasts: catch the missing-required-field case here rather than letting
+    // the backend validator answer with a 400 after the user hits Launch.
+    if (workflowPreview.some((x) => x.id === WA_BROADCAST_STEP_ID)
+        && !String((configs[WA_BROADCAST_STEP_ID] || {}).template_name || '').trim()) {
+      issues.push({
+        id: WA_BROADCAST_STEP_ID,
+        message: 'The WhatsApp broadcast needs an approved template name. A broadcast is business-initiated, so the 24-hour window is shut and free text cannot be delivered.',
+      });
+    }
+    const ebCfg = configs[EMAIL_BROADCAST_STEP_ID] || {};
+    if (workflowPreview.some((x) => x.id === EMAIL_BROADCAST_STEP_ID)
+        && (!String(ebCfg.subject || '').trim() || !String(ebCfg.body || '').trim())) {
+      issues.push({
+        id: EMAIL_BROADCAST_STEP_ID,
+        message: 'The email broadcast needs both a subject and a body.',
+      });
+    }
     return issues;
-  }, [workflowPreview]);
+  }, [workflowPreview, configs]);
 
   // Router-style branch visualisation for the Multi-condition node: one output
   // node per condition (+ else), fanned out on the canvas.
@@ -3347,6 +3421,56 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         });
       }
 
+      // MindBody — per-lead: books the lead into a trial class, or checks payment.
+      const mindBodyNode = workflowPreview.find((x) => x.id === MINDBODY_STEP_ID);
+      if (mindBodyNode) {
+        const mc = configs[MINDBODY_STEP_ID] || {};
+        steps.push({
+          type: 'mindbody_action', title: 'MindBody', channel: 'whatsapp', order_index: order++,
+          config: {
+            action: mc.action || 'book_trial',
+            ...(mc.class_id ? { class_id: String(mc.class_id).trim() } : {}),
+            ...(mc.account_id ? { account_id: mc.account_id } : {}),
+          },
+        });
+      }
+
+      // Broadcasts — CAMPAIGN-level. They are emitted as ordinary steps because
+      // that is where the backend reads their config from, but WorkflowProcessor
+      // prunes them from the per-lead sequence and BroadcastMacroRunner ticks
+      // them once per campaign run. order_index is therefore cosmetic here.
+      const waBroadcastNode = workflowPreview.find((x) => x.id === WA_BROADCAST_STEP_ID);
+      if (waBroadcastNode) {
+        const bc = configs[WA_BROADCAST_STEP_ID] || {};
+        steps.push({
+          type: 'whatsapp_broadcast', title: 'WhatsApp broadcast', channel: 'whatsapp', order_index: order++,
+          config: {
+            template_name: (bc.template_name || '').trim(),
+            template_language: (bc.template_language || 'en_US').trim(),
+            audience_source: bc.audience_source || 'campaign_leads',
+            ...(bc.group_id ? { group_id: bc.group_id } : {}),
+            ...(bc.max_recipients ? { max_recipients: bc.max_recipients } : {}),
+          },
+        });
+      }
+
+      const emailBroadcastNode = workflowPreview.find((x) => x.id === EMAIL_BROADCAST_STEP_ID);
+      if (emailBroadcastNode) {
+        const bc = configs[EMAIL_BROADCAST_STEP_ID] || {};
+        steps.push({
+          type: 'email_broadcast', title: 'Email broadcast', channel: 'email', order_index: order++,
+          config: {
+            subject: (bc.subject || '').trim(),
+            body: (bc.body || '').trim(),
+            audience_source: bc.audience_source || 'campaign_leads',
+            ...(bc.group_id ? { group_id: bc.group_id } : {}),
+            ...(bc.max_recipients ? { max_recipients: bc.max_recipients } : {}),
+            ...(bc.unsubscribe_url ? { unsubscribe_url: String(bc.unsubscribe_url).trim() } : {}),
+            ...(bc.sender_account_id ? { sender_account_id: bc.sender_account_id } : {}),
+          },
+        });
+      }
+
       // "Update Zoho record" write-back → a terminal zoho_update step. Runs
       // when the lead reaches it (place it last); maps workflow data back onto
       // the lead's original Zoho record via ZohoWritebackService.
@@ -3767,6 +3891,9 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       macro(REPORT_STEP_ID, 'Audit report', 'PDF · attach or offer', <FileText className="h-4 w-4 text-teal-700" />, 'bg-teal-50 dark:bg-teal-950/30', addReport, 'Automation & output'),
       macro(HUMAN_TASK_STEP_ID, 'Assign a human task', 'Pauses until someone confirms', <UserCheck className="h-4 w-4 text-amber-600" />, 'bg-amber-50 dark:bg-amber-950/30', addHumanTask, 'Automation & output'),
       macro(LANDING_STEP_ID, 'Landing page', 'AI-written · captures leads', <LayoutTemplate className="h-4 w-4 text-emerald-700" />, 'bg-emerald-50 dark:bg-emerald-950/30', addLandingPage, 'Automation & output'),
+      macro(MINDBODY_STEP_ID, 'MindBody', 'Book a trial class', <CalendarCheck className="h-4 w-4 text-teal-600" />, 'bg-teal-50 dark:bg-teal-950/30', addMindBody, 'Automation & output'),
+      macro(WA_BROADCAST_STEP_ID, 'WhatsApp broadcast', 'One template to the audience', <MessageCircle className="h-4 w-4 text-green-600" />, 'bg-green-50 dark:bg-green-950/30', addWaBroadcast, 'Automation & output'),
+      macro(EMAIL_BROADCAST_STEP_ID, 'Email broadcast', 'One email to the audience', <Mail className="h-4 w-4 text-amber-600" />, 'bg-amber-50 dark:bg-amber-950/30', addEmailBroadcast, 'Automation & output'),
       macro(ZOHO_UPDATE_STEP_ID, 'Update Zoho record', 'Write back to Contacts', <DatabaseZap className="h-4 w-4 text-red-600" />, 'bg-red-50 dark:bg-red-950/30', addZohoUpdate, 'Automation & output'),
       macro(ANALYTICS_STEP_ID, 'Analytics report', 'Daily digest', <BarChart3 className="h-4 w-4 text-cyan-600" />, 'bg-cyan-50 dark:bg-cyan-950/30', addAnalytics, 'Automation & output'),
       macro(EXPORT_STEP_ID, 'Export results', 'CSV · download & more', <Download className="h-4 w-4 text-cyan-700" />, 'bg-cyan-50 dark:bg-cyan-950/30', addExport, 'Automation & output'),
@@ -3882,6 +4009,9 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     const isAnalytics = editingId === ANALYTICS_STEP_ID;
     const isRouter = !!editingId?.startsWith('rt-');
     const isZohoUpdate = editingId === ZOHO_UPDATE_STEP_ID;
+    const isMindBody = editingId === MINDBODY_STEP_ID;
+    const isWaBroadcast = editingId === WA_BROADCAST_STEP_ID;
+    const isEmailBroadcast = editingId === EMAIL_BROADCAST_STEP_ID;
     const isMedia = editingId === MEDIA_STEP_ID;
     const isMultiCond = editingId === MULTICOND_STEP_ID;
     const isAiParse = editingId === AI_STEP_ID;
@@ -4340,6 +4470,167 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 : 'Sent by Mr LAD via your connected email account while the campaign is running.'}
             </p>
           </>)}
+
+          {isMindBody && (() => {
+            const eid = editingId!;
+            return (<>
+              <div className="space-y-1"><label className="text-xs font-medium text-foreground">What should MindBody do</label>
+                <select className={field} value={cfg.action || 'book_trial'} onChange={(e) => {
+                  setCfg(eid, { action: e.target.value });
+                  updateWorkflowStep(eid, { description: e.target.value === 'verify_payment' ? 'Check payment' : 'Book a trial class' });
+                }}>
+                  <option value="book_trial">Book a trial class</option>
+                  <option value="verify_payment">Check whether they have paid</option>
+                </select></div>
+              {(cfg.action || 'book_trial') === 'book_trial' && (
+                <div className="space-y-1"><label className="text-xs font-medium text-foreground">Class ID (optional)</label>
+                  <input className={field} value={cfg.class_id || ''} placeholder="Leave blank to use the account's target classes"
+                    onChange={(e) => setCfg(eid, { class_id: e.target.value })} /></div>
+              )}
+              <p className="text-[11px] leading-snug text-muted-foreground">
+                Uses the tenant&apos;s connected MindBody account. MindBody identifies clients by phone, so a lead
+                with no phone number is skipped rather than booked under a guess. A booking is attempted once —
+                a failure is recorded and the lead moves on rather than being re-booked every run.
+              </p>
+            </>);
+          })()}
+
+          {(isWaBroadcast || isEmailBroadcast) && (() => {
+            const eid = editingId!;
+            const isWa = isWaBroadcast;
+            return (<>
+              <div className="rounded-md bg-muted/50 px-2.5 py-2">
+                <p className="text-[11px] leading-snug text-muted-foreground">
+                  This runs <strong>once for the whole campaign</strong>, not once per lead — so where it sits on the
+                  canvas doesn&apos;t change when it fires.
+                </p>
+              </div>
+              <div className="space-y-1"><label className="text-xs font-medium text-foreground">Send to</label>
+                <select className={field} value={cfg.audience_source || 'campaign_leads'}
+                  onChange={(e) => setCfg(eid, { audience_source: e.target.value })}>
+                  <option value="campaign_leads">Everyone in this campaign</option>
+                  <option value="group">A saved group</option>
+                </select></div>
+              {cfg.audience_source === 'group' && (() => {
+                const chosen = bcGroups.find((g) => g.id === cfg.group_id);
+                const createGroup = async () => {
+                  const name = window.prompt('Name this audience');
+                  if (!name || !name.trim()) return;
+                  setBcBusy('create');
+                  try {
+                    const res = await fetchWithTenant('/api/campaigns/broadcast-groups', {
+                      method: 'POST', headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ name: name.trim() }),
+                    });
+                    const json = await res.json().catch(() => ({}));
+                    if (!res.ok || !json?.success) { setBcGroupsError(json?.error || 'Could not create the group'); return; }
+                    setBcGroups((prev) => [json.data, ...prev]);
+                    setCfg(eid, { group_id: json.data.id });
+                  } finally { setBcBusy(null); }
+                };
+                const fillFromCampaign = async () => {
+                  if (!cfg.group_id || !editCampaignId) return;
+                  setBcBusy('fill');
+                  try {
+                    const res = await fetchWithTenant(`/api/campaigns/broadcast-groups/${cfg.group_id}/members`, {
+                      method: 'POST', headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ campaign_id: editCampaignId }),
+                    });
+                    const json = await res.json().catch(() => ({}));
+                    if (!res.ok || !json?.success) { setBcGroupsError(json?.error || 'Could not add members'); return; }
+                    const d = json.data || {};
+                    // Say what was skipped. A contact with no email, phone or
+                    // LinkedIn URL cannot be de-duplicated or reached, and an
+                    // import that silently keeps 140 of 200 is how an audience
+                    // quietly shrinks.
+                    setBcGroupsError(
+                      `Added ${d.added ?? 0}` +
+                      (d.duplicate ? `, ${d.duplicate} already in the group` : '') +
+                      (d.unreachable ? `, ${d.unreachable} skipped with no email, phone or LinkedIn` : '')
+                    );
+                    await loadBroadcastGroups();
+                  } finally { setBcBusy(null); }
+                };
+                return (
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-medium text-foreground">Saved audience</label>
+                      <div className="flex items-center gap-2">
+                        <button type="button" onClick={loadBroadcastGroups} disabled={bcGroupsLoading}
+                          className="text-[11px] font-medium text-[#0b1957] hover:underline disabled:opacity-40">Refresh</button>
+                        <button type="button" onClick={createGroup} disabled={!!bcBusy}
+                          className="text-[11px] font-medium text-[#0b1957] hover:underline disabled:opacity-40">New group</button>
+                      </div>
+                    </div>
+                    <select className={field} value={cfg.group_id || ''}
+                      onChange={(e) => setCfg(eid, { group_id: e.target.value })}>
+                      <option value="">— Choose an audience —</option>
+                      {bcGroups.map((g) => (
+                        <option key={g.id} value={g.id} disabled={!g.is_active}>
+                          {g.name} ({g.member_count}){g.is_active ? '' : ' — inactive'}
+                        </option>
+                      ))}
+                    </select>
+                    {bcGroupsLoading && <p className="text-[11px] text-muted-foreground">Loading audiences…</p>}
+                    {bcGroupsError && <p className="text-[11px] text-amber-700 dark:text-amber-500">{bcGroupsError}</p>}
+                    {!bcGroupsLoading && !bcGroups.length && !bcGroupsError && (
+                      <p className="text-[11px] text-muted-foreground">No saved audiences yet — create one, then add people to it.</p>
+                    )}
+                    {chosen && chosen.member_count === 0 && (
+                      <p className="text-[11px] text-amber-700 dark:text-amber-500">
+                        &ldquo;{chosen.name}&rdquo; has no members yet, so this broadcast would reach nobody.
+                      </p>
+                    )}
+                    {cfg.group_id && (
+                      editCampaignId ? (
+                        <button type="button" onClick={fillFromCampaign} disabled={!!bcBusy}
+                          className="text-[11px] font-medium text-[#0b1957] hover:underline disabled:opacity-40">
+                          {bcBusy === 'fill' ? 'Adding…' : "Add this campaign's leads to the audience"}
+                        </button>
+                      ) : (
+                        <p className="text-[11px] text-muted-foreground">
+                          Save and reopen this campaign to add its leads to the audience.
+                        </p>
+                      )
+                    )}
+                  </div>
+                );
+              })()}
+              <div className="space-y-1"><label className="text-xs font-medium text-foreground">Maximum recipients (optional)</label>
+                <input className={field} type="number" min={1} value={cfg.max_recipients || ''} placeholder="No cap"
+                  onChange={(e) => setCfg(eid, { max_recipients: e.target.value ? parseInt(e.target.value, 10) : undefined })} /></div>
+
+              {isWa ? (<>
+                <div className="space-y-1"><label className="text-xs font-medium text-foreground">Approved template name</label>
+                  <input className={field} value={cfg.template_name || ''} placeholder="e.g. mrlad_promo_alert"
+                    onChange={(e) => setCfg(eid, { template_name: e.target.value })} /></div>
+                <div className="space-y-1"><label className="text-xs font-medium text-foreground">Template language</label>
+                  <input className={field} value={cfg.template_language || 'en_US'}
+                    onChange={(e) => setCfg(eid, { template_language: e.target.value })} /></div>
+                <p className="text-[11px] leading-snug text-muted-foreground">
+                  A broadcast is business-initiated, so WhatsApp&apos;s 24-hour window is shut and free text cannot be
+                  delivered — Meta accepts it and then fails it silently. An <strong>approved template</strong> is required.
+                </p>
+              </>) : (<>
+                <div className="space-y-1"><label className="text-xs font-medium text-foreground">Subject</label>
+                  <input className={field} value={cfg.subject || ''} placeholder="Hi {{first_name}}"
+                    onChange={(e) => setCfg(eid, { subject: e.target.value })} /></div>
+                <div className="space-y-1"><label className="text-xs font-medium text-foreground">Body</label>
+                  <textarea className={`${field} min-h-[110px]`} value={cfg.body || ''}
+                    placeholder={'Hi {{first_name}},\n\nA short note about {{company_name}}.'}
+                    onChange={(e) => setCfg(eid, { body: e.target.value })} /></div>
+                <div className="space-y-1"><label className="text-xs font-medium text-foreground">Unsubscribe URL</label>
+                  <input className={field} value={cfg.unsubscribe_url || ''} placeholder="https://…/unsubscribe"
+                    onChange={(e) => setCfg(eid, { unsubscribe_url: e.target.value })} />
+                  {!cfg.unsubscribe_url && (
+                    <p className="text-[11px] leading-snug text-amber-700 dark:text-amber-500">
+                      Without a List-Unsubscribe header, bulk email is very likely to be filed as spam — whatever the
+                      law says in your market.
+                    </p>
+                  )}</div>
+              </>)}
+            </>);
+          })()}
 
           {isZohoUpdate && (() => {
             const eid = editingId!;
