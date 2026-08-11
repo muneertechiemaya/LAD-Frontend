@@ -36,7 +36,7 @@ type TabKey = 'accepted' | 'responded' | 'sah';
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'accepted', label: 'Accepted' },
   { key: 'responded', label: 'Responded' },
-  { key: 'sah', label: 'SAH' },
+  { key: 'sah', label: 'Sales Handoff' },
 ];
 const ITEMS_PER_PAGE = 5;
 
