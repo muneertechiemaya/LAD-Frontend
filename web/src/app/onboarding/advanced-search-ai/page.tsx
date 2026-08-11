@@ -742,23 +742,25 @@ const PIPELINE_SIGNALS: { name: string; re: RegExp }[] = [
 ];
 
 /**
- * True when the message reads as "build me this pipeline", not "find me these
- * people".
+ * Offline fallback for {@link isPipelineDescription} — used only when the
+ * backend gate cannot be reached.
  *
- * This exists because a pipeline description used to be swallowed by the
- * handlers that run BEFORE the backend classifier gets a look: the ABM regex
- * below matches a bare `research <anything>`, so
+ * This bank is the weaker of the two detectors and has been wrong in production.
+ * "Connect with IT founders in Dubai, research them, generate a report, and send
+ * it for approval. Once you receive approval, attach the report to an email and
+ * send it to the lead." trips exactly ONE family here (approval_gate) and gets a
+ * lead-search preview, while the backend reads the same sentence as four actions
+ * plus a pipeline noun. The misses are all vocabulary: `once (you)` is not in the
+ * sequencing alternation, `send it to…` has no channel noun after the verb, and
+ * "generate a report" has no family at all.
  *
- *   "…and research about them their company, send me the report post approval…"
- *
- * was researched as a company literally named "them their" and answered with a
- * fabricated company profile. The classifier's `workflow_build` verdict cannot
- * rescue a message that never reaches it.
+ * Widening it is not the fix — a second detector in a second language will drift
+ * again. It is kept only so a network failure degrades to today's behaviour
+ * rather than to none.
  *
  * Deliberately strict: THREE distinct signal families, and only on a message
  * long enough to be a description. "Find founders in Dubai" scores 0;
- * "research Acme Corp" scores 0; "find CTOs then message them" scores 1 and
- * still searches, exactly as it does today.
+ * "research Acme Corp" scores 0; "find CTOs then message them" scores 1.
  */
 function looksLikePipelineDescription(text: string): boolean {
     const t = text.trim();
@@ -766,6 +768,49 @@ function looksLikePipelineDescription(text: string): boolean {
     let hits = 0;
     for (const s of PIPELINE_SIGNALS) if (s.re.test(t)) hits++;
     return hits >= 3;
+}
+
+/** Below this a message is a search phrase, not a description of a pipeline. */
+const PIPELINE_MIN_CHARS = 60;
+/** The chat should not stall on this: it is a regex call, not a model call. */
+const PIPELINE_GATE_TIMEOUT_MS = 1500;
+
+/**
+ * True when the message describes a PIPELINE to build rather than an audience to
+ * find — asked of the backend, which owns the verdict.
+ *
+ * The chat has to decide this before it commits to a lane, because the ABM /
+ * web-search / lead-chat handlers below run first and the search preview pauses
+ * for confirmation, so a message can be answered without ever reaching the
+ * classifier. It used to decide with its own regexes; those disagreed with
+ * `detectWorkflowBuild` and the chat's answer won. Now it asks the same question
+ * the search path asks — no LLM, no credits, one source of truth — and only
+ * falls back to the local bank when the call fails.
+ */
+async function isPipelineDescription(text: string): Promise<boolean> {
+    const t = text.trim();
+    if (t.length < PIPELINE_MIN_CHARS) return false;
+
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), PIPELINE_GATE_TIMEOUT_MS);
+    try {
+        const res = await fetch('/api/ai-icp-assistant/detect-workflow-build', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ query: t }),
+            signal: ctrl.signal,
+        });
+        if (res.ok) {
+            const data = await res.json();
+            return !!data?.is_workflow;
+        }
+    } catch {
+        // Unreachable or too slow — fall through to the local bank.
+    } finally {
+        clearTimeout(timer);
+    }
+    return looksLikePipelineDescription(t);
 }
 
 /** Returns true when the user's reply is a confirmation of a search preview. */
@@ -1274,8 +1319,8 @@ export default function AdvancedSearchAIPage() {
 
     // ── BUILD MODE: "describe a pipeline, get a workflow" ──────────────────
     // Entered when the message is a pipeline description rather than an
-    // audience (locally via looksLikePipelineDescription, or on the backend
-    // classifier's `workflow_build` verdict). While this ref is set the chat is
+    // audience (on the way in via isPipelineDescription, or on the search
+    // response's `workflow_build` verdict). While this ref is set the chat is
     // conducting an interview: typed replies and option chips answer questions
     // instead of running searches. Cleared on done, bail-out or cancel, which
     // returns the chat to its normal behaviour.
@@ -4160,14 +4205,14 @@ export default function AdvancedSearchAIPage() {
         // ABM regex matches a bare `research <anything>`, which is how
         // "…research about them their company, send me the report post
         // approval…" was answered with an invented company profile for a firm
-        // called "them their". The backend's `workflow_build` verdict (handled
-        // at the search response, below) cannot save a message that never
-        // reaches the classifier.
+        // called "them their". The search-response `workflow_build` verdict
+        // (handled below) cannot save a message that never gets there — and a
+        // search preview pauses for confirmation, so plenty of messages don't.
         //
-        // looksLikePipelineDescription needs three independent pipeline signals
-        // to fire, so ordinary ICP, ABM and signal queries fall straight
-        // through to the flows they use today.
-        if (!wfWizardRef.current && looksLikePipelineDescription(text)) {
+        // The verdict comes from the backend gate, the same one the search path
+        // applies; ordinary ICP, ABM and signal queries score no actions there
+        // and fall straight through to the flows they use today.
+        if (!wfWizardRef.current && await isPipelineDescription(text)) {
             setMessages(p => p.filter(m => m.id !== lid));
             setBusy(false);
             enterWorkflowBuild(text);
