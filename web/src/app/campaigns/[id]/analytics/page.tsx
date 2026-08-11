@@ -488,7 +488,7 @@ export default function CampaignAnalyticsPage() {
           </div>
         </div>
 
-        {/* Connections Sent */}
+        {/* Sent (Dynamic) */}
         <div
           className="w-full sm:w-[calc(50%-8px)] md:w-[calc(25%-12px)] cursor-pointer"
           onClick={() => router.push(`/campaigns/${campaignId}/analytics/leads?filter=sent`)}
