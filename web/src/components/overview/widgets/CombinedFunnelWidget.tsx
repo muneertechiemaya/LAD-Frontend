@@ -110,7 +110,7 @@ export const CombinedFunnelWidget: React.FC<{ id: string }> = ({ id }) => {
   const periodLabel = PERIODS.find((p) => p.key === period)?.label ?? '';
 
   return (
-    <WidgetWrapper id={id} title="Sales funnel" icon={<Filter className="h-4 w-4" />} headerActions={header}>
+    <WidgetWrapper id={id} title="Sales funnel" icon={<Filter className="h-4 w-4" />} headerActions={header} className="bg-[#041030]">
       <div className="flex items-center gap-1 mb-4">
         {PERIODS.map((p) => {
           const active = period === p.key;
@@ -119,7 +119,7 @@ export const CombinedFunnelWidget: React.FC<{ id: string }> = ({ id }) => {
               key={p.key}
               onClick={() => setPeriod(p.key)}
               className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
-                active ? 'border-transparent bg-[#0F6E56] text-white' : 'border-border text-muted-foreground hover:bg-muted/50 dark:text-[#E0E0E0]/70'
+                active ? 'border-transparent bg-[#0F6E56] text-white' : 'border-blue-950/40 bg-[#020829] text-slate-300 hover:bg-[#020829]'
               }`}
             >
               {p.label}
@@ -148,16 +148,16 @@ export const CombinedFunnelWidget: React.FC<{ id: string }> = ({ id }) => {
       ) : data ? (
         <div className="flex flex-col gap-5">
           <div className="flex items-center justify-center gap-4 sm:gap-6">
-            <div className="text-center rounded-lg border border-border px-3 py-2 min-w-[84px]">
-              <p className="text-[11px] text-muted-foreground">New Leads</p>
+            <div className="text-center rounded-lg border border-[#E2E8F0] bg-white dark:border-[#262831] dark:bg-[#1a2a43] px-3 py-2 min-w-[84px]">
+              <p className="text-[11px] text-slate-500 dark:text-slate-300">New Leads</p>
               <p className="text-lg font-medium dark:text-[#E0E0E0]">{num(first)}</p>
             </div>
             <div className="text-center">
               <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Overall conversion</p>
               <p className="text-3xl font-bold font-display dark:text-[#E0E0E0]">{overall}%</p>
             </div>
-            <div className="text-center rounded-lg border border-emerald-200 dark:border-emerald-500/30 px-3 py-2 min-w-[84px]">
-              <p className="text-[11px] text-muted-foreground">Won (SAH)</p>
+            <div className="text-center rounded-lg border border-emerald-500/30 bg-white dark:bg-[#1a2a43] px-3 py-2 min-w-[84px]">
+              <p className="text-[11px] text-slate-500 dark:text-slate-300">Won (SAH)</p>
               <p className="text-lg font-medium text-emerald-700 dark:text-emerald-400">{num(last)}</p>
             </div>
           </div>
@@ -173,7 +173,7 @@ export const CombinedFunnelWidget: React.FC<{ id: string }> = ({ id }) => {
                 <div key={s.key}>
                   {i > 0 && (
                     <div className="flex items-center justify-center gap-2 py-0.5">
-                      <span className="text-[11px] font-medium text-muted-foreground bg-muted/60 dark:bg-white/5 rounded-full px-2 py-0.5">{conv != null ? `${conv}%` : '—'}</span>
+                      <span className="text-[11px] font-medium text-slate-700 bg-[#F8F9FE] rounded-full px-2 py-0.5 dark:text-slate-200 dark:bg-[#0b1941]">{conv != null ? `${conv}%` : '—'}</span>
                       {dropped > 0 && <span className="text-[10px] text-muted-foreground/70">{num(dropped)} dropped</span>}
                     </div>
                   )}
@@ -196,7 +196,7 @@ export const CombinedFunnelWidget: React.FC<{ id: string }> = ({ id }) => {
               );
             })}
           </div>
-          <p className="text-[10px] text-muted-foreground text-center">Click any stage to see its leads.</p>
+          <p className="text-[10px] text-slate-400 text-center">Click any stage to see its leads.</p>
         </div>
       ) : null}
 
@@ -259,7 +259,7 @@ const StageLeadsModal: React.FC<{ title: string; subtitle: string; fileLabel: st
   >
     <div
       onClick={(e) => e.stopPropagation()}
-      className="w-full max-w-3xl rounded-xl bg-white dark:bg-[#1A2A43] border border-gray-200 dark:border-[#2B7CFF]/20 shadow-2xl"
+      className="w-full max-w-3xl rounded-xl bg-white border border-[#E2E8F0] shadow-2xl dark:bg-[#1a2a43] dark:border-[#262831]"
       style={{ maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
     >
       <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-200 dark:border-[#2B7CFF]/20" style={{ flexShrink: 0 }}>
@@ -290,15 +290,15 @@ const StageLeadsModal: React.FC<{ title: string; subtitle: string; fileLabel: st
                 and overlap rows. */}
             <thead>
               <tr className="text-left text-[11px] uppercase tracking-wide text-muted-foreground">
-                <th className="sticky top-0 z-10 bg-white dark:bg-[#1A2A43] border-b border-gray-200 dark:border-[#2B7CFF]/20 px-4 py-2 font-medium" style={{ width: '30%' }}>Name</th>
-                <th className="sticky top-0 z-10 bg-white dark:bg-[#1A2A43] border-b border-gray-200 dark:border-[#2B7CFF]/20 px-4 py-2 font-medium" style={{ width: '26%' }}>Company</th>
-                <th className="sticky top-0 z-10 bg-white dark:bg-[#1A2A43] border-b border-gray-200 dark:border-[#2B7CFF]/20 px-4 py-2 font-medium" style={{ width: '26%' }}>Campaign</th>
-                <th className="sticky top-0 z-10 bg-white dark:bg-[#1A2A43] border-b border-gray-200 dark:border-[#2B7CFF]/20 px-4 py-2 font-medium" style={{ width: '18%' }}>Next follow-up</th>
+                <th className="sticky top-0 z-10 bg-white dark:bg-[#1a2a43] border-b border-[#E2E8F0] dark:border-[#262831] px-4 py-2 font-medium" style={{ width: '30%' }}>Name</th>
+                <th className="sticky top-0 z-10 bg-white dark:bg-[#1a2a43] border-b border-[#E2E8F0] dark:border-[#262831] px-4 py-2 font-medium" style={{ width: '26%' }}>Company</th>
+                <th className="sticky top-0 z-10 bg-white dark:bg-[#1a2a43] border-b border-[#E2E8F0] dark:border-[#262831] px-4 py-2 font-medium" style={{ width: '26%' }}>Campaign</th>
+                <th className="sticky top-0 z-10 bg-white dark:bg-[#1a2a43] border-b border-[#E2E8F0] dark:border-[#262831] px-4 py-2 font-medium" style={{ width: '18%' }}>Next follow-up</th>
               </tr>
             </thead>
             <tbody>
               {leads.map((l) => (
-                <tr key={`${l.lead_id}-${l.campaign_name}`} className="border-b border-gray-100 dark:border-white/5 hover:bg-muted/40 dark:hover:bg-white/5">
+                <tr key={`${l.lead_id}-${l.campaign_name}`} className="border-b border-blue-950/30 hover:bg-slate-800/40">
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-1.5 min-w-0">
                       <span className="font-medium truncate dark:text-[#E0E0E0]" title={l.name}>{l.name || 'Unknown'}</span>

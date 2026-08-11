@@ -61,7 +61,7 @@ const DashboardSkeleton: React.FC = () => {
       </div>
 
       {/* Row 4: Calendar (w:12 h:5) */}
-      <div className="md:col-span-12 h-96 rounded-xl bg-white dark:bg-[#1A2A43] p-4 shadow-sm">
+      <div className="md:col-span-12 h-96 rounded-xl bg-[#0A1535] border border-blue-950/40 p-4 shadow-sm">
         <div className="h-4 w-40 rounded bg-gray-200 dark:bg-slate-800 dark:bg-gray-700/40 animate-pulse" />
         <div className="mt-4 grid grid-cols-7 gap-2">
           {Array.from({ length: 7 }).map((_, i) => (
@@ -82,8 +82,8 @@ const Dashboard: React.FC = () => {
   const [isDashboardLoading, setIsDashboardLoading] = React.useState(true);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#000724]">
-      <main className="min-h-screen bg-white md:bg-gray-50 dark:bg-[#0a0e1f] p-4 sm:p-6">
+    <div className="min-h-screen bg-[#F8F9FE] dark:bg-[#000724] text-slate-900 dark:text-white">
+      <main className="min-h-screen bg-[#F8F9FE] dark:bg-[#000724] p-4 sm:p-6">
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}

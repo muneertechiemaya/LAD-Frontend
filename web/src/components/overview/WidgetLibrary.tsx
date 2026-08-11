@@ -13,9 +13,78 @@ const getIcon = (iconName: string) => {
   const IconComponent = (Icons as any)[iconName];
   return IconComponent || Icons.Box;
 };
+const FILTER_BUTTON_STYLE = {
+  inactive: {
+    backgroundColor: '#0F172A',
+    borderColor: '#1E293B',
+    color: '#E5E7EB',
+  },
+  hover: {
+    backgroundColor: '#1E293B',
+    borderColor: '#334155',
+    color: '#E5E7EB',
+  },
+  active: {
+    backgroundColor: '#3B82F6',
+    borderColor: '#3B82F6',
+    color: '#0F172A',
+    boxShadow: '0 4px 14px rgba(59, 130, 246, 0.25)',
+  },
+};
+
+const TAG_STYLES: Record<string, { bg: string; border: string; text: string }> = {
+  analytics: {
+    bg: 'transparent',
+    border: '#3B82F6',
+    text: '#60A5FA',
+  },
+  credits: {
+    bg: 'transparent',
+    border: '#D4A72C',
+    text: '#F5C84C',
+  },
+  'voice-agent': {
+    bg: 'transparent',
+    border: '#c06be8',
+    text: '#c06be8',
+  },
+  calendar: {
+    bg: 'transparent',
+    border: '#22C55E',
+    text: '#4ADE80',
+  },
+  'ai-insights': {
+    bg: 'transparent',
+    border: '#51edc1',
+    text: '#51edc1',
+  },
+  whatsapp: {
+    bg: 'transparent',
+    border: '#22C55E',
+    text: '#4ADE80',
+  },
+  linkedin: {
+    bg: 'transparent',
+    border: '#634af0',
+    text: '#634af0',
+  },
+  email: {
+    bg: 'transparent',
+    border: '#e8956b',
+    text: '#e8956b',
+  },
+  instagram: {
+    bg: 'transparent',
+    border: '#E1306C',
+    text: '#F472B6',
+  },
+};
+
 export const WidgetLibrary: React.FC = () => {
   const { isWidgetLibraryOpen, setWidgetLibraryOpen, addWidget, layout } = useDashboardStore();
   const [selectedCategory, setSelectedCategory] = React.useState<WidgetCategory | 'all'>('all');
+  const [hoveredCategory, setHoveredCategory] = React.useState<string | null>(null);
+
   // Get widgets currently on dashboard
   const activeWidgetTypes = new Set(
     layout.map((item) => {
@@ -23,13 +92,16 @@ export const WidgetLibrary: React.FC = () => {
       return match ? match[1] : null;
     }).filter(Boolean)
   );
+
   const filteredWidgets = Object.values(WIDGET_CATALOG).filter(
     (widget) => selectedCategory === 'all' || widget.category === selectedCategory
   );
+
   const handleAddWidget = (type: WidgetType) => {
     addWidget(type);
     // Don't close the drawer to allow adding multiple widgets
   };
+
   return (
     <Sheet open={isWidgetLibraryOpen} onOpenChange={setWidgetLibraryOpen}>
       <SheetContent className="p-4 sm:p-6 overflow-hidden flex flex-col">
@@ -39,30 +111,60 @@ export const WidgetLibrary: React.FC = () => {
             Add widgets to customize your dashboard
           </SheetDescription>
         </SheetHeader>
+
         {/* Category Filter */}
         <div className="py-3 sm:py-4 border-b border-border">
-          <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
-            <Button
-              size="sm"
-              variant={selectedCategory === 'all' ? 'default' : 'outline'}
-              className="h-8"
+          <div className="flex gap-2.5 overflow-x-auto pb-1 hide-scrollbar items-center">
+            {/* All Button */}
+            <button
+              type="button"
               onClick={() => setSelectedCategory('all')}
+              onMouseEnter={() => setHoveredCategory('all')}
+              onMouseLeave={() => setHoveredCategory(null)}
+              className="inline-flex items-center justify-center whitespace-nowrap rounded-[10px] px-4 h-9 text-sm font-semibold transition-all duration-200 ease-in-out shrink-0"
+              style={{
+                backgroundColor: selectedCategory === 'all'
+                  ? FILTER_BUTTON_STYLE.active.backgroundColor
+                  : hoveredCategory === 'all'
+                  ? FILTER_BUTTON_STYLE.hover.backgroundColor
+                  : FILTER_BUTTON_STYLE.inactive.backgroundColor,
+                border: `1px solid ${selectedCategory === 'all' ? FILTER_BUTTON_STYLE.active.borderColor : FILTER_BUTTON_STYLE.inactive.borderColor}`,
+                color: selectedCategory === 'all' ? FILTER_BUTTON_STYLE.active.color : FILTER_BUTTON_STYLE.inactive.color,
+                boxShadow: selectedCategory === 'all' ? FILTER_BUTTON_STYLE.active.boxShadow : 'none',
+                transform: hoveredCategory === 'all' ? 'scale(1.02)' : 'scale(1)',
+              }}
             >
               All
-            </Button>
+            </button>
+
             {WIDGET_CATEGORIES.map((category) => {
               const CategoryIcon = getIcon(category.icon);
+              const isSelected = selectedCategory === category.id;
+              const isHovered = hoveredCategory === category.id;
+
               return (
-                <Button
+                <button
                   key={category.id}
-                  size="sm"
-                  variant={selectedCategory === category.id ? 'default' : 'outline'}
-                  className="h-8 gap-1.5"
+                  type="button"
                   onClick={() => setSelectedCategory(category.id)}
+                  onMouseEnter={() => setHoveredCategory(category.id)}
+                  onMouseLeave={() => setHoveredCategory(null)}
+                  className="inline-flex items-center gap-2 whitespace-nowrap rounded-[10px] px-3.5 h-9 text-sm font-medium transition-all duration-200 ease-in-out shrink-0"
+                  style={{
+                    backgroundColor: isSelected
+                      ? FILTER_BUTTON_STYLE.active.backgroundColor
+                      : isHovered
+                      ? FILTER_BUTTON_STYLE.hover.backgroundColor
+                      : FILTER_BUTTON_STYLE.inactive.backgroundColor,
+                    border: `1px solid ${isSelected ? FILTER_BUTTON_STYLE.active.borderColor : FILTER_BUTTON_STYLE.inactive.borderColor}`,
+                    color: isSelected ? FILTER_BUTTON_STYLE.active.color : FILTER_BUTTON_STYLE.inactive.color,
+                    boxShadow: isSelected ? FILTER_BUTTON_STYLE.active.boxShadow : 'none',
+                    transform: isHovered ? 'scale(1.02)' : 'scale(1)',
+                  }}
                 >
-                  <CategoryIcon className="h-3.5 w-3.5" />
-                  {category.label}
-                </Button>
+                  <CategoryIcon className="h-4 w-4 shrink-0" style={{ color: isSelected ? FILTER_BUTTON_STYLE.active.color : FILTER_BUTTON_STYLE.inactive.color }} />
+                  <span>{category.label}</span>
+                </button>
               );
             })}
           </div>
@@ -87,14 +189,21 @@ export const WidgetLibrary: React.FC = () => {
                       isActive && 'border-accent/50 bg-accent/5'
                     )}
                   >
-                    <div className="p-2.5 rounded-lg bg-primary/10 shrink-0">
-                      <WidgetIcon className="h-5 w-5 text-primary" />
+                    <div
+                      className="p-2.5 rounded-lg shrink-0"
+                      style={{ background: 'linear-gradient(135deg, #4D9BFF, #2B7CFF, #1E5FD9)' }}
+                    >
+                      <WidgetIcon className="h-5 w-5 text-[#D8ECFF]" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <h4 className="font-medium text-sm">{widget.title}</h4>
                         {isActive && (
-                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] px-1.5 py-0"
+                            style={{ backgroundColor: '#2F3A5A', color: '#F3F4F6', borderColor: 'transparent' }}
+                          >
                             Added
                           </Badge>
                         )}
@@ -103,7 +212,15 @@ export const WidgetLibrary: React.FC = () => {
                         {widget.description}
                       </p>
                       <div className="flex items-center gap-2 mt-2">
-                        <Badge variant="outline" className="text-[10px] px-2 py-0">
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] px-2 py-0"
+                          style={{
+                            backgroundColor: TAG_STYLES[category?.id ?? '']?.bg ?? 'transparent',
+                            borderColor: TAG_STYLES[category?.id ?? '']?.border ?? undefined,
+                            color: TAG_STYLES[category?.id ?? '']?.text ?? undefined,
+                          }}
+                        >
                           {category?.label}
                         </Badge>
                         <span className="text-[10px] text-muted-foreground">

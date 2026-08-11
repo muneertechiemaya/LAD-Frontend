@@ -65,8 +65,8 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
         </div>
       }
     >
-      <div className="h-full flex flex-col border rounded-lg p-4 bg-card">
-        <p className="text-xs text-muted-foreground mb-4">{chartRangeLabel}</p>
+      <div className="h-full flex flex-col border rounded-lg p-4 bg-[#0A1535] border-[#E2E8F0] dark:border-[#262831]" style={{ backgroundColor: '#0A1535' }}>
+        <p className="text-xs text-slate-500 dark:text-slate-300 mb-4">{chartRangeLabel}</p>
         <div className="flex-1 min-h-[200px]">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={data}>
@@ -77,11 +77,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
                   <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="#e5e7eb"
-                vertical={false}
-              />
+              <CartesianGrid vertical={false} stroke="#1e2e4a" strokeDasharray="3 3" />
               <XAxis
                 dataKey="date"
                 tick={{ fontSize: 11, fill: '#9ca3af' }}
@@ -96,12 +92,12 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: '#ffffff',
-                  border: '1px solid #e5e7eb',
+                  backgroundColor: '#071131',
+                  border: '1px solid rgba(30, 41, 59, 0.8)',
                   borderRadius: '8px',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
                 }}
-                labelStyle={{ color: '#111827' }}
+                labelStyle={{ color: '#f8fafc' }}
               />
               <Area
                 type="monotone"
