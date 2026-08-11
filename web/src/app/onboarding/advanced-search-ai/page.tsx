@@ -800,6 +800,24 @@ const COMPANY_SIZES = ['1-50 employees', '51-250 employees', '251-1000 employees
 const COMPANY_AGES = ['Startup (<1 year)', 'Growth (1-5 years)', 'Established (5-10 years)', 'Mature (10+ years)'];
 const EDUCATION_OPTIONS = ['MBA', 'Bachelor\'s', 'Master\'s', 'PhD', 'Bootcamp', 'Other'];
 
+const playgroundWorkerUrl = () => process.env.NEXT_PUBLIC_PLAYGROUND_WORKER_URL || 'http://localhost:8080';
+/* How long we will hold the transcript hostage waiting for the tidy-up. */
+const BEAUTIFY_TIMEOUT_MS = 4000;
+/* The worker scales to zero, so the first call after an idle spell pays a cold
+   start on top of the model. Dictation takes seconds — spend them booting it.
+   An empty body short-circuits before the model, so this costs nothing but the
+   container wake-up. */
+const warmBeautifyWorker = () => {
+    try {
+        fetch(`${playgroundWorkerUrl()}/playground-media/beautify-transcription`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: '' }),
+            keepalive: true,
+        }).catch(() => { });
+    } catch { }
+};
+
 /* ═══════════════════════════════════════════════
    MAIN PAGE
    ═══════════════════════════════════════════════ */
@@ -834,6 +852,9 @@ export default function AdvancedSearchAIPage() {
     // onward, so without these the earlier sentences get overwritten.
     const dictationBaseRef = useRef('');
     const dictationFinalRef = useRef('');
+    // The in-flight cleanup call, so sending can cancel it. Without this a late
+    // response lands in the box after the message has already gone out.
+    const beautifyAbortRef = useRef<AbortController | null>(null);
     useEffect(() => {
         setSpeechSupported(!!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition));
     }, []);
@@ -5467,6 +5488,9 @@ export default function AdvancedSearchAIPage() {
 
     const onChatSend = useCallback(() => {
         if (!input.trim() || busy) return;
+        // Sending settles the text. Drop any cleanup still in flight so its
+        // answer cannot repopulate the box behind the message just sent.
+        beautifyAbortRef.current?.abort();
         if (roleWizardRef.current) {
             const t = input.trim();
             setInput('');
@@ -6546,16 +6570,22 @@ export default function AdvancedSearchAIPage() {
                 return;
             }
 
+            // Cleanup is a nicety, not a gate: the raw transcript is already in
+            // the box and is sendable. Cap the wait so a cold worker or a stalled
+            // model costs the user a couple of seconds, not an open-ended spinner.
+            const ctrl = new AbortController();
+            beautifyAbortRef.current = ctrl;
+            const timer = setTimeout(() => ctrl.abort(), BEAUTIFY_TIMEOUT_MS);
             try {
                 const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
-                const workerUrl = process.env.NEXT_PUBLIC_PLAYGROUND_WORKER_URL || "http://localhost:8080";
-                const res = await fetch(`${workerUrl}/playground-media/beautify-transcription`, {
+                const res = await fetch(`${playgroundWorkerUrl()}/playground-media/beautify-transcription`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
                         ...(token && { Authorization: `Bearer ${token}` })
                     },
-                    body: JSON.stringify({ text: rawText })
+                    body: JSON.stringify({ text: rawText }),
+                    signal: ctrl.signal
                 });
                 if (res.ok) {
                     const data = await res.json();
@@ -6565,8 +6595,14 @@ export default function AdvancedSearchAIPage() {
                     }
                 }
             } catch (err) {
-                console.error("Failed to beautify transcription:", err);
+                // Aborted = the user sent, or we ran out of patience. Either way
+                // the raw transcript stands; nothing to report.
+                if (!(err instanceof DOMException && err.name === 'AbortError')) {
+                    console.error("Failed to beautify transcription:", err);
+                }
             } finally {
+                clearTimeout(timer);
+                if (beautifyAbortRef.current === ctrl) beautifyAbortRef.current = null;
                 setBeautifying(false);
             }
         } else {
@@ -6583,6 +6619,8 @@ export default function AdvancedSearchAIPage() {
                 alert("Microphone access is required for voice interaction.");
                 return;
             }
+
+            warmBeautifyWorker();
 
             const rec = new SpeechRecognition();
             rec.continuous = true;
