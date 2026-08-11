@@ -14,7 +14,7 @@ import { Zap, Users, Loader2, Bot, ArrowLeft, Trash2, ArrowDownToLine, ArrowUpFr
 import { sendGeminiPrompt, askPlatformFeatures, askFeatureUtilities, buildWorkflowNode } from '@/services/geminiFlashService';
 import { clearBufferedMessages, clearAllBufferedMessages, useLinkedInLimits } from '@lad/frontend-features/ai-icp-assistant';
 import { questionSequences, getPlatformFeaturesQuestion, getUtilityQuestions } from '@/lib/onboardingQuestions';
-import { saveInboundLeads, cancelLeadBookingsForReNurturing, getCampaign } from '@lad/frontend-features/campaigns';
+import { saveInboundLeads, cancelLeadBookingsForReNurturing, getCampaign, campaignSaveErrorMessage } from '@lad/frontend-features/campaigns';
 import { PLATFORM_FEATURES } from '@/lib/platformFeatures';
 import { filterFeaturesByCategory } from '@/lib/categoryFilters';
 import { apiPost } from '@/lib/api';
@@ -876,7 +876,7 @@ export default function ChatPanel({ campaignId }: ChatPanelProps = {}) {
           logger.error('Error creating advanced search campaign', error);
           addAIMessage({
             role: 'ai',
-            content: `❌ Error creating campaign: ${error.message}\n\nPlease try again.`,
+            content: `❌ ${campaignSaveErrorMessage(error, campaignName, 'Failed to create campaign')}\n\nPlease try again.`,
             timestamp: new Date(),
           });
         }
@@ -1049,7 +1049,7 @@ export default function ChatPanel({ campaignId }: ChatPanelProps = {}) {
         logger.error('Error creating/starting campaign', error);
         addAIMessage({
           role: 'ai',
-          content: `❌ Error creating campaign: ${(error as Error).message || 'Unknown error'}. Please try again from the campaigns page.`,
+          content: `❌ ${campaignSaveErrorMessage(error, mappedAnswers.campaign_name, 'Error creating campaign')}. Please try again from the campaigns page.`,
           timestamp: new Date(),
         });
       }

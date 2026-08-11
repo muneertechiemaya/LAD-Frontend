@@ -76,7 +76,12 @@ export type { AIChatState } from './hooks/useAIChat';
 export type { ChatMessage as AIChatMessage } from './hooks/useAIChat';
 
 export { useCampaignCreation } from './hooks/useCampaignCreation';
-export type { CampaignStep, CampaignPayload, CampaignCreationState } from './hooks/useCampaignCreation';
+export type {
+  CampaignStep,
+  CampaignPayload,
+  CampaignCreationState,
+  CampaignCreationFailure,
+} from './hooks/useCampaignCreation';
 
 export { useVoiceAgent } from './hooks/useVoiceAgent';
 export type { VoiceAgent, PhoneNumber, VoiceAgentState } from './hooks/useVoiceAgent';

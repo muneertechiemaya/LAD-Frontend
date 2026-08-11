@@ -21,6 +21,7 @@ import { apiPost } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { logger } from '@/lib/logger';
 import type { LinkedInMessageTemplate } from '@lad/frontend-features/campaigns';
+import { campaignSaveErrorMessage } from '@lad/frontend-features/campaigns';
 import { TemplateSelector, TemplateSaveModal, TemplateManagerModal } from '@/components/campaigns/linkedin-templates';
 // WhatsApp actions with recommended
 const WHATSAPP_ACTIONS = [
@@ -3131,7 +3132,9 @@ export default function GuidedFlowPanel() {
       }
     } catch (error: any) {
       logger.error('Error creating campaign', error);
-      setCreateError(error.message || 'Failed to create campaign. Please try again.');
+      setCreateError(
+        campaignSaveErrorMessage(error, campaignName, 'Failed to create campaign. Please try again.')
+      );
     } finally {
       setIsCreatingCampaign(false);
     }
