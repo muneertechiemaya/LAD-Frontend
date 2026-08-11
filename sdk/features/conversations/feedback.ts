@@ -84,3 +84,48 @@ export async function getConversationFeedback(
   );
   return response.data.data ?? [];
 }
+
+/** One correction in the management panel. */
+export interface LearnedCorrection {
+  id: string;
+  conversation_id: string;
+  message_id: string;
+  actual_response: string | null;
+  expected_response: string | null;
+  submitted_by: string | null;
+  is_active: boolean;
+  /**
+   * Whether this correction actually reaches the prompt. Only the newest
+   * `max_in_prompt` ACTIVE ones do — an active correction past that cap is
+   * stored and visible but has no effect, and the panel must say so rather
+   * than let someone believe it applies.
+   */
+  in_prompt: boolean;
+  created_at: string | null;
+}
+
+export async function listLearnedCorrections(): Promise<{
+  corrections: LearnedCorrection[];
+  maxInPrompt: number;
+}> {
+  const response = await proxyClient.get<{
+    success: boolean;
+    data: LearnedCorrection[];
+    max_in_prompt: number;
+  }>('/api/whatsapp-conversations/conversations/feedback/corrections');
+  return {
+    corrections: response.data.data ?? [],
+    maxInPrompt: response.data.max_in_prompt ?? 0,
+  };
+}
+
+/** Switch a correction on or off. Takes effect on the very next message. */
+export async function setCorrectionActive(
+  feedbackId: string,
+  isActive: boolean
+): Promise<void> {
+  await proxyClient.patch(
+    `/api/whatsapp-conversations/conversations/feedback/${feedbackId}`,
+    { is_active: isActive }
+  );
+}
