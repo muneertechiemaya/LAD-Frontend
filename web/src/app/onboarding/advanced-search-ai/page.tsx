@@ -51,7 +51,7 @@ import {
     computeOfferCompleteness,
     type BusinessProfile,
 } from '@lad/frontend-features/ai-icp-assistant';
-import { getCampaign, updateCampaign, updateCampaignSteps, startCampaign } from '@lad/frontend-features/campaigns';
+import { getCampaign, updateCampaign, updateCampaignSteps, startCampaign, isCampaignNameTaken, campaignNameTakenMessage } from '@lad/frontend-features/campaigns';
 
 /* ═══════════════════════════════════════════════
    TYPES
@@ -10948,9 +10948,22 @@ function CheckpointFormInline({
             } else {
                 const data = await campaignCreation.createCampaign(payload);
                 if (data?.success) { window.location.href = '/campaigns'; }
+                else if (isCampaignNameTaken(data?.apiError)) {
+                    // The whole wizard is still filled in — send them back to the
+                    // name step (4) rather than dead-ending on an alert, since the
+                    // one field that needs changing is right there.
+                    alert(campaignNameTakenMessage(name));
+                    setStep(4);
+                    setLaunching(false);
+                }
                 else { alert('Failed to launch campaign: ' + (data?.error || 'Unknown error')); setLaunching(false); }
             }
-        } catch (err: any) { console.error('Campaign creation error', err); alert('Error: ' + err.message); setLaunching(false); }
+        } catch (err: any) {
+            console.error('Campaign creation error', err);
+            if (isCampaignNameTaken(err)) { alert(campaignNameTakenMessage(name)); setStep(4); }
+            else { alert('Error: ' + err.message); }
+            setLaunching(false);
+        }
     };
 
     const canNext = () => {
