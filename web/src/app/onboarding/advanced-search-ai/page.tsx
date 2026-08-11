@@ -800,23 +800,8 @@ const COMPANY_SIZES = ['1-50 employees', '51-250 employees', '251-1000 employees
 const COMPANY_AGES = ['Startup (<1 year)', 'Growth (1-5 years)', 'Established (5-10 years)', 'Mature (10+ years)'];
 const EDUCATION_OPTIONS = ['MBA', 'Bachelor\'s', 'Master\'s', 'PhD', 'Bootcamp', 'Other'];
 
-const playgroundWorkerUrl = () => process.env.NEXT_PUBLIC_PLAYGROUND_WORKER_URL || 'http://localhost:8080';
 /* How long we will hold the transcript hostage waiting for the tidy-up. */
 const BEAUTIFY_TIMEOUT_MS = 4000;
-/* The worker scales to zero, so the first call after an idle spell pays a cold
-   start on top of the model. Dictation takes seconds — spend them booting it.
-   An empty body short-circuits before the model, so this costs nothing but the
-   container wake-up. */
-const warmBeautifyWorker = () => {
-    try {
-        fetch(`${playgroundWorkerUrl()}/playground-media/beautify-transcription`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: '' }),
-            keepalive: true,
-        }).catch(() => { });
-    } catch { }
-};
 
 /* ═══════════════════════════════════════════════
    MAIN PAGE
@@ -6571,19 +6556,16 @@ export default function AdvancedSearchAIPage() {
             }
 
             // Cleanup is a nicety, not a gate: the raw transcript is already in
-            // the box and is sendable. Cap the wait so a cold worker or a stalled
-            // model costs the user a couple of seconds, not an open-ended spinner.
+            // the box and is sendable. Cap the wait so a stalled model costs the
+            // user a couple of seconds, not an open-ended spinner.
             const ctrl = new AbortController();
             beautifyAbortRef.current = ctrl;
             const timer = setTimeout(() => ctrl.abort(), BEAUTIFY_TIMEOUT_MS);
             try {
-                const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
-                const res = await fetch(`${playgroundWorkerUrl()}/playground-media/beautify-transcription`, {
+                const res = await fetch('/api/ai-icp-assistant/beautify-transcription', {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        ...(token && { Authorization: `Bearer ${token}` })
-                    },
+                    headers: { "Content-Type": "application/json" },
+                    credentials: 'include',
                     body: JSON.stringify({ text: rawText }),
                     signal: ctrl.signal
                 });
@@ -6619,8 +6601,6 @@ export default function AdvancedSearchAIPage() {
                 alert("Microphone access is required for voice interaction.");
                 return;
             }
-
-            warmBeautifyWorker();
 
             const rec = new SpeechRecognition();
             rec.continuous = true;
