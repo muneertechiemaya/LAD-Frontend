@@ -3,12 +3,13 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
 import { AIPlayground } from './AIPlayground';
+import { AILearningsPanel } from './AILearningsPanel';
 import { LinkedInConversationView } from './LinkedInConversationView';
 import { EmailChannelView } from './EmailChannelView';
 import InstagramConversationView from './InstagramConversationView';
 import { WABusinessView } from './WABusinessView';
 import { Button } from '@/components/ui/button';
-import { FlaskConical, X } from 'lucide-react';
+import { FlaskConical, GraduationCap, X } from 'lucide-react';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
 import { ChannelIcon } from './ChannelIcon';
 import { cn } from '@/lib/utils';
@@ -171,6 +172,7 @@ function getTabColor(tabId: WaTab): string {
 export function ConversationsPage() {
   const [activeTab, setActiveTab] = useState<WaTab>('personal');
   const [isPlaygroundOpen, setIsPlaygroundOpen] = useState(false);
+  const [isLearningsOpen, setIsLearningsOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [showBroadcastModal, setShowBroadcastModal] = useState(false);
   // null = still loading; once resolved, only connected channels are shown
@@ -251,7 +253,24 @@ export function ConversationsPage() {
           <FlaskConical className="h-3.5 w-3.5" />
           Test AI
         </Button>
+
+        {/* AI Learnings — what the agent has been taught from thumbs-down
+            feedback. Sits beside Test AI because both answer "why did it say
+            that?": one lets you probe the prompt, the other shows what human
+            review has since added to it. */}
+        <Button
+          variant={isLearningsOpen ? 'secondary' : 'ghost'}
+          size="sm"
+          className={`gap-1.5 text-xs h-7 shrink-0 ${isLearningsOpen ? 'text-primary' : ''}`}
+          onClick={() => setIsLearningsOpen((v) => !v)}
+          title="View and manage what the AI has learned from feedback"
+        >
+          <GraduationCap className="h-3.5 w-3.5" />
+          AI Learnings
+        </Button>
       </div>
+
+      <AILearningsPanel open={isLearningsOpen} onClose={() => setIsLearningsOpen(false)} />
 
       {/* Channel views — only the active tab is mounted */}
       <div className="flex-1 flex overflow-hidden">

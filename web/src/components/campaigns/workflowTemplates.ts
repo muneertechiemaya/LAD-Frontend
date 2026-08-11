@@ -36,6 +36,12 @@ export const APPROVAL_STEP_ID = 'post-approval-node';
 export const IG_AUTOPOST_STEP_ID = 'instagram-post-node';
 /** Human task. Per-lead: pauses the lead until a person confirms. */
 export const HUMAN_TASK_STEP_ID = 'human-task-node';
+export const MINDBODY_STEP_ID = 'mindbody-node';
+// Broadcasts are CAMPAIGN-level: the backend prunes them from the per-lead
+// sequence and ticks them once per run. Single-instance for the same reason a
+// second one would be a second blast to the same audience.
+export const WA_BROADCAST_STEP_ID = 'whatsapp-broadcast-node';
+export const EMAIL_BROADCAST_STEP_ID = 'email-broadcast-node';
 /** Audit report. Per-lead by default; campaign-level when scope='campaign'. */
 export const REPORT_STEP_ID = 'lead-report-node';
 // Web-intel + flow macros. These lived in CustomWorkflowBuilder until
@@ -63,6 +69,7 @@ export const MACRO_STEP_IDS: readonly string[] = [
   SCRAPE_STEP_ID, RESEARCH_STEP_ID, SCORE_STEP_ID,
   SPLIT_STEP_ID, SETFIELD_STEP_ID, HTTP_STEP_ID,
   IG_AUTOPOST_STEP_ID, LANDING_STEP_ID,
+  MINDBODY_STEP_ID, WA_BROADCAST_STEP_ID, EMAIL_BROADCAST_STEP_ID,
 ];
 
 /**

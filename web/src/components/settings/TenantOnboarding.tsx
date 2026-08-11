@@ -581,18 +581,6 @@ export function TenantOnboarding() {
                         <p className="font-mono text-xs text-gray-600 dark:text-gray-400 break-all">{account.id}</p>
                       </div>
                       <div>
-                        <span className="text-xs text-gray-400 dark:text-slate-300">Phone Number ID</span>
-                        <p className="font-mono text-xs text-gray-600 dark:text-gray-400">{account.phone_number_id || '—'}</p>
-                      </div>
-                      <div>
-                        <span className="text-xs text-gray-400 dark:text-slate-300">Business Account ID</span>
-                        <p className="font-mono text-xs text-gray-600 dark:text-gray-400">{account.business_account_id || '—'}</p>
-                      </div>
-                      <div>
-                        <span className="text-xs text-gray-400 dark:text-slate-300">App ID</span>
-                        <p className="font-mono text-xs text-gray-600 dark:text-gray-400">{(account as any).app_id || '—'}</p>
-                      </div>
-                      <div>
                         <span className="text-xs text-gray-400 dark:text-slate-300">Webhook URL</span>
                         <p className="font-mono text-xs text-indigo-600 dark:text-indigo-400">/webhook/{account.slug}</p>
                       </div>
