@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArrowLeft, Save, Play, Eye, Pause, Loader2 } from 'lucide-react';
 import { useCampaignStore } from '@/store/campaignStore';
-import { useCampaign, updateCampaign, createCampaign, pauseCampaign } from '@lad/frontend-features/campaigns';
+import { useCampaign, updateCampaign, createCampaign, pauseCampaign, campaignSaveErrorMessage } from '@lad/frontend-features/campaigns';
 import { useToast } from '@/components/ui/app-toaster';
 import { StepLibrary, FlowCanvas, StepSettings } from '@/components/campaigns';
 import LinkedInApprovalsPanel from '@/components/campaigns/LinkedInApprovalsPanel';
@@ -93,7 +93,7 @@ export default function CampaignDetailPage() {
       push({
         variant: 'error',
         title: 'Error',
-        description: error.message || 'Failed to save campaign',
+        description: campaignSaveErrorMessage(error, name),
       });
     } finally {
       setSaving(false);
