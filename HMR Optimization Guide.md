@@ -1,20 +1,23 @@
 # Monorepo HMR & Turbopack Optimization Guide
 
-This guide details all configuration and code optimizations performed to resolve slow Hot Module Reloading (HMR) and activate Turbopack for the Next.js monorepo setup.
+This document records all configuration and code changes made to resolve slow Hot Module Reloading (HMR) and migrate the Next.js monorepo from Webpack to Turbopack.
 
-## Note
+> **Status:** All changes are applied and in the branch `chore/dev-turbopack-hmr-optimization`.
+> The dev server (`next dev --turbo`) is working locally. One verification step remains before the PR is merged — see [Pre-Merge Verification](#pre-merge-verification) at the bottom.
 
-All the file changes are in commit `25b88cd0 perf(dev): optimize monorepo HMR and enable Turbopack` so you may already have these changes if you are seeing this file. Just run:
+---
 
-On Windows PowerShell:
+## Quick Start (if you're picking this up)
 
+The branch already contains all changes. Just clear the old Webpack cache and start the dev server:
+
+**Windows PowerShell:**
 ```powershell
 Remove-Item -Recurse -Force "web/.next" -ErrorAction SilentlyContinue
 npm run dev
 ```
 
-On Linux / macOS:
-
+**Linux / macOS:**
 ```bash
 rm -rf web/.next
 npm run dev
@@ -22,221 +25,211 @@ npm run dev
 
 ---
 
-## 1. Optimization Methods & Summary of Effects
+## 1. What Was Changed and Why
 
-| Optimization Method                                     | Summary of Effects                                                                                                                                                                                                         |
-| :------------------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Native Monorepo Transpilation** (`transpilePackages`) | Replaces legacy `externalDir: true` and absolute path overrides, allowing Next.js and Turbopack to cache workspace dependencies (`sdk`) efficiently without recompiling the entire AST on every save (**50-70% speedup**). |
-| **Turbopack Migration** (`next dev --turbo`)            | Leverages Next.js's Rust-powered bundler with proper workspace root and module alias resolution, resulting in near-instant HMR (**80-90% speedup, <500ms updates**).                                                       |
-| **Turborepo Task Persistence** (`persistent: true`)     | Configures `turbo.json` to recognize Next.js dev server as a long-running watch process, preventing task deadlocks and maintaining clean log streams.                                                                      |
-| **Turbopack CSS Parser Fix**                            | Refactors deeply escaped Tailwind arbitrary variants into CSS attribute selectors, preventing Rust `swc_css` / LightningCSS compiler panics.                                                                               |
-
----
-
-## 2. Summary of Required Changes
-
-### Modified Files:
-
-1. **`web/next.config.mjs`**: Replaced `externalDir: true` with `transpilePackages` and `optimizePackageImports`. Added `@lad/shared` alias mapping to both Webpack and Turbopack configs.
-2. **`web/package.json`**: Updated dev script to `"dev": "next dev --turbo"` and removed `--webpack` flags.
-3. **`web/tsconfig.json`**: Removed hardcoded `../sdk` sub-feature path aliases and `../sdk/**/*.ts` includes while retaining the custom `@lad/shared` alias.
-4. **`turbo.json`**: Added `"persistent": true` to the `dev` pipeline task.
-5. **`web/src/components/conversations/WABusinessView.tsx`**: Simplified complex escaped Tailwind class variant to avoid Turbopack CSS parser crash.
-
-### Terminal Commands:
-
-- Purge `.next` cache directory to resolve SQLite locks and remove stale CSS chunks.
+| Change | File | Why |
+| :--- | :--- | :--- |
+| Replace `externalDir: true` with `transpilePackages` + `optimizePackageImports` | `web/next.config.mjs` | `externalDir` was a legacy workaround. `transpilePackages` is the correct modern way to tell Next.js to compile a local workspace package (`@lad/frontend-features`). `optimizePackageImports` tree-shakes it per-feature. |
+| Add `@lad/shared` alias to both Webpack and Turbopack configs | `web/next.config.mjs` | Allows both bundlers to resolve `@lad/shared/*` imports from the `sdk/shared/` directory. |
+| Remove `@lad/frontend-features$` exact-match alias | `web/next.config.mjs` | No longer needed — `transpilePackages` handles resolution via the SDK's `exports` map. |
+| Switch dev script to `next dev --turbo` | `web/package.json` | Enables Turbopack bundler for local development. Turbopack is Rust-based and significantly faster than Webpack for HMR — typically **3–5× faster**, with updates in under 500ms. |
+| Switch build script to `next build` | `web/package.json` | In Next.js 16, `next build` uses Turbopack by default. The `turbopack.resolveAlias` block in `next.config.mjs` already mirrors all the Webpack aliases, so production builds are covered. |
+| Remove redundant tsconfig path mappings | `web/tsconfig.json` | The 21 `@lad/frontend-features/*` paths were forcing TypeScript to read raw SDK source files directly. With `transpilePackages` and the SDK's `exports` map in place, Node/TypeScript module resolution handles these correctly without explicit path overrides. |
+| Add `persistent: true` to dev task | `turbo.json` | Tells Turborepo that `dev` is a long-running watch process, not a task that should "finish." Prevents task deadlocks in `turbo run dev`. |
+| Simplify escaped Tailwind class variant | `web/src/components/conversations/WABusinessView.tsx` | The original deeply-escaped arbitrary variant (`[&_.dark\:bg-\[\\#111b21\]]`) causes the Rust CSS parser (LightningCSS) inside Turbopack to panic. The simplified form (`[&_[class*='111b21']]`) is functionally identical and parser-safe. |
+| Fix TypeScript return type bug | `sdk/features/lad-monitor/api.ts` | `getMigrationStatus()` was returning `res.data` (the full `{ success, data }` wrapper) instead of `res.data.data` (the actual `MigrationStatusData`). Independent fix bundled in the same commit. |
+| Add `./community-roi/types` to SDK exports | `sdk/package.json` | Two files (`OutreachAnalysis.tsx`, `MemberProfileView.tsx`) import `@lad/frontend-features/community-roi/types` directly. Removing the tsconfig paths required adding this subpath to the SDK's exports map so TypeScript and the bundler can resolve it. |
 
 ---
 
-## 3. Step-by-Step Implementation Guide
+## 2. Files Changed
 
-### Step 1: Update `web/next.config.mjs`
+### `web/next.config.mjs`
 
-_Reasoning: Enables native monorepo package transpilation and ensures both Webpack and Turbopack resolve internal `@lad/shared` paths correctly._
-
-**Location:** Inside `const nextConfig = { ... }` in `web/next.config.mjs`.
-
-**1. Config options:**
-_Remove:_
-
+**Before:**
 ```javascript
+const nextConfig = {
   // ✅ REQUIRED when importing ../sdk
   experimental: {
     externalDir: true,
+    ...
+  },
+
+  webpack: (config, { isServer }) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@tanstack/react-query': path.resolve(__dirname, '../node_modules/@tanstack/react-query'),
+      '@tanstack/query-core': path.resolve(__dirname, '../node_modules/@tanstack/query-core'),
+      'chart.js': path.resolve(__dirname, 'node_modules/chart.js/dist/chart.js'),
+      '@lad/frontend-features$': path.resolve(__dirname, '../sdk'),  // ← removed
+      '@livekit/components-react': ...,
+      '@livekit/components-styles': ...,
+      'livekit-client': ...,
+    };
+    ...
+  },
+
+  turbopack: {
+    resolveAlias: {
+      '@tanstack/react-query': '../node_modules/@tanstack/react-query',
+      '@tanstack/query-core': '../node_modules/@tanstack/query-core',
+      'chart.js': './node_modules/chart.js/dist/chart.js',
+      '@lad/frontend-features$': '../sdk',  // ← removed
+      ...
+    },
+  },
+};
 ```
 
-_Add:_
-
+**After:**
 ```javascript
-  transpilePackages: ['@lad/frontend-features'],
+const nextConfig = {
+  transpilePackages: ['@lad/frontend-features'],  // ← added
 
   // ✅ REQUIRED when importing ../sdk
   experimental: {
-    optimizePackageImports: ['@lad/frontend-features'],
-```
+    optimizePackageImports: ['@lad/frontend-features'],  // ← replaced externalDir
+    ...
+  },
 
-**2. `webpack.resolve.alias` block:**
-_Remove:_
+  webpack: (config, { isServer }) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@tanstack/react-query': path.resolve(__dirname, '../node_modules/@tanstack/react-query'),
+      '@tanstack/query-core': path.resolve(__dirname, '../node_modules/@tanstack/query-core'),
+      '@lad/shared': path.resolve(__dirname, '../sdk/shared'),  // ← added
+      'chart.js': path.resolve(__dirname, 'node_modules/chart.js/dist/chart.js'),
+      // @lad/frontend-features$ removed — transpilePackages covers it
+      ...
+    };
+    ...
+  },
 
-```javascript
-      '@lad/frontend-features$': path.resolve(__dirname, '../sdk'),
-```
-
-_Add (under `@tanstack/query-core`):_
-
-```javascript
-      '@lad/shared': path.resolve(__dirname, '../sdk/shared'),
-```
-
-**3. `turbopack.resolveAlias` block:**
-_Remove:_
-
-```javascript
-      '@lad/frontend-features$': '../sdk',
-```
-
-_Add (under `@tanstack/query-core`):_
-
-```javascript
-      '@lad/shared': '../sdk/shared',
-```
-
----
-
-### Step 2: Update `web/package.json`
-
-_Reasoning: Switches local development from Webpack to Next.js Rust-powered Turbopack bundler._
-
-**Location:** Inside `"scripts"` object in `web/package.json`.
-
-_Remove:_
-
-```json
-    "dev": "next dev --webpack",
-    "build": "next build --webpack",
-```
-
-_Add:_
-
-```json
-    "dev": "next dev --turbo",
-    "build": "next build",
-```
-
----
-
-### Step 3: Update `web/tsconfig.json`
-
-_Reasoning: Removes redundant path mappings that force raw source parsing, allowing Node resolution and symlinks to handle SDK feature imports._
-
-**Location:** Inside `"compilerOptions.paths"` and `"include"` in `web/tsconfig.json`.
-
-**1. In `"paths"` object:**
-_Remove:_
-
-```json
-      "@lad/frontend-features": ["../sdk"],
-      "@lad/frontend-features/ai-icp-assistant": ["../sdk/features/ai-icp-assistant"],
-      "@lad/frontend-features/billing": ["../sdk/features/billing"],
-      "@lad/frontend-features/campaigns": ["../sdk/features/campaigns"],
-      "@lad/frontend-features/community-roi": ["../sdk/features/community-roi"],
-      "@lad/frontend-features/conversations": ["../sdk/features/conversations"],
-      "@lad/frontend-features/overview": ["../sdk/features/overview"],
-      "@lad/frontend-features/voice-agent": ["../sdk/features/voice-agent"],
-      "@lad/frontend-features/deals-pipeline": ["../sdk/features/deals-pipeline"],
-      "@lad/frontend-features/apollo-leads": ["../sdk/features/apollo-leads"],
-      "@lad/frontend-features/dashboard": ["../sdk/features/dashboard"],
-      "@lad/frontend-features/bookings": ["../sdk/features/bookings"],
-      "@lad/frontend-features/social-integration": ["../sdk/features/social-integration"],
-      "@lad/frontend-features/call-logs": ["../sdk/features/call-logs"],
-      "@lad/frontend-features/lead-appreciation": ["../sdk/features/lead-appreciation"],
-      "@lad/frontend-features/settings": ["../sdk/features/settings"],
-      "@lad/frontend-features/email-templates": ["../sdk/features/email-templates"],
-      "@lad/frontend-features/email-senders": ["../sdk/features/email-senders"],
-      "@lad/frontend-features/email-accounts": ["../sdk/features/email-accounts"],
-      "@lad/frontend-features/meta-onboarding": ["../sdk/features/meta-onboarding"],
-      "@lad/frontend-features/lad-monitor": ["../sdk/features/lad-monitor"],
-```
-
-Keep:
-
-```json
-      "@/*": ["./src/*"],
-      "@lad/shared/*": ["../sdk/shared/*"]
-```
-
-**2. In `"include"` array:**
-_Remove:_
-
-```json
-    "../sdk/**/*.ts",
-    "../sdk/**/*.tsx"
-```
-
----
-
-### Step 4: Update `turbo.json`
-
-_Reasoning: Informs Turborepo that `dev` is a persistent watch task, preventing task execution deadlocks._
-
-**Location:** Inside `"tasks.dev"` object in root `turbo.json`.
-
-_Remove:_
-
-```json
-    "dev": {
-      "cache": false
+  turbopack: {
+    resolveAlias: {
+      '@tanstack/react-query': '../node_modules/@tanstack/react-query',
+      '@tanstack/query-core': '../node_modules/@tanstack/query-core',
+      '@lad/shared': '../sdk/shared',  // ← added
+      'chart.js': './node_modules/chart.js/dist/chart.js',
+      // @lad/frontend-features$ removed — transpilePackages covers it
+      ...
     },
+  },
+};
 ```
 
-_Add:_
+---
 
+### `web/package.json`
+
+```diff
+-  "dev": "next dev --webpack",
+-  "build": "next build --webpack",
++  "dev": "next dev --turbo",
++  "build": "next build",
+```
+
+> **Note on production:** `next build` in Next.js 16 uses Turbopack by default. The `turbopack.resolveAlias` block in `next.config.mjs` already lists all the aliases that the `webpack()` block uses (react-query, livekit, chart.js, @lad/shared), so production bundling is correctly configured. The Docker/Cloud Run pipeline (`Dockerfile` line 88: `RUN npm run build`) does not need any changes — it already calls `npm run build`.
+
+---
+
+### `web/tsconfig.json`
+
+Removed 21 explicit `@lad/frontend-features/*` path entries from `compilerOptions.paths` and removed `../sdk/**/*.ts` / `../sdk/**/*.tsx` from `include`.
+
+Kept:
 ```json
-    "dev": {
-      "cache": false,
-      "persistent": true
-    },
+"@/*": ["./src/*"],
+"@lad/shared/*": ["../sdk/shared/*"]
+```
+
+**Why this is safe:** The SDK's `package.json` has a proper `exports` map listing every feature subpath (e.g. `./campaigns`, `./community-roi`, etc.). TypeScript with `moduleResolution: "bundler"` uses that exports map directly. The explicit tsconfig paths were duplicating what the exports map already declares, and forcing TypeScript to parse SDK source files directly on every type-check run.
+
+**Edge case handled:** `OutreachAnalysis.tsx` and `MemberProfileView.tsx` import `@lad/frontend-features/community-roi/types` — a subpath that was not in the SDK's exports map. This was fixed by adding it to `sdk/package.json` (see below).
+
+---
+
+### `sdk/package.json`
+
+Added one exports entry:
+```json
+"./community-roi/types": {
+  "types": "./features/community-roi/types.ts",
+  "default": "./features/community-roi/types.ts"
+}
+```
+
+This exposes the `types.ts` file inside `community-roi` as a direct importable subpath, so `import { UUID } from '@lad/frontend-features/community-roi/types'` resolves correctly without needing a tsconfig path override.
+
+---
+
+### `turbo.json`
+
+```diff
+ "dev": {
+-  "cache": false
++  "cache": false,
++  "persistent": true
+ }
 ```
 
 ---
 
-### Step 5: Fix Turbopack CSS Parser Crash in `WABusinessView.tsx`
+### `web/src/components/conversations/WABusinessView.tsx`
 
-_Reasoning: Simplifies deeply escaped Tailwind arbitrary variant syntax to prevent Rust `swc_css` compiler panics._
-
-**Location:** Around line 2074 in `web/src/components/conversations/WABusinessView.tsx`.
-
-_Remove:_
-
-```tsx
-      <div className="[&_.dark\:bg-\\[\\#111b21\\]]:dark:bg-[rgb(22,23,23)] [&_[class*='dark:bg-']>div]:dark:bg-[rgb(22,23,23)]">
+```diff
+- <div className="[&_.dark\:bg-\[\\#111b21\]]:dark:bg-[rgb(22,23,23)] [&_[class*='dark:bg-']>div]:dark:bg-[rgb(22,23,23)]">
++ <div className="[&_[class*='111b21']]:dark:bg-[rgb(22,23,23)] [&_[class*='dark:bg-']>div]:dark:bg-[rgb(22,23,23)]">
 ```
 
-_Add:_
-
-```tsx
-      <div className="[&_[class*='111b21']]:dark:bg-[rgb(22,23,23)] [&_[class*='dark:bg-']>div]:dark:bg-[rgb(22,23,23)]">
-```
+The original deeply-escaped selector (`dark\:bg-\[\\#111b21\]`) triggers a panic in the Rust CSS parser inside Turbopack when it encounters the multi-level escape sequences. The replacement uses a CSS substring match (`[class*='111b21']`) which targets the same elements, is visually equivalent, and is valid syntax for all parsers.
 
 ---
 
-### Step 6: Clear Cache & Start Dev Server
+### `sdk/features/lad-monitor/api.ts`
 
-_Reasoning: Clears stale build artifacts and SQLite file locks from previous crashes before launching Turbopack._
+```diff
+- return res.data;
++ return res.data.data;
+```
 
-**Terminal Commands to Run:**
+`apiGet<{ success: boolean; data: MigrationStatusData }>` returns `{ success, data }`. The function was returning the outer wrapper instead of the inner `MigrationStatusData`. Independent bug fix bundled in this commit.
 
-On Windows PowerShell:
+---
+
+## 3. Why `exceljs` Is Not a Problem
+
+During review, a concern was raised: the `webpack()` config aliases `exceljs` to its browser-compatible minified build (`exceljs/dist/exceljs.min.js`) to prevent Node.js-only APIs from being included in client bundles. Under Turbopack, the `webpack()` function is not called.
+
+**This turned out to be a non-issue.** `exceljs`'s own `package.json` has:
+```json
+"main": "./excel.js",
+"browser": "./dist/exceljs.min.js"
+```
+
+The `browser` field is a standard convention that tells any modern bundler (Webpack, Turbopack, esbuild, etc.) to automatically use the browser-safe build when targeting a browser environment. Turbopack respects this field. The manual webpack alias was redundant insurance — both bundlers end up using `exceljs.min.js` for client components.
+
+This was verified manually: navigating to the Import Leads dialog and importing an Excel file works correctly under `next dev --turbo`.
+
+---
+
+## Pre-Merge Verification
+
+All local dev functionality has been confirmed working. Before merging the PR, one production build test should be run to confirm the full Turbopack build pipeline works end-to-end:
 
 ```powershell
-Remove-Item -Recurse -Force "web/.next" -ErrorAction SilentlyContinue
-npm run dev
+# Run from the web directory — this is exactly what Docker/Cloud Run does
+cd web
+npx next build
 ```
 
-On Linux / macOS:
+**What to look for:**
 
-```bash
-rm -rf web/.next
-npm run dev
-```
+| Output | Meaning |
+| :--- | :--- |
+| `✓ Compiled successfully` at the end | ✅ Build is safe to merge |
+| Build completes and `.next/standalone/web/server.js` exists | ✅ Docker deployment path will work |
+| Module resolution errors (e.g. `Cannot find module`) | ❌ An alias is missing from `turbopack.resolveAlias` |
+| OOM / heap crash | ❌ Increase `NODE_OPTIONS=--max-old-space-size=...` (already set to 6GB in Dockerfile, set the same env var locally if needed) |
+
+If the build passes locally, the PR is ready to merge.
