@@ -2571,8 +2571,15 @@ function WABASidebar({
       }
       // Not in the loaded list. For a synced WA group, resolve-or-create its chat so
       // a single click always opens it — even before any messages have arrived.
+      //
+      // A BROADCAST group has no chat to open, and never will: it is a saved
+      // audience that fans out to N separate 1:1 conversations. Telling the user
+      // "no chat to open" described our data model rather than answering what
+      // they clicked for, so a click now opens the group itself — members, who
+      // can be added, and what has been broadcast to them.
       if (!jid) {
-        setGroupBroadcastResult(`"${group.name}" isn't a synced WhatsApp group — no chat to open.`);
+        setInfoGroup(group);
+        setIsGroupsPanelOpen(false);
         return;
       }
       try {
