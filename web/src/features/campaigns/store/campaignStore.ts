@@ -66,6 +66,9 @@ const defaultStepData: Record<StepType, Partial<StepData>> = {
   zoho_update: { title: 'Update Zoho record' },
   switch: { title: 'Multi-condition' },
   ai_parse: { title: 'AI Agent' },
+  whatsapp_broadcast: { title: 'WhatsApp broadcast' },
+  email_broadcast: { title: 'Email broadcast' },
+  mindbody_action: { title: 'MindBody' },
   data_enrich: { title: 'Enrich contact' },
 };
 export const useCampaignStore = create<CampaignState>((set, get) => ({

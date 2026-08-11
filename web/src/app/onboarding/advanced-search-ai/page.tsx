@@ -235,6 +235,53 @@ interface ChatMsg {
     sources?: Array<{ title: string; url: string }>;
     leadDetailForm?: boolean;
     outreach_journey?: OutreachStep[];
+    /**
+     * Live progress for an async lead-import discovery job. Rewritten in place on
+     * every poll (the message keeps a stable id), so the user watches one bar
+     * rather than accumulating a wall of status lines.
+     */
+    importProgress?: {
+        percent: number;
+        processed: number;
+        total: number;
+        found: number;
+        /** null while we have no measured rate yet — never render a fake ETA. */
+        etaLabel: string | null;
+        /**
+         * A full chunk has completed and produced nobody. Surfaced early and
+         * plainly: a run that finds nothing in its first companies almost never
+         * recovers, and the alternative is the user waiting out twenty silent
+         * minutes to reach the same answer.
+         */
+        warnNoResults?: boolean;
+    };
+}
+
+/** Stable id so each poll REWRITES the progress message instead of appending. */
+const IMPORT_PROGRESS_MSG_ID = 'import-discovery-progress';
+
+/**
+ * Seconds per uploaded row before we have measured anything.
+ *
+ * Discovery advances a chunk at a time, so `processedRows` sits at 0 for the
+ * first minute or two of a large sheet — with no prior the user would stare at
+ * "estimating…" for exactly the stretch where they most want a number.
+ *
+ * Measured on live runs: 23-31s/row on sheets where most rows resolve on the
+ * first search, but **47s/row** on a 31-company sheet where nearly every row
+ * missed and escalated (primary → 2 company-name variants → related titles ≈ 5.8
+ * searches/row at 2s pacing). Real sheets skew toward the miss-heavy case, so the
+ * prior sits near it: guessing low means promising 8 minutes and taking 20, which
+ * is worse than the reverse. Replaced by the observed rate the moment the first
+ * chunk lands.
+ */
+const IMPORT_SECONDS_PER_ROW_PRIOR = 40;
+
+/** "about 4 minutes" / "less than a minute" — deliberately coarse; this is an estimate. */
+function formatEta(seconds: number): string {
+    if (seconds <= 45) return 'less than a minute';
+    const mins = Math.round(seconds / 60);
+    return `about ${mins} minute${mins === 1 ? '' : 's'}`;
 }
 
 /**
@@ -800,6 +847,9 @@ const COMPANY_SIZES = ['1-50 employees', '51-250 employees', '251-1000 employees
 const COMPANY_AGES = ['Startup (<1 year)', 'Growth (1-5 years)', 'Established (5-10 years)', 'Mature (10+ years)'];
 const EDUCATION_OPTIONS = ['MBA', 'Bachelor\'s', 'Master\'s', 'PhD', 'Bootcamp', 'Other'];
 
+/* How long we will hold the transcript hostage waiting for the tidy-up. */
+const BEAUTIFY_TIMEOUT_MS = 4000;
+
 /* ═══════════════════════════════════════════════
    MAIN PAGE
    ═══════════════════════════════════════════════ */
@@ -834,6 +884,9 @@ export default function AdvancedSearchAIPage() {
     // onward, so without these the earlier sentences get overwritten.
     const dictationBaseRef = useRef('');
     const dictationFinalRef = useRef('');
+    // The in-flight cleanup call, so sending can cancel it. Without this a late
+    // response lands in the box after the message has already gone out.
+    const beautifyAbortRef = useRef<AbortController | null>(null);
     useEffect(() => {
         setSpeechSupported(!!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition));
     }, []);
@@ -1124,6 +1177,17 @@ export default function AdvancedSearchAIPage() {
     includeLeadSourceRef.current = !inboundMode && !(pendingContact && !pendingContact.linkedin_url);
     const [inboundLeads, setInboundLeads] = useState<ParsedInboundLead[]>([]);
     const [inboundLeadIds, setInboundLeadIds] = useState<string[]>([]); // Real UUIDs from leads table (CSV/image)
+    // Async import discovery. Company+title sheets fan out to one paced LinkedIn
+    // search per (company, role) — minutes of work — so the backend now returns a
+    // job id immediately and does the searching in a Cloud Task chain. Launch is
+    // gated on this being done: building a campaign mid-discovery is what enrolled
+    // placeholder rows (no name, no LinkedIn URL) and produced an empty campaign.
+    const [importJob, setImportJob] = useState<{
+        id: string; status: string; percent: number; processed: number; total: number;
+    } | null>(null);
+    const importJobPollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const importDiscoveryPending = !!importJob
+        && importJob.status !== 'completed' && importJob.status !== 'failed';
     const [directContactLeadIds, setDirectContactLeadIds] = useState<string[]>([]); // Real UUIDs for chat-entered direct contacts
     const fileInputRef = useRef<HTMLInputElement>(null);
     const mediaFileInputRef = useRef<HTMLInputElement>(null);
@@ -3068,6 +3132,185 @@ export default function AdvancedSearchAIPage() {
        question (role-based sheets with no location column) and resume here with the
        user's answer. Pass existingProcessingId to reuse an already-shown loading
        bubble (the caller then owns the busy flag); omit it to run standalone. */
+    /**
+     * Seed the panel + enrolment ids from a set of backend-resolved people.
+     * Shared by the synchronous save response and the async job result so both
+     * paths land identical state — the discovered NAME and LinkedIn URL are what
+     * make a lead contactable, and dropping them is what produced campaigns full
+     * of "at <COMPANY>" placeholders.
+     */
+    const seedFromResolvedLeads = useCallback((resolved: any[]) => {
+        if (!Array.isArray(resolved) || resolved.length === 0) return;
+        const rebuiltInbound: ParsedInboundLead[] = resolved.map((r) => {
+            const { firstName, lastName } = readLeadName(r);
+            return {
+                firstName,
+                lastName,
+                companyName: r.company || '',
+                linkedinProfile: r.linkedin_url || '',
+                email: '', whatsapp: '', phone: '', website: '', notes: '',
+                title: r.headline || r.title || r.target_title || '',
+                location: r.location || '',
+                profilePicture: r.profile_picture || '',
+            };
+        });
+        setInboundLeads(rebuiltInbound);
+        setLeads(resolved.map((r, i) => {
+            const { firstName, lastName, name } = readLeadName(r);
+            return {
+                id: r.id || `inbound-${i}`,
+                name: leadDisplayLabel({ name, company: r.company, headline: r.headline || r.title || r.target_title }, i),
+                first_name: firstName,
+                last_name: lastName,
+                headline: r.headline || r.title || r.target_title || (r.company ? `at ${r.company}` : ''),
+                location: r.location || '',
+                current_company: r.company || '',
+                profile_url: r.linkedin_url || '',
+                profile_picture: r.profile_picture || '',
+                industry: '',
+                network_distance: '',
+                locked: false,
+            } as LeadProfile;
+        }));
+        const ids = resolved.map((r) => r.id).filter(Boolean);
+        setInboundLeadIds(ids);
+        setSelectedLeadIds(new Set(ids));
+        syncInboundSummary(rebuiltInbound);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    /**
+     * Poll an async import-discovery job until it settles.
+     *
+     * Discovery is minutes of paced LinkedIn searching, so the backend returns a
+     * job id straight away. Until this reports `completed`, `importDiscoveryPending`
+     * keeps "Create Outreach Journey" disabled — launching mid-discovery is exactly
+     * how a campaign ended up enrolling rows the search had not reached yet.
+     */
+    const pollImportJob = useCallback(async (jobId: string) => {
+        const POLL_MS = 4000;
+        const started = Date.now();
+        const MAX_MS = 30 * 60 * 1000;      // give up messaging after 30 min
+
+        const tick = async () => {
+            try {
+                const res = await fetch(`/api/campaigns/leads/import/jobs/${jobId}`);
+                if (!res.ok) throw new Error(`status ${res.status}`);
+                const job = await res.json();
+                setImportJob({
+                    id: jobId, status: job.status, percent: job.percent ?? 0,
+                    processed: job.processedRows ?? 0, total: job.totalRows ?? 0,
+                });
+
+                // ── Live progress bar ──
+                // Discovery advances a CHUNK at a time, so `processedRows` steps in
+                // jumps rather than smoothly. Use the measured rate as soon as one
+                // chunk has landed, and the prior before that, so the estimate is
+                // real data whenever real data exists.
+                if (job.status === 'queued' || job.status === 'running') {
+                    const processed = job.processedRows ?? 0;
+                    const total = job.totalRows ?? 0;
+                    const remainingRows = Math.max(0, total - processed);
+                    const elapsedSec = (Date.now() - started) / 1000;
+                    const perRow = processed > 0
+                        ? elapsedSec / processed
+                        : IMPORT_SECONDS_PER_ROW_PRIOR;
+                    const found = Array.isArray(job.leads)
+                        ? job.leads.filter((r: any) => r.linkedin_url).length : 0;
+                    setMessages(p => p.map(m => m.id === IMPORT_PROGRESS_MSG_ID
+                        ? { ...m, importProgress: {
+                            percent: job.percent ?? 0,
+                            processed, total, found,
+                            etaLabel: remainingRows > 0 ? formatEta(perRow * remainingRows) : null,
+                            // One completed chunk with nothing to show for it.
+                            warnNoResults: processed >= 5 && found === 0,
+                          } }
+                        : m));
+                }
+
+                if (job.status === 'completed') {
+                    const returned: any[] = Array.isArray(job.leads) ? job.leads : [];
+                    // A row the search could not resolve still comes back as a lead —
+                    // a PLACEHOLDER with a company and a target title but no name and
+                    // no profile. Counting those as "people found" is how a 31-row
+                    // sheet reported "31 people" when 8 were real, and enrolling them
+                    // is how a campaign ends up full of uncontactable rows. Split them.
+                    const people = returned.filter((r) => r.linkedin_url);
+                    const unresolved = returned.length - people.length;
+
+                    if (people.length === 0) {
+                        setMessages(p => [...p.filter(m => m.id !== IMPORT_PROGRESS_MSG_ID), {
+                            id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
+                            text: `⚠️ **No people found.**\n\nI searched every role against all ${returned.length} ${returned.length === 1 ? 'company' : 'companies'} on your sheet, including shortened versions of each company name and related job titles, but LinkedIn returned no matching profiles.\n\nThe usual causes are the company names being registered entities rather than the trading names people use on their profiles, or LinkedIn not enforcing the company filter when Sales Navigator is unavailable on the connected account.`,
+                        }]);
+                        return;
+                    }
+
+                    seedFromResolvedLeads(people);
+                    const counts = computeInboundCounts(people.map((r: any): ParsedInboundLead => ({
+                        firstName: '', lastName: '', companyName: r.company || '',
+                        linkedinProfile: r.linkedin_url || '', email: '', whatsapp: '',
+                        phone: '', website: '', notes: '', title: '', location: '',
+                        profilePicture: '',
+                    })));
+                    const inboundTargeting: LeadTargeting = {
+                        job_titles: [], industries: [], locations: [],
+                        keywords: [`${people.length} Inbound Lead${people.length === 1 ? '' : 's'}`],
+                    };
+                    setTargeting(inboundTargeting);
+                    setMessages(p => [...p.filter(m => m.id !== IMPORT_PROGRESS_MSG_ID), {
+                        id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
+                        text: `✅ **Found ${people.length} ${people.length === 1 ? 'person' : 'people'}** with a LinkedIn profile.`
+                            + (unresolved > 0
+                                ? `\n\n${unresolved} ${unresolved === 1 ? 'company' : 'companies'} on your sheet returned no match and ${unresolved === 1 ? 'has' : 'have'} been left out — they can't be contacted without a profile.`
+                                : '')
+                            + `\n\nReview them in the panel, then click **"Create Outreach Journey"** to configure your campaign.`,
+                        // BOTH of these are required for the summary card and its
+                        // "Create Outreach Journey" button to render (Bubble gates on
+                        // `inboundAction === 'summary' && inboundSummary`), and
+                        // `targeting` is what the panel reads. Omitting them left the
+                        // user with a success message and no way to act on it.
+                        targeting: inboundTargeting,
+                        inboundAction: 'summary',
+                        inboundSummary: counts,
+                    }]);
+                    setTimeout(() => setShowPanel('leads'), 500);
+                    return;
+                }
+
+                if (job.status === 'failed') {
+                    setMessages(p => [...p.filter(m => m.id !== IMPORT_PROGRESS_MSG_ID), {
+                        id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
+                        text: `⚠️ **Lead discovery failed.**\n\n${job.error || 'The search could not be completed.'}\n\nYour uploaded rows are saved — try the import again, or continue with the leads already found.`,
+                    }]);
+                    return;
+                }
+
+                if (Date.now() - started > MAX_MS) {
+                    setMessages(p => [...p.filter(m => m.id !== IMPORT_PROGRESS_MSG_ID), {
+                        id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
+                        text: `⏱️ Discovery is taking longer than expected. It's still running in the background — refresh in a few minutes to pick up the results.`,
+                    }]);
+                    return;
+                }
+                importJobPollRef.current = setTimeout(tick, POLL_MS);
+            } catch {
+                // Transient network/API blip — keep polling rather than abandoning
+                // a job that is still running server-side.
+                if (Date.now() - started <= MAX_MS) {
+                    importJobPollRef.current = setTimeout(tick, POLL_MS);
+                }
+            }
+        };
+        tick();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [seedFromResolvedLeads]);
+
+    // Stop polling when the page goes away.
+    useEffect(() => () => {
+        if (importJobPollRef.current) clearTimeout(importJobPollRef.current);
+    }, []);
+
     const finishInboundImport = useCallback(async (parsed: ParsedInboundLead[], finalLocation: string, existingProcessingId?: string) => {
         const processingId = existingProcessingId || `l-${Date.now()}`;
         if (!existingProcessingId) {
@@ -3106,6 +3349,10 @@ export default function AdvancedSearchAIPage() {
                     body: JSON.stringify({
                         leads: leadsForSave,
                         location: finalLocation || undefined,
+                        // This screen polls GET /leads/import/jobs/:id, so the backend
+                        // may hand back a job instead of blocking for minutes while it
+                        // searches LinkedIn for each role at each company.
+                        supportsAsync: true,
                         detectedChannels: {
                             email: counts.email > 0,
                             whatsapp: counts.whatsapp > 0,
@@ -3118,6 +3365,30 @@ export default function AdvancedSearchAIPage() {
 
                 if (saveResponse.ok) {
                     const saveData = await saveResponse.json();
+
+                    // ── ASYNC DISCOVERY ──
+                    // Sheets that need LinkedIn discovery come back immediately with a
+                    // job id instead of people; the searching runs in a Cloud Task
+                    // chain. Poll until it finishes, then seed the panel from the job's
+                    // results — the same shape the synchronous path returns.
+                    if (saveData.async && saveData.jobId) {
+                        setImportJob({
+                            id: saveData.jobId, status: saveData.jobStatus || 'queued',
+                            percent: 0, processed: 0, total: saveData.total || parsed.length,
+                        });
+                        const totalRows = saveData.total || parsed.length;
+                        setMessages(p => p.filter(m => m.id !== processingId && m.id !== IMPORT_PROGRESS_MSG_ID).concat({
+                            id: IMPORT_PROGRESS_MSG_ID, role: 'ai', ts: new Date(),
+                            text: `🔎 **Finding the right people at each company.**\n\nYour sheet lists companies and roles rather than named people, so I'm searching LinkedIn for each role at each company.`,
+                            importProgress: {
+                                percent: 0, processed: 0, total: totalRows, found: 0,
+                                etaLabel: formatEta(totalRows * IMPORT_SECONDS_PER_ROW_PRIOR),
+                            },
+                        }));
+                        pollImportJob(saveData.jobId);
+                        return;   // the poller finishes the import
+                    }
+
                     // Store real lead UUIDs so campaign creation can link to leads table
                     if (saveData.leadIds && saveData.leadIds.length > 0) {
                         setInboundLeadIds(saveData.leadIds);
@@ -5306,6 +5577,9 @@ export default function AdvancedSearchAIPage() {
 
     const onChatSend = useCallback(() => {
         if (!input.trim() || busy) return;
+        // Sending settles the text. Drop any cleanup still in flight so its
+        // answer cannot repopulate the box behind the message just sent.
+        beautifyAbortRef.current?.abort();
         if (roleWizardRef.current) {
             const t = input.trim();
             setInput('');
@@ -6385,16 +6659,19 @@ export default function AdvancedSearchAIPage() {
                 return;
             }
 
+            // Cleanup is a nicety, not a gate: the raw transcript is already in
+            // the box and is sendable. Cap the wait so a stalled model costs the
+            // user a couple of seconds, not an open-ended spinner.
+            const ctrl = new AbortController();
+            beautifyAbortRef.current = ctrl;
+            const timer = setTimeout(() => ctrl.abort(), BEAUTIFY_TIMEOUT_MS);
             try {
-                const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
-                const workerUrl = process.env.NEXT_PUBLIC_PLAYGROUND_WORKER_URL || "http://localhost:8080";
-                const res = await fetch(`${workerUrl}/playground-media/beautify-transcription`, {
+                const res = await fetch('/api/ai-icp-assistant/beautify-transcription', {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        ...(token && { Authorization: `Bearer ${token}` })
-                    },
-                    body: JSON.stringify({ text: rawText })
+                    headers: { "Content-Type": "application/json" },
+                    credentials: 'include',
+                    body: JSON.stringify({ text: rawText }),
+                    signal: ctrl.signal
                 });
                 if (res.ok) {
                     const data = await res.json();
@@ -6404,8 +6681,14 @@ export default function AdvancedSearchAIPage() {
                     }
                 }
             } catch (err) {
-                console.error("Failed to beautify transcription:", err);
+                // Aborted = the user sent, or we ran out of patience. Either way
+                // the raw transcript stands; nothing to report.
+                if (!(err instanceof DOMException && err.name === 'AbortError')) {
+                    console.error("Failed to beautify transcription:", err);
+                }
             } finally {
+                clearTimeout(timer);
+                if (beautifyAbortRef.current === ctrl) beautifyAbortRef.current = null;
                 setBeautifying(false);
             }
         } else {
@@ -6597,7 +6880,7 @@ export default function AdvancedSearchAIPage() {
                                                 : 'Qualifying...'
                                         }
                                         : m;
-                                    return <Bubble key={m.id} msg={displayMsg} onOpt={onOptClick} onShowPanel={setShowPanel} onStartCheckpoints={() => setCpStep(0)} onLetAgentDeal={letAgentDeal} agentDealLoading={agentDealLoading} onStartTargeting={() => { setTgStep(0); setChatBlocked(false); }} hasPanel={!!showPanel} leadsCount={leads.length} filteredLeadsCount={filteredLeads.length} onUploadClick={() => fileInputRef.current?.click()} useSalesNav={useSalesNav} isMobile={isMobile} rolePreviewing={rolePreviewing} roleIcp={businessProfile} />;
+                                    return <Bubble key={m.id} msg={displayMsg} onOpt={onOptClick} onShowPanel={setShowPanel} onStartCheckpoints={() => setCpStep(0)} onLetAgentDeal={letAgentDeal} agentDealLoading={agentDealLoading} onStartTargeting={() => { setTgStep(0); setChatBlocked(false); }} hasPanel={!!showPanel} leadsCount={leads.length} filteredLeadsCount={filteredLeads.length} onUploadClick={() => fileInputRef.current?.click()} useSalesNav={useSalesNav} isMobile={isMobile} rolePreviewing={rolePreviewing} roleIcp={businessProfile} discoveryPending={importDiscoveryPending} discoveryProgress={importJob ? `${importJob.percent}%` : ''} />;
                                 })
                             )}
                             {/* Import leads prompt — shown when conversation is about existing client relationships */}
@@ -8858,7 +9141,7 @@ function RoleCardView({ card, onOpt, previewing, icp }: { card: NonNullable<Chat
     );
 }
 
-function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, agentDealLoading, onStartTargeting, hasPanel, leadsCount, filteredLeadsCount, onUploadClick, useSalesNav, isMobile, rolePreviewing, roleIcp }: { msg: ChatMsg; onOpt: (v: string) => void; onShowPanel: (panel: 'leads' | 'workflow') => void; onStartCheckpoints: () => void; onLetAgentDeal?: () => void; agentDealLoading?: boolean; onStartTargeting: () => void; hasPanel: boolean; leadsCount: number; filteredLeadsCount?: number; onUploadClick?: () => void; useSalesNav?: boolean; isMobile?: boolean; rolePreviewing?: boolean; roleIcp?: Record<string, string> }) {
+function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, agentDealLoading, onStartTargeting, hasPanel, leadsCount, filteredLeadsCount, onUploadClick, useSalesNav, isMobile, rolePreviewing, roleIcp, discoveryPending, discoveryProgress }: { msg: ChatMsg; onOpt: (v: string) => void; onShowPanel: (panel: 'leads' | 'workflow') => void; onStartCheckpoints: () => void; onLetAgentDeal?: () => void; agentDealLoading?: boolean; onStartTargeting: () => void; hasPanel: boolean; leadsCount: number; filteredLeadsCount?: number; onUploadClick?: () => void; useSalesNav?: boolean; isMobile?: boolean; rolePreviewing?: boolean; roleIcp?: Record<string, string>; discoveryPending?: boolean; discoveryProgress?: string }) {
     const user = useSelector((state: any) => state.auth?.user);
     const displayName = user?.name || "User";
     const userInitial = displayName.charAt(0).toUpperCase();
@@ -9136,6 +9419,51 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                   </div>
                 )}
 
+                {/* ── Import discovery: live progress ──
+                    Discovery is minutes of paced LinkedIn searching, and the bar
+                    advances a chunk at a time. The stripe animates whenever work
+                    is in flight so a legitimately-flat bar still reads as "running"
+                    rather than "stuck" — the width only ever shows REAL progress. */}
+                {msg.importProgress && (
+                  <div className="mt-3 rounded-[10px] border border-blue-100 dark:border-blue-900/60 bg-blue-50/60 dark:bg-blue-950/30 px-3.5 py-3">
+                      <div className="flex items-center justify-between mb-2">
+                          <span className="text-[12px] font-semibold text-[#172560] dark:text-blue-200">
+                              Searching LinkedIn
+                          </span>
+                          <span className="text-[12px] font-bold tabular-nums text-[#172560] dark:text-blue-200">
+                              {msg.importProgress.percent}%
+                          </span>
+                      </div>
+                      <div
+                        className="h-2 w-full rounded-full bg-blue-100 dark:bg-blue-900/60 overflow-hidden"
+                        role="progressbar"
+                        aria-valuenow={msg.importProgress.percent}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-label="Lead discovery progress"
+                      >
+                          <div
+                            className="h-full rounded-full bg-[#172560] dark:bg-blue-500 transition-[width] duration-700 ease-out animate-pulse"
+                            style={{ width: `${Math.max(2, msg.importProgress.percent)}%` }}
+                          />
+                      </div>
+                      <div className="mt-2 text-[11.5px] text-gray-600 dark:text-gray-400">
+                          {msg.importProgress.processed} of {msg.importProgress.total} companies searched
+                          {msg.importProgress.found > 0 && <> · <span className="font-semibold text-emerald-700 dark:text-emerald-400">{msg.importProgress.found} found</span></>}
+                          {msg.importProgress.etaLabel && <> · {msg.importProgress.etaLabel} remaining</>}
+                      </div>
+                      {msg.importProgress.warnNoResults && (
+                          <div className="mt-2 pt-2 border-t border-blue-100 dark:border-blue-900/60 text-[11.5px] text-amber-800 dark:text-amber-300">
+                              <span className="font-semibold">No people found yet.</span>{' '}
+                              The search is still running, but nothing matched the first
+                              {' '}{msg.importProgress.processed} companies. This usually means LinkedIn
+                              can&apos;t match the company names as written, or the roles aren&apos;t on
+                              LinkedIn under those titles. You can let it finish or stop and adjust the sheet.
+                          </div>
+                      )}
+                  </div>
+                )}
+
                 {/* ── Inbound: Summary with platform badges ── */}
                 {msg.inboundAction === 'summary' && msg.inboundSummary && (
                   <div className="mt-3 p-4 rounded-[14px] border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20">
@@ -9161,11 +9489,23 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                           rendered (msg.targeting) — otherwise it duplicates "Configure manually". */}
                       {!msg.targeting && (
                           <div className="mt-3 pt-3 border-t border-emerald-200/50 dark:border-emerald-800/50">
+                              {/* Gated on discovery: a campaign built while the search is
+                                  still running enrols rows it never reached — placeholders
+                                  with no name and no LinkedIn URL, which can never be
+                                  contacted and silently produce an empty campaign. */}
                               <button
                                 onClick={onStartCheckpoints}
-                                className="w-full px-4 py-2.5 bg-[#172560] dark:bg-blue-700 text-white border-none rounded-[10px] text-[13px] font-bold cursor-pointer transition-all hover:bg-[#0b1957] dark:hover:bg-blue-600 shadow-sm"
+                                disabled={discoveryPending}
+                                title={discoveryPending ? 'Still finding people for your list…' : undefined}
+                                className={`w-full px-4 py-2.5 border-none rounded-[10px] text-[13px] font-bold transition-all shadow-sm ${
+                                  discoveryPending
+                                    ? 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                                    : 'bg-[#172560] dark:bg-blue-700 text-white cursor-pointer hover:bg-[#0b1957] dark:hover:bg-blue-600'
+                                }`}
                               >
-                                  Create Outreach Journey</button>
+                                  {discoveryPending
+                                    ? `Finding people… ${discoveryProgress}`
+                                    : 'Create Outreach Journey'}</button>
                           </div>
                       )}
                   </div>
@@ -10899,7 +11239,7 @@ function CheckpointFormInline({
                                                         <SelectItem
                                                           key={s.email}
                                                           value={s.email}
-                                                          className="pl-3 pr-6 text-sm justify-start transition-colors cursor-pointer text-slate-800 dark:text-white dark:focus:bg-[#22C55E] dark:focus:text-[#000724] dark:data-[state=checked]:focus:bg-[#22C55E] dark:data-[state=checked]:focus:text-[#000724]">
+                                                          className="pl-3 pr-6 text-sm justify-start transition-colors cursor-pointer text-slate-800 dark:text-white dark:focus:bg-[#2563eb] dark:focus:text-white dark:data-[state=checked]:focus:bg-[#2563eb] dark:data-[state=checked]:focus:text-white">
                                                             <div className="flex items-center gap-3">
                                                               <span className="text-sm">
                                                                 {s.provider === 'google' ? '📧 Gmail' : '📨 Outlook'} — {s.email}
@@ -10941,7 +11281,7 @@ function CheckpointFormInline({
                                                           <SelectItem
                                                             key={t.id}
                                                             value={t.id}
-                                                            className="pl-3 pr-6 text-sm justify-start transition-colors cursor-pointer text-slate-800 dark:text-white dark:focus:bg-[#22C55E] dark:focus:text-[#000724] dark:data-[state=checked]:focus:bg-[#22C55E] dark:data-[state=checked]:focus:text-[#000724]">
+                                                            className="pl-3 pr-6 text-sm justify-start transition-colors cursor-pointer text-slate-800 dark:text-white dark:focus:bg-[#2563eb] dark:focus:text-white dark:data-[state=checked]:focus:bg-[#2563eb] dark:data-[state=checked]:focus:text-white">
                                                               {t.name}
                                                           </SelectItem>
                                                         ))}
@@ -11664,7 +12004,7 @@ function CheckpointFormInline({
                                                         <SelectItem
                                                           key={a.id}
                                                           value={a.id}
-                                                          className="pl-3 pr-6 text-sm justify-start transition-colors cursor-pointer text-slate-800 dark:text-white dark:focus:bg-[#22C55E] dark:focus:text-[#000724] dark:data-[state=checked]:focus:bg-[#22C55E] dark:data-[state=checked]:focus:text-[#000724]">
+                                                          className="pl-3 pr-6 text-sm justify-start transition-colors cursor-pointer text-slate-800 dark:text-white dark:focus:bg-[#2563eb] dark:focus:text-white dark:data-[state=checked]:focus:bg-[#2563eb] dark:data-[state=checked]:focus:text-white">
 
                                                             {a.name}{a.agent_language ? ` (${a.agent_language})` : ''}
                                                         </SelectItem>
@@ -11708,7 +12048,7 @@ function CheckpointFormInline({
                                                             <SelectItem
                                                               key={n.id || num}
                                                               value={num}
-                                                              className="pl-3 pr-6 text-sm justify-start transition-colors cursor-pointer text-slate-800 dark:text-white dark:focus:bg-[#22C55E] dark:focus:text-[#000724] dark:data-[state=checked]:focus:bg-[#22C55E] dark:data-[state=checked]:focus:text-[#000724]">
+                                                              className="pl-3 pr-6 text-sm justify-start transition-colors cursor-pointer text-slate-800 dark:text-white dark:focus:bg-[#2563eb] dark:focus:text-white dark:data-[state=checked]:focus:bg-[#2563eb] dark:data-[state=checked]:focus:text-white">
 
                                                                 {label || n.id || 'Unknown number'}
                                                             </SelectItem>
