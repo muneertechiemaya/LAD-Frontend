@@ -2071,17 +2071,19 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
       <input ref={audioRef} type="file" multiple className="hidden" aria-label="Upload audio" onChange={handleFileChange} accept="audio/*" />
 
       {/* ── Template Picker ── */}
-      <TemplatePicker
-        open={isTemplatePickerOpen}
-        onOpenChange={setIsTemplatePickerOpen}
-        selectedCount={1}
-        onSend={handleTemplateSend}
-        sending={templateSending}
-        sendProgress={templateSendProgress}
-        channel={backendChannel ?? 'waba'}
-        isBulkSend={false}
-        variant="whatsapp"
-      />
+      <div className="[&_[class*='111b21']]:dark:bg-[rgb(22,23,23)] [&_[class*='dark:bg-']>div]:dark:bg-[rgb(22,23,23)]">
+        <TemplatePicker
+          open={isTemplatePickerOpen}
+          onOpenChange={setIsTemplatePickerOpen}
+          selectedCount={1}
+          onSend={handleTemplateSend}
+          sending={templateSending}
+          sendProgress={templateSendProgress}
+          channel={backendChannel ?? 'waba'}
+          isBulkSend={false}
+          variant="whatsapp"
+        />
+      </div>
 
       {/* Composer */}
       <div className="mt-4 p-3 px-4 bg-white dark:bg-[#161717] shrink-0 z-10 relative">
