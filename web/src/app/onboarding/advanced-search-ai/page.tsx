@@ -3229,26 +3229,52 @@ export default function AdvancedSearchAIPage() {
                 }
 
                 if (job.status === 'completed') {
-                    const resolved: any[] = Array.isArray(job.leads) ? job.leads : [];
-                    seedFromResolvedLeads(resolved);
-                    const withLinkedIn = resolved.filter((r) => r.linkedin_url).length;
-                    const counts = computeInboundCounts(resolved.map((r: any): ParsedInboundLead => ({
+                    const returned: any[] = Array.isArray(job.leads) ? job.leads : [];
+                    // A row the search could not resolve still comes back as a lead —
+                    // a PLACEHOLDER with a company and a target title but no name and
+                    // no profile. Counting those as "people found" is how a 31-row
+                    // sheet reported "31 people" when 8 were real, and enrolling them
+                    // is how a campaign ends up full of uncontactable rows. Split them.
+                    const people = returned.filter((r) => r.linkedin_url);
+                    const unresolved = returned.length - people.length;
+
+                    if (people.length === 0) {
+                        setMessages(p => [...p.filter(m => m.id !== IMPORT_PROGRESS_MSG_ID), {
+                            id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
+                            text: `⚠️ **No people found.**\n\nI searched every role against all ${returned.length} ${returned.length === 1 ? 'company' : 'companies'} on your sheet, including shortened versions of each company name and related job titles, but LinkedIn returned no matching profiles.\n\nThe usual causes are the company names being registered entities rather than the trading names people use on their profiles, or LinkedIn not enforcing the company filter when Sales Navigator is unavailable on the connected account.`,
+                        }]);
+                        return;
+                    }
+
+                    seedFromResolvedLeads(people);
+                    const counts = computeInboundCounts(people.map((r: any): ParsedInboundLead => ({
                         firstName: '', lastName: '', companyName: r.company || '',
                         linkedinProfile: r.linkedin_url || '', email: '', whatsapp: '',
                         phone: '', website: '', notes: '', title: '', location: '',
                         profilePicture: '',
                     })));
-                    setTargeting({
+                    const inboundTargeting: LeadTargeting = {
                         job_titles: [], industries: [], locations: [],
-                        keywords: [`${resolved.length} Inbound Lead${resolved.length === 1 ? '' : 's'}`],
-                    });
+                        keywords: [`${people.length} Inbound Lead${people.length === 1 ? '' : 's'}`],
+                    };
+                    setTargeting(inboundTargeting);
                     setMessages(p => [...p.filter(m => m.id !== IMPORT_PROGRESS_MSG_ID), {
                         id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
-                        text: resolved.length === 0
-                            ? `⚠️ **No people found.**\n\nI searched every role against every company on your sheet but LinkedIn returned no matches. This usually means the company names are registered entities rather than the trading names people use on their profiles, or the companies have little LinkedIn presence.`
-                            : `✅ **Found ${resolved.length} ${resolved.length === 1 ? 'person' : 'people'}** across your list${withLinkedIn > 0 ? ` — ${withLinkedIn} with a LinkedIn profile` : ''}.\n\nReview them in the panel, then click **"Create Outreach Journey"** to configure your campaign.`,
-                        inboundSummary: resolved.length > 0 ? counts : undefined,
+                        text: `✅ **Found ${people.length} ${people.length === 1 ? 'person' : 'people'}** with a LinkedIn profile.`
+                            + (unresolved > 0
+                                ? `\n\n${unresolved} ${unresolved === 1 ? 'company' : 'companies'} on your sheet returned no match and ${unresolved === 1 ? 'has' : 'have'} been left out — they can't be contacted without a profile.`
+                                : '')
+                            + `\n\nReview them in the panel, then click **"Create Outreach Journey"** to configure your campaign.`,
+                        // BOTH of these are required for the summary card and its
+                        // "Create Outreach Journey" button to render (Bubble gates on
+                        // `inboundAction === 'summary' && inboundSummary`), and
+                        // `targeting` is what the panel reads. Omitting them left the
+                        // user with a success message and no way to act on it.
+                        targeting: inboundTargeting,
+                        inboundAction: 'summary',
+                        inboundSummary: counts,
                     }]);
+                    setTimeout(() => setShowPanel('leads'), 500);
                     return;
                 }
 
