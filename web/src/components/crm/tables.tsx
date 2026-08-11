@@ -34,7 +34,7 @@ function TypePill({ type }: { type: CrmContact['type'] }) {
 
   if (type === 'prospect') {
     return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-semibold rounded-full text-[#0B1957] bg-[#e8ebf7] dark:bg-[#2563eb] dark:text-white dark:rounded-md">
+      <span className="inline-flex items-center px-2.5 py-0.5 text-[11px] font-semibold rounded-full text-[#0B1957] bg-[#0B1957]/10 border border-[#0B1957]/30 dark:bg-[#2563eb]/20 dark:text-[#60a5fa] dark:border-[#3b82f6]/40">
         {m.label}
       </span>
     );
@@ -135,7 +135,7 @@ function RowActions({ onRemove }: { onRemove?: () => void }) {
         </button>
       )}
       <button
-        className="w-7 h-7 grid place-items-center rounded-md text-slate-400 hover:bg-slate-100 dark:hover:bg-[#1a2a43] hover:text-[#172560]"
+        className="w-7 h-7 grid place-items-center rounded-md text-slate-400 hover:bg-slate-100 dark:hover:bg-[#1a2a43] dark:hover:text-white hover:text-[#172560]"
         onClick={(e) => e.stopPropagation()}
         aria-label="Row actions"
       >
@@ -334,8 +334,8 @@ function CrmTable<R extends CrmContact>({
             <Download className="w-3.5 h-3.5" /> Export
           </button>
           <button
-            className="h-9 px-3.5 rounded-lg text-[12.5px] font-semibold text-white inline-flex items-center gap-1.5"
-            style={{ background: T.primary }}
+            className="h-9 px-3.5 rounded-lg text-[12.5px] bg-primary/95 font-semibold text-white inline-flex items-center gap-1.5"
+            
           >
             <Plus className="w-3.5 h-3.5" /> New
           </button>

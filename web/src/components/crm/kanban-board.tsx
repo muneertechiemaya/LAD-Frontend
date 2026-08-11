@@ -86,13 +86,6 @@ export default function KanbanBoard({ stages = [], leads = [], selectedLeadId, o
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-[180px] leading-tight mb-6">
                     Add deals to move them to the next stage.
                   </p>
-                  <button
-                    onClick={() => onAddDeal?.(stageKey)}
-                    className="inline-flex items-center gap-1 text-[12px] font-medium text-blue-600 dark:text-blue-400 hover:underline"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    Add deal
-                  </button>
                 </div>
               )}
             </div>

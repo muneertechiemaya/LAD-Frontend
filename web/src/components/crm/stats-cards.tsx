@@ -45,7 +45,7 @@ export default function StatsCards({ counts, selected, onSelect }: StatsCardsPro
           // CHANGED: Update isSel ring/border color to a teal/blue that pops in Dark Mode.
           className={`bg-white dark:bg-[#071131] rounded-[20px] border-2 w-full text-left flex flex-col h-full min-h-[120px] transition-all duration-200 cursor-pointer hover:shadow-md hover:-translate-y-0.5 ${
             isSel
-              ? 'border-blue-600 dark:border-[#2563eb] ring-2 ring-blue-500/30'
+              ? 'border-[#0b1957] dark:border-[#2563eb] ring-2 ring-[#0b1957]/30'
               : 'border-slate-200 dark:border-blue-950/40'
           }`}
         >
