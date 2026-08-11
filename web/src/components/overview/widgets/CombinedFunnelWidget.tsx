@@ -5,7 +5,10 @@
  * drill-down.
  *
  * Stages: New Leads (connection requests sent) → Accepted → Responded →
- * Meeting Booked (SAH), with overall + per-stage conversion and drop-off. A
+ * Sales Handoff (SAH), with overall + per-stage conversion and drop-off. The
+ * last stage is NOT just a booked meeting: the backend counts a quotation
+ * request, contact details exchanged, a meeting booked, or a meeting merely
+ * planned. A
  * Week / Month / Quarter / Year selector (default Week) date-windows every
  * stage. Clicking a stage opens a modal listing that stage's leads (name,
  * company, campaign, LinkedIn) for the selected window.
@@ -45,7 +48,7 @@ const STAGES: { key: StageKey; label: string; color: string }[] = [
   { key: 'sent', label: 'New Leads', color: '#0F6E56' },
   { key: 'accepted', label: 'Accepted', color: '#1D9E75' },
   { key: 'responded', label: 'Responded', color: '#5DCAA5' },
-  { key: 'sah', label: 'Meeting Booked', color: '#639922' },
+  { key: 'sah', label: 'Sales Handoff', color: '#639922' },
 ];
 const DAY_MS = 24 * 60 * 60 * 1000;
 const num = (n: number) => n.toLocaleString();

@@ -89,6 +89,12 @@ const getRequiredFields = (stepType: StepType): string[] => {
     zoho_update: [],
     switch: [],
     ai_parse: [],
+    // Mirrors the backend StepValidators. A broadcast is business-initiated,
+    // so WhatsApp free text is undeliverable and a template is mandatory.
+    whatsapp_broadcast: ['template_name'],
+    email_broadcast: ['subject', 'body'],
+    // action defaults to book_trial; the account falls back to the tenant's.
+    mindbody_action: [],
     data_enrich: [],
   };
   return required[stepType] || [];

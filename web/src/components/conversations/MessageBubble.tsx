@@ -2,6 +2,7 @@ import { memo, useState } from 'react';
 import { Message } from '@/types/conversation';
 import { Check, CheckCheck, Clock, AlertCircle, X, UserCircle, MessageSquare, MapPin, FileText, Music, Video, Download, MoreVertical, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { MessageFeedback } from './MessageFeedback';
 import { format } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -259,6 +260,10 @@ interface MessageBubbleProps {
   onToggleStar?: (message: Message) => void;
   searchText?: string;
   isHighlighted?: boolean;
+  /** Enables the thumbs on AI replies. Omitted → feedback is not rendered. */
+  conversationId?: string;
+  /** Existing verdict, so a reload doesn't reset the thumbs. */
+  feedbackRating?: 'like' | 'dislike' | null;
 }
 
 const statusIcons = {
@@ -413,6 +418,8 @@ export const MessageBubble = memo(function MessageBubble({
   onToggleStar,
   searchText,
   isHighlighted = false,
+  conversationId,
+  feedbackRating = null,
 }: MessageBubbleProps) {
   // senderName arrives already collapsed to "pushname, else raw number" by the
   // message mapper, so it is masked here at the render site rather than in the
@@ -607,6 +614,16 @@ export const MessageBubble = memo(function MessageBubble({
             />
           )}
         </div>
+        {/* Only on AI replies: a human agent's own message has nothing to
+            learn from, and the backend rejects rating anything else. */}
+        {isAI && conversationId && (
+          <MessageFeedback
+            conversationId={conversationId}
+            messageId={String(message.id)}
+            content={typeof content === 'string' ? content : ''}
+            initialRating={feedbackRating ?? null}
+          />
+        )}
       </div>
     </div>
   );
