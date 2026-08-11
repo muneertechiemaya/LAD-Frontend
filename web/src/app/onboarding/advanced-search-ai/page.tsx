@@ -2446,9 +2446,12 @@ export default function AdvancedSearchAIPage() {
                 throw new Error(errorData.error || 'Failed to save lead');
             }
 
-            // Update the leads panel display
+            // Update the leads panel display. Keyed by the REAL lead id: editing a
+            // lead must not re-key the panel to a positional id, or every checkbox
+            // starts writing ids that `selectedLeadIds` (which holds real ids) can
+            // never match, and selection silently stops working.
             const updatedPanelLeads: LeadProfile[] = updatedLeads.map((l, i) => ({
-                id: `inbound-${i}`,
+                id: inboundLeadIds[i] || `inbound-${i}`,
                 name: leadDisplayLabel({ firstName: l.firstName, lastName: l.lastName, company: l.companyName }, i),
                 first_name: l.firstName,
                 last_name: l.lastName,
@@ -2503,23 +2506,54 @@ export default function AdvancedSearchAIPage() {
         try {
             const { index } = deleteConfirmation;
             const leadToDelete = inboundLeads[index];
+            // The REAL lead id at this position. `inboundLeads[i]` and
+            // `inboundLeadIds[i]` are positional partners — everything below has to
+            // drop the same index from both or they desynchronise.
+            const removedId = inboundLeadIds[index];
 
             // Remove from inbound leads state
             const updatedLeads = inboundLeads.filter((_, i) => i !== index);
             setInboundLeads(updatedLeads);
             syncInboundSummary(updatedLeads);
 
-            // Update the leads panel display
+            // ── Drop the lead from ENROLMENT, not just from the display ──
+            // Removing a lead used to touch only the display arrays. Its real id
+            // stayed in `inboundLeadIds` and in `selectedLeadIds`, and launch enrols
+            // `inbound_lead_ids` — so a removed person still got a connection
+            // request. Observed on stage: 16 requests went out from a list the user
+            // had pruned. The server-side delete did not save it either; that call
+            // only fires when the lead has an email or phone, and LinkedIn-discovered
+            // people have neither.
+            //
+            // Dropping the id ALSO keeps the positional pairing intact: the launch
+            // filter reads `inboundLeadIds[idx]` for the checkbox at `idx`, so
+            // shortening one array without the other silently reassigns every
+            // checkbox after this row to a different person.
+            const updatedLeadIds = inboundLeadIds.filter((_, i) => i !== index);
+            setInboundLeadIds(updatedLeadIds);
+            if (removedId) {
+                setSelectedLeadIds(prev => {
+                    if (!prev.has(removedId)) return prev;
+                    const next = new Set(prev);
+                    next.delete(removedId);
+                    return next;
+                });
+            }
+
+            // Update the leads panel display. Keyed by the REAL lead id wherever we
+            // have one — `selectedLeadIds` holds real ids, so re-keying the panel to
+            // `inbound-${i}` made every subsequent checkbox toggle write an id that
+            // could never match, quietly breaking selection after any removal.
             const updatedPanelLeads: LeadProfile[] = updatedLeads.map((l, i) => ({
-                id: `inbound-${i}`,
+                id: updatedLeadIds[i] || `inbound-${i}`,
                 name: leadDisplayLabel({ firstName: l.firstName, lastName: l.lastName, company: l.companyName }, i),
                 first_name: l.firstName,
                 last_name: l.lastName,
-                headline: l.companyName ? `at ${l.companyName}` : '',
-                location: '',
+                headline: l.title || (l.companyName ? `at ${l.companyName}` : ''),
+                location: l.location || '',
                 current_company: l.companyName,
                 profile_url: l.linkedinProfile,
-                profile_picture: '',
+                profile_picture: l.profilePicture || '',
                 industry: '',
                 network_distance: '',
                 locked: false,
