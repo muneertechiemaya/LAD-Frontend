@@ -186,6 +186,18 @@ export function ConversationsPage() {
     });
   }, []);
 
+  // Broadcast active tab change to sidebar and other components for dynamic theme adjustments
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('conversations:channel-changed', { detail: { channel: activeTab } }));
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('conversations:channel-changed', { detail: { channel: null } }));
+      }
+    };
+  }, [activeTab]);
+
   // Show only tabs whose channel is actively connected.
   // While loading (null) render nothing so there's no flash of wrong tabs.
   const visibleTabs = channelStatus
@@ -198,10 +210,20 @@ export function ConversationsPage() {
       })
     : [];
 
+  const isBlackGrayDarkTheme = activeTab !== 'linkedin';
+
   return (
     <div className="h-full flex flex-col bg-background">
       {/* Top bar: WA channel tabs + AI toggle — now always visible */}
-      <div className="h-10 flex items-center justify-between px-3 border-b border-border dark:border-slate-800 bg-card dark:bg-[#0C162F] shrink-0 gap-2">
+      <div
+        className={cn(
+          "h-10 flex items-center justify-between px-3 border-b shrink-0 gap-2 transition-colors duration-300",
+          "bg-card border-border",
+          isBlackGrayDarkTheme
+            ? "dark:bg-zinc-900 dark:border-zinc-800"
+            : "dark:bg-[#0C162F] dark:border-slate-800"
+        )}
+      >
         {/* Channel tabs — only connected channels are rendered */}
         <div className="flex items-center gap-1 overflow-x-auto min-w-0 no-scrollbar">
           {/* Loading skeleton while connection status is being resolved */}
@@ -219,7 +241,7 @@ export function ConversationsPage() {
                 'flex items-center gap-1.5 px-3 h-7 rounded-md text-xs font-medium transition-all shrink-0 whitespace-nowrap',
                 activeTab === id
                   ? 'text-white shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-gray-300/30 dark:hover:bg-zinc-500/30'
               )}
               style={activeTab === id ? { backgroundColor: getTabColor(id) } : undefined}
             >
@@ -227,6 +249,9 @@ export function ConversationsPage() {
                 channel={sublabel as any}
                 size={16}
                 overrideColor={activeTab === id ? '#ffffff' : undefined}
+                // className={cn(
+                //   id === 'linkedin' && activeTab !== id && 'dark:group-hover:[&_svg]:!text-white'
+                // )}
               />
               {label}
             </button>
@@ -312,7 +337,7 @@ export function ConversationsPage() {
               className="fixed inset-0 z-40 bg-black/30 sm:hidden"
               onClick={() => setIsPlaygroundOpen(false)}
             />
-            <AIPlayground onClose={() => setIsPlaygroundOpen(false)} />
+            <AIPlayground onClose={() => setIsPlaygroundOpen(false)} variant="conversations" />
           </>
         )}
       </AnimatePresence>

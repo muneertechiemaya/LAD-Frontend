@@ -12,7 +12,7 @@
  *   accepted → connected, follow-up pending → chat disabled
  *   active   → automated follow-up sent     → chat enabled
  */
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Send, RefreshCw, Loader2, MessageSquare, Linkedin, Clock, CheckCircle, Zap, Lock, ChevronLeft, Search, MoreVertical, Trash2, X, Film, Music, FileText, Image as ImageIcon, Megaphone } from 'lucide-react';
 import LinkedInBroadcastModal from './LinkedInBroadcastModal';
 import { Button } from '@/components/ui/button';
@@ -31,6 +31,8 @@ import { LinkedInFollowupComposer } from './LinkedInFollowupComposer';
 import { LinkedInContextPanel } from './LinkedInContextPanel';
 import { LinkedInChatToolbar } from './LinkedInChatToolbar';
 import type { InsertTemplatePayload } from './LinkedInChatToolbar';
+import { DateSeparator } from './DateSeparator';
+import { isSameDay } from 'date-fns';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -262,17 +264,14 @@ function relativeTime(isoString: string): string {
   }
 }
 
-// Exact, absolute date + time for message bubbles (e.g. "Jul 7, 2026, 3:42 PM").
-// Used instead of relative "Xm ago" so the precise send time is always visible.
-function exactDateTime(isoString: string): string {
+// Time-only format for message bubbles (e.g. "3:42 PM").
+// Date is represented by DateSeparator chips separating message groups.
+function formatBubbleTime(isoString: string): string {
   if (!isoString) return '';
   try {
     const d = new Date(isoString);
     if (isNaN(d.getTime())) return '';
-    return d.toLocaleString(undefined, {
-      year:   'numeric',
-      month:  'short',
-      day:    'numeric',
+    return d.toLocaleTimeString(undefined, {
       hour:   'numeric',
       minute: '2-digit',
     });
@@ -385,7 +384,7 @@ function MessageBubble({ msg }: { msg: LinkedInMessage }) {
       >
         <p className="whitespace-pre-wrap break-words">{msg.content}</p>
         <p className={cn('text-[10px] mt-1 text-right', isOut ? 'text-blue-200' : 'text-slate-400')}>
-          {exactDateTime(msg.created_at)}
+          {formatBubbleTime(msg.created_at)}
         </p>
       </div>
     </div>
@@ -453,6 +452,36 @@ export function LinkedInConversationView({
   const [deleting, setDeleting]           = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  // Group messages by date and interleave DateSeparator items
+  const messagesWithDateSeparators = useMemo(() => {
+    const items: Array<
+      | { type: 'date'; date: Date; key: string }
+      | { type: 'message'; msg: LinkedInMessage; key: string }
+    > = [];
+    let lastDate: Date | null = null;
+
+    messages.forEach((msg) => {
+      const msgDate = new Date(msg.created_at);
+      const isValidDate = !isNaN(msgDate.getTime());
+
+      if (isValidDate && (!lastDate || !isSameDay(lastDate, msgDate))) {
+        items.push({
+          type: 'date',
+          date: msgDate,
+          key: `date-${msgDate.toISOString()}-${msg.id}`,
+        });
+        lastDate = msgDate;
+      }
+      items.push({
+        type: 'message',
+        msg,
+        key: msg.id,
+      });
+    });
+
+    return items;
+  }, [messages]);
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
 
@@ -677,7 +706,7 @@ export function LinkedInConversationView({
           <div className="relative flex-1">
             <Search className="absolute left-2.5 md:left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground dark:text-slate-400" />
             <Input
-              placeholder="Search conversations..."
+              placeholder="Search"
               className="pl-8 md:pl-9 h-8 md:h-9 text-xs md:text-sm bg-secondary/50 dark:bg-slate-900/90 border border-transparent dark:border-slate-800/80 text-slate-900 dark:text-white placeholder:text-muted-foreground dark:placeholder:text-slate-400 shadow-none focus-visible:ring-1"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
@@ -963,7 +992,13 @@ export function LinkedInConversationView({
                   )}
                 </div>
               ) : (
-                messages.map(msg => <MessageBubble key={msg.id} msg={msg} />)
+                messagesWithDateSeparators.map((item) =>
+                  item.type === 'date' ? (
+                    <DateSeparator key={item.key} date={item.date} variant="linkedin" />
+                  ) : (
+                    <MessageBubble key={item.key} msg={item.msg} />
+                  )
+                )
               )}
               <div ref={messagesEndRef} />
             </div>

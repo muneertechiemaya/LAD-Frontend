@@ -186,7 +186,7 @@ export const MessageList = memo(function MessageList({
   const itemContent = (index: number) => {
     const item = listItems[index];
     if (item.type === 'date') {
-      return <DateSeparator date={item.data as Date} />;
+      return <DateSeparator date={item.data as Date} variant="whatsapp" />;
     }
     const msg = item.data as Message;
     return (

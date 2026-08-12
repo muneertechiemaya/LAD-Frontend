@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { fetchWithTenant } from "@/lib/fetch-with-tenant";
+import { cn } from "@/lib/utils";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -65,6 +66,7 @@ interface ChatMessage {
 
 interface AIPlaygroundProps {
   onClose: () => void;
+  variant?: "default" | "conversations";
 }
 
 // ── Channel config ─────────────────────────────────────────────────────────────
@@ -206,7 +208,7 @@ const PROMPTS_API    = "/api/whatsapp-conversations/prompts";
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function AIPlayground({ onClose }: AIPlaygroundProps) {
+export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps) {
   // Config state
   const [settings, setSettings]               = useState<PlaygroundSettings | null>(null);
   const [prompts, setPrompts]                 = useState<PlaygroundPrompt[]>([]);
@@ -465,7 +467,12 @@ export function AIPlayground({ onClose }: AIPlaygroundProps) {
       className="fixed right-0 top-0 h-full w-full sm:w-[480px] z-[110] flex flex-col bg-white dark:bg-[#030a21] border-l border-gray-200 dark:border-blue-950/60 shadow-2xl text-gray-900 dark:text-white"
     >
       {/* ── Header ────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card shrink-0">
+      <div
+        className={cn(
+          "flex items-center gap-2 border-b border-border bg-card shrink-0",
+          variant === "conversations" ? "px-4 py-3 sm:py-0 sm:h-10 sm:px-3" : "px-4 py-3"
+        )}
+      >
         <Button
           variant="ghost"
           size="icon"
@@ -476,7 +483,12 @@ export function AIPlayground({ onClose }: AIPlaygroundProps) {
         </Button>
 
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <FlaskConical className="h-5 w-5 text-[#0B1957] dark:text-white shrink-0" />
+          <FlaskConical
+            className={cn(
+              "text-[#0B1957] dark:text-white shrink-0",
+              variant === "conversations" ? "h-5 w-5 sm:h-4 sm:w-4" : "h-5 w-5"
+            )}
+          />
           <h2 className="font-semibold text-sm truncate">AI Playground</h2>
           <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full hidden xs:inline-block">
             {settings?.ai_model || "claude-sonnet"}
@@ -484,11 +496,25 @@ export function AIPlayground({ onClose }: AIPlaygroundProps) {
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={loadConfig} title="Reload config">
-            <RefreshCw className="h-3.5 w-3.5" />
+          <Button
+            variant="ghost"
+            size="icon"
+            className={variant === "conversations" ? "h-8 w-8 sm:h-7 sm:w-7" : "h-8 w-8"}
+            onClick={loadConfig}
+            title="Reload config"
+          >
+            <RefreshCw className={variant === "conversations" ? "h-3.5 w-3.5 sm:h-3 sm:w-3" : "h-3.5 w-3.5"} />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 hidden sm:inline-flex" onClick={onClose}>
-            <X className="h-4 w-4" />
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "hidden sm:inline-flex",
+              variant === "conversations" ? "h-8 w-8 sm:h-7 sm:w-7" : "h-8 w-8"
+            )}
+            onClick={onClose}
+          >
+            <X className={variant === "conversations" ? "h-4 w-4 sm:h-3.5 sm:w-3.5" : "h-4 w-4"} />
           </Button>
         </div>
       </div>
