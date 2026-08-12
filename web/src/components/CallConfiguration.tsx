@@ -236,8 +236,8 @@ export function CallConfiguration({
   const [isRephrasing, setIsRephrasing] = useState(false);
 
   return (
-    <Card className="rounded-2xl transition-all p-2 bg-white dark:bg-[#000724] border border-gray-100 dark:border-[#262831]">
-      <CardHeader className="backdrop-blur-xl bg-white/80 dark:bg-[#000724] rounded-3xl px-5 py-1 border border-white/30 dark:border-[#000724] mb-1 -mx-2 mt-2">
+    <Card className="rounded-2xl transition-all p-2 bg-white dark:bg-[#071131] border border-gray-100 dark:border-blue-950/40">
+      <CardHeader className="backdrop-blur-xl bg-white/80 dark:bg-[#071131] rounded-3xl px-5 py-1 border border-white/30 dark:border-none mb-1 -mx-2 mt-2">
         <CardTitle className="text-lg font-bold text-gray-900 dark:text-white">
           <Phone className="w-5 h-5 inline mr-2" /> Call Configuration
         </CardTitle>
@@ -288,14 +288,14 @@ export function CallConfiguration({
                 Phone Number
               </label>
               {/* Unified container — same height/border as CallOptions */}
-              <div className="flex rounded-[10px] border border-gray-200 dark:border-[#262831] overflow-hidden focus-within:ring-2 focus-within:ring-gray-200 min-h-[48px] bg-white dark:bg-[#1a2a43]">
+              <div className="flex rounded-[10px] border border-gray-200 dark:border-blue-950/40 overflow-hidden focus-within:ring-2 focus-within:ring-gray-200 min-h-[48px] bg-white dark:bg-slate-800/50">
 
                 {/* Left: flag + country code selector — styled like CallOptions button */}
                 <Select
                   value={activeCode}
                   onValueChange={onSelectedCountryCodeChange}
                 >
-                  <SelectTrigger className="flex items-center gap-2 px-3 bg-gray-50 dark:bg-[#253456] border-0 border-r border-gray-200 dark:border-[#262831] hover:bg-gray-100 dark:hover:bg-[#2d3e5a] rounded-none focus:ring-0 shadow-none h-auto min-w-[96px] max-w-[116px] min-h-[48px]">
+                  <SelectTrigger className="flex items-center gap-2 px-3 bg-gray-50 dark:bg-slate-800/50 border-0 border-r border-gray-200 dark:border-blue-950/40 hover:bg-gray-100 dark:hover:bg-slate-800/70 rounded-none focus:ring-0 shadow-none h-auto min-w-[96px] max-w-[116px] min-h-[48px]">
                     <div className="flex items-center gap-2">
                       {activeCountry ? (
                         <Image
@@ -311,11 +311,11 @@ export function CallConfiguration({
                       <span className="text-sm font-medium text-gray-700 dark:text-white">{activeCode}</span>
                     </div>
                   </SelectTrigger>
-                  <SelectContent className="bg-white dark:bg-[#000724] border-slate-200 dark:border-[#262831]">
+                  <SelectContent className="bg-white dark:bg-[#071131] border-slate-200 dark:border-blue-950/40">
                     {countryCodes.map((code) => {
                       const country = DIAL_TO_COUNTRY[code];
                       return (
-                        <SelectItem key={code} value={code} className="pl-3 pr-6 text-xs justify-start transition-colors cursor-pointer text-slate-800 dark:text-white dark:focus:bg-[#22C55E] dark:focus:text-[#000724] dark:data-[state=checked]:focus:bg-[#22C55E] dark:data-[state=checked]:focus:text-[#000724]">
+                        <SelectItem key={code} value={code} className="pl-3 pr-6 text-xs justify-start transition-colors cursor-pointer text-slate-800 dark:text-white dark:focus:bg-[#2563eb] dark:focus:text-white dark:data-[state=checked]:focus:bg-[#2563eb] dark:data-[state=checked]:focus:text-white">
                           <div className="flex items-center gap-3">
                             {country ? (
                               <Image
@@ -349,15 +349,15 @@ export function CallConfiguration({
                   <SelectTrigger className="h-auto flex-1 border-0 rounded-none focus:ring-0 shadow-none bg-transparent px-3 text-left min-h-[48px]">
                     <SelectValue placeholder="Select number" />
                   </SelectTrigger>
-                  <SelectContent className="bg-white dark:bg-[#000724] border-slate-200 dark:border-[#262831]">
+                  <SelectContent className="bg-white dark:bg-[#071131] border-slate-200 dark:border-blue-950/40">
                     {numbers.map((n) => (
-                      <SelectItem key={n.id} value={n.id} className="pl-3 pr-6 text-xs justify-start transition-colors cursor-pointer text-slate-800 dark:text-white dark:focus:bg-[#22C55E] dark:focus:text-[#000724] dark:data-[state=checked]:focus:bg-[#22C55E] dark:data-[state=checked]:focus:text-[#000724]">
+                      <SelectItem key={n.id} value={n.id} className="pl-3 pr-6 text-xs justify-start transition-colors cursor-pointer text-slate-800 dark:text-white dark:focus:bg-[#2563eb] dark:focus:text-white dark:data-[state=checked]:focus:bg-[#2563eb] dark:data-[state=checked]:focus:text-white">
                         <div className="flex flex-col">
                           <span className="font-medium">
                             {n.base_number ?? normalizeE164Like(n.phone_number)}
                           </span>
                           {n.provider && (
-                            <span className="text-xs truncate text-muted-foreground transition-colors duration-100 group-data-[highlighted]:text-white/80 dark:group-data-[highlighted]:text-[#000724]/80">
+                            <span className="text-xs truncate text-muted-foreground transition-colors duration-100 group-data-[highlighted]:text-white/80 dark:group-data-[highlighted]:text-white/80">
                               {n.provider}
                             </span>
                           )}
@@ -379,7 +379,7 @@ export function CallConfiguration({
               Phone Number
             </label>
             <Select value={selectedNumberId} onValueChange={onSelectedNumberChange}>
-              <SelectTrigger className="h-12 rounded-[10px] border-gray-200 focus:ring-2 focus:ring-primary w-full">
+              <SelectTrigger className="h-12 rounded-[10px] border-gray-200 dark:border-blue-950/40 dark:bg-slate-800/50 focus:ring-2 focus:ring-primary/50 w-full">
                 <SelectValue placeholder="Select number" />
               </SelectTrigger>
               <SelectContent>
@@ -409,7 +409,7 @@ export function CallConfiguration({
                 value={agentId || ""}
                 onValueChange={(value) => onAgentIdChange(value)}
               >
-                <SelectTrigger className="h-12 rounded-[10px] border-gray-200 focus:ring-2 focus:ring-primary w-full overflow-hidden">
+                <SelectTrigger className="h-12 rounded-[10px] border-gray-200 dark:border-blue-950/40 dark:bg-slate-800/50 focus:ring-2 focus:ring-primary/50 w-full overflow-hidden">
                   {selectedAgent ? (
                     <div className="flex items-center gap-3 p-2 overflow-hidden">
                       <Mic className="w-4 h-4 text-blue-500 flex-shrink-0" />
@@ -428,7 +428,7 @@ export function CallConfiguration({
                     </span>
                   )}
                 </SelectTrigger>
-                <SelectContent className="w-full">
+                <SelectContent className="w-full bg-white dark:bg-[#071131] border-slate-200 dark:border-blue-950/40">
                   {agents.map((agent) => (
                     <SelectItem
                       key={agent.id}
@@ -436,13 +436,13 @@ export function CallConfiguration({
                       className="h-auto py-3 group" // <-- Ensure 'group' is fully present here
                     >
                       <div className="flex items-center gap-3 w-full">
-                        <Mic className="w-4 h-4 text-blue-500 flex-shrink-0 transition-colors duration-100 group-data-[highlighted]:text-white dark:group-data-[highlighted]:text-[#000724]" />
+                        <Mic className="w-4 h-4 text-blue-500 flex-shrink-0 transition-colors duration-100 group-data-[highlighted]:text-white dark:group-data-[highlighted]:text-white" />
                         <div className="flex-1 flex items-center justify-between min-w-0">
                           <div className="flex flex-col items-start min-w-0">
                             <span className="font-medium truncate">
                               {agent.name}
                             </span>
-                            <span className="text-xs truncate text-muted-foreground transition-colors duration-100 group-data-[highlighted]:text-white/80 dark:group-data-[highlighted]:text-[#000724]/80">
+                            <span className="text-xs truncate text-muted-foreground transition-colors duration-100 group-data-[highlighted]:text-white/80 dark:group-data-[highlighted]:text-white/80">
                               {agent.description} • {agent.accent} •{" "}
                               {agent.gender}
                             </span>
@@ -504,12 +504,12 @@ export function CallConfiguration({
                 }
               }}
             >
-              <SelectTrigger className="h-12 rounded-[10px] border-gray-200 focus:ring-2 focus:ring-primary w-full">
+              <SelectTrigger className="h-12 rounded-[10px] border-gray-200 dark:border-blue-950/40 dark:bg-slate-800/50 focus:ring-2 focus:ring-primary/50 w-full">
                 <SelectValue
                   placeholder={selectedAgent?.language || "Select language"}
                 />
               </SelectTrigger>
-              <SelectContent className="w-full">
+              <SelectContent className="w-full bg-white dark:bg-[#071131] border-slate-200 dark:border-blue-950/40">
                 {Array.from(
                   new Map(
                     agents
@@ -551,12 +551,12 @@ export function CallConfiguration({
                 }
               }}
             >
-              <SelectTrigger className="h-12 rounded-[10px] border-gray-200 focus:ring-2 focus:ring-primary w-full">
+              <SelectTrigger className="h-12 rounded-[10px] border-gray-200 dark:border-blue-950/40 dark:bg-slate-800/50 focus:ring-2 focus:ring-primary/50 w-full">
                 <SelectValue
                   placeholder={selectedAgent?.accent || "Select accent"}
                 />
               </SelectTrigger>
-              <SelectContent className="w-full">
+              <SelectContent className="w-full bg-white dark:bg-[#071131] border-slate-200 dark:border-blue-950/40">
                 {Array.from(
                   new Set(
                     agents
@@ -599,7 +599,7 @@ export function CallConfiguration({
             <textarea
               value={additionalInstructions}
               onChange={(e) => onAdditionalInstructionsChange(e.target.value)}
-              className="w-full h-24 p-3 pr-12 text-sm border border-gray-200 dark:border-[#262831] rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-[#1a2a43] text-gray-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-[#7a8ba3]"
+              className="w-full h-24 p-3 pr-12 text-sm border border-gray-200 dark:border-blue-950/40 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary/50 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-[#7a8ba3]"
               placeholder="Enter any additional instructions for the call..."
             />
 
@@ -643,9 +643,9 @@ export function CallConfiguration({
               className="
                 absolute top-2 right-2
                 h-8 px-3 rounded-md
-                bg-gray-100 dark:bg-[#253456] hover:bg-gray-200 dark:hover:bg-[#2d3e5a]
+                bg-gray-100 dark:bg-input/30 hover:bg-gray-200 dark:hover:bg-input/50
                 flex items-center gap-1
-                border border-gray-300 dark:border-[#262831]
+                border border-gray-300 dark:border-blue-950/60
                 shadow-sm
                 text-xs font-medium text-gray-700 dark:text-white
               "
