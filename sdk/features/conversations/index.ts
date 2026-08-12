@@ -67,6 +67,8 @@ export type {
 export {
   submitMessageFeedback,
   getConversationFeedback,
+  listLearnedCorrections,
+  setCorrectionActive,
   feedbackKeys,
 } from './feedback';
 export type {
@@ -74,4 +76,5 @@ export type {
   MessageFeedback,
   SubmitFeedbackRequest,
   SubmitFeedbackResponse,
+  LearnedCorrection,
 } from './feedback';

@@ -2214,7 +2214,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
               onChange={e => setText(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={pendingFiles.length > 0 ? 'Add a caption (optional)…' : 'Type a message'}
-              className="flex-1 border-0 dark:bg-transparent text-foreground dark:text-[#e9edef] py-2 px-1 text-[15px] focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-[#8696a0] dark:placeholder:text-[#a2a2a2] resize-none min-h-[24px] max-h-[120px] my-0.5 leading-normal"
+              className="flex-1 border-0 dark:bg-transparent text-foreground dark:text-[#e9edef] py-2 px-1 text-[15px] focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-[#8696a0] dark:placeholder:text-[#a2a2a2] resize-none min-h-[24px] max-h-[120px] my-0.5 leading-normal shadow-none"
               rows={1}
             />
           </div>
@@ -2605,8 +2605,15 @@ function WABASidebar({
       }
       // Not in the loaded list. For a synced WA group, resolve-or-create its chat so
       // a single click always opens it — even before any messages have arrived.
+      //
+      // A BROADCAST group has no chat to open, and never will: it is a saved
+      // audience that fans out to N separate 1:1 conversations. Telling the user
+      // "no chat to open" described our data model rather than answering what
+      // they clicked for, so a click now opens the group itself — members, who
+      // can be added, and what has been broadcast to them.
       if (!jid) {
-        setGroupBroadcastResult(`"${group.name}" isn't a synced WhatsApp group — no chat to open.`);
+        setInfoGroup(group);
+        setIsGroupsPanelOpen(false);
         return;
       }
       try {

@@ -167,7 +167,7 @@
     /* Borders & Inputs */
     --border: oklch(0.922 0 0);
     --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
+    --ring: #0B1957;
 
     /* Channel Colors */
     --whatsapp: 142 70% 45%;
@@ -182,7 +182,7 @@
     --sidebar-accent: oklch(0.97 0 0);
     --sidebar-accent-foreground: oklch(0.205 0 0);
     --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0);
+    --sidebar-ring: #0B1957;
 
     /* Message Bubbles - WhatsApp Theme */
     --message-incoming: 0 0% 100%;
@@ -608,7 +608,7 @@
   /* Border & Input */
   --border: oklch(92% 0.013 255.508);
   --input: oklch(96% 0.007 247.896);
-  --ring: oklch(62% 0.194 149.214);
+  --ring: #0B1957;
 
   /* Muted */
   --muted: oklch(96% 0.007 247.896);
@@ -629,7 +629,7 @@
   --sidebar-accent: oklch(62% 0.194 149.214);
   --sidebar-accent-foreground: oklch(98% 0.014 180.72);
   --sidebar-border: oklch(92% 0.013 255.508);
-  --sidebar-ring: oklch(62% 0.194 149.214);
+  --sidebar-ring: #0B1957;
 }
 
 /* ------------------------------
