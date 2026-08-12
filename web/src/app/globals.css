@@ -260,12 +260,12 @@
   }
 
   .dark .message-bubble-incoming {
-    background-color: #202c33;
+    background-color: #242626;
     color: #e9edef;
   }
 
   .dark .message-bubble-outgoing {
-    background-color: #005c4b;
+    background-color: #144d37;
     color: #e9edef;
   }
 
