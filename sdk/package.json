@@ -34,10 +34,6 @@
       "types": "./features/community-roi/index.ts",
       "default": "./features/community-roi/index.ts"
     },
-    "./community-roi/types": {
-      "types": "./features/community-roi/types.ts",
-      "default": "./features/community-roi/types.ts"
-    },    
     "./conversations": {
       "types": "./features/conversations/index.ts",
       "default": "./features/conversations/index.ts"

@@ -27,8 +27,7 @@ import { StatusStepper, type WorkflowStep } from './StatusStepper';
 import { LeadStepperRow } from './LeadStepperRow';
 import { LiveActivityStatusBadge } from './LiveActivityStatusBadge';
 import { LiveBadge } from '@/components/LiveBadge';
-import { exportCampaignLeads } from '@lad/frontend-features/campaigns';
-
+import { exportCampaignLeads } from '../../../../sdk/features/campaigns/api';
 import { formatDateTimeUnified } from '@/utils/dateTime';
 
 /** Mapping from backend step_type to a short display label */

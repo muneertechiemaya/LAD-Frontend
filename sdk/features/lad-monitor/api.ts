@@ -118,7 +118,7 @@ export async function getLlmCost(params?: { days?: number }): Promise<LlmCostDat
 
 export async function getMigrationStatus(): Promise<MigrationStatusData> {
   const res = await apiGet<{ success: boolean; data: MigrationStatusData }>(`${BASE}/migrations`);
-  return res.data.data;
+  return res.data;
 }
 
 // ── Strategy moderation ─────────────────────────────────────────────────────
