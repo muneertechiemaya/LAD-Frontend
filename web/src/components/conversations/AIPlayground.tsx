@@ -24,12 +24,8 @@ import {
   Mail,
   Cpu,
   Hash,
-  BookOpen,
   Info,
-<<<<<<< HEAD
-=======
   SlidersHorizontal,
->>>>>>> develop
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { fetchWithTenant } from "@/lib/fetch-with-tenant";
@@ -71,12 +67,7 @@ interface ChatMessage {
 
 interface AIPlaygroundProps {
   onClose: () => void;
-<<<<<<< HEAD
-  isWhatsApp?: boolean;
-  isConversations?: boolean;
-=======
   variant?: "default" | "conversations" | "whatsapp";
->>>>>>> develop
 }
 
 // ── Channel config ─────────────────────────────────────────────────────────────
@@ -268,11 +259,7 @@ function parseAIResponse(raw: string): ParsedAIResponse {
 
 // ── AssistantBubble — AI reply with optional collapsible metadata ─────────────
 
-<<<<<<< HEAD
-function AssistantBubble({ content, isWhatsApp = false }: { content: string; isWhatsApp?: boolean }) {
-=======
 function AssistantBubble({ content, isWhatsApp }: { content: string; isWhatsApp?: boolean }) {
->>>>>>> develop
   const { text, metadata } = parseAIResponse(content);
   const isNoReply = text.startsWith("(No reply") || text.startsWith("[Structured response");
   const [showMeta, setShowMeta] = useState(isNoReply);
@@ -281,13 +268,9 @@ function AssistantBubble({ content, isWhatsApp }: { content: string; isWhatsApp?
     <div className="max-w-[80%] space-y-1">
       <div className={cn(
         "rounded-2xl rounded-tl-sm px-3.5 py-2 text-sm leading-relaxed whitespace-pre-wrap shadow-xs transition-colors",
-<<<<<<< HEAD
         isWhatsApp
           ? "bg-gray-100 dark:bg-neutral-800 text-gray-900 dark:text-neutral-100 border border-gray-200/40 dark:border-neutral-700/40"
           : "bg-slate-100 dark:bg-[#132044] text-slate-900 dark:text-slate-100 border border-slate-200/80 dark:border-blue-900/50"
-=======
-        isWhatsApp ? "bg-gray-100 dark:bg-neutral-800 text-gray-900 dark:text-neutral-100" : "bg-muted text-foreground"
->>>>>>> develop
       )}>
         {text}
       </div>
@@ -307,15 +290,10 @@ function AssistantBubble({ content, isWhatsApp }: { content: string; isWhatsApp?
           </button>
           {showMeta && (
             <pre className={cn(
-<<<<<<< HEAD
               "mt-1 rounded-md px-2.5 py-2 text-[10px] overflow-x-auto leading-relaxed border transition-colors font-mono",
               isWhatsApp
                 ? "bg-gray-900 dark:bg-neutral-950 border-gray-800 dark:border-neutral-800 text-gray-300 dark:text-neutral-400"
                 : "bg-slate-900 dark:bg-[#070d1e] border-slate-800 dark:border-blue-950 text-slate-300 dark:text-blue-200/80"
-=======
-              "mt-1 rounded-md px-2.5 py-2 text-[10px] overflow-x-auto leading-relaxed border transition-colors",
-              isWhatsApp ? "bg-neutral-900 border-neutral-800 text-neutral-400" : "bg-muted/40 border-border text-muted-foreground"
->>>>>>> develop
             )}>
               {JSON.stringify(metadata, null, 2)}
             </pre>
@@ -333,15 +311,7 @@ const PROMPTS_API    = "/api/whatsapp-conversations/prompts";
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-<<<<<<< HEAD
-export function AIPlayground({
-  onClose,
-  isWhatsApp = false,
-  isConversations = false,
-}: AIPlaygroundProps) {
-=======
 export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps) {
->>>>>>> develop
   // Config state
   const [settings, setSettings]               = useState<PlaygroundSettings | null>(null);
   const [prompts, setPrompts]                 = useState<PlaygroundPrompt[]>([]);
@@ -603,11 +573,7 @@ export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps
         "fixed right-0 top-0 h-full w-full sm:w-[480px] z-[110] flex flex-col border-l shadow-2xl transition-colors",
         isWhatsApp
           ? "bg-white dark:bg-neutral-900 border-gray-200 dark:border-neutral-800 text-gray-900 dark:text-neutral-100"
-<<<<<<< HEAD
           : "bg-white dark:bg-[#0b132b] border-blue-100 dark:border-blue-900/60 text-slate-900 dark:text-slate-100"
-=======
-          : "bg-white dark:bg-[#030a21] border-gray-200 dark:border-blue-950/60 text-gray-900 dark:text-white"
->>>>>>> develop
       )}
     >
       {/* ── Header ────────────────────────────────────────────────────── */}
@@ -616,11 +582,7 @@ export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps
           "flex items-center gap-2 border-b shrink-0 transition-colors",
           isWhatsApp
             ? "bg-white dark:bg-neutral-900 border-gray-200 dark:border-neutral-800"
-<<<<<<< HEAD
             : "bg-white dark:bg-[#0d1735] border-blue-100 dark:border-blue-900/60",
-=======
-            : "border-border bg-card",
->>>>>>> develop
           isConversations ? "px-4 py-3 sm:py-0 sm:h-10 sm:px-3" : "px-4 py-3"
         )}
       >
@@ -642,28 +604,17 @@ export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps
           <FlaskConical
             className={cn(
               "shrink-0 transition-colors",
-<<<<<<< HEAD
               isWhatsApp ? "text-[#0B1957] dark:text-neutral-400" : "text-[#0B1957] dark:text-blue-400",
-=======
-              isWhatsApp ? "text-[#0B1957] dark:text-neutral-400" : "text-[#0B1957] dark:text-white",
->>>>>>> develop
               isConversations ? "h-5 w-5 sm:h-4 sm:w-4" : "h-5 w-5"
             )}
           />
           <h2 className="font-semibold text-sm truncate">AI Playground</h2>
           <span
             className={cn(
-<<<<<<< HEAD
               "text-[10px] px-2 py-0.5 rounded-full hidden xs:inline-block transition-colors border",
               isWhatsApp
                 ? "bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-neutral-400 border-transparent"
                 : "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-200/60 dark:border-blue-800/60"
-=======
-              "text-[10px] px-2 py-0.5 rounded-full hidden xs:inline-block transition-colors",
-              isWhatsApp
-                ? "bg-gray-100 dark:bg-neutral-800 text-gray-500 dark:text-neutral-400"
-                : "text-muted-foreground bg-muted"
->>>>>>> develop
             )}
           >
             {settings?.ai_model || "claude-sonnet"}
@@ -676,13 +627,9 @@ export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps
             size="icon"
             className={cn(
               isConversations ? "h-8 w-8 sm:h-7 sm:w-7" : "h-8 w-8",
-<<<<<<< HEAD
               isWhatsApp
                 ? "text-gray-500 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-neutral-100 hover:bg-gray-100 dark:hover:bg-neutral-800"
                 : "text-slate-500 dark:text-blue-300 hover:text-slate-900 dark:hover:text-white hover:bg-blue-50 dark:hover:bg-blue-950/60"
-=======
-              isWhatsApp && "text-gray-500 dark:text-neutral-400 dark:hover:text-neutral-100 dark:hover:bg-neutral-800"
->>>>>>> develop
             )}
             onClick={loadConfig}
             title="Reload config"
@@ -695,13 +642,9 @@ export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps
             className={cn(
               "hidden sm:inline-flex",
               isConversations ? "h-8 w-8 sm:h-7 sm:w-7" : "h-8 w-8",
-<<<<<<< HEAD
               isWhatsApp
                 ? "text-gray-500 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-neutral-100 hover:bg-gray-100 dark:hover:bg-neutral-800"
                 : "text-slate-500 dark:text-blue-300 hover:text-slate-900 dark:hover:text-white hover:bg-blue-50 dark:hover:bg-blue-950/60"
-=======
-              isWhatsApp && "text-gray-500 dark:text-neutral-400 dark:hover:text-neutral-100 dark:hover:bg-neutral-800"
->>>>>>> develop
             )}
             onClick={onClose}
           >
@@ -722,11 +665,7 @@ export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps
               "shrink-0 border-b px-4 py-3 space-y-3 transition-colors",
               isWhatsApp
                 ? "bg-gray-50/50 dark:bg-neutral-900 border-gray-200 dark:border-neutral-800"
-<<<<<<< HEAD
                 : "bg-blue-50/20 dark:bg-[#0d1735]/80 border-blue-100 dark:border-blue-900/60"
-=======
-                : "border-border bg-muted/30"
->>>>>>> develop
             )}
           >
             <div>
@@ -734,20 +673,12 @@ export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps
                 <label
                   className={cn(
                     "text-xs font-medium block",
-<<<<<<< HEAD
                     isWhatsApp ? "text-gray-700 dark:text-neutral-400" : "text-slate-700 dark:text-blue-200/90"
-=======
-                    isWhatsApp ? "text-gray-700 dark:text-neutral-400" : "text-muted-foreground"
->>>>>>> develop
                   )}
                 >
                   System Prompt
                 </label>
-<<<<<<< HEAD
                 <Info className={cn("h-3.5 w-3.5", isWhatsApp ? "text-gray-400 dark:text-neutral-400" : "text-blue-500/70 dark:text-blue-400")} />
-=======
-                <Info className="h-3.5 w-3.5 text-gray-400 dark:text-neutral-400" />
->>>>>>> develop
               </div>
 
               {/* ── Channel selector pills ──────────────────────────── */}
@@ -760,25 +691,12 @@ export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps
                       onClick={() => handleSelectChannel(value as ChannelValue)}
                       className={cn(
                         "inline-flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-full border transition-all",
-<<<<<<< HEAD
                         getChannelStyle(value, isSelected, isWhatsApp)
-=======
-                        isWhatsApp
-                          ? isSelected
-                            ? value === "whatsapp"
-                              ? "bg-emerald-50 dark:bg-[#00a884]/10 text-emerald-700 dark:text-white border-emerald-600 dark:border-[#00a884] shadow-xs"
-                              : "bg-gray-100 dark:bg-neutral-800 text-gray-900 dark:text-white border-gray-300 dark:border-[#00a884] shadow-xs"
-                            : "bg-white dark:bg-neutral-900 text-gray-600 dark:text-neutral-400 border-gray-200 dark:border-neutral-800 hover:border-gray-300 dark:hover:border-neutral-600"
-                          : isSelected
-                          ? `${bg} ${color} border-current shadow-xs`
-                          : "bg-background text-muted-foreground border-border hover:border-primary/40 hover:text-foreground"
->>>>>>> develop
                       )}
                     >
                       <Icon
                         className={cn(
                           "h-3 w-3",
-<<<<<<< HEAD
                           isSelected
                             ? value === "all"
                               ? isWhatsApp
@@ -788,17 +706,6 @@ export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps
                             : isWhatsApp
                             ? "text-gray-400 dark:text-neutral-500"
                             : "text-slate-400 dark:text-blue-300/60"
-=======
-                          isWhatsApp
-                            ? isSelected
-                              ? value === "whatsapp"
-                                ? "text-emerald-600 dark:text-[#00a884]"
-                                : "text-gray-900 dark:text-white"
-                              : "text-gray-400 dark:text-neutral-400"
-                            : isSelected
-                            ? color
-                            : ""
->>>>>>> develop
                         )}
                       />
                       {label}
@@ -806,17 +713,7 @@ export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps
                         <span
                           className={cn(
                             "text-[10px] ml-0.5",
-<<<<<<< HEAD
                             isSelected ? "font-semibold" : "opacity-60"
-=======
-                            isWhatsApp
-                              ? isSelected
-                                ? "text-emerald-600 dark:text-[#00a884] font-semibold"
-                                : "text-gray-400 dark:text-neutral-400"
-                              : isSelected
-                              ? "opacity-70"
-                              : "opacity-50"
->>>>>>> develop
                           )}
                         >
                           {prompts.filter((p) => p.channel === value).length}
@@ -833,11 +730,7 @@ export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps
                   <label
                     className={cn(
                       "text-[11px] font-medium shrink-0",
-<<<<<<< HEAD
                       isWhatsApp ? "text-gray-700 dark:text-neutral-400" : "text-slate-700 dark:text-blue-200/90"
-=======
-                      isWhatsApp ? "text-gray-700 dark:text-neutral-400" : "text-muted-foreground"
->>>>>>> develop
                     )}
                   >
                     Stage
@@ -850,19 +743,11 @@ export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps
                       "flex-1 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none transition-colors cursor-pointer",
                       isWhatsApp
                         ? "bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 text-gray-900 dark:text-neutral-100 focus:ring-1 focus:ring-[#00a884]"
-<<<<<<< HEAD
                         : "bg-white dark:bg-[#080e22] border border-slate-200 dark:border-blue-900/60 text-slate-900 dark:text-slate-100 focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400"
                     )}
                   >
                     {STAGES.map((s) => (
                       <option key={s.value} value={s.value} className={isWhatsApp ? "bg-white dark:bg-neutral-900 text-gray-900 dark:text-neutral-100" : "bg-white dark:bg-[#080e22] text-slate-900 dark:text-slate-100"}>
-=======
-                        : "bg-background border border-border text-foreground focus:ring-1 focus:ring-primary/50"
-                    )}
-                  >
-                    {STAGES.map((s) => (
-                      <option key={s.value} value={s.value}>
->>>>>>> develop
                         {s.label}
                       </option>
                     ))}
@@ -883,11 +768,7 @@ export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps
                     "w-full flex items-center justify-between text-xs rounded-xl px-3 py-2 transition-colors",
                     isWhatsApp
                       ? "bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 hover:border-gray-300 dark:hover:border-neutral-700 text-gray-900 dark:text-neutral-100"
-<<<<<<< HEAD
                       : "bg-white dark:bg-[#080e22] border border-slate-200 dark:border-blue-900/60 hover:border-blue-400 dark:hover:border-blue-500 text-slate-900 dark:text-slate-100"
-=======
-                      : "bg-background border border-border hover:border-primary/50 text-foreground"
->>>>>>> develop
                   )}
                 >
                   <div className="flex items-center gap-2 min-w-0">
@@ -902,27 +783,14 @@ export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps
                         <span className="truncate">{selectedPromptName}</span>
                       </>
                     ) : (
-<<<<<<< HEAD
                       <span className={isWhatsApp ? "text-gray-400 dark:text-neutral-400" : "text-slate-400 dark:text-blue-300/50"}>
-=======
-                      <span className={isWhatsApp ? "text-gray-400 dark:text-neutral-400" : "text-muted-foreground"}>
->>>>>>> develop
                         {filteredPrompts.length === 0
                           ? `No ${selectedChannel === "all" ? "" : selectedChannel + " "}prompts yet`
                           : `Select a ${selectedChannel === "all" ? "" : selectedChannel + " "}prompt…`}
                       </span>
                     )}
                   </div>
-<<<<<<< HEAD
                   <ChevronDown className={cn("h-3.5 w-3.5 ml-2 shrink-0", isWhatsApp ? "text-gray-400 dark:text-neutral-400" : "text-slate-400 dark:text-blue-300/60")} />
-=======
-                  <ChevronDown
-                    className={cn(
-                      "h-3.5 w-3.5 ml-2 shrink-0",
-                      isWhatsApp ? "text-gray-400 dark:text-neutral-400" : "text-muted-foreground"
-                    )}
-                  />
->>>>>>> develop
                 </button>
 
                 <AnimatePresence>
@@ -933,17 +801,10 @@ export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps
                       exit={{ opacity: 0, y: -4 }}
                       transition={{ duration: 0.1 }}
                       className={cn(
-<<<<<<< HEAD
                         "absolute z-10 top-full left-0 right-0 mt-1 rounded-xl border shadow-xl overflow-hidden max-h-52 overflow-y-auto",
                         isWhatsApp
                           ? "bg-white dark:bg-neutral-900 border-gray-200 dark:border-neutral-800"
                           : "bg-white dark:bg-[#0d1735] border-blue-100 dark:border-blue-900/80"
-=======
-                        "absolute z-10 top-full left-0 right-0 mt-1 rounded-xl border shadow-lg overflow-hidden max-h-52 overflow-y-auto",
-                        isWhatsApp
-                          ? "bg-white dark:bg-neutral-900 border-gray-200 dark:border-neutral-800"
-                          : "bg-popover border-border"
->>>>>>> develop
                       )}
                     >
                       {filteredPrompts.length === 0 ? (
@@ -959,19 +820,11 @@ export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps
                               "w-full text-left px-3 py-2 text-xs transition-colors flex items-center gap-2",
                               isWhatsApp
                                 ? p.name === selectedPromptName
-<<<<<<< HEAD
                                   ? "bg-gray-100 dark:bg-neutral-800 text-gray-900 dark:text-neutral-100 font-medium"
                                   : "hover:bg-gray-50 dark:hover:bg-neutral-800/80 text-gray-900 dark:text-neutral-100"
                                 : p.name === selectedPromptName
                                 ? "bg-blue-50 dark:bg-blue-950/80 text-blue-900 dark:text-blue-100 font-medium border-l-2 border-blue-600 dark:border-blue-400"
                                 : "hover:bg-blue-50/60 dark:hover:bg-blue-900/40 text-slate-900 dark:text-slate-100"
-=======
-                                  ? "bg-gray-100 dark:bg-neutral-800"
-                                  : "hover:bg-gray-50 dark:hover:bg-neutral-800"
-                                : p.name === selectedPromptName
-                                ? "bg-slate-200 dark:bg-[#2EE6A6]"
-                                : "hover:bg-slate-200 dark:hover:bg-[#2EE6A6]"
->>>>>>> develop
                             )}
                           >
                             {(() => {
@@ -995,17 +848,10 @@ export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps
                       <button
                         onClick={handleClearPrompt}
                         className={cn(
-<<<<<<< HEAD
                           "w-full text-left px-3 py-2 text-xs border-t transition-colors",
                           isWhatsApp
                             ? "text-gray-500 dark:text-neutral-400 hover:bg-gray-50 dark:hover:bg-neutral-800 border-gray-200 dark:border-neutral-800"
                             : "text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/60 border-slate-200 dark:border-blue-900/60"
-=======
-                          "w-full text-left px-3 py-2 text-xs border-t",
-                          isWhatsApp
-                            ? "text-gray-500 dark:text-neutral-400 hover:bg-gray-50 dark:hover:bg-neutral-800 border-gray-200 dark:border-neutral-800"
-                            : "text-muted-foreground hover:bg-accent border-border"
->>>>>>> develop
                         )}
                       >
                         Clear selection
@@ -1030,22 +876,10 @@ export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps
                     "w-full text-xs rounded-xl px-3 py-2.5 resize-none focus:outline-none font-mono transition-colors",
                     isWhatsApp
                       ? "bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 text-gray-900 dark:text-neutral-100 dark:placeholder:text-neutral-500 focus:ring-1 focus:ring-[#00a884]"
-<<<<<<< HEAD
                       : "bg-white dark:bg-[#080e22] border border-slate-200 dark:border-blue-900/60 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-blue-300/40 focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400"
                   )}
                 />
                 <span className={cn("absolute bottom-2.5 right-3 text-[10px] pointer-events-none select-none", isWhatsApp ? "text-gray-400 dark:text-neutral-500" : "text-slate-400 dark:text-blue-300/50")}>
-=======
-                      : "bg-background border border-border text-foreground focus:ring-1 focus:ring-primary/50 placeholder:text-muted-foreground"
-                  )}
-                />
-                <span
-                  className={cn(
-                    "absolute bottom-2.5 right-3 text-[10px] pointer-events-none select-none",
-                    isWhatsApp ? "text-gray-400 dark:text-neutral-500" : "text-muted-foreground/60"
-                  )}
-                >
->>>>>>> develop
                   {systemPrompt.length} / 2000
                 </span>
               </div>
@@ -1081,15 +915,9 @@ export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps
                   href="/settings?tab=chat"
                   className={cn(
                     "flex items-center gap-1.5 text-xs transition-colors ml-auto font-medium",
-<<<<<<< HEAD
                     isWhatsApp || selectedChannel === "whatsapp"
                       ? "text-[#00a884] hover:text-[#008069] dark:text-[#00a884] dark:hover:text-[#00c89c]"
                       : "text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-=======
-                    isWhatsApp
-                      ? "text-[#00a884] hover:text-[#008069] dark:text-[#00a884] dark:hover:text-[#00c89c]"
-                      : "text-muted-foreground hover:text-foreground"
->>>>>>> develop
                   )}
                 >
                   <SlidersHorizontal className="h-3.5 w-3.5" />
@@ -1106,11 +934,7 @@ export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps
                   "flex items-center gap-1.5 text-xs transition-colors font-medium",
                   isWhatsApp
                     ? "text-gray-700 dark:text-neutral-200 hover:text-gray-900 dark:hover:text-white"
-<<<<<<< HEAD
                     : "text-slate-700 dark:text-blue-200 hover:text-blue-600 dark:hover:text-blue-300"
-=======
-                    : "text-muted-foreground hover:text-foreground"
->>>>>>> develop
                 )}
               >
                 {showKnowledgeBase ? (
@@ -1139,22 +963,10 @@ export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps
                         "mt-2 w-full text-xs rounded-xl px-3 py-2 resize-none focus:outline-none transition-colors",
                         isWhatsApp
                           ? "bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 text-gray-900 dark:text-neutral-100 dark:placeholder:text-neutral-500 focus:ring-1 focus:ring-[#00a884]"
-<<<<<<< HEAD
                           : "bg-white dark:bg-[#080e22] border border-slate-200 dark:border-blue-900/60 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-blue-300/40 focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400"
                       )}
                     />
                     <p className={cn("text-[10px] mt-1", isWhatsApp ? "text-gray-500 dark:text-neutral-400" : "text-slate-500 dark:text-blue-300/60")}>
-=======
-                          : "bg-background border border-border text-foreground focus:ring-1 focus:ring-primary/50 placeholder:text-muted-foreground"
-                      )}
-                    />
-                    <p
-                      className={cn(
-                        "text-[10px] mt-1",
-                        isWhatsApp ? "text-gray-500 dark:text-neutral-400" : "text-muted-foreground"
-                      )}
-                    >
->>>>>>> develop
                       Overrides the knowledge base from Chat Settings for this session only.
                     </p>
                   </motion.div>
@@ -1167,11 +979,7 @@ export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps
           <div
             className={cn(
               "flex-1 overflow-y-auto px-4 py-3 space-y-3 transition-colors",
-<<<<<<< HEAD
               isWhatsApp ? "bg-gray-50/40 dark:bg-neutral-950/40" : "bg-slate-50/50 dark:bg-[#060b19]"
-=======
-              isWhatsApp ? "bg-gray-50/40 dark:bg-neutral-950/20" : ""
->>>>>>> develop
             )}
           >
             {messages.length === 0 && (
@@ -1182,7 +990,6 @@ export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps
                   (() => {
                     const { Icon: ChIcon, color } = activeChannelCfg;
                     return selectedChannel === "all" ? (
-<<<<<<< HEAD
                       <FlaskConical className="h-12 w-12 text-blue-300 dark:text-blue-900/60 mb-3 stroke-[1.25]" />
                     ) : (
                       <ChIcon className={`h-12 w-12 mb-3 ${color} opacity-70`} />
@@ -1193,38 +1000,12 @@ export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps
                   Send a message to test your{" "}
                   {selectedChannel !== "all" && (
                     <span className={`font-semibold ${activeChannelCfg.color}`}>
-=======
-                      <FlaskConical className="h-10 w-10 text-muted-foreground/30 mb-3" />
-                    ) : (
-                      <ChIcon className={`h-10 w-10 mb-3 opacity-20 ${color}`} />
-                    );
-                  })()
-                )}
-                <p
-                  className={cn(
-                    "text-sm font-semibold",
-                    isWhatsApp ? "text-gray-900 dark:text-neutral-100" : "text-muted-foreground"
-                  )}
-                >
-                  Send a message to test your{" "}
-                  {selectedChannel !== "all" && !isWhatsApp && (
-                    <span className={`font-medium ${activeChannelCfg.color}`}>
->>>>>>> develop
                       {activeChannelCfg.label}{" "}
                     </span>
                   )}
                   AI prompt.
                 </p>
-<<<<<<< HEAD
                 <p className={cn("text-xs mt-1", isWhatsApp ? "text-gray-500 dark:text-neutral-400" : "text-slate-500 dark:text-blue-300/60")}>
-=======
-                <p
-                  className={cn(
-                    "text-xs mt-1",
-                    isWhatsApp ? "text-gray-500 dark:text-neutral-400" : "text-muted-foreground/70"
-                  )}
-                >
->>>>>>> develop
                   Responses are not saved to any conversation.
                 </p>
               </div>
@@ -1234,7 +1015,6 @@ export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps
               const channelUserStyle = getUserBubbleStyle(selectedChannel, isWhatsApp);
               return (
                 <div
-<<<<<<< HEAD
                   key={idx}
                   className={`flex items-start gap-2 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
                 >
@@ -1246,56 +1026,6 @@ export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps
                         : isWhatsApp
                         ? "bg-gray-200 dark:bg-neutral-800 text-gray-600 dark:text-neutral-400"
                         : "bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/60"
-=======
-                  className={cn(
-                    "shrink-0 h-7 w-7 rounded-full flex items-center justify-center",
-                    msg.role === "user"
-                      ? isWhatsApp
-                        ? "bg-[#00a884] text-white"
-                        : "bg-primary text-primary-foreground dark:text-white"
-                      : isWhatsApp
-                      ? "bg-gray-200 dark:bg-neutral-800 text-gray-600 dark:text-neutral-400"
-                      : "bg-muted text-muted-foreground"
-                  )}
-                >
-                  {msg.role === "user" ? <User className="h-3.5 w-3.5" /> : <Bot className="h-3.5 w-3.5" />}
-                </div>
-                {msg.role === "user" ? (
-                  <div
-                    className={cn(
-                      "max-w-[80%] rounded-2xl rounded-tr-sm px-3.5 py-2 text-sm leading-relaxed whitespace-pre-wrap shadow-xs",
-                      isWhatsApp
-                        ? "bg-emerald-600 dark:bg-emerald-700 text-white dark:text-neutral-100"
-                        : "bg-primary text-primary-foreground dark:text-white"
-                    )}
-                  >
-                    {msg.content}
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-1.5 max-w-[80%]">
-                    <AssistantBubble content={msg.content} isWhatsApp={isWhatsApp} />
-                    {msg.would_attach && msg.would_attach.length > 0 && (
-                      <div className="flex flex-col gap-1">
-                        {msg.would_attach.map((att, i) => (
-                          <div
-                            key={i}
-                            className="flex items-center gap-2 rounded-lg border border-violet-300 bg-violet-50 dark:bg-violet-950/30 px-2.5 py-1.5 text-xs"
-                            title={`Live WhatsApp would attach this file. Matched on keyword: "${att.matched_keyword}"`}
-                          >
-                            <BookOpen className="h-3.5 w-3.5 text-violet-600 shrink-0" />
-                            <span className="font-mono text-violet-700 dark:text-violet-300 truncate flex-1">
-                              📎 {att.filename}
-                            </span>
-                            <span className="text-violet-500 dark:text-violet-400 text-[10px] uppercase tracking-wide">
-                              would attach
-                            </span>
-                            <span className="text-muted-foreground text-[10px] truncate max-w-[120px]">
-                              triggered: &quot;{att.matched_keyword}&quot;
-                            </span>
-                          </div>
-                        ))}
-                      </div>
->>>>>>> develop
                     )}
                   >
                     {msg.role === "user" ? <User className="h-3.5 w-3.5" /> : <Bot className="h-3.5 w-3.5" />}
