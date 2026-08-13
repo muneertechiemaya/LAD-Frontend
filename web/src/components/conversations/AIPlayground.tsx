@@ -26,6 +26,7 @@ import {
   Hash,
   Info,
   SlidersHorizontal,
+  BookOpen 
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { fetchWithTenant } from "@/lib/fetch-with-tenant";
