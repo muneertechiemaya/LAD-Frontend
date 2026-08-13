@@ -35,7 +35,7 @@ export default function LoginPage() {
                 playsInline
                 preload="metadata"
                 aria-hidden="true"
-                className="w-full h-full object-contain mix-blend-multiply dark:mix-blend-lighten"
+                className="w-full h-full object-contain mix-blend-multiply dark:mix-blend-lighten dark:[filter:contrast(1.25)_brightness(0.85)]"
               />
             </div>
           </motion.div>
