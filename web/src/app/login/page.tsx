@@ -14,7 +14,7 @@ export default function LoginPage() {
     : '/hero-character-poster.jpg';
 
   return (
-    <div className="py-4 md:py-6 relative bg-background dark:bg-[#000724] flex flex-col justify-center min-h-[calc(100vh-100px)]">
+    <div className="py-4 md:py-6 relative bg-background dark:bg-[#010726] flex flex-col justify-center min-h-[calc(100vh-100px)]">
       <main className="flex-1 flex items-center justify-center">
         <div className="w-full max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center px-4 sm:px-6 lg:px-8">
           {/* Left: Hero / Illustration + marketing */}
@@ -35,7 +35,7 @@ export default function LoginPage() {
                 playsInline
                 preload="metadata"
                 aria-hidden="true"
-                className="w-full h-full object-contain mix-blend-multiply dark:mix-blend-lighten dark:[filter:contrast(1.25)_brightness(0.85)]"
+                className="w-full h-full object-contain mix-blend-multiply dark:mix-blend-lighten"
               />
             </div>
           </motion.div>
