@@ -33,6 +33,8 @@ import { cn } from '@/lib/utils';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
 import { LinkedInFollowupComposer } from './LinkedInFollowupComposer';
 import { LinkedInContextPanel } from './LinkedInContextPanel';
+import { LinkedInChatToolbar } from './LinkedInChatToolbar';
+import type { InsertTemplatePayload } from './LinkedInChatToolbar';
 import { DateSeparator } from './DateSeparator';
 import { isSameDay } from 'date-fns';
 
@@ -285,17 +287,14 @@ function relativeTime(isoString: string): string {
   }
 }
 
-// Exact, absolute date + time for message bubbles (e.g. "Jul 7, 2026, 3:42 PM").
-// Used instead of relative "Xm ago" so the precise send time is always visible.
-function exactDateTime(isoString: string): string {
+// Time-only format for message bubbles (e.g. "3:42 PM").
+// Date is represented by DateSeparator chips separating message groups.
+function formatBubbleTime(isoString: string): string {
   if (!isoString) return '';
   try {
     const d = new Date(isoString);
     if (isNaN(d.getTime())) return '';
-    return d.toLocaleString(undefined, {
-      year:   'numeric',
-      month:  'short',
-      day:    'numeric',
+    return d.toLocaleTimeString(undefined, {
       hour:   'numeric',
       minute: '2-digit',
     });
@@ -408,7 +407,7 @@ function MessageBubble({ msg }: { msg: LinkedInMessage }) {
       >
         <p className="whitespace-pre-wrap break-words">{msg.content}</p>
         <p className={cn('text-[10px] mt-1 text-right', isOut ? 'text-blue-200' : 'text-slate-400')}>
-          {exactDateTime(msg.created_at)}
+          {formatBubbleTime(msg.created_at)}
         </p>
       </div>
     </div>
@@ -559,7 +558,6 @@ export function LinkedInConversationView({
     if (fileInputRef.current) fileInputRef.current.value = '';
     setTimeout(() => setAttachInfo(null), 6000);
   };
-
   // Group messages by date and interleave DateSeparator items
   const messagesWithDateSeparators = useMemo(() => {
     const items: Array<
@@ -1127,7 +1125,7 @@ export function LinkedInConversationView({
               ) : (
                 messagesWithDateSeparators.map((item) =>
                   item.type === 'date' ? (
-                    <DateSeparator key={item.key} date={item.date} />
+                    <DateSeparator key={item.key} date={item.date} variant="linkedin" />
                   ) : (
                     <MessageBubble key={item.key} msg={item.msg} />
                   )
