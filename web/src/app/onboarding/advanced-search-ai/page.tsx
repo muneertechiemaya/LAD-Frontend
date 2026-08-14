@@ -3479,12 +3479,23 @@ export default function AdvancedSearchAIPage() {
                     // sheet reported "31 people" when 8 were real, and enrolling them
                     // is how a campaign ends up full of uncontactable rows. Split them.
                     const people = returned.filter((r) => r.linkedin_url);
-                    const unresolved = returned.length - people.length;
+                    // `returned` is one entry per (company, ROLE) search — a four-company
+                    // sheet listing four titles each is sixteen of them, not four. Calling
+                    // the unresolved ones "companies" reported "9 companies returned no
+                    // match" for a sheet with 4 companies on it. Count the two things
+                    // separately: role searches that came back empty, and companies that
+                    // ended up with nobody at all, which is the number a user acts on.
+                    const unresolvedRoles = returned.length - people.length;
+                    const key = (r: any) => String(r.company || '').trim().toLowerCase();
+                    const allCompanies = new Set(returned.map(key).filter(Boolean));
+                    const foundIn = new Set(people.map(key).filter(Boolean));
+                    const emptyCompanies = [...allCompanies].filter((co) => !foundIn.has(co)).length;
+                    const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
                     if (people.length === 0) {
                         setMessages(p => [...p.filter(m => m.id !== IMPORT_PROGRESS_MSG_ID), {
                             id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
-                            text: `⚠️ **No people found.**\n\nI searched every role against all ${returned.length} ${returned.length === 1 ? 'company' : 'companies'} on your sheet, including shortened versions of each company name and related job titles, but LinkedIn returned no matching profiles.\n\nThe usual causes are the company names being registered entities rather than the trading names people use on their profiles, or LinkedIn not enforcing the company filter when Sales Navigator is unavailable on the connected account.`,
+                            text: `⚠️ **No people found.**\n\nI searched ${plural(returned.length, 'role', 'roles')} across ${plural(allCompanies.size, 'company', 'companies')} on your sheet, including shortened versions of each company name and related job titles, but LinkedIn returned no matching profiles.\n\nThe usual causes are the company names being registered entities rather than the trading names people use on their profiles, or LinkedIn not enforcing the company filter when Sales Navigator is unavailable on the connected account.`,
                         }]);
                         return;
                     }
@@ -3503,9 +3514,16 @@ export default function AdvancedSearchAIPage() {
                     setTargeting(inboundTargeting);
                     setMessages(p => [...p.filter(m => m.id !== IMPORT_PROGRESS_MSG_ID), {
                         id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
-                        text: `✅ **Found ${people.length} ${people.length === 1 ? 'person' : 'people'}** with a LinkedIn profile.`
-                            + (unresolved > 0
-                                ? `\n\n${unresolved} ${unresolved === 1 ? 'company' : 'companies'} on your sheet returned no match and ${unresolved === 1 ? 'has' : 'have'} been left out — they can't be contacted without a profile.`
+                        text: `✅ **Found ${people.length} ${people.length === 1 ? 'person' : 'people'}** with a LinkedIn profile`
+                            + (allCompanies.size > 0
+                                ? ` across ${plural(allCompanies.size - emptyCompanies, 'company', 'companies')} on your sheet.`
+                                : '')
+                            + (unresolvedRoles > 0
+                                ? `\n\n${plural(unresolvedRoles, 'role search', 'role searches')} came back empty`
+                                  + (emptyCompanies > 0
+                                    ? `, and ${plural(emptyCompanies, 'company', 'companies')} returned nobody at all — `
+                                      + `${emptyCompanies === 1 ? 'it' : 'they'} can't be contacted without a profile.`
+                                    : ` — every company still has at least one person.`)
                                 : '')
                             + `\n\nReview them in the panel, then click **"Create Outreach Journey"** to configure your campaign.`,
                         // BOTH of these are required for the summary card and its
