@@ -213,6 +213,28 @@ function detectSpecificPersonQuery(t: LeadTargeting | null | undefined): { name:
     };
 }
 
+// ── Pasted LinkedIn people-search URLs ──────────────────────────────────────
+// A batch of "linkedin.com/search/results/people/?keywords=Ajay+Bhojwani+MCI+Group"
+// links is a list of people to look up, not a company to analyze. Left alone they
+// reach the chat backend's URL handler, which only knows /company/ and /in/ links
+// and answers "I couldn't detect a valid URL" for every one of them.
+//
+// A search URL has no member id, so it can't be opened as a profile — but its
+// `keywords` name a person and their employer, which is what the PERSON waterfall
+// resolves from. So we detect the paste here and route it into the same inbound
+// import path as a CSV: backend splits name/company, resolves each person's real
+// profile, panel fills with cards. Handles one URL as happily as fifty.
+const LINKEDIN_SEARCH_URL_RE =
+    /https?:\/\/(?:[a-z]{2,3}\.)?linkedin\.com\/search\/results\/(?:people|all)?\/?\?[^\s<>"')]+/gi;
+function extractLinkedInSearchUrls(text: string): string[] {
+    if (!text) return [];
+    const seen = new Set<string>();
+    for (const raw of text.match(LINKEDIN_SEARCH_URL_RE) || []) {
+        seen.add(raw.replace(/[.,;:]+$/, ''));
+    }
+    return [...seen];
+}
+
 interface ChatMsg {
     id: string;
     role: 'user' | 'ai';
@@ -4422,6 +4444,91 @@ export default function AdvancedSearchAIPage() {
             wfOfferLaunch(naming.template, naming.warnings, typed || naming.suggested);
             setBusy(false);
             return;
+        }
+
+        // ── PRIORITY -1.4: Pasted LinkedIn people-search URLs → import as leads ──
+        // Must run ahead of every handler below: the chat backend forces the
+        // "analyze this company" intent on any message containing a URL, and that
+        // handler only recognises /company/ and /in/ links, so a batch of search
+        // links comes back as "I couldn't detect a valid URL in your message".
+        // Each link names a person + company, so import them instead.
+        const searchUrls = !wfWizardRef.current ? extractLinkedInSearchUrls(text) : [];
+        if (searchUrls.length > 0) {
+            try {
+                const parseRes = await fetch('/api/campaigns/leads/parse-search-urls', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ message: text }),
+                });
+                // A failed call is NOT "these links have no names in them" — say so
+                // via the catch below, so an unreachable/older backend doesn't get
+                // reported to the user as a problem with their links.
+                if (!parseRes.ok) throw new Error(`parse-search-urls ${parseRes.status}`);
+                const parseData = await parseRes.json();
+                const rows: Array<{ firstName: string; lastName: string; companyName: string; keywords: string }> =
+                    parseData?.rows || [];
+
+                if (rows.length > 0) {
+                    const skipped = searchUrls.length - rows.length;
+                    const parsedRows: ParsedInboundLead[] = rows.map(r => ({
+                        firstName: r.firstName,
+                        lastName: r.lastName,
+                        companyName: r.companyName,
+                        linkedinProfile: '', email: '', whatsapp: '', phone: '', website: '', notes: '',
+                        title: '',
+                        location: '',
+                        profilePicture: '',
+                    }));
+                    const importLoadingId = `${lid}-searchurls`;
+                    setMessages(p => p.filter(m => m.id !== lid).concat(
+                        {
+                            id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
+                            text: `🔗 Those are LinkedIn **search** links, so there's no profile to open directly — but each one names a person and their company, so I'll look all **${rows.length}** of them up on LinkedIn.${skipped > 0 ? `\n\n_(${skipped} link${skipped === 1 ? '' : 's'} had no search text to work from, so I've left ${skipped === 1 ? 'it' : 'them'} out.)_` : ''}`,
+                        },
+                        { id: importLoadingId, role: 'ai', text: '', ts: new Date(), loading: true },
+                    ));
+                    setInboundLeads(parsedRows);
+                    setInboundMode(true);
+                    setLeads(parsedRows.map((r, i) => ({
+                        id: `inbound-${i}`,
+                        name: [r.firstName, r.lastName].filter(Boolean).join(' '),
+                        first_name: r.firstName,
+                        last_name: r.lastName,
+                        headline: r.companyName ? `at ${r.companyName}` : '',
+                        location: '',
+                        current_company: r.companyName,
+                        profile_url: '',
+                        profile_picture: '',
+                        industry: '',
+                        network_distance: '',
+                        locked: false,
+                    })));
+                    // finishInboundImport only clears `busy` when it owns the
+                    // progress message; we passed ours, and this gate sits above
+                    // doSend's try/finally, so release the composer here.
+                    await finishInboundImport(parsedRows, '', importLoadingId);
+                    setBusy(false);
+                    return;
+                }
+
+                // Links present but nothing to search on (facet-only URLs, no
+                // `keywords`). Say that rather than falling through to the chat
+                // backend, which would answer "no valid URL".
+                setMessages(p => p.filter(m => m.id !== lid).concat({
+                    id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
+                    text: `Those LinkedIn search links don't carry any search text I can read, so there's no one for me to look up. Paste the links with the names in them, or share profile links (**linkedin.com/in/...**) instead.`,
+                }));
+                setBusy(false);
+                return;
+            } catch {
+                setMessages(p => p.filter(m => m.id !== lid).concat({
+                    id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
+                    text: `I couldn't read those LinkedIn search links just now. Please try again in a moment, or share profile links (**linkedin.com/in/...**) instead.`,
+                }));
+                setBusy(false);
+                return;
+            }
         }
 
         // ── PRIORITY -1: Pipeline description → BUILD MODE ──
