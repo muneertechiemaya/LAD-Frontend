@@ -62,20 +62,9 @@ export default function EmailPreview({
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <meta name="color-scheme" content="light">
       <style>
-        /* Modern customized scrollbar tracking inside the preview iframe */
+        /* Hide scrollbars completely in preview */
         ::-webkit-scrollbar {
-          width: 8px;
-          height: 8px;
-        }
-        ::-webkit-scrollbar-track {
-          background: #f1f1f1;
-        }
-        ::-webkit-scrollbar-thumb {
-          background: #c1c1c1;
-          border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-          background: #a8a8a8;
+          display: none;
         }
 
         html, body {
@@ -85,6 +74,9 @@ export default function EmailPreview({
           line-height: 1.6;
           margin: 0;
           padding: 16px;
+          overflow: hidden;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
           transition: background-color 0.2s ease, color 0.2s ease;
         }
         .email-container {
@@ -167,12 +159,7 @@ export default function EmailPreview({
         html[data-theme="dark"] .email-body a {
           color: #38bdf8 !important;
         }
-        html[data-theme="dark"] ::webkit-scrollbar-track {
-          background: #000724;
-        }
-        html[data-theme="dark"] ::webkit-scrollbar-thumb {
-          background: #1e293b;
-        }
+
 
         /* No OS-level dark media query — theme is driven solely by parent app class */
       </style>
@@ -257,15 +244,23 @@ export default function EmailPreview({
         }}
       >
         <iframe
-                key={renderingKey}
+          key={renderingKey}
           sandbox="allow-same-origin allow-scripts allow-forms"
           srcDoc={htmlWithStyles}
+          scrolling="no"
+          onLoad={(e) => {
+            const doc = e.currentTarget.contentDocument;
+            if (doc?.documentElement?.scrollHeight) {
+              e.currentTarget.style.height = `${doc.documentElement.scrollHeight}px`;
+            }
+          }}
           style={{
             width: '100%',
-            height: device === 'mobile' ? '600px' : device === 'tablet' ? '800px' : '600px',
+            minHeight: device === 'mobile' ? '450px' : '350px',
             border: 'none',
             display: 'block',
-        }}
+            overflow: 'hidden',
+          }}
           title="Email Preview"
         />
       </div>
