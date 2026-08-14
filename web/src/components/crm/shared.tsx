@@ -14,6 +14,7 @@ import { type ChannelKey } from './data';
 // LAD brand tokens — kept in sync with globals.css / tailwind config.
 export const T = {
   primary:     '#0B1957',
+  primaryDark: '#3b82f6',
   primaryHead: '#172560',
   badgeBg:     '#e8ebf7',
   badgeBgDk:   '#253456',
@@ -89,7 +90,7 @@ export function LadCard({
   return (
     <section
       id={id}
-      className={`bg-white dark:bg-[#000724] rounded-[20px] border border-slate-200 dark:border-[#262831] ${
+      className={`bg-white dark:bg-[#071131] rounded-[20px] border border-slate-200 dark:border-blue-950/40 ${
         padded ? 'p-5 sm:p-6' : ''
       } ${className}`}
     >

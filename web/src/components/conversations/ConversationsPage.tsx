@@ -238,7 +238,7 @@ export function ConversationsPage() {
               key={id}
               onClick={() => setActiveTab(id)}
               className={cn(
-                "flex items-center gap-1.5 px-3 h-7 rounded-md text-xs font-medium transition-all shrink-0 whitespace-nowrap",
+                'group flex items-center gap-1.5 px-3 h-7 rounded-md text-xs font-medium transition-all shrink-0 whitespace-nowrap',
                 activeTab === id
                   ? 'text-white shadow-sm'
                   : 'text-muted-foreground hover:text-foreground hover:bg-gray-300/30 dark:hover:bg-zinc-500/30'
@@ -265,9 +265,15 @@ export function ConversationsPage() {
         <div className="flex items-center gap-1 ml-auto shrink-0">
           {/* AI Playground toggle */}
           <Button
-            variant={isPlaygroundOpen ? "secondary" : "ghost"}
+            variant={isPlaygroundOpen ? 'secondary' : 'ghost'}
             size="sm"
-            className={`gap-1.5 text-xs h-7 shrink-0 ${isPlaygroundOpen ? "text-primary" : ""}`}
+            className={cn(
+              'gap-1.5 text-xs h-7 shrink-0',
+              isPlaygroundOpen && 'text-primary',
+              isBlackGrayDarkTheme
+                ? 'dark:hover:bg-black dark:hover:text-white'
+                : 'dark:hover:bg-[#2B7CFF] dark:hover:text-white'
+            )}
             onClick={() => setIsPlaygroundOpen((v) => !v)}
             title="Open AI Playground to test your system prompt"
           >
