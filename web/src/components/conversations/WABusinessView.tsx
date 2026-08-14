@@ -2215,7 +2215,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
               onChange={e => setText(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={pendingFiles.length > 0 ? 'Add a caption (optional)…' : 'Type a message'}
-              className="flex-1 border-0 dark:bg-transparent text-foreground dark:text-[#e9edef] py-2 px-1 text-[15px] focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-[#8696a0] dark:placeholder:text-[#a2a2a2] resize-none min-h-[24px] max-h-[120px] my-0.5 leading-normal shadow-none"
+              className="flex-1 border-0 dark:bg-transparent text-foreground dark:text-[#e9edef] py-2 px-1 text-[15px] outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-[#8696a0] dark:placeholder:text-[#a2a2a2] resize-none min-h-[24px] max-h-[120px] my-0.5 leading-normal shadow-none"
               rows={1}
             />
           </div>
@@ -2224,20 +2224,20 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className={cn('h-9 w-9 flex items-center justify-center rounded-full transition-colors hover:bg-[#00a884]/10 dark:hover:bg-[#00a884]/20 flex-shrink-0', agentType === 'human' && 'text-orange-500')}
+                className={cn('h-9 w-9 flex items-center justify-center rounded-full transition-colors hover:bg-[#00a884]/10 dark:hover:bg-zinc-900 flex-shrink-0', agentType === 'human' && 'text-orange-500')}
                 title={agentType === 'human' ? 'Human agent — tap to hand back to Mr LAD' : 'Mr LAD is replying — tap to take over'}
               >
                 {agentType === 'human' ? <User className="h-5 w-5" /> : <img src={isDark ? '/logo-white.svg' : '/logo.svg'} alt="Mr LAD" className="h-7 w-7 object-contain" />}
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-popover z-50">
-              <DropdownMenuItem onClick={() => handleAgentTypeChange('human')} className={cn('cursor-pointer focus:bg-muted focus:text-foreground dark:focus:text-white', agentType === 'human' && 'bg-muted')}>
+            <DropdownMenuContent align="end" className="bg-popover dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-100 z-50">
+              <DropdownMenuItem onClick={() => handleAgentTypeChange('human')} className={cn('cursor-pointer focus:bg-muted focus:text-foreground dark:text-zinc-200 dark:focus:bg-zinc-800 dark:focus:text-zinc-100', agentType === 'human' && 'bg-muted dark:bg-emerald-800 dark:focus:bg-emerald-800')}>
                 <User className="h-4 w-4 mr-2" /> Human Agent
-                {agentType === 'human' && <span className="ml-auto text-xs text-muted-foreground">Active</span>}
+                {agentType === 'human' && <span className="ml-auto text-xs text-muted-foreground dark:text-zinc-400">Active</span>}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleAgentTypeChange('ai')} className={cn('cursor-pointer focus:bg-muted focus:text-foreground dark:focus:text-white', agentType === 'ai' && 'bg-muted')}>
+              <DropdownMenuItem onClick={() => handleAgentTypeChange('ai')} className={cn('cursor-pointer focus:bg-muted focus:text-foreground dark:text-zinc-200 dark:focus:bg-zinc-800 dark:focus:text-zinc-100', agentType === 'ai' && 'bg-muted dark:bg-emerald-800 dark:focus:bg-emerald-800')}>
                 <MrLadAvatar size={16} className="mr-2" /> Mr LAD
-                {agentType === 'ai' && <span className="ml-auto text-xs text-muted-foreground">Active</span>}
+                {agentType === 'ai' && <span className="ml-auto text-xs text-muted-foreground dark:text-zinc-400">Active</span>}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
