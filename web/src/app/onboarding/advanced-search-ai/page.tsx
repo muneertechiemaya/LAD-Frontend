@@ -1398,6 +1398,8 @@ export default function AdvancedSearchAIPage() {
      * from then on enrols automatically.
      */
     const [importRunInBackground, setImportRunInBackground] = useState(false);
+    /** Name of the uploaded sheet — used to name the draft campaign a background import is saved into. */
+    const [uploadedFileName, setUploadedFileName] = useState<string>('');
     const importDiscoveryPending = !importRunInBackground && !!importJob
         && importJob.status !== 'completed' && importJob.status !== 'failed';
     const [directContactLeadIds, setDirectContactLeadIds] = useState<string[]>([]); // Real UUIDs for chat-entered direct contacts
@@ -3626,8 +3628,60 @@ export default function AdvancedSearchAIPage() {
         }]);
     }, []);
 
-    const runImportInBackground = useCallback(() => {
+    /**
+     * Name for the draft a background import is parked in. Built from the sheet
+     * so it is recognisable in the campaigns list, and stamped with the date and
+     * time because `uq_campaigns_tenant_name_active` is UNIQUE per tenant — the
+     * same sheet imported twice must not collide.
+     */
+    const draftCampaignName = useCallback(() => {
+        const sheet = (uploadedFileName || 'Imported list')
+            .replace(/\.(xlsx|xls|csv)$/i, '')
+            .trim()
+            .slice(0, 60) || 'Imported list';
+        const now = new Date();
+        const stamp = `${now.toLocaleDateString(undefined, { day: '2-digit', month: 'short' })} `
+            + `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        return `${sheet} — imported ${stamp}`;
+    }, [uploadedFileName]);
+
+    const runImportInBackground = useCallback(async () => {
         setImportRunInBackground(true);
+
+        // ── Park the run in a DRAFT campaign ──────────────────────────────────
+        // A background search can outlive the tab: 101 minutes for a 151-company
+        // sheet. Until now nothing was written until launch, so closing the page
+        // meant the job kept searching with nowhere to put anyone and no way back
+        // to it — no draft in /campaigns, nothing to continue.
+        //
+        // Creating the draft here does three things at once: the campaign is
+        // listed and reopenable, the job is attached so every lead found enrols
+        // into it even if the user never returns, and editingCampaignId points
+        // the wizard at it so Launch UPDATES this draft instead of creating a
+        // second campaign next to it.
+        let draftId: string | null = null;
+        if (importJob?.id && !editingCampaignId) {
+            try {
+                const created: any = await campaignCreation.createCampaign({
+                    name: draftCampaignName(),
+                    // Left as the model's default 'draft' — nothing runs until launch.
+                    config: {
+                        conversation_history: messages.slice(-40).map(m => ({ role: m.role, text: m.text })),
+                        import_job_id: importJob.id,
+                        source: 'file_import_background',
+                    },
+                } as any);
+                draftId = created?.campaign?.id || created?.data?.id || created?.id || null;
+                if (draftId) {
+                    setEditingCampaignId(draftId);
+                    await attachImportJob(importJob.id, draftId);
+                }
+            } catch (draftErr) {
+                // Non-blocking: without the draft the run still works exactly as
+                // before, it just is not recoverable from /campaigns.
+                console.warn('Could not park the background import in a draft campaign', draftErr);
+            }
+        }
         // The message alone used to be the whole response — and it told the user
         // to "configure and launch whenever you're ready" while giving them
         // nothing to click. "Create Outreach Journey" lives on the summary card,
@@ -3650,13 +3704,17 @@ export default function AdvancedSearchAIPage() {
             id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
             text: `👍 **Carrying on in the background.**\n\nSet up the campaign now and launch whenever you're ready — `
                 + `I'll keep searching, and everyone I find afterwards joins it automatically, spread across the days `
-                + `so your LinkedIn limits aren't breached.`,
+                + `so your LinkedIn limits aren't breached.`
+                + (draftId
+                    ? `\n\n💾 Saved as a draft — **${draftCampaignName()}**. You can close this page and pick it up from `
+                      + `[Campaigns](/campaigns) whenever you like; the search keeps running either way.`
+                    : ''),
             targeting: bgTargeting,
             inboundAction: 'summary',
             inboundSummary: searchedSoFar,
             inboundSearching: true,
         }]);
-    }, [inboundLeads, importJob]);
+    }, [inboundLeads, importJob, editingCampaignId, campaignCreation, attachImportJob, draftCampaignName, messages]);
 
     // Stop polling when the page goes away.
     useEffect(() => () => {
@@ -3992,6 +4050,7 @@ export default function AdvancedSearchAIPage() {
     const handleInboundFile = useCallback(async (file: File) => {
         setBusy(true);
         const processingId = `l-${Date.now()}`;
+        setUploadedFileName(file.name);
         setMessages(p => [...p, { id: `u-${Date.now()}`, role: 'user', text: `📎 Uploaded: ${file.name}`, ts: new Date() }, { id: processingId, role: 'ai', text: '', ts: new Date(), loading: true }]);
         try {
             let parsed: ParsedInboundLead[] = [];
