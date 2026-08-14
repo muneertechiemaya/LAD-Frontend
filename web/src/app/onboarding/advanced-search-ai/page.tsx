@@ -1400,6 +1400,12 @@ export default function AdvancedSearchAIPage() {
     const [importRunInBackground, setImportRunInBackground] = useState(false);
     /** Name of the uploaded sheet — used to name the draft campaign a background import is saved into. */
     const [uploadedFileName, setUploadedFileName] = useState<string>('');
+    /**
+     * The draft a background import was parked in. Distinct from editingCampaignId:
+     * that also covers a LIVE campaign opened via "Edit Accelerator", which must not
+     * be rewritten while the user is still deciding. Only this one autosaves.
+     */
+    const [parkedDraftId, setParkedDraftId] = useState<string | null>(null);
     const importDiscoveryPending = !importRunInBackground && !!importJob
         && importJob.status !== 'completed' && importJob.status !== 'failed';
     const [directContactLeadIds, setDirectContactLeadIds] = useState<string[]>([]); // Real UUIDs for chat-entered direct contacts
@@ -3674,6 +3680,7 @@ export default function AdvancedSearchAIPage() {
                 draftId = created?.campaign?.id || created?.data?.id || created?.id || null;
                 if (draftId) {
                     setEditingCampaignId(draftId);
+                    setParkedDraftId(draftId);          // ← from here on, autosave keeps it current
                     await attachImportJob(importJob.id, draftId);
                 }
             } catch (draftErr) {
@@ -7493,6 +7500,7 @@ export default function AdvancedSearchAIPage() {
                                     warnAttachFailed={warnAttachFailed}
                                     importJob={importJob}
                                     editingCampaignId={editingCampaignId}
+                                    parkedDraftId={parkedDraftId}
                                     persistedLeadSource={persistedLeadSource}
                                     onLetAgentDeal={letAgentDeal}
                                     agentDealLoading={agentDealLoading}
@@ -10465,6 +10473,7 @@ function CheckpointFormInline({
     enableAiConnectionPersonalization, setEnableAiConnectionPersonalization,
     enableAiFollowupPersonalization, setEnableAiFollowupPersonalization,
     editingCampaignId,
+    parkedDraftId,
     persistedLeadSource,
     onLetAgentDeal, agentDealLoading,
 }: {
@@ -10523,6 +10532,8 @@ function CheckpointFormInline({
     enableAiConnectionPersonalization: boolean; setEnableAiConnectionPersonalization: (v: boolean) => void;
     enableAiFollowupPersonalization: boolean; setEnableAiFollowupPersonalization: (v: boolean) => void;
     editingCampaignId?: string | null;
+    /** Set only for a draft parked by a background import — the one campaign safe to autosave. */
+    parkedDraftId?: string | null;
     persistedLeadSource?: PersistedLeadSource | null;
     onLetAgentDeal: () => void; agentDealLoading: boolean;
 }) {
@@ -11146,6 +11157,80 @@ function CheckpointFormInline({
         setLiFollowGenLoading(false);
     };
 
+    /**
+     * Everything the wizard has been told, in the shape edit-mode hydrates from.
+     *
+     * Shared by launch and by the autosave below so the two cannot drift — a
+     * field added to one and not the other would silently fail to survive a
+     * reload, which is the exact class of bug autosave exists to prevent.
+     */
+    const buildCheckpointSelections = useCallback(() => {
+        // Both derived rather than state: the ICP floor is parsed from its input,
+        // and the media node is read live off the workflow store. Computed here so
+        // launch and autosave build byte-identical selections.
+        const icpMin = parseInt(icpThreshold) || 0;
+        const wfMediaNode = (useOnboardingStore.getState().workflowPreview || [])
+            .find((n: any) => n.type === 'media_generation') as any;
+        return {
+            icp_threshold: icpMin,
+            linkedin_actions: liChannelActions,
+            connection_message: connMsg || '',
+            followup_message: followMsg || '',
+            next_channels: nextChannels,
+            trigger_condition: triggerCondition || null,
+            campaign_days: campaignDays,
+            campaign_name: name || 'AI Growth Campaign',
+            enable_daily_web_presence: enableDailyWebPresence,
+            enable_daily_posts: enableDailyPosts,
+            enable_ai_personalization: enableAiPersonalization,
+            enable_ai_connection_personalization: enableAiConnectionPersonalization,
+            enable_ai_followup_personalization: enableAiFollowupPersonalization,
+            ai_value_prop: aiMsgValueProp || '',
+            ai_tone: aiMsgTone || 'professional',
+            ai_goal: aiMsgGoal || 'get_meeting',
+            // AI Media node (edit-mode round-trip: hydration re-creates the canvas node)
+            media_step: wfMediaNode ? {
+                media_url: wfMediaNode.mediaUrl || '',
+                media_type: wfMediaNode.mediaType || '',
+                media_filename: wfMediaNode.mediaFilename || '',
+                mime_type: wfMediaNode.mimeType || '',
+                prompt: wfMediaNode.mediaPrompt || '',
+            } : null,
+        };
+    }, [
+        icpThreshold, liChannelActions, connMsg, followMsg, nextChannels, triggerCondition,
+        campaignDays, name, enableDailyWebPresence, enableDailyPosts, enableAiPersonalization,
+        enableAiConnectionPersonalization, enableAiFollowupPersonalization,
+        aiMsgValueProp, aiMsgTone, aiMsgGoal,
+    ]);
+
+    /**
+     * Autosave into a parked draft.
+     *
+     * A background import can run for hours, and the draft it is parked in used
+     * to capture only what existed at the moment it was created — configure
+     * halfway, close the tab, and everything typed since was gone. Only runs for
+     * that parked draft: a live campaign opened through "Edit Accelerator" must
+     * change when the user saves, not while they are still deciding.
+     *
+     * Debounced, and config is merged server-side (config || $n::jsonb), so this
+     * cannot clobber import_job_id or the conversation history stored alongside.
+     */
+    useEffect(() => {
+        if (!parkedDraftId) return;
+        const t = setTimeout(() => {
+            updateCampaign(parkedDraftId, {
+                name: name || undefined,
+                config: { checkpoint_selections: buildCheckpointSelections() },
+            } as any).catch(() => {
+                // Silent: the draft keeps its last good state and launch saves
+                // everything anyway. Nagging about a failed autosave mid-typing
+                // would be worse than the gap it covers.
+            });
+        }, 1500);
+        return () => clearTimeout(t);
+    }, [parkedDraftId, buildCheckpointSelections, name]);
+
     const launchCampaign = async () => {
         setLaunching(true);
         try {
@@ -11290,32 +11375,7 @@ function CheckpointFormInline({
             }, [] as { lead_id: string; name: string; headline: string; company: string; rating: string; icp_score?: number }[]);
 
             // Build checkpoint selections object
-            const checkpointSelections = {
-                icp_threshold: icpMin,
-                linkedin_actions: liChannelActions,
-                connection_message: connMsg || '',
-                followup_message: followMsg || '',
-                next_channels: nextChannels,
-                trigger_condition: triggerCondition || null,
-                campaign_days: campaignDays,
-                campaign_name: name || 'AI Growth Campaign',
-                enable_daily_web_presence: enableDailyWebPresence,
-                enable_daily_posts: enableDailyPosts,
-                enable_ai_personalization: enableAiPersonalization,
-                enable_ai_connection_personalization: enableAiConnectionPersonalization,
-                enable_ai_followup_personalization: enableAiFollowupPersonalization,
-                ai_value_prop: aiMsgValueProp || '',
-                ai_tone: aiMsgTone || 'professional',
-                ai_goal: aiMsgGoal || 'get_meeting',
-                // AI Media node (edit-mode round-trip: hydration re-creates the canvas node)
-                media_step: wfMediaNode ? {
-                    media_url: wfMediaNode.mediaUrl || '',
-                    media_type: wfMediaNode.mediaType || '',
-                    media_filename: wfMediaNode.mediaFilename || '',
-                    mime_type: wfMediaNode.mimeType || '',
-                    prompt: wfMediaNode.mediaPrompt || '',
-                } : null,
-            };
+            const checkpointSelections = buildCheckpointSelections();
 
             // Get original ICP input (first user message in chat)
             const userMessages = chatMessages.filter(m => m.role === 'user').map(m => m.text);
