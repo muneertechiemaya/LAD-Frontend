@@ -323,6 +323,7 @@ export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps
   const [knowledgeBase, setKnowledgeBase]     = useState<string>("");
   const [showKnowledgeBase, setShowKnowledgeBase] = useState(false);
   const [showPromptDropdown, setShowPromptDropdown] = useState(false);
+  const [showStageDropdown, setShowStageDropdown]   = useState(false);
   // Conversation-stage selector (WABA) — previews stage-scoped prompts.
   const [selectedStage, setSelectedStage] = useState<string>("greeting");
   // Echo of what the backend actually scoped to (stage + assembled prompt size).
@@ -341,9 +342,10 @@ export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps
   // Loading state
   const [isLoading, setIsLoading] = useState(true);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef       = useRef<HTMLTextAreaElement>(null);
-  const dropdownRef    = useRef<HTMLDivElement>(null);
+  const messagesEndRef  = useRef<HTMLDivElement>(null);
+  const inputRef        = useRef<HTMLTextAreaElement>(null);
+  const dropdownRef     = useRef<HTMLDivElement>(null);
+  const stageDropdownRef = useRef<HTMLDivElement>(null);
 
   // ── Derived: prompts filtered by selected channel ─────────────────────────────
 
@@ -399,6 +401,9 @@ export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setShowPromptDropdown(false);
       }
+      if (stageDropdownRef.current && !stageDropdownRef.current.contains(e.target as Node)) {
+        setShowStageDropdown(false);
+      }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -409,6 +414,7 @@ export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps
   const handleSelectChannel = useCallback((ch: ChannelValue) => {
     setSelectedChannel(ch);
     setShowPromptDropdown(false);
+    setShowStageDropdown(false);
     // If the currently selected prompt's channel doesn't match the new filter,
     // clear the selection so the user picks a matching one
     if (ch !== "all") {
@@ -731,30 +737,74 @@ export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps
                   <label
                     className={cn(
                       "text-[11px] font-medium shrink-0",
-                      isWhatsApp ? "text-gray-700 dark:text-neutral-400" : "text-slate-700 dark:text-blue-200/90"
+                      isWhatsApp ? "text-gray-700 dark:text-neutral-400" : "text-slate-700 dark:text-emerald-200/90"
                     )}
                   >
                     Stage
                   </label>
-                  <select
-                    value={selectedStage}
-                    onChange={(e) => setSelectedStage(e.target.value)}
-                    title="Preview how a sectioned (## STAGE:) prompt scopes + how the bot replies in this stage. Stateless — does not run real transitions or bookings."
-                    className={cn(
-                      "flex-1 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none transition-colors cursor-pointer",
-                      isWhatsApp
-                        ? "bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 text-gray-900 dark:text-neutral-100 focus:ring-1 focus:ring-[#00a884]"
-                        : "bg-white dark:bg-[#080e22] border border-slate-200 dark:border-blue-900/60 text-slate-900 dark:text-slate-100 focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400"
-                    )}
-                  >
-                    {STAGES.map((s) => (
-                      <option key={s.value} value={s.value} className={isWhatsApp ? "bg-white dark:bg-neutral-900 text-gray-900 dark:text-neutral-100" : "bg-white dark:bg-[#080e22] text-slate-900 dark:text-slate-100"}>
-                        {s.label}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative flex-1" ref={stageDropdownRef}>
+                    <button
+                      type="button"
+                      onClick={() => setShowStageDropdown((v) => !v)}
+                      title="Preview how a sectioned (## STAGE:) prompt scopes + how the bot replies in this stage. Stateless — does not run real transitions or bookings."
+                      className={cn(
+                        "w-full flex items-center justify-between text-xs rounded-lg px-2.5 py-1.5 focus:outline-none transition-colors cursor-pointer text-left",
+                        isWhatsApp
+                          ? "bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 text-gray-900 dark:text-neutral-100 focus:ring-1 focus:ring-[#00a884]"
+                          : "bg-white dark:bg-[#080e22] border border-slate-200 dark:border-emerald-900/60 text-slate-900 dark:text-slate-100 focus:ring-1 focus:ring-emerald-500 dark:focus:ring-emerald-400"
+                      )}
+                    >
+                      <span className="truncate">
+                        {STAGES.find((s) => s.value === selectedStage)?.label || "Select stage..."}
+                      </span>
+                      <ChevronDown className={cn("h-3 w-3 ml-1.5 shrink-0 opacity-60", isWhatsApp ? "text-gray-400 dark:text-neutral-400" : "text-slate-400 dark:text-emerald-300/60")} />
+                    </button>
+
+                    <AnimatePresence>
+                      {showStageDropdown && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -4 }}
+                          transition={{ duration: 0.1 }}
+                          className={cn(
+                            "absolute z-20 top-full left-0 right-0 mt-1 rounded-xl border shadow-xl overflow-hidden py-1",
+                            isWhatsApp
+                              ? "bg-white dark:bg-neutral-900 border-gray-200 dark:border-neutral-800"
+                              : "bg-white dark:bg-[#0d1735] border-emerald-100 dark:border-emerald-900/80"
+                          )}
+                        >
+                          {STAGES.map((s) => {
+                            const isSelected = s.value === selectedStage;
+                            return (
+                              <button
+                                key={s.value}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedStage(s.value);
+                                  setShowStageDropdown(false);
+                                }}
+                                className={cn(
+                                  "w-full text-left px-3 py-1.5 text-xs transition-colors flex items-center justify-between",
+                                  isSelected
+                                    ? isWhatsApp
+                                      ? "bg-[#00a884] text-white font-medium"
+                                      : "bg-emerald-600 text-white font-medium"
+                                    : isWhatsApp
+                                    ? "hover:bg-gray-100 dark:hover:bg-neutral-800 text-gray-900 dark:text-neutral-100"
+                                    : "hover:bg-emerald-50/60 dark:hover:bg-emerald-950/40 text-slate-900 dark:text-slate-100"
+                                )}
+                              >
+                                <span>{s.label}</span>
+                              </button>
+                            );
+                          })}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                   {stageInfo && (
-                    <span className={cn("text-[10px] shrink-0 whitespace-nowrap", isWhatsApp ? "text-gray-500 dark:text-neutral-400" : "text-slate-500 dark:text-blue-300/60")}>
+                    <span className={cn("text-[10px] shrink-0 whitespace-nowrap", isWhatsApp ? "text-gray-500 dark:text-neutral-400" : "text-slate-500 dark:text-emerald-300/60")}>
                       scoped: {stageInfo.stage} · {stageInfo.chars} chars
                     </span>
                   )}

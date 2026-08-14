@@ -1182,7 +1182,7 @@ export const ConversationContextPanel = memo(function ConversationContextPanel({
           <div className="flex items-center px-6 py-3 cursor-pointer hover:bg-muted/50 dark:hover:bg-[#202c33] transition-colors">
             <Bell className="w-5 h-5 text-muted-foreground dark:text-white mr-6" />
             <span className="text-[16px] text-foreground dark:text-white flex-1">Mute notifications</span>
-            <Switch />
+            <Switch className="data-[state=checked]:bg-emerald-400 dark:data-[state=checked]:bg-emerald-600" />
           </div>
           <div className="flex items-center px-6 py-3 cursor-pointer hover:bg-muted/50 dark:hover:bg-[#202c33] transition-colors">
             <Clock className="w-5 h-5 text-muted-foreground dark:text-white mr-6" />
