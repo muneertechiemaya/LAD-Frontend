@@ -244,6 +244,12 @@ interface ChatMsg {
      * every poll (the message keeps a stable id), so the user watches one bar
      * rather than accumulating a wall of status lines.
      */
+    /**
+     * Pre-search options for a role-based sheet. Rendered as a card because these
+     * change WHAT gets searched, so they have to be settable before discovery
+     * starts rather than corrected afterwards.
+     */
+    importOptions?: { needsLocation: boolean };
     importProgress?: {
         percent: number;
         processed: number;
@@ -866,23 +872,25 @@ const PIPELINE_SIGNALS: { name: string; re: RegExp }[] = [
 ];
 
 /**
- * True when the message reads as "build me this pipeline", not "find me these
- * people".
+ * Offline fallback for {@link isPipelineDescription} — used only when the
+ * backend gate cannot be reached.
  *
- * This exists because a pipeline description used to be swallowed by the
- * handlers that run BEFORE the backend classifier gets a look: the ABM regex
- * below matches a bare `research <anything>`, so
+ * This bank is the weaker of the two detectors and has been wrong in production.
+ * "Connect with IT founders in Dubai, research them, generate a report, and send
+ * it for approval. Once you receive approval, attach the report to an email and
+ * send it to the lead." trips exactly ONE family here (approval_gate) and gets a
+ * lead-search preview, while the backend reads the same sentence as four actions
+ * plus a pipeline noun. The misses are all vocabulary: `once (you)` is not in the
+ * sequencing alternation, `send it to…` has no channel noun after the verb, and
+ * "generate a report" has no family at all.
  *
- *   "…and research about them their company, send me the report post approval…"
- *
- * was researched as a company literally named "them their" and answered with a
- * fabricated company profile. The classifier's `workflow_build` verdict cannot
- * rescue a message that never reaches it.
+ * Widening it is not the fix — a second detector in a second language will drift
+ * again. It is kept only so a network failure degrades to today's behaviour
+ * rather than to none.
  *
  * Deliberately strict: THREE distinct signal families, and only on a message
  * long enough to be a description. "Find founders in Dubai" scores 0;
- * "research Acme Corp" scores 0; "find CTOs then message them" scores 1 and
- * still searches, exactly as it does today.
+ * "research Acme Corp" scores 0; "find CTOs then message them" scores 1.
  */
 function looksLikePipelineDescription(text: string): boolean {
     const t = text.trim();
@@ -890,6 +898,49 @@ function looksLikePipelineDescription(text: string): boolean {
     let hits = 0;
     for (const s of PIPELINE_SIGNALS) if (s.re.test(t)) hits++;
     return hits >= 3;
+}
+
+/** Below this a message is a search phrase, not a description of a pipeline. */
+const PIPELINE_MIN_CHARS = 60;
+/** The chat should not stall on this: it is a regex call, not a model call. */
+const PIPELINE_GATE_TIMEOUT_MS = 1500;
+
+/**
+ * True when the message describes a PIPELINE to build rather than an audience to
+ * find — asked of the backend, which owns the verdict.
+ *
+ * The chat has to decide this before it commits to a lane, because the ABM /
+ * web-search / lead-chat handlers below run first and the search preview pauses
+ * for confirmation, so a message can be answered without ever reaching the
+ * classifier. It used to decide with its own regexes; those disagreed with
+ * `detectWorkflowBuild` and the chat's answer won. Now it asks the same question
+ * the search path asks — no LLM, no credits, one source of truth — and only
+ * falls back to the local bank when the call fails.
+ */
+async function isPipelineDescription(text: string): Promise<boolean> {
+    const t = text.trim();
+    if (t.length < PIPELINE_MIN_CHARS) return false;
+
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), PIPELINE_GATE_TIMEOUT_MS);
+    try {
+        const res = await fetch('/api/ai-icp-assistant/detect-workflow-build', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ query: t }),
+            signal: ctrl.signal,
+        });
+        if (res.ok) {
+            const data = await res.json();
+            return !!data?.is_workflow;
+        }
+    } catch {
+        // Unreachable or too slow — fall through to the local bank.
+    } finally {
+        clearTimeout(timer);
+    }
+    return looksLikePipelineDescription(t);
 }
 
 /** Returns true when the user's reply is a confirmation of a search preview. */
@@ -1310,7 +1361,19 @@ export default function AdvancedSearchAIPage() {
         id: string; status: string; percent: number; processed: number; total: number;
     } | null>(null);
     const importJobPollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const importDiscoveryPending = !!importJob
+    /**
+     * Contact only people the evidence shows work at the company TODAY.
+     * Chosen before the search runs — it changes which results are kept, and the
+     * backend cannot revisit a discarded profile later.
+     */
+    const [currentEmployerOnly, setCurrentEmployerOnly] = useState(false);
+    /**
+     * The tenant chose not to wait for discovery. Ungates launch, and after the
+     * campaign is created the running job is attached to it so everything found
+     * from then on enrols automatically.
+     */
+    const [importRunInBackground, setImportRunInBackground] = useState(false);
+    const importDiscoveryPending = !importRunInBackground && !!importJob
         && importJob.status !== 'completed' && importJob.status !== 'failed';
     const [directContactLeadIds, setDirectContactLeadIds] = useState<string[]>([]); // Real UUIDs for chat-entered direct contacts
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1398,8 +1461,8 @@ export default function AdvancedSearchAIPage() {
 
     // ── BUILD MODE: "describe a pipeline, get a workflow" ──────────────────
     // Entered when the message is a pipeline description rather than an
-    // audience (locally via looksLikePipelineDescription, or on the backend
-    // classifier's `workflow_build` verdict). While this ref is set the chat is
+    // audience (on the way in via isPipelineDescription, or on the search
+    // response's `workflow_build` verdict). While this ref is set the chat is
     // conducting an interview: typed replies and option chips answer questions
     // instead of running searches. Cleared on done, bail-out or cancel, which
     // returns the chat to its normal behaviour.
@@ -3464,6 +3527,19 @@ export default function AdvancedSearchAIPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [seedFromResolvedLeads]);
 
+    /**
+     * Stop waiting for discovery: ungate the campaign config and remember to
+     * attach the running job to the campaign once it is created, so everything
+     * found afterwards enrols itself.
+     */
+    const runImportInBackground = useCallback(() => {
+        setImportRunInBackground(true);
+        setMessages(p => [...p, {
+            id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
+            text: `👍 **Carrying on in the background.**\n\nConfigure and launch whenever you're ready. I'll keep searching, and everyone I find afterwards joins the campaign automatically — spread across the days so your LinkedIn limits aren't breached.`,
+        }]);
+    }, []);
+
     // Stop polling when the page goes away.
     useEffect(() => () => {
         if (importJobPollRef.current) clearTimeout(importJobPollRef.current);
@@ -3511,6 +3587,8 @@ export default function AdvancedSearchAIPage() {
                         // may hand back a job instead of blocking for minutes while it
                         // searches LinkedIn for each role at each company.
                         supportsAsync: true,
+                        // Keep only people whose profile shows they work there NOW.
+                        currentEmployerOnly,
                         detectedChannels: {
                             email: counts.email > 0,
                             whatsapp: counts.whatsapp > 0,
@@ -3729,8 +3807,24 @@ export default function AdvancedSearchAIPage() {
         } finally {
             if (!existingProcessingId) setBusy(false);
         }
+        // `currentEmployerOnly` MUST be here: the user ticks it after this callback
+        // is first created, and a stale capture would silently send `false`.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [businessProfile]);
+    }, [businessProfile, currentEmployerOnly]);
+
+    /**
+     * Start discovery for a sheet that already carries a location — the options
+     * card's button. Sheets without one resume through the location reply instead.
+     */
+    const startPendingImportSearch = useCallback(() => {
+        const pending = pendingImportLocation;
+        if (!pending) return;
+        setPendingImportLocation(null);
+        const sheetLocation = pending.parsed.find(l => l.location && l.location.trim())?.location?.trim() || '';
+        finishInboundImport(pending.parsed, sheetLocation);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pendingImportLocation, finishInboundImport]);
+
 
     /* ── Contact-picker confirm: route picked contacts (Zoho/GHL/WA/…) through
        the SAME inbound-import pipeline as file uploads. That saves them to the
@@ -3868,17 +3962,24 @@ export default function AdvancedSearchAIPage() {
             // it — role-based rows come back as different people, and a sheet that
             // meant to name people needs to hear that while it can still be fixed.
             const routingNotice = importRoutingNotice(parsed);
-            if (!sheetLocation && hasTitleRows) {
+            // Role-based sheets pause here for their search options. Both settings
+            // shape the search itself, so they cannot be applied retroactively: a
+            // profile discarded by the filter is never revisited.
+            if (hasTitleRows) {
                 setPendingImportLocation({ parsed });
                 setMessages(p => p.filter(m => m.id !== processingId).concat({
                     id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
-                    text: `${routingNotice}\n\n📍 **Which location should I focus the search on?**\n\nType a city, country or region (e.g. **Dubai**, **UAE**, **MEA**) — or search worldwide.`,
-                    options: [{ label: '🌍 Search worldwide', value: 'worldwide' }],
+                    text: sheetLocation
+                        ? `${routingNotice}\n\nI'll focus the search on **${sheetLocation}**.`
+                        : `${routingNotice}\n\n📍 **Which location should I focus the search on?**\n\nType a city, country or region (e.g. **Dubai**, **UAE**, **MEA**) — or search worldwide.`,
+                    importOptions: { needsLocation: !sheetLocation },
+                    ...(sheetLocation ? {} : { options: [{ label: '🌍 Search worldwide', value: 'worldwide' }] }),
                 }));
-                return; // finally{} clears busy; the reply resumes the import
+                return; // resumed by the location reply, or by the card's Start button
             }
-            // Location came from the sheet (or nothing needs searching) — the gate
-            // above never ran, so the notice still has to be said.
+            // No role-based rows, so the gate above never ran — but a sheet of
+            // named people can still have had unusable LinkedIn links stripped,
+            // and that has to be said rather than silently swallowed.
             if (routingNotice) {
                 setMessages(p => [...p, {
                     id: `a-notice-${Date.now()}`, role: 'ai', ts: new Date(), text: routingNotice,
@@ -4329,14 +4430,14 @@ export default function AdvancedSearchAIPage() {
         // ABM regex matches a bare `research <anything>`, which is how
         // "…research about them their company, send me the report post
         // approval…" was answered with an invented company profile for a firm
-        // called "them their". The backend's `workflow_build` verdict (handled
-        // at the search response, below) cannot save a message that never
-        // reaches the classifier.
+        // called "them their". The search-response `workflow_build` verdict
+        // (handled below) cannot save a message that never gets there — and a
+        // search preview pauses for confirmation, so plenty of messages don't.
         //
-        // looksLikePipelineDescription needs three independent pipeline signals
-        // to fire, so ordinary ICP, ABM and signal queries fall straight
-        // through to the flows they use today.
-        if (!wfWizardRef.current && looksLikePipelineDescription(text)) {
+        // The verdict comes from the backend gate, the same one the search path
+        // applies; ordinary ICP, ABM and signal queries score no actions there
+        // and fall straight through to the flows they use today.
+        if (!wfWizardRef.current && await isPipelineDescription(text)) {
             setMessages(p => p.filter(m => m.id !== lid));
             setBusy(false);
             enterWorkflowBuild(text);
@@ -7049,7 +7150,7 @@ export default function AdvancedSearchAIPage() {
                                                 : 'Qualifying...'
                                         }
                                         : m;
-                                    return <Bubble key={m.id} msg={displayMsg} onOpt={onOptClick} onShowPanel={setShowPanel} onStartCheckpoints={() => setCpStep(0)} onLetAgentDeal={letAgentDeal} agentDealLoading={agentDealLoading} onStartTargeting={() => { setTgStep(0); setChatBlocked(false); }} hasPanel={!!showPanel} leadsCount={leads.length} filteredLeadsCount={filteredLeads.length} onUploadClick={() => fileInputRef.current?.click()} useSalesNav={useSalesNav} isMobile={isMobile} rolePreviewing={rolePreviewing} roleIcp={businessProfile} discoveryPending={importDiscoveryPending} discoveryProgress={importJob ? `${importJob.percent}%` : ''} />;
+                                    return <Bubble key={m.id} msg={displayMsg} onOpt={onOptClick} onShowPanel={setShowPanel} onStartCheckpoints={() => setCpStep(0)} onLetAgentDeal={letAgentDeal} agentDealLoading={agentDealLoading} onStartTargeting={() => { setTgStep(0); setChatBlocked(false); }} hasPanel={!!showPanel} leadsCount={leads.length} filteredLeadsCount={filteredLeads.length} onUploadClick={() => fileInputRef.current?.click()} useSalesNav={useSalesNav} isMobile={isMobile} rolePreviewing={rolePreviewing} roleIcp={businessProfile} discoveryPending={importDiscoveryPending} discoveryProgress={importJob ? `${importJob.percent}%` : ''} currentEmployerOnly={currentEmployerOnly} onToggleCurrentEmployerOnly={setCurrentEmployerOnly} onStartImportSearch={startPendingImportSearch} onRunImportInBackground={importJob && !importRunInBackground ? runImportInBackground : undefined} />;
                                 })
                             )}
                             {/* Import leads prompt — shown when conversation is about existing client relationships */}
@@ -7105,6 +7206,8 @@ export default function AdvancedSearchAIPage() {
                         {cpStep >= 0 && (
                             <div className="adv-msgs-inner">
                                 <CheckpointFormInline
+                                    importRunInBackground={importRunInBackground}
+                                    importJob={importJob}
                                     editingCampaignId={editingCampaignId}
                                     persistedLeadSource={persistedLeadSource}
                                     onLetAgentDeal={letAgentDeal}
@@ -9310,7 +9413,7 @@ function RoleCardView({ card, onOpt, previewing, icp }: { card: NonNullable<Chat
     );
 }
 
-function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, agentDealLoading, onStartTargeting, hasPanel, leadsCount, filteredLeadsCount, onUploadClick, useSalesNav, isMobile, rolePreviewing, roleIcp, discoveryPending, discoveryProgress }: { msg: ChatMsg; onOpt: (v: string) => void; onShowPanel: (panel: 'leads' | 'workflow') => void; onStartCheckpoints: () => void; onLetAgentDeal?: () => void; agentDealLoading?: boolean; onStartTargeting: () => void; hasPanel: boolean; leadsCount: number; filteredLeadsCount?: number; onUploadClick?: () => void; useSalesNav?: boolean; isMobile?: boolean; rolePreviewing?: boolean; roleIcp?: Record<string, string>; discoveryPending?: boolean; discoveryProgress?: string }) {
+function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, agentDealLoading, onStartTargeting, hasPanel, leadsCount, filteredLeadsCount, onUploadClick, useSalesNav, isMobile, rolePreviewing, roleIcp, discoveryPending, discoveryProgress, currentEmployerOnly, onToggleCurrentEmployerOnly, onStartImportSearch, onRunImportInBackground }: { msg: ChatMsg; onOpt: (v: string) => void; onShowPanel: (panel: 'leads' | 'workflow') => void; onStartCheckpoints: () => void; onLetAgentDeal?: () => void; agentDealLoading?: boolean; onStartTargeting: () => void; hasPanel: boolean; leadsCount: number; filteredLeadsCount?: number; onUploadClick?: () => void; useSalesNav?: boolean; isMobile?: boolean; rolePreviewing?: boolean; roleIcp?: Record<string, string>; discoveryPending?: boolean; discoveryProgress?: string; currentEmployerOnly?: boolean; onToggleCurrentEmployerOnly?: (v: boolean) => void; onStartImportSearch?: () => void; onRunImportInBackground?: () => void }) {
     const user = useSelector((state: any) => state.auth?.user);
     const displayName = user?.name || "User";
     const userInitial = displayName.charAt(0).toUpperCase();
@@ -9593,6 +9696,40 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                     advances a chunk at a time. The stripe animates whenever work
                     is in flight so a legitimately-flat bar still reads as "running"
                     rather than "stuck" — the width only ever shows REAL progress. */}
+                {/* ── Pre-search options for a role-based sheet ──
+                    These change WHAT is searched, so they are settable only before
+                    discovery starts: a profile the filter discards is never
+                    revisited. */}
+                {msg.importOptions && (
+                  <div className="mt-3 rounded-[10px] border border-blue-100 dark:border-blue-900/60 bg-blue-50/60 dark:bg-blue-950/30 px-3.5 py-3">
+                      <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={!!currentEmployerOnly}
+                            onChange={(e) => onToggleCurrentEmployerOnly?.(e.target.checked)}
+                            className="mt-0.5 h-4 w-4 accent-[#172560] cursor-pointer"
+                          />
+                          <span className="text-[12.5px] leading-snug text-gray-800 dark:text-gray-200">
+                              <span className="font-semibold">Only people currently at these companies</span>
+                              <span className="block text-[11.5px] text-gray-600 dark:text-gray-400 mt-0.5">
+                                  Skips profiles that name the company as a past employer
+                                  (&quot;Ex-&quot;, &quot;Former&quot;), and anyone whose profile
+                                  doesn&apos;t show where they work. More accurate, but expect
+                                  noticeably fewer leads.
+                              </span>
+                          </span>
+                      </label>
+                      {!msg.importOptions.needsLocation && (
+                          <button
+                            onClick={() => onStartImportSearch?.()}
+                            className="mt-3 w-full px-4 py-2 bg-[#172560] dark:bg-blue-700 text-white border-none rounded-[10px] text-[12.5px] font-bold cursor-pointer transition-all hover:bg-[#0b1957] dark:hover:bg-blue-600"
+                          >
+                              Start searching
+                          </button>
+                      )}
+                  </div>
+                )}
+
                 {msg.importProgress && (
                   <div className="mt-3 rounded-[10px] border border-blue-100 dark:border-blue-900/60 bg-blue-50/60 dark:bg-blue-950/30 px-3.5 py-3">
                       <div className="flex items-center justify-between mb-2">
@@ -9621,6 +9758,17 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                           {msg.importProgress.found > 0 && <> · <span className="font-semibold text-emerald-700 dark:text-emerald-400">{msg.importProgress.found} found</span></>}
                           {msg.importProgress.etaLabel && <> · {msg.importProgress.etaLabel} remaining</>}
                       </div>
+                      {/* Don't make the user watch. Launching now attaches this job
+                          to the campaign, so everything found afterwards enrols
+                          itself and the daily limits spread it over the days. */}
+                      {onRunImportInBackground && (
+                          <button
+                            onClick={() => onRunImportInBackground()}
+                            className="mt-2.5 w-full px-3 py-1.5 bg-white dark:bg-gray-800 text-[#172560] dark:text-blue-200 border border-[#172560]/25 dark:border-blue-700 rounded-[8px] text-[11.5px] font-semibold cursor-pointer transition-all hover:bg-blue-50 dark:hover:bg-gray-700"
+                          >
+                              Configure the campaign now — keep searching in the background
+                          </button>
+                      )}
                       {msg.importProgress.warnNoResults && (
                           <div className="mt-2 pt-2 border-t border-blue-100 dark:border-blue-900/60 text-[11.5px] text-amber-800 dark:text-amber-300">
                               <span className="font-semibold">No people found yet.</span>{' '}
@@ -10023,7 +10171,7 @@ function CheckpointFormInline({
     emailFromAddress, setEmailFromAddress,
     emailProvider, setEmailProvider,
     waBody, setWaBody, waFromNumber, setWaFromNumber, waGenLoading, setWaGenLoading,
-    pendingContact, inboundMode, inboundLeads, inboundLeadIds, directContactLeadIds,
+    pendingContact, inboundMode, inboundLeads, inboundLeadIds, directContactLeadIds, importRunInBackground, importJob,
     enableDailyWebPresence, setEnableDailyWebPresence,
     enableDailyPosts, setEnableDailyPosts,
     enableAiPersonalization, setEnableAiPersonalization,
@@ -10033,6 +10181,9 @@ function CheckpointFormInline({
     persistedLeadSource,
     onLetAgentDeal, agentDealLoading,
 }: {
+    /** Background mode: hand the running discovery job to the new campaign. */
+    importRunInBackground?: boolean;
+    importJob?: { id: string } | null;
     step: number; setStep: (s: number) => void;
     icpThreshold: string; setIcpThreshold: (v: string) => void;
     actions: string[]; setActions: React.Dispatch<React.SetStateAction<string[]>>;
@@ -11106,6 +11257,24 @@ function CheckpointFormInline({
                 window.location.href = '/campaigns';
             } else {
                 const data = await campaignCreation.createCampaign(payload);
+                // Background mode: hand the still-running discovery job to the new
+                // campaign so every later chunk enrols itself. Best-effort — the
+                // campaign is already created and must not be reported as failed
+                // because the hand-off did not land.
+                if (data?.success && importRunInBackground && importJob?.id) {
+                    const newCampaignId = data.campaign?.id || data.data?.id || data.id;
+                    if (newCampaignId) {
+                        try {
+                            await fetch(`/api/campaigns/leads/import/jobs/${importJob.id}/attach-campaign`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ campaignId: newCampaignId }),
+                            });
+                        } catch (attachErr) {
+                            console.warn('Failed to attach import job to campaign', attachErr);
+                        }
+                    }
+                }
                 if (data?.success) { window.location.href = '/campaigns'; }
                 else if (isCampaignNameTaken(data?.apiError)) {
                     // The whole wizard is still filled in — send them back to the
