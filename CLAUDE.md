@@ -49,3 +49,32 @@ ones, match the surrounding file and say so, rather than pretending it's the sta
 Requests from `web/` to `/api/*` reach the backend through the catch-all proxy at
 `web/src/app/api/[feature]/[...path]`, so a new backend route under an existing feature
 needs no frontend plumbing.
+
+## The local commit gate
+
+`.claude/hooks/ci-gate.sh` runs on `git commit` for every Claude session and every
+subagent working in this repo. It mirrors the workflows above exactly — it blocks on
+what CI blocks on, warns on what CI warns on, and invents no rules of its own. A
+staged secret always blocks, in every repo, CI or no CI.
+
+Run it without committing anything: `/ci`.
+
+Escape hatch, for when you are knowingly taking ownership of the CI failure:
+
+```bash
+LAD_SKIP_CI_GATE=1 git commit ...
+```
+
+If the gate is wrong, fix the gate — don't route around it.
+
+## Parallel agents
+
+Several agents often work this tree at once, on unrelated branches with dirty trees.
+
+- Treat any file you didn't just write as possible live WIP. Prefer a targeted edit
+  over rewriting a file you haven't read.
+- Never `git checkout`, `git stash`, or `git reset` to "clean up" — that silently
+  destroys someone else's uncommitted work.
+- Check `git branch --show-current` before you commit, and branch off rather than
+  piling onto whatever happens to be checked out.
+- Say which files you touched when you finish, so the next agent can avoid them.
