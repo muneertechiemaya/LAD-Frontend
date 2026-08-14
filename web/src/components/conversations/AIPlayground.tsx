@@ -737,7 +737,7 @@ export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps
                   <label
                     className={cn(
                       "text-[11px] font-medium shrink-0",
-                      isWhatsApp ? "text-gray-700 dark:text-neutral-400" : "text-slate-700 dark:text-emerald-200/90"
+                      isWhatsApp ? "text-gray-700 dark:text-neutral-400" : "text-slate-700 dark:text-blue-200/90"
                     )}
                   >
                     Stage
