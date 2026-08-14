@@ -238,19 +238,27 @@ if [ -d "$REPO/web" ] && [ -n "$(changed_matching '^web/.*\.(ts|tsx)$')" ]; then
 fi
 
 # ── Gate: architecture guardrails ───────────────────────────────────────────
-# CI runs both in WARN mode while the M2/M3 migrations are in flight, so these
-# warn here too. Flip them to fail() when CI flips WARN_MODE to false.
+# Severity is read from the repo's own guardrails.yml rather than assumed. The
+# backend's jobs carry `WARN_MODE=true` while M2/M3 are in flight; the frontend's
+# have no such switch and `exit 1` outright. Assuming "both warn" made this gate
+# pass a frontend commit that CI then failed.
+if [ -f "$REPO/.github/workflows/guardrails.yml" ] && \
+   ! grep -q 'WARN_MODE=true' "$REPO/.github/workflows/guardrails.yml"; then
+    guardrail() { fail "$1"; }        # this repo's guardrails block
+else
+    guardrail() { WARNINGS+=("$1"); } # warn mode, or no guardrails workflow
+fi
 added_lines=$(git -C "$REPO" diff --cached -- \
     ':(exclude)*.sql' ':(exclude)*.md' ':(exclude)**/migrations/**' \
     ':(exclude)**/tests/**' ':(exclude).github/**' 2>/dev/null | grep -E '^\+[^+]')
 
 lad_dev_hits=$(printf '%s' "$added_lines" | grep -cE '\blad_dev\.' || true)
 [ "${lad_dev_hits:-0}" -gt 0 ] && \
-    WARNINGS+=("$lad_dev_hits new literal 'lad_dev.' reference(s) — use getSchema(req) / core_table(). CI warns on this (M3).")
+    guardrail "$lad_dev_hits new literal 'lad_dev.' reference(s) — use getSchema(req) / core_table() (M3)."
 
 org_id_hits=$(printf '%s' "$added_lines" | grep -c 'organization_id' || true)
 [ "${org_id_hits:-0}" -gt 0 ] && \
-    WARNINGS+=("$org_id_hits new 'organization_id' reference(s) — use tenant_id. CI warns on this (M2).")
+    guardrail "$org_id_hits new 'organization_id' reference(s) — use tenant_id (M2)."
 
 # ── Verdict ─────────────────────────────────────────────────────────────────
 if [ ${#BLOCKERS[@]} -gt 0 ]; then
