@@ -1973,7 +1973,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
                 <DropdownMenuTrigger asChild>
                   <MoreVertical className="w-5 h-5 cursor-pointer hover:text-foreground transition-colors" />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 bg-white dark:bg-[#161717] border border-border dark:border-0 shadow-lg text-foreground dark:text-[#d1d7db] py-2 [&_[role=menuitem]]:hover:bg-zinc-100 dark:[&_[role=menuitem]]:hover:bg-zinc-800 [&_[role=menuitem]]:focus:bg-zinc-100 dark:[&_[role=menuitem]]:focus:bg-zinc-800 [&_[role=menuitem]]:hover:text-foreground dark:[&_[role=menuitem]]:hover:text-[#d1d7db] [&_[role=menuitem]]:focus:text-foreground dark:[&_[role=menuitem]]:focus:text-[#d1d7db] [&_[role=menuitem][data-state=open]]:bg-zinc-100 dark:[&_[role=menuitem][data-state=open]]:bg-zinc-800 [&_[role=menuitem][data-state=open]]:text-foreground dark:[&_[role=menuitem][data-state=open]]:text-[#d1d7db]">
+                <DropdownMenuContent align="end" className="w-56 bg-white dark:bg-[#161717] border border-border dark:border-0 shadow-lg text-foreground dark:text-[#d1d7db] py-2 [&_[role=menuitem]]:focus:bg-zinc-100 dark:[&_[role=menuitem]]:focus:bg-zinc-800 [&_[role=menuitem]]:focus:text-foreground dark:[&_[role=menuitem]]:focus:text-[#d1d7db]">
                   <DropdownMenuItem className="cursor-pointer py-2.5 px-4 flex items-center gap-4" onClick={onTogglePanel}>
                     <Info className="w-4 h-4" /> <span>Contact info</span>
                   </DropdownMenuItem>
@@ -1993,7 +1993,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
                       <div className="flex items-center gap-4"><Users className="w-4 h-4" /> <span>Add to Group</span></div>
                       <ChevronRight className="w-4 h-4" />
                     </DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent className="max-h-72 w-56 overflow-y-auto bg-white dark:bg-[#161717] border border-border dark:border-0 shadow-lg text-foreground dark:text-[#d1d7db] [&_[role=menuitem]]:hover:bg-zinc-100 dark:[&_[role=menuitem]]:hover:bg-zinc-800 [&_[role=menuitem]]:focus:bg-zinc-100 dark:[&_[role=menuitem]]:focus:bg-zinc-800 [&_[role=menuitem]]:hover:text-foreground dark:[&_[role=menuitem]]:hover:text-[#d1d7db] [&_[role=menuitem]]:focus:text-foreground dark:[&_[role=menuitem]]:focus:text-[#d1d7db]">
+                    <DropdownMenuSubContent className="max-h-72 w-56 overflow-y-auto bg-white dark:bg-[#161717] border border-border dark:border-0 shadow-lg text-foreground dark:text-[#d1d7db] [&_[role=menuitem]]:focus:bg-zinc-100 dark:[&_[role=menuitem]]:focus:bg-zinc-800 [&_[role=menuitem]]:focus:text-foreground dark:[&_[role=menuitem]]:focus:text-[#d1d7db]">
                       {addGroupsLoading ? (
                         <DropdownMenuItem disabled className="py-2.5 px-4 text-muted-foreground">Loading…</DropdownMenuItem>
                       ) : addGroups.length === 0 ? (
@@ -2027,7 +2027,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
                   <DropdownMenuItem className="cursor-pointer py-2.5 px-4 flex items-center gap-4" onClick={() => onClearChat?.(conversation?.id)}>
                     <MinusCircle className="w-4 h-4" /> <span>Clear chat</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="cursor-pointer py-2.5 px-4 flex items-center gap-4" onClick={() => onDeleteChat?.(conversation?.id)}>
+                  <DropdownMenuItem className="cursor-pointer py-2.5 px-4 flex items-center gap-4 !text-red-600 dark:!text-red-400 focus:!bg-red-50 dark:focus:!bg-red-950/50 focus:!text-red-600 dark:focus:!text-red-400" onClick={() => onDeleteChat?.(conversation?.id)}>
                     <Trash2 className="w-4 h-4" /> <span>Delete chat</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
