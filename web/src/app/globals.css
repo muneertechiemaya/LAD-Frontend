@@ -167,7 +167,7 @@
     /* Borders & Inputs */
     --border: oklch(0.922 0 0);
     --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
+    --ring: #0B1957;
 
     /* Channel Colors */
     --whatsapp: 142 70% 45%;
@@ -182,7 +182,7 @@
     --sidebar-accent: oklch(0.97 0 0);
     --sidebar-accent-foreground: oklch(0.205 0 0);
     --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0);
+    --sidebar-ring: #0B1957;
 
     /* Message Bubbles - WhatsApp Theme */
     --message-incoming: 0 0% 100%;
@@ -260,12 +260,12 @@
   }
 
   .dark .message-bubble-incoming {
-    background-color: #202c33;
+    background-color: #242626;
     color: #e9edef;
   }
 
   .dark .message-bubble-outgoing {
-    background-color: #005c4b;
+    background-color: #144d37;
     color: #e9edef;
   }
 
@@ -608,7 +608,7 @@
   /* Border & Input */
   --border: oklch(92% 0.013 255.508);
   --input: oklch(96% 0.007 247.896);
-  --ring: oklch(62% 0.194 149.214);
+  --ring: #0B1957;
 
   /* Muted */
   --muted: oklch(96% 0.007 247.896);
@@ -629,7 +629,7 @@
   --sidebar-accent: oklch(62% 0.194 149.214);
   --sidebar-accent-foreground: oklch(98% 0.014 180.72);
   --sidebar-border: oklch(92% 0.013 255.508);
-  --sidebar-ring: oklch(62% 0.194 149.214);
+  --sidebar-ring: #0B1957;
 }
 
 /* ------------------------------
@@ -650,9 +650,9 @@
   --secondary: #1A2A43;
   --secondary-foreground: #E0E0E0;
 
-  /* Accent - Neon Mint (Highlight) */
-  --accent: #2EE6A6;
-  --accent-foreground: #000724;
+  /* Accent - Light Blue (Highlight) */
+  --accent: #2563eb;
+  --accent-foreground: #ffffff;
 
   /* Neutral */
   --neutral: #1a2f6b;
@@ -705,8 +705,8 @@
   --sidebar-foreground: #E0E0E0;
   --sidebar-primary: #2B7CFF;
   --sidebar-primary-foreground: #000724;
-  --sidebar-accent: #2EE6A6;
-  --sidebar-accent-foreground: #000724;
+  --sidebar-accent: #2563eb;
+  --sidebar-accent-foreground: #ffffff;
   --sidebar-border: #1a2a43;
   --sidebar-ring: #2B7CFF;
 }

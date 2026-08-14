@@ -17,6 +17,7 @@ export type {
   ConnectionMethod,
   WhatsAppSignupConfig,
   WhatsAppAccount,
+  CoexistenceHistoryState,
   EmbeddedSignupResult,
   ExchangeSignupRequest,
   ExchangeSignupResponse,

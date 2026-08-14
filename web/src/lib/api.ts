@@ -177,6 +177,21 @@ export async function proxyPatch<T>(path: string, body: any): Promise<T> {
   return res.json();
 }
 
+/** PUT via Next.js API proxy — relative URL, no BACKEND_URL base. */
+export async function proxyPut<T>(path: string, body: any): Promise<T> {
+  const p = path.startsWith('/') ? path : `/${path}`;
+  const res = await loadingFetch(p, {
+    method: 'PUT',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    throw await apiErrorFromResponse(res, `PUT ${path} ${res.status}`, 'message');
+  }
+  return res.json();
+}
+
 /** DELETE via Next.js API proxy — relative URL, no BACKEND_URL base. */
 export async function proxyDelete<T>(path: string): Promise<T> {
   const p = path.startsWith('/') ? path : `/${path}`;
