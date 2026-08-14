@@ -243,7 +243,11 @@ export function ConversationsPage() {
                   ? 'text-white shadow-sm'
                   : 'text-muted-foreground hover:text-foreground hover:bg-gray-300/30 dark:hover:bg-zinc-500/30'
               )}
-              style={activeTab === id ? { backgroundColor: getTabColor(id) } : undefined}
+              style={
+                activeTab === id
+                  ? { backgroundColor: getTabColor(id) }
+                  : undefined
+              }
             >
               <ChannelIcon
                 channel={sublabel as any}
@@ -258,78 +262,101 @@ export function ConversationsPage() {
           ))}
         </div>
 
-        {/* AI Playground toggle */}
-        <Button
-          variant={isPlaygroundOpen ? 'secondary' : 'ghost'}
-          size="sm"
-          className={cn(
-            'gap-1.5 text-xs h-7 shrink-0',
-            isPlaygroundOpen && 'text-primary',
-            isBlackGrayDarkTheme
-              ? 'dark:hover:bg-black dark:hover:text-white'
-              : 'dark:hover:bg-[#2B7CFF] dark:hover:text-white'
-          )}
-          onClick={() => setIsPlaygroundOpen((v) => !v)}
-          title="Open AI Playground to test your system prompt"
-        >
-          <FlaskConical className="h-3.5 w-3.5" />
-          Test AI
-        </Button>
+        <div className="flex items-center gap-1 ml-auto shrink-0">
+          {/* AI Playground toggle */}
+          <Button
+            variant={isPlaygroundOpen ? 'secondary' : 'ghost'}
+            size="sm"
+            className={cn(
+              'gap-1.5 text-xs h-7 shrink-0',
+              isPlaygroundOpen && 'text-primary',
+              isBlackGrayDarkTheme
+                ? 'dark:hover:bg-black dark:hover:text-white'
+                : 'dark:hover:bg-[#2B7CFF] dark:hover:text-white'
+            )}
+            onClick={() => setIsPlaygroundOpen((v) => !v)}
+            title="Open AI Playground to test your system prompt"
+          >
+            <FlaskConical className="h-3.5 w-3.5" />
+            Test AI
+          </Button>
 
-        {/* AI Learnings — what the agent has been taught from thumbs-down
+          {/* AI Learnings — what the agent has been taught from thumbs-down
             feedback. Sits beside Test AI because both answer "why did it say
             that?": one lets you probe the prompt, the other shows what human
             review has since added to it. */}
-        <Button
-          variant={isLearningsOpen ? 'secondary' : 'ghost'}
-          size="sm"
-          className={`gap-1.5 text-xs h-7 shrink-0 ${isLearningsOpen ? 'text-primary' : ''}`}
-          onClick={() => setIsLearningsOpen((v) => !v)}
-          title="View and manage what the AI has learned from feedback"
-        >
-          <GraduationCap className="h-3.5 w-3.5" />
-          AI Learnings
-        </Button>
+          <Button
+            variant={isLearningsOpen ? "secondary" : "ghost"}
+            size="sm"
+            className={`gap-1.5 text-xs h-7 shrink-0 ${isLearningsOpen ? "text-primary" : ""}`}
+            onClick={() => setIsLearningsOpen((v) => !v)}
+            title="View and manage what the AI has learned from feedback"
+          >
+            <GraduationCap className="h-3.5 w-3.5" />
+            AI Learnings
+          </Button>
+
+          <AILearningsPanel
+            open={isLearningsOpen}
+            onClose={() => setIsLearningsOpen(false)}
+          />
+        </div>
       </div>
-
-      <AILearningsPanel open={isLearningsOpen} onClose={() => setIsLearningsOpen(false)} />
-
       {/* Channel views — only the active tab is mounted */}
       <div className="flex-1 flex overflow-hidden">
-      {channelStatus === null ? (
+        {channelStatus === null ? (
           <div className="flex-1 bg-background" />
         ) : (
           <>
-        {activeTab === 'personal' && (
-          // Personal WA reuses the rich WhatsApp-Business view (same UI as WABA),
-          // driven against LAD-WAPA-Comms via backendChannel="personal".
-          <WABusinessView
-            backendChannel="personal"
-            isSidebarCollapsed={isSidebarCollapsed}
-            setIsSidebarCollapsed={setIsSidebarCollapsed}
-          />
-        )}
-        {activeTab === 'waba' && (
-          <WABusinessView
-            backendChannel="waba"
-            isSidebarCollapsed={isSidebarCollapsed}
-            setIsSidebarCollapsed={setIsSidebarCollapsed}
-          />
-        )}
-        {activeTab === 'instagram' && <InstagramConversationView />}
-        {activeTab === 'linkedin'  && <LinkedInConversationView />}
-        {activeTab === 'gmail'     && <EmailChannelView provider="gmail"   connectedEmail={channelStatus?.gmailEmail   ?? undefined} />}
-        {activeTab === 'outlook'   && <EmailChannelView provider="outlook" connectedEmail={channelStatus?.outlookEmail ?? undefined} />}
-        {activeTab === 'custom'    && <EmailChannelView provider="custom"  connectedEmail={channelStatus?.customEmail  ?? undefined} />}
-        </>
+            {activeTab === "personal" && (
+              // Personal WA reuses the rich WhatsApp-Business view (same UI as WABA),
+              // driven against LAD-WAPA-Comms via backendChannel="personal".
+              <WABusinessView
+                backendChannel="personal"
+                isSidebarCollapsed={isSidebarCollapsed}
+                setIsSidebarCollapsed={setIsSidebarCollapsed}
+              />
+            )}
+            {activeTab === "waba" && (
+              <WABusinessView
+                backendChannel="waba"
+                isSidebarCollapsed={isSidebarCollapsed}
+                setIsSidebarCollapsed={setIsSidebarCollapsed}
+              />
+            )}
+            {activeTab === "instagram" && <InstagramConversationView />}
+            {activeTab === "linkedin" && <LinkedInConversationView />}
+            {activeTab === "gmail" && (
+              <EmailChannelView
+                provider="gmail"
+                connectedEmail={channelStatus?.gmailEmail ?? undefined}
+              />
+            )}
+            {activeTab === "outlook" && (
+              <EmailChannelView
+                provider="outlook"
+                connectedEmail={channelStatus?.outlookEmail ?? undefined}
+              />
+            )}
+            {activeTab === "custom" && (
+              <EmailChannelView
+                provider="custom"
+                connectedEmail={channelStatus?.customEmail ?? undefined}
+              />
+            )}
+          </>
         )}
       </div>
 
       {/* Broadcast Modal (WhatsApp-only) */}
       <AnimatePresence>
-        {showBroadcastModal && (activeTab === 'personal' || activeTab === 'waba') && (
-          <BroadcastModal onClose={() => setShowBroadcastModal(false)} activeTab={activeTab as 'personal' | 'waba'} />
-        )}
+        {showBroadcastModal &&
+          (activeTab === "personal" || activeTab === "waba") && (
+            <BroadcastModal
+              onClose={() => setShowBroadcastModal(false)}
+              activeTab={activeTab as "personal" | "waba"}
+            />
+          )}
       </AnimatePresence>
 
       {/* AI Playground slide-over */}
