@@ -3572,6 +3572,57 @@ export default function AdvancedSearchAIPage() {
      * attach the running job to the campaign once it is created, so everything
      * found afterwards enrols itself.
      */
+    /**
+     * A background discovery job that finished searching into a campaign it was
+     * never attached to. Set only when the hand-off below has already failed its
+     * retries, so the chat can offer a retry instead of the job silently
+     * enrolling nobody.
+     */
+    const [pendingAttach, setPendingAttach] = useState<{ jobId: string; campaignId: string } | null>(null);
+
+    /**
+     * Hand a still-running discovery job to a campaign, so every chunk found
+     * from now on enrols itself.
+     *
+     * Retries, because a blip here is invisible AND permanent: the search keeps
+     * running, finds people, and drops them nowhere. The campaign is already
+     * created by this point, so a failure must never be reported as a failed
+     * launch — but it must be reported.
+     */
+    const attachImportJob = useCallback(async (jobId: string, campaignId: string): Promise<boolean> => {
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            try {
+                const res = await fetch(`/api/campaigns/leads/import/jobs/${jobId}/attach-campaign`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ campaignId }),
+                });
+                if (res.ok) return true;
+                // A 4xx is a verdict, not a blip — retrying cannot change it.
+                if (res.status >= 400 && res.status < 500 && res.status !== 429) return false;
+            } catch {
+                // Network — worth another go.
+            }
+            if (attempt < 3) await new Promise((r) => setTimeout(r, attempt * 800));
+        }
+        return false;
+    }, []);
+
+    /** The message shown when the hand-off could not be made. */
+    const warnAttachFailed = useCallback((jobId: string, campaignId: string) => {
+        setPendingAttach({ jobId, campaignId });
+        setMessages(p => [...p, {
+            id: `a-attach-${Date.now()}`, role: 'ai', ts: new Date(),
+            text: `⚠️ **Your campaign was created, but I could not attach the running search to it.**\n\n`
+                + `The search is still going. Without the link, anyone it finds from now on will NOT join this campaign — `
+                + `the leads already found are in it, and nothing else will arrive.\n\nRetry the link, or open the campaign as it stands.`,
+            options: [
+                { label: '🔗 Retry the link', value: '__attach_retry__' },
+                { label: 'Open campaigns', value: '__attach_skip__' },
+            ],
+        }]);
+    }, []);
+
     const runImportInBackground = useCallback(() => {
         setImportRunInBackground(true);
         setMessages(p => [...p, {
@@ -6001,6 +6052,26 @@ export default function AdvancedSearchAIPage() {
     }, [input, busy, doSend, handleRoleAnswer, handleWfAnswer]);
 
     const onOptClick = useCallback(async (v: string) => {
+        // ── Re-link a background search to the campaign it belongs to ──────
+        if (v === '__attach_retry__' || v === '__attach_skip__') {
+            const target = pendingAttach;
+            if (!target) return;
+            if (v === '__attach_skip__') { window.location.href = '/campaigns'; return; }
+            setMessages(p => [...p, { id: `u-${Date.now()}`, role: 'user', text: 'Retry the link', ts: new Date() }]);
+            const ok = await attachImportJob(target.jobId, target.campaignId);
+            if (ok) {
+                setPendingAttach(null);
+                setMessages(p => [...p, {
+                    id: `a-attach-ok-${Date.now()}`, role: 'ai', ts: new Date(),
+                    text: `✅ **Linked.** Everyone the search finds from here joins the campaign automatically.`,
+                }]);
+                window.location.href = '/campaigns';
+                return;
+            }
+            warnAttachFailed(target.jobId, target.campaignId);
+            return;
+        }
+
         // ── Workflow-build interview actions ──────────────────────────────
         // A chip is a shortcut for typing, so it routes through the same
         // handleWfAnswer the composer does — one advance path per wizard.
@@ -7332,6 +7403,8 @@ export default function AdvancedSearchAIPage() {
                             <div className="adv-msgs-inner">
                                 <CheckpointFormInline
                                     importRunInBackground={importRunInBackground}
+                                    attachImportJob={attachImportJob}
+                                    warnAttachFailed={warnAttachFailed}
                                     importJob={importJob}
                                     editingCampaignId={editingCampaignId}
                                     persistedLeadSource={persistedLeadSource}
@@ -10297,6 +10370,7 @@ function CheckpointFormInline({
     emailProvider, setEmailProvider,
     waBody, setWaBody, waFromNumber, setWaFromNumber, waGenLoading, setWaGenLoading,
     pendingContact, inboundMode, inboundLeads, inboundLeadIds, directContactLeadIds, importRunInBackground, importJob,
+    attachImportJob, warnAttachFailed,
     enableDailyWebPresence, setEnableDailyWebPresence,
     enableDailyPosts, setEnableDailyPosts,
     enableAiPersonalization, setEnableAiPersonalization,
@@ -10309,6 +10383,10 @@ function CheckpointFormInline({
     /** Background mode: hand the running discovery job to the new campaign. */
     importRunInBackground?: boolean;
     importJob?: { id: string } | null;
+    /** Hand the running discovery job to a campaign; false when it could not be linked. */
+    attachImportJob: (jobId: string, campaignId: string) => Promise<boolean>;
+    /** Tell the user the hand-off failed, and offer to retry it. */
+    warnAttachFailed: (jobId: string, campaignId: string) => void;
     step: number; setStep: (s: number) => void;
     icpThreshold: string; setIcpThreshold: (v: string) => void;
     actions: string[]; setActions: React.Dispatch<React.SetStateAction<string[]>>;
@@ -11379,6 +11457,15 @@ function CheckpointFormInline({
                 // the campaign running and runs processCampaign against the NEW steps; it
                 // respects per-lead progress, so nobody already contacted is re-messaged.
                 await startCampaign(editingCampaignId);
+                // Launching into an EXISTING campaign made the same promise —
+                // "everyone I find afterwards joins the campaign" — and never
+                // attached the job at all, so the rest of the search went nowhere.
+                if (importRunInBackground && importJob?.id) {
+                    if (!(await attachImportJob(importJob.id, editingCampaignId))) {
+                        warnAttachFailed(importJob.id, editingCampaignId);
+                        return;
+                    }
+                }
                 window.location.href = '/campaigns';
             } else {
                 const data = await campaignCreation.createCampaign(payload);
@@ -11388,16 +11475,12 @@ function CheckpointFormInline({
                 // because the hand-off did not land.
                 if (data?.success && importRunInBackground && importJob?.id) {
                     const newCampaignId = data.campaign?.id || data.data?.id || data.id;
-                    if (newCampaignId) {
-                        try {
-                            await fetch(`/api/campaigns/leads/import/jobs/${importJob.id}/attach-campaign`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ campaignId: newCampaignId }),
-                            });
-                        } catch (attachErr) {
-                            console.warn('Failed to attach import job to campaign', attachErr);
-                        }
+                    if (newCampaignId && !(await attachImportJob(importJob.id, newCampaignId))) {
+                        // Do NOT redirect: the transcript carries the only notice
+                        // that the rest of the search is going nowhere, and
+                        // navigating away destroys it.
+                        warnAttachFailed(importJob.id, newCampaignId);
+                        return;
                     }
                 }
                 if (data?.success) { window.location.href = '/campaigns'; }
