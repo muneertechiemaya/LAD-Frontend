@@ -257,6 +257,9 @@ interface ChatMsg {
     leads?: LeadProfile[];
     inboundAction?: 'download' | 'upload' | 'summary';
     inboundSummary?: { total: number; linkedin: number; email: number; whatsapp: number; phone: number; website: number };
+    /** The summary card is for a search still RUNNING — counts are a running tally,
+     *  not a finished total, so the card must not claim the leads are ready. */
+    inboundSearching?: boolean;
     webSearchResult?: boolean;
     sources?: Array<{ title: string; url: string }>;
     leadDetailForm?: boolean;
@@ -3625,11 +3628,35 @@ export default function AdvancedSearchAIPage() {
 
     const runImportInBackground = useCallback(() => {
         setImportRunInBackground(true);
+        // The message alone used to be the whole response — and it told the user
+        // to "configure and launch whenever you're ready" while giving them
+        // nothing to click. "Create Outreach Journey" lives on the summary card,
+        // which was only emitted when the job COMPLETED, so the invitation could
+        // not be accepted until the search finished: 101 minutes for a 151-company
+        // sheet, which is exactly what background mode exists to avoid.
+        //
+        // So emit the card here too. `targeting` + `inboundAction` +
+        // `inboundSummary` are all three required for it to render (see the
+        // Bubble gate), and the counts are whatever has been found so far —
+        // usually zero, which is honest: the campaign is configured now and
+        // filled by the search as it runs.
+        const searchedSoFar = computeInboundCounts(inboundLeads);
+        const bgTargeting: LeadTargeting = {
+            job_titles: [], industries: [], locations: [],
+            keywords: [`Searching ${importJob?.total ?? 0} companies`],
+        };
+        setTargeting(bgTargeting);
         setMessages(p => [...p, {
             id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
-            text: `👍 **Carrying on in the background.**\n\nConfigure and launch whenever you're ready. I'll keep searching, and everyone I find afterwards joins the campaign automatically — spread across the days so your LinkedIn limits aren't breached.`,
+            text: `👍 **Carrying on in the background.**\n\nSet up the campaign now and launch whenever you're ready — `
+                + `I'll keep searching, and everyone I find afterwards joins it automatically, spread across the days `
+                + `so your LinkedIn limits aren't breached.`,
+            targeting: bgTargeting,
+            inboundAction: 'summary',
+            inboundSummary: searchedSoFar,
+            inboundSearching: true,
         }]);
-    }, []);
+    }, [inboundLeads, importJob]);
 
     // Stop polling when the page goes away.
     useEffect(() => () => {
@@ -9986,7 +10013,9 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                       <div className="flex items-center gap-2 mb-2.5">
                           <CheckCircle2 size={18} className="text-emerald-600 dark:text-emerald-400" />
                           <span className="text-[14px] font-bold text-emerald-800 dark:text-emerald-300">
-            {msg.inboundSummary.total} Leads Ready</span>
+            {msg.inboundSearching
+              ? `Still searching — ${msg.inboundSummary.total} found so far`
+              : `${msg.inboundSummary.total} Leads Ready`}</span>
                       </div>
                       <div className="flex gap-1.5 flex-wrap">
                           {msg.inboundSummary.linkedin > 0 && <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 bg-white dark:bg-gray-800 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-900">
