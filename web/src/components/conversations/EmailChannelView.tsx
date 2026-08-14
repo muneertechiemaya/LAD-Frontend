@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import DOMPurify from 'dompurify';
 import { useToast } from '@/hooks/use-toast';
+import { useTheme } from '@/contexts/ThemeContext';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -361,6 +362,7 @@ function ComposeWindow({
   onClose, onSent, minimized = false, onMinimize, onMaximize, maximized = false,
 }: ComposeWindowProps) {
   const { toast } = useToast();
+  const { isDark } = useTheme();
   const [to, setTo] = useState(initialTo);
   const [cc, setCc] = useState('');
   const [bcc, setBcc] = useState('');
@@ -805,7 +807,7 @@ function ComposeWindow({
               >
                 {agentType === 'human'
                   ? <User className="h-5 w-5" />
-                  : <Image src="/logo.svg" alt="Mr LAD" width={28} height={28} className="object-contain" />
+                  : <Image src={isDark ? '/logo-white.svg' : '/logo.svg'} alt="Mr LAD" width={28} height={28} className="object-contain" />
                 }
               </button>
             </DropdownMenuTrigger>
@@ -821,7 +823,7 @@ function ComposeWindow({
                 onClick={() => setAgentType('ai')}
                 className={cn('cursor-pointer', agentType === 'ai' && 'bg-muted')}
               >
-                <Image src="/logo.svg" alt="Mr LAD" width={16} height={16} className="mr-2" /> Mr LAD
+                <Image src={isDark ? '/logo-white.svg' : '/logo.svg'} alt="Mr LAD" width={16} height={16} className="mr-2" /> Mr LAD
                 {agentType === 'ai' && <span className="ml-auto text-xs text-muted-foreground">Active</span>}
               </DropdownMenuItem>
             </DropdownMenuContent>
