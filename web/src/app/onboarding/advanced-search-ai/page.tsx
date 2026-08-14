@@ -10280,6 +10280,30 @@ function CheckpointFormInline({
     const aiChat = useAIChat();
     const campaignCreation = useCampaignCreation();
 
+    // Outbound grounding — does the workspace have anything on file describing
+    // what it offers? With nothing, the agent will not invent a value
+    // proposition, so follow-ups go out as relationship openers with no pitch
+    // and no meeting ask. That is deliberate, but it used to be invisible: five
+    // stage workspaces and four on production were running campaigns that way.
+    // Advisory only — never gates the Launch button.
+    const [grounding, setGrounding] = useState<{ grounded: boolean; missing: string[] } | null>(null);
+    useEffect(() => {
+        // Only on the final step, where Launch lives — no call while the user
+        // is still picking leads.
+        if (step !== 4) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const res = await fetchWithTenant('/api/campaigns/outbound-grounding');
+                const json = await res.json();
+                if (!cancelled && json?.data) setGrounding(json.data);
+            } catch {
+                // Fail silent: no warning beats a wrong warning.
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [step]);
+
     // Auto-select default template when templates load for the first time
     useEffect(() => {
         if (emailTemplates.length > 0 && !selectedEmailTemplateId) {
@@ -12804,6 +12828,38 @@ function CheckpointFormInline({
                                       background: '#0b1957', color: '#fff', fontSize: '12px', fontWeight: 700,
                                       cursor: 'pointer', transition: 'all 0.15s',
                                   }}>Add credits</button>
+                              </div>
+                          )}
+                          {grounding && !grounding.grounded && (
+                              <div className="dark:bg-amber-900/20 dark:border-amber-700 dark:text-amber-300" style={{
+                                  padding: '10px 14px', borderRadius: '10px', fontSize: '12px', lineHeight: 1.5,
+                                  background: '#fef3c7', border: '1px solid #f59e0b', color: '#92400e',
+                                  display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-start',
+                              }}>
+                                  <div>
+                                      <strong>No value proposition on file:</strong> nothing in this workspace says what
+                                      you offer, so the agent will not describe it rather than guess. Connection notes
+                                      are unaffected — they never pitch — but follow-ups will open a conversation
+                                      without a pitch or a meeting request.
+                                  </div>
+                                  <div>
+                                      Add it in <strong>Settings → Business Profile</strong> to fix every campaign, or
+                                      set this campaign&apos;s value proposition on the message step.
+                                  </div>
+                                  <button
+                                      onClick={() => {
+                                          // `businessprofile`, not `business-profile`: the allow-list in
+                                          // settings/page.tsx has no hyphen and an unrecognised tab param
+                                          // silently lands on the default tab.
+                                          window.open('/settings?tab=businessprofile', '_blank');
+                                      }}
+                                      className="dark:bg-blue-700"
+                                      style={{
+                                          padding: '6px 14px', borderRadius: '8px', border: 'none',
+                                          background: '#0b1957', color: '#fff', fontSize: '12px', fontWeight: 700,
+                                          cursor: 'pointer', transition: 'all 0.15s',
+                                      }}
+                                  >Add business profile</button>
                               </div>
                           )}
                           {creditsOk && creditBalance !== null && enrolledCount > 0 && (
