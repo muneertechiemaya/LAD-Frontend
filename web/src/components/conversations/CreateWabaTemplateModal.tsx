@@ -424,7 +424,7 @@ export function CreateWabaTemplateModal({ open, onOpenChange, onCreated }: Creat
                         type="button"
                         onClick={() => setCategory(c.value)}
                         className={cn(
-                          'p-2.5 rounded-lg border text-left transition-colors',
+                          'p-2.5 rounded-lg border text-left transition-colors outline-none focus:outline-none',
                           category === c.value
                             ? 'border-zinc-400 dark:border-zinc-600 bg-zinc-100 dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 font-medium'
                             : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
@@ -449,7 +449,7 @@ export function CreateWabaTemplateModal({ open, onOpenChange, onCreated }: Creat
                       type="button"
                       onClick={() => setHeaderFmt(f.value)}
                       className={cn(
-                        'px-3 py-1.5 rounded-full border text-xs font-medium transition-colors',
+                        'px-3 py-1.5 rounded-full border text-xs font-medium transition-colors outline-none focus:outline-none',
                         headerFmt === f.value
                           ? 'border-zinc-400 dark:border-zinc-600 bg-zinc-100 dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 font-semibold'
                           : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700 hover:text-zinc-800 dark:hover:text-zinc-200'
