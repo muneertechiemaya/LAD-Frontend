@@ -34,9 +34,12 @@ import {
 import { useRouter } from 'next/navigation';
 import { useConnectedChannels, type ChannelId } from '@/hooks/useConnectedChannels';
 import KnowledgeBaseManager from './KnowledgeBaseManager';
-import CreateLinkedInTemplateModal from '@/components/templates/CreateLinkedInTemplateModal';
-import { useLinkedInMessageTemplates } from '@lad/frontend-features/campaigns';
-import type { LinkedInMessageTemplate } from '@lad/frontend-features/campaigns';
+import FollowupTouchesEditor, {
+  defaultFollowupTouches,
+  prepareTouchesForSave,
+  touchesFromApi,
+  type FollowupTouch,
+} from './FollowupTouchesEditor';
 import dynamic from 'next/dynamic';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
 import {
@@ -681,33 +684,18 @@ export function ChatSettings() {
   });
   const [savingLinkedinAutomation, setSavingLinkedinAutomation] = useState(false);
 
-  // LinkedIn follow-up sequence settings (tenant-level cadence for the
-  // post-acceptance sequence — see LinkedInAutoFollowupService).
-  //
-  // Each touch = { hours, template_id }. A null template_id means "AI-generated"
-  // (the historical behaviour); a template id means "send that LinkedIn
-  // template's body + media" — parity with the WhatsApp follow-up section.
-  const DEFAULT_LI_FOLLOWUP_HOURS = [24, 72, 168, 336];
-  type LiFollowupTouch = {
-    hours: number;
-    template_id: string | null;
-    touch_type?: 'industry_trend' | 'company_page_post' | null;
-    /** Only set for touch_type 'company_page_post' — the page posts are shared from. */
-    company_page_url?: string | null;
-  };
+  // LinkedIn follow-up sequence settings (TENANT-level cadence for the
+  // post-acceptance sequence — see LinkedInAutoFollowupService). A campaign can
+  // override this from the Scheduled Follow-ups modal; the touch model and the
+  // editor UI are shared (./FollowupTouchesEditor).
   const [linkedinFollowup, setLinkedinFollowup] = useState<{
     enabled: boolean;
-    touches: LiFollowupTouch[];
+    touches: FollowupTouch[];
   }>({
     enabled: true,
-    touches: DEFAULT_LI_FOLLOWUP_HOURS.map((h) => ({ hours: h, template_id: null })),
+    touches: defaultFollowupTouches(),
   });
   const [savingLinkedinFollowup, setSavingLinkedinFollowup] = useState(false);
-  // The touch row whose template dropdown is mid-"create new template" flow.
-  const [pendingTemplateTouchIdx, setPendingTemplateTouchIdx] = useState<number | null>(null);
-  // Tenant's LinkedIn templates for the per-touch dropdown. Auto-refreshes after
-  // a create (the create hook invalidates the list + clears the local cache).
-  const { data: liTemplates } = useLinkedInMessageTemplates({ is_active: true });
 
   // Load data on mount
   useEffect(() => {
@@ -737,24 +725,11 @@ export function ChatSettings() {
           });
         }
         if (liFollowup?.success && liFollowup.data) {
-          // Prefer the per-touch model; fall back to legacy plain hours (mapped to
-          // AI-generated touches), then to the default cadence.
-          let touches: LiFollowupTouch[] = [];
-          if (Array.isArray(liFollowup.data.touches) && liFollowup.data.touches.length > 0) {
-            touches = liFollowup.data.touches
-              .map((t: any) => ({ hours: Number(t?.hours) || 0, template_id: t?.template_id || null, touch_type: t?.touch_type || null, company_page_url: t?.company_page_url || null }))
-              .filter((t: LiFollowupTouch) => t.hours > 0);
-          } else if (Array.isArray(liFollowup.data.schedule_hours) && liFollowup.data.schedule_hours.length > 0) {
-            touches = liFollowup.data.schedule_hours
-              .map((v: any) => ({ hours: Number(v) || 0, template_id: null }))
-              .filter((t: LiFollowupTouch) => t.hours > 0);
-          }
-          if (touches.length === 0) {
-            touches = DEFAULT_LI_FOLLOWUP_HOURS.map((h) => ({ hours: h, template_id: null }));
-          }
+          // Per-touch model, else legacy plain hours, else the default cadence.
+          const touches = touchesFromApi(liFollowup.data);
           setLinkedinFollowup({
             enabled: liFollowup.data.enabled !== false,
-            touches,
+            touches: touches.length > 0 ? touches : defaultFollowupTouches(),
           });
         }
         setShareableAssets(Array.isArray(assets) ? assets : []);
@@ -1064,30 +1039,13 @@ export function ChatSettings() {
 
   const handleSaveLinkedinFollowup = useCallback(async () => {
     // Clamp + validate cadence before sending — backend re-validates but a
-    // fast frontend check gives the user immediate feedback.
-    const cleanTouches = (linkedinFollowup.touches || [])
-      .map((t) => ({
-        hours: Number(t.hours),
-        template_id: t.touch_type ? null : (t.template_id || null),
-        touch_type: t.touch_type || null,
-        company_page_url: t.touch_type === 'company_page_post'
-          ? (t.company_page_url || '').trim()
-          : null,
-      }))
-      .filter((t) => Number.isFinite(t.hours) && t.hours > 0 && t.hours <= 24 * 365);
-    if (cleanTouches.length === 0) {
-      showToast('Add at least one positive hour value to the cadence', 'error');
+    // fast frontend check gives the user immediate, touch-numbered feedback.
+    const prepared = prepareTouchesForSave(linkedinFollowup.touches);
+    if (!prepared.ok) {
+      showToast(prepared.error, 'error');
       return;
     }
-    // The backend rejects a company-page touch without a page; catch it here so
-    // the user sees which touch is at fault instead of a generic 400.
-    const missingPageAt = cleanTouches.findIndex(
-      (t) => t.touch_type === 'company_page_post' && !t.company_page_url
-    );
-    if (missingPageAt !== -1) {
-      showToast(`Touch ${missingPageAt + 1}: add the LinkedIn company page URL to share posts from`, 'error');
-      return;
-    }
+    const cleanTouches = prepared.touches;
     setSavingLinkedinFollowup(true);
     try {
       const res = await fetch('/api/social-integration/linkedin/followup-settings', {
@@ -1100,14 +1058,12 @@ export function ChatSettings() {
       });
       const data = await res.json();
       if (data.success && data.data) {
-        const touches: LiFollowupTouch[] = Array.isArray(data.data.touches) && data.data.touches.length > 0
-          ? data.data.touches
-              .map((t: any) => ({ hours: Number(t?.hours) || 0, template_id: t?.template_id || null, touch_type: t?.touch_type || null, company_page_url: t?.company_page_url || null }))
-              .filter((t: LiFollowupTouch) => t.hours > 0)
-          : cleanTouches;
+        // Echo back what the server stored (it normalises), falling back to what
+        // we just sent if the response omits the cadence.
+        const echoed = touchesFromApi(data.data);
         setLinkedinFollowup({
           enabled: data.data.enabled !== false,
-          touches,
+          touches: echoed.length > 0 ? echoed : cleanTouches,
         });
       }
       showToast(data.success ? 'LinkedIn follow-up settings saved' : 'Failed to save', data.success ? 'success' : 'error');
@@ -2698,201 +2654,12 @@ export function ChatSettings() {
             </button>
           </div>
 
-          {/* Cadence editor */}
-          <div className="border border-gray-100 dark:border-blue-950/40 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Cadence &amp; message per touch</p>
-                <p className="text-xs text-gray-500 dark:text-slate-300">
-                  One entry = one follow-up. Default: 24, 72, 168, 336 (≈ +1d, +3d, +7d, +14d).
-                  Each touch is AI-generated by default, or you can pick a saved LinkedIn template.
-                </p>
-              </div>
-              <button
-                onClick={() => setLinkedinFollowup((prev) => ({
-                  ...prev,
-                  touches: DEFAULT_LI_FOLLOWUP_HOURS.map((h) => ({ hours: h, template_id: null })),
-                }))}
-                className="text-xs text-amber-600 dark:text-amber-400 hover:underline"
-                disabled={!linkedinFollowup.enabled}
-                title="Reset to default cadence"
-              >
-                Reset
-              </button>
-            </div>
-
-            <div className="space-y-2">
-              {linkedinFollowup.touches.map((touch, idx) => {
-                // A selected template that is no longer in the active list (deleted
-                // or deactivated) still needs an option so the select shows it.
-                const templates = liTemplates || [];
-                const selectedMissing = !!touch.template_id
-                  && !templates.some((t) => t.id === touch.template_id);
-                return (
-                  <div key={idx} className="rounded-lg border border-gray-100 dark:border-blue-950/40 p-3 space-y-2 bg-gray-50/40 dark:bg-blue-950/10">
-                    {/* Timing row */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-gray-500 dark:text-slate-300 w-16">
-                        Touch {idx + 1}
-                      </span>
-                      <input
-                        type="number"
-                        min={1}
-                        max={24 * 365}
-                        value={touch.hours}
-                        disabled={!linkedinFollowup.enabled}
-                        onChange={(e) => {
-                          const v = parseInt(e.target.value, 10);
-                          setLinkedinFollowup((prev) => {
-                            const next = [...prev.touches];
-                            next[idx] = { ...next[idx], hours: Number.isFinite(v) ? v : 0 };
-                            return { ...prev, touches: next };
-                          });
-                        }}
-                        className="w-24 px-2 py-1 border border-gray-200 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-200 disabled:bg-gray-50 dark:disabled:bg-blue-950/40 disabled:text-gray-400"
-                      />
-                      <span className="text-xs text-gray-400 dark:text-slate-300">
-                        hours (≈ {(touch.hours / 24).toFixed(touch.hours % 24 === 0 ? 0 : 1)}d)
-                      </span>
-                      <button
-                        onClick={() =>
-                          setLinkedinFollowup((prev) => ({
-                            ...prev,
-                            touches: prev.touches.filter((_, i) => i !== idx),
-                          }))
-                        }
-                        disabled={!linkedinFollowup.enabled || linkedinFollowup.touches.length <= 1}
-                        className="ml-auto text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                        title="Remove this touch"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-
-                    {/* Template row (parity with the WhatsApp follow-up section) */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-gray-500 dark:text-slate-300 w-16">Message</span>
-                      <select
-                        value={
-                          touch.touch_type === 'industry_trend' ? '__industry_trend__'
-                          : touch.touch_type === 'company_page_post' ? '__company_post__'
-                          : (touch.template_id ?? '')
-                        }
-                        disabled={!linkedinFollowup.enabled}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          if (val === '__create__') {
-                            // Open the create modal; leave template_id untouched until saved.
-                            setPendingTemplateTouchIdx(idx);
-                            return;
-                          }
-                          setLinkedinFollowup((prev) => {
-                            const next = [...prev.touches];
-                            if (val === '__industry_trend__') {
-                              // Structured mode: researches the prospect's industry trend.
-                              // Mutually exclusive with a template → clear template_id.
-                              next[idx] = { ...next[idx], template_id: null, touch_type: 'industry_trend' };
-                            } else if (val === '__company_post__') {
-                              next[idx] = { ...next[idx], template_id: null, touch_type: 'company_page_post' };
-                            } else {
-                              next[idx] = { ...next[idx], template_id: val || null, touch_type: null };
-                            }
-                            return { ...prev, touches: next };
-                          });
-                        }}
-                        className="flex-1 pl-3 pr-10 py-2 text-sm border border-gray-200 dark:border-blue-950/60 rounded-xl bg-white dark:bg-[#030a21] dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-200 disabled:opacity-40 disabled:bg-gray-50 dark:disabled:bg-blue-950/40 transition-all appearance-none"
-                        style={{
-                          backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
-                          backgroundPosition: 'right 0.5rem center',
-                          backgroundRepeat: 'no-repeat',
-                          backgroundSize: '1.5em 1.5em',
-                        }}
-                        title="AI-generated by default; research the prospect's industry trend; share a post from your company page; or send a saved LinkedIn template (body + media) for this touch"
-                      >
-                        <option value="">AI-generated (default)</option>
-                        <option value="__industry_trend__">🔎 Research industry trend</option>
-                        <option value="__company_post__">📣 Share a company-page post</option>
-                        {templates.map((t) => (
-                          <option key={t.id} value={t.id}>
-                            {t.name}{t.is_default ? ' (Default)' : ''}
-                          </option>
-                        ))}
-                        {selectedMissing && (
-                          <option value={touch.template_id as string}>
-                            (selected template unavailable)
-                          </option>
-                        )}
-                        <option value="__create__">➕ Create new template…</option>
-                      </select>
-                    </div>
-
-                    {/* Company page URL — only for the company-page-post mode.
-                        Asked for explicitly: LinkedIn's API exposes admined pages
-                        by URN with no slug, so the page can't be auto-resolved. */}
-                    {touch.touch_type === 'company_page_post' && (
-                      <div className="flex items-start gap-2 mt-2">
-                        <span className="text-xs font-semibold text-gray-500 dark:text-slate-300 w-16 pt-2">Page</span>
-                        <div className="flex-1">
-                          <input
-                            type="url"
-                            inputMode="url"
-                            value={touch.company_page_url ?? ''}
-                            disabled={!linkedinFollowup.enabled}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setLinkedinFollowup((prev) => {
-                                const next = [...prev.touches];
-                                next[idx] = { ...next[idx], company_page_url: val };
-                                return { ...prev, touches: next };
-                              });
-                            }}
-                            placeholder="https://www.linkedin.com/company/your-page"
-                            className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-blue-950/60 rounded-xl bg-white dark:bg-[#030a21] dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-200 disabled:opacity-40 disabled:bg-gray-50 dark:disabled:bg-blue-950/40 transition-all"
-                            title="The LinkedIn company page this touch shares a post from"
-                          />
-                          <p className="text-[11px] text-gray-400 dark:text-slate-500 mt-1 leading-snug">
-                            We pick the post from this page that best fits the lead&apos;s industry. If nothing fits,
-                            the touch sends an industry-trend message and shares the page link instead — never a broken post link.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            <button
-              onClick={() =>
-                setLinkedinFollowup((prev) => {
-                  const last = prev.touches[prev.touches.length - 1];
-                  const nextHours = (last ? last.hours * 2 : 24) || 24;
-                  return { ...prev, touches: [...prev.touches, { hours: nextHours, template_id: null }] };
-                })
-              }
-              disabled={!linkedinFollowup.enabled || linkedinFollowup.touches.length >= 10}
-              className="mt-3 flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 hover:underline disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <Plus className="h-3 w-3" />
-              Add another touch
-            </button>
-          </div>
-
-          {/* Create-new-template modal (opened by the per-touch dropdown). Auto-
-              selects the new template for the touch that requested it. */}
-          <CreateLinkedInTemplateModal
-            open={pendingTemplateTouchIdx !== null}
-            onClose={() => setPendingTemplateTouchIdx(null)}
-            onCreated={(tpl: LinkedInMessageTemplate) => {
-              const idx = pendingTemplateTouchIdx;
-              if (idx === null) return;
-              setLinkedinFollowup((prev) => {
-                const next = [...prev.touches];
-                if (next[idx]) next[idx] = { ...next[idx], template_id: tpl.id };
-                return { ...prev, touches: next };
-              });
-              setPendingTemplateTouchIdx(null);
-            }}
+          {/* Cadence editor — shared with the per-campaign override in the
+              Scheduled Follow-ups modal (components/settings/FollowupTouchesEditor). */}
+          <FollowupTouchesEditor
+            touches={linkedinFollowup.touches}
+            onChange={(touches) => setLinkedinFollowup((prev) => ({ ...prev, touches }))}
+            disabled={!linkedinFollowup.enabled}
           />
 
           <div className="flex justify-end pt-2">

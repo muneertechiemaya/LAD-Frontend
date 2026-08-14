@@ -7,12 +7,20 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/app-toaster';
-import { proxyGet, proxyPost, proxyDelete } from '@/lib/api';
+import { proxyGet, proxyPost, proxyPut, proxyDelete } from '@/lib/api';
 import TemplateSelector from '@/components/campaigns/linkedin-templates/TemplateSelector';
 import type { LinkedInMessageTemplate } from '@lad/frontend-features/campaigns';
+import { useLinkedInMessageTemplates } from '@lad/frontend-features/campaigns';
+import FollowupTouchesEditor, {
+  defaultFollowupTouches,
+  prepareTouchesForSave,
+  touchesFromApi,
+  type FollowupTouch,
+} from '@/components/settings/FollowupTouchesEditor';
 import {
   CalendarClock, Clock, Loader2, Plus, Trash2, Linkedin, Search,
-  CheckCircle2, ChevronUp, CalendarPlus, FileText, Film, Music,
+  CheckCircle2, ChevronUp, ChevronDown, CalendarPlus, FileText, Film, Music,
+  Save, SlidersHorizontal,
 } from 'lucide-react';
 
 interface SelectedMedia {
@@ -53,6 +61,51 @@ interface Props {
   campaignId: string;
   open: boolean;
   onClose: () => void;
+}
+
+/**
+ * GET /campaigns/:id/followup-settings. `source` says which scope the effective
+ * cadence came from — the whole point of the panel: an inherited tenant cadence
+ * used to be invisible here, so a campaign could quietly queue someone else's
+ * template on acceptance.
+ */
+interface CadenceResponse {
+  enabled: boolean;
+  source: 'campaign' | 'tenant' | 'default';
+  touches: FollowupTouch[];
+  campaignTouches: FollowupTouch[] | null;
+  tenantTouches: FollowupTouch[] | null;
+  defaultScheduleHours: number[];
+}
+
+const SOURCE_LABEL: Record<CadenceResponse['source'], string> = {
+  campaign: 'Custom for this campaign',
+  tenant:   'Inherited from LinkedIn settings',
+  default:  'System default',
+};
+
+const SOURCE_STYLE: Record<CadenceResponse['source'], string> = {
+  campaign: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300',
+  tenant:   'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300',
+  default:  'bg-slate-100 text-slate-600 dark:bg-slate-500/10 dark:text-slate-300',
+};
+
+/** "48h · MEE - Followup" / "24h AI · 72h AI" — one line describing the cadence. */
+function describeTouches(
+  touches: FollowupTouch[] | undefined,
+  templates: Array<{ id: string; name: string }> | undefined
+): string {
+  if (!touches || touches.length === 0) return '—';
+  return touches
+    .map((t) => {
+      const when = t.hours % 24 === 0 ? `${t.hours / 24}d` : `${t.hours}h`;
+      if (t.touch_type === 'industry_trend') return `${when} industry trend`;
+      if (t.touch_type === 'company_page_post') return `${when} company post`;
+      if (!t.template_id) return `${when} AI`;
+      const name = templates?.find((x) => x.id === t.template_id)?.name;
+      return `${when} · ${name || 'saved template'}`;
+    })
+    .join('  →  ');
 }
 
 const PRESETS: Array<{ label: string; hours: number }> = [
@@ -117,6 +170,18 @@ export default function ScheduledFollowupsModal({ campaignId, open, onClose }: P
   // backend also de-dupes; this stops the redundant requests at the source.)
   const inFlightRef = useRef<Set<string>>(new Set());
 
+  // Cadence panel state (see loadCadence below).
+  const [cadence, setCadence] = useState<CadenceResponse | null>(null);
+  const [cadenceLoading, setCadenceLoading] = useState(false);
+  const [cadenceSaving, setCadenceSaving] = useState(false);
+  const [cadenceError, setCadenceError] = useState<string | null>(null);
+  const [cadenceOpen, setCadenceOpen] = useState(false);
+  /** true = editing a campaign-specific cadence; false = inheriting. */
+  const [overriding, setOverriding] = useState(false);
+  const [draftTouches, setDraftTouches] = useState<FollowupTouch[]>(defaultFollowupTouches());
+  // Template names for the one-line cadence summary.
+  const { data: liTemplates } = useLinkedInMessageTemplates({ is_active: true });
+
   const handleTemplateSelect = (tpl: LinkedInMessageTemplate | null) => {
     setSelectedTemplateId(tpl?.id ?? null);
     const meta = (tpl?.metadata ?? {}) as Record<string, any>;
@@ -147,9 +212,72 @@ export default function ScheduledFollowupsModal({ campaignId, open, onClose }: P
     }
   }, [campaignId]);
 
+  // ── Cadence for FUTURE acceptances (campaigns.config.followup_touches) ──────
+  // Distinct from the rows listed below: those are already scheduled and keep the
+  // template stamped when they were created. This governs what the NEXT accepted
+  // lead gets — and, crucially, shows whether that comes from this campaign or is
+  // inherited from tenant settings.
+  const loadCadence = useCallback(async () => {
+    setCadenceLoading(true);
+    setCadenceError(null);
+    try {
+      const res = await proxyGet<{ success: boolean; data: CadenceResponse }>(
+        `/api/campaigns/${campaignId}/followup-settings`
+      );
+      const d = res.data;
+      setCadence(d);
+      // Seed the editor with whatever is effective, so "Override" starts from what
+      // the campaign is doing today rather than an empty form.
+      const effective = touchesFromApi(d);
+      setDraftTouches(effective.length > 0 ? effective : defaultFollowupTouches());
+      setOverriding(d?.source === 'campaign');
+    } catch (e: any) {
+      setCadenceError(e?.message || 'Failed to load cadence');
+    } finally {
+      setCadenceLoading(false);
+    }
+  }, [campaignId]);
+
+  const saveCadence = useCallback(async (mode: 'override' | 'inherit') => {
+    let body: { inherit: true } | { touches: FollowupTouch[] };
+    if (mode === 'inherit') {
+      body = { inherit: true };
+    } else {
+      const prepared = prepareTouchesForSave(draftTouches);
+      if (!prepared.ok) {
+        push({ variant: 'warning', title: 'Check the cadence', description: prepared.error });
+        return;
+      }
+      body = { touches: prepared.touches };
+    }
+    setCadenceSaving(true);
+    try {
+      const res = await proxyPut<{ success: boolean; data: CadenceResponse }>(
+        `/api/campaigns/${campaignId}/followup-settings`, body
+      );
+      const d = res.data;
+      setCadence(d);
+      const effective = touchesFromApi(d);
+      setDraftTouches(effective.length > 0 ? effective : defaultFollowupTouches());
+      setOverriding(d?.source === 'campaign');
+      push({
+        variant: 'success',
+        title: mode === 'inherit' ? 'Using tenant default' : 'Campaign cadence saved',
+        description: mode === 'inherit'
+          ? 'Future acceptances follow your LinkedIn settings.'
+          : 'Applies to leads who accept from now on.',
+      });
+    } catch (e: any) {
+      push({ variant: 'error', title: 'Could not save cadence', description: e?.message || 'Please try again' });
+    } finally {
+      setCadenceSaving(false);
+    }
+  }, [campaignId, draftTouches, push]);
+
   useEffect(() => {
     if (open) {
       load();
+      loadCadence();
     } else {
       // Reset transient UI when closed.
       setSchedulerFor(null);
@@ -158,8 +286,10 @@ export default function ScheduledFollowupsModal({ campaignId, open, onClose }: P
       setCustomWhen('');
       setSelectedTemplateId(null);
       setSelectedMedia(null);
+      setCadenceOpen(false);
+      setCadenceError(null);
     }
-  }, [open, load]);
+  }, [open, load, loadCadence]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -312,6 +442,105 @@ export default function ScheduledFollowupsModal({ campaignId, open, onClose }: P
           <p className="text-[11px] text-slate-400 dark:text-[#7a8ba3]">
             Optional — pick a saved template to send its message{selectedMedia ? ' + attachment' : ''} instead of an AI-generated follow-up.
           </p>
+        </div>
+
+        {/* ── Cadence for future acceptances ─────────────────────────────────
+            Governs what the NEXT accepted lead gets. Collapsed by default: the
+            summary line answers "what will fire, and whose setting is it?" at a
+            glance, which is exactly what was invisible before. */}
+        <div className="px-4 sm:px-8 py-3 border-b border-gray-100 dark:border-blue-950/40 shrink-0">
+          <button
+            onClick={() => setCadenceOpen((v) => !v)}
+            className="w-full flex items-center gap-3 text-left group"
+          >
+            <SlidersHorizontal className="w-4 h-4 text-slate-400 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                  Cadence for future acceptances
+                </span>
+                {cadence && (
+                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${SOURCE_STYLE[cadence.source]}`}>
+                    {SOURCE_LABEL[cadence.source]}
+                  </span>
+                )}
+                {cadence && !cadence.enabled && (
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-300">
+                    Sequence off
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-slate-400 dark:text-[#7a8ba3] truncate">
+                {cadenceLoading
+                  ? 'Loading…'
+                  : cadenceError
+                    ? cadenceError
+                    : describeTouches(cadence?.touches, liTemplates)}
+              </p>
+            </div>
+            {cadenceOpen
+              ? <ChevronUp className="w-4 h-4 text-slate-400 shrink-0" />
+              : <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />}
+          </button>
+
+          {cadenceOpen && (
+            <div className="mt-3 space-y-3">
+              {cadence?.source === 'tenant' && !overriding && (
+                <p className="text-[11px] text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-500/10 rounded-lg px-3 py-2">
+                  These touches come from your tenant-wide LinkedIn settings, so every campaign
+                  uses them. Override to give this campaign its own timing and message.
+                </p>
+              )}
+              {cadence && !cadence.enabled && (
+                <p className="text-[11px] text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-500/10 rounded-lg px-3 py-2">
+                  Auto-scheduling is switched off (campaign or LinkedIn settings), so no follow-ups
+                  will be created on acceptance regardless of the cadence below.
+                </p>
+              )}
+
+              {overriding ? (
+                <>
+                  <FollowupTouchesEditor
+                    touches={draftTouches}
+                    onChange={setDraftTouches}
+                    disabled={cadenceSaving}
+                    showReset={false}
+                    description={
+                      <>One entry = one follow-up, timed from when the lead accepts.
+                      This cadence applies to this campaign only.</>
+                    }
+                  />
+                  <div className="flex items-center justify-between gap-2">
+                    <button
+                      onClick={() => saveCadence('inherit')}
+                      disabled={cadenceSaving}
+                      className="text-xs text-slate-500 dark:text-[#7a8ba3] hover:underline disabled:opacity-40"
+                    >
+                      Use tenant default instead
+                    </button>
+                    <Button size="sm" onClick={() => saveCadence('override')} disabled={cadenceSaving}>
+                      {cadenceSaving
+                        ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                        : <Save className="w-3.5 h-3.5 mr-1.5" />}
+                      Save cadence
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center justify-end">
+                  <Button size="sm" variant="outline" onClick={() => setOverriding(true)} disabled={cadenceLoading}>
+                    <SlidersHorizontal className="w-3.5 h-3.5 mr-1.5" />
+                    Override for this campaign
+                  </Button>
+                </div>
+              )}
+
+              <p className="text-[11px] text-slate-400 dark:text-[#7a8ba3]">
+                Changes apply to leads who accept from now on. Follow-ups already listed below keep
+                the message they were scheduled with — remove and re-add one to change it.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Body */}
