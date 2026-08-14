@@ -2315,7 +2315,7 @@ export default function AdvancedSearchAIPage() {
                         ts: m.ts || Date.now(),
                     })) as ChatMsg[]);
                 }
-                // Restore the config-step selections (connection/follow-up messages, actions, etc.).
+                // Restore the config-step selections (connection + acceptance messages, actions, etc.).
                 if (cs.icp_threshold != null) setCpIcpThreshold(String(cs.icp_threshold));
                 // LinkedIn actions: prefer the saved checkpoint selection, else derive from
                 // the persisted steps (the workflow is the source of truth) so the action
@@ -4662,7 +4662,7 @@ export default function AdvancedSearchAIPage() {
                 const emailCount = inboundLeads.filter(l => l.email).length;
                 setMessages(p => p.filter(m => m.id !== lid).concat({
                     id: `a-${Date.now()}`, role: 'ai',
-                    text: `🎯 **Great question! Here's your next steps:**\n\nYou have **${leadsCount} leads** uploaded and ready to go${linkedinCount > 0 ? ` (${linkedinCount} with LinkedIn profiles)` : ''}${emailCount > 0 ? ` (${emailCount} with emails)` : ''}.\n\n**To create your campaign:**\n1. Click **"Create Outreach Journey"** button above\n2. Select your **outreach actions** (Connect, Message, Follow-up)\n3. Set up your **message templates** (AI can generate them for you! ✨)\n4. Choose **campaign duration**\n5. **Name & launch** your campaign 🚀\n\n👉 Click the **"Create Outreach Journey"** button to get started!`,
+                    text: `🎯 **Great question! Here's your next steps:**\n\nYou have **${leadsCount} leads** uploaded and ready to go${linkedinCount > 0 ? ` (${linkedinCount} with LinkedIn profiles)` : ''}${emailCount > 0 ? ` (${emailCount} with emails)` : ''}.\n\n**To create your campaign:**\n1. Click **"Create Outreach Journey"** button above\n2. Select your **outreach actions** (Visit profile, Connect, Acceptance message)\n3. Set up your **message templates** (AI can generate them for you! ✨)\n4. Choose **campaign duration**\n5. **Name & launch** your campaign 🚀\n\n👉 Click the **"Create Outreach Journey"** button to get started!`,
                     ts: new Date(),
                     targeting: targeting || undefined,
                 }));
@@ -10994,7 +10994,7 @@ function CheckpointFormInline({
                 const liDelayConfig = { delayDays: parseInt(channelDelays.linkedin?.days) || 0, delayHours: parseInt(channelDelays.linkedin?.hours) || 0 };
                 if (liChannelActions.includes('profile_view')) actionSteps.push({ type: 'linkedin_visit', title: 'Visit LinkedIn Profile', channel: 'linkedin', order_index: orderIdx++, config: { ...liDelayConfig } });
                 if (liChannelActions.includes('connect')) actionSteps.push({ type: 'linkedin_connect', title: 'Send Connection Request', channel: 'linkedin', order_index: orderIdx++, config: { message: connMsg || '', ...liDelayConfig } });
-                if (liChannelActions.includes('message')) actionSteps.push({ type: 'linkedin_message', title: 'Send Follow-up Message', channel: 'linkedin', order_index: orderIdx++, config: { message: followMsg || '', ...liDelayConfig } });
+                if (liChannelActions.includes('message')) actionSteps.push({ type: 'linkedin_message', title: 'Send Connection Acceptance Message', channel: 'linkedin', order_index: orderIdx++, config: { message: followMsg || '', ...liDelayConfig } });
                 // Default to profile visit if no specific action selected
                 if (liChannelActions.length === 0) actionSteps.push({ type: 'linkedin_visit', title: 'Visit LinkedIn Profile', channel: 'linkedin', order_index: orderIdx++, config: { ...liDelayConfig } });
             }
@@ -11009,7 +11009,7 @@ function CheckpointFormInline({
                     if (ch === 'linkedin') {
                         if (liChannelActions.includes('profile_view')) actionSteps.push({ type: 'linkedin_visit', title: 'Visit LinkedIn Profile', channel: 'linkedin', order_index: orderIdx++, config: { ...chDelayConfig } });
                         if (liChannelActions.includes('connect')) actionSteps.push({ type: 'linkedin_connect', title: 'Send LinkedIn Connection Request', channel: 'linkedin', order_index: orderIdx++, config: { message: connMsg || '', ...chDelayConfig } });
-                        if (liChannelActions.includes('message')) actionSteps.push({ type: 'linkedin_message', title: 'Send LinkedIn Follow-up Message', channel: 'linkedin', order_index: orderIdx++, config: { message: followMsg || '', ...chDelayConfig } });
+                        if (liChannelActions.includes('message')) actionSteps.push({ type: 'linkedin_message', title: 'Send LinkedIn Connection Acceptance Message', channel: 'linkedin', order_index: orderIdx++, config: { message: followMsg || '', ...chDelayConfig } });
                         // Default to profile visit if no specific action selected
                         if (liChannelActions.length === 0) actionSteps.push({ type: 'linkedin_visit', title: 'Visit LinkedIn Profile', channel: 'linkedin', order_index: orderIdx++, config: { ...chDelayConfig } });
                     }
@@ -11064,7 +11064,7 @@ function CheckpointFormInline({
                     if (ch === 'linkedin') {
                         if (liChannelActions.includes('profile_view')) actionSteps.push({ type: 'linkedin_visit', title: 'Visit LinkedIn Profile', channel: 'linkedin', order_index: orderIdx++, config: { ...chDelayConfig } });
                         if (liChannelActions.includes('connect')) actionSteps.push({ type: 'linkedin_connect', title: 'Send LinkedIn Connection Request', channel: 'linkedin', order_index: orderIdx++, config: { message: connMsg || '', ...chDelayConfig } });
-                        if (liChannelActions.includes('message')) actionSteps.push({ type: 'linkedin_message', title: 'Send LinkedIn Follow-up Message', channel: 'linkedin', order_index: orderIdx++, config: { message: followMsg || '', ...chDelayConfig } });
+                        if (liChannelActions.includes('message')) actionSteps.push({ type: 'linkedin_message', title: 'Send LinkedIn Connection Acceptance Message', channel: 'linkedin', order_index: orderIdx++, config: { message: followMsg || '', ...chDelayConfig } });
                         if (liChannelActions.length === 0) actionSteps.push({ type: 'linkedin_visit', title: 'Visit LinkedIn Profile', channel: 'linkedin', order_index: orderIdx++, config: { ...chDelayConfig } });
                     }
                 }
@@ -12597,7 +12597,7 @@ function CheckpointFormInline({
                                         {[
                                             { id: 'profile_view', label: 'Visit profile', desc: 'Visit their LinkedIn profile to warm up the connection', icon: '👁️' },
                                             { id: 'connect', label: 'Send connection request', desc: 'Send a personalised connection request', icon: '🤝' },
-                                            { id: 'message', label: 'Send follow-up message', desc: 'Send a LinkedIn message after connection is accepted', icon: '💬' },
+                                            { id: 'message', label: 'Send connection acceptance message', desc: 'The first message sent once they accept your connection request', icon: '💬' },
                                         ].map((opt) => {
                                             const isSelected = liChannelActions.includes(opt.id);
                                             return (
@@ -12849,7 +12849,7 @@ function CheckpointFormInline({
                                                       <div  className="border-[1.5px] border-t-0 border-[#3b82f6] dark:border-blue-700 bg-[#f0f6ff] dark:bg-[#060b21]" style={{ borderTop: 'none', borderRadius: '0 0 10px 10px', padding: '12px' }}>
                                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                                                           <label className="text-[#374151] dark:text-gray-300" style={{ fontSize: '12px', fontWeight: 600 }}>
-                                                            Follow-up Message
+                                                            Connection Acceptance Message
                                                           </label>
                                                           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                                                             <button
@@ -13097,7 +13097,7 @@ function CheckpointFormInline({
                                                                     <div style={{ marginLeft: 8, paddingLeft: 14, borderLeft: '2px solid #ddd6fe', display: 'flex', flexDirection: 'column', gap: 8 }}>
                                                                         <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#7c3aed' }}>Which messages?</div>
                                                                         <AiPersoRow icon={<UserPlus size={16} />} title="Connection request" desc="Personalised connect note per lead" checked={enableAiConnectionPersonalization} onChange={setEnableAiConnectionPersonalization} accent="violet" />
-                                                                        <AiPersoRow icon={<MessageSquare size={16} />} title="Follow-up message" desc="Personalised follow-up per lead" checked={enableAiFollowupPersonalization} onChange={setEnableAiFollowupPersonalization} accent="violet" />
+                                                                        <AiPersoRow icon={<MessageSquare size={16} />} title="Connection acceptance message" desc="Personalised acceptance message per lead" checked={enableAiFollowupPersonalization} onChange={setEnableAiFollowupPersonalization} accent="violet" />
                                                                         <div style={{ fontSize: 11, color: '#9ca3af', paddingLeft: 2 }}>Unchecked messages use your static template.</div>
                                                                     </div>
                                                                 </>
