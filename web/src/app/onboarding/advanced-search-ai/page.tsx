@@ -179,6 +179,10 @@ interface ParsedInboundLead {
     location: string;
     // LinkedIn profile photo (DP) for discovered people.
     profilePicture: string;
+    // A LinkedIn cell that was NOT a person profile (a /search/results/ query, a
+    // /company/ page). Dropped from linkedinProfile, kept here so the import can
+    // tell the user their column did nothing rather than silently ignoring it.
+    unusableLinkedIn?: string;
 }
 
 // ── Specific-person query detection ─────────────────────────────────────────
@@ -594,6 +598,63 @@ function fixPhone(v: string): string {
     return c;
 }
 
+/**
+ * Read one ExcelJS cell as text.
+ *
+ * ExcelJS hands back an OBJECT for hyperlink, rich-text and formula cells, so a
+ * bare String(v) writes the literal "[object Object]" into the sheet data — seen
+ * in production on a LinkedIn column where Excel had auto-linkified one cell.
+ * Prefers the displayed text and falls back to the link target, so a labelled
+ * hyperlink keeps its label and a bare linkified URL keeps its URL.
+ */
+function cellText(v: unknown): string {
+    if (v === null || v === undefined) return '';
+    if (v instanceof Date) return v.toISOString();
+    if (typeof v === 'object') {
+        const o = v as Record<string, any>;
+        if (Array.isArray(o.richText)) return o.richText.map((t: any) => t?.text ?? '').join('').trim();
+        const text = o.text != null ? String(o.text).trim() : '';
+        if (text) return text;
+        if (o.hyperlink != null) return String(o.hyperlink).trim();
+        if (o.result != null) return String(o.result).trim();          // formula cell
+        return '';                                                      // never "[object Object]"
+    }
+    return String(v).trim();
+}
+
+/**
+ * A LinkedIn value is only usable if it points at a PERSON's profile.
+ *
+ * Sheets routinely carry a "LinkedIn Search" column of
+ * `/search/results/people/?keywords=…` URLs. Those resolve to nothing: they are
+ * a query, not a profile, and storing one as `linkedin_url` puts a dead link on
+ * the lead that the connect step cannot act on. Company pages (/company/) are
+ * the same problem. Returns '' for anything that is not /in/<slug>.
+ */
+function usableLinkedInProfile(raw: string): string {
+    const s = (raw || '').trim();
+    if (!s) return '';
+    const m = s.match(/linkedin\.com\/in\/([^/?#\s]+)/i);
+    return m ? `https://www.linkedin.com/in/${m[1]}` : '';
+}
+
+/**
+ * Split a combined "Name" cell into first + last.
+ *
+ * The importer's schema has separate first/last columns, so a sheet with one
+ * `Name` column used to lose the person entirely — and a row with no name is
+ * classified as a company+role TARGET, which makes the importer go and find
+ * whoever holds that title instead of the person who was asked for. First token
+ * is the given name, the rest the family name ("Ahmad Abu Gheith" → Ahmad /
+ * Abu Gheith), matching how the backend splits `leadData.name`.
+ */
+function splitFullName(full: string): { firstName: string; lastName: string } {
+    const parts = (full || '').trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return { firstName: '', lastName: '' };
+    if (parts.length === 1) return { firstName: parts[0], lastName: '' };
+    return { firstName: parts[0], lastName: parts.slice(1).join(' ') };
+}
+
 async function parseInboundCSV(file: File): Promise<ParsedInboundLead[]> {
     return new Promise((resolve, reject) => {
         const isExcel = file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls');
@@ -620,7 +681,7 @@ async function parseInboundCSV(file: File): Promise<ParsedInboundLead[]> {
                     worksheet.eachRow((row, rowNum) => {
                         const rowData = row.values as any[];
                         // Skip the first element (row index) and convert to strings
-                        const strRow = rowData.slice(1).map(v => (v === null || v === undefined) ? '' : String(v).trim());
+                        const strRow = rowData.slice(1).map(cellText);
                         rows.push(strRow);
                     });
 
@@ -666,6 +727,17 @@ function parseRows(rows: string[][], resolve: (leads: ParsedInboundLead[]) => vo
         const ci = {
             firstName: h.findIndex(x => x.toLowerCase().includes('first') && x.toLowerCase().includes('name')),
             lastName: h.findIndex(x => x.toLowerCase().includes('last') && x.toLowerCase().includes('name')),
+            // A SINGLE name column ("Name", "Full Name", "Contact", "Person").
+            // Without this a sheet that names its people loses every one of them:
+            // the row then reads as company+role, and the importer goes and finds
+            // whoever holds that title instead of the person on the sheet.
+            // Excludes anything already claimed by first/last, and "Company Name".
+            fullName: h.findIndex(x => {
+                const s = x.toLowerCase();
+                if (s.includes('first') || s.includes('last') || s.includes('company')
+                    || s.includes('user') || s.includes('file')) return false;
+                return s.includes('name') || s === 'contact' || s === 'person' || s === 'lead';
+            }),
             company: h.findIndex(x => x.toLowerCase().includes('company')),
             linkedin: h.findIndex(x => x.toLowerCase().includes('linkedin')),
             email: h.findIndex(x => x.toLowerCase().includes('email')),
@@ -686,11 +758,22 @@ function parseRows(rows: string[][], resolve: (leads: ParsedInboundLead[]) => vo
                     || s.includes('region') || s.includes('geo');
             }),
         };
-        const leads = rows.slice(1).map(r => ({
-            firstName: (ci.firstName >= 0 ? r[ci.firstName] : '') || '',
-            lastName: (ci.lastName >= 0 ? r[ci.lastName] : '') || '',
+        const leads = rows.slice(1).map(r => {
+            // Split a combined name column, but never over explicit first/last.
+            const explicitFirst = (ci.firstName >= 0 ? r[ci.firstName] : '') || '';
+            const explicitLast = (ci.lastName >= 0 ? r[ci.lastName] : '') || '';
+            const combined = (ci.fullName >= 0 ? r[ci.fullName] : '') || '';
+            const split = (!explicitFirst && !explicitLast) ? splitFullName(combined) : null;
+            // A search URL / company page is not a profile — keep the raw value
+            // for the warning rather than storing a link nothing can act on.
+            const rawLinkedIn = (ci.linkedin >= 0 ? r[ci.linkedin] : '') || '';
+            const linkedinProfile = usableLinkedInProfile(rawLinkedIn);
+            return ({
+            firstName: split ? split.firstName : explicitFirst,
+            lastName: split ? split.lastName : explicitLast,
             companyName: (ci.company >= 0 ? r[ci.company] : '') || '',
-            linkedinProfile: (ci.linkedin >= 0 ? r[ci.linkedin] : '') || '',
+            linkedinProfile,
+            unusableLinkedIn: (!linkedinProfile && rawLinkedIn) ? rawLinkedIn : '',
             email: (ci.email >= 0 ? r[ci.email] : '') || '',
             whatsapp: fixPhone((ci.whatsapp >= 0 ? r[ci.whatsapp] : '') || ''),
             phone: fixPhone((ci.phone >= 0 ? r[ci.phone] : '') || ''),
@@ -699,9 +782,12 @@ function parseRows(rows: string[][], resolve: (leads: ParsedInboundLead[]) => vo
             title: (ci.title >= 0 ? r[ci.title] : '') || '',
             location: (ci.location >= 0 ? r[ci.location] : '') || '',
             profilePicture: '',
-        })).filter(l => {
+            });
+        }).filter(l => {
             const isExample = l.companyName.toLowerCase().includes('delete this') || l.notes.toLowerCase().includes('delete this') || l.email.toLowerCase().includes('example.com');
-            const hasData = (l.companyName && l.companyName.trim().length > 1) || (l.email && l.email.includes('@')) || (l.linkedinProfile && l.linkedinProfile.includes('linkedin.com'));
+            // A named person counts as data even without a company — dropping the
+            // row was part of how a sheet of people came back as someone else.
+            const hasData = (l.companyName && l.companyName.trim().length > 1) || (l.email && l.email.includes('@')) || (l.linkedinProfile && l.linkedinProfile.includes('linkedin.com')) || (l.firstName && l.firstName.trim().length > 1);
             return !isExample && hasData;
         });
         if (leads.length === 0) {
@@ -712,6 +798,44 @@ function parseRows(rows: string[][], resolve: (leads: ParsedInboundLead[]) => vo
     } catch (err: any) {
         reject(err);
     }
+}
+
+/**
+ * What the import is about to DO, in the user's words, before it spends minutes
+ * searching.
+ *
+ * A row with a company and a title but no person name is not looked up — it is
+ * SEARCHED, and whoever currently holds that title at that company comes back.
+ * That is correct behaviour and completely surprising when your sheet listed
+ * seven people by name: the import returns seven different ones. (Stage,
+ * 2026-08-14: a 7-person sheet came back as 8 strangers, because its single
+ * "Name" column was never mapped and every row read as company+role.)
+ *
+ * Returns '' when there is nothing worth saying.
+ */
+function importRoutingNotice(parsed: ParsedInboundLead[]): string {
+    const named = parsed.filter(l => (l.firstName || l.lastName)).length;
+    const roleOnly = parsed.filter(l =>
+        !l.firstName && !l.lastName && (l.title || '').trim() && (l.companyName || '').trim()).length;
+    const unusableLinks = parsed.filter(l => l.unusableLinkedIn).length;
+
+    const parts: string[] = [];
+    if (roleOnly > 0) {
+        parts.push(
+            `🔎 **${roleOnly} of ${parsed.length} rows have no person name**, so I'll search for whoever `
+            + `currently holds that job title at each company. **The people I bring back will not be the `
+            + `ones on your sheet** unless they happen to hold that exact role.`
+            + (named > 0 ? `\n\nThe other ${named} named ${named === 1 ? 'row is' : 'rows are'} looked up directly.` : '')
+            + `\n\nIf your sheet does name people, add a **Name** column (or **First Name** / **Last Name**) `
+            + `and re-upload — I'll then look each person up by name.`);
+    }
+    if (unusableLinks > 0) {
+        parts.push(
+            `🔗 **${unusableLinks} LinkedIn ${unusableLinks === 1 ? 'link is' : 'links are'} not a profile** `
+            + `(a search query or a company page), so ${unusableLinks === 1 ? 'it has' : 'they have'} been ignored. `
+            + `Only \`linkedin.com/in/…\` links point at a person.`);
+    }
+    return parts.join('\n\n');
 }
 
 function isInboundIntent(text: string): boolean {
@@ -3740,14 +3864,25 @@ export default function AdvancedSearchAIPage() {
             // in doSend → finishInboundImport with the user's answer.
             const sheetLocation = parsed.find(l => l.location && l.location.trim())?.location?.trim() || '';
             const hasTitleRows = parsed.some(l => (l.title && l.title.trim()) && !l.firstName && !l.lastName && (l.companyName && l.companyName.trim()));
+            // Say what the import will actually do BEFORE it spends minutes doing
+            // it — role-based rows come back as different people, and a sheet that
+            // meant to name people needs to hear that while it can still be fixed.
+            const routingNotice = importRoutingNotice(parsed);
             if (!sheetLocation && hasTitleRows) {
                 setPendingImportLocation({ parsed });
                 setMessages(p => p.filter(m => m.id !== processingId).concat({
                     id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
-                    text: `📋 Your file has **role-based targets** (company + job titles) rather than named people — I'll search LinkedIn to find the right person for each role.\n\n📍 **Which location should I focus the search on?**\n\nType a city, country or region (e.g. **Dubai**, **UAE**, **MEA**) — or search worldwide.`,
+                    text: `${routingNotice}\n\n📍 **Which location should I focus the search on?**\n\nType a city, country or region (e.g. **Dubai**, **UAE**, **MEA**) — or search worldwide.`,
                     options: [{ label: '🌍 Search worldwide', value: 'worldwide' }],
                 }));
                 return; // finally{} clears busy; the reply resumes the import
+            }
+            // Location came from the sheet (or nothing needs searching) — the gate
+            // above never ran, so the notice still has to be said.
+            if (routingNotice) {
+                setMessages(p => [...p, {
+                    id: `a-notice-${Date.now()}`, role: 'ai', ts: new Date(), text: routingNotice,
+                }]);
             }
 
             await finishInboundImport(parsed, sheetLocation, processingId);
