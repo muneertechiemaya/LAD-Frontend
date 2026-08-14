@@ -717,13 +717,13 @@ export const ConversationContextPanel = memo(function ConversationContextPanel({
 
           {/* Business Profile */}
           <div className="mb-6">
-            <h5 className="text-xs font-semibold uppercase text-muted-foreground mb-2">Business Profile</h5>
             {profileLoading ? (
               <div className="flex items-center justify-center py-4">
                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
               </div>
             ) : businessProfile ? (
               <div className="space-y-3 p-3 rounded-lg bg-muted/30 dark:bg-[#1e2a30]">
+                <h5 className="text-xs font-semibold uppercase text-muted-foreground mb-2">Business Profile</h5>
                 {businessProfile.company_name && (
                   <div className="flex items-start gap-3 text-sm">
                     <Building2 className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
