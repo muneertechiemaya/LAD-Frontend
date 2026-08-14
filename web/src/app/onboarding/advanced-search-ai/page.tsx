@@ -13090,7 +13090,7 @@ function CheckpointFormInline({
                                                                 <>
                                                                     <div style={{ display: 'flex', gap: 8, fontSize: 11.5, color: '#6d28d9', background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: 9, padding: '9px 11px', lineHeight: 1.5 }}>
                                                                         <Check size={15} style={{ flexShrink: 0, marginTop: 1 }} />
-                                                                        <span>Each lead gets a <strong>unique AI-generated message</strong> from their live web presence &amp; LinkedIn posts. Your static template is the fallback.</span>
+                                                                        <span>Leave the message box empty and each lead gets a <strong>unique AI-generated message</strong> from their live web presence &amp; LinkedIn posts. <strong>Write a message and it is sent as written</strong> — AI only fills the <code>{'{{web_insight}}'}</code>-style placeholders inside it.</span>
                                                                     </div>
 
                                                                     {/* Nested granular control — clearly a child of the toggle above */}
