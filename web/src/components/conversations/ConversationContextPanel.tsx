@@ -452,7 +452,7 @@ export const ConversationContextPanel = memo(function ConversationContextPanel({
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 hidden xl:inline-flex"
+            className="h-7 w-7 hidden xl:inline-flex dark:hover:bg-zinc-400/10"
             onClick={onClose}
             aria-label="Close contact info"
           >
