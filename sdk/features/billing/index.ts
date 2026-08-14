@@ -94,6 +94,9 @@ export type {
   LegacyWalletBalance,
   LegacyTransaction,
   CreditPackage,
+  RecurringPlan,
   RecurringStatus,
+  PricingCatalogItem,
+  UsageAggregationGroup,
 } from './types';
 
