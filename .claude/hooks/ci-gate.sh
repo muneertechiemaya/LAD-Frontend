@@ -45,10 +45,16 @@ cmd=$(printf '%s' "$payload" | jq -r '.tool_input.command // ""' 2>/dev/null)
 # Only commits are interesting. This is filtered here rather than with the hook's
 # `if: Bash(git commit*)` because that matches on the command PREFIX, and agents
 # routinely write "cd LAD_backend && git commit …" — which would slip the gate.
-case "$cmd" in
-    *"git commit"*|*"git "*" commit "*) : ;;
-    *) exit 0 ;;
-esac
+#
+# Match `commit` as git's SUBCOMMAND: `git`, then only option-shaped tokens (and
+# the argument to -C/-c), then `commit`. A plain substring test fires on any line
+# containing the word — `echo "=== resulting commit ==="` blocked a cherry-pick.
+# The pattern lives in a variable: bash 3.2 (macOS) cannot parse spaces inside an
+# unquoted =~ pattern, and quoting it would make it a literal string.
+COMMIT_RE='(^|[^[:alnum:]_-])git( +-[^ ]+( +[^ -][^ ]*)?)* +commit( |$)'
+if ! [[ "$cmd" =~ $COMMIT_RE ]]; then
+    exit 0
+fi
 
 target_dir="${CLAUDE_PROJECT_DIR:-$PWD}"
 if [[ "$cmd" =~ (^|[[:space:];&|])cd[[:space:]]+\"?([^[:space:];\&|\"]+) ]]; then
@@ -99,6 +105,19 @@ fail() {  # fail <message> — blocks only when this repo actually has CI
     if [ "$HARD" = "1" ]; then BLOCKERS+=("$1"); else WARNINGS+=("$1"); fi
 }
 
+# A gate that could not RUN is not a gate that failed, and must not be reported as
+# one. Fresh worktrees and clones have no node_modules, so jest/eslint/tsc are
+# simply absent — blocking there would say "your tests failed" about tests that
+# never executed.
+tooling_missing() {
+    printf '%s' "$1" | grep -qE 'command not found|Cannot find module|ENOENT.*node_modules|is not recognized as'
+}
+NODE_DEPS=1
+if [ -f "$REPO/package.json" ] && [ ! -d "$REPO/node_modules" ]; then
+    NODE_DEPS=0
+    WARNINGS+=("no node_modules in $(basename "$REPO") — test/lint/type gates SKIPPED, not passed (run npm ci)")
+fi
+
 # ── Gate: secrets (gitleaks) ────────────────────────────────────────────────
 # CI hard-gates this on every PR. Scan only what is staged — the full-history
 # scan is CI's job and would be far too slow here.
@@ -120,7 +139,7 @@ fi
 # ── Gate: backend unit tests ────────────────────────────────────────────────
 # CI: HARD GATE (npm run test:ci). Hermetic + fully mocked, so it is fast enough
 # to sit in front of a commit.
-if has_script "$REPO" "test:ci"; then
+if has_script "$REPO" "test:ci" && [ "$NODE_DEPS" = "1" ]; then
     if [ -n "$(changed_matching '\.(js|mjs|cjs|json)$')" ]; then
         # Exclude worktree copies. CI checks out a clean tree, so the local run is
         # only faithful with them out: leaving them in pulled in 2055 suites of
@@ -133,7 +152,11 @@ if has_script "$REPO" "test:ci"; then
             # message is never empty for a non-jest runner.
             detail=$(printf '%s' "$test_out" | grep -E '✕|●|Tests:|Suites:' | head -25)
             [ -z "$detail" ] && detail=$(printf '%s' "$test_out" | tail -15)
-            fail "npm run test:ci failed:\n$detail"
+            if tooling_missing "$test_out"; then
+                WARNINGS+=("test:ci could not run — the test gate did NOT check anything:\n$detail")
+            else
+                fail "npm run test:ci failed:\n$detail"
+            fi
         else
             NOTES+=("npm run test:ci: $(printf '%s' "$test_out" | grep -E '^Tests:' | head -1)")
         fi
@@ -143,11 +166,18 @@ if has_script "$REPO" "test:ci"; then
 fi
 
 # ── Gate: plain-node test script (repos with no test:ci) ────────────────────
-if ! has_script "$REPO" "test:ci" && has_script "$REPO" "test"; then
+if ! has_script "$REPO" "test:ci" && has_script "$REPO" "test" && [ "$NODE_DEPS" = "1" ]; then
     if [ -n "$(changed_matching '\.(js|mjs|cjs)$')" ]; then
         test_out=$(cd "$REPO" && npm test --silent 2>&1)
-        [ $? -ne 0 ] && fail "npm test failed:\n$(printf '%s' "$test_out" | tail -20)" \
-                     || NOTES+=("npm test: passed")
+        if [ $? -ne 0 ]; then
+            if tooling_missing "$test_out"; then
+                WARNINGS+=("npm test could not run — the test gate did NOT check anything")
+            else
+                fail "npm test failed:\n$(printf '%s' "$test_out" | tail -20)"
+            fi
+        else
+            NOTES+=("npm test: passed")
+        fi
     fi
 fi
 
