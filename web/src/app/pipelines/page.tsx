@@ -18,10 +18,11 @@
  * server refuses, and the optimistic update in usePipelines rolls back.
  */
 
-import React from 'react';
-import { Lock, Loader2, AlertCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Lock, Loader2, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { usePipelines } from '@lad/frontend-features/snapshots';
-import type { SnapshotPipeline } from '@lad/frontend-features/snapshots';
+import type { SnapshotPipeline, KnobValues } from '@lad/frontend-features/snapshots';
+import { KnobForm } from '@/components/pipelines/KnobForm';
 import { useAuth } from '@/contexts/AuthContext';
 
 function EngineHint({ pipeline }: { pipeline: SnapshotPipeline }) {
@@ -36,14 +37,20 @@ function EngineHint({ pipeline }: { pipeline: SnapshotPipeline }) {
 function PipelineCard({
   pipeline,
   pending,
+  saving,
   onToggle,
+  onSaveKnobs,
 }: {
   pipeline: SnapshotPipeline;
   pending: boolean;
+  saving: boolean;
   onToggle: (active: boolean) => void;
+  onSaveKnobs: (values: KnobValues) => Promise<string[]>;
 }) {
-  const { key, name, blurb, entitled, active, campaignCount } = pipeline;
+  const { key, name, blurb, entitled, active, campaignCount, knobs, knobValues } = pipeline;
   const toggleId = `pipeline-toggle-${key}`;
+  const [showSettings, setShowSettings] = useState(false);
+  const hasKnobs = entitled && knobs.length > 0;
 
   return (
     <div
@@ -93,12 +100,39 @@ function PipelineCard({
           </span>
         )}
       </div>
+
+      {hasKnobs && (
+        <>
+          <button
+            type="button"
+            onClick={() => setShowSettings((s) => !s)}
+            aria-expanded={showSettings}
+            className="-mt-1 flex items-center gap-1 self-start text-xs font-medium text-gray-600 hover:text-gray-900"
+          >
+            {showSettings
+              ? <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+              : <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />}
+            Settings
+          </button>
+
+          {/* Mounted only when open so each card keeps its own draft state and
+              a collapse discards edits rather than holding them invisibly. */}
+          {showSettings && (
+            <KnobForm
+              knobs={knobs}
+              values={knobValues}
+              saving={saving}
+              onSave={onSaveKnobs}
+            />
+          )}
+        </>
+      )}
     </div>
   );
 }
 
 export default function PipelinesPage() {
-  const { overview, isLoading, error, pendingKey, toggle } = usePipelines();
+  const { overview, isLoading, error, pendingKey, savingKey, toggle, saveKnobs } = usePipelines();
   const { isCuratedWorkspace } = useAuth();
 
   if (isLoading) {
@@ -150,13 +184,15 @@ export default function PipelinesPage() {
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 items-start">
         {overview.pipelines.map((pipeline) => (
           <PipelineCard
             key={pipeline.key}
             pipeline={pipeline}
             pending={pendingKey === pipeline.key}
+            saving={savingKey === pipeline.key}
             onToggle={(active) => void toggle(pipeline.key, active)}
+            onSaveKnobs={(values) => saveKnobs(pipeline.key, values)}
           />
         ))}
       </div>

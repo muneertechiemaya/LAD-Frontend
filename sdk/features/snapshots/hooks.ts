@@ -6,8 +6,8 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { getPipelineOverview, setPipelineActive } from './api';
-import type { PipelineOverview, PipelineKey } from './types';
+import { getPipelineOverview, setPipelineActive, setPipelineKnobs } from './api';
+import type { PipelineOverview, PipelineKey, KnobValues } from './types';
 
 export interface UsePipelinesState {
   overview: PipelineOverview | null;
@@ -15,8 +15,23 @@ export interface UsePipelinesState {
   error: string | null;
   /** Pipeline currently being toggled, so only that card shows a pending state. */
   pendingKey: PipelineKey | null;
+  /** Pipeline whose settings are saving. */
+  savingKey: PipelineKey | null;
   toggle: (key: PipelineKey, active: boolean) => Promise<void>;
+  /**
+   * Save settings. Returns per-field error messages from the server, or an
+   * empty array on success — the caller shows them next to the form rather
+   * than in the page-level banner.
+   */
+  saveKnobs: (key: PipelineKey, values: KnobValues) => Promise<string[]>;
   reload: () => Promise<void>;
+}
+
+/** Pull the server's per-field messages out of an apiClient error, if present. */
+function fieldErrorsFrom(err: unknown): string[] {
+  const details = (err as { response?: { data?: { details?: unknown } } })?.response?.data?.details;
+  if (Array.isArray(details) && details.every((d) => typeof d === 'string')) return details;
+  return [];
 }
 
 export function usePipelines(): UsePipelinesState {
@@ -24,6 +39,7 @@ export function usePipelines(): UsePipelinesState {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pendingKey, setPendingKey] = useState<PipelineKey | null>(null);
+  const [savingKey, setSavingKey] = useState<PipelineKey | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -70,5 +86,32 @@ export function usePipelines(): UsePipelinesState {
     }
   }, []);
 
-  return { overview, isLoading, error, pendingKey, toggle, reload: load };
+  const saveKnobs = useCallback(async (key: PipelineKey, values: KnobValues): Promise<string[]> => {
+    setSavingKey(key);
+    setError(null);
+
+    try {
+      const saved = await setPipelineKnobs(key, values);
+      // Take the server's resolved values rather than the submitted ones —
+      // it applies defaults and normalisation (trimming, de-duplication), so
+      // echoing the form input back would drift from what is stored.
+      setOverview((prev) => prev && {
+        ...prev,
+        pipelines: prev.pipelines.map((p) =>
+          p.key === key ? { ...p, knobValues: saved.values } : p
+        ),
+      });
+      return [];
+    } catch (err) {
+      const fieldErrors = fieldErrorsFrom(err);
+      if (fieldErrors.length === 0) {
+        setError(err instanceof Error ? err.message : 'Could not save those settings');
+      }
+      return fieldErrors;
+    } finally {
+      setSavingKey(null);
+    }
+  }, []);
+
+  return { overview, isLoading, error, pendingKey, savingKey, toggle, saveKnobs, reload: load };
 }

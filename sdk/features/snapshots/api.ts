@@ -4,7 +4,7 @@
 // via the Next.js [feature]/[...path] proxy. The proxy mirrors backend paths
 // 1:1, so /api/snapshot/* needs no additional plumbing.
 import { apiGet, apiPatch } from '../../shared/apiClient';
-import type { PipelineOverview, PipelineKey } from './types';
+import type { PipelineOverview, PipelineKey, KnobValues } from './types';
 
 const BASE = '/api/snapshot';
 
@@ -34,6 +34,25 @@ export async function setPipelineActive(
   const res = await apiPatch<{ success: boolean; data: { key: PipelineKey; active: boolean } }>(
     `${BASE}/pipelines/${key}`,
     { active }
+  );
+  return res.data.data;
+}
+
+/**
+ * Save settings for one pipeline. Send only the fields that changed — the
+ * server merges over what is stored rather than replacing it, which is what
+ * keeps a newer snapshot version's values intact across a rollback.
+ *
+ * Validation is server-side; on failure the response carries a `details` array
+ * of per-field messages.
+ */
+export async function setPipelineKnobs(
+  key: PipelineKey,
+  values: KnobValues
+): Promise<{ key: PipelineKey; values: KnobValues }> {
+  const res = await apiPatch<{ success: boolean; data: { key: PipelineKey; values: KnobValues } }>(
+    `${BASE}/pipelines/${key}/knobs`,
+    { values }
   );
   return res.data.data;
 }

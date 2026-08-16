@@ -10,6 +10,41 @@ export type PipelineKey =
 /** Which execution engine runs a pipeline. Display only. */
 export type PipelineEngine = 'stage' | 'sequence';
 
+/** The knob types a snapshot manifest may declare. */
+export type KnobType =
+  | 'text'
+  | 'textarea'
+  | 'number'
+  | 'boolean'
+  | 'select'
+  | 'multiselect'
+  | 'phone'
+  | 'time'
+  | 'list';
+
+export type KnobOption = string | { value: string; label: string };
+
+export interface KnobDefinition {
+  key: string;
+  label: string;
+  type: KnobType;
+  help?: string;
+  required?: boolean;
+  default?: unknown;
+  /** select / multiselect */
+  options?: KnobOption[];
+  /** number */
+  min?: number;
+  max?: number;
+  integer?: boolean;
+  /** text / textarea */
+  maxLength?: number;
+  /** list */
+  maxItems?: number;
+}
+
+export type KnobValues = Record<string, unknown>;
+
 export interface SnapshotPipeline {
   key: PipelineKey;
   name: string;
@@ -27,6 +62,15 @@ export interface SnapshotPipeline {
   /** Whether the tenant has switched it on. Only meaningful when entitled. */
   active: boolean;
   campaignCount: number;
+  /** The settings form to render — shared knobs first, then this pipeline's. */
+  knobs: KnobDefinition[];
+  /**
+   * Current values, already resolved through the schema (manifest defaults
+   * overlaid with what the tenant set). Contains only knobs this snapshot
+   * version declares — values stored by a newer version are kept server-side
+   * but deliberately not returned.
+   */
+  knobValues: KnobValues;
 }
 
 export interface PipelineOverview {
