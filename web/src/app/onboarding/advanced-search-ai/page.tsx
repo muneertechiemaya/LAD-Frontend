@@ -8,7 +8,7 @@ import ReactMarkdown from 'react-markdown';
 import { useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Gem, Upload, FileSpreadsheet, Download, CheckCircle2, Pencil, Trash2, ChevronDown, ChevronLeft, ChevronRight, X, MessageSquare, Users, Zap, Plus, Image as ImageIcon, Video, Loader2, Mic, Globe, Newspaper, UserPlus, Check, History, Volume2, ArrowLeft, Mail, Phone as PhoneIcon, MapPin, RefreshCw } from 'lucide-react';
+import { Sparkles, Gem, Upload, FileSpreadsheet, Download, CheckCircle2, Pencil, Trash2, ChevronDown, ChevronLeft, ChevronRight, X, MessageSquare, Users, Zap, Plus, Image as ImageIcon, Video, Loader2, Mic, Globe, Newspaper, UserPlus, Check, History, Volume2, ArrowLeft, Mail, Phone as PhoneIcon, MapPin, RefreshCw, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ProfileSummaryDialog } from '@/components/campaigns';
 import AgentVisualizer from '@/components/ui/AgentVisualizer';
@@ -289,6 +289,19 @@ interface ChatMsg {
          * minutes to reach the same answer.
          */
         warnNoResults?: boolean;
+        /**
+         * Discovery has spent its daily budget and will carry on tomorrow.
+         *
+         * A paused job is NOT a stalled one, and the difference has to reach the
+         * screen: a bar that simply stops is the exact failure the old four-minute
+         * chunk deadline presented, and users read it as broken. Whatever has
+         * already been found is real and usable now.
+         */
+        paused?: {
+            /** ISO timestamp the backend will resume at. */
+            until: string | null;
+            reason: string | null;
+        };
     };
 }
 
@@ -317,6 +330,29 @@ function formatEta(seconds: number): string {
     if (seconds <= 45) return 'less than a minute';
     const mins = Math.round(seconds / 60);
     return `about ${mins} minute${mins === 1 ? '' : 's'}`;
+}
+
+/**
+ * When a paused discovery job comes back, in words.
+ *
+ * Always relative-plus-absolute ("tomorrow at 00:00"), never a bare timestamp:
+ * the backend resumes on ITS midnight, so a user in another timezone reading
+ * only a clock time has no way to tell whether that is tonight or tomorrow.
+ */
+function formatResumeAt(iso: string | null | undefined): string | null {
+    if (!iso) return null;
+    const at = new Date(iso);
+    if (Number.isNaN(at.getTime())) return null;
+
+    const clock = at.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    const midnight = new Date();
+    midnight.setHours(0, 0, 0, 0);
+    const days = Math.round((new Date(at).setHours(0, 0, 0, 0) - midnight.getTime()) / 86_400_000);
+
+    if (at.getTime() <= Date.now()) return 'any moment now';
+    if (days <= 0) return `today at ${clock}`;
+    if (days === 1) return `tomorrow at ${clock}`;
+    return `${at.toLocaleDateString(undefined, { weekday: 'long' })} at ${clock}`;
 }
 
 /**
@@ -1384,6 +1420,7 @@ export default function AdvancedSearchAIPage() {
     // placeholder rows (no name, no LinkedIn URL) and produced an empty campaign.
     const [importJob, setImportJob] = useState<{
         id: string; status: string; percent: number; processed: number; total: number;
+        pausedUntil?: string | null; pauseReason?: string | null;
     } | null>(null);
     const importJobPollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     /**
@@ -1406,8 +1443,18 @@ export default function AdvancedSearchAIPage() {
      * be rewritten while the user is still deciding. Only this one autosaves.
      */
     const [parkedDraftId, setParkedDraftId] = useState<string | null>(null);
+    // A PAUSED job does not block the launch.
+    //
+    // The gate exists so a campaign cannot be built against rows the search has
+    // not reached yet. A job paused on its daily cap is in a different position:
+    // the people it found are fully resolved, and the rest are queued for
+    // tomorrow. Holding the button would make the user wait a day to act on leads
+    // that are ready now — and since launching attaches the job to the campaign,
+    // everything found afterwards enrols itself anyway.
     const importDiscoveryPending = !importRunInBackground && !!importJob
-        && importJob.status !== 'completed' && importJob.status !== 'failed';
+        && importJob.status !== 'completed'
+        && importJob.status !== 'failed'
+        && importJob.status !== 'paused';
     const [directContactLeadIds, setDirectContactLeadIds] = useState<string[]>([]); // Real UUIDs for chat-entered direct contacts
     const fileInputRef = useRef<HTMLInputElement>(null);
     const mediaFileInputRef = useRef<HTMLInputElement>(null);
@@ -3443,6 +3490,26 @@ export default function AdvancedSearchAIPage() {
      */
     const pollImportJob = useCallback(async (jobId: string) => {
         const POLL_MS = 4000;
+        const PAUSED_POLL_MIN_MS = 60_000;
+        const PAUSED_POLL_MAX_MS = 5 * 60_000;
+
+        /**
+         * How long to wait before asking again.
+         *
+         * Four seconds is right for work in flight and absurd for a job that
+         * resumes tomorrow — a page left open overnight would make thousands of
+         * pointless requests. Back off while paused, but stay capped at five
+         * minutes: the OTHER ceiling is outreach capacity, which frees up during
+         * the day, so a paused job can resume well before its stated time.
+         */
+        const nextPollDelay = (status: string, pausedUntil?: string | null): number => {
+            if (status !== 'paused') return POLL_MS;
+            const until = pausedUntil ? Date.parse(pausedUntil) : NaN;
+            if (!Number.isFinite(until)) return PAUSED_POLL_MAX_MS;
+            const wait = until - Date.now();
+            return Math.min(PAUSED_POLL_MAX_MS, Math.max(PAUSED_POLL_MIN_MS, wait));
+        };
+
         const started = Date.now();
         const MAX_MS = 30 * 60 * 1000;      // give up messaging after 30 min
 
@@ -3454,6 +3521,8 @@ export default function AdvancedSearchAIPage() {
                 setImportJob({
                     id: jobId, status: job.status, percent: job.percent ?? 0,
                     processed: job.processedRows ?? 0, total: job.totalRows ?? 0,
+                    pausedUntil: job.pausedUntil ?? null,
+                    pauseReason: job.pauseReason ?? null,
                 });
 
                 // ── Live progress bar ──
@@ -3461,7 +3530,7 @@ export default function AdvancedSearchAIPage() {
                 // jumps rather than smoothly. Use the measured rate as soon as one
                 // chunk has landed, and the prior before that, so the estimate is
                 // real data whenever real data exists.
-                if (job.status === 'queued' || job.status === 'running') {
+                if (job.status === 'queued' || job.status === 'running' || job.status === 'paused') {
                     const processed = job.processedRows ?? 0;
                     const total = job.totalRows ?? 0;
                     const remainingRows = Math.max(0, total - processed);
@@ -3475,9 +3544,18 @@ export default function AdvancedSearchAIPage() {
                         ? { ...m, importProgress: {
                             percent: job.percent ?? 0,
                             processed, total, found,
-                            etaLabel: remainingRows > 0 ? formatEta(perRow * remainingRows) : null,
-                            // One completed chunk with nothing to show for it.
-                            warnNoResults: processed >= 5 && found === 0,
+                            // A paused job resumes tomorrow, so a minutes-based ETA
+                            // would be a lie. The resume time is the honest answer.
+                            etaLabel: job.status === 'paused'
+                                ? null
+                                : (remainingRows > 0 ? formatEta(perRow * remainingRows) : null),
+                            // One completed chunk with nothing to show for it. Not
+                            // worth saying while paused — "nothing found yet" reads
+                            // as failure when the real message is "more tomorrow".
+                            warnNoResults: job.status !== 'paused' && processed >= 5 && found === 0,
+                            paused: job.status === 'paused'
+                                ? { until: job.pausedUntil ?? null, reason: job.pauseReason ?? null }
+                                : undefined,
                           } }
                         : m));
                 }
@@ -3558,14 +3636,18 @@ export default function AdvancedSearchAIPage() {
                     return;
                 }
 
-                if (Date.now() - started > MAX_MS) {
+                // The give-up timer must not apply to a PAUSED job: it is
+                // legitimately long-running, and telling someone to "refresh in a
+                // few minutes" about work that resumes tomorrow is worse than
+                // saying nothing.
+                if (job.status !== 'paused' && Date.now() - started > MAX_MS) {
                     setMessages(p => [...p.filter(m => m.id !== IMPORT_PROGRESS_MSG_ID), {
                         id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
                         text: `⏱️ Discovery is taking longer than expected. It's still running in the background — refresh in a few minutes to pick up the results.`,
                     }]);
                     return;
                 }
-                importJobPollRef.current = setTimeout(tick, POLL_MS);
+                importJobPollRef.current = setTimeout(tick, nextPollDelay(job.status, job.pausedUntil));
             } catch {
                 // Transient network/API blip — keep polling rather than abandoning
                 // a job that is still running server-side.
@@ -10022,26 +10104,44 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                   </div>
                 )}
 
-                {msg.importProgress && (
-                  <div className="mt-3 rounded-[10px] border border-blue-100 dark:border-blue-900/60 bg-blue-50/60 dark:bg-blue-950/30 px-3.5 py-3">
+                {msg.importProgress && (() => {
+                  // Paused is a WAITING state, not a broken one, and it has to look
+                  // different or it reads as the bar having died — which is exactly
+                  // how the old chunk deadline appeared to users.
+                  const paused = msg.importProgress.paused;
+                  const resumeLabel = formatResumeAt(paused?.until);
+                  return (
+                  <div className={`mt-3 rounded-[10px] border px-3.5 py-3 ${paused
+                      ? 'border-amber-200 dark:border-amber-900/60 bg-amber-50/70 dark:bg-amber-950/25'
+                      : 'border-blue-100 dark:border-blue-900/60 bg-blue-50/60 dark:bg-blue-950/30'}`}>
                       <div className="flex items-center justify-between mb-2">
-                          <span className="text-[12px] font-semibold text-[#172560] dark:text-blue-200">
-                              Searching LinkedIn
+                          <span className={`text-[12px] font-semibold inline-flex items-center gap-1.5 ${paused
+                              ? 'text-amber-900 dark:text-amber-200'
+                              : 'text-[#172560] dark:text-blue-200'}`}>
+                              {paused ? <><Clock size={13} /> Paused for today</> : 'Searching LinkedIn'}
                           </span>
-                          <span className="text-[12px] font-bold tabular-nums text-[#172560] dark:text-blue-200">
+                          <span className={`text-[12px] font-bold tabular-nums ${paused
+                              ? 'text-amber-900 dark:text-amber-200'
+                              : 'text-[#172560] dark:text-blue-200'}`}>
                               {msg.importProgress.percent}%
                           </span>
                       </div>
                       <div
-                        className="h-2 w-full rounded-full bg-blue-100 dark:bg-blue-900/60 overflow-hidden"
+                        className={`h-2 w-full rounded-full overflow-hidden ${paused
+                            ? 'bg-amber-100 dark:bg-amber-900/50'
+                            : 'bg-blue-100 dark:bg-blue-900/60'}`}
                         role="progressbar"
                         aria-valuenow={msg.importProgress.percent}
                         aria-valuemin={0}
                         aria-valuemax={100}
-                        aria-label="Lead discovery progress"
+                        aria-label={paused ? 'Lead discovery paused' : 'Lead discovery progress'}
                       >
+                          {/* The pulse means "work in flight". A paused bar must be
+                              still, or it claims progress that is not happening. */}
                           <div
-                            className="h-full rounded-full bg-[#172560] dark:bg-blue-500 transition-[width] duration-700 ease-out animate-pulse"
+                            className={`h-full rounded-full transition-[width] duration-700 ease-out ${paused
+                                ? 'bg-amber-500 dark:bg-amber-400'
+                                : 'bg-[#172560] dark:bg-blue-500 animate-pulse'}`}
                             style={{ width: `${Math.max(2, msg.importProgress.percent)}%` }}
                           />
                       </div>
@@ -10050,6 +10150,33 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                           {msg.importProgress.found > 0 && <> · <span className="font-semibold text-emerald-700 dark:text-emerald-400">{msg.importProgress.found} found</span></>}
                           {msg.importProgress.etaLabel && <> · {msg.importProgress.etaLabel} remaining</>}
                       </div>
+                      {paused && (
+                          <div className="mt-2 pt-2 border-t border-amber-200/70 dark:border-amber-900/50 text-[11.5px] text-amber-900 dark:text-amber-200">
+                              <div>
+                                  {paused.reason
+                                      || 'The daily discovery limit for this LinkedIn account has been reached.'}
+                              </div>
+                              {resumeLabel && (
+                                  <div className="mt-1 font-semibold">
+                                      Resuming {resumeLabel}. Nothing is lost — the remaining
+                                      companies are queued.
+                                  </div>
+                              )}
+                              {/* What is already found is fully resolved and usable NOW.
+                                  The CTA for acting on it is the background button below,
+                                  so say the leads are ready and let that button be the
+                                  single place to click — two competing calls to action on
+                                  one card is worse than none. */}
+                              {msg.importProgress.found > 0 && (
+                                  <div className="mt-1.5 text-gray-700 dark:text-gray-300">
+                                      The{' '}
+                                      <span className="font-semibold">{msg.importProgress.found}</span>{' '}
+                                      found so far are ready to use — you don&apos;t have to
+                                      wait for the rest.
+                                  </div>
+                              )}
+                          </div>
+                      )}
                       {/* Don't make the user watch. Launching now attaches this job
                           to the campaign, so everything found afterwards enrols
                           itself and the daily limits spread it over the days. */}
@@ -10058,7 +10185,9 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                             onClick={() => onRunImportInBackground()}
                             className="mt-2.5 w-full px-3 py-1.5 bg-white dark:bg-gray-800 text-[#172560] dark:text-blue-200 border border-[#172560]/25 dark:border-blue-700 rounded-[8px] text-[11.5px] font-semibold cursor-pointer transition-all hover:bg-blue-50 dark:hover:bg-gray-700"
                           >
-                              Configure the campaign now — keep searching in the background
+                              {paused
+                                  ? 'Configure the campaign now with the leads found so far'
+                                  : 'Configure the campaign now — keep searching in the background'}
                           </button>
                       )}
                       {msg.importProgress.warnNoResults && (
@@ -10071,7 +10200,8 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                           </div>
                       )}
                   </div>
-                )}
+                  );
+                })()}
 
                 {/* ── Inbound: Summary with platform badges ── */}
                 {msg.inboundAction === 'summary' && msg.inboundSummary && (
