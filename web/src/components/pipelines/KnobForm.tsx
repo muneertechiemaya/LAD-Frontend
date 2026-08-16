@@ -36,7 +36,7 @@ function KnobField({
 }) {
   const id = `knob-${knob.key}`;
   const base =
-    'w-full rounded-md border border-gray-300 px-2.5 py-1.5 text-sm text-gray-900 disabled:bg-gray-50 disabled:text-gray-400 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600';
+    'w-full rounded-md border border-gray-300 dark:border-blue-950/40 bg-white dark:bg-[#000c3b] px-2.5 py-1.5 text-sm text-gray-900 dark:text-white disabled:bg-gray-50 dark:disabled:bg-[#071131] disabled:text-gray-400 dark:disabled:text-slate-500 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600';
 
   switch (knob.type) {
     case 'boolean':
@@ -50,7 +50,7 @@ function KnobField({
             onChange={(e) => onChange(e.target.checked)}
             className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-600"
           />
-          <span className="text-sm text-gray-700">{knob.label}</span>
+          <span className="text-sm text-gray-700 dark:text-slate-300">{knob.label}</span>
         </label>
       );
 
@@ -88,8 +88,8 @@ function KnobField({
                 onClick={() => onChange(on ? selected.filter((s) => s !== v) : [...selected, v])}
                 className={`rounded-full border px-2.5 py-1 text-xs transition-colors disabled:opacity-50 ${
                   on
-                    ? 'border-emerald-600 bg-emerald-50 text-emerald-800'
-                    : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'
+                    ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300'
+                    : 'border-gray-300 dark:border-blue-950/40 bg-white dark:bg-[#000c3b] text-gray-600 dark:text-slate-300 hover:border-gray-400'
                 }`}
               >
                 {optionLabel(o)}
@@ -211,12 +211,12 @@ export function KnobForm({
   };
 
   return (
-    <div className="mt-4 border-t border-gray-100 pt-4">
+    <div className="mt-4 border-t border-gray-100 dark:border-blue-950/40 pt-4">
       <div className="grid gap-3.5">
         {knobs.map((knob) => (
           <div key={knob.key} className="grid gap-1">
             {knob.type !== 'boolean' && (
-              <label htmlFor={`knob-${knob.key}`} className="text-xs font-medium text-gray-700">
+              <label htmlFor={`knob-${knob.key}`} className="text-xs font-medium text-gray-700 dark:text-slate-300">
                 {knob.label}
               </label>
             )}
@@ -226,15 +226,15 @@ export function KnobForm({
               disabled={saving}
               onChange={(next) => setDraft((d) => ({ ...d, [knob.key]: next }))}
             />
-            {knob.help && <p className="text-xs leading-relaxed text-gray-500">{knob.help}</p>}
+            {knob.help && <p className="text-xs leading-relaxed text-gray-500 dark:text-slate-400">{knob.help}</p>}
           </div>
         ))}
       </div>
 
       {errors.length > 0 && (
-        <ul role="alert" className="mt-3 space-y-1 rounded-md bg-red-50 p-2.5">
+        <ul role="alert" className="mt-3 space-y-1 rounded-md bg-red-50 dark:bg-red-950/40 p-2.5">
           {errors.map((e) => (
-            <li key={e} className="text-xs text-red-800">{e}</li>
+            <li key={e} className="text-xs text-red-800 dark:text-red-300">{e}</li>
           ))}
         </ul>
       )}
@@ -244,7 +244,7 @@ export function KnobForm({
           type="button"
           onClick={() => void handleSave()}
           disabled={!dirty || saving}
-          className="inline-flex items-center gap-1.5 rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-gray-300"
+          className="inline-flex items-center gap-1.5 rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-gray-300 dark:disabled:bg-slate-700"
         >
           {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
           Save settings
@@ -253,7 +253,7 @@ export function KnobForm({
           <button
             type="button"
             onClick={() => { setDraft(values); setErrors([]); }}
-            className="text-sm text-gray-500 hover:text-gray-700"
+            className="text-sm text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"
           >
             Discard
           </button>
