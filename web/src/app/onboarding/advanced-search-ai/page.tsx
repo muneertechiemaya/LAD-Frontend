@@ -1424,6 +1424,14 @@ export default function AdvancedSearchAIPage() {
     } | null>(null);
     const importJobPollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     /**
+     * Resolved people from the most recent poll.
+     *
+     * `inboundLeads` is only populated when the job COMPLETES, so a paused job
+     * would hand the summary card an empty list — a campaign configured against
+     * nobody, under a card promising "the 50 found so far are ready to use".
+     */
+    const importJobPeopleRef = useRef<any[]>([]);
+    /**
      * Contact only people the evidence shows work at the company TODAY.
      * Chosen before the search runs — it changes which results are kept, and the
      * backend cannot revisit a discarded profile later.
@@ -3440,8 +3448,8 @@ export default function AdvancedSearchAIPage() {
      * make a lead contactable, and dropping them is what produced campaigns full
      * of "at <COMPANY>" placeholders.
      */
-    const seedFromResolvedLeads = useCallback((resolved: any[]) => {
-        if (!Array.isArray(resolved) || resolved.length === 0) return;
+    const seedFromResolvedLeads = useCallback((resolved: any[]): ParsedInboundLead[] => {
+        if (!Array.isArray(resolved) || resolved.length === 0) return [];
         const rebuiltInbound: ParsedInboundLead[] = resolved.map((r) => {
             const { firstName, lastName } = readLeadName(r);
             return {
@@ -3477,6 +3485,7 @@ export default function AdvancedSearchAIPage() {
         setInboundLeadIds(ids);
         setSelectedLeadIds(new Set(ids));
         syncInboundSummary(rebuiltInbound);
+        return rebuiltInbound;
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -3538,8 +3547,10 @@ export default function AdvancedSearchAIPage() {
                     const perRow = processed > 0
                         ? elapsedSec / processed
                         : IMPORT_SECONDS_PER_ROW_PRIOR;
-                    const found = Array.isArray(job.leads)
-                        ? job.leads.filter((r: any) => r.linkedin_url).length : 0;
+                    const people = Array.isArray(job.leads)
+                        ? job.leads.filter((r: any) => r.linkedin_url) : [];
+                    importJobPeopleRef.current = people;
+                    const found = people.length;
                     setMessages(p => p.map(m => m.id === IMPORT_PROGRESS_MSG_ID
                         ? { ...m, importProgress: {
                             percent: job.percent ?? 0,
@@ -3733,8 +3744,33 @@ export default function AdvancedSearchAIPage() {
         return `${sheet} — imported ${stamp}`;
     }, [uploadedFileName]);
 
-    const runImportInBackground = useCallback(async () => {
+    /**
+     * Stop waiting for discovery and configure the campaign against what has
+     * been found so far.
+     *
+     * `parkDraft` is the difference between the two callers:
+     *
+     *   - "keep searching in the background" (job still RUNNING) parks a draft,
+     *     because the search can outlive the tab by an hour and the user needs
+     *     something in /campaigns to come back to;
+     *   - the PAUSED card does not. That job is not going anywhere — it is
+     *     already durable server-side, with its remaining searches queued and a
+     *     resume time set — so a draft campaign would be an artefact the user
+     *     never asked for, cluttering /campaigns for someone who only wanted to
+     *     see the leads that are ready.
+     *
+     * Both set `importRunInBackground`, which is what makes the launch path hand
+     * the still-live job to the campaign so later finds enrol themselves.
+     */
+    const runImportInBackground = useCallback(async ({ parkDraft = true }: { parkDraft?: boolean } = {}) => {
         setImportRunInBackground(true);
+
+        // Seed the panel from whatever the job has resolved so far. Without this
+        // the summary card is built from `inboundLeads`, which is only filled on
+        // COMPLETION — so a paused job would offer a campaign with nobody in it.
+        // Using the returned list rather than reading state back means the counts
+        // are right in this same tick.
+        const seeded = seedFromResolvedLeads(importJobPeopleRef.current);
 
         // ── Park the run in a DRAFT campaign ──────────────────────────────────
         // A background search can outlive the tab: 101 minutes for a 151-company
@@ -3748,7 +3784,7 @@ export default function AdvancedSearchAIPage() {
         // the wizard at it so Launch UPDATES this draft instead of creating a
         // second campaign next to it.
         let draftId: string | null = null;
-        if (importJob?.id && !editingCampaignId) {
+        if (parkDraft && importJob?.id && !editingCampaignId) {
             try {
                 const created: any = await campaignCreation.createCampaign({
                     name: draftCampaignName(),
@@ -3780,20 +3816,28 @@ export default function AdvancedSearchAIPage() {
         //
         // So emit the card here too. `targeting` + `inboundAction` +
         // `inboundSummary` are all three required for it to render (see the
-        // Bubble gate), and the counts are whatever has been found so far —
-        // usually zero, which is honest: the campaign is configured now and
-        // filled by the search as it runs.
-        const searchedSoFar = computeInboundCounts(inboundLeads);
+        // Bubble gate), and the counts are whatever the job has resolved so far.
+        // Zero is possible early in a run and is honest — the campaign is
+        // configured now and filled by the search as it goes.
+        const searchedSoFar = computeInboundCounts(seeded.length ? seeded : inboundLeads);
         const bgTargeting: LeadTargeting = {
             job_titles: [], industries: [], locations: [],
-            keywords: [`Searching ${importJob?.total ?? 0} companies`],
+            keywords: [searchedSoFar.total > 0
+                ? `${searchedSoFar.total} Inbound Lead${searchedSoFar.total === 1 ? '' : 's'}`
+                : `Searching ${importJob?.total ?? 0} companies`],
         };
         setTargeting(bgTargeting);
         setMessages(p => [...p, {
             id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
-            text: `👍 **Carrying on in the background.**\n\nSet up the campaign now and launch whenever you're ready — `
-                + `I'll keep searching, and everyone I find afterwards joins it automatically, spread across the days `
-                + `so your LinkedIn limits aren't breached.`
+            text: (parkDraft
+                    ? `👍 **Carrying on in the background.**\n\nSet up the campaign now and launch whenever you're ready — `
+                      + `I'll keep searching, and everyone I find afterwards joins it automatically, spread across the days `
+                      + `so your LinkedIn limits aren't breached.`
+                    // The paused wording has to be accurate about WHEN: this job is
+                    // not searching right now, it resumes on its own schedule.
+                    : `👍 **Using the ${searchedSoFar.total} found so far.**\n\nSet up the campaign now and launch whenever `
+                      + `you're ready. Searching picks up again by itself, and everyone found after that joins this same `
+                      + `campaign automatically — spread across the days so your LinkedIn limits aren't breached.`)
                 + (draftId
                     ? `\n\n💾 Saved as a draft — **${draftCampaignName()}**. You can close this page and pick it up from `
                       + `[Campaigns](/campaigns) whenever you like; the search keeps running either way.`
@@ -3803,7 +3847,13 @@ export default function AdvancedSearchAIPage() {
             inboundSummary: searchedSoFar,
             inboundSearching: true,
         }]);
-    }, [inboundLeads, importJob, editingCampaignId, campaignCreation, attachImportJob, draftCampaignName, messages]);
+    }, [inboundLeads, importJob, editingCampaignId, campaignCreation, attachImportJob, draftCampaignName, messages, seedFromResolvedLeads]);
+
+    /** The paused card's CTA: the summary card, no draft campaign. */
+    const configureWithFoundLeads = useCallback(
+        () => runImportInBackground({ parkDraft: false }),
+        [runImportInBackground],
+    );
 
     // Stop polling when the page goes away.
     useEffect(() => () => {
@@ -7521,7 +7571,7 @@ export default function AdvancedSearchAIPage() {
                                                 : 'Qualifying...'
                                         }
                                         : m;
-                                    return <Bubble key={m.id} msg={displayMsg} onOpt={onOptClick} onShowPanel={setShowPanel} onStartCheckpoints={() => setCpStep(0)} onLetAgentDeal={letAgentDeal} agentDealLoading={agentDealLoading} onStartTargeting={() => { setTgStep(0); setChatBlocked(false); }} hasPanel={!!showPanel} leadsCount={leads.length} filteredLeadsCount={filteredLeads.length} onUploadClick={() => fileInputRef.current?.click()} useSalesNav={useSalesNav} isMobile={isMobile} rolePreviewing={rolePreviewing} roleIcp={businessProfile} discoveryPending={importDiscoveryPending} discoveryProgress={importJob ? `${importJob.percent}%` : ''} currentEmployerOnly={currentEmployerOnly} onToggleCurrentEmployerOnly={setCurrentEmployerOnly} onStartImportSearch={startPendingImportSearch} onRunImportInBackground={importJob && !importRunInBackground ? runImportInBackground : undefined} />;
+                                    return <Bubble key={m.id} msg={displayMsg} onOpt={onOptClick} onShowPanel={setShowPanel} onStartCheckpoints={() => setCpStep(0)} onLetAgentDeal={letAgentDeal} agentDealLoading={agentDealLoading} onStartTargeting={() => { setTgStep(0); setChatBlocked(false); }} hasPanel={!!showPanel} leadsCount={leads.length} filteredLeadsCount={filteredLeads.length} onUploadClick={() => fileInputRef.current?.click()} useSalesNav={useSalesNav} isMobile={isMobile} rolePreviewing={rolePreviewing} roleIcp={businessProfile} discoveryPending={importDiscoveryPending} discoveryProgress={importJob ? `${importJob.percent}%` : ''} currentEmployerOnly={currentEmployerOnly} onToggleCurrentEmployerOnly={setCurrentEmployerOnly} onStartImportSearch={startPendingImportSearch} onRunImportInBackground={importJob && !importRunInBackground ? runImportInBackground : undefined} onConfigureWithFoundLeads={importJob && !importRunInBackground ? configureWithFoundLeads : undefined} />;
                                 })
                             )}
                             {/* Import leads prompt — shown when conversation is about existing client relationships */}
@@ -9787,7 +9837,7 @@ function RoleCardView({ card, onOpt, previewing, icp }: { card: NonNullable<Chat
     );
 }
 
-function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, agentDealLoading, onStartTargeting, hasPanel, leadsCount, filteredLeadsCount, onUploadClick, useSalesNav, isMobile, rolePreviewing, roleIcp, discoveryPending, discoveryProgress, currentEmployerOnly, onToggleCurrentEmployerOnly, onStartImportSearch, onRunImportInBackground }: { msg: ChatMsg; onOpt: (v: string) => void; onShowPanel: (panel: 'leads' | 'workflow') => void; onStartCheckpoints: () => void; onLetAgentDeal?: () => void; agentDealLoading?: boolean; onStartTargeting: () => void; hasPanel: boolean; leadsCount: number; filteredLeadsCount?: number; onUploadClick?: () => void; useSalesNav?: boolean; isMobile?: boolean; rolePreviewing?: boolean; roleIcp?: Record<string, string>; discoveryPending?: boolean; discoveryProgress?: string; currentEmployerOnly?: boolean; onToggleCurrentEmployerOnly?: (v: boolean) => void; onStartImportSearch?: () => void; onRunImportInBackground?: () => void }) {
+function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, agentDealLoading, onStartTargeting, hasPanel, leadsCount, filteredLeadsCount, onUploadClick, useSalesNav, isMobile, rolePreviewing, roleIcp, discoveryPending, discoveryProgress, currentEmployerOnly, onToggleCurrentEmployerOnly, onStartImportSearch, onRunImportInBackground, onConfigureWithFoundLeads }: { msg: ChatMsg; onOpt: (v: string) => void; onShowPanel: (panel: 'leads' | 'workflow') => void; onStartCheckpoints: () => void; onLetAgentDeal?: () => void; agentDealLoading?: boolean; onStartTargeting: () => void; hasPanel: boolean; leadsCount: number; filteredLeadsCount?: number; onUploadClick?: () => void; useSalesNav?: boolean; isMobile?: boolean; rolePreviewing?: boolean; roleIcp?: Record<string, string>; discoveryPending?: boolean; discoveryProgress?: string; currentEmployerOnly?: boolean; onToggleCurrentEmployerOnly?: (v: boolean) => void; onStartImportSearch?: () => void; onRunImportInBackground?: () => void; onConfigureWithFoundLeads?: () => void }) {
     const user = useSelector((state: any) => state.auth?.user);
     const displayName = user?.name || "User";
     const userInitial = displayName.charAt(0).toUpperCase();
@@ -10179,10 +10229,15 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                       )}
                       {/* Don't make the user watch. Launching now attaches this job
                           to the campaign, so everything found afterwards enrols
-                          itself and the daily limits spread it over the days. */}
-                      {onRunImportInBackground && (
+                          itself and the daily limits spread it over the days.
+
+                          A PAUSED job takes the no-draft route: it is already
+                          durable server-side with its resume time set, so parking
+                          a draft campaign would leave an artefact in /campaigns
+                          that the user never asked for. */}
+                      {(paused ? onConfigureWithFoundLeads : onRunImportInBackground) && (
                           <button
-                            onClick={() => onRunImportInBackground()}
+                            onClick={() => (paused ? onConfigureWithFoundLeads : onRunImportInBackground)?.()}
                             className="mt-2.5 w-full px-3 py-1.5 bg-white dark:bg-gray-800 text-[#172560] dark:text-blue-200 border border-[#172560]/25 dark:border-blue-700 rounded-[8px] text-[11.5px] font-semibold cursor-pointer transition-all hover:bg-blue-50 dark:hover:bg-gray-700"
                           >
                               {paused
