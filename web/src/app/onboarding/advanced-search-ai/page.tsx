@@ -8,7 +8,7 @@ import ReactMarkdown from 'react-markdown';
 import { useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Gem, Upload, FileSpreadsheet, Download, CheckCircle2, Pencil, Trash2, ChevronDown, ChevronLeft, ChevronRight, X, MessageSquare, Users, Zap, Plus, Image as ImageIcon, Video, Loader2, Mic, Globe, Newspaper, UserPlus, Check, History, Volume2, ArrowLeft, Mail, Phone as PhoneIcon, MapPin, RefreshCw } from 'lucide-react';
+import { Sparkles, Gem, Upload, FileSpreadsheet, Download, CheckCircle2, Pencil, Trash2, ChevronDown, ChevronLeft, ChevronRight, X, MessageSquare, Users, Zap, Plus, Image as ImageIcon, Video, Loader2, Mic, Globe, Newspaper, UserPlus, Check, History, Volume2, ArrowLeft, Mail, Phone as PhoneIcon, MapPin, RefreshCw, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ProfileSummaryDialog } from '@/components/campaigns';
 import AgentVisualizer from '@/components/ui/AgentVisualizer';
@@ -179,6 +179,10 @@ interface ParsedInboundLead {
     location: string;
     // LinkedIn profile photo (DP) for discovered people.
     profilePicture: string;
+    // A LinkedIn cell that was NOT a person profile (a /search/results/ query, a
+    // /company/ page). Dropped from linkedinProfile, kept here so the import can
+    // tell the user their column did nothing rather than silently ignoring it.
+    unusableLinkedIn?: string;
 }
 
 // ── Specific-person query detection ─────────────────────────────────────────
@@ -209,6 +213,28 @@ function detectSpecificPersonQuery(t: LeadTargeting | null | undefined): { name:
     };
 }
 
+// ── Pasted LinkedIn people-search URLs ──────────────────────────────────────
+// A batch of "linkedin.com/search/results/people/?keywords=Ajay+Bhojwani+MCI+Group"
+// links is a list of people to look up, not a company to analyze. Left alone they
+// reach the chat backend's URL handler, which only knows /company/ and /in/ links
+// and answers "I couldn't detect a valid URL" for every one of them.
+//
+// A search URL has no member id, so it can't be opened as a profile — but its
+// `keywords` name a person and their employer, which is what the PERSON waterfall
+// resolves from. So we detect the paste here and route it into the same inbound
+// import path as a CSV: backend splits name/company, resolves each person's real
+// profile, panel fills with cards. Handles one URL as happily as fifty.
+const LINKEDIN_SEARCH_URL_RE =
+    /https?:\/\/(?:[a-z]{2,3}\.)?linkedin\.com\/search\/results\/(?:people|all)?\/?\?[^\s<>"')]+/gi;
+function extractLinkedInSearchUrls(text: string): string[] {
+    if (!text) return [];
+    const seen = new Set<string>();
+    for (const raw of text.match(LINKEDIN_SEARCH_URL_RE) || []) {
+        seen.add(raw.replace(/[.,;:]+$/, ''));
+    }
+    return [...seen];
+}
+
 interface ChatMsg {
     id: string;
     role: 'user' | 'ai';
@@ -231,6 +257,9 @@ interface ChatMsg {
     leads?: LeadProfile[];
     inboundAction?: 'download' | 'upload' | 'summary';
     inboundSummary?: { total: number; linkedin: number; email: number; whatsapp: number; phone: number; website: number };
+    /** The summary card is for a search still RUNNING — counts are a running tally,
+     *  not a finished total, so the card must not claim the leads are ready. */
+    inboundSearching?: boolean;
     webSearchResult?: boolean;
     sources?: Array<{ title: string; url: string }>;
     leadDetailForm?: boolean;
@@ -260,6 +289,19 @@ interface ChatMsg {
          * minutes to reach the same answer.
          */
         warnNoResults?: boolean;
+        /**
+         * Discovery has spent its daily budget and will carry on tomorrow.
+         *
+         * A paused job is NOT a stalled one, and the difference has to reach the
+         * screen: a bar that simply stops is the exact failure the old four-minute
+         * chunk deadline presented, and users read it as broken. Whatever has
+         * already been found is real and usable now.
+         */
+        paused?: {
+            /** ISO timestamp the backend will resume at. */
+            until: string | null;
+            reason: string | null;
+        };
     };
 }
 
@@ -288,6 +330,29 @@ function formatEta(seconds: number): string {
     if (seconds <= 45) return 'less than a minute';
     const mins = Math.round(seconds / 60);
     return `about ${mins} minute${mins === 1 ? '' : 's'}`;
+}
+
+/**
+ * When a paused discovery job comes back, in words.
+ *
+ * Always relative-plus-absolute ("tomorrow at 00:00"), never a bare timestamp:
+ * the backend resumes on ITS midnight, so a user in another timezone reading
+ * only a clock time has no way to tell whether that is tonight or tomorrow.
+ */
+function formatResumeAt(iso: string | null | undefined): string | null {
+    if (!iso) return null;
+    const at = new Date(iso);
+    if (Number.isNaN(at.getTime())) return null;
+
+    const clock = at.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    const midnight = new Date();
+    midnight.setHours(0, 0, 0, 0);
+    const days = Math.round((new Date(at).setHours(0, 0, 0, 0) - midnight.getTime()) / 86_400_000);
+
+    if (at.getTime() <= Date.now()) return 'any moment now';
+    if (days <= 0) return `today at ${clock}`;
+    if (days === 1) return `tomorrow at ${clock}`;
+    return `${at.toLocaleDateString(undefined, { weekday: 'long' })} at ${clock}`;
 }
 
 /**
@@ -600,6 +665,63 @@ function fixPhone(v: string): string {
     return c;
 }
 
+/**
+ * Read one ExcelJS cell as text.
+ *
+ * ExcelJS hands back an OBJECT for hyperlink, rich-text and formula cells, so a
+ * bare String(v) writes the literal "[object Object]" into the sheet data — seen
+ * in production on a LinkedIn column where Excel had auto-linkified one cell.
+ * Prefers the displayed text and falls back to the link target, so a labelled
+ * hyperlink keeps its label and a bare linkified URL keeps its URL.
+ */
+function cellText(v: unknown): string {
+    if (v === null || v === undefined) return '';
+    if (v instanceof Date) return v.toISOString();
+    if (typeof v === 'object') {
+        const o = v as Record<string, any>;
+        if (Array.isArray(o.richText)) return o.richText.map((t: any) => t?.text ?? '').join('').trim();
+        const text = o.text != null ? String(o.text).trim() : '';
+        if (text) return text;
+        if (o.hyperlink != null) return String(o.hyperlink).trim();
+        if (o.result != null) return String(o.result).trim();          // formula cell
+        return '';                                                      // never "[object Object]"
+    }
+    return String(v).trim();
+}
+
+/**
+ * A LinkedIn value is only usable if it points at a PERSON's profile.
+ *
+ * Sheets routinely carry a "LinkedIn Search" column of
+ * `/search/results/people/?keywords=…` URLs. Those resolve to nothing: they are
+ * a query, not a profile, and storing one as `linkedin_url` puts a dead link on
+ * the lead that the connect step cannot act on. Company pages (/company/) are
+ * the same problem. Returns '' for anything that is not /in/<slug>.
+ */
+function usableLinkedInProfile(raw: string): string {
+    const s = (raw || '').trim();
+    if (!s) return '';
+    const m = s.match(/linkedin\.com\/in\/([^/?#\s]+)/i);
+    return m ? `https://www.linkedin.com/in/${m[1]}` : '';
+}
+
+/**
+ * Split a combined "Name" cell into first + last.
+ *
+ * The importer's schema has separate first/last columns, so a sheet with one
+ * `Name` column used to lose the person entirely — and a row with no name is
+ * classified as a company+role TARGET, which makes the importer go and find
+ * whoever holds that title instead of the person who was asked for. First token
+ * is the given name, the rest the family name ("Ahmad Abu Gheith" → Ahmad /
+ * Abu Gheith), matching how the backend splits `leadData.name`.
+ */
+function splitFullName(full: string): { firstName: string; lastName: string } {
+    const parts = (full || '').trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return { firstName: '', lastName: '' };
+    if (parts.length === 1) return { firstName: parts[0], lastName: '' };
+    return { firstName: parts[0], lastName: parts.slice(1).join(' ') };
+}
+
 async function parseInboundCSV(file: File): Promise<ParsedInboundLead[]> {
     return new Promise((resolve, reject) => {
         const isExcel = file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls');
@@ -626,7 +748,7 @@ async function parseInboundCSV(file: File): Promise<ParsedInboundLead[]> {
                     worksheet.eachRow((row, rowNum) => {
                         const rowData = row.values as any[];
                         // Skip the first element (row index) and convert to strings
-                        const strRow = rowData.slice(1).map(v => (v === null || v === undefined) ? '' : String(v).trim());
+                        const strRow = rowData.slice(1).map(cellText);
                         rows.push(strRow);
                     });
 
@@ -672,6 +794,17 @@ function parseRows(rows: string[][], resolve: (leads: ParsedInboundLead[]) => vo
         const ci = {
             firstName: h.findIndex(x => x.toLowerCase().includes('first') && x.toLowerCase().includes('name')),
             lastName: h.findIndex(x => x.toLowerCase().includes('last') && x.toLowerCase().includes('name')),
+            // A SINGLE name column ("Name", "Full Name", "Contact", "Person").
+            // Without this a sheet that names its people loses every one of them:
+            // the row then reads as company+role, and the importer goes and finds
+            // whoever holds that title instead of the person on the sheet.
+            // Excludes anything already claimed by first/last, and "Company Name".
+            fullName: h.findIndex(x => {
+                const s = x.toLowerCase();
+                if (s.includes('first') || s.includes('last') || s.includes('company')
+                    || s.includes('user') || s.includes('file')) return false;
+                return s.includes('name') || s === 'contact' || s === 'person' || s === 'lead';
+            }),
             company: h.findIndex(x => x.toLowerCase().includes('company')),
             linkedin: h.findIndex(x => x.toLowerCase().includes('linkedin')),
             email: h.findIndex(x => x.toLowerCase().includes('email')),
@@ -692,11 +825,22 @@ function parseRows(rows: string[][], resolve: (leads: ParsedInboundLead[]) => vo
                     || s.includes('region') || s.includes('geo');
             }),
         };
-        const leads = rows.slice(1).map(r => ({
-            firstName: (ci.firstName >= 0 ? r[ci.firstName] : '') || '',
-            lastName: (ci.lastName >= 0 ? r[ci.lastName] : '') || '',
+        const leads = rows.slice(1).map(r => {
+            // Split a combined name column, but never over explicit first/last.
+            const explicitFirst = (ci.firstName >= 0 ? r[ci.firstName] : '') || '';
+            const explicitLast = (ci.lastName >= 0 ? r[ci.lastName] : '') || '';
+            const combined = (ci.fullName >= 0 ? r[ci.fullName] : '') || '';
+            const split = (!explicitFirst && !explicitLast) ? splitFullName(combined) : null;
+            // A search URL / company page is not a profile — keep the raw value
+            // for the warning rather than storing a link nothing can act on.
+            const rawLinkedIn = (ci.linkedin >= 0 ? r[ci.linkedin] : '') || '';
+            const linkedinProfile = usableLinkedInProfile(rawLinkedIn);
+            return ({
+            firstName: split ? split.firstName : explicitFirst,
+            lastName: split ? split.lastName : explicitLast,
             companyName: (ci.company >= 0 ? r[ci.company] : '') || '',
-            linkedinProfile: (ci.linkedin >= 0 ? r[ci.linkedin] : '') || '',
+            linkedinProfile,
+            unusableLinkedIn: (!linkedinProfile && rawLinkedIn) ? rawLinkedIn : '',
             email: (ci.email >= 0 ? r[ci.email] : '') || '',
             whatsapp: fixPhone((ci.whatsapp >= 0 ? r[ci.whatsapp] : '') || ''),
             phone: fixPhone((ci.phone >= 0 ? r[ci.phone] : '') || ''),
@@ -705,9 +849,12 @@ function parseRows(rows: string[][], resolve: (leads: ParsedInboundLead[]) => vo
             title: (ci.title >= 0 ? r[ci.title] : '') || '',
             location: (ci.location >= 0 ? r[ci.location] : '') || '',
             profilePicture: '',
-        })).filter(l => {
+            });
+        }).filter(l => {
             const isExample = l.companyName.toLowerCase().includes('delete this') || l.notes.toLowerCase().includes('delete this') || l.email.toLowerCase().includes('example.com');
-            const hasData = (l.companyName && l.companyName.trim().length > 1) || (l.email && l.email.includes('@')) || (l.linkedinProfile && l.linkedinProfile.includes('linkedin.com'));
+            // A named person counts as data even without a company — dropping the
+            // row was part of how a sheet of people came back as someone else.
+            const hasData = (l.companyName && l.companyName.trim().length > 1) || (l.email && l.email.includes('@')) || (l.linkedinProfile && l.linkedinProfile.includes('linkedin.com')) || (l.firstName && l.firstName.trim().length > 1);
             return !isExample && hasData;
         });
         if (leads.length === 0) {
@@ -718,6 +865,44 @@ function parseRows(rows: string[][], resolve: (leads: ParsedInboundLead[]) => vo
     } catch (err: any) {
         reject(err);
     }
+}
+
+/**
+ * What the import is about to DO, in the user's words, before it spends minutes
+ * searching.
+ *
+ * A row with a company and a title but no person name is not looked up — it is
+ * SEARCHED, and whoever currently holds that title at that company comes back.
+ * That is correct behaviour and completely surprising when your sheet listed
+ * seven people by name: the import returns seven different ones. (Stage,
+ * 2026-08-14: a 7-person sheet came back as 8 strangers, because its single
+ * "Name" column was never mapped and every row read as company+role.)
+ *
+ * Returns '' when there is nothing worth saying.
+ */
+function importRoutingNotice(parsed: ParsedInboundLead[]): string {
+    const named = parsed.filter(l => (l.firstName || l.lastName)).length;
+    const roleOnly = parsed.filter(l =>
+        !l.firstName && !l.lastName && (l.title || '').trim() && (l.companyName || '').trim()).length;
+    const unusableLinks = parsed.filter(l => l.unusableLinkedIn).length;
+
+    const parts: string[] = [];
+    if (roleOnly > 0) {
+        parts.push(
+            `🔎 **${roleOnly} of ${parsed.length} rows have no person name**, so I'll search for whoever `
+            + `currently holds that job title at each company. **The people I bring back will not be the `
+            + `ones on your sheet** unless they happen to hold that exact role.`
+            + (named > 0 ? `\n\nThe other ${named} named ${named === 1 ? 'row is' : 'rows are'} looked up directly.` : '')
+            + `\n\nIf your sheet does name people, add a **Name** column (or **First Name** / **Last Name**) `
+            + `and re-upload — I'll then look each person up by name.`);
+    }
+    if (unusableLinks > 0) {
+        parts.push(
+            `🔗 **${unusableLinks} LinkedIn ${unusableLinks === 1 ? 'link is' : 'links are'} not a profile** `
+            + `(a search query or a company page), so ${unusableLinks === 1 ? 'it has' : 'they have'} been ignored. `
+            + `Only \`linkedin.com/in/…\` links point at a person.`);
+    }
+    return parts.join('\n\n');
 }
 
 function isInboundIntent(text: string): boolean {
@@ -1235,8 +1420,17 @@ export default function AdvancedSearchAIPage() {
     // placeholder rows (no name, no LinkedIn URL) and produced an empty campaign.
     const [importJob, setImportJob] = useState<{
         id: string; status: string; percent: number; processed: number; total: number;
+        pausedUntil?: string | null; pauseReason?: string | null;
     } | null>(null);
     const importJobPollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    /**
+     * Resolved people from the most recent poll.
+     *
+     * `inboundLeads` is only populated when the job COMPLETES, so a paused job
+     * would hand the summary card an empty list — a campaign configured against
+     * nobody, under a card promising "the 50 found so far are ready to use".
+     */
+    const importJobPeopleRef = useRef<any[]>([]);
     /**
      * Contact only people the evidence shows work at the company TODAY.
      * Chosen before the search runs — it changes which results are kept, and the
@@ -1249,8 +1443,26 @@ export default function AdvancedSearchAIPage() {
      * from then on enrols automatically.
      */
     const [importRunInBackground, setImportRunInBackground] = useState(false);
+    /** Name of the uploaded sheet — used to name the draft campaign a background import is saved into. */
+    const [uploadedFileName, setUploadedFileName] = useState<string>('');
+    /**
+     * The draft a background import was parked in. Distinct from editingCampaignId:
+     * that also covers a LIVE campaign opened via "Edit Accelerator", which must not
+     * be rewritten while the user is still deciding. Only this one autosaves.
+     */
+    const [parkedDraftId, setParkedDraftId] = useState<string | null>(null);
+    // A PAUSED job does not block the launch.
+    //
+    // The gate exists so a campaign cannot be built against rows the search has
+    // not reached yet. A job paused on its daily cap is in a different position:
+    // the people it found are fully resolved, and the rest are queued for
+    // tomorrow. Holding the button would make the user wait a day to act on leads
+    // that are ready now — and since launching attaches the job to the campaign,
+    // everything found afterwards enrols itself anyway.
     const importDiscoveryPending = !importRunInBackground && !!importJob
-        && importJob.status !== 'completed' && importJob.status !== 'failed';
+        && importJob.status !== 'completed'
+        && importJob.status !== 'failed'
+        && importJob.status !== 'paused';
     const [directContactLeadIds, setDirectContactLeadIds] = useState<string[]>([]); // Real UUIDs for chat-entered direct contacts
     const fileInputRef = useRef<HTMLInputElement>(null);
     const mediaFileInputRef = useRef<HTMLInputElement>(null);
@@ -1317,6 +1529,13 @@ export default function AdvancedSearchAIPage() {
     }, []);
 
     const [showMediaModal, setShowMediaModal] = useState(false);
+
+    // Vertical snapshot. A curated workspace (wellness, etc.) runs prebuilt
+    // pipelines and is not offered the node canvas — see the builder mount
+    // below, which is the single choke point every open path funnels through.
+    // Presentation only; snapshotStepGuard enforces server-side.
+    const { isCuratedWorkspace } = useAuth();
+
     // Custom Accelerator builder (node graph) — full-screen takeover opened from the "+" menu.
     const [showCustomWorkflow, setShowCustomWorkflow] = useState(false);
     // "Roles" — prebuilt pipeline templates launched from chat. The wizard asks
@@ -2169,7 +2388,7 @@ export default function AdvancedSearchAIPage() {
                         ts: m.ts || Date.now(),
                     })) as ChatMsg[]);
                 }
-                // Restore the config-step selections (connection/follow-up messages, actions, etc.).
+                // Restore the config-step selections (connection + acceptance messages, actions, etc.).
                 if (cs.icp_threshold != null) setCpIcpThreshold(String(cs.icp_threshold));
                 // LinkedIn actions: prefer the saved checkpoint selection, else derive from
                 // the persisted steps (the workflow is the source of truth) so the action
@@ -3236,8 +3455,8 @@ export default function AdvancedSearchAIPage() {
      * make a lead contactable, and dropping them is what produced campaigns full
      * of "at <COMPANY>" placeholders.
      */
-    const seedFromResolvedLeads = useCallback((resolved: any[]) => {
-        if (!Array.isArray(resolved) || resolved.length === 0) return;
+    const seedFromResolvedLeads = useCallback((resolved: any[]): ParsedInboundLead[] => {
+        if (!Array.isArray(resolved) || resolved.length === 0) return [];
         const rebuiltInbound: ParsedInboundLead[] = resolved.map((r) => {
             const { firstName, lastName } = readLeadName(r);
             return {
@@ -3273,6 +3492,7 @@ export default function AdvancedSearchAIPage() {
         setInboundLeadIds(ids);
         setSelectedLeadIds(new Set(ids));
         syncInboundSummary(rebuiltInbound);
+        return rebuiltInbound;
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -3286,6 +3506,26 @@ export default function AdvancedSearchAIPage() {
      */
     const pollImportJob = useCallback(async (jobId: string) => {
         const POLL_MS = 4000;
+        const PAUSED_POLL_MIN_MS = 60_000;
+        const PAUSED_POLL_MAX_MS = 5 * 60_000;
+
+        /**
+         * How long to wait before asking again.
+         *
+         * Four seconds is right for work in flight and absurd for a job that
+         * resumes tomorrow — a page left open overnight would make thousands of
+         * pointless requests. Back off while paused, but stay capped at five
+         * minutes: the OTHER ceiling is outreach capacity, which frees up during
+         * the day, so a paused job can resume well before its stated time.
+         */
+        const nextPollDelay = (status: string, pausedUntil?: string | null): number => {
+            if (status !== 'paused') return POLL_MS;
+            const until = pausedUntil ? Date.parse(pausedUntil) : NaN;
+            if (!Number.isFinite(until)) return PAUSED_POLL_MAX_MS;
+            const wait = until - Date.now();
+            return Math.min(PAUSED_POLL_MAX_MS, Math.max(PAUSED_POLL_MIN_MS, wait));
+        };
+
         const started = Date.now();
         const MAX_MS = 30 * 60 * 1000;      // give up messaging after 30 min
 
@@ -3297,6 +3537,8 @@ export default function AdvancedSearchAIPage() {
                 setImportJob({
                     id: jobId, status: job.status, percent: job.percent ?? 0,
                     processed: job.processedRows ?? 0, total: job.totalRows ?? 0,
+                    pausedUntil: job.pausedUntil ?? null,
+                    pauseReason: job.pauseReason ?? null,
                 });
 
                 // ── Live progress bar ──
@@ -3304,7 +3546,7 @@ export default function AdvancedSearchAIPage() {
                 // jumps rather than smoothly. Use the measured rate as soon as one
                 // chunk has landed, and the prior before that, so the estimate is
                 // real data whenever real data exists.
-                if (job.status === 'queued' || job.status === 'running') {
+                if (job.status === 'queued' || job.status === 'running' || job.status === 'paused') {
                     const processed = job.processedRows ?? 0;
                     const total = job.totalRows ?? 0;
                     const remainingRows = Math.max(0, total - processed);
@@ -3312,15 +3554,26 @@ export default function AdvancedSearchAIPage() {
                     const perRow = processed > 0
                         ? elapsedSec / processed
                         : IMPORT_SECONDS_PER_ROW_PRIOR;
-                    const found = Array.isArray(job.leads)
-                        ? job.leads.filter((r: any) => r.linkedin_url).length : 0;
+                    const people = Array.isArray(job.leads)
+                        ? job.leads.filter((r: any) => r.linkedin_url) : [];
+                    importJobPeopleRef.current = people;
+                    const found = people.length;
                     setMessages(p => p.map(m => m.id === IMPORT_PROGRESS_MSG_ID
                         ? { ...m, importProgress: {
                             percent: job.percent ?? 0,
                             processed, total, found,
-                            etaLabel: remainingRows > 0 ? formatEta(perRow * remainingRows) : null,
-                            // One completed chunk with nothing to show for it.
-                            warnNoResults: processed >= 5 && found === 0,
+                            // A paused job resumes tomorrow, so a minutes-based ETA
+                            // would be a lie. The resume time is the honest answer.
+                            etaLabel: job.status === 'paused'
+                                ? null
+                                : (remainingRows > 0 ? formatEta(perRow * remainingRows) : null),
+                            // One completed chunk with nothing to show for it. Not
+                            // worth saying while paused — "nothing found yet" reads
+                            // as failure when the real message is "more tomorrow".
+                            warnNoResults: job.status !== 'paused' && processed >= 5 && found === 0,
+                            paused: job.status === 'paused'
+                                ? { until: job.pausedUntil ?? null, reason: job.pauseReason ?? null }
+                                : undefined,
                           } }
                         : m));
                 }
@@ -3333,12 +3586,23 @@ export default function AdvancedSearchAIPage() {
                     // sheet reported "31 people" when 8 were real, and enrolling them
                     // is how a campaign ends up full of uncontactable rows. Split them.
                     const people = returned.filter((r) => r.linkedin_url);
-                    const unresolved = returned.length - people.length;
+                    // `returned` is one entry per (company, ROLE) search — a four-company
+                    // sheet listing four titles each is sixteen of them, not four. Calling
+                    // the unresolved ones "companies" reported "9 companies returned no
+                    // match" for a sheet with 4 companies on it. Count the two things
+                    // separately: role searches that came back empty, and companies that
+                    // ended up with nobody at all, which is the number a user acts on.
+                    const unresolvedRoles = returned.length - people.length;
+                    const key = (r: any) => String(r.company || '').trim().toLowerCase();
+                    const allCompanies = new Set(returned.map(key).filter(Boolean));
+                    const foundIn = new Set(people.map(key).filter(Boolean));
+                    const emptyCompanies = [...allCompanies].filter((co) => !foundIn.has(co)).length;
+                    const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
                     if (people.length === 0) {
                         setMessages(p => [...p.filter(m => m.id !== IMPORT_PROGRESS_MSG_ID), {
                             id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
-                            text: `⚠️ **No people found.**\n\nI searched every role against all ${returned.length} ${returned.length === 1 ? 'company' : 'companies'} on your sheet, including shortened versions of each company name and related job titles, but LinkedIn returned no matching profiles.\n\nThe usual causes are the company names being registered entities rather than the trading names people use on their profiles, or LinkedIn not enforcing the company filter when Sales Navigator is unavailable on the connected account.`,
+                            text: `⚠️ **No people found.**\n\nI searched ${plural(returned.length, 'role', 'roles')} across ${plural(allCompanies.size, 'company', 'companies')} on your sheet, including shortened versions of each company name and related job titles, but LinkedIn returned no matching profiles.\n\nThe usual causes are the company names being registered entities rather than the trading names people use on their profiles, or LinkedIn not enforcing the company filter when Sales Navigator is unavailable on the connected account.`,
                         }]);
                         return;
                     }
@@ -3357,9 +3621,16 @@ export default function AdvancedSearchAIPage() {
                     setTargeting(inboundTargeting);
                     setMessages(p => [...p.filter(m => m.id !== IMPORT_PROGRESS_MSG_ID), {
                         id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
-                        text: `✅ **Found ${people.length} ${people.length === 1 ? 'person' : 'people'}** with a LinkedIn profile.`
-                            + (unresolved > 0
-                                ? `\n\n${unresolved} ${unresolved === 1 ? 'company' : 'companies'} on your sheet returned no match and ${unresolved === 1 ? 'has' : 'have'} been left out — they can't be contacted without a profile.`
+                        text: `✅ **Found ${people.length} ${people.length === 1 ? 'person' : 'people'}** with a LinkedIn profile`
+                            + (allCompanies.size > 0
+                                ? ` across ${plural(allCompanies.size - emptyCompanies, 'company', 'companies')} on your sheet.`
+                                : '')
+                            + (unresolvedRoles > 0
+                                ? `\n\n${plural(unresolvedRoles, 'role search', 'role searches')} came back empty`
+                                  + (emptyCompanies > 0
+                                    ? `, and ${plural(emptyCompanies, 'company', 'companies')} returned nobody at all — `
+                                      + `${emptyCompanies === 1 ? 'it' : 'they'} can't be contacted without a profile.`
+                                    : ` — every company still has at least one person.`)
                                 : '')
                             + `\n\nReview them in the panel, then click **"Create Outreach Journey"** to configure your campaign.`,
                         // BOTH of these are required for the summary card and its
@@ -3383,14 +3654,18 @@ export default function AdvancedSearchAIPage() {
                     return;
                 }
 
-                if (Date.now() - started > MAX_MS) {
+                // The give-up timer must not apply to a PAUSED job: it is
+                // legitimately long-running, and telling someone to "refresh in a
+                // few minutes" about work that resumes tomorrow is worse than
+                // saying nothing.
+                if (job.status !== 'paused' && Date.now() - started > MAX_MS) {
                     setMessages(p => [...p.filter(m => m.id !== IMPORT_PROGRESS_MSG_ID), {
                         id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
                         text: `⏱️ Discovery is taking longer than expected. It's still running in the background — refresh in a few minutes to pick up the results.`,
                     }]);
                     return;
                 }
-                importJobPollRef.current = setTimeout(tick, POLL_MS);
+                importJobPollRef.current = setTimeout(tick, nextPollDelay(job.status, job.pausedUntil));
             } catch {
                 // Transient network/API blip — keep polling rather than abandoning
                 // a job that is still running server-side.
@@ -3408,13 +3683,184 @@ export default function AdvancedSearchAIPage() {
      * attach the running job to the campaign once it is created, so everything
      * found afterwards enrols itself.
      */
-    const runImportInBackground = useCallback(() => {
-        setImportRunInBackground(true);
+    /**
+     * A background discovery job that finished searching into a campaign it was
+     * never attached to. Set only when the hand-off below has already failed its
+     * retries, so the chat can offer a retry instead of the job silently
+     * enrolling nobody.
+     */
+    const [pendingAttach, setPendingAttach] = useState<{ jobId: string; campaignId: string } | null>(null);
+
+    /**
+     * Hand a still-running discovery job to a campaign, so every chunk found
+     * from now on enrols itself.
+     *
+     * Retries, because a blip here is invisible AND permanent: the search keeps
+     * running, finds people, and drops them nowhere. The campaign is already
+     * created by this point, so a failure must never be reported as a failed
+     * launch — but it must be reported.
+     */
+    const attachImportJob = useCallback(async (jobId: string, campaignId: string): Promise<boolean> => {
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            try {
+                const res = await fetch(`/api/campaigns/leads/import/jobs/${jobId}/attach-campaign`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ campaignId }),
+                });
+                if (res.ok) return true;
+                // A 4xx is a verdict, not a blip — retrying cannot change it.
+                if (res.status >= 400 && res.status < 500 && res.status !== 429) return false;
+            } catch {
+                // Network — worth another go.
+            }
+            if (attempt < 3) await new Promise((r) => setTimeout(r, attempt * 800));
+        }
+        return false;
+    }, []);
+
+    /** The message shown when the hand-off could not be made. */
+    const warnAttachFailed = useCallback((jobId: string, campaignId: string) => {
+        setPendingAttach({ jobId, campaignId });
         setMessages(p => [...p, {
-            id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
-            text: `👍 **Carrying on in the background.**\n\nConfigure and launch whenever you're ready. I'll keep searching, and everyone I find afterwards joins the campaign automatically — spread across the days so your LinkedIn limits aren't breached.`,
+            id: `a-attach-${Date.now()}`, role: 'ai', ts: new Date(),
+            text: `⚠️ **Your campaign was created, but I could not attach the running search to it.**\n\n`
+                + `The search is still going. Without the link, anyone it finds from now on will NOT join this campaign — `
+                + `the leads already found are in it, and nothing else will arrive.\n\nRetry the link, or open the campaign as it stands.`,
+            options: [
+                { label: '🔗 Retry the link', value: '__attach_retry__' },
+                { label: 'Open campaigns', value: '__attach_skip__' },
+            ],
         }]);
     }, []);
+
+    /**
+     * Name for the draft a background import is parked in. Built from the sheet
+     * so it is recognisable in the campaigns list, and stamped with the date and
+     * time because `uq_campaigns_tenant_name_active` is UNIQUE per tenant — the
+     * same sheet imported twice must not collide.
+     */
+    const draftCampaignName = useCallback(() => {
+        const sheet = (uploadedFileName || 'Imported list')
+            .replace(/\.(xlsx|xls|csv)$/i, '')
+            .trim()
+            .slice(0, 60) || 'Imported list';
+        const now = new Date();
+        const stamp = `${now.toLocaleDateString(undefined, { day: '2-digit', month: 'short' })} `
+            + `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        return `${sheet} — imported ${stamp}`;
+    }, [uploadedFileName]);
+
+    /**
+     * Stop waiting for discovery and configure the campaign against what has
+     * been found so far.
+     *
+     * `parkDraft` is the difference between the two callers:
+     *
+     *   - "keep searching in the background" (job still RUNNING) parks a draft,
+     *     because the search can outlive the tab by an hour and the user needs
+     *     something in /campaigns to come back to;
+     *   - the PAUSED card does not. That job is not going anywhere — it is
+     *     already durable server-side, with its remaining searches queued and a
+     *     resume time set — so a draft campaign would be an artefact the user
+     *     never asked for, cluttering /campaigns for someone who only wanted to
+     *     see the leads that are ready.
+     *
+     * Both set `importRunInBackground`, which is what makes the launch path hand
+     * the still-live job to the campaign so later finds enrol themselves.
+     */
+    const runImportInBackground = useCallback(async ({ parkDraft = true }: { parkDraft?: boolean } = {}) => {
+        setImportRunInBackground(true);
+
+        // Seed the panel from whatever the job has resolved so far. Without this
+        // the summary card is built from `inboundLeads`, which is only filled on
+        // COMPLETION — so a paused job would offer a campaign with nobody in it.
+        // Using the returned list rather than reading state back means the counts
+        // are right in this same tick.
+        const seeded = seedFromResolvedLeads(importJobPeopleRef.current);
+
+        // ── Park the run in a DRAFT campaign ──────────────────────────────────
+        // A background search can outlive the tab: 101 minutes for a 151-company
+        // sheet. Until now nothing was written until launch, so closing the page
+        // meant the job kept searching with nowhere to put anyone and no way back
+        // to it — no draft in /campaigns, nothing to continue.
+        //
+        // Creating the draft here does three things at once: the campaign is
+        // listed and reopenable, the job is attached so every lead found enrols
+        // into it even if the user never returns, and editingCampaignId points
+        // the wizard at it so Launch UPDATES this draft instead of creating a
+        // second campaign next to it.
+        let draftId: string | null = null;
+        if (parkDraft && importJob?.id && !editingCampaignId) {
+            try {
+                const created: any = await campaignCreation.createCampaign({
+                    name: draftCampaignName(),
+                    // Left as the model's default 'draft' — nothing runs until launch.
+                    config: {
+                        conversation_history: messages.slice(-40).map(m => ({ role: m.role, text: m.text })),
+                        import_job_id: importJob.id,
+                        source: 'file_import_background',
+                    },
+                } as any);
+                draftId = created?.campaign?.id || created?.data?.id || created?.id || null;
+                if (draftId) {
+                    setEditingCampaignId(draftId);
+                    setParkedDraftId(draftId);          // ← from here on, autosave keeps it current
+                    await attachImportJob(importJob.id, draftId);
+                }
+            } catch (draftErr) {
+                // Non-blocking: without the draft the run still works exactly as
+                // before, it just is not recoverable from /campaigns.
+                console.warn('Could not park the background import in a draft campaign', draftErr);
+            }
+        }
+        // The message alone used to be the whole response — and it told the user
+        // to "configure and launch whenever you're ready" while giving them
+        // nothing to click. "Create Outreach Journey" lives on the summary card,
+        // which was only emitted when the job COMPLETED, so the invitation could
+        // not be accepted until the search finished: 101 minutes for a 151-company
+        // sheet, which is exactly what background mode exists to avoid.
+        //
+        // So emit the card here too. `targeting` + `inboundAction` +
+        // `inboundSummary` are all three required for it to render (see the
+        // Bubble gate), and the counts are whatever the job has resolved so far.
+        // Zero is possible early in a run and is honest — the campaign is
+        // configured now and filled by the search as it goes.
+        const searchedSoFar = computeInboundCounts(seeded.length ? seeded : inboundLeads);
+        const bgTargeting: LeadTargeting = {
+            job_titles: [], industries: [], locations: [],
+            keywords: [searchedSoFar.total > 0
+                ? `${searchedSoFar.total} Inbound Lead${searchedSoFar.total === 1 ? '' : 's'}`
+                : `Searching ${importJob?.total ?? 0} companies`],
+        };
+        setTargeting(bgTargeting);
+        setMessages(p => [...p, {
+            id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
+            text: (parkDraft
+                    ? `👍 **Carrying on in the background.**\n\nSet up the campaign now and launch whenever you're ready — `
+                      + `I'll keep searching, and everyone I find afterwards joins it automatically, spread across the days `
+                      + `so your LinkedIn limits aren't breached.`
+                    // The paused wording has to be accurate about WHEN: this job is
+                    // not searching right now, it resumes on its own schedule.
+                    : `👍 **Using the ${searchedSoFar.total} found so far.**\n\nSet up the campaign now and launch whenever `
+                      + `you're ready. Searching picks up again by itself, and everyone found after that joins this same `
+                      + `campaign automatically — spread across the days so your LinkedIn limits aren't breached.`)
+                + (draftId
+                    ? `\n\n💾 Saved as a draft — **${draftCampaignName()}**. You can close this page and pick it up from `
+                      + `[Campaigns](/campaigns) whenever you like; the search keeps running either way.`
+                    : ''),
+            targeting: bgTargeting,
+            inboundAction: 'summary',
+            inboundSummary: searchedSoFar,
+            inboundSearching: true,
+        }]);
+    }, [inboundLeads, importJob, editingCampaignId, campaignCreation, attachImportJob, draftCampaignName, messages, seedFromResolvedLeads]);
+
+    /** The paused card's CTA: the summary card, no draft campaign. */
+    const configureWithFoundLeads = useCallback(
+        () => runImportInBackground({ parkDraft: false }),
+        [runImportInBackground],
+    );
 
     // Stop polling when the page goes away.
     useEffect(() => () => {
@@ -3750,6 +4196,7 @@ export default function AdvancedSearchAIPage() {
     const handleInboundFile = useCallback(async (file: File) => {
         setBusy(true);
         const processingId = `l-${Date.now()}`;
+        setUploadedFileName(file.name);
         setMessages(p => [...p, { id: `u-${Date.now()}`, role: 'user', text: `📎 Uploaded: ${file.name}`, ts: new Date() }, { id: processingId, role: 'ai', text: '', ts: new Date(), loading: true }]);
         try {
             let parsed: ParsedInboundLead[] = [];
@@ -3834,6 +4281,10 @@ export default function AdvancedSearchAIPage() {
             // in doSend → finishInboundImport with the user's answer.
             const sheetLocation = parsed.find(l => l.location && l.location.trim())?.location?.trim() || '';
             const hasTitleRows = parsed.some(l => (l.title && l.title.trim()) && !l.firstName && !l.lastName && (l.companyName && l.companyName.trim()));
+            // Say what the import will actually do BEFORE it spends minutes doing
+            // it — role-based rows come back as different people, and a sheet that
+            // meant to name people needs to hear that while it can still be fixed.
+            const routingNotice = importRoutingNotice(parsed);
             // Role-based sheets pause here for their search options. Both settings
             // shape the search itself, so they cannot be applied retroactively: a
             // profile discarded by the filter is never revisited.
@@ -3842,12 +4293,20 @@ export default function AdvancedSearchAIPage() {
                 setMessages(p => p.filter(m => m.id !== processingId).concat({
                     id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
                     text: sheetLocation
-                        ? `📋 Your file has **role-based targets** (company + job titles) rather than named people — I'll search LinkedIn for the right person at each company, focusing on **${sheetLocation}**.`
-                        : `📋 Your file has **role-based targets** (company + job titles) rather than named people — I'll search LinkedIn to find the right person for each role.\n\n📍 **Which location should I focus the search on?**\n\nType a city, country or region (e.g. **Dubai**, **UAE**, **MEA**) — or search worldwide.`,
+                        ? `${routingNotice}\n\nI'll focus the search on **${sheetLocation}**.`
+                        : `${routingNotice}\n\n📍 **Which location should I focus the search on?**\n\nType a city, country or region (e.g. **Dubai**, **UAE**, **MEA**) — or search worldwide.`,
                     importOptions: { needsLocation: !sheetLocation },
                     ...(sheetLocation ? {} : { options: [{ label: '🌍 Search worldwide', value: 'worldwide' }] }),
                 }));
                 return; // resumed by the location reply, or by the card's Start button
+            }
+            // No role-based rows, so the gate above never ran — but a sheet of
+            // named people can still have had unusable LinkedIn links stripped,
+            // and that has to be said rather than silently swallowed.
+            if (routingNotice) {
+                setMessages(p => [...p, {
+                    id: `a-notice-${Date.now()}`, role: 'ai', ts: new Date(), text: routingNotice,
+                }]);
             }
 
             await finishInboundImport(parsed, sheetLocation, processingId);
@@ -4288,6 +4747,91 @@ export default function AdvancedSearchAIPage() {
             return;
         }
 
+        // ── PRIORITY -1.4: Pasted LinkedIn people-search URLs → import as leads ──
+        // Must run ahead of every handler below: the chat backend forces the
+        // "analyze this company" intent on any message containing a URL, and that
+        // handler only recognises /company/ and /in/ links, so a batch of search
+        // links comes back as "I couldn't detect a valid URL in your message".
+        // Each link names a person + company, so import them instead.
+        const searchUrls = !wfWizardRef.current ? extractLinkedInSearchUrls(text) : [];
+        if (searchUrls.length > 0) {
+            try {
+                const parseRes = await fetch('/api/campaigns/leads/parse-search-urls', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ message: text }),
+                });
+                // A failed call is NOT "these links have no names in them" — say so
+                // via the catch below, so an unreachable/older backend doesn't get
+                // reported to the user as a problem with their links.
+                if (!parseRes.ok) throw new Error(`parse-search-urls ${parseRes.status}`);
+                const parseData = await parseRes.json();
+                const rows: Array<{ firstName: string; lastName: string; companyName: string; keywords: string }> =
+                    parseData?.rows || [];
+
+                if (rows.length > 0) {
+                    const skipped = searchUrls.length - rows.length;
+                    const parsedRows: ParsedInboundLead[] = rows.map(r => ({
+                        firstName: r.firstName,
+                        lastName: r.lastName,
+                        companyName: r.companyName,
+                        linkedinProfile: '', email: '', whatsapp: '', phone: '', website: '', notes: '',
+                        title: '',
+                        location: '',
+                        profilePicture: '',
+                    }));
+                    const importLoadingId = `${lid}-searchurls`;
+                    setMessages(p => p.filter(m => m.id !== lid).concat(
+                        {
+                            id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
+                            text: `🔗 Those are LinkedIn **search** links, so there's no profile to open directly — but each one names a person and their company, so I'll look all **${rows.length}** of them up on LinkedIn.${skipped > 0 ? `\n\n_(${skipped} link${skipped === 1 ? '' : 's'} had no search text to work from, so I've left ${skipped === 1 ? 'it' : 'them'} out.)_` : ''}`,
+                        },
+                        { id: importLoadingId, role: 'ai', text: '', ts: new Date(), loading: true },
+                    ));
+                    setInboundLeads(parsedRows);
+                    setInboundMode(true);
+                    setLeads(parsedRows.map((r, i) => ({
+                        id: `inbound-${i}`,
+                        name: [r.firstName, r.lastName].filter(Boolean).join(' '),
+                        first_name: r.firstName,
+                        last_name: r.lastName,
+                        headline: r.companyName ? `at ${r.companyName}` : '',
+                        location: '',
+                        current_company: r.companyName,
+                        profile_url: '',
+                        profile_picture: '',
+                        industry: '',
+                        network_distance: '',
+                        locked: false,
+                    })));
+                    // finishInboundImport only clears `busy` when it owns the
+                    // progress message; we passed ours, and this gate sits above
+                    // doSend's try/finally, so release the composer here.
+                    await finishInboundImport(parsedRows, '', importLoadingId);
+                    setBusy(false);
+                    return;
+                }
+
+                // Links present but nothing to search on (facet-only URLs, no
+                // `keywords`). Say that rather than falling through to the chat
+                // backend, which would answer "no valid URL".
+                setMessages(p => p.filter(m => m.id !== lid).concat({
+                    id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
+                    text: `Those LinkedIn search links don't carry any search text I can read, so there's no one for me to look up. Paste the links with the names in them, or share profile links (**linkedin.com/in/...**) instead.`,
+                }));
+                setBusy(false);
+                return;
+            } catch {
+                setMessages(p => p.filter(m => m.id !== lid).concat({
+                    id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
+                    text: `I couldn't read those LinkedIn search links just now. Please try again in a moment, or share profile links (**linkedin.com/in/...**) instead.`,
+                }));
+                setBusy(false);
+                return;
+            }
+        }
+
         // ── PRIORITY -1: Pipeline description → BUILD MODE ──
         // This message describes a workflow, not an audience. It must be caught
         // HERE, ahead of the ABM / web-search / lead-chat handlers below: the
@@ -4401,7 +4945,7 @@ export default function AdvancedSearchAIPage() {
                 const emailCount = inboundLeads.filter(l => l.email).length;
                 setMessages(p => p.filter(m => m.id !== lid).concat({
                     id: `a-${Date.now()}`, role: 'ai',
-                    text: `🎯 **Great question! Here's your next steps:**\n\nYou have **${leadsCount} leads** uploaded and ready to go${linkedinCount > 0 ? ` (${linkedinCount} with LinkedIn profiles)` : ''}${emailCount > 0 ? ` (${emailCount} with emails)` : ''}.\n\n**To create your campaign:**\n1. Click **"Create Outreach Journey"** button above\n2. Select your **outreach actions** (Connect, Message, Follow-up)\n3. Set up your **message templates** (AI can generate them for you! ✨)\n4. Choose **campaign duration**\n5. **Name & launch** your campaign 🚀\n\n👉 Click the **"Create Outreach Journey"** button to get started!`,
+                    text: `🎯 **Great question! Here's your next steps:**\n\nYou have **${leadsCount} leads** uploaded and ready to go${linkedinCount > 0 ? ` (${linkedinCount} with LinkedIn profiles)` : ''}${emailCount > 0 ? ` (${emailCount} with emails)` : ''}.\n\n**To create your campaign:**\n1. Click **"Create Outreach Journey"** button above\n2. Select your **outreach actions** (Visit profile, Connect, Acceptance message)\n3. Set up your **message templates** (AI can generate them for you! ✨)\n4. Choose **campaign duration**\n5. **Name & launch** your campaign 🚀\n\n👉 Click the **"Create Outreach Journey"** button to get started!`,
                     ts: new Date(),
                     targeting: targeting || undefined,
                 }));
@@ -5740,6 +6284,26 @@ export default function AdvancedSearchAIPage() {
     }, [input, busy, doSend, handleRoleAnswer, handleWfAnswer]);
 
     const onOptClick = useCallback(async (v: string) => {
+        // ── Re-link a background search to the campaign it belongs to ──────
+        if (v === '__attach_retry__' || v === '__attach_skip__') {
+            const target = pendingAttach;
+            if (!target) return;
+            if (v === '__attach_skip__') { window.location.href = '/campaigns'; return; }
+            setMessages(p => [...p, { id: `u-${Date.now()}`, role: 'user', text: 'Retry the link', ts: new Date() }]);
+            const ok = await attachImportJob(target.jobId, target.campaignId);
+            if (ok) {
+                setPendingAttach(null);
+                setMessages(p => [...p, {
+                    id: `a-attach-ok-${Date.now()}`, role: 'ai', ts: new Date(),
+                    text: `✅ **Linked.** Everyone the search finds from here joins the campaign automatically.`,
+                }]);
+                window.location.href = '/campaigns';
+                return;
+            }
+            warnAttachFailed(target.jobId, target.campaignId);
+            return;
+        }
+
         // ── Workflow-build interview actions ──────────────────────────────
         // A chip is a shortcut for typing, so it routes through the same
         // handleWfAnswer the composer does — one advance path per wizard.
@@ -6545,7 +7109,7 @@ export default function AdvancedSearchAIPage() {
                                             <div className="adv-attach-sub">Pick from your existing contacts</div>
                                         </div>
                                     </div>
-                                    <div className="adv-attach-item" onClick={() => { setShowAttachMenu(false); setShowCustomWorkflow(true); }}>
+                                    {!isCuratedWorkspace && <div className="adv-attach-item" onClick={() => { setShowAttachMenu(false); setShowCustomWorkflow(true); }}>
                                         <div className="adv-attach-icon" style={{ background: '#ede9fe' }}>
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round"><circle cx="5" cy="6" r="3" /><circle cx="19" cy="6" r="3" /><circle cx="12" cy="18" r="3" /><path d="M7.5 8L10 15M16.5 8L14 15" /></svg>
                                         </div>
@@ -6553,7 +7117,7 @@ export default function AdvancedSearchAIPage() {
                                             <div className="adv-attach-label">Custom Accelerator</div>
                                             <div className="adv-attach-sub">Source → outreach nodes</div>
                                         </div>
-                                    </div>
+                                    </div>}
                                     <div className={`adv-attach-item${webSearchEnabled ? ' adv-attach-active' : ''}`} onClick={() => { setWebSearchEnabled(!webSearchEnabled); setShowAttachMenu(false); }}>
                                         <div className="adv-attach-icon" style={{ background: webSearchEnabled ? '#dbeafe' : '#e0f2fe' }}>
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={webSearchEnabled ? '#2563eb' : '#0284c7'} strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
@@ -7014,7 +7578,7 @@ export default function AdvancedSearchAIPage() {
                                                 : 'Qualifying...'
                                         }
                                         : m;
-                                    return <Bubble key={m.id} msg={displayMsg} onOpt={onOptClick} onShowPanel={setShowPanel} onStartCheckpoints={() => setCpStep(0)} onLetAgentDeal={letAgentDeal} agentDealLoading={agentDealLoading} onStartTargeting={() => { setTgStep(0); setChatBlocked(false); }} hasPanel={!!showPanel} leadsCount={leads.length} filteredLeadsCount={filteredLeads.length} onUploadClick={() => fileInputRef.current?.click()} useSalesNav={useSalesNav} isMobile={isMobile} rolePreviewing={rolePreviewing} roleIcp={businessProfile} discoveryPending={importDiscoveryPending} discoveryProgress={importJob ? `${importJob.percent}%` : ''} currentEmployerOnly={currentEmployerOnly} onToggleCurrentEmployerOnly={setCurrentEmployerOnly} onStartImportSearch={startPendingImportSearch} onRunImportInBackground={importJob && !importRunInBackground ? runImportInBackground : undefined} />;
+                                    return <Bubble key={m.id} msg={displayMsg} onOpt={onOptClick} onShowPanel={setShowPanel} onStartCheckpoints={() => setCpStep(0)} onLetAgentDeal={letAgentDeal} agentDealLoading={agentDealLoading} onStartTargeting={() => { setTgStep(0); setChatBlocked(false); }} hasPanel={!!showPanel} leadsCount={leads.length} filteredLeadsCount={filteredLeads.length} onUploadClick={() => fileInputRef.current?.click()} useSalesNav={useSalesNav} isMobile={isMobile} rolePreviewing={rolePreviewing} roleIcp={businessProfile} discoveryPending={importDiscoveryPending} discoveryProgress={importJob ? `${importJob.percent}%` : ''} currentEmployerOnly={currentEmployerOnly} onToggleCurrentEmployerOnly={setCurrentEmployerOnly} onStartImportSearch={startPendingImportSearch} onRunImportInBackground={importJob && !importRunInBackground ? runImportInBackground : undefined} onConfigureWithFoundLeads={importJob && !importRunInBackground ? configureWithFoundLeads : undefined} />;
                                 })
                             )}
                             {/* Import leads prompt — shown when conversation is about existing client relationships */}
@@ -7071,8 +7635,11 @@ export default function AdvancedSearchAIPage() {
                             <div className="adv-msgs-inner">
                                 <CheckpointFormInline
                                     importRunInBackground={importRunInBackground}
+                                    attachImportJob={attachImportJob}
+                                    warnAttachFailed={warnAttachFailed}
                                     importJob={importJob}
                                     editingCampaignId={editingCampaignId}
+                                    parkedDraftId={parkedDraftId}
                                     persistedLeadSource={persistedLeadSource}
                                     onLetAgentDeal={letAgentDeal}
                                     agentDealLoading={agentDealLoading}
@@ -7246,7 +7813,7 @@ export default function AdvancedSearchAIPage() {
                                                                 <div className="adv-attach-sub">Pick from your existing contacts</div>
                                                             </div>
                                                         </div>
-                                                        <div className="adv-attach-item" onClick={() => { setShowChatAttachMenu(false); setShowCustomWorkflow(true); }}>
+                                                        {!isCuratedWorkspace && <div className="adv-attach-item" onClick={() => { setShowChatAttachMenu(false); setShowCustomWorkflow(true); }}>
                                                             <div className="adv-attach-icon" style={{ background: '#ede9fe' }}>
                                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round"><circle cx="5" cy="6" r="3" /><circle cx="19" cy="6" r="3" /><circle cx="12" cy="18" r="3" /><path d="M7.5 8L10 15M16.5 8L14 15" /></svg>
                                                             </div>
@@ -7254,7 +7821,7 @@ export default function AdvancedSearchAIPage() {
                                                                 <div className="adv-attach-label">Custom Accelerator</div>
                                                                 <div className="adv-attach-sub">Source → outreach nodes</div>
                                                             </div>
-                                                        </div>
+                                                        </div>}
                                                         <div className="adv-attach-divider" />
                                                         <div className="adv-attach-item" onClick={() => { setShowChatAttachMenu(false); router.push('/settings'); }}>
                                                             <div className="adv-attach-icon" style={{ background: '#fef3c7' }}>
@@ -8765,7 +9332,43 @@ export default function AdvancedSearchAIPage() {
 
             {/* ── Contact Picker Modal ── */}
             {/* ── Custom Accelerator builder (node graph) — full-screen takeover from the "+" menu ── */}
-            {showCustomWorkflow && (
+            {/*
+              * Builder mount — gated for curated (vertical snapshot) workspaces.
+              *
+              * This is the SINGLE choke point for the builder: every way of
+              * opening it — the "+" menu, an Accelerator, the Roles wizard, and
+              * the AI draft path (which can autoLaunch the moment a draft
+              * lands) — funnels through `showCustomWorkflow`. Gating here
+              * therefore covers all of them, including any path added later,
+              * which patching the individual call sites would not.
+              *
+              * Rendering an explicit panel rather than `null` on purpose: a
+              * silently dead trigger is the kind of thing that gets debugged
+              * twice. The enforcing gate is server-side regardless —
+              * snapshotStepGuard refuses non-permitted step types at creation.
+              */}
+            {showCustomWorkflow && isCuratedWorkspace && (
+                <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+                    <div style={{ background: '#fff', borderRadius: 12, maxWidth: 420, padding: '28px 26px', textAlign: 'center', boxShadow: '0 12px 40px rgba(0,0,0,0.18)' }}>
+                        <h3 style={{ margin: '0 0 10px', fontSize: 17, fontWeight: 650, color: '#111827' }}>
+                            Custom workflows aren&apos;t part of this workspace
+                        </h3>
+                        <p style={{ margin: '0 0 20px', fontSize: 14, lineHeight: 1.55, color: '#4B5563' }}>
+                            Your workspace runs curated pipelines built for your industry. Manage them from
+                            the Pipelines page instead of building a workflow from scratch.
+                        </p>
+                        <button
+                            type="button"
+                            onClick={() => { setShowCustomWorkflow(false); setBuilderTemplate(null); setBuilderAiDraft(null); setEditingCampaignId(null); }}
+                            style={{ padding: '9px 20px', borderRadius: 8, border: 'none', background: '#2E6F5E', color: '#fff', fontSize: 14, fontWeight: 550, cursor: 'pointer' }}
+                        >
+                            Got it
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {showCustomWorkflow && !isCuratedWorkspace && (
                 <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: '#F8F9FE' }}>
                     <CustomWorkflowBuilder
                         onClose={() => { setShowCustomWorkflow(false); setBuilderTemplate(null); setBuilderAiDraft(null); setEditingCampaignId(null); }}
@@ -9277,7 +9880,7 @@ function RoleCardView({ card, onOpt, previewing, icp }: { card: NonNullable<Chat
     );
 }
 
-function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, agentDealLoading, onStartTargeting, hasPanel, leadsCount, filteredLeadsCount, onUploadClick, useSalesNav, isMobile, rolePreviewing, roleIcp, discoveryPending, discoveryProgress, currentEmployerOnly, onToggleCurrentEmployerOnly, onStartImportSearch, onRunImportInBackground }: { msg: ChatMsg; onOpt: (v: string) => void; onShowPanel: (panel: 'leads' | 'workflow') => void; onStartCheckpoints: () => void; onLetAgentDeal?: () => void; agentDealLoading?: boolean; onStartTargeting: () => void; hasPanel: boolean; leadsCount: number; filteredLeadsCount?: number; onUploadClick?: () => void; useSalesNav?: boolean; isMobile?: boolean; rolePreviewing?: boolean; roleIcp?: Record<string, string>; discoveryPending?: boolean; discoveryProgress?: string; currentEmployerOnly?: boolean; onToggleCurrentEmployerOnly?: (v: boolean) => void; onStartImportSearch?: () => void; onRunImportInBackground?: () => void }) {
+function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, agentDealLoading, onStartTargeting, hasPanel, leadsCount, filteredLeadsCount, onUploadClick, useSalesNav, isMobile, rolePreviewing, roleIcp, discoveryPending, discoveryProgress, currentEmployerOnly, onToggleCurrentEmployerOnly, onStartImportSearch, onRunImportInBackground, onConfigureWithFoundLeads }: { msg: ChatMsg; onOpt: (v: string) => void; onShowPanel: (panel: 'leads' | 'workflow') => void; onStartCheckpoints: () => void; onLetAgentDeal?: () => void; agentDealLoading?: boolean; onStartTargeting: () => void; hasPanel: boolean; leadsCount: number; filteredLeadsCount?: number; onUploadClick?: () => void; useSalesNav?: boolean; isMobile?: boolean; rolePreviewing?: boolean; roleIcp?: Record<string, string>; discoveryPending?: boolean; discoveryProgress?: string; currentEmployerOnly?: boolean; onToggleCurrentEmployerOnly?: (v: boolean) => void; onStartImportSearch?: () => void; onRunImportInBackground?: () => void; onConfigureWithFoundLeads?: () => void }) {
     const user = useSelector((state: any) => state.auth?.user);
     const displayName = user?.name || "User";
     const userInitial = displayName.charAt(0).toUpperCase();
@@ -9594,26 +10197,44 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                   </div>
                 )}
 
-                {msg.importProgress && (
-                  <div className="mt-3 rounded-[10px] border border-blue-100 dark:border-blue-900/60 bg-blue-50/60 dark:bg-blue-950/30 px-3.5 py-3">
+                {msg.importProgress && (() => {
+                  // Paused is a WAITING state, not a broken one, and it has to look
+                  // different or it reads as the bar having died — which is exactly
+                  // how the old chunk deadline appeared to users.
+                  const paused = msg.importProgress.paused;
+                  const resumeLabel = formatResumeAt(paused?.until);
+                  return (
+                  <div className={`mt-3 rounded-[10px] border px-3.5 py-3 ${paused
+                      ? 'border-amber-200 dark:border-amber-900/60 bg-amber-50/70 dark:bg-amber-950/25'
+                      : 'border-blue-100 dark:border-blue-900/60 bg-blue-50/60 dark:bg-blue-950/30'}`}>
                       <div className="flex items-center justify-between mb-2">
-                          <span className="text-[12px] font-semibold text-[#172560] dark:text-blue-200">
-                              Searching LinkedIn
+                          <span className={`text-[12px] font-semibold inline-flex items-center gap-1.5 ${paused
+                              ? 'text-amber-900 dark:text-amber-200'
+                              : 'text-[#172560] dark:text-blue-200'}`}>
+                              {paused ? <><Clock size={13} /> Paused for today</> : 'Searching LinkedIn'}
                           </span>
-                          <span className="text-[12px] font-bold tabular-nums text-[#172560] dark:text-blue-200">
+                          <span className={`text-[12px] font-bold tabular-nums ${paused
+                              ? 'text-amber-900 dark:text-amber-200'
+                              : 'text-[#172560] dark:text-blue-200'}`}>
                               {msg.importProgress.percent}%
                           </span>
                       </div>
                       <div
-                        className="h-2 w-full rounded-full bg-blue-100 dark:bg-blue-900/60 overflow-hidden"
+                        className={`h-2 w-full rounded-full overflow-hidden ${paused
+                            ? 'bg-amber-100 dark:bg-amber-900/50'
+                            : 'bg-blue-100 dark:bg-blue-900/60'}`}
                         role="progressbar"
                         aria-valuenow={msg.importProgress.percent}
                         aria-valuemin={0}
                         aria-valuemax={100}
-                        aria-label="Lead discovery progress"
+                        aria-label={paused ? 'Lead discovery paused' : 'Lead discovery progress'}
                       >
+                          {/* The pulse means "work in flight". A paused bar must be
+                              still, or it claims progress that is not happening. */}
                           <div
-                            className="h-full rounded-full bg-[#172560] dark:bg-blue-500 transition-[width] duration-700 ease-out animate-pulse"
+                            className={`h-full rounded-full transition-[width] duration-700 ease-out ${paused
+                                ? 'bg-amber-500 dark:bg-amber-400'
+                                : 'bg-[#172560] dark:bg-blue-500 animate-pulse'}`}
                             style={{ width: `${Math.max(2, msg.importProgress.percent)}%` }}
                           />
                       </div>
@@ -9622,15 +10243,49 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                           {msg.importProgress.found > 0 && <> · <span className="font-semibold text-emerald-700 dark:text-emerald-400">{msg.importProgress.found} found</span></>}
                           {msg.importProgress.etaLabel && <> · {msg.importProgress.etaLabel} remaining</>}
                       </div>
+                      {paused && (
+                          <div className="mt-2 pt-2 border-t border-amber-200/70 dark:border-amber-900/50 text-[11.5px] text-amber-900 dark:text-amber-200">
+                              <div>
+                                  {paused.reason
+                                      || 'The daily discovery limit for this LinkedIn account has been reached.'}
+                              </div>
+                              {resumeLabel && (
+                                  <div className="mt-1 font-semibold">
+                                      Resuming {resumeLabel}. Nothing is lost — the remaining
+                                      companies are queued.
+                                  </div>
+                              )}
+                              {/* What is already found is fully resolved and usable NOW.
+                                  The CTA for acting on it is the background button below,
+                                  so say the leads are ready and let that button be the
+                                  single place to click — two competing calls to action on
+                                  one card is worse than none. */}
+                              {msg.importProgress.found > 0 && (
+                                  <div className="mt-1.5 text-gray-700 dark:text-gray-300">
+                                      The{' '}
+                                      <span className="font-semibold">{msg.importProgress.found}</span>{' '}
+                                      found so far are ready to use — you don&apos;t have to
+                                      wait for the rest.
+                                  </div>
+                              )}
+                          </div>
+                      )}
                       {/* Don't make the user watch. Launching now attaches this job
                           to the campaign, so everything found afterwards enrols
-                          itself and the daily limits spread it over the days. */}
-                      {onRunImportInBackground && (
+                          itself and the daily limits spread it over the days.
+
+                          A PAUSED job takes the no-draft route: it is already
+                          durable server-side with its resume time set, so parking
+                          a draft campaign would leave an artefact in /campaigns
+                          that the user never asked for. */}
+                      {(paused ? onConfigureWithFoundLeads : onRunImportInBackground) && (
                           <button
-                            onClick={() => onRunImportInBackground()}
+                            onClick={() => (paused ? onConfigureWithFoundLeads : onRunImportInBackground)?.()}
                             className="mt-2.5 w-full px-3 py-1.5 bg-white dark:bg-gray-800 text-[#172560] dark:text-blue-200 border border-[#172560]/25 dark:border-blue-700 rounded-[8px] text-[11.5px] font-semibold cursor-pointer transition-all hover:bg-blue-50 dark:hover:bg-gray-700"
                           >
-                              Configure the campaign now — keep searching in the background
+                              {paused
+                                  ? 'Configure the campaign now with the leads found so far'
+                                  : 'Configure the campaign now — keep searching in the background'}
                           </button>
                       )}
                       {msg.importProgress.warnNoResults && (
@@ -9643,7 +10298,8 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                           </div>
                       )}
                   </div>
-                )}
+                  );
+                })()}
 
                 {/* ── Inbound: Summary with platform badges ── */}
                 {msg.inboundAction === 'summary' && msg.inboundSummary && (
@@ -9652,7 +10308,9 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                       <div className="flex items-center gap-2 mb-2.5">
                           <CheckCircle2 size={18} className="text-emerald-600 dark:text-emerald-400" />
                           <span className="text-[14px] font-bold text-emerald-800 dark:text-emerald-300">
-            {msg.inboundSummary.total} Leads Ready</span>
+            {msg.inboundSearching
+              ? `Still searching — ${msg.inboundSummary.total} found so far`
+              : `${msg.inboundSummary.total} Leads Ready`}</span>
                       </div>
                       <div className="flex gap-1.5 flex-wrap">
                           {msg.inboundSummary.linkedin > 0 && <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 bg-white dark:bg-gray-800 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-900">
@@ -10036,18 +10694,24 @@ function CheckpointFormInline({
     emailProvider, setEmailProvider,
     waBody, setWaBody, waFromNumber, setWaFromNumber, waGenLoading, setWaGenLoading,
     pendingContact, inboundMode, inboundLeads, inboundLeadIds, directContactLeadIds, importRunInBackground, importJob,
+    attachImportJob, warnAttachFailed,
     enableDailyWebPresence, setEnableDailyWebPresence,
     enableDailyPosts, setEnableDailyPosts,
     enableAiPersonalization, setEnableAiPersonalization,
     enableAiConnectionPersonalization, setEnableAiConnectionPersonalization,
     enableAiFollowupPersonalization, setEnableAiFollowupPersonalization,
     editingCampaignId,
+    parkedDraftId,
     persistedLeadSource,
     onLetAgentDeal, agentDealLoading,
 }: {
     /** Background mode: hand the running discovery job to the new campaign. */
     importRunInBackground?: boolean;
     importJob?: { id: string } | null;
+    /** Hand the running discovery job to a campaign; false when it could not be linked. */
+    attachImportJob: (jobId: string, campaignId: string) => Promise<boolean>;
+    /** Tell the user the hand-off failed, and offer to retry it. */
+    warnAttachFailed: (jobId: string, campaignId: string) => void;
     step: number; setStep: (s: number) => void;
     icpThreshold: string; setIcpThreshold: (v: string) => void;
     actions: string[]; setActions: React.Dispatch<React.SetStateAction<string[]>>;
@@ -10096,6 +10760,8 @@ function CheckpointFormInline({
     enableAiConnectionPersonalization: boolean; setEnableAiConnectionPersonalization: (v: boolean) => void;
     enableAiFollowupPersonalization: boolean; setEnableAiFollowupPersonalization: (v: boolean) => void;
     editingCampaignId?: string | null;
+    /** Set only for a draft parked by a background import — the one campaign safe to autosave. */
+    parkedDraftId?: string | null;
     persistedLeadSource?: PersistedLeadSource | null;
     onLetAgentDeal: () => void; agentDealLoading: boolean;
 }) {
@@ -10430,6 +11096,30 @@ function CheckpointFormInline({
     const aiChat = useAIChat();
     const campaignCreation = useCampaignCreation();
 
+    // Outbound grounding — does the workspace have anything on file describing
+    // what it offers? With nothing, the agent will not invent a value
+    // proposition, so follow-ups go out as relationship openers with no pitch
+    // and no meeting ask. That is deliberate, but it used to be invisible: five
+    // stage workspaces and four on production were running campaigns that way.
+    // Advisory only — never gates the Launch button.
+    const [grounding, setGrounding] = useState<{ grounded: boolean; missing: string[] } | null>(null);
+    useEffect(() => {
+        // Only on the final step, where Launch lives — no call while the user
+        // is still picking leads.
+        if (step !== 4) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const res = await fetchWithTenant('/api/campaigns/outbound-grounding');
+                const json = await res.json();
+                if (!cancelled && json?.data) setGrounding(json.data);
+            } catch {
+                // Fail silent: no warning beats a wrong warning.
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [step]);
+
     // Auto-select default template when templates load for the first time
     useEffect(() => {
         if (emailTemplates.length > 0 && !selectedEmailTemplateId) {
@@ -10695,6 +11385,80 @@ function CheckpointFormInline({
         setLiFollowGenLoading(false);
     };
 
+    /**
+     * Everything the wizard has been told, in the shape edit-mode hydrates from.
+     *
+     * Shared by launch and by the autosave below so the two cannot drift — a
+     * field added to one and not the other would silently fail to survive a
+     * reload, which is the exact class of bug autosave exists to prevent.
+     */
+    const buildCheckpointSelections = useCallback(() => {
+        // Both derived rather than state: the ICP floor is parsed from its input,
+        // and the media node is read live off the workflow store. Computed here so
+        // launch and autosave build byte-identical selections.
+        const icpMin = parseInt(icpThreshold) || 0;
+        const wfMediaNode = (useOnboardingStore.getState().workflowPreview || [])
+            .find((n: any) => n.type === 'media_generation') as any;
+        return {
+            icp_threshold: icpMin,
+            linkedin_actions: liChannelActions,
+            connection_message: connMsg || '',
+            followup_message: followMsg || '',
+            next_channels: nextChannels,
+            trigger_condition: triggerCondition || null,
+            campaign_days: campaignDays,
+            campaign_name: name || 'AI Growth Campaign',
+            enable_daily_web_presence: enableDailyWebPresence,
+            enable_daily_posts: enableDailyPosts,
+            enable_ai_personalization: enableAiPersonalization,
+            enable_ai_connection_personalization: enableAiConnectionPersonalization,
+            enable_ai_followup_personalization: enableAiFollowupPersonalization,
+            ai_value_prop: aiMsgValueProp || '',
+            ai_tone: aiMsgTone || 'professional',
+            ai_goal: aiMsgGoal || 'get_meeting',
+            // AI Media node (edit-mode round-trip: hydration re-creates the canvas node)
+            media_step: wfMediaNode ? {
+                media_url: wfMediaNode.mediaUrl || '',
+                media_type: wfMediaNode.mediaType || '',
+                media_filename: wfMediaNode.mediaFilename || '',
+                mime_type: wfMediaNode.mimeType || '',
+                prompt: wfMediaNode.mediaPrompt || '',
+            } : null,
+        };
+    }, [
+        icpThreshold, liChannelActions, connMsg, followMsg, nextChannels, triggerCondition,
+        campaignDays, name, enableDailyWebPresence, enableDailyPosts, enableAiPersonalization,
+        enableAiConnectionPersonalization, enableAiFollowupPersonalization,
+        aiMsgValueProp, aiMsgTone, aiMsgGoal,
+    ]);
+
+    /**
+     * Autosave into a parked draft.
+     *
+     * A background import can run for hours, and the draft it is parked in used
+     * to capture only what existed at the moment it was created — configure
+     * halfway, close the tab, and everything typed since was gone. Only runs for
+     * that parked draft: a live campaign opened through "Edit Accelerator" must
+     * change when the user saves, not while they are still deciding.
+     *
+     * Debounced, and config is merged server-side (config || $n::jsonb), so this
+     * cannot clobber import_job_id or the conversation history stored alongside.
+     */
+    useEffect(() => {
+        if (!parkedDraftId) return;
+        const t = setTimeout(() => {
+            updateCampaign(parkedDraftId, {
+                name: name || undefined,
+                config: { checkpoint_selections: buildCheckpointSelections() },
+            } as any).catch(() => {
+                // Silent: the draft keeps its last good state and launch saves
+                // everything anyway. Nagging about a failed autosave mid-typing
+                // would be worse than the gap it covers.
+            });
+        }, 1500);
+        return () => clearTimeout(t);
+    }, [parkedDraftId, buildCheckpointSelections, name]);
+
     const launchCampaign = async () => {
         setLaunching(true);
         try {
@@ -10709,7 +11473,7 @@ function CheckpointFormInline({
                 const liDelayConfig = { delayDays: parseInt(channelDelays.linkedin?.days) || 0, delayHours: parseInt(channelDelays.linkedin?.hours) || 0 };
                 if (liChannelActions.includes('profile_view')) actionSteps.push({ type: 'linkedin_visit', title: 'Visit LinkedIn Profile', channel: 'linkedin', order_index: orderIdx++, config: { ...liDelayConfig } });
                 if (liChannelActions.includes('connect')) actionSteps.push({ type: 'linkedin_connect', title: 'Send Connection Request', channel: 'linkedin', order_index: orderIdx++, config: { message: connMsg || '', ...liDelayConfig } });
-                if (liChannelActions.includes('message')) actionSteps.push({ type: 'linkedin_message', title: 'Send Follow-up Message', channel: 'linkedin', order_index: orderIdx++, config: { message: followMsg || '', ...liDelayConfig } });
+                if (liChannelActions.includes('message')) actionSteps.push({ type: 'linkedin_message', title: 'Send Connection Acceptance Message', channel: 'linkedin', order_index: orderIdx++, config: { message: followMsg || '', ...liDelayConfig } });
                 // Default to profile visit if no specific action selected
                 if (liChannelActions.length === 0) actionSteps.push({ type: 'linkedin_visit', title: 'Visit LinkedIn Profile', channel: 'linkedin', order_index: orderIdx++, config: { ...liDelayConfig } });
             }
@@ -10724,7 +11488,7 @@ function CheckpointFormInline({
                     if (ch === 'linkedin') {
                         if (liChannelActions.includes('profile_view')) actionSteps.push({ type: 'linkedin_visit', title: 'Visit LinkedIn Profile', channel: 'linkedin', order_index: orderIdx++, config: { ...chDelayConfig } });
                         if (liChannelActions.includes('connect')) actionSteps.push({ type: 'linkedin_connect', title: 'Send LinkedIn Connection Request', channel: 'linkedin', order_index: orderIdx++, config: { message: connMsg || '', ...chDelayConfig } });
-                        if (liChannelActions.includes('message')) actionSteps.push({ type: 'linkedin_message', title: 'Send LinkedIn Follow-up Message', channel: 'linkedin', order_index: orderIdx++, config: { message: followMsg || '', ...chDelayConfig } });
+                        if (liChannelActions.includes('message')) actionSteps.push({ type: 'linkedin_message', title: 'Send LinkedIn Connection Acceptance Message', channel: 'linkedin', order_index: orderIdx++, config: { message: followMsg || '', ...chDelayConfig } });
                         // Default to profile visit if no specific action selected
                         if (liChannelActions.length === 0) actionSteps.push({ type: 'linkedin_visit', title: 'Visit LinkedIn Profile', channel: 'linkedin', order_index: orderIdx++, config: { ...chDelayConfig } });
                     }
@@ -10779,7 +11543,7 @@ function CheckpointFormInline({
                     if (ch === 'linkedin') {
                         if (liChannelActions.includes('profile_view')) actionSteps.push({ type: 'linkedin_visit', title: 'Visit LinkedIn Profile', channel: 'linkedin', order_index: orderIdx++, config: { ...chDelayConfig } });
                         if (liChannelActions.includes('connect')) actionSteps.push({ type: 'linkedin_connect', title: 'Send LinkedIn Connection Request', channel: 'linkedin', order_index: orderIdx++, config: { message: connMsg || '', ...chDelayConfig } });
-                        if (liChannelActions.includes('message')) actionSteps.push({ type: 'linkedin_message', title: 'Send LinkedIn Follow-up Message', channel: 'linkedin', order_index: orderIdx++, config: { message: followMsg || '', ...chDelayConfig } });
+                        if (liChannelActions.includes('message')) actionSteps.push({ type: 'linkedin_message', title: 'Send LinkedIn Connection Acceptance Message', channel: 'linkedin', order_index: orderIdx++, config: { message: followMsg || '', ...chDelayConfig } });
                         if (liChannelActions.length === 0) actionSteps.push({ type: 'linkedin_visit', title: 'Visit LinkedIn Profile', channel: 'linkedin', order_index: orderIdx++, config: { ...chDelayConfig } });
                     }
                 }
@@ -10839,32 +11603,7 @@ function CheckpointFormInline({
             }, [] as { lead_id: string; name: string; headline: string; company: string; rating: string; icp_score?: number }[]);
 
             // Build checkpoint selections object
-            const checkpointSelections = {
-                icp_threshold: icpMin,
-                linkedin_actions: liChannelActions,
-                connection_message: connMsg || '',
-                followup_message: followMsg || '',
-                next_channels: nextChannels,
-                trigger_condition: triggerCondition || null,
-                campaign_days: campaignDays,
-                campaign_name: name || 'AI Growth Campaign',
-                enable_daily_web_presence: enableDailyWebPresence,
-                enable_daily_posts: enableDailyPosts,
-                enable_ai_personalization: enableAiPersonalization,
-                enable_ai_connection_personalization: enableAiConnectionPersonalization,
-                enable_ai_followup_personalization: enableAiFollowupPersonalization,
-                ai_value_prop: aiMsgValueProp || '',
-                ai_tone: aiMsgTone || 'professional',
-                ai_goal: aiMsgGoal || 'get_meeting',
-                // AI Media node (edit-mode round-trip: hydration re-creates the canvas node)
-                media_step: wfMediaNode ? {
-                    media_url: wfMediaNode.mediaUrl || '',
-                    media_type: wfMediaNode.mediaType || '',
-                    media_filename: wfMediaNode.mediaFilename || '',
-                    mime_type: wfMediaNode.mimeType || '',
-                    prompt: wfMediaNode.mediaPrompt || '',
-                } : null,
-            };
+            const checkpointSelections = buildCheckpointSelections();
 
             // Get original ICP input (first user message in chat)
             const userMessages = chatMessages.filter(m => m.role === 'user').map(m => m.text);
@@ -11094,6 +11833,15 @@ function CheckpointFormInline({
                 // the campaign running and runs processCampaign against the NEW steps; it
                 // respects per-lead progress, so nobody already contacted is re-messaged.
                 await startCampaign(editingCampaignId);
+                // Launching into an EXISTING campaign made the same promise —
+                // "everyone I find afterwards joins the campaign" — and never
+                // attached the job at all, so the rest of the search went nowhere.
+                if (importRunInBackground && importJob?.id) {
+                    if (!(await attachImportJob(importJob.id, editingCampaignId))) {
+                        warnAttachFailed(importJob.id, editingCampaignId);
+                        return;
+                    }
+                }
                 window.location.href = '/campaigns';
             } else {
                 const data = await campaignCreation.createCampaign(payload);
@@ -11103,16 +11851,12 @@ function CheckpointFormInline({
                 // because the hand-off did not land.
                 if (data?.success && importRunInBackground && importJob?.id) {
                     const newCampaignId = data.campaign?.id || data.data?.id || data.id;
-                    if (newCampaignId) {
-                        try {
-                            await fetch(`/api/campaigns/leads/import/jobs/${importJob.id}/attach-campaign`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ campaignId: newCampaignId }),
-                            });
-                        } catch (attachErr) {
-                            console.warn('Failed to attach import job to campaign', attachErr);
-                        }
+                    if (newCampaignId && !(await attachImportJob(importJob.id, newCampaignId))) {
+                        // Do NOT redirect: the transcript carries the only notice
+                        // that the rest of the search is going nowhere, and
+                        // navigating away destroys it.
+                        warnAttachFailed(importJob.id, newCampaignId);
+                        return;
                     }
                 }
                 if (data?.success) { window.location.href = '/campaigns'; }
@@ -12312,7 +13056,7 @@ function CheckpointFormInline({
                                         {[
                                             { id: 'profile_view', label: 'Visit profile', desc: 'Visit their LinkedIn profile to warm up the connection', icon: '👁️' },
                                             { id: 'connect', label: 'Send connection request', desc: 'Send a personalised connection request', icon: '🤝' },
-                                            { id: 'message', label: 'Send follow-up message', desc: 'Send a LinkedIn message after connection is accepted', icon: '💬' },
+                                            { id: 'message', label: 'Send connection acceptance message', desc: 'The first message sent once they accept your connection request', icon: '💬' },
                                         ].map((opt) => {
                                             const isSelected = liChannelActions.includes(opt.id);
                                             return (
@@ -12564,7 +13308,7 @@ function CheckpointFormInline({
                                                       <div  className="border-[1.5px] border-t-0 border-[#3b82f6] dark:border-blue-700 bg-[#f0f6ff] dark:bg-[#060b21]" style={{ borderTop: 'none', borderRadius: '0 0 10px 10px', padding: '12px' }}>
                                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                                                           <label className="text-[#374151] dark:text-gray-300" style={{ fontSize: '12px', fontWeight: 600 }}>
-                                                            Follow-up Message
+                                                            Connection Acceptance Message
                                                           </label>
                                                           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                                                             <button
@@ -12805,14 +13549,14 @@ function CheckpointFormInline({
                                                                 <>
                                                                     <div style={{ display: 'flex', gap: 8, fontSize: 11.5, color: '#6d28d9', background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: 9, padding: '9px 11px', lineHeight: 1.5 }}>
                                                                         <Check size={15} style={{ flexShrink: 0, marginTop: 1 }} />
-                                                                        <span>Each lead gets a <strong>unique AI-generated message</strong> from their live web presence &amp; LinkedIn posts. Your static template is the fallback.</span>
+                                                                        <span>Leave the message box empty and each lead gets a <strong>unique AI-generated message</strong> from their live web presence &amp; LinkedIn posts. <strong>Write a message and it is sent as written</strong> — AI only fills the <code>{'{{web_insight}}'}</code>-style placeholders inside it.</span>
                                                                     </div>
 
                                                                     {/* Nested granular control — clearly a child of the toggle above */}
                                                                     <div style={{ marginLeft: 8, paddingLeft: 14, borderLeft: '2px solid #ddd6fe', display: 'flex', flexDirection: 'column', gap: 8 }}>
                                                                         <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#7c3aed' }}>Which messages?</div>
                                                                         <AiPersoRow icon={<UserPlus size={16} />} title="Connection request" desc="Personalised connect note per lead" checked={enableAiConnectionPersonalization} onChange={setEnableAiConnectionPersonalization} accent="violet" />
-                                                                        <AiPersoRow icon={<MessageSquare size={16} />} title="Follow-up message" desc="Personalised follow-up per lead" checked={enableAiFollowupPersonalization} onChange={setEnableAiFollowupPersonalization} accent="violet" />
+                                                                        <AiPersoRow icon={<MessageSquare size={16} />} title="Connection acceptance message" desc="Personalised acceptance message per lead" checked={enableAiFollowupPersonalization} onChange={setEnableAiFollowupPersonalization} accent="violet" />
                                                                         <div style={{ fontSize: 11, color: '#9ca3af', paddingLeft: 2 }}>Unchecked messages use your static template.</div>
                                                                     </div>
                                                                 </>
@@ -12972,6 +13716,38 @@ function CheckpointFormInline({
                                       background: '#0b1957', color: '#fff', fontSize: '12px', fontWeight: 700,
                                       cursor: 'pointer', transition: 'all 0.15s',
                                   }}>Add credits</button>
+                              </div>
+                          )}
+                          {grounding && !grounding.grounded && (
+                              <div className="dark:bg-amber-900/20 dark:border-amber-700 dark:text-amber-300" style={{
+                                  padding: '10px 14px', borderRadius: '10px', fontSize: '12px', lineHeight: 1.5,
+                                  background: '#fef3c7', border: '1px solid #f59e0b', color: '#92400e',
+                                  display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-start',
+                              }}>
+                                  <div>
+                                      <strong>No value proposition on file:</strong> nothing in this workspace says what
+                                      you offer, so the agent will not describe it rather than guess. Connection notes
+                                      are unaffected — they never pitch — but follow-ups will open a conversation
+                                      without a pitch or a meeting request.
+                                  </div>
+                                  <div>
+                                      Add it in <strong>Settings → Business Profile</strong> to fix every campaign, or
+                                      set this campaign&apos;s value proposition on the message step.
+                                  </div>
+                                  <button
+                                      onClick={() => {
+                                          // `businessprofile`, not `business-profile`: the allow-list in
+                                          // settings/page.tsx has no hyphen and an unrecognised tab param
+                                          // silently lands on the default tab.
+                                          window.open('/settings?tab=businessprofile', '_blank');
+                                      }}
+                                      className="dark:bg-blue-700"
+                                      style={{
+                                          padding: '6px 14px', borderRadius: '8px', border: 'none',
+                                          background: '#0b1957', color: '#fff', fontSize: '12px', fontWeight: 700,
+                                          cursor: 'pointer', transition: 'all 0.15s',
+                                      }}
+                                  >Add business profile</button>
                               </div>
                           )}
                           {creditsOk && creditBalance !== null && enrolledCount > 0 && (

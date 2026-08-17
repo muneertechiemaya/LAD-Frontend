@@ -27,6 +27,7 @@ import {
   PinOff,
   Contact,
   Gauge,
+  SlidersHorizontal,
 } from "lucide-react";
 import { NavLink } from "./NavLink";
 import { ThemeToggle } from "./ThemeToggle";
@@ -97,6 +98,12 @@ type NavItem = {
   details: string;
   requiredCapability?: string;
   requiredFeature?: string; // For feature-flag based access
+  /**
+   * Show only for a workspace on a vertical snapshot. Used instead of
+   * `requiredFeature` because the snapshot's feature key is vertical-specific
+   * (`wellness.snapshot`, …) and this list needs a static predicate.
+   */
+  requiresCuratedWorkspace?: boolean;
   children?: Omit<NavItem, 'children'>[];
 };
 export function Sidebar() {
@@ -104,7 +111,7 @@ export function Sidebar() {
   const router = useRouter();
   const dispatch = useDispatch();
   const queryClient = useQueryClient();
-  const { hasFeature, user: authUser } = useAuth();
+  const { hasFeature, user: authUser, isCuratedWorkspace } = useAuth();
   const { tenant, setTenantById, tenants } = useTenant();
   const { isDark } = useTheme();
   const reduxUser = useSelector((state: RootState) => state.auth.user);
@@ -204,6 +211,16 @@ export function Sidebar() {
       requiredCapability: "view_overview",
       requiredFeature: "overview",
     },
+    // Curated workspaces only. Sits high because for a snapshot tenant this IS
+    // the home screen — it replaces the workflow builder as the place they go
+    // to decide what Mr LAD is doing.
+    {
+      href: "/pipelines",
+      label: "Pipelines",
+      icon: SlidersHorizontal,
+      details: "Switch the pipelines built for your industry on and off.",
+      requiresCuratedWorkspace: true,
+    },
     {
       href: "/onboarding/advanced-search-ai",
       label: "AI Assistant",
@@ -300,6 +317,11 @@ export function Sidebar() {
   // additionally need the matching capability.
   // Items without any required* field are public (always shown).
   const hasNavAccess = (item: NavItem): boolean => {
+    // Snapshot gate — checked before the early return below, because an item
+    // scoped to a curated workspace may carry no capability or feature key of
+    // its own and would otherwise read as public.
+    if (item.requiresCuratedWorkspace && !isCuratedWorkspace) return false;
+
     if (!item.requiredCapability && !item.requiredFeature) return true;
 
     // Tenant feature gate — applies to every role, no bypass.
