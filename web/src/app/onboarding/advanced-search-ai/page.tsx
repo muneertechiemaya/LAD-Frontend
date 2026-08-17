@@ -1529,6 +1529,13 @@ export default function AdvancedSearchAIPage() {
     }, []);
 
     const [showMediaModal, setShowMediaModal] = useState(false);
+
+    // Vertical snapshot. A curated workspace (wellness, etc.) runs prebuilt
+    // pipelines and is not offered the node canvas — see the builder mount
+    // below, which is the single choke point every open path funnels through.
+    // Presentation only; snapshotStepGuard enforces server-side.
+    const { isCuratedWorkspace } = useAuth();
+
     // Custom Accelerator builder (node graph) — full-screen takeover opened from the "+" menu.
     const [showCustomWorkflow, setShowCustomWorkflow] = useState(false);
     // "Roles" — prebuilt pipeline templates launched from chat. The wizard asks
@@ -7102,7 +7109,7 @@ export default function AdvancedSearchAIPage() {
                                             <div className="adv-attach-sub">Pick from your existing contacts</div>
                                         </div>
                                     </div>
-                                    <div className="adv-attach-item" onClick={() => { setShowAttachMenu(false); setShowCustomWorkflow(true); }}>
+                                    {!isCuratedWorkspace && <div className="adv-attach-item" onClick={() => { setShowAttachMenu(false); setShowCustomWorkflow(true); }}>
                                         <div className="adv-attach-icon" style={{ background: '#ede9fe' }}>
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round"><circle cx="5" cy="6" r="3" /><circle cx="19" cy="6" r="3" /><circle cx="12" cy="18" r="3" /><path d="M7.5 8L10 15M16.5 8L14 15" /></svg>
                                         </div>
@@ -7110,7 +7117,7 @@ export default function AdvancedSearchAIPage() {
                                             <div className="adv-attach-label">Custom Accelerator</div>
                                             <div className="adv-attach-sub">Source → outreach nodes</div>
                                         </div>
-                                    </div>
+                                    </div>}
                                     <div className={`adv-attach-item${webSearchEnabled ? ' adv-attach-active' : ''}`} onClick={() => { setWebSearchEnabled(!webSearchEnabled); setShowAttachMenu(false); }}>
                                         <div className="adv-attach-icon" style={{ background: webSearchEnabled ? '#dbeafe' : '#e0f2fe' }}>
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={webSearchEnabled ? '#2563eb' : '#0284c7'} strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
@@ -7806,7 +7813,7 @@ export default function AdvancedSearchAIPage() {
                                                                 <div className="adv-attach-sub">Pick from your existing contacts</div>
                                                             </div>
                                                         </div>
-                                                        <div className="adv-attach-item" onClick={() => { setShowChatAttachMenu(false); setShowCustomWorkflow(true); }}>
+                                                        {!isCuratedWorkspace && <div className="adv-attach-item" onClick={() => { setShowChatAttachMenu(false); setShowCustomWorkflow(true); }}>
                                                             <div className="adv-attach-icon" style={{ background: '#ede9fe' }}>
                                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round"><circle cx="5" cy="6" r="3" /><circle cx="19" cy="6" r="3" /><circle cx="12" cy="18" r="3" /><path d="M7.5 8L10 15M16.5 8L14 15" /></svg>
                                                             </div>
@@ -7814,7 +7821,7 @@ export default function AdvancedSearchAIPage() {
                                                                 <div className="adv-attach-label">Custom Accelerator</div>
                                                                 <div className="adv-attach-sub">Source → outreach nodes</div>
                                                             </div>
-                                                        </div>
+                                                        </div>}
                                                         <div className="adv-attach-divider" />
                                                         <div className="adv-attach-item" onClick={() => { setShowChatAttachMenu(false); router.push('/settings'); }}>
                                                             <div className="adv-attach-icon" style={{ background: '#fef3c7' }}>
@@ -9325,7 +9332,43 @@ export default function AdvancedSearchAIPage() {
 
             {/* ── Contact Picker Modal ── */}
             {/* ── Custom Accelerator builder (node graph) — full-screen takeover from the "+" menu ── */}
-            {showCustomWorkflow && (
+            {/*
+              * Builder mount — gated for curated (vertical snapshot) workspaces.
+              *
+              * This is the SINGLE choke point for the builder: every way of
+              * opening it — the "+" menu, an Accelerator, the Roles wizard, and
+              * the AI draft path (which can autoLaunch the moment a draft
+              * lands) — funnels through `showCustomWorkflow`. Gating here
+              * therefore covers all of them, including any path added later,
+              * which patching the individual call sites would not.
+              *
+              * Rendering an explicit panel rather than `null` on purpose: a
+              * silently dead trigger is the kind of thing that gets debugged
+              * twice. The enforcing gate is server-side regardless —
+              * snapshotStepGuard refuses non-permitted step types at creation.
+              */}
+            {showCustomWorkflow && isCuratedWorkspace && (
+                <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+                    <div style={{ background: '#fff', borderRadius: 12, maxWidth: 420, padding: '28px 26px', textAlign: 'center', boxShadow: '0 12px 40px rgba(0,0,0,0.18)' }}>
+                        <h3 style={{ margin: '0 0 10px', fontSize: 17, fontWeight: 650, color: '#111827' }}>
+                            Custom workflows aren&apos;t part of this workspace
+                        </h3>
+                        <p style={{ margin: '0 0 20px', fontSize: 14, lineHeight: 1.55, color: '#4B5563' }}>
+                            Your workspace runs curated pipelines built for your industry. Manage them from
+                            the Pipelines page instead of building a workflow from scratch.
+                        </p>
+                        <button
+                            type="button"
+                            onClick={() => { setShowCustomWorkflow(false); setBuilderTemplate(null); setBuilderAiDraft(null); setEditingCampaignId(null); }}
+                            style={{ padding: '9px 20px', borderRadius: 8, border: 'none', background: '#2E6F5E', color: '#fff', fontSize: 14, fontWeight: 550, cursor: 'pointer' }}
+                        >
+                            Got it
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {showCustomWorkflow && !isCuratedWorkspace && (
                 <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: '#F8F9FE' }}>
                     <CustomWorkflowBuilder
                         onClose={() => { setShowCustomWorkflow(false); setBuilderTemplate(null); setBuilderAiDraft(null); setEditingCampaignId(null); }}

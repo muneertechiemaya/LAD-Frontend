@@ -40,6 +40,13 @@ export const AUTH_ROUTES = [
   '/wallet',
   '/make-call',
   '/pipeline',
+  // Curated vertical-snapshot pipelines. MUST be listed separately from
+  // '/pipeline' above: that entry is the deals pipeline, a different feature,
+  // and the auth matcher is exact-or-'/'-prefixed so it does not cover
+  // '/pipelines'. Without its own entry this falls through to the open-route
+  // check, where a bare startsWith against '/' matches everything and the page
+  // renders in the PUBLIC layout — marketing chrome, no sidebar, wrong ground.
+  '/pipelines',
   '/crm',
   '/prospects',
   '/onboarding',
