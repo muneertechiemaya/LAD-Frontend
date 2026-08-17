@@ -139,11 +139,11 @@ function statusBadgeVariant(
 function statusBadgeClass(status: string): string {
   switch (status) {
     case 'running':
-      return 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800';
+      return 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950/60 dark:text-blue-100 dark:border-blue-800';
     case 'queued':
       return 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-900/50';
     default:
-      return '';
+      return 'dark:text-white';
   }
 }
 
@@ -577,7 +577,7 @@ function ComposeBroadcastDialog({
                   onClick={() => setMode('manual')}
                   className={`px-2 py-1 rounded transition-colors ${
                     mode === 'manual'
-                      ? 'bg-primary text-primary-foreground font-medium'
+                      ? 'bg-primary text-primary-foreground font-medium dark:text-white'
                       : 'text-muted-foreground hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-300'
                   }`}
                 >
@@ -590,7 +590,7 @@ function ComposeBroadcastDialog({
                   onClick={() => setMode('group')}
                   className={`px-2 py-1 rounded transition-colors ${
                     mode === 'group'
-                      ? 'bg-primary text-primary-foreground font-medium'
+                      ? 'bg-primary text-primary-foreground font-medium dark:text-white'
                       : 'text-muted-foreground hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-300'
                   }`}
                 >
@@ -1016,7 +1016,8 @@ export function EmailBroadcastsSentList() {
               : `${list.length} broadcast${list.length === 1 ? '' : 's'}`}
         </div>
         <Button size="sm" onClick={() => setComposeOpen(true)}>
-          <Pencil className="h-3.5 w-3.5 mr-1.5" /> New broadcast
+          <Pencil className="h-3.5 w-3.5 mr-1.5 dark:text-white" /> 
+          <span className='dark:text-white'>New broadcast</span>
         </Button>
       </div>
 
