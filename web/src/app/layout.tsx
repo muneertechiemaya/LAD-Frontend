@@ -15,7 +15,7 @@ const SITE_URL =
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Mr LAD: AI-Powered Sales Platform",
+    default: "Mr LAD — AI-Powered Sales Platform",
     template: "%s · Mr LAD",
   },
   description:
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "Mr LAD",
-    title: "Mr LAD: AI-Powered Sales Platform",
+    title: "Mr LAD — AI-Powered Sales Platform",
     description:
       "One AI Sales Employee across LinkedIn, WhatsApp, Instagram, email, and voice. The output of an entire sales team.",
     url: SITE_URL,
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Mr LAD: AI-Powered Sales Platform",
+    title: "Mr LAD — AI-Powered Sales Platform",
     description:
       "One AI Sales Employee across LinkedIn, WhatsApp, Instagram, email, and voice.",
     images: ["/og-image.png"],
