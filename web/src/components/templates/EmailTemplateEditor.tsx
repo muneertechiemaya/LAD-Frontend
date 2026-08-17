@@ -622,6 +622,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
                           htmlContent={template.body_html || ''}
                           subject={template.subject}
                           onContentChange={(html) => set('body_html', html)}
+                          theme="blue"
                         />
                       </div>
                     )}

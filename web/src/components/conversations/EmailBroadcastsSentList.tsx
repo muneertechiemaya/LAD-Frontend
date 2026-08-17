@@ -690,6 +690,7 @@ function ComposeBroadcastDialog({
                 htmlContent={body}
                 subject={subject}
                 onContentChange={setBody}
+                theme="black"
               />
             </div>
             <p className="mt-3.5 text-xs text-muted-foreground">

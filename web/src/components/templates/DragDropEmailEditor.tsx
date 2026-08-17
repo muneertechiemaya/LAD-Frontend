@@ -1490,9 +1490,10 @@ interface DragDropEmailEditorProps {
   htmlContent: string;
   subject?: string;
   onContentChange: (html: string) => void;
+  theme?: 'black' | 'blue';
 }
 
-export default function DragDropEmailEditor({ htmlContent, subject, onContentChange }: DragDropEmailEditorProps) {
+export default function DragDropEmailEditor({ htmlContent, subject, onContentChange, theme = 'blue' }: DragDropEmailEditorProps) {
   const [blocks, setBlocks] = useState<EmailBlock[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showPalette, setShowPalette] = useState(false);
@@ -1590,13 +1591,23 @@ export default function DragDropEmailEditor({ htmlContent, subject, onContentCha
 
       {/* Empty state */}
       {blocks.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-16 text-center border-2 border-dashed border-gray-200 dark:border-zinc-800 rounded-2xl bg-white dark:bg-zinc-900">
-          <div className="w-14 h-14 rounded-2xl bg-gray-50 dark:bg-zinc-800 shadow-sm border border-gray-100 dark:border-zinc-700 flex items-center justify-center mb-4">
-            <AlignLeft className="w-7 h-7 text-gray-300 dark:text-zinc-400" />
+        theme === 'black' ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center border-2 border-dashed border-gray-200 dark:border-zinc-800 rounded-2xl bg-white dark:bg-zinc-900">
+            <div className="w-14 h-14 rounded-2xl bg-gray-50 dark:bg-zinc-800 shadow-sm border border-gray-100 dark:border-zinc-700 flex items-center justify-center mb-4">
+              <AlignLeft className="w-7 h-7 text-gray-300 dark:text-zinc-400" />
+            </div>
+            <p className="text-sm font-semibold text-gray-700 dark:text-zinc-200 mb-1">Your email is empty</p>
+            <p className="text-xs text-gray-400 dark:text-zinc-400 mb-4">Click &quot;Add Block&quot; above to build your email</p>
           </div>
-          <p className="text-sm font-semibold text-gray-700 dark:text-zinc-200 mb-1">Your email is empty</p>
-          <p className="text-xs text-gray-400 dark:text-zinc-400 mb-4">Click &quot;Add Block&quot; above to build your email</p>
-        </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-16 text-center border-2 border-dashed border-gray-200 dark:border-blue-900/50 rounded-2xl bg-white dark:bg-blue-900/20">
+            <div className="w-14 h-14 rounded-2xl bg-gray-50 dark:bg-[#000724] shadow-sm border border-gray-100 dark:border-blue-900/40 flex items-center justify-center mb-4">
+              <AlignLeft className="w-7 h-7 text-gray-300 dark:text-blue-400/70" />
+            </div>
+            <p className="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-1">Your email is empty</p>
+            <p className="text-xs text-gray-400 dark:text-slate-400 mb-4">Click &quot;Add Block&quot; above to build your email</p>
+          </div>
+        )
       )}
 
       {/* Sortable blocks */}
