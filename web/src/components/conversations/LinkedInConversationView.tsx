@@ -612,7 +612,9 @@ export function LinkedInConversationView({
       const res  = await fetchWithTenant(li(`${API_BASE}/conversations`));
       const json = await res.json();
       if (json.success) {
-        setConversations(json.data || []);
+        const raw: LinkedInConversation[] = Array.isArray(json.data) ? json.data : [];
+        const unique = Array.from(new Map(raw.map(c => [c.id, c])).values());
+        setConversations(unique);
       } else {
         setError(json.message || json.error || 'Failed to load LinkedIn conversations');
       }
@@ -673,7 +675,9 @@ export function LinkedInConversationView({
       const res  = await fetchWithTenant(li(`${API_BASE}/conversations/${convId}/messages`));
       const json = await res.json();
       if (json.success) {
-        const sorted = [...(json.data || [])].sort(
+        const rawMsgs: LinkedInMessage[] = Array.isArray(json.data) ? json.data : [];
+        const uniqueMsgs = Array.from(new Map(rawMsgs.map(m => [m.id, m])).values());
+        const sorted = uniqueMsgs.sort(
           (a: LinkedInMessage, b: LinkedInMessage) =>
             new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         );
