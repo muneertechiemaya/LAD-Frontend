@@ -92,10 +92,10 @@ function detectChannels(lead: LeadEntry): string[] {
 }
 
 const CHANNEL_ICONS: Record<string, { icon: typeof Phone; color: string; label: string }> = {
-  whatsapp: { icon: Phone, color: 'text-green-600 bg-green-50', label: 'WhatsApp' },
-  linkedin: { icon: Linkedin, color: 'text-blue-600 bg-blue-50', label: 'LinkedIn' },
-  instagram: { icon: Instagram, color: 'text-pink-600 bg-pink-50', label: 'Instagram' },
-  gmail: { icon: Mail, color: 'text-orange-500 bg-orange-50', label: 'Email' },
+  whatsapp: { icon: Phone, color: 'text-green-600 bg-green-50 dark:text-emerald-300 dark:bg-emerald-500/10 dark:border dark:border-emerald-500/20', label: 'WhatsApp' },
+  linkedin: { icon: Linkedin, color: 'text-blue-600 bg-blue-50 dark:text-sky-300 dark:bg-sky-500/10 dark:border dark:border-sky-500/20', label: 'LinkedIn' },
+  instagram: { icon: Instagram, color: 'text-pink-600 bg-pink-50 dark:text-pink-300 dark:bg-pink-500/10 dark:border dark:border-pink-500/20', label: 'Instagram' },
+  gmail: { icon: Mail, color: 'text-orange-500 bg-orange-50 dark:text-amber-300 dark:bg-amber-500/10 dark:border dark:border-amber-500/20', label: 'Email' },
 };
 
 const API_BASE = '/api/whatsapp-conversations';
@@ -958,7 +958,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
               "p-2 rounded-full shadow-sm flex items-center justify-center w-10 h-10 border",
               isWhatsApp
                 ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20"
-                : "bg-orange-50 text-orange-600 border-orange-100"
+                : "bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-100 dark:border-orange-500/20"
             )}>
               <UserPlus className="h-6 w-6 stroke-[2.5px]" />
             </div>
@@ -1041,7 +1041,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                 )}
               </p>
               {excelError && (
-                <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg p-2.5 mb-4 text-left">
+                <p className="text-xs text-red-600 dark:text-red-300/90 bg-red-50 dark:bg-red-500/[0.08] border border-red-200 dark:border-red-500/25 rounded-lg p-2.5 mb-4 text-left">
                   {excelError}
                 </p>
               )}
@@ -1155,15 +1155,15 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
               )}
 
               {scrapeError && (
-                <div className="flex items-start gap-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg p-2.5">
-                  <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                <div className="flex items-start gap-2 text-xs text-red-600 dark:text-red-300/90 bg-red-50 dark:bg-red-500/[0.08] border border-red-200 dark:border-red-500/25 rounded-lg p-2.5">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5 text-red-500 dark:text-red-400" />
                   <span>{scrapeError}</span>
                 </div>
               )}
 
               {scrapeStats && !scrapeError && (
-                <div className="flex items-start gap-2 text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg p-2.5">
-                  <Check className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                <div className="flex items-start gap-2 text-xs text-green-700 dark:text-emerald-300 bg-green-50 dark:bg-emerald-500/10 border border-green-200 dark:border-emerald-500/20 rounded-lg p-2.5">
+                  <Check className="h-3.5 w-3.5 shrink-0 mt-0.5 text-green-600 dark:text-emerald-400" />
                   <span>
                     Extracted <strong>{scrapeStats.extracted}</strong> contact{scrapeStats.extracted !== 1 ? 's' : ''}
                     {scrapeStats.chars > 0 && ` from ${scrapeStats.chars.toLocaleString()} chars of page content`}.
@@ -1215,19 +1215,11 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
 
         {/* ── Invalid Records Banner ──────────────── */}
         {hasValidationErrors && !importResult?.success && (
-          <div className={cn(
-            "mx-3 sm:mx-8 mb-4 rounded-xl border overflow-hidden shadow-sm",
-            isWhatsApp
-              ? "bg-amber-50/80 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/60"
-              : "bg-amber-50 border-amber-200"
-          )}>
+          <div className="mx-3 sm:mx-8 mb-4 rounded-xl border overflow-hidden shadow-sm bg-amber-50/80 dark:bg-amber-500/[0.08] border-amber-200 dark:border-amber-500/25">
             {/* Top row: summary + bulk actions */}
             <div className="px-3 py-2 flex items-center justify-between gap-3">
-              <div className={cn(
-                "flex items-center gap-2 min-w-0",
-                isWhatsApp ? "text-amber-800 dark:text-amber-300" : "text-amber-700"
-              )}>
-                <TriangleAlert className="h-4 w-4 shrink-0" />
+              <div className="flex items-center gap-2 min-w-0 text-amber-800 dark:text-amber-200/90">
+                <TriangleAlert className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400/80" />
                 <span className="text-xs font-medium">
                   {invalidCount} record{invalidCount !== 1 ? 's' : ''} with invalid data — fix or delete before importing
                 </span>
@@ -1236,12 +1228,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                 <Button
                   size="sm"
                   variant="outline"
-                  className={cn(
-                    "h-7 text-xs",
-                    isWhatsApp
-                      ? "border-amber-300 dark:border-amber-700/80 bg-amber-100/50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/60"
-                      : "border-amber-300 text-amber-700 hover:bg-amber-100 hover:text-amber-800"
-                  )}
+                  className="h-7 text-xs border-amber-300 dark:border-amber-500/30 bg-amber-100/50 dark:bg-amber-500/10 text-amber-800 hover:text-amber-800 dark:text-amber-200/90 hover:bg-amber-100 dark:hover:bg-amber-500/20"
                   onClick={allInvalidSelected ? () => setSelectedIds(new Set()) : handleSelectAllInvalid}
                 >
                   {allInvalidSelected ? 'Deselect All' : 'Select All Invalid'}
@@ -1250,7 +1237,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                   <Button
                     size="sm"
                     variant="destructive"
-                    className="h-7 text-xs gap-1"
+                    className="h-7 text-xs gap-1 bg-red-600 hover:bg-red-700 text-white dark:bg-red-800 dark:hover:bg-red-900 dark:text-white border-transparent"
                     onClick={handleDeleteSelected}
                   >
                     <Trash2 className="h-3 w-3" />
@@ -1261,30 +1248,19 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
             </div>
             {/* Auto-fix row: only shown when phone errors exist and a country code can be inferred */}
             {phoneErrorLeadIds.size > 0 && detectedCountryCode && (
-              <div className={cn(
-                "px-3 py-2 border-t flex items-center justify-between gap-3",
-                isWhatsApp
-                  ? "border-amber-200 dark:border-amber-800/60 bg-amber-100/80 dark:bg-amber-950/50 text-amber-900 dark:text-amber-200"
-                  : "border-amber-200 bg-amber-100/60 text-amber-800"
-              )}>
+              <div className="px-3 py-2 border-t flex items-center justify-between gap-3 border-amber-200 dark:border-amber-500/20 bg-amber-100/80 dark:bg-amber-500/[0.06] text-amber-900 dark:text-amber-200/80">
                 <span className="text-xs">
                   <span className="font-semibold">Auto-fix phones:</span>{' '}
                   detected country code{' '}
-                  <code className={cn(
-                    "rounded px-1 font-mono",
-                    isWhatsApp ? "bg-amber-200 dark:bg-amber-900/80 text-amber-900 dark:text-amber-200" : "bg-amber-200 text-amber-900"
-                  )}>{detectedCountryCode}</code>{' '}
+                  <code className="rounded px-1 font-mono bg-amber-200 dark:bg-amber-500/20 text-amber-900 dark:text-amber-200 dark:border dark:border-amber-500/30">
+                    {detectedCountryCode}
+                  </code>{' '}
                   from existing records — apply to {phoneErrorLeadIds.size} number{phoneErrorLeadIds.size !== 1 ? 's' : ''}?
                 </span>
                 <Button
                   size="sm"
                   variant="outline"
-                  className={cn(
-                    "h-7 text-xs shrink-0",
-                    isWhatsApp
-                      ? "border-amber-400 dark:border-amber-700 text-amber-900 dark:text-amber-200 hover:bg-amber-200 dark:hover:bg-amber-900/60"
-                      : "border-amber-400 text-amber-800 hover:bg-amber-200"
-                  )}
+                  className="h-7 text-xs shrink-0 border-amber-400 dark:border-amber-500/30 text-amber-900 dark:text-amber-200 hover:bg-amber-200 dark:hover:bg-amber-500/20"
                   onClick={handleAutoFixPhones}
                 >
                   <Check className="h-3 w-3 mr-1" />
@@ -1344,11 +1320,11 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
             'mx-4 mb-2 p-3 rounded-lg text-sm',
             importResult.success
               ? isWhatsApp
-                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60'
-                : 'bg-green-50 text-green-700 border border-green-200'
+                ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/20'
+                : 'bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-500/20'
               : isWhatsApp
-                ? 'bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-800/60'
-                : 'bg-red-50 text-red-700 border border-red-200'
+                ? 'bg-red-50 dark:bg-red-500/10 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-500/20'
+                : 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-500/20'
           )}>
             {importResult.success ? (
               <div className="space-y-3">
@@ -1366,7 +1342,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                     </span>
 
                     {(importResult.skipped.length > 0 || importResult.errors.length > 0) && (
-                      <div className="rounded-md border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-800">
+                      <div className="rounded-md border border-amber-200 dark:border-amber-500/25 bg-amber-50 dark:bg-amber-500/[0.08] p-2.5 text-xs text-amber-800 dark:text-amber-200/90">
                         <p className="font-semibold mb-1.5">
                           {importResult.skipped.length + importResult.errors.length} number{(importResult.skipped.length + importResult.errors.length) !== 1 ? 's were' : ' was'} excluded
                         </p>
@@ -1378,10 +1354,10 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                             <ul className="mt-1 ml-3 space-y-0.5 max-h-32 overflow-y-auto">
                               {importResult.skipped.map((s, i) => (
                                 <li key={i} className="flex items-start gap-1.5">
-                                  <span className="shrink-0 text-amber-500">·</span>
+                                  <span className="shrink-0 text-amber-500 dark:text-amber-400">·</span>
                                   <span className="break-all">
                                     <strong>{s.name}</strong>
-                                    {s.phone ? <span className="text-amber-700/80"> ({s.phone})</span> : null}
+                                    {s.phone ? <span className="text-amber-700/80 dark:text-amber-300/80"> ({s.phone})</span> : null}
                                     {' — '}{s.reason}
                                   </span>
                                 </li>
@@ -1390,7 +1366,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                           </details>
                         )}
                         {importResult.errors.length > 0 && (
-                          <details open className="text-red-700">
+                          <details open className="text-red-700 dark:text-red-300/90">
                             <summary className="cursor-pointer font-medium select-none">
                               ✕ {importResult.errors.length} failed (error)
                             </summary>
@@ -1400,7 +1376,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                                   <span className="shrink-0 text-red-400">·</span>
                                   <span className="break-all">
                                     <strong>{e.name}</strong>
-                                    {e.phone ? <span className="text-red-600/80"> ({e.phone})</span> : null}
+                                    {e.phone ? <span className="text-red-600/80 dark:text-red-300/80"> ({e.phone})</span> : null}
                                     {' — '}{e.error}
                                   </span>
                                 </li>
@@ -1412,17 +1388,17 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                     )}
 
                     {importResult.duplicates.length > 0 && (
-                      <details className="rounded-md border border-blue-200 bg-blue-50 p-2.5 text-xs text-blue-800">
+                      <details className="rounded-md border border-blue-200 dark:border-blue-500/25 bg-blue-50 dark:bg-blue-500/[0.08] p-2.5 text-xs text-blue-800 dark:text-blue-200/90">
                         <summary className="cursor-pointer font-medium select-none">
                           ℹ {importResult.duplicates.length} already existed — linked to existing conversation{importResult.duplicates.length !== 1 ? 's' : ''}
                         </summary>
                         <ul className="mt-1 ml-3 space-y-0.5 max-h-32 overflow-y-auto">
                           {importResult.duplicates.map((d, i) => (
                             <li key={i} className="flex items-start gap-1.5">
-                              <span className="shrink-0 text-blue-500">·</span>
+                              <span className="shrink-0 text-blue-500 dark:text-blue-400">·</span>
                               <span className="break-all">
                                 <strong>{d.name}</strong>
-                                {d.phone ? <span className="text-blue-700/80"> ({d.phone})</span> : null}
+                                {d.phone ? <span className="text-blue-700/80 dark:text-blue-300/80"> ({d.phone})</span> : null}
                               </span>
                             </li>
                           ))}
@@ -1530,8 +1506,8 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                       autoFocus
                     />
                     {broadcastCreateError && (
-                      <div className="flex items-center gap-1.5 text-xs text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1.5">
-                        <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                      <div className="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-300/90 bg-red-50 dark:bg-red-500/[0.08] border border-red-200 dark:border-red-500/25 rounded px-2 py-1.5">
+                        <AlertCircle className="h-3.5 w-3.5 shrink-0 text-red-500 dark:text-red-400" />
                         {broadcastCreateError}
                       </div>
                     )}
@@ -1679,7 +1655,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
               <div className="flex items-center justify-between w-full">
                 <div className="text-sm font-medium">
                   {hasValidationErrors ? (
-                    <span className={isWhatsApp ? "text-amber-700 dark:text-amber-400" : "text-amber-600"}>
+                    <span className={isWhatsApp ? "text-amber-700 dark:text-amber-300/90" : "text-amber-600 dark:text-amber-300/90"}>
                       Fix {invalidCount} invalid record{invalidCount !== 1 ? 's' : ''} to continue
                     </span>
                   ) : (
@@ -1779,13 +1755,13 @@ function LeadRow({ lead, index, errors, isSelected, onUpdate, onRemove, onToggle
         isWhatsApp
           ? hasErrors
             ? isSelected
-              ? 'border-red-500/60 bg-red-50 dark:bg-red-950/30 ring-2 ring-red-500/30'
-              : 'border-red-300 dark:border-red-500/40 bg-red-50/50 dark:bg-red-950/20 hover:border-red-400'
+              ? 'border-red-500/60 bg-red-50 dark:bg-red-500/[0.08] ring-2 ring-red-500/20'
+              : 'border-red-300 dark:border-red-500/30 bg-red-50/50 dark:bg-red-500/[0.04] hover:border-red-400 dark:hover:border-red-500/50'
             : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 hover:border-zinc-300 dark:hover:border-zinc-700'
           : hasErrors
             ? isSelected
-              ? 'border-red-400 bg-red-50/60 ring-2 ring-red-200'
-              : 'border-red-300 bg-red-50/30 hover:border-red-400'
+              ? 'border-red-400 dark:border-red-500/50 bg-red-50/60 dark:bg-red-500/[0.08] ring-2 ring-red-200 dark:ring-red-500/20'
+              : 'border-red-300 dark:border-red-500/30 bg-red-50/30 dark:bg-red-500/[0.04] hover:border-red-400 dark:hover:border-red-500/50'
             : 'border-border dark:border-slate-800/80 hover:border-blue-500/30'
       )}
     >
@@ -1799,7 +1775,7 @@ function LeadRow({ lead, index, errors, isSelected, onUpdate, onRemove, onToggle
                 'h-4 w-4 rounded border flex items-center justify-center transition-colors shrink-0',
                 isSelected
                   ? 'bg-red-500 border-red-500 text-white'
-                  : 'border-red-300 hover:border-red-500'
+                  : 'border-red-300 dark:border-red-500/40 hover:border-red-500'
               )}
             >
               {isSelected && <Check className="h-2.5 w-2.5" />}
@@ -1807,9 +1783,9 @@ function LeadRow({ lead, index, errors, isSelected, onUpdate, onRemove, onToggle
           )}
           <span className={cn(
             'text-[10px] font-semibold uppercase',
-            hasErrors ? 'text-red-500' : isWhatsApp ? 'text-zinc-500 dark:text-zinc-400' : 'text-muted-foreground'
+            hasErrors ? 'text-red-500 dark:text-red-300/80' : isWhatsApp ? 'text-zinc-500 dark:text-zinc-400' : 'text-muted-foreground'
           )}>
-            {hasErrors && <TriangleAlert className="inline h-3 w-3 mr-0.5 -mt-px" />}
+            {hasErrors && <TriangleAlert className="inline h-3 w-3 mr-0.5 -mt-px text-red-500 dark:text-red-300/80" />}
             Lead #{index + 1}
           </span>
         </div>
@@ -1870,7 +1846,7 @@ function LeadRow({ lead, index, errors, isSelected, onUpdate, onRemove, onToggle
             <div className="relative">
               <Mail className={cn(
                 'absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5',
-                errors.email ? 'text-red-400' : isWhatsApp ? 'text-zinc-400 dark:text-zinc-500' : 'text-orange-400'
+                errors.email ? 'text-red-400 dark:text-red-400/90' : isWhatsApp ? 'text-zinc-400 dark:text-zinc-500' : 'text-orange-400'
               )} />
               <Input
                 placeholder="Email *"
@@ -1879,12 +1855,12 @@ function LeadRow({ lead, index, errors, isSelected, onUpdate, onRemove, onToggle
                 className={cn(
                   'h-8 text-sm pl-8',
                   inputBorderClass,
-                  errors.email && 'border-red-400 focus-visible:ring-red-300'
+                  errors.email && 'border-red-400 dark:border-red-500/40 focus-visible:ring-red-300 dark:focus-visible:ring-red-500/20'
                 )}
               />
             </div>
             {errors.email && (
-              <p className="text-[10px] text-red-500 leading-tight pl-1">{errors.email}</p>
+              <p className="text-[10px] text-red-500 dark:text-red-300/80 leading-tight pl-1">{errors.email}</p>
             )}
           </div>
         </div>
@@ -1894,7 +1870,7 @@ function LeadRow({ lead, index, errors, isSelected, onUpdate, onRemove, onToggle
             <div className="relative">
               <Phone className={cn(
                 'absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5',
-                errors.phone ? 'text-red-400' : isWhatsApp ? 'text-zinc-400 dark:text-zinc-500' : 'text-green-500'
+                errors.phone ? 'text-red-400 dark:text-red-400/90' : isWhatsApp ? 'text-zinc-400 dark:text-zinc-500' : 'text-green-500'
               )} />
               <Input
                 type="tel"
@@ -1907,19 +1883,19 @@ function LeadRow({ lead, index, errors, isSelected, onUpdate, onRemove, onToggle
                 className={cn(
                   'h-8 text-sm pl-8',
                   inputBorderClass,
-                  errors.phone && 'border-red-400 focus-visible:ring-red-300'
+                  errors.phone && 'border-red-400 dark:border-red-500/40 focus-visible:ring-red-300 dark:focus-visible:ring-red-500/20'
                 )}
               />
             </div>
             {errors.phone && (
-              <p className="text-[10px] text-red-500 leading-tight pl-1">{errors.phone}</p>
+              <p className="text-[10px] text-red-500 dark:text-red-300/80 leading-tight pl-1">{errors.phone}</p>
             )}
           </div>
           <div className="space-y-1">
             <div className="relative">
               <Mail className={cn(
                 'absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5',
-                errors.email ? 'text-red-400' : isWhatsApp ? 'text-zinc-400 dark:text-zinc-500' : 'text-orange-400'
+                errors.email ? 'text-red-400 dark:text-red-400/90' : isWhatsApp ? 'text-zinc-400 dark:text-zinc-500' : 'text-orange-400'
               )} />
               <Input
                 placeholder="Email"
@@ -1928,12 +1904,12 @@ function LeadRow({ lead, index, errors, isSelected, onUpdate, onRemove, onToggle
                 className={cn(
                   'h-8 text-sm pl-8',
                   inputBorderClass,
-                  errors.email && 'border-red-400 focus-visible:ring-red-300'
+                  errors.email && 'border-red-400 dark:border-red-500/40 focus-visible:ring-red-300 dark:focus-visible:ring-red-500/20'
                 )}
               />
             </div>
             {errors.email && (
-              <p className="text-[10px] text-red-500 leading-tight pl-1">{errors.email}</p>
+              <p className="text-[10px] text-red-500 dark:text-red-300/80 leading-tight pl-1">{errors.email}</p>
             )}
           </div>
         </div>
@@ -1946,7 +1922,7 @@ function LeadRow({ lead, index, errors, isSelected, onUpdate, onRemove, onToggle
             <div className="relative">
               <Linkedin className={cn(
                 'absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5',
-                errors.linkedin_url ? 'text-red-400' : isWhatsApp ? 'text-zinc-400 dark:text-zinc-500' : 'text-blue-600'
+                errors.linkedin_url ? 'text-red-400 dark:text-red-400/90' : isWhatsApp ? 'text-zinc-400 dark:text-zinc-500' : 'text-blue-600'
               )} />
               <Input
                 placeholder="linkedin.com/in/..."
@@ -1955,19 +1931,19 @@ function LeadRow({ lead, index, errors, isSelected, onUpdate, onRemove, onToggle
                 className={cn(
                   'h-8 text-sm pl-8',
                   inputBorderClass,
-                  errors.linkedin_url && 'border-red-400 focus-visible:ring-red-300'
+                  errors.linkedin_url && 'border-red-400 dark:border-red-500/40 focus-visible:ring-red-300 dark:focus-visible:ring-red-500/20'
                 )}
               />
             </div>
             {errors.linkedin_url && (
-              <p className="text-[10px] text-red-500 leading-tight pl-1">{errors.linkedin_url}</p>
+              <p className="text-[10px] text-red-500 dark:text-red-300/80 leading-tight pl-1">{errors.linkedin_url}</p>
             )}
           </div>
           <div className="space-y-1">
             <div className="relative">
               <Instagram className={cn(
                 'absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5',
-                errors.instagram_url ? 'text-red-400' : isWhatsApp ? 'text-zinc-400 dark:text-zinc-500' : 'text-pink-500'
+                errors.instagram_url ? 'text-red-400 dark:text-red-400/90' : isWhatsApp ? 'text-zinc-400 dark:text-zinc-500' : 'text-pink-500'
               )} />
               <Input
                 placeholder="@handle or instagram.com/..."
@@ -1976,12 +1952,12 @@ function LeadRow({ lead, index, errors, isSelected, onUpdate, onRemove, onToggle
                 className={cn(
                   'h-8 text-sm pl-8',
                   inputBorderClass,
-                  errors.instagram_url && 'border-red-400 focus-visible:ring-red-300'
+                  errors.instagram_url && 'border-red-400 dark:border-red-500/40 focus-visible:ring-red-300 dark:focus-visible:ring-red-500/20'
                 )}
               />
             </div>
             {errors.instagram_url && (
-              <p className="text-[10px] text-red-500 leading-tight pl-1">{errors.instagram_url}</p>
+              <p className="text-[10px] text-red-500 dark:text-red-300/80 leading-tight pl-1">{errors.instagram_url}</p>
             )}
           </div>
         </div>
