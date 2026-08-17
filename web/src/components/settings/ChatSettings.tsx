@@ -2639,7 +2639,7 @@ export function ChatSettings() {
               <Sparkles className="h-4 w-4 text-amber-500 flex-shrink-0" />
               <div>
                 <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Auto-schedule sequence on acceptance</p>
-                <p className="text-xs text-gray-500 dark:text-slate-300">When off, no scheduled follow-ups are created — the live agent still replies to inbound DMs.</p>
+                <p className="text-xs text-gray-500 dark:text-slate-300">When off, no scheduled follow-ups are created. The live agent still replies to inbound DMs.</p>
               </div>
             </div>
             <button

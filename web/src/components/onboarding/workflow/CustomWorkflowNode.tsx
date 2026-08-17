@@ -158,7 +158,7 @@ export function CustomWorkflowNode({ data, id, selected }: NodeProps) {
           onClick={requestInsert('before')}
           className="mk-io mk-io-in"
           style={{ left: `calc(50% - ${nodeSize / 2 + 28}px)`, top: nodeSize / 2 - 11 }}
-          title="Add input — a step that runs before this one"
+          title="Add input: a step that runs before this one"
         >
           <Plus className="w-3 h-3" />
         </button>
@@ -168,7 +168,7 @@ export function CustomWorkflowNode({ data, id, selected }: NodeProps) {
           onClick={requestInsert('after')}
           className="mk-io mk-io-out"
           style={{ right: `calc(50% - ${nodeSize / 2 + 28}px)`, top: nodeSize / 2 - 11 }}
-          title="Add output — a step that runs after this one"
+          title="Add output: a step that runs after this one"
         >
           <Plus className="w-3 h-3" />
         </button>

@@ -553,7 +553,7 @@ export default function StepEditor({ step, onClose, campaignId }: StepEditorProp
                 ) : (
                   <>
                     {(mediaBuilder.galleryImages?.length || 0) + (mediaBuilder.galleryVideos?.length || 0) === 0 ? (
-                      <p className="py-4 text-center text-sm text-gray-500">No generated media yet — use the AI Media Studio first.</p>
+                      <p className="py-4 text-center text-sm text-gray-500">No generated media yet. Use the AI Media Studio first.</p>
                     ) : (
                       <div className="grid grid-cols-3 gap-2">
                         {(mediaBuilder.galleryImages || []).map((it: any, i: number) => {
