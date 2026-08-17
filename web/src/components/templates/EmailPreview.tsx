@@ -138,7 +138,7 @@ export default function EmailPreview({
           color: #f3f4f6 !important;
         }
         html[data-theme="dark"] .email-container {
-          background-color: #000c3b !important;
+          background-color: #071131 !important;
           box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3) !important;
         }
         html[data-theme="dark"] .email-header {
@@ -200,7 +200,7 @@ export default function EmailPreview({
             className={`px-4 py-2 text-sm font-medium rounded-lg transition ${
               device === 'mobile'
                 ? 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-900'
-                : 'bg-gray-100 dark:bg-[#000c3b] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#0b1957]/50'
+                : 'bg-gray-100 dark:bg-[#071131] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#0b1957]/50'
             }`}
           >
             📱 Mobile (375px)
@@ -210,7 +210,7 @@ export default function EmailPreview({
             className={`px-4 py-2 text-sm font-medium rounded-lg transition ${
               device === 'tablet'
                 ? 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-900'
-                : 'bg-gray-100 dark:bg-[#000c3b] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#0b1957]/50'
+                : 'bg-gray-100 dark:bg-[#071131] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#0b1957]/50'
             }`}
           >
             📊 Tablet (768px)
@@ -220,7 +220,7 @@ export default function EmailPreview({
             className={`px-4 py-2 text-sm font-medium rounded-lg transition ${
               device === 'desktop'
                 ? 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-900'
-                : 'bg-gray-100 dark:bg-[#000c3b] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#0b1957]/50'
+                : 'bg-gray-100 dark:bg-[#071131] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#0b1957]/50'
             }`}
           >
             💻 Desktop
@@ -270,7 +270,7 @@ export default function EmailPreview({
         <p className="text-sm text-blue-800 dark:text-blue-400 mb-2 font-semibold">💡 Supported Placeholders:</p>
         <div className="flex flex-wrap gap-2">
           {['{{first_name}}', '{{last_name}}', '{{company}}', '{{title}}', '{{email}}'].map((placeholder) => (
-            <span key={placeholder} className="inline-block bg-white dark:bg-[#000c3b] border border-blue-200 dark:border-blue-800 px-2 py-1 rounded text-xs text-blue-700 dark:text-blue-300 font-mono">
+            <span key={placeholder} className="inline-block bg-white dark:bg-[#071131] border border-blue-200 dark:border-blue-800 px-2 py-1 rounded text-xs text-blue-700 dark:text-blue-300 font-mono">
               {placeholder}
             </span>
           ))}

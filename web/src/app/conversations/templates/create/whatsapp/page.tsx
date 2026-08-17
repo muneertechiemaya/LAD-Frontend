@@ -116,7 +116,7 @@ function ButtonRow({
           onChange={e => onChange({ text: e.target.value })}
           placeholder="Button label"
           maxLength={25}
-          className="flex-1 px-2 py-1.5 border border-[#E2E8F0] dark:border-gray-800 rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#0b1957]/30 bg-white dark:bg-[#000c3b] text-gray-900 dark:text-white"
+          className="flex-1 px-2 py-1.5 border border-[#E2E8F0] dark:border-gray-800 rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#0b1957]/30 bg-white dark:bg-[#071131] text-gray-900 dark:text-white"
         />
         <span className="text-[10px] text-[#94A3B8] dark:text-gray-500 shrink-0">{btn.text.length}/25</span>
         <button type="button" onClick={onRemove} className="text-[#94A3B8] dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 p-1 transition-colors">
@@ -130,10 +130,10 @@ function ButtonRow({
           <select
             value={btn.urlType}
             onChange={e => onChange({ urlType: e.target.value as 'static' | 'dynamic' })}
-            className="px-2 py-1 border border-[#E2E8F0] dark:border-gray-800 rounded text-xs bg-white dark:bg-[#000c3b] text-gray-900 dark:text-white focus:outline-none"
+            className="px-2 py-1 border border-[#E2E8F0] dark:border-gray-800 rounded text-xs bg-white dark:bg-[#071131] text-gray-900 dark:text-white focus:outline-none"
           >
-            <option value="static" className="dark:bg-[#000c3b]">Static</option>
-            <option value="dynamic" className="dark:bg-[#000c3b]">Dynamic</option>
+            <option value="static" className="dark:bg-[#071131]">Static</option>
+            <option value="dynamic" className="dark:bg-[#071131]">Dynamic</option>
           </select>
           <span className="text-xs text-[#94A3B8] dark:text-gray-500 shrink-0">Website URL</span>
           <input
@@ -141,7 +141,7 @@ function ButtonRow({
             value={btn.url}
             onChange={e => onChange({ url: e.target.value })}
             placeholder="https://example.com"
-            className="flex-1 min-w-0 px-2 py-1.5 border border-[#E2E8F0] dark:border-gray-800 rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#0b1957]/30 bg-white dark:bg-[#000c3b] text-gray-900 dark:text-white"
+            className="flex-1 min-w-0 px-2 py-1.5 border border-[#E2E8F0] dark:border-gray-800 rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#0b1957]/30 bg-white dark:bg-[#071131] text-gray-900 dark:text-white"
           />
           <span className="text-[10px] text-[#94A3B8] dark:text-gray-500 shrink-0">{btn.url.length}/2000</span>
         </div>
@@ -154,7 +154,7 @@ function ButtonRow({
             value={btn.phone}
             onChange={e => onChange({ phone: e.target.value })}
             placeholder="+971501234567"
-            className="flex-1 px-2 py-1.5 border border-[#E2E8F0] dark:border-gray-800 rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#0b1957]/30 bg-white dark:bg-[#000c3b] text-gray-900 dark:text-white"
+            className="flex-1 px-2 py-1.5 border border-[#E2E8F0] dark:border-gray-800 rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#0b1957]/30 bg-white dark:bg-[#071131] text-gray-900 dark:text-white"
           />
         </div>
       )}
@@ -433,8 +433,8 @@ export default function WhatsAppTemplateCreatePage() {
         <div className={`flex-1 p-5 md:p-8 space-y-6 min-w-0 max-w-4xl ${mobileTab === 'preview' ? 'hidden' : ''}`}>
 
           {/* ── Template name & language section ── */}
-          <div className={`bg-white dark:bg-[#000c3b] border border-[#E2E8F0] dark:border-gray-800 rounded-xl shadow-sm overflow-hidden ${mobileTab !== 'details' ? 'hidden md:block' : ''}`}>
-            <div className="px-6 py-4 border-b border-[#E2E8F0] dark:border-gray-800 bg-[#F8F9FE] dark:bg-[#000c3b]">
+          <div className={`bg-white dark:bg-[#071131] border border-[#E2E8F0] dark:border-gray-800 rounded-xl shadow-sm overflow-hidden ${mobileTab !== 'details' ? 'hidden md:block' : ''}`}>
+            <div className="px-6 py-4 border-b border-[#E2E8F0] dark:border-gray-800 bg-[#F8F9FE] dark:bg-[#071131]">
               <h2 className="text-base font-semibold text-[#1E293B] dark:text-white">Template name and language</h2>
             </div>
             <div className="p-6 space-y-4">
@@ -517,8 +517,8 @@ export default function WhatsAppTemplateCreatePage() {
           </div>
 
           {/* ── Content section ── */}
-          <div className={`bg-white dark:bg-[#000c3b] border border-[#E2E8F0] dark:border-gray-800 rounded-xl shadow-sm overflow-hidden ${mobileTab !== 'content' ? 'hidden md:block' : ''}`}>
-            <div className="px-6 py-4 border-b border-[#E2E8F0] dark:border-gray-800 bg-[#F8F9FE] dark:bg-[#000c3b]">
+          <div className={`bg-white dark:bg-[#071131] border border-[#E2E8F0] dark:border-gray-800 rounded-xl shadow-sm overflow-hidden ${mobileTab !== 'content' ? 'hidden md:block' : ''}`}>
+            <div className="px-6 py-4 border-b border-[#E2E8F0] dark:border-gray-800 bg-[#F8F9FE] dark:bg-[#071131]">
               <h2 className="text-base font-semibold text-[#1E293B] dark:text-white">Content</h2>
               <p className="text-xs text-[#64748B] dark:text-gray-400 mt-0.5">
                 Add a header, body and footer for your template. Cloud API hosted by Meta will review variables and content.
@@ -679,7 +679,7 @@ export default function WhatsAppTemplateCreatePage() {
                 </div>
 
                 {/* Formatting toolbar */}
-                <div className="flex items-center gap-0.5 px-2 py-1.5 border border-b-0 border-[#E2E8F0] dark:border-gray-800 rounded-t-lg bg-[#F8F9FE] dark:bg-[#000c3b]">
+                <div className="flex items-center gap-0.5 px-2 py-1.5 border border-b-0 border-[#E2E8F0] dark:border-gray-800 rounded-t-lg bg-[#F8F9FE] dark:bg-[#071131]">
                   <ToolbarBtn icon={<Bold        className="w-3.5 h-3.5" />} onClick={() => wrapSelection('*', '*')} title="Bold (*text*)" />
                   <ToolbarBtn icon={<Italic      className="w-3.5 h-3.5" />} onClick={() => wrapSelection('_', '_')} title="Italic (_text_)" />
                   <ToolbarBtn icon={<Strikethrough className="w-3.5 h-3.5" />} onClick={() => wrapSelection('~', '~')} title="Strikethrough (~text~)" />
@@ -718,12 +718,12 @@ export default function WhatsAppTemplateCreatePage() {
                     Remember not to include any customer information.
                   </p>
                   <div className="border border-[#E2E8F0] dark:border-gray-800 rounded-xl overflow-hidden">
-                    <div className="grid grid-cols-2 grid-cols-[1fr_1fr] px-4 py-2.5 bg-[#F8F9FE] dark:bg-[#000c3b] border-b border-[#E2E8F0] dark:border-gray-800">
+                    <div className="grid grid-cols-2 grid-cols-[1fr_1fr] px-4 py-2.5 bg-[#F8F9FE] dark:bg-[#071131] border-b border-[#E2E8F0] dark:border-gray-800">
                       <span className="text-xs font-semibold text-[#64748B] dark:text-gray-400">Body</span>
                       <span className="text-xs font-semibold text-[#64748B] dark:text-gray-400">Sample value <span className="text-red-500">*</span></span>
                     </div>
                     {bodyVars.map(v => (
-                      <div key={v} className="grid grid-cols-2 px-4 py-3 border-b border-[#E2E8F0] dark:border-gray-800 last:border-0 items-center gap-4 bg-white dark:bg-[#000c3b]/10">
+                      <div key={v} className="grid grid-cols-2 px-4 py-3 border-b border-[#E2E8F0] dark:border-gray-800 last:border-0 items-center gap-4 bg-white dark:bg-[#071131]/10">
                         <span className="text-sm font-mono text-[#64748B] dark:text-gray-400">{`{{${v}}}`}</span>
                         <input
                           value={bodyExamples[v] || ''}
@@ -762,8 +762,8 @@ export default function WhatsAppTemplateCreatePage() {
 
           {/* ── Buttons section ── */}
       {(mobileTab === 'content' || typeof window === 'undefined' || window.innerWidth >= 768) && (
-          <div className="bg-white dark:bg-[#000c3b] border border-[#E2E8F0] dark:border-gray-800 rounded-xl shadow-sm">
-            <div className="px-6 py-4 border-b border-[#E2E8F0] dark:border-gray-800 bg-[#F8F9FE] dark:bg-[#000c3b]">
+          <div className="bg-white dark:bg-[#071131] border border-[#E2E8F0] dark:border-gray-800 rounded-xl shadow-sm">
+            <div className="px-6 py-4 border-b border-[#E2E8F0] dark:border-gray-800 bg-[#F8F9FE] dark:bg-[#071131]">
               <h2 className="text-base font-semibold text-[#1E293B] dark:text-white">
                 Buttons
                 <span className="ml-1 text-[#94A3B8] dark:text-gray-500 font-normal text-sm">· Optional</span>
@@ -773,7 +773,7 @@ export default function WhatsAppTemplateCreatePage() {
               </p>
             </div>
 
-            <div className="p-6 space-y-3 bg-white dark:bg-[#000c3b]/10">
+            <div className="p-6 space-y-3 bg-white dark:bg-[#071131]/10">
               {buttons.map(btn => (
                 <ButtonRow
                   key={btn.id}
@@ -788,12 +788,12 @@ export default function WhatsAppTemplateCreatePage() {
                   <button
                     type="button"
                     onClick={() => setShowBtnMenu(v => !v)}
-                    className="flex items-center gap-2 px-4 py-2 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm font-medium text-[#1E293B] dark:text-gray-300 hover:border-[#0b1957]/40 dark:hover:border-blue-500/40 hover:bg-[#F8F9FE] dark:hover:bg-[#000c3b] transition-colors cursor-pointer bg-white dark:bg-[#000724]"
+                    className="flex items-center gap-2 px-4 py-2 border border-[#E2E8F0] dark:border-gray-800 rounded-lg text-sm font-medium text-[#1E293B] dark:text-gray-300 hover:border-[#0b1957]/40 dark:hover:border-blue-500/40 hover:bg-[#F8F9FE] dark:hover:bg-[#071131] transition-colors cursor-pointer bg-white dark:bg-[#000724]"
                   >
                     <Plus className="w-4 h-4" /> Add button <ChevronDown className="w-4 h-4 ml-0.5" />
                   </button>
                   {showBtnMenu && (
-                    <div className="absolute top-full left-0 mt-1 bg-white dark:bg-[#000c3b] border border-[#E2E8F0] dark:border-gray-800 rounded-xl shadow-lg z-10 overflow-hidden min-w-52">
+                    <div className="absolute top-full left-0 mt-1 bg-white dark:bg-[#071131] border border-[#E2E8F0] dark:border-gray-800 rounded-xl shadow-lg z-10 overflow-hidden min-w-52">
                       {[
                         { type: 'QUICK_REPLY'   as ButtonType, label: 'Quick reply',        desc: 'Pre-set response button'  },
                         { type: 'URL'           as ButtonType, label: 'Visit website',       desc: 'Link to a URL'            },
@@ -806,7 +806,7 @@ export default function WhatsAppTemplateCreatePage() {
                             setButtons(prev => [...prev, { id: uid(), type: opt.type, text: '', url: '', phone: '', urlType: 'static' }]);
                             setShowBtnMenu(false);
                           }}
-                          className="w-full px-4 py-3 text-left hover:bg-[#F8F9FE] dark:hover:bg-[#000724] transition-colors border-b border-[#E2E8F0] dark:border-gray-800 last:border-0 cursor-pointer bg-white dark:bg-[#000c3b]"
+                          className="w-full px-4 py-3 text-left hover:bg-[#F8F9FE] dark:hover:bg-[#000724] transition-colors border-b border-[#E2E8F0] dark:border-gray-800 last:border-0 cursor-pointer bg-white dark:bg-[#071131]"
                         >
                           <p className="text-sm font-semibold text-[#1E293B] dark:text-white">{opt.label}</p>
                           <p className="text-xs text-[#64748B] dark:text-gray-400 mt-0.5">{opt.desc}</p>
@@ -844,7 +844,7 @@ export default function WhatsAppTemplateCreatePage() {
                 </div>
 
                 {/* Message bubble */}
-                <div className="bg-white dark:bg-[#000c3b] rounded-xl shadow-sm overflow-hidden w-full mx-auto border border-transparent dark:border-gray-800">
+                <div className="bg-white dark:bg-[#071131] rounded-xl shadow-sm overflow-hidden w-full mx-auto border border-transparent dark:border-gray-800">
                   {/* Media / text header */}
                   {isMediaHeader && (
                       <div className="h-36 bg-slate-100 dark:bg-[#000724] flex items-center justify-center border-b border-slate-200 dark:border-gray-800">
@@ -916,7 +916,7 @@ export default function WhatsAppTemplateCreatePage() {
 
               {/* Submission summary card */}
               {(safeName || bodyText) && (
-                  <div className="mt-5 p-4 bg-[#F8F9FE] dark:bg-[#000c3b] rounded-xl border border-[#E2E8F0] dark:border-gray-800 space-y-2">
+                  <div className="mt-5 p-4 bg-[#F8F9FE] dark:bg-[#071131] rounded-xl border border-[#E2E8F0] dark:border-gray-800 space-y-2">
                     <p className="text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase tracking-wide mb-2">Summary</p>
                     {safeName && (
                         <div className="flex items-start justify-between gap-2">
@@ -973,7 +973,7 @@ export default function WhatsAppTemplateCreatePage() {
                 </div>
 
                 {/* Message bubble */}
-                <div className="bg-white dark:bg-[#000c3b] rounded-xl shadow-sm overflow-hidden max-w-[230px] mx-auto border border-transparent dark:border-gray-800">
+                <div className="bg-white dark:bg-[#071131] rounded-xl shadow-sm overflow-hidden max-w-[230px] mx-auto border border-transparent dark:border-gray-800">
                   {/* Media / text header */}
                   {isMediaHeader && (
                     <div className="h-28 bg-slate-100 dark:bg-[#000724] flex items-center justify-center border-b border-slate-200 dark:border-gray-800">
@@ -1046,7 +1046,7 @@ export default function WhatsAppTemplateCreatePage() {
 
             {/* Submission summary card */}
             {(safeName || bodyText) && (
-              <div className="mt-5 p-4 bg-[#F8F9FE] dark:bg-[#000c3b] rounded-xl border border-[#E2E8F0] dark:border-gray-800 space-y-2">
+              <div className="mt-5 p-4 bg-[#F8F9FE] dark:bg-[#071131] rounded-xl border border-[#E2E8F0] dark:border-gray-800 space-y-2">
                 <p className="text-xs font-semibold text-[#64748B] dark:text-gray-400 uppercase tracking-wide mb-2">Summary</p>
                 {safeName && (
                   <div className="flex items-start justify-between gap-2">
