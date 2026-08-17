@@ -574,7 +574,7 @@ function InstagramConversationViewInner(): JSX.Element {
 
               {/* ── AI Comments setting ─────────────────────────────── */}
               <HeaderIconButton
-                title="AI Comments — auto-reply to post comments"
+                title="AI Comments: auto-reply to post comments"
                 ariaLabel="Open AI Comments settings"
                 onClick={() => router.push('/instagram/settings?tab=comments')}
               >
@@ -583,7 +583,7 @@ function InstagramConversationViewInner(): JSX.Element {
 
               {/* ── AI Goals setting ────────────────────────────────── */}
               <HeaderIconButton
-                title="AI Goals — track conversions + CTAs"
+                title="AI Goals: track conversions and CTAs"
                 ariaLabel="Open AI Goals settings"
                 onClick={() => router.push('/instagram/settings?tab=goals')}
               >

@@ -250,7 +250,7 @@ export function GroupInfoModal({ open, onClose, group, allGroups, channel, onCha
                 value={addValue}
                 onChange={(e) => setAddValue(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && !adding) addMembers(); }}
-                placeholder="Add by phone number — comma or space separated"
+                placeholder="Add by phone number, comma or space separated"
                 className="flex-1 h-8 px-2.5 text-sm rounded-md border border-border bg-background
                            focus:outline-none focus:ring-1 focus:ring-emerald-600"
               />

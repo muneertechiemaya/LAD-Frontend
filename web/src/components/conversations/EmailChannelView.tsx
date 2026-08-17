@@ -2822,7 +2822,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
                   )}
                   <div className="max-h-44 overflow-y-auto">
                     {labels.length === 0
-                      ? <p className="text-xs text-[#5f6368] dark:text-[#9aa0a6] text-center py-4 px-6">No labels — create one above</p>
+                      ? <p className="text-xs text-[#5f6368] dark:text-[#9aa0a6] text-center py-4 px-6">No labels yet. Create one above.</p>
                       : labels.map(g => (
                         <button key={g.id} onClick={() => { setActiveGroup(g as unknown as EmailGroup); if (window.innerWidth < 768) setSidebarOpen(false); }}
                           aria-label={`Open label: ${g.name}`}
@@ -2888,7 +2888,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
                   )}
                   <div className="max-h-44 overflow-y-auto">
                     {groups.length === 0
-                      ? <p className="text-xs text-[#5f6368] dark:text-[#9aa0a6] text-center py-4 px-6">No groups — create one above</p>
+                      ? <p className="text-xs text-[#5f6368] dark:text-[#9aa0a6] text-center py-4 px-6">No groups yet. Create one above.</p>
                       : groups.map(g => (
                         <button key={g.id} onClick={() => { setActiveGroup(g); if (window.innerWidth < 768) setSidebarOpen(false); }}
                           aria-label={`Open group: ${g.name}, ${g.member_count} members`}
