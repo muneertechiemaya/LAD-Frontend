@@ -38,7 +38,7 @@ export default function LoginPage() {
                 className="w-full h-full object-contain mix-blend-multiply dark:mix-blend-lighten"
               />
             </div>
-            <h2 className="text-4xl font-bold text-[#0b1957] dark:text-white">LAD: Let Agent Deal</h2>
+            <h2 className="text-4xl font-bold text-[#0b1957] dark:text-white">LAD - Let Agent Deal</h2>
             <p className="text-lg text-gray-600 dark:text-gray-300 max-w-md">
               AI agents that autonomously handle sales, qualifying leads, negotiating, and closing deals across voice, chat, email, and social channels.
             </p>
