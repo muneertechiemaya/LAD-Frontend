@@ -1567,14 +1567,14 @@ export default function DragDropEmailEditor({ htmlContent, subject, onContentCha
         </button>
 
         {showPalette && (
-          <div className="absolute top-full left-0 mt-2 z-30 bg-white dark:bg-[#000c3b] rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 p-4 w-full">
+          <div className="absolute top-full left-0 mt-2 z-30 bg-white dark:bg-[#071131] rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 p-4 w-full">
             <p className="text-xs font-semibold text-gray-400 dark:text-slate-300 uppercase tracking-wide mb-3">Choose a block type</p>
             <div className="grid grid-cols-4 gap-2">
               {PALETTE.map(({ type, label, icon, desc }) => (
                 <button
                   key={type}
                   onClick={() => addBlock(type)}
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-blue-300 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-all group"
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-blue-300 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-zinc-900/10 transition-all group"
                 >
                   <div className="w-9 h-9 rounded-lg bg-gray-50 dark:bg-[#000724] group-hover:bg-blue-100 dark:group-hover:bg-blue-950/60 flex items-center justify-center text-gray-500 dark:text-slate-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                     {icon}
