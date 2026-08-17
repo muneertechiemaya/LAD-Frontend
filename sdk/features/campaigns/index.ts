@@ -64,6 +64,16 @@ export { useLeadProfileSummary, useGenerateLeadProfileSummary } from './hooks/us
 export { useRevealLeadEmail, useRevealLeadPhone, useRevealLeadLinkedIn } from './hooks/useLeadReveal';
 export { useSaveInboundLeads, useInboundLeads } from './hooks/useInboundLeads';
 export { useCampaignActivityFeed } from './hooks/useCampaignActivityFeed';
+
+// ============================================================================
+// ERROR HELPERS
+// ============================================================================
+export {
+  CAMPAIGN_NAME_TAKEN,
+  isCampaignNameTaken,
+  campaignNameTakenMessage,
+  campaignSaveErrorMessage,
+} from './nameConflict';
 // ============================================================================
 // TYPES
 // ============================================================================

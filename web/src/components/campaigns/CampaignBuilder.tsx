@@ -24,7 +24,8 @@ import {
   createCampaign, 
   updateCampaign, 
   startCampaign,
-  type Campaign 
+  campaignSaveErrorMessage,
+  type Campaign
 } from '@lad/frontend-features/campaigns';
 import { StepType, StepData, FlowNode as FlowNodeType } from '@/types/campaign';
 import StepLibrary from './StepLibrary';
@@ -211,7 +212,7 @@ export default function CampaignBuilder() {
     } catch (error: any) {
       toast({
         title: 'Error',
-        description: error.message || 'Failed to save campaign',
+        description: campaignSaveErrorMessage(error, campaignName),
         variant: 'destructive'
       });
     } finally {

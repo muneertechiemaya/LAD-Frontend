@@ -49,6 +49,27 @@ export interface WhatsAppSignupConfig {
   configured: boolean;
 }
 
+/**
+ * How the one-time history backfill turned out, for coexistence accounts.
+ *
+ * Written by LAD-WABA-Comms when Meta answers the history request over the
+ * webhook — which happens AFTER Embedded Signup has already returned
+ * "connected", so it can never appear in the exchange response's `warnings`.
+ * Absent on every account that has not been through a coexistence onboarding.
+ */
+export interface CoexistenceHistoryState {
+  /** False when the business declined to share history from the Business App. */
+  shared: boolean;
+  /** Messages written by the backfill. 0 on a redelivery of an already-stored chunk. */
+  messages_saved: number;
+  /** ISO timestamp of the delivery this was derived from. */
+  at: string;
+  /** Meta's error code — present only when `shared` is false. 2593109 = sync turned off. */
+  code?: number | null;
+  /** Meta's human-readable reason — present only when `shared` is false. */
+  title?: string | null;
+}
+
 /** A connected WhatsApp account. Never carries token material. */
 export interface WhatsAppAccount {
   id: string;
@@ -68,6 +89,10 @@ export interface WhatsAppAccount {
   token_expires_at: string | null;
   created_at: string;
   updated_at: string;
+  /** True when onboarded through the coexistence flow (Business App + Cloud API). */
+  coexistence: boolean;
+  /** Null until Meta has answered the history request, and on non-coexistence accounts. */
+  coexistence_history: CoexistenceHistoryState | null;
 }
 
 /** What Meta's popup hands back on a successful signup. */

@@ -46,7 +46,7 @@ const PLATFORMS: any[] = [
 const PLATFORM_ACTIONS: Record<string, any[]> = {
   linkedin: [
     { type: 'linkedin_connect', title: 'Connect', icon: <UserPlus className="w-4 h-4" />, desc: 'Send connection request' },
-    { type: 'linkedin_message', title: 'Message', icon: <Send className="w-4 h-4" />, desc: 'Send follow-up message' },
+    { type: 'linkedin_message', title: 'Message', icon: <Send className="w-4 h-4" />, desc: 'Message sent when they accept' },
     { type: 'linkedin_visit',   title: 'Visit',   icon: <Eye className="w-4 h-4" />,  desc: 'View LinkedIn profile' },
   ],
   email: [
