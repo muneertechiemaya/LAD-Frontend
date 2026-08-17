@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
+import { useBusinessProfile } from '@lad/frontend-features/ai-icp-assistant';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -76,12 +77,20 @@ function insertVar(text: string, cursorPos: number, varNum: number): { text: str
 // ── Component ─────────────────────────────────────────────────────────────────
 
 interface CreateWabaTemplateModalProps {
-  open:          boolean;
-  onOpenChange:  (open: boolean) => void;
-  onCreated?:    () => void;  // called after successful submission to refresh template list
+  open:                boolean;
+  onOpenChange:        (open: boolean) => void;
+  onCreated?:          () => void;  // called after successful submission to refresh template list
+  defaultPhoneNumber?: string;
+  defaultUrl?:         string;
 }
 
-export function CreateWabaTemplateModal({ open, onOpenChange, onCreated }: CreateWabaTemplateModalProps) {
+export function CreateWabaTemplateModal({
+  open,
+  onOpenChange,
+  onCreated,
+  defaultPhoneNumber,
+  defaultUrl,
+}: CreateWabaTemplateModalProps) {
   // ── Basic info ──────────────────────────────────────────────────────────────
   const [name,     setName]     = useState('');
   const [language, setLanguage] = useState('en_US');
@@ -117,6 +126,23 @@ export function CreateWabaTemplateModal({ open, onOpenChange, onCreated }: Creat
   const headerTextVars = useMemo(() => extractVars(headerText), [headerText]);
 
   const safeName = name.toLowerCase().replace(/[^a-z0-9_]/g, '_').slice(0, 512);
+
+  // ── Company Defaults ─────────────────────────────────────────────────────────
+  const { profile } = useBusinessProfile();
+
+  const resolvedUrl = useMemo(() => {
+    if (defaultUrl?.trim()) return defaultUrl.trim();
+    const site = profile?.website?.trim();
+    if (site) {
+      return site.startsWith('http://') || site.startsWith('https://') ? site : `https://${site}`;
+    }
+    return '';
+  }, [defaultUrl, profile?.website]);
+
+  const resolvedPhone = useMemo(() => {
+    if (defaultPhoneNumber?.trim()) return defaultPhoneNumber.trim();
+    return profile?.contactPhone?.trim() || '';
+  }, [defaultPhoneNumber, profile?.contactPhone]);
 
   // ── Helpers ───────────────────────────────────────────────────────────────────
   const addButton = () => {
@@ -629,7 +655,16 @@ export function CreateWabaTemplateModal({ open, onOpenChange, onCreated }: Creat
                     <div className="flex items-center gap-2">
                       <Select
                         value={btn.type}
-                        onValueChange={val => updateButton(btn.id, { type: val as ButtonType })}
+                        onValueChange={(val) => {
+                          const nextType = val as ButtonType;
+                          const updates: Partial<TemplateButton> = { type: nextType };
+                          if (nextType === 'URL' && !btn.url?.trim() && resolvedUrl) {
+                            updates.url = resolvedUrl;
+                          } else if (nextType === 'PHONE_NUMBER' && !btn.phone?.trim() && resolvedPhone) {
+                            updates.phone = resolvedPhone;
+                          }
+                          updateButton(btn.id, updates);
+                        }}
                       >
                         <SelectTrigger className="h-7 text-xs w-[130px] bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
                           <SelectValue />

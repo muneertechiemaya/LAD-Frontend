@@ -73,6 +73,8 @@ export interface TemplatePickerProps {
   isBulkSend?: boolean;
   /** Visual theme variant: 'default' or 'whatsapp' (neutral zinc + emerald green) */
   variant?: 'default' | 'whatsapp';
+  defaultPhoneNumber?: string;
+  defaultUrl?: string;
 }
 
 const TEMPLATES_API = '/api/whatsapp-conversations/conversations/templates';
@@ -112,6 +114,8 @@ export function TemplatePicker({
   channel = 'waba',
   isBulkSend = false,
   variant = 'default',
+  defaultPhoneNumber,
+  defaultUrl,
 }: TemplatePickerProps) {
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([]);
   const [loading, setLoading] = useState(false);
@@ -344,6 +348,8 @@ export function TemplatePicker({
             setShowCreateModal(false);
             setRefreshKey(k => k + 1);
           }}
+          defaultPhoneNumber={defaultPhoneNumber}
+          defaultUrl={defaultUrl}
         />
 
         <div className={cn("flex-1 flex flex-col min-h-0 overflow-hidden", isWA ? "bg-white dark:bg-zinc-900" : "")}>
