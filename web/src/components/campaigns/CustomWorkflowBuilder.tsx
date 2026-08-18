@@ -32,8 +32,75 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
 import LeadPreviewPanel from './LeadPreviewPanel';
+
+function CustomSelect({
+  value,
+  onValueChange,
+  disabled,
+  placeholder,
+  className,
+  options,
+  children,
+}: {
+  value?: string;
+  onValueChange?: (val: string) => void;
+  disabled?: boolean;
+  placeholder?: string;
+  className?: string;
+  options?: Array<{ value: string; label: React.ReactNode }>;
+  children?: React.ReactNode;
+}) {
+  const selectOptions: Array<{ value: string; label: React.ReactNode }> = useMemo(() => {
+    if (options && options.length > 0) return options;
+    const parsed: Array<{ value: string; label: React.ReactNode }> = [];
+    React.Children.forEach(children, (child) => {
+      if (React.isValidElement(child) && (child.type === 'option' || (child.props && 'value' in child.props))) {
+        const val = child.props.value !== undefined ? String(child.props.value) : String(child.props.children);
+        const lbl = child.props.children;
+        parsed.push({ value: val, label: lbl });
+      }
+    });
+    return parsed;
+  }, [options, children]);
+
+  const hasNoneOption = selectOptions.some((opt) => opt.value === '' || opt.value === '__none__');
+  const radixValue = (value === '' || value === undefined || value === null)
+    ? (hasNoneOption ? '__none__' : undefined)
+    : String(value);
+
+  const handleValueChange = (val: string) => {
+    const actualVal = val === '__none__' ? '' : val;
+    onValueChange?.(actualVal);
+  };
+
+  return (
+    <Select value={radixValue} onValueChange={handleValueChange} disabled={disabled}>
+      <SelectTrigger
+        className={cn("w-full text-xs h-9 bg-background dark:bg-slate-800/50 dark:border-slate-700/80", className)}
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <SelectValue placeholder={placeholder || "Select..."} />
+      </SelectTrigger>
+      <SelectContent className="dark:bg-[#071131] dark:border-blue-950/40 z-[100000]">
+        {selectOptions.map((opt, idx) => {
+          const itemVal = opt.value === '' ? '__none__' : opt.value;
+          return (
+            <SelectItem key={`${itemVal}-${idx}`} value={itemVal} className="text-xs">
+              {opt.label}
+            </SelectItem>
+          );
+        })}
+      </SelectContent>
+    </Select>
+  );
+}
 import {
   WORKFLOW_TEMPLATES, WorkflowTemplate,
   SOURCE_STEP_ID, FOLLOWUP_STEP_ID, ANALYTICS_STEP_ID, ZOHO_UPDATE_STEP_ID,
@@ -2039,7 +2106,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         : undefined,
       nodes: t.nodes,
       inputs: [],
-      accent: '#0b1957',
+      accent: '#38bdf8',
       meta: { cycleDays: parseInt(days, 10) || 30, channels: new Set(t.nodes.map((n: any) => n.type.split('_')[0])).size },
       category: 'general',
     } as WorkflowTemplate, { silent: true });
@@ -3927,9 +3994,9 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       setOverviewTpl(null);
     };
     return (
-      <div className="absolute right-0 top-0 h-full w-[22rem] bg-card border-l border-border shadow-2xl z-10 flex flex-col">
+      <div className="absolute right-0 top-0 h-full w-full sm:w-[22rem] bg-card dark:bg-[#071131] border-l border-border dark:border-blue-950/40 shadow-2xl z-30 flex flex-col">
         {/* Header */}
-        <div className="flex items-start gap-3 p-4 border-b border-border">
+        <div className="flex items-start gap-3 p-4 border-b border-border dark:border-blue-950/40">
           <span className="h-11 w-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${t.accent}14` }}>
             <TemplateIcon tplKey={t.key} color={t.accent} size={20} />
           </span>
@@ -3953,7 +4020,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               { n: t.meta.cycleDays, l: 'day cycle' },
               { n: t.meta.channels, l: 'channels' },
             ].map((st) => (
-              <div key={st.l} className="rounded-xl border border-border bg-muted/30 dark:bg-slate-800/30 px-3 py-3 text-center">
+              <div key={st.l} className="rounded-xl border border-border dark:border-blue-950/40 bg-muted/30 dark:bg-[#030a21]/60 px-3 py-3 text-center">
                 <div className="text-[19px] font-bold text-foreground leading-none">{st.n}</div>
                 <div className="text-[11px] text-muted-foreground mt-1">{st.l}</div>
               </div>
@@ -3966,7 +4033,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               {steps.map((st, i) => (
                 <div key={i} className="relative flex items-start gap-3 pb-3.5 last:pb-0">
                   {i < steps.length - 1 && (
-                    <span className="absolute left-[13px] top-7 bottom-0 w-px bg-border" />
+                    <span className="absolute left-[13px] top-7 bottom-0 w-px bg-border dark:bg-blue-950/40" />
                   )}
                   <span className="relative z-[1] h-[26px] w-[26px] rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-bold"
                     style={{ background: `${t.accent}14`, color: t.accent }}>{i + 1}</span>
@@ -3980,19 +4047,19 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           </div>
 
           <button type="button" onClick={use}
-            className="mt-5 w-full rounded-xl bg-[#0b1957] text-white text-[13.5px] font-semibold py-3 hover:bg-[#0b1957]/90 transition-colors">
+            className="mt-5 w-full rounded-xl bg-[#0b1957] dark:bg-sky-600 text-white text-[13.5px] font-semibold py-3 hover:bg-[#0b1957]/90 dark:hover:bg-sky-500 transition-colors">
             Use this template
           </button>
         </div>
 
         {/* Footer */}
-        <div className="p-3 border-t border-border flex items-center gap-2">
+        <div className="p-3 border-t border-border dark:border-blue-950/40 flex items-center gap-2">
           <button type="button" onClick={() => setOverviewTpl(null)}
-            className="px-4 py-2.5 rounded-xl bg-muted text-foreground text-[13px] font-semibold hover:bg-muted/70 transition-colors">
+            className="px-4 py-2.5 rounded-xl bg-muted dark:bg-[#030a21]/60 text-foreground text-[13px] font-semibold hover:bg-muted/70 transition-colors">
             Preview
           </button>
           <button type="button" onClick={() => { use(); setPaletteTab('steps'); }}
-            className="flex-1 px-4 py-2.5 rounded-xl bg-[#0b1957] text-white text-[13px] font-semibold hover:bg-[#0b1957]/90 transition-colors">
+            className="flex-1 px-4 py-2.5 rounded-xl bg-[#0b1957] dark:bg-sky-600 text-white text-[13px] font-semibold hover:bg-[#0b1957]/90 dark:hover:bg-sky-500 transition-colors">
             Customize steps
           </button>
         </div>
@@ -4001,7 +4068,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   };
 
   // ── Config drawer fields per node type ────────────────────────────────────
-  const field = 'w-full rounded-md border border-input bg-background px-3 py-2 text-sm';
+  const field = 'w-full rounded-md border border-input dark:border-slate-700/80 bg-background dark:bg-slate-800/50 px-3 py-2 text-sm';
   const renderEditor = () => {
     if (!editingStep || !editingId) return null;
     const isSource = editingId === SOURCE_STEP_ID;
@@ -4075,8 +4142,8 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     const instructionsKey = isSource ? (source || '') : isRouter ? 'router' : isMacro ? editingId : editingStep.type;
     const instructions = STEP_INSTRUCTIONS[instructionsKey as string];
     return (
-      <div className="absolute right-0 top-0 h-full w-[22rem] bg-card border-l border-border shadow-2xl z-10 flex flex-col">
-        <div className="flex items-start gap-3 p-4 border-b border-border">
+      <div className="absolute right-0 top-0 h-full w-full sm:w-[22rem] bg-card dark:bg-[#071131] border-l border-border dark:border-blue-950/40 shadow-2xl z-30 flex flex-col">
+        <div className="flex items-start gap-3 p-4 border-b border-border dark:border-blue-950/40">
           {visual && <IconChip icon={visual.icon} chip={visual.chip} size="h-10 w-10" />}
           <div className="min-w-0 flex-1">
             <div className="text-sm font-semibold text-foreground truncate">{editingStep.title}</div>
@@ -4091,14 +4158,16 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         <div className="flex-1 p-4 space-y-4 overflow-y-auto text-sm">
           {instructions && (
             <div className="rounded-lg border border-sky-200 dark:border-sky-900 bg-sky-50 dark:bg-sky-950/30 p-2.5 text-[12px] leading-relaxed text-sky-900 dark:text-sky-200">
+              <strong>
               {instructions}
+              </strong>
             </div>
           )}
           {isSource && source === 'zoho_recurring' && (<>
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Import from</label>
-              <select className={field} value={cfg.zoho_modules || 'contacts'} onChange={(e) => setCfg(editingId, { zoho_modules: e.target.value })}>
+              <CustomSelect className={field} value={cfg.zoho_modules || 'contacts'} onValueChange={(val) => setCfg(editingId, { zoho_modules: val })}>
                 <option value="contacts">Contacts only</option><option value="contacts_leads">Contacts + Leads</option>
-              </select></div>
+              </CustomSelect></div>
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Only tag (optional)</label>
               <Input value={cfg.zoho_tag || ''} onChange={(e) => setCfg(editingId, { zoho_tag: e.target.value })} placeholder="e.g. Auto-Conversion Lead" /></div>
             <p className="text-xs text-muted-foreground">Imports up to {perDay}/day of newly-created records, every day until the campaign ends.</p>
@@ -4120,9 +4189,9 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           </>)}
           {isSource && source === 'zoho_once' && (<>
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Record type</label>
-              <select className={field} value={cfg.zoho_type || 'contacts'} onChange={(e) => setCfg(editingId, { zoho_type: e.target.value })}>
+              <CustomSelect className={field} value={cfg.zoho_type || 'contacts'} onValueChange={(val) => setCfg(editingId, { zoho_type: val })}>
                 <option value="contacts">Contacts</option><option value="leads">Leads</option>
-              </select></div>
+              </CustomSelect></div>
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">How many (max 500)</label>
               <Input type="number" value={cfg.import_count || '100'} onChange={(e) => setCfg(editingId, { import_count: e.target.value })} /></div>
           </>)}
@@ -4187,11 +4256,11 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 {fileHeaders.map((h, i) => (
                   <div key={i} className="grid grid-cols-2 gap-2 items-center">
                     <span className="text-xs text-foreground truncate" title={h}>{h || `Column ${i + 1}`}</span>
-                    <select className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs"
+                    <CustomSelect className="w-full text-xs"
                       value={fileMapping[i] || 'ignore'}
-                      onChange={(e) => setFileMapping((m) => ({ ...m, [i]: e.target.value }))}>
+                      onValueChange={(val) => setFileMapping((m) => ({ ...m, [i]: val }))}>
                       {IMPORT_FIELDS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
-                    </select>
+                    </CustomSelect>
                   </div>
                 ))}
               </div>
@@ -4336,9 +4405,9 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   would silently fall back to a plain message. Check position. */}
               {(() => null)()}
               <div className="space-y-1"><label className="text-xs font-medium text-foreground">Follow-up channel</label>
-                <select className={field} value={channel} onChange={(e) => { setCfg(eid, { channel: e.target.value }); syncDesc(touches.length, e.target.value); }}>
+                <CustomSelect className={field} value={channel} onValueChange={(val) => { setCfg(eid, { channel: val }); syncDesc(touches.length, val); }}>
                   {FU_CHANNELS.map((c2) => <option key={c2.value} value={c2.value}>{c2.label}</option>)}
-                </select></div>
+                </CustomSelect></div>
 
               <div className="space-y-2">
                 <label className="text-xs font-medium text-foreground">Touch timeline ({touches.length})</label>
@@ -4356,19 +4425,14 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                         <Input type="number" className="w-24 h-8" value={String(h)} onChange={(e) => setTouch(i, { hours: Math.max(1, parseInt(e.target.value, 10) || 1) })} />
                         <span className="text-xs text-muted-foreground">hours (≈ {Math.round((h / 24) * 10) / 10}d) after {i === 0 ? 'the previous step' : `touch ${i}`}</span>
                       </div>
-                      <select className={`${field} h-8`}
+                      <CustomSelect className={`${field} h-8`}
                         value={
                           t.touch_type === 'lead_report' ? '__lead_report__'
                           : t.touch_type === 'industry_trend' ? '__industry_trend__'
                           : t.touch_type === 'company_page_post' ? '__company_post__'
                           : (t.template_id || '')
                         }
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          // These options are TOUCH TYPES, not templates — the
-                          // backend branches on touch_type, so selecting one must
-                          // clear template_id or the row carries both and the
-                          // template path wins.
+                        onValueChange={(v) => {
                           if (v === '__lead_report__') setTouch(i, { touch_type: 'lead_report', template_id: undefined });
                           else if (v === '__industry_trend__') setTouch(i, { touch_type: 'industry_trend', template_id: undefined });
                           else if (v === '__company_post__') setTouch(i, { touch_type: 'company_page_post', template_id: undefined });
@@ -4385,7 +4449,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                           </>
                         )}
                         {tmpls.map((tm: any) => <option key={tm.id} value={tm.id}>{tmplName(tm)}</option>)}
-                      </select>
+                      </CustomSelect>
                       {(t.touch_type === 'industry_trend' || t.touch_type === 'company_page_post') && (
                         <p className="text-[11px] leading-snug text-muted-foreground">
                           {t.touch_type === 'industry_trend'
@@ -4438,22 +4502,22 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
 
           {isAnalytics && (<>
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Notify me via</label>
-              <select className={field} value={cfg.channel || 'email'} onChange={(e) => {
-                setCfg(editingId, { channel: e.target.value });
-                updateWorkflowStep(editingId, { description: `${(cfg.frequency || 'daily') === 'weekly' ? 'Weekly' : 'Daily'} · ${e.target.value === 'whatsapp' ? 'WhatsApp' : 'Email'}` });
+              <CustomSelect className={field} value={cfg.channel || 'email'} onValueChange={(val) => {
+                setCfg(editingId, { channel: val });
+                updateWorkflowStep(editingId, { description: `${(cfg.frequency || 'daily') === 'weekly' ? 'Weekly' : 'Daily'} · ${val === 'whatsapp' ? 'WhatsApp' : 'Email'}` });
               }}>
                 <option value="email">Email</option><option value="whatsapp">WhatsApp</option>
-              </select></div>
+              </CustomSelect></div>
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Recipient</label>
               <Input value={cfg.recipient || ''} onChange={(e) => setCfg(editingId, { recipient: e.target.value })}
                 placeholder={(cfg.channel || 'email') === 'whatsapp' ? 'WhatsApp number, e.g. +9715…' : 'you@company.com'} /></div>
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Frequency</label>
-              <select className={field} value={cfg.frequency || 'daily'} onChange={(e) => {
-                setCfg(editingId, { frequency: e.target.value });
-                updateWorkflowStep(editingId, { description: `${e.target.value === 'weekly' ? 'Weekly' : 'Daily'} · ${(cfg.channel || 'email') === 'whatsapp' ? 'WhatsApp' : 'Email'}` });
+              <CustomSelect className={field} value={cfg.frequency || 'daily'} onValueChange={(val) => {
+                setCfg(editingId, { frequency: val });
+                updateWorkflowStep(editingId, { description: `${val === 'weekly' ? 'Weekly' : 'Daily'} · ${(cfg.channel || 'email') === 'whatsapp' ? 'WhatsApp' : 'Email'}` });
               }}>
                 <option value="daily">Daily (08:00 GST)</option><option value="weekly">Weekly (Mondays)</option>
-              </select></div>
+              </CustomSelect></div>
             <div className="space-y-1.5"><label className="text-xs font-medium text-foreground">Data to send</label>
               <label className="flex items-center gap-2 text-sm text-foreground"><input type="checkbox" className="h-4 w-4" checked={cfg.m_new_leads !== false} onChange={(e) => setCfg(editingId, { m_new_leads: e.target.checked })} /> New leads imported (24h)</label>
               <label className="flex items-center gap-2 text-sm text-foreground"><input type="checkbox" className="h-4 w-4" checked={cfg.m_pipeline !== false} onChange={(e) => setCfg(editingId, { m_pipeline: e.target.checked })} /> Lead pipeline status</label>
@@ -4648,13 +4712,13 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             const mappedCount = Object.values(zmap).filter(Boolean).length;
             return (<>
               <div className="space-y-1"><label className="text-xs font-medium text-foreground">Update which record</label>
-                <select className={field} value={cfg.module || 'Contacts'} onChange={(e) => { setCfg(eid, { module: e.target.value }); updateWorkflowStep(eid, { description: `Write back to ${e.target.value}` }); }}>
+                <CustomSelect className={field} value={cfg.module || 'Contacts'} onValueChange={(val) => { setCfg(eid, { module: val }); updateWorkflowStep(eid, { description: `Write back to ${val}` }); }}>
                   <option value="Contacts">Contacts</option><option value="Leads">Leads</option>
-                </select></div>
+                </CustomSelect></div>
               <div className="flex items-center justify-between">
                 <label className="text-xs font-medium text-foreground">Field mapping{mappedCount ? ` (${mappedCount})` : ''}</label>
                 <button type="button" onClick={applySuggestions} disabled={!zohoFields.length}
-                  className="text-[11px] font-medium text-[#0b1957] hover:underline disabled:opacity-40 disabled:no-underline">Suggest mappings</button>
+                  className="text-[11px] font-medium text-[#0b1957] dark:text-sky-400 hover:underline disabled:opacity-40 disabled:no-underline">Suggest mappings</button>
               </div>
               {zohoFieldsLoading && <p className="text-xs text-muted-foreground">Loading Zoho fields…</p>}
               {zohoFieldsError && <p className="text-xs text-red-600">{zohoFieldsError}</p>}
@@ -4664,10 +4728,10 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   {zohoFields.map((f) => (
                     <div key={f.api_name} className="grid grid-cols-2 gap-2 items-center">
                       <span className="text-xs text-foreground truncate" title={`${f.field_label} (${f.data_type})`}>{f.field_label}</span>
-                      <select className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs" value={zmap[f.api_name] || ''} onChange={(e) => setMap(f.api_name, e.target.value)}>
+                      <CustomSelect className="w-full text-xs" value={zmap[f.api_name] || ''} onValueChange={(val) => setMap(f.api_name, val)}>
                         <option value="">— Skip —</option>
                         {WORKFLOW_DATA_POINTS.map((dp) => <option key={dp.key} value={dp.key}>{dp.label}</option>)}
-                      </select>
+                      </CustomSelect>
                     </div>
                   ))}
                 </div>
@@ -4699,11 +4763,11 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 <button type="button" onClick={() => setShowMediaStudio(true)}
                   className="inline-flex items-center justify-center gap-2 rounded-lg border border-fuchsia-300 bg-fuchsia-50 dark:bg-fuchsia-950/30 px-3 py-2 text-sm font-medium text-fuchsia-700 hover:bg-fuchsia-100 dark:hover:bg-fuchsia-900/40">
                   <Wand2 className="h-4 w-4" /> Open AI Media Studio</button>
-                <button type="button" onClick={openGallery} className="text-xs font-medium text-[#0b1957] hover:underline text-left">
+                <button type="button" onClick={openGallery} className="text-xs font-medium text-[#0b1957] dark:text-sky-400 hover:underline text-left">
                   {mediaGalleryOpen ? 'Hide generated media' : 'Pick from generated media'}</button>
               </div>
               {mediaGalleryOpen && (
-                <div className="rounded-lg border border-border p-2 bg-muted/20">
+                <div className="rounded-lg border border-border dark:border-blue-950/40 p-2 bg-muted/20 dark:bg-[#030a21]/60">
                   {mediaBuilder.loadingGallery ? (
                     <p className="py-3 text-center text-xs text-muted-foreground flex items-center justify-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</p>
                   ) : (!imgs.length && !vids.length) ? (
@@ -4735,43 +4799,43 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             const addCase = () => { if (cases.length >= 6) return; const next = [...cases, { op: 'equals', value: '', channel: 'email', subject: '', body: '' }]; setCfg(eid, { cases: next }); updateWorkflowStep(eid, { description: `${next.length} conditions + else` }); };
             const removeCase = (i: number) => { if (cases.length <= 1) return; const next = cases.filter((_, idx) => idx !== i); setCfg(eid, { cases: next }); updateWorkflowStep(eid, { description: `${next.length} conditions + else` }); };
             const BranchBody = ({ b, onChange }: { b: any; onChange: (p: any) => void }) => (<>
-              <select className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs" value={b.channel || 'email'} onChange={(e) => onChange({ channel: e.target.value })}>
+              <CustomSelect className="w-full text-xs" value={b.channel || 'email'} onValueChange={(val) => onChange({ channel: val })}>
                 <option value="email">Send email</option><option value="linkedin">LinkedIn message</option><option value="whatsapp">WhatsApp</option>
-              </select>
+              </CustomSelect>
               {(b.channel || 'email') === 'email' && (
                 <Input value={b.subject || ''} onChange={(e) => onChange({ subject: e.target.value })} placeholder="Email subject" />
               )}
-              <textarea className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs min-h-[56px]" value={b.body || ''} onChange={(e) => onChange({ body: e.target.value })} placeholder="Message (leave blank to let Mr LAD draft it)" />
+              <textarea className="w-full rounded-md border border-input dark:border-slate-700/80 bg-background dark:bg-slate-800/50 px-2 py-1.5 text-xs min-h-[56px]" value={b.body || ''} onChange={(e) => onChange({ body: e.target.value })} placeholder="Message (leave blank to let Mr LAD draft it)" />
             </>);
             return (<>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-foreground">Branch on {mcFieldsLoading && <span className="text-muted-foreground">· loading fields…</span>}</label>
-                <select className={field} value={swField} onChange={(e) => setCfg(eid, { field: e.target.value })}>
+                <CustomSelect className={field} value={swField} onValueChange={(val) => setCfg(eid, { field: val })}>
                   {!mcFields.some((f) => f.value === swField) && swField && <option value={swField}>{swField}</option>}
                   {mcFields.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
-                </select>
+                </CustomSelect>
                 <p className="text-[11px] text-muted-foreground">{(source === 'zoho_recurring' || source === 'zoho_once') ? 'Fields from your connected Zoho module.' : 'Contact fields available for this source.'}</p>
               </div>
               {cases.map((c, i) => (
-                <div key={i} className="rounded-lg border border-border p-2.5 space-y-2 bg-muted/20">
+                <div key={i} className="rounded-lg border border-border dark:border-blue-950/40 p-2.5 space-y-2 bg-muted/20 dark:bg-[#030a21]/60">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold text-foreground">{i === 0 ? 'If' : 'Else if'}</span>
                     {cases.length > 1 && <button type="button" onClick={() => removeCase(i)} className="text-muted-foreground hover:text-red-600"><Trash2 className="h-3.5 w-3.5" /></button>}
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs text-muted-foreground shrink-0">{fieldLabel}</span>
-                    <select className="rounded-md border border-input bg-background px-1.5 py-1.5 text-xs" value={c.op || 'equals'} onChange={(e) => setCase(i, { op: e.target.value })}>
+                    <CustomSelect className="w-full text-xs" value={c.op || 'equals'} onValueChange={(val) => setCase(i, { op: val })}>
                       {SWITCH_OPS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </select>
+                    </CustomSelect>
                     <Input value={c.value || ''} onChange={(e) => setCase(i, { value: e.target.value })} placeholder="e.g. person1" />
                   </div>
                   <BranchBody b={c} onChange={(p) => setCase(i, p)} />
                 </div>
               ))}
               {cases.length < 6 && (
-                <button type="button" onClick={addCase} className="inline-flex items-center gap-1.5 text-xs font-medium text-[#0b1957] hover:underline"><Plus className="h-3.5 w-3.5" /> Add condition</button>
+                <button type="button" onClick={addCase} className="inline-flex items-center gap-1.5 text-xs font-medium text-[#0b1957] dark:text-sky-400 hover:underline"><Plus className="h-3.5 w-3.5" /> Add condition</button>
               )}
-              <div className="rounded-lg border border-dashed border-border p-2.5 space-y-2">
+              <div className="rounded-lg border border-dashed border-border dark:border-blue-950/40 p-2.5 space-y-2 bg-card dark:bg-[#030a21]/60">
                 <span className="text-xs font-semibold text-foreground">Otherwise (else)</span>
                 <BranchBody b={def} onChange={(p) => setCfg(eid, { default: { ...def, ...p } })} />
               </div>
@@ -4863,11 +4927,11 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               {!!cfg.ai_generate && (
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-foreground">Post shape</label>
-                  <select className={field} value={cfg.post_format || 'insight'}
-                    onChange={(e) => setCfg(eid, { post_format: e.target.value })}>
+                  <CustomSelect className={field} value={cfg.post_format || 'insight'}
+                    onValueChange={(val) => setCfg(eid, { post_format: val })}>
                     <option value="insight">Short insight post (80-150 words)</option>
                     <option value="structured">Structured list (200-400 words)</option>
-                  </select>
+                  </CustomSelect>
                   <p className="text-[11px] text-muted-foreground">
                     {(cfg.post_format || 'insight') === 'structured'
                       ? 'A heading and 3-6 numbered points. This is the shape AI search engines cite most: LinkedIn found headings in 92% of cited posts, and a list in every top-cited article.'
@@ -5187,11 +5251,11 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 </p>
               </div>
               <div className="space-y-1"><label className="text-xs font-medium text-foreground">Send the draft to</label>
-                <select className={field} value={cfg.approval_channel || 'whatsapp'}
-                  onChange={(e) => { setCfg(eid, { approval_channel: e.target.value }); updateWorkflowStep(eid, { description: `${e.target.value === 'email' ? 'Email' : 'WhatsApp'} · before posting` }); }}>
+                <CustomSelect className={field} value={cfg.approval_channel || 'whatsapp'}
+                  onValueChange={(val) => { setCfg(eid, { approval_channel: val }); updateWorkflowStep(eid, { description: `${val === 'email' ? 'Email' : 'WhatsApp'} · before posting` }); }}>
                   <option value="whatsapp">WhatsApp</option>
                   <option value="email">Email</option>
-                </select></div>
+                </CustomSelect></div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-foreground">
                   {(cfg.approval_channel || 'whatsapp') === 'email' ? 'Approver email' : 'Approver WhatsApp number'}
@@ -5228,18 +5292,18 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 </p>
               </div>
               <div className="space-y-1"><label className="text-xs font-medium text-foreground">Post as</label>
-                <select className={field} value={cfg.post_as || 'personal'} onChange={(e) => setCfg(eid, { post_as: e.target.value })}>
+                <CustomSelect className={field} value={cfg.post_as || 'personal'} onValueChange={(val) => setCfg(eid, { post_as: val })}>
                   <option value="personal">My personal profile</option>
                   {liOrganizations.map((o) => <option key={o.id} value={o.id}>{o.name} (company page)</option>)}
-                </select>
+                </CustomSelect>
                 {liOrganizations.length === 0 && (
                   <p className="text-[11px] text-muted-foreground">No company pages found for this account — posting to your personal profile.</p>
                 )}</div>
 
               <div className="space-y-1"><label className="text-xs font-medium text-foreground">How often</label>
-                <select className={field} value={freq} onChange={(e) => { setCfg(eid, { frequency: e.target.value }); updateWorkflowStep(eid, { description: describe(e.target.value, days) }); }}>
+                <CustomSelect className={field} value={freq} onValueChange={(val) => { setCfg(eid, { frequency: val }); updateWorkflowStep(eid, { description: describe(val, days) }); }}>
                   {AUTOPOST_FREQUENCIES.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
-                </select></div>
+                </CustomSelect></div>
 
               {freq === 'weekly' && (
                 <div className="space-y-1.5">
@@ -5249,7 +5313,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                       <button key={d.value} type="button" onClick={() => toggleDay(d.value)}
                         className={`px-2.5 py-1 rounded-md border text-[12px] transition-colors ${
                           days.includes(d.value)
-                            ? 'border-[#0b1957] bg-[#0b1957] text-white'
+                            ? 'border-[#0b1957] dark:border-sky-600 bg-[#0b1957] dark:bg-sky-600 text-white'
                             : 'border-border text-foreground hover:bg-muted/40'
                         }`}>{d.label}</button>
                     ))}
@@ -5307,9 +5371,9 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   <span className="text-[12px] font-semibold text-foreground">Variant {label}</span>
                   <span className="text-[11px] text-muted-foreground">{k === 'a' ? pct : 100 - pct}% of leads</span>
                 </div>
-                <select className={field} value={(cfg[k] || {}).channel || 'linkedin'} onChange={(e) => setV(k, { channel: e.target.value })}>
+                <CustomSelect className={field} value={(cfg[k] || {}).channel || 'linkedin'} onValueChange={(val) => setV(k, { channel: val })}>
                   {ROUTER_CHANNELS.filter((c) => c.value !== 'voice').map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-                </select>
+                </CustomSelect>
                 {((cfg[k] || {}).channel === 'email') && (
                   <input className={field} value={(cfg[k] || {}).subject || ''} onChange={(e) => setV(k, { subject: e.target.value })} placeholder="Subject" />
                 )}
@@ -5386,11 +5450,11 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
 
               <div className="space-y-1">
                 <label className="text-xs font-medium text-foreground">Post type</label>
-                <select className={field} value={cfg.media_type || 'image'}
-                  onChange={(e) => setCfg(eid, { media_type: e.target.value })}>
+                <CustomSelect className={field} value={cfg.media_type || 'image'}
+                  onValueChange={(val) => setCfg(eid, { media_type: val })}>
                   <option value="image">Image post</option>
                   <option value="reel">Reel (video)</option>
-                </select>
+                </CustomSelect>
               </div>
 
               <div className="space-y-1">
@@ -5446,11 +5510,11 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
 
               <div className="space-y-1">
                 <label className="text-xs font-medium text-foreground">How often</label>
-                <select className={field} value={cfg.frequency || 'daily'}
-                  onChange={(e) => setCfg(eid, { frequency: e.target.value })}>
+                <CustomSelect className={field} value={cfg.frequency || 'daily'}
+                  onValueChange={(val) => setCfg(eid, { frequency: val })}>
                   <option value="daily">Every day</option>
                   <option value="weekly">Chosen days</option>
-                </select>
+                </CustomSelect>
               </div>
 
               {cfg.frequency === 'weekly' && (
@@ -5501,11 +5565,11 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
 
               <div className="space-y-1">
                 <label className="text-xs font-medium text-foreground">What is it about?</label>
-                <select className={field} value={cfg.scope || 'lead'}
-                  onChange={(e) => setCfg(eid, { scope: e.target.value })}>
+                <CustomSelect className={field} value={cfg.scope || 'lead'}
+                  onValueChange={(val) => setCfg(eid, { scope: val })}>
                   <option value="lead">Each lead&apos;s own company</option>
                   <option value="campaign">The campaign&apos;s industry</option>
-                </select>
+                </CustomSelect>
                 <p className="text-[11px] text-muted-foreground">
                   {isCampaign
                     ? 'One report for the whole campaign. The same document for everyone, so it can be given away on a landing page.'
@@ -5515,8 +5579,8 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
 
               <div className="space-y-1">
                 <label className="text-xs font-medium text-foreground">Report</label>
-                <select className={field} value={cfg.report_type || 'growth_opportunity_audit'}
-                  onChange={(e) => setCfg(eid, { report_type: e.target.value })}>
+                <CustomSelect className={field} value={cfg.report_type || 'growth_opportunity_audit'}
+                  onValueChange={(val) => setCfg(eid, { report_type: val })}>
                   <option value="growth_opportunity_audit">Growth Opportunity Audit</option>
                   <option value="competitor_analysis">Competitor Analysis</option>
                   <option value="lead_conversion_assessment">Lead Conversion Assessment</option>
@@ -5527,7 +5591,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   <option value="followup_effectiveness_audit">Follow-up Effectiveness Audit</option>
                   <option value="marketing_performance_snapshot">Marketing Performance Snapshot</option>
                   <option value="industry_benchmark_report">Industry Benchmark Report</option>
-                </select>
+                </CustomSelect>
               </div>
 
               {isCampaign && (
@@ -5594,11 +5658,11 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 <div className="space-y-2 pl-5">
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-foreground">Send the review request by</label>
-                    <select className={field} value={cfg.approval_channel || 'email'}
-                      onChange={(e) => setCfg(eid, { approval_channel: e.target.value })}>
+                    <CustomSelect className={field} value={cfg.approval_channel || 'email'}
+                      onValueChange={(val) => setCfg(eid, { approval_channel: val })}>
                       <option value="email">Email</option>
                       <option value="whatsapp">WhatsApp</option>
-                    </select>
+                    </CustomSelect>
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-foreground">
@@ -5664,11 +5728,11 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
 
               <div className="space-y-1">
                 <label className="text-xs font-medium text-foreground">Notify by</label>
-                <select className={field} value={cfg.assignee_channel || 'email'}
-                  onChange={(e) => setCfg(eid, { assignee_channel: e.target.value })}>
+                <CustomSelect className={field} value={cfg.assignee_channel || 'email'}
+                  onValueChange={(val) => setCfg(eid, { assignee_channel: val })}>
                   <option value="email">Email</option>
                   <option value="whatsapp">WhatsApp</option>
-                </select>
+                </CustomSelect>
               </div>
 
               <div className="space-y-1">
@@ -5945,9 +6009,9 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 </p>
               </div>
               <div className="flex gap-1.5">
-                <select className={`${field} w-28`} value={cfg.method || 'POST'} onChange={(e) => setCfg(eid, { method: e.target.value })}>
+                <CustomSelect className={`${field} w-28`} value={cfg.method || 'POST'} onValueChange={(val) => setCfg(eid, { method: val })}>
                   {['POST', 'GET', 'PUT', 'PATCH', 'DELETE'].map((m) => <option key={m} value={m}>{m}</option>)}
-                </select>
+                </CustomSelect>
                 <input className={`${field} flex-1`} value={cfg.url || ''} onChange={(e) => { setCfg(eid, { url: e.target.value }); updateWorkflowStep(eid, { description: (e.target.value || 'Call any API').slice(0, 40) }); }}
                   placeholder="https://api.example.com/leads" />
               </div>
@@ -6060,9 +6124,9 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             return (<>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-foreground">File format</label>
-                <select className={field} value={fmt} onChange={(e) => { setCfg(eid, { format: e.target.value }); updateWorkflowStep(eid, { description: describe(dests, e.target.value) }); }}>
+                <CustomSelect className={field} value={fmt} onValueChange={(val) => { setCfg(eid, { format: val }); updateWorkflowStep(eid, { description: describe(dests, val) }); }}>
                   {EXPORT_FORMATS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
-                </select>
+                </CustomSelect>
               </div>
 
               <div className="space-y-2">
@@ -6131,7 +6195,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               {/* Execute now — proves the destinations work before launch. */}
               <div className="space-y-2 pt-1">
                 <button type="button" onClick={runExportNow} disabled={exportRunning}
-                  className="w-full rounded-md bg-[#0b1957] text-white text-sm font-medium py-2 disabled:opacity-60 flex items-center justify-center gap-2">
+                  className="w-full rounded-md bg-[#0b1957] dark:bg-sky-600 hover:bg-[#0b1957]/90 dark:hover:bg-sky-500 text-white text-sm font-medium py-2 disabled:opacity-60 flex items-center justify-center gap-2">
                   {exportRunning ? <><Loader2 className="h-4 w-4 animate-spin" /> Exporting…</> : <><Download className="h-4 w-4" /> Export now</>}
                 </button>
                 <p className="text-[11px] leading-snug text-muted-foreground">
@@ -6193,13 +6257,13 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
 
             {res.liTemplates.length > 0 && (
               <div className="space-y-1"><label className="text-xs font-medium text-foreground">LinkedIn template (optional)</label>
-                <select className={field} value={cfg.linkedin_template_id || ''} onChange={(e) => {
-                  const t = res.liTemplates.find((x: any) => String(x.id) === e.target.value);
-                  setCfg(editingId!, { linkedin_template_id: e.target.value || undefined, message: t?.content ?? t?.message ?? cfg.message });
+                <CustomSelect className={field} value={cfg.linkedin_template_id || ''} onValueChange={(val) => {
+                  const t = res.liTemplates.find((x: any) => String(x.id) === val);
+                  setCfg(editingId!, { linkedin_template_id: val || undefined, message: t?.content ?? t?.message ?? cfg.message });
                 }}>
                   <option value="">— None (write below / AI-drafted) —</option>
                   {res.liTemplates.map((t: any) => <option key={t.id} value={t.id}>{t.name || t.title || 'Template'}</option>)}
-                </select></div>
+                </CustomSelect></div>
             )}
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Message {editingStep.type === 'linkedin_connect' ? '(optional note)' : ''}</label>
               <textarea className={`${field} min-h-[90px]`} value={cfg.message || ''} onChange={(e) => { setCfg(editingId, { message: e.target.value }); updateWorkflowStep(editingId, { description: e.target.value.slice(0, 40) }); }}
@@ -6214,13 +6278,13 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             </div>
             {res.liTemplates.length > 0 && (
               <div className="space-y-1"><label className="text-xs font-medium text-foreground">LinkedIn template (optional)</label>
-                <select className={field} value={cfg.linkedin_template_id || ''} onChange={(e) => {
-                  const t = res.liTemplates.find((x: any) => String(x.id) === e.target.value);
-                  setCfg(editingId!, { linkedin_template_id: e.target.value || undefined, message: t?.content ?? t?.message ?? cfg.message });
+                <CustomSelect className={field} value={cfg.linkedin_template_id || ''} onValueChange={(val) => {
+                  const t = res.liTemplates.find((x: any) => String(x.id) === val);
+                  setCfg(editingId!, { linkedin_template_id: val || undefined, message: t?.content ?? t?.message ?? cfg.message });
                 }}>
                   <option value="">— None (write below / AI-drafted) —</option>
                   {res.liTemplates.map((t: any) => <option key={t.id} value={t.id}>{t.name || t.title || 'Template'}</option>)}
-                </select></div>
+                </CustomSelect></div>
             )}
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Subject (optional)</label>
               <input className={field} value={cfg.subject || ''} onChange={(e) => setCfg(editingId!, { subject: e.target.value })}
@@ -6231,20 +6295,20 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           </>)}
           {!isSource && editingStep.type === 'whatsapp_send' && (<>
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">WhatsApp account</label>
-              <select className={field} value={cfg.whatsapp_account_id || ''} onChange={(e) => setCfg(editingId!, { whatsapp_account_id: e.target.value || undefined })}>
+              <CustomSelect className={field} value={cfg.whatsapp_account_id || ''} onValueChange={(val) => setCfg(editingId!, { whatsapp_account_id: val || undefined })}>
                 <option value="">— Default connected account —</option>
                 {res.waAccounts.map((a: any) => <option key={a.id} value={a.id}>{a.slug || a.display_name || a.phone_number || a.id}</option>)}
-              </select>
+              </CustomSelect>
               {res.waAccounts.length === 0 && <p className="text-[11px] text-muted-foreground">No WhatsApp account connected — connect one in Settings.</p>}</div>
             {res.waTemplates.length > 0 && (
               <div className="space-y-1"><label className="text-xs font-medium text-foreground">Template (optional)</label>
-                <select className={field} value={cfg.whatsapp_template_id || ''} onChange={(e) => {
-                  const t = res.waTemplates.find((x: any) => String(x.id) === e.target.value);
-                  setCfg(editingId!, { whatsapp_template_id: e.target.value || undefined, message: t?.content ?? t?.body ?? cfg.message });
+                <CustomSelect className={field} value={cfg.whatsapp_template_id || ''} onValueChange={(val) => {
+                  const t = res.waTemplates.find((x: any) => String(x.id) === val);
+                  setCfg(editingId!, { whatsapp_template_id: val || undefined, message: t?.content ?? t?.body ?? cfg.message });
                 }}>
                   <option value="">— None (write below / AI-drafted) —</option>
                   {res.waTemplates.map((t: any) => <option key={t.id} value={t.id}>{t.name || t.title || 'Template'}</option>)}
-                </select></div>
+                </CustomSelect></div>
             )}
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Message</label>
               <textarea className={`${field} min-h-[90px]`} value={cfg.message || ''} onChange={(e) => { setCfg(editingId!, { message: e.target.value }); updateWorkflowStep(editingId!, { description: e.target.value.slice(0, 40) }); }}
@@ -6252,23 +6316,23 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           </>)}
           {!isSource && editingStep.type === 'email_send' && (<>
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Send from</label>
-              <select className={field} value={cfg.from_email || ''} onChange={(e) => {
-                const s = res.emailSenders.find((x: any) => x.email === e.target.value);
-                setCfg(editingId!, { from_email: e.target.value || undefined, email_provider: s?.provider || undefined });
+              <CustomSelect className={field} value={cfg.from_email || ''} onValueChange={(val) => {
+                const s = res.emailSenders.find((x: any) => x.email === val);
+                setCfg(editingId!, { from_email: val || undefined, email_provider: s?.provider || undefined });
               }}>
                 <option value="">— Default connected account —</option>
                 {res.emailSenders.map((s: any) => <option key={s.email} value={s.email}>{s.email}{s.provider ? ` (${s.provider})` : ''}</option>)}
-              </select>
+              </CustomSelect>
               {res.emailSenders.length === 0 && <p className="text-[11px] text-muted-foreground">No email account connected — connect Gmail/Outlook in Settings.</p>}</div>
             {res.emailTemplates.length > 0 && (
               <div className="space-y-1"><label className="text-xs font-medium text-foreground">Template (optional)</label>
-                <select className={field} value={cfg.template_id || ''} onChange={(e) => {
-                  const t = res.emailTemplates.find((x: any) => String(x.id) === e.target.value);
-                  setCfg(editingId!, { template_id: e.target.value || undefined, subject: t?.subject ?? cfg.subject, body: t?.body ?? t?.content ?? cfg.body });
+                <CustomSelect className={field} value={cfg.template_id || ''} onValueChange={(val) => {
+                  const t = res.emailTemplates.find((x: any) => String(x.id) === val);
+                  setCfg(editingId!, { template_id: val || undefined, subject: t?.subject ?? cfg.subject, body: t?.body ?? t?.content ?? cfg.body });
                 }}>
                   <option value="">— None (write below / AI-drafted) —</option>
                   {res.emailTemplates.map((t: any) => <option key={t.id} value={t.id}>{t.name || t.title || 'Template'}</option>)}
-                </select></div>
+                </CustomSelect></div>
             )}
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Subject</label>
               <Input value={cfg.subject || ''} onChange={(e) => { setCfg(editingId, { subject: e.target.value }); updateWorkflowStep(editingId, { description: e.target.value.slice(0, 40) }); }} /></div>
@@ -6285,20 +6349,20 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           </>)}
           {!isSource && editingStep.type === 'voice_agent_call' && (<>
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Calling number</label>
-              <select className={field} value={cfg.from_number || ''} onChange={(e) => setCfg(editingId!, { from_number: e.target.value || undefined })}>
+              <CustomSelect className={field} value={cfg.from_number || ''} onValueChange={(val) => setCfg(editingId!, { from_number: val || undefined })}>
                 <option value="">— Default number —</option>
                 {res.voiceNumbers.map((n: any) => <option key={n.phone_number} value={n.phone_number}>{n.phone_number}</option>)}
-              </select>
+              </CustomSelect>
               {res.voiceNumbers.length === 0 && <p className="text-[11px] text-muted-foreground">No voice number configured.</p>}</div>
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Voice agent</label>
-              <select className={field} value={cfg.agent_id || ''} onChange={(e) => {
-                const a = res.voiceAgents.find((x: any) => x.id === e.target.value);
-                setCfg(editingId!, { agent_id: e.target.value || undefined, voice_id: a?.voice_id || undefined });
+              <CustomSelect className={field} value={cfg.agent_id || ''} onValueChange={(val) => {
+                const a = res.voiceAgents.find((x: any) => x.id === val);
+                setCfg(editingId!, { agent_id: val || undefined, voice_id: a?.voice_id || undefined });
                 updateWorkflowStep(editingId!, { description: a?.name || 'AI voice call' });
               }}>
                 <option value="">— Select an agent —</option>
                 {res.voiceAgents.map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}
-              </select>
+              </CustomSelect>
               {res.voiceAgents.length === 0 && <p className="text-[11px] text-muted-foreground">No voice agent found — create one in the Voice playground.</p>}</div>
             {/* The panel's description has always promised a "script" field.
                 It is real: the executor reads stepConfig.added_context ||
@@ -6320,12 +6384,12 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 updateWorkflowStep(editingId!, { description: `${Math.min(10, Math.max(1, parseInt(e.target.value, 10) || 3))} tries → ${ROUTER_CHANNELS.find((r) => r.value === (cfg.fallback_channel || 'email'))?.label}` });
               }} /></div>
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Fallback channel</label>
-              <select className={field} value={cfg.fallback_channel || 'email'} onChange={(e) => {
-                setCfg(editingId, { fallback_channel: e.target.value });
-                updateWorkflowStep(editingId!, { description: `${cfg.attempts || 3} tries → ${ROUTER_CHANNELS.find((r) => r.value === e.target.value)?.label}` });
+              <CustomSelect className={field} value={cfg.fallback_channel || 'email'} onValueChange={(val) => {
+                setCfg(editingId, { fallback_channel: val });
+                updateWorkflowStep(editingId!, { description: `${cfg.attempts || 3} tries → ${ROUTER_CHANNELS.find((r) => r.value === val)?.label}` });
               }}>
                 {ROUTER_CHANNELS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-              </select></div>
+              </CustomSelect></div>
             {(cfg.fallback_channel || 'email') === 'email' && (
               <div className="space-y-1"><label className="text-xs font-medium text-foreground">Fallback email subject</label>
                 <Input value={cfg.subject || ''} onChange={(e) => setCfg(editingId, { subject: e.target.value })} placeholder="Blank = Mr LAD drafts it" /></div>
@@ -6339,16 +6403,16 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
 
           {!isSource && !isRouter && editingStep.type === 'condition' && (
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Continue when…</label>
-              <select className={field} value={cfg.condition || 'connection_accepted'} onChange={(e) => { setCfg(editingId, { condition: e.target.value }); updateWorkflowStep(editingId, { description: CONDITIONS.find((c) => c.value === e.target.value)?.label || '' }); }}>
+              <CustomSelect className={field} value={cfg.condition || 'connection_accepted'} onValueChange={(val) => { setCfg(editingId, { condition: val }); updateWorkflowStep(editingId, { description: CONDITIONS.find((c) => c.value === val)?.label || '' }); }}>
                 {CONDITIONS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-              </select></div>
+              </CustomSelect></div>
           )}
           {!isSource && !isMacro && editingStep.type !== 'condition' && (
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Delay before this step (days)</label>
               <Input type="number" className="w-24" value={cfg.delayDays || '0'} onChange={(e) => setCfg(editingId, { delayDays: e.target.value })} /></div>
           )}
         </div>
-        <div className="p-3 border-t border-border bg-muted/20">
+        <div className="p-3 border-t border-border bg-muted/20 dark:bg-[#030a21]/60 dark:border-blue-950/40">
           <Button className="w-full" onClick={() => setEditingId(null)}>Done</Button>
         </div>
       </div>
@@ -7027,8 +7091,8 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         ? 'bg-card border border-border text-foreground shadow-sm'
         : 'text-muted-foreground hover:text-foreground'}`;
     return (
-      <div className="absolute right-0 top-0 h-full w-[24rem] bg-card border-l border-border shadow-2xl z-10 flex flex-col">
-        <div className="flex items-start gap-3 p-4 border-b border-border">
+      <div className="absolute right-0 top-0 h-full w-full sm:w-[24rem] bg-card dark:bg-[#071131] border-l border-border dark:border-blue-950/40 shadow-2xl z-30 flex flex-col">
+        <div className="flex items-start gap-3 p-4 border-b border-border dark:border-blue-950/40">
           <IconChip icon={<FlaskConical className="h-4 w-4 text-emerald-600" />} chip="bg-emerald-50 dark:bg-emerald-950/30" size="h-10 w-10" />
           <div className="min-w-0 flex-1">
             <div className="text-sm font-semibold text-foreground">Test run</div>
@@ -7078,7 +7142,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           )}
 
           {!runnable && !!workflowPreview.length && (
-            <div className="rounded-lg border border-border bg-muted/30 p-2.5 text-[12px] leading-relaxed text-muted-foreground">
+            <div className="rounded-lg border border-border dark:border-blue-950/40 bg-muted/30 dark:bg-[#030a21]/60 p-2.5 text-[12px] leading-relaxed text-muted-foreground">
               Nothing in this workflow produces something to look at yet. A test run executes research,
               scraping, scoring, reports, landing pages and exports — add one of those and there will be an
               artifact to review.
@@ -7089,7 +7153,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             <div className="flex items-center justify-between gap-2 mb-2">
               <span className="text-xs font-semibold text-foreground">Sample lead</span>
               <button type="button" onClick={generateSampleLead} disabled={testSampling}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-border text-[11.5px] font-semibold text-muted-foreground hover:text-foreground hover:border-[#0b1957]/40 disabled:opacity-50 transition-colors">
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-border dark:border-blue-950/40 text-[11.5px] font-semibold text-muted-foreground hover:text-foreground hover:border-[#0b1957]/40 dark:hover:border-[#2B7CFF]/50 disabled:opacity-50 transition-colors">
                 {testSampling ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
                 {testSampling ? 'Generating…' : 'Generate for me'}
               </button>
@@ -7124,7 +7188,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   </div>
                   {artifacts.map((a, i) => (
                     <a key={`${a.url}-${i}`} href={a.url} target="_blank" rel="noreferrer"
-                      className="flex items-center gap-2 rounded-lg bg-card border border-border p-2 hover:border-[#0b1957]/40 transition-colors">
+                      className="flex items-center gap-2 rounded-lg bg-card dark:bg-[#030a21]/60 border border-border dark:border-blue-950/40 p-2 hover:border-[#0b1957]/40 dark:hover:border-[#2B7CFF]/50 transition-colors">
                       <span className="flex-shrink-0">{ARTIFACT_ICON[a.kind] || ARTIFACT_ICON.file}</span>
                       <span className="min-w-0 flex-1">
                         <span className="block text-[12px] font-semibold text-foreground truncate">{a.label}</span>
@@ -7144,7 +7208,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               {testSteps.map((s, i) => (
                 <div key={`${s.type}-${i}`} className={`rounded-xl border p-2.5 ${tone[s.status] || tone.skipped}`}>
                   <div className="flex items-center gap-2">
-                    <span className="h-5 w-5 rounded-full bg-card border border-border text-[10px] font-bold text-muted-foreground flex items-center justify-center flex-shrink-0">{i + 1}</span>
+                    <span className="h-5 w-5 rounded-full bg-card dark:bg-[#030a21]/60 border border-border dark:border-blue-950/40 text-[10px] font-bold text-muted-foreground flex items-center justify-center flex-shrink-0">{i + 1}</span>
                     <span className="text-[12.5px] font-semibold text-foreground flex-1 truncate">{s.title}</span>
                     <span className={`text-[9.5px] font-bold uppercase tracking-wider ${badge[s.status] || badge.skipped}`}>
                       {s.status === 'ran' ? 'Ran' : s.status === 'failed' ? 'Failed' : 'Skipped'}
@@ -7172,7 +7236,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           </>)}
         </div>
 
-        <div className="p-3 border-t border-border bg-muted/20 space-y-1.5">
+        <div className="p-3 border-t border-border dark:border-blue-950/40 bg-muted/20 dark:bg-[#071131] space-y-1.5">
           {signalMode ? (<>
             <Button className="w-full" onClick={generateAndTest}
               disabled={signalSampling || signalLiveRunning || !signalDraft.signal.trim()}>
@@ -7278,7 +7342,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   return (
     <div className="h-full min-h-0 flex flex-col bg-[#F8F9FE] dark:bg-[#000724]">
       {/* Header */}
-      <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-card flex-wrap">
+      <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border dark:border-blue-950/40 bg-card dark:bg-[#071131] flex-wrap">
         <div className="flex items-center gap-3 min-w-0">
           <button onClick={onClose} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground" title="Close builder">
             <X className="h-4 w-4" /> Close
@@ -7301,14 +7365,14 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             {strategySaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Bookmark className="h-4 w-4 mr-2" />}
             Save as strategy
           </Button>
-          <Button onClick={launch} disabled={launching || hydrating || sequenceIssues.length > 0}
+          <Button onClick={launch} className='dark:text-white' disabled={launching || hydrating || sequenceIssues.length > 0}
             title={sequenceIssues.length ? sequenceIssues[0].message : undefined}>
             {(launching || hydrating) ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Rocket className="h-4 w-4 mr-2" />}
             {hydrating ? 'Loading…' : editCampaignId ? 'Save changes' : 'Launch Accelerator'}
           </Button>
         </div>
       </div>
-      {error && <div className="mx-4 mt-3 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">{error}</div>}
+      {error && <div className="mx-4 mt-3 rounded-lg bg-red-50 border border-red-200 dark:bg-red-950/30 dark:border-red-900 p-3 text-sm text-red-700 dark:text-red-300">{error}</div>}
       {!error && sequenceIssues.length > 0 && (
         <div className="mx-4 mt-3 rounded-lg bg-amber-50 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-900 p-3 text-sm text-amber-900 dark:text-amber-200 flex items-start gap-2">
           <span className="flex-1">
@@ -7353,14 +7417,14 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         {/* Palette */}
         {/* Column, not a plain scroller: the AI tab pins its composer to the
             bottom the way a chat does, so it owns its own scroll region. */}
-        <div className="w-[19rem] border-r border-border bg-card flex flex-col min-h-0">
+        <div className="w-full sm:w-[19rem] max-w-full sm:max-w-[19rem] flex-shrink-0 border-r border-border dark:border-blue-950/40 bg-card dark:bg-[#071131] flex flex-col min-h-0">
           {/* Tabs — Templates | Build with AI | Build from steps */}
-          <div className="flex items-center gap-1 p-1 m-4 mb-0 flex-shrink-0 rounded-xl bg-muted/60 dark:bg-slate-800/60">
+          <div className="flex items-center gap-1 p-1 m-4 mb-0 flex-shrink-0 rounded-xl bg-muted/60 dark:bg-[#030a21]/60 border border-transparent dark:border-blue-950/40">
             {([['templates', 'Templates'], ['ai', 'Build with AI'], ['steps', 'From steps']] as const).map(([k, label]) => (
               <button key={k} type="button" onClick={() => setPaletteTab(k)}
                 className={`flex-1 inline-flex items-center justify-center gap-1 px-2 py-2 rounded-lg text-[12px] font-semibold transition-all ${
                   paletteTab === k
-                    ? 'bg-card text-foreground shadow-sm'
+                    ? 'bg-card dark:bg-[#071131] text-foreground shadow-sm border border-transparent dark:border-blue-950/40'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}>
                 {k === 'templates'
@@ -7401,7 +7465,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                             el.scrollTop = 0;
                           });
                         }}
-                        className="w-full flex items-center gap-3 rounded-full border border-border bg-card px-2 py-2 text-left hover:border-[#0b1957]/40 hover:bg-muted/40 transition-colors">
+                        className="w-full flex items-center gap-3 rounded-full border border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 px-2 py-2 text-left hover:border-[#0b1957]/40 dark:hover:border-sky-400/50 hover:bg-muted/40 transition-colors">
                         <span className={`h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 ${s.chip}`}>
                           {s.icon}
                         </span>
@@ -7429,7 +7493,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 return (
                   <div className="space-y-3">
                     {/* What you asked for, and what has been settled so far. */}
-                    <div className="rounded-xl bg-muted/50 dark:bg-slate-800/40 p-2.5">
+                    <div className="rounded-xl bg-muted/50 dark:bg-[#030a21]/60 border border-transparent dark:border-blue-950/40 p-2.5">
                       <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">You asked for</div>
                       <p className="text-[12px] text-foreground leading-snug">{aiPrompt.trim()}</p>
                     </div>
@@ -7443,7 +7507,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                       </div>
                     ))}
 
-                    <div className="rounded-2xl border border-[#0b1957]/30 bg-[#0b1957]/[0.03] dark:bg-[#0b1957]/[0.08] p-3">
+                    <div className="rounded-2xl border border-[#0b1957]/30 dark:border-blue-950/40 bg-[#0b1957]/[0.03] dark:bg-[#030a21]/60 p-3">
                       <div className="flex items-center justify-between gap-2 mb-1.5">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-[#0b1957] dark:text-sky-300">
                           Question {aiStep + 1} of {aiQuestions.length}
@@ -7458,7 +7522,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                         <div className="mt-2.5 space-y-1.5">
                           {q.options?.map((o) => (
                             <button key={o.value} type="button" onClick={() => answerAiQuestion(o.value)} disabled={aiBuilding}
-                              className={`w-full text-left border border-border bg-card px-3 py-2 hover:border-[#0b1957] hover:bg-[#0b1957]/[0.04] disabled:opacity-50 transition-all ${
+                              className={`w-full text-left border border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 px-3 py-2 hover:border-[#0b1957] dark:hover:border-sky-400 hover:bg-[#0b1957]/[0.04] dark:hover:bg-sky-500/10 disabled:opacity-50 transition-all ${
                                 o.hint ? 'rounded-2xl' : 'rounded-full'}`}>
                               <span className="block text-[12.5px] font-medium text-foreground">{o.label}</span>
                               {o.hint && <span className="block text-[10.5px] text-muted-foreground">{o.hint}</span>}
@@ -7466,27 +7530,27 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                           ))}
                           {/* Escape hatch, only where a typed answer is honoured. */}
                           {q.allowOther && (aiOtherFor === q.id ? (
-                            <div className="rounded-2xl border border-[#0b1957] bg-card px-3 py-2.5 space-y-2">
+                            <div className="rounded-2xl border border-[#0b1957] dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 px-3 py-2.5 space-y-2">
                               {q.otherHelp && <p className="text-[10.5px] text-muted-foreground leading-snug">{q.otherHelp}</p>}
                               <input autoFocus value={aiText} onChange={(e) => setAiText(e.target.value)}
                                 onKeyDown={(e) => { if (e.key === 'Enter' && aiText.trim()) answerAiQuestion(aiText.trim()); }}
                                 placeholder={q.otherPlaceholder || ''}
-                                className="w-full rounded-full border border-input bg-background px-3 py-1.5 text-[12.5px] outline-none focus:border-[#0b1957]/40" />
+                                className="w-full rounded-full border border-input dark:border-slate-700/80 bg-background dark:bg-slate-800/50 px-3 py-1.5 text-[12.5px] outline-none focus:border-[#0b1957]/40 dark:focus:border-sky-400" />
                               <div className="flex items-center gap-1.5">
                                 <button type="button" disabled={aiBuilding || !aiText.trim()}
                                   onClick={() => answerAiQuestion(aiText.trim())}
-                                  className="flex-1 rounded-full bg-[#0b1957] text-white text-[12px] font-semibold py-1.5 hover:bg-[#0b1957]/90 disabled:opacity-40 transition-colors">
+                                  className="flex-1 rounded-full bg-[#0b1957] dark:bg-sky-600 text-white text-[12px] font-semibold py-1.5 hover:bg-[#0b1957]/90 dark:hover:bg-sky-500 disabled:opacity-40 transition-colors">
                                   Use this
                                 </button>
                                 <button type="button" onClick={() => { setAiOtherFor(null); setAiText(''); }}
-                                  className="px-3 py-1.5 rounded-full border border-border text-[12px] font-semibold text-muted-foreground hover:text-foreground transition-colors">
+                                  className="px-3 py-1.5 rounded-full border border-border dark:border-blue-950/40 text-[12px] font-semibold text-muted-foreground hover:text-foreground transition-colors">
                                   Back
                                 </button>
                               </div>
                             </div>
                           ) : (
                             <button type="button" onClick={() => { setAiOtherFor(q.id); setAiText(''); }} disabled={aiBuilding}
-                              className="w-full text-left rounded-full border border-dashed border-border bg-transparent px-3 py-2 text-[12.5px] font-medium text-muted-foreground hover:text-foreground hover:border-[#0b1957]/40 disabled:opacity-50 transition-all">
+                              className="w-full text-left rounded-full border border-dashed border-border dark:border-blue-950/40 bg-transparent px-3 py-2 text-[12.5px] font-medium text-muted-foreground hover:text-foreground hover:border-[#0b1957]/40 dark:hover:border-sky-400/50 disabled:opacity-50 transition-all">
                               {q.otherLabel || 'Something else…'}
                             </button>
                           ))}
@@ -7500,10 +7564,10 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                             return (
                               <button key={o.value} type="button" onClick={() => toggleMulti(o.value)}
                                 className={`w-full text-left rounded-full border px-3 py-2 transition-all ${
-                                  on ? 'border-[#0b1957] bg-[#0b1957]/[0.06]' : 'border-border bg-card hover:border-[#0b1957]/40'}`}>
+                                  on ? 'border-[#0b1957] dark:border-sky-400 bg-[#0b1957]/[0.06] dark:bg-sky-500/10' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/40 dark:hover:border-sky-400/50'}`}>
                                 <span className="flex items-center gap-2">
                                   <span className={`h-3.5 w-3.5 rounded border flex items-center justify-center flex-shrink-0 ${
-                                    on ? 'bg-[#0b1957] border-[#0b1957]' : 'border-muted-foreground/40'}`}>
+                                    on ? 'bg-[#0b1957] dark:bg-sky-500 border-[#0b1957] dark:border-sky-500' : 'border-muted-foreground/40'}`}>
                                     {on && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="4" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>}
                                   </span>
                                   <span className="min-w-0">
@@ -7516,7 +7580,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                           })}
                           <button type="button" disabled={aiBuilding || !multiSelected.length}
                             onClick={() => answerAiQuestion(multiSelected)}
-                            className="w-full rounded-xl bg-[#0b1957] text-white text-[12.5px] font-semibold py-2 hover:bg-[#0b1957]/90 disabled:opacity-40 transition-colors">
+                            className="w-full rounded-xl bg-[#0b1957] dark:bg-sky-600 text-white text-[12.5px] font-semibold py-2 hover:bg-[#0b1957]/90 dark:hover:bg-sky-500 disabled:opacity-40 transition-colors">
                             Continue
                           </button>
                         </div>
@@ -7527,22 +7591,22 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                           {q.type === 'longtext' ? (
                             <textarea value={aiText} onChange={(e) => setAiText(e.target.value)}
                               placeholder={q.placeholder || ''}
-                              className="w-full min-h-[80px] rounded-xl border border-input bg-background px-2.5 py-2 text-[12.5px] outline-none focus:border-[#0b1957]/40 resize-y" />
+                              className="w-full min-h-[80px] rounded-xl border border-input dark:border-slate-700/80 bg-background dark:bg-slate-800/50 px-2.5 py-2 text-[12.5px] outline-none focus:border-[#0b1957]/40 dark:focus:border-sky-400 resize-y" />
                           ) : (
                             <input value={aiText} onChange={(e) => setAiText(e.target.value)}
                               onKeyDown={(e) => { if (e.key === 'Enter' && aiText.trim()) answerAiQuestion(aiText.trim()); }}
                               placeholder={q.placeholder || ''}
-                              className="w-full rounded-xl border border-input bg-background px-2.5 py-2 text-[12.5px] outline-none focus:border-[#0b1957]/40" />
+                              className="w-full rounded-xl border border-input dark:border-slate-700/80 bg-background dark:bg-slate-800/50 px-2.5 py-2 text-[12.5px] outline-none focus:border-[#0b1957]/40 dark:focus:border-sky-400" />
                           )}
                           <div className="flex items-center gap-1.5">
                             <button type="button" disabled={aiBuilding || (!!q.required && !aiText.trim())}
                               onClick={() => answerAiQuestion(aiText.trim())}
-                              className="flex-1 rounded-xl bg-[#0b1957] text-white text-[12.5px] font-semibold py-2 hover:bg-[#0b1957]/90 disabled:opacity-40 transition-colors">
+                              className="flex-1 rounded-xl bg-[#0b1957] dark:bg-sky-600 text-white text-[12.5px] font-semibold py-2 hover:bg-[#0b1957]/90 dark:hover:bg-sky-500 disabled:opacity-40 transition-colors">
                               Continue
                             </button>
                             {!q.required && (
                               <button type="button" onClick={skipAiQuestion} disabled={aiBuilding}
-                                className="px-3 py-2 rounded-xl border border-border text-[12px] font-semibold text-muted-foreground hover:text-foreground disabled:opacity-40 transition-colors">
+                                className="px-3 py-2 rounded-xl border border-border dark:border-blue-950/40 text-[12px] font-semibold text-muted-foreground hover:text-foreground disabled:opacity-40 transition-colors">
                                 {q.skippable ? 'Let Mr LAD write it' : 'Skip'}
                               </button>
                             )}
@@ -7567,7 +7631,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               )}
 
               {aiResult && (
-                <div className="mt-3 rounded-xl border border-border bg-card p-3">
+                <div className="mt-3 rounded-xl border border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 p-3">
                   <div className="text-[13px] font-bold text-foreground">{aiResult.name}</div>
                   <div className="mt-2 flex flex-wrap items-center gap-y-1.5" style={{ columnGap: 4 }}>
                     {aiResult.chain.map((c, i) => (
@@ -7580,11 +7644,11 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   {aiResult.notes && <p className="text-[11px] text-muted-foreground mt-2 leading-snug">{aiResult.notes}</p>}
                   <div className="flex items-center gap-1.5 mt-3">
                     <button type="button" onClick={() => setPaletteTab('steps')}
-                      className="flex-1 rounded-full border border-border py-2 text-[12.5px] font-semibold text-muted-foreground hover:text-foreground hover:border-[#0b1957]/40 transition-colors">
+                      className="flex-1 rounded-full border border-border dark:border-blue-950/40 py-2 text-[12.5px] font-semibold text-muted-foreground hover:text-foreground hover:border-[#0b1957]/40 dark:hover:border-sky-400/50 transition-colors">
                       Adjust the steps
                     </button>
                     <button type="button" onClick={() => { setAiResult(null); setAiPrompt(''); }}
-                      className="px-3 py-2 rounded-full border border-border text-[12px] font-semibold text-muted-foreground hover:text-foreground transition-colors">
+                      className="px-3 py-2 rounded-full border border-border dark:border-blue-950/40 text-[12px] font-semibold text-muted-foreground hover:text-foreground transition-colors">
                       New
                     </button>
                   </div>
@@ -7596,8 +7660,8 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 answer controls are the input at that point, and two places to
                 type would be ambiguous. */}
             {!aiQuestions.length && (
-              <div className="flex-shrink-0 border-t border-border p-3">
-                <div className="rounded-2xl border border-input bg-muted/40 dark:bg-slate-800/40 focus-within:bg-background focus-within:border-[#0b1957]/40 transition-colors">
+              <div className="flex-shrink-0 border-t border-border dark:border-blue-950/40 p-3">
+                <div className="rounded-2xl border border-input dark:border-blue-950/40 bg-muted/40 dark:bg-[#030a21]/60 focus-within:bg-background focus-within:border-[#0b1957]/40 dark:focus-within:border-sky-400 transition-colors">
                   <textarea
                     ref={aiInputRef}
                     value={aiPrompt}
@@ -7612,7 +7676,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   <div className="flex items-center justify-between px-2 pb-2">
                     <span className="text-[10px] text-muted-foreground pl-1">Enter to send</span>
                     <button type="button" onClick={buildWithAi} disabled={aiBuilding || !aiPrompt.trim()}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-[#0b1957] text-white text-[12px] font-semibold pl-2.5 pr-3 py-1.5 hover:bg-[#0b1957]/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                      className="inline-flex items-center gap-1.5 rounded-full bg-[#0b1957] dark:bg-sky-600 text-white text-[12px] font-semibold pl-2.5 pr-3 py-1.5 hover:bg-[#0b1957]/90 dark:hover:bg-sky-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                       {aiBuilding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
                       {aiBuilding ? 'Thinking' : 'Build'}
                     </button>
@@ -7633,7 +7697,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             <div className="relative">
               <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
               <input value={tplSearch} onChange={(e) => setTplSearch(e.target.value)} placeholder="Search templates…"
-                className="w-full rounded-xl border border-input bg-muted/40 dark:bg-slate-800/40 pl-9 pr-3 py-2.5 text-[13px] outline-none focus:bg-background focus:border-[#0b1957]/40 transition-colors" />
+                className="w-full rounded-xl border border-input dark:border-slate-700/80 bg-muted/40 dark:bg-slate-800/50 pl-9 pr-3 py-2.5 text-[13px] outline-none focus:bg-background focus:border-[#0b1957]/40 dark:focus:border-sky-400 transition-colors" />
             </div>
 
             <div>
@@ -7656,8 +7720,8 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     const open = expandedTpl === t.key;
                     return (
                       <div key={t.key}
-                        className={`rounded-2xl border bg-card transition-all ${
-                          open ? 'border-[#0b1957]/40 shadow-[0_2px_16px_rgba(11,25,87,0.08)]' : 'border-border hover:border-[#0b1957]/25'
+                        className={`rounded-2xl border bg-card dark:bg-[#030a21]/60 transition-all ${
+                          open ? 'border-[#0b1957]/40 dark:border-blue-950/40 shadow-[0_2px_16px_rgba(11,25,87,0.08)]' : 'border-border dark:border-blue-950/40 hover:border-[#0b1957]/25 dark:hover:border-sky-400/40'
                         }`}>
                         <button type="button" onClick={() => setExpandedTpl(open ? null : t.key)}
                           className="w-full flex items-start gap-3 p-3 text-left">
@@ -7687,7 +7751,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
 
                         {open && (
                           <div className="px-3 pb-3">
-                            <div className="border-t border-border pt-3 flex flex-wrap items-center gap-y-1.5" style={{ columnGap: 4 }}>
+                            <div className="border-t border-border dark:border-blue-950/40 pt-3 flex flex-wrap items-center gap-y-1.5" style={{ columnGap: 4 }}>
                               {t.chain.map((c, i) => (
                                 <Fragment key={i}>
                                   {i > 0 && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>}
@@ -7696,26 +7760,30 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                                 </Fragment>
                               ))}
                             </div>
-                            <div className="flex items-center gap-3 mt-3">
-                              <span className="inline-flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
-                                <strong className="font-semibold text-foreground">{t.meta.cycleDays}-day</strong> cycle
-                              </span>
-                              <span className="h-3 w-px bg-border" />
-                              <span className="text-[11.5px] text-muted-foreground">
-                                <strong className="font-semibold text-foreground">{t.meta.channels}</strong> channels
-                              </span>
-                              {t.category === 'strategy' && (
-                                <button type="button"
-                                  onClick={(e) => { e.stopPropagation(); setPublishingId(strategyIdFromKey(t.key)); }}
-                                  className="ml-auto px-3 py-2 rounded-xl border border-border text-[12.5px] font-semibold text-muted-foreground hover:text-foreground hover:border-[#0b1957]/40 transition-colors">
-                                  Share
+                            <div className="flex flex-col gap-2.5 mt-3 pt-2.5 border-t border-border/50 dark:border-blue-950/40">
+                              <div className="flex items-center justify-between gap-2 text-[11.5px] text-muted-foreground">
+                                <span className="inline-flex items-center gap-1.5">
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
+                                  <strong className="font-semibold text-foreground">{t.meta.cycleDays}-day</strong> cycle
+                                </span>
+                                <span className="h-3 w-px bg-border dark:bg-blue-950/40" />
+                                <span className="text-[11.5px] text-muted-foreground">
+                                  <strong className="font-semibold text-foreground">{t.meta.channels}</strong> channels
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {t.category === 'strategy' && (
+                                  <button type="button"
+                                    onClick={(e) => { e.stopPropagation(); setPublishingId(strategyIdFromKey(t.key)); }}
+                                    className="flex-1 px-3 py-1.5 rounded-xl border border-border dark:border-blue-950/40 text-[12px] font-semibold text-muted-foreground hover:text-foreground hover:border-[#0b1957]/40 dark:hover:border-sky-400/50 transition-colors text-center truncate">
+                                    Share
+                                  </button>
+                                )}
+                                <button type="button" onClick={(e) => { e.stopPropagation(); setOverviewTpl(t.key); setEditingId(null); }}
+                                  className="flex-1 px-3 py-1.5 rounded-xl bg-primary text-white text-[12px] font-semibold hover:bg-primary/90 transition-colors text-center truncate">
+                                  {t.category === 'community' ? 'Import' : 'Use template'}
                                 </button>
-                              )}
-                              <button type="button" onClick={(e) => { e.stopPropagation(); setOverviewTpl(t.key); setEditingId(null); }}
-                                className={`${t.category === 'strategy' ? '' : 'ml-auto '}px-3.5 py-2 rounded-xl bg-[#0b1957] text-white text-[12.5px] font-semibold hover:bg-[#0b1957]/90 transition-colors`}>
-                                {t.category === 'community' ? 'Import' : 'Use template'}
-                              </button>
+                              </div>
                             </div>
                           </div>
                         )}
@@ -7730,7 +7798,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     <div className="flex items-center gap-2 pt-1 pb-0.5">
                       <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{label}</span>
                       <span className="text-[10px] font-semibold text-muted-foreground/70">{count}</span>
-                      <span className="flex-1 h-px bg-border" />
+                      <span className="flex-1 h-px bg-border dark:bg-blue-950/40" />
                     </div>
                   );
                   return (<>
@@ -7749,7 +7817,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               </div>
 
               <button type="button" onClick={() => setPaletteTab('steps')}
-                className="mt-3 w-full rounded-2xl border border-dashed border-border hover:border-[#0b1957]/40 hover:bg-muted/40 py-3 text-[13px] font-semibold text-muted-foreground hover:text-foreground transition-colors inline-flex items-center justify-center gap-2">
+                className="mt-3 w-full rounded-2xl border border-dashed border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/40 dark:hover:border-sky-400/50 hover:bg-muted/40 py-3 text-[13px] font-semibold text-muted-foreground hover:text-foreground transition-colors inline-flex items-center justify-center gap-2">
                 <Plus className="h-4 w-4" /> Or build from scratch with steps
               </button>
             </div>
@@ -7759,7 +7827,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           {/* Suggested next step — a shortcut, not a requirement. Every option
               here is also always pickable manually from the sections below. */}
           {suggestions.length > 0 && (
-            <div className="rounded-2xl border border-dashed border-[#0b1957]/30 bg-[#0b1957]/[0.03] dark:bg-[#0b1957]/[0.08] p-3 space-y-2">
+            <div className="rounded-2xl border border-dashed border-[#0b1957]/30 dark:border-blue-950/40 bg-[#0b1957]/[0.03] dark:bg-[#030a21]/60 p-3 space-y-2">
               <div className="flex items-center gap-1.5">
                 <Sparkles className="h-3.5 w-3.5 text-[#0b1957] dark:text-sky-300" />
                 <span className="text-[11px] font-bold uppercase tracking-wider text-[#0b1957] dark:text-sky-300">Suggested next step</span>
@@ -7769,8 +7837,8 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   <button key={s.key} type="button" onClick={s.action}
                     className={`w-full flex items-center gap-2 rounded-xl border px-2.5 py-2 text-left transition-all ${
                       s.primary
-                        ? 'border-[#0b1957] bg-card shadow-sm hover:bg-[#0b1957]/[0.04]'
-                        : 'border-border bg-card/60 hover:border-[#0b1957]/30 hover:bg-muted/40'
+                        ? 'border-[#0b1957] dark:border-sky-400 bg-card dark:bg-[#030a21]/60 shadow-sm hover:bg-[#0b1957]/[0.04] dark:hover:bg-sky-500/10'
+                        : 'border-border dark:border-blue-950/40 bg-card/60 dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-sky-400/40 hover:bg-muted/40'
                     }`}>
                     <span className="min-w-0 flex-1">
                       <span className="block text-[12.5px] font-semibold text-foreground truncate">{s.label}</span>
@@ -7786,7 +7854,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           {/* 1 · Contact source */}
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="h-5 w-5 rounded-full bg-[#0b1957] text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">1</span>
+              <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-600 text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">1</span>
               <span className="text-sm font-semibold text-foreground">Contact source</span>
             </div>
             <p className="text-xs text-muted-foreground mb-2.5 ml-7">Where leads enter this Accelerator</p>
@@ -7797,8 +7865,8 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   <button key={s.key} onClick={() => pickSource(s.key)}
                     className={`relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
                       active
-                        ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20'
-                        : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                        ? 'border-[#0b1957] dark:border-sky-400 bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-sky-400/20'
+                        : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-sky-400/40 hover:bg-muted/40'
                     }`}>
                     <IconChip icon={s.icon} chip={s.chip} />
                     <span className="min-w-0 flex-1">
@@ -7811,7 +7879,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                       <span className="block text-xs text-muted-foreground truncate">{s.sub}</span>
                     </span>
                     {active && (
-                      <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                      <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-500 flex items-center justify-center flex-shrink-0">
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                       </span>
                     )}
@@ -7820,7 +7888,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               })}
               <div className="flex gap-2">
                 {COMING_SOON.map((s) => (
-                  <div key={s.label} className="flex-1 flex items-center gap-2 rounded-xl border border-dashed border-border px-2.5 py-2 opacity-60 min-w-0">
+                  <div key={s.label} className="flex-1 flex items-center gap-2 rounded-xl border border-dashed border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 px-2.5 py-2 opacity-60 min-w-0">
                     {s.icon}
                     <span className="min-w-0">
                       <span className="block text-xs font-medium text-foreground truncate">{s.label}</span>
@@ -7835,7 +7903,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           {/* 2 · Outreach steps, grouped by channel */}
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="h-5 w-5 rounded-full bg-[#0b1957] text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">2</span>
+              <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-600 text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">2</span>
               <span className="text-sm font-semibold text-foreground">Outreach steps</span>
             </div>
             <p className="text-xs text-muted-foreground mb-2.5 ml-7">Click to add to the sequence</p>
@@ -7845,10 +7913,10 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 <div className="space-y-1">
                   {OUTREACH.filter((o) => o.group === group).map((o) => (
                     <button key={o.label} onClick={() => (o.router ? addRouter() : addOutreach(o.type))}
-                      className="group w-full flex items-center gap-2.5 rounded-lg border border-border px-2.5 py-2 text-left hover:border-[#0b1957]/30 hover:bg-muted/40 transition-all">
+                      className="group w-full flex items-center gap-2.5 rounded-lg border border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 px-2.5 py-2 text-left hover:border-[#0b1957]/30 dark:hover:border-sky-400/40 hover:bg-muted/40 transition-all">
                       <IconChip icon={o.icon} chip={o.chip} size="h-7 w-7" />
                       <span className="text-[13px] font-medium text-foreground truncate flex-1">{o.label}</span>
-                      <span className="h-6 w-6 rounded-full border border-border text-muted-foreground group-hover:bg-[#0b1957] group-hover:border-[#0b1957] group-hover:text-white flex items-center justify-center transition-colors flex-shrink-0">
+                      <span className="h-6 w-6 rounded-full border border-border dark:border-blue-950/40 text-muted-foreground group-hover:bg-[#0b1957] dark:group-hover:bg-sky-600 group-hover:border-[#0b1957] dark:group-hover:border-sky-600 group-hover:text-white flex items-center justify-center transition-colors flex-shrink-0">
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
                       </span>
                     </button>
@@ -7863,7 +7931,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               return (
                 <button onClick={addMultiCond}
                   className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
-                    added ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20' : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                    added ? 'border-[#0b1957] dark:border-[#2B7CFF] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2B7CFF]/20' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2B7CFF]/50 hover:bg-muted/40'
                   }`}>
                   <IconChip icon={<Split className="h-4 w-4 text-amber-600" />} chip="bg-amber-50 dark:bg-amber-950/30" />
                   <span className="min-w-0 flex-1">
@@ -7884,7 +7952,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               return (
                 <button onClick={addAiParse}
                   className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
-                    added ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20' : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                    added ? 'border-[#0b1957] dark:border-[#2B7CFF] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2B7CFF]/20' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2B7CFF]/50 hover:bg-muted/40'
                   }`}>
                   <IconChip icon={<Sparkles className="h-4 w-4 text-violet-600" />} chip="bg-violet-50 dark:bg-violet-950/30" />
                   <span className="min-w-0 flex-1">
@@ -7892,7 +7960,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     <span className="block text-xs text-muted-foreground truncate">Clean messy titles / names before LinkedIn</span>
                   </span>
                   {added && (
-                    <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-500 flex items-center justify-center flex-shrink-0">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </span>
                   )}
@@ -7905,7 +7973,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               return (
                 <button onClick={addDataEnrich}
                   className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
-                    added ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20' : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                    added ? 'border-[#0b1957] dark:border-[#2B7CFF] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2B7CFF]/20' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2B7CFF]/50 hover:bg-muted/40'
                   }`}>
                   <IconChip icon={<Contact className="h-4 w-4 text-teal-600" />} chip="bg-teal-50 dark:bg-teal-950/30" />
                   <span className="min-w-0 flex-1">
@@ -7913,7 +7981,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     <span className="block text-xs text-muted-foreground truncate">Reveal email &amp; phone (FullEnrich)</span>
                   </span>
                   {added && (
-                    <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-500 flex items-center justify-center flex-shrink-0">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </span>
                   )}
@@ -7926,7 +7994,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               return (
                 <button onClick={addExport}
                   className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
-                    added ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20' : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                    added ? 'border-[#0b1957] dark:border-[#2B7CFF] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2B7CFF]/20' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2B7CFF]/50 hover:bg-muted/40'
                   }`}>
                   <IconChip icon={<Download className="h-4 w-4 text-cyan-700" />} chip="bg-cyan-50 dark:bg-cyan-950/30" />
                   <span className="min-w-0 flex-1">
@@ -7934,7 +8002,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     <span className="block text-xs text-muted-foreground truncate">File · DB · Email · WhatsApp · more</span>
                   </span>
                   {added && (
-                    <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-500 flex items-center justify-center flex-shrink-0">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </span>
                   )}
@@ -7947,7 +8015,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               return (
                 <button onClick={addInstagramPost}
                   className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
-                    added ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20' : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                    added ? 'border-[#0b1957] dark:border-[#2B7CFF] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2B7CFF]/20' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2B7CFF]/50 hover:bg-muted/40'
                   }`}>
                   <IconChip icon={<Instagram className="h-4 w-4 text-pink-600" />} chip="bg-pink-50 dark:bg-pink-950/30" />
                   <span className="min-w-0 flex-1">
@@ -7955,7 +8023,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     <span className="block text-xs text-muted-foreground truncate">Image or Reel · On a schedule</span>
                   </span>
                   {added && (
-                    <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-500 flex items-center justify-center flex-shrink-0">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </span>
                   )}
@@ -7969,7 +8037,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               return (
                 <button onClick={addReport}
                   className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
-                    added ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20' : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                    added ? 'border-[#0b1957] dark:border-[#2B7CFF] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2B7CFF]/20' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2B7CFF]/50 hover:bg-muted/40'
                   }`}>
                   <IconChip icon={<FileText className="h-4 w-4 text-teal-700" />} chip="bg-teal-50 dark:bg-teal-950/30" />
                   <span className="min-w-0 flex-1">
@@ -7977,7 +8045,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     <span className="block text-xs text-muted-foreground truncate">PDF · Attach or offer as a download</span>
                   </span>
                   {added && (
-                    <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-500 flex items-center justify-center flex-shrink-0">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </span>
                   )}
@@ -7991,7 +8059,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               return (
                 <button onClick={addHumanTask}
                   className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
-                    added ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20' : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                    added ? 'border-[#0b1957] dark:border-[#2B7CFF] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2B7CFF]/20' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2B7CFF]/50 hover:bg-muted/40'
                   }`}>
                   <IconChip icon={<UserCheck className="h-4 w-4 text-amber-600" />} chip="bg-amber-50 dark:bg-amber-950/30" />
                   <span className="min-w-0 flex-1">
@@ -7999,7 +8067,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     <span className="block text-xs text-muted-foreground truncate">Pauses the lead until someone confirms</span>
                   </span>
                   {added && (
-                    <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-500 flex items-center justify-center flex-shrink-0">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </span>
                   )}
@@ -8013,7 +8081,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               return (
                 <button onClick={addLandingPage}
                   className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
-                    added ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20' : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                    added ? 'border-[#0b1957] dark:border-[#2B7CFF] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2B7CFF]/20' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2B7CFF]/50 hover:bg-muted/40'
                   }`}>
                   <IconChip icon={<LayoutTemplate className="h-4 w-4 text-emerald-700" />} chip="bg-emerald-50 dark:bg-emerald-950/30" />
                   <span className="min-w-0 flex-1">
@@ -8021,7 +8089,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     <span className="block text-xs text-muted-foreground truncate">AI-written from your ICP · Captures leads</span>
                   </span>
                   {added && (
-                    <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-500 flex items-center justify-center flex-shrink-0">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </span>
                   )}
@@ -8043,7 +8111,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               return (
                 <button key={b.id} onClick={b.on}
                   className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
-                    added2 ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20' : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                    added2 ? 'border-[#0b1957] dark:border-sky-400 bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-sky-400/20' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-sky-400/40 hover:bg-muted/40'
                   }`}>
                   <IconChip icon={b.icon} chip={b.chip} />
                   <span className="min-w-0 flex-1">
@@ -8051,7 +8119,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     <span className="block text-xs text-muted-foreground truncate">{b.sub}</span>
                   </span>
                   {added2 && (
-                    <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-500 flex items-center justify-center flex-shrink-0">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </span>
                   )}
@@ -8064,7 +8132,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               return (
                 <button onClick={addAutopost}
                   className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
-                    added ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20' : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                    added ? 'border-[#0b1957] dark:border-[#2B7CFF] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2B7CFF]/20' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2B7CFF]/50 hover:bg-muted/40'
                   }`}>
                   <IconChip icon={<Megaphone className="h-4 w-4 text-[#0077B5]" />} chip="bg-sky-50 dark:bg-sky-950/30" />
                   <span className="min-w-0 flex-1">
@@ -8072,7 +8140,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     <span className="block text-xs text-muted-foreground truncate">Recurring posts to your own feed</span>
                   </span>
                   {added && (
-                    <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-500 flex items-center justify-center flex-shrink-0">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </span>
                   )}
@@ -8084,7 +8152,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           {/* 3 · Follow-ups */}
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="h-5 w-5 rounded-full bg-[#0b1957] text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">3</span>
+              <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-600 text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">3</span>
               <span className="text-sm font-semibold text-foreground">Follow-ups</span>
             </div>
             <p className="text-xs text-muted-foreground mb-2.5 ml-7">Automatic touch points after your outreach</p>
@@ -8093,7 +8161,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               return (
                 <button onClick={addFollowup}
                   className={`relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
-                    added ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20' : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                    added ? 'border-[#0b1957] dark:border-[#2B7CFF] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2B7CFF]/20' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2B7CFF]/50 hover:bg-muted/40'
                   }`}>
                   <IconChip icon={<ListOrdered className="h-4 w-4 text-indigo-600" />} chip="bg-indigo-50 dark:bg-indigo-950/30" />
                   <span className="min-w-0 flex-1">
@@ -8101,7 +8169,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     <span className="block text-xs text-muted-foreground truncate">Touches · spacing · channel · human review</span>
                   </span>
                   {added && (
-                    <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-500 flex items-center justify-center flex-shrink-0">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </span>
                   )}
@@ -8113,7 +8181,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           {/* 4 · Analytics */}
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="h-5 w-5 rounded-full bg-[#0b1957] text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">4</span>
+              <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-600 text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">4</span>
               <span className="text-sm font-semibold text-foreground">Analytics</span>
             </div>
             <p className="text-xs text-muted-foreground mb-2.5 ml-7">Campaign stats to your inbox or WhatsApp</p>
@@ -8122,7 +8190,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               return (
                 <button onClick={addAnalytics}
                   className={`relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
-                    added ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20' : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                    added ? 'border-[#0b1957] dark:border-[#2B7CFF] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2B7CFF]/20' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2B7CFF]/50 hover:bg-muted/40'
                   }`}>
                   <IconChip icon={<BarChart3 className="h-4 w-4 text-cyan-600" />} chip="bg-cyan-50 dark:bg-cyan-950/30" />
                   <span className="min-w-0 flex-1">
@@ -8130,7 +8198,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     <span className="block text-xs text-muted-foreground truncate">Channel · frequency · data to send</span>
                   </span>
                   {added && (
-                    <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-500 flex items-center justify-center flex-shrink-0">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </span>
                   )}
@@ -8142,7 +8210,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           {/* ── 5. AI Media ───────────────────────────────────────────────── */}
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="h-5 w-5 rounded-full bg-[#0b1957] text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">5</span>
+              <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-600 text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">5</span>
               <span className="text-sm font-semibold text-foreground">AI Media</span>
             </div>
             <p className="text-xs text-muted-foreground mb-2.5 ml-7">Generate a brand image or video to attach to outreach</p>
@@ -8151,7 +8219,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               return (
                 <button onClick={addMedia}
                   className={`relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
-                    added ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20' : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                    added ? 'border-[#0b1957] dark:border-[#2B7CFF] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2B7CFF]/20' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2B7CFF]/50 hover:bg-muted/40'
                   }`}>
                   <IconChip icon={<Wand2 className="h-4 w-4 text-fuchsia-600" />} chip="bg-fuchsia-50 dark:bg-fuchsia-950/30" />
                   <span className="min-w-0 flex-1">
@@ -8159,7 +8227,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     <span className="block text-xs text-muted-foreground truncate">Image / video · attaches to email &amp; WhatsApp</span>
                   </span>
                   {added && (
-                    <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-500 flex items-center justify-center flex-shrink-0">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </span>
                   )}
@@ -8171,7 +8239,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           {/* ── 6. Sync back to CRM ───────────────────────────────────────── */}
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="h-5 w-5 rounded-full bg-[#0b1957] text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">6</span>
+              <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-600 text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">6</span>
               <span className="text-sm font-semibold text-foreground">Sync back to Zoho</span>
             </div>
             <p className="text-xs text-muted-foreground mb-2.5 ml-7">Write campaign data back onto the Zoho contact</p>
@@ -8180,7 +8248,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               return (
                 <button onClick={addZohoUpdate}
                   className={`relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
-                    added ? 'border-[#0b1957] bg-[#0b1957]/[0.04] shadow-sm ring-1 ring-[#0b1957]/20' : 'border-border hover:border-[#0b1957]/30 hover:bg-muted/40'
+                    added ? 'border-[#0b1957] dark:border-[#2B7CFF] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2B7CFF]/20' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2B7CFF]/50 hover:bg-muted/40'
                   }`}>
                   <IconChip icon={<DatabaseZap className="h-4 w-4 text-red-600" />} chip="bg-red-50 dark:bg-red-950/30" />
                   <span className="min-w-0 flex-1">
@@ -8188,7 +8256,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     <span className="block text-xs text-muted-foreground truncate">Map fields · write-back on completion</span>
                   </span>
                   {added && (
-                    <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-500 flex items-center justify-center flex-shrink-0">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </span>
                   )}
