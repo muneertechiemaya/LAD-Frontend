@@ -46,9 +46,7 @@ export {
   saveInboundLeads,
   getInboundLeads,
   cancelLeadBookingsForReNurturing,
-  exportCampaignLeads,
 } from './api';
-
 export type { WithdrawConnectionResult } from './api';
 
 // ============================================================================

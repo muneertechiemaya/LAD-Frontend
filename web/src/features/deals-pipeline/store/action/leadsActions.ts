@@ -19,8 +19,7 @@ import {
   bulkUpdateLeads,
   selectLeadsCacheValid
 } from '../slices/leadsSlice';
-import * as pipelineApi from '@lad/frontend-features/deals-pipeline';
-
+import * as pipelineApi from '../../../../../../sdk/features/deals-pipeline/api';
 import { AppDispatch, RootState } from '../../../../store/store';
 import { Stage } from '../slices/pipelineSlice';
 import { Lead } from '../../types';
