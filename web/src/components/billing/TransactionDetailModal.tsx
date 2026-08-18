@@ -75,8 +75,8 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="bg-white dark:bg-[#000319] rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-[560px] p-5 sm:p-6 text-slate-800 dark:text-white max-h-[92vh] overflow-y-auto custom-scrollbar">
-        <DialogHeader className="space-y-2 dark:bg-[#000319]">
-          <DialogTitle className="flex items-center gap-3 text-slate-800 dark:text-white font-bold text-lg leading-tight dark:bg-dark-blue">
+        <DialogHeader className="space-y-2 dark:bg-[#000319] sm:px-0 px-0">
+          <DialogTitle className="flex w-full items-center justify-start gap-3 text-left pl-0 text-slate-800 dark:text-white font-bold text-lg leading-tight dark:bg-dark-blue">
             <div
               className={`flex h-10 w-10 items-center justify-center rounded-xl border shrink-0 ${
                       transaction.type === 'credit'
@@ -85,9 +85,9 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
                   }`}
               >
                 {transaction.type === 'credit' ? (
-                    <ArrowDownLeft className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                    <ArrowUpRight className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                 ) : (
-                    <ArrowUpRight className="h-5 w-5 text-rose-600 dark:text-rose-400" />
+                    <ArrowDownLeft className="h-5 w-5 text-rose-600 dark:text-rose-400" />
                 )}
               </div>
               <span>Transaction Details</span>
@@ -111,7 +111,7 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
                         : 'text-rose-600 dark:text-rose-400'
                   }
               >
-                {transaction.type === 'credit' ? '+' : '-'}
+                {transaction.type === 'credit' ? '+' : ''}
                 {formatCredits(transaction.amount)}
               </span>
               </div>
