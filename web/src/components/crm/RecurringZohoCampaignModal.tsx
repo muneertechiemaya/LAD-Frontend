@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { X, Loader2, Repeat, Linkedin, Mail, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
 
 /**
@@ -116,9 +117,9 @@ export const RecurringZohoCampaignModal: React.FC<{ open: boolean; onClose: () =
   const field = 'w-full rounded-md border border-input bg-background px-3 py-2 text-sm';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div className="bg-card rounded-xl border border-border w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-4 border-b border-border">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4 pt-16 sm:pt-4" onClick={onClose}>
+      <div className="bg-card dark:bg-[#071131] rounded-xl border border-border dark:border-blue-950/40 w-full max-w-lg max-h-[75vh] sm:max-h-[85vh] flex flex-col my-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-4 border-b border-border dark:border-blue-950/40 flex-shrink-0">
           <div className="flex items-center gap-2">
             <Repeat className="h-5 w-5 text-primary" />
             <div>
@@ -129,7 +130,7 @@ export const RecurringZohoCampaignModal: React.FC<{ open: boolean; onClose: () =
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="h-5 w-5" /></button>
         </div>
 
-        <div className="p-4 space-y-4">
+        <div className="p-4 space-y-4 overflow-y-auto flex-1">
           {error && <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">{error}</div>}
 
           <div className="space-y-1">
@@ -138,14 +139,19 @@ export const RecurringZohoCampaignModal: React.FC<{ open: boolean; onClose: () =
           </div>
 
           {/* Source */}
-          <div className="rounded-lg border border-border p-3 space-y-3">
+          <div className="rounded-lg border border-border dark:border-blue-950/40 p-3 space-y-3">
             <div className="text-sm font-medium text-foreground">Zoho source</div>
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground">Import from</label>
-              <select value={modules} onChange={(e) => setModules(e.target.value as any)} className={field}>
-                <option value="contacts">Contacts only</option>
-                <option value="contacts_leads">Contacts + Leads</option>
-              </select>
+              <Select value={modules} onValueChange={(val) => setModules(val as 'contacts' | 'contacts_leads')}>
+                <SelectTrigger className="w-full text-sm">
+                  <SelectValue placeholder="Select import source" />
+                </SelectTrigger>
+                <SelectContent className="z-[100000]">
+                  <SelectItem value="contacts">Contacts only</SelectItem>
+                  <SelectItem value="contacts_leads">Contacts + Leads</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground">Only contacts with tag (optional)</label>
@@ -164,7 +170,7 @@ export const RecurringZohoCampaignModal: React.FC<{ open: boolean; onClose: () =
           </div>
 
           {/* Sequence */}
-          <div className="rounded-lg border border-border p-3 space-y-3">
+          <div className="rounded-lg border border-border dark:border-blue-950/40 p-3 space-y-3">
             <div className="text-sm font-medium text-foreground">Sequence</div>
 
             <label className="flex items-center gap-2 text-sm text-foreground">
@@ -205,7 +211,7 @@ export const RecurringZohoCampaignModal: React.FC<{ open: boolean; onClose: () =
           </p>
         </div>
 
-        <div className="flex items-center justify-end gap-2 p-4 border-t border-border">
+        <div className="flex items-center justify-end gap-2 p-4 border-t border-border dark:border-blue-950/40 flex-shrink-0">
           <Button variant="ghost" onClick={onClose} disabled={creating}>Cancel</Button>
           <Button onClick={handleCreate} disabled={creating}>
             {creating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Repeat className="h-4 w-4 mr-2" />}

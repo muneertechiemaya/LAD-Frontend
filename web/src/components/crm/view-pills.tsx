@@ -44,9 +44,9 @@ export default function ViewPills({ view, onChange }: ViewPillsProps) {
                 className={`h-7 px-2.5 rounded-full text-[11.5px] font-medium inline-flex items-center gap-1 ${
                   active
                     ? 'text-white'
-                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#1a2a43]'
+                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#0e1d4d]'
                 }`}
-                style={active ? { background: '#0B1957' } : undefined}
+                style={active ? { background: '#2563eb' } : undefined}
               >
                 <Icon className="w-3 h-3" /> {v.label}
               </button>
