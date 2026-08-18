@@ -426,6 +426,129 @@ function Toast({ message, type, onClose }: { message: string; type: 'success' | 
 // stack (LAD-WABA-Comms). Prompt lives in the prompts table (channel='email',
 // name='default'); the on/off flag in chat_settings.metadata.email_agent_enabled.
 
+// ── Human takeover ──────────────────────────────────────────────────────────
+// When a human agent replies in a chat the AI is muted so it cannot talk over
+// them. This controls whether that mute ever lifts. Note it governs REAL
+// takeovers only — a mute the escalation logic set on its own always expires,
+// so this cannot re-create the "nobody ever replied" bug.
+function HumanMuteCard({ showToast }: { showToast: (msg: string, type: 'success' | 'error') => void }) {
+  const [policy, setPolicy] = useState<'permanent' | 'expire'>('permanent');
+  const [days, setDays] = useState(7);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetchWithTenant(SETTINGS_API);
+        if (cancelled || !res.ok) return;
+        const s = await res.json();
+        const d = s?.data ?? s;
+        if (d?.human_mute_policy === 'expire') setPolicy('expire');
+        const n = Number(d?.human_mute_expiry_days);
+        if (Number.isFinite(n) && n >= 1 && n <= 365) setDays(n);
+      } catch { /* card renders with defaults */ }
+      finally { if (!cancelled) setLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const save = async (nextPolicy: 'permanent' | 'expire', nextDays: number) => {
+    const prevPolicy = policy;
+    const prevDays = days;
+    setPolicy(nextPolicy);
+    setDays(nextDays);
+    setSaving(true);
+    try {
+      const res = await fetchWithTenant(`${SETTINGS_API}?channel=waba`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          human_mute_policy: nextPolicy,
+          human_mute_expiry_days: nextDays,
+        }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      showToast(
+        nextPolicy === 'permanent'
+          ? 'Chats stay with the human agent'
+          : `AI resumes after ${nextDays} day${nextDays === 1 ? '' : 's'}`,
+        'success',
+      );
+    } catch {
+      setPolicy(prevPolicy);
+      setDays(prevDays);
+      showToast('Failed to update handover setting', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return null;
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+      <h3 className="text-lg font-semibold text-gray-900">When a human takes over a chat</h3>
+      <p className="text-sm text-gray-600 mt-1 mb-4">
+        Once one of your agents replies to a customer, the AI stops replying in that chat
+        so it never talks over them. Choose whether it ever picks the chat back up.
+      </p>
+
+      <label className="flex items-start gap-3 mb-3 cursor-pointer">
+        <input
+          type="radio"
+          className="mt-1"
+          checked={policy === 'permanent'}
+          disabled={saving}
+          onChange={() => save('permanent', days)}
+        />
+        <span>
+          <span className="font-medium text-gray-900">Keep it with the agent</span>
+          <span className="block text-sm text-gray-600">
+            The chat stays human-handled until someone turns the AI back on from the
+            conversation. Recommended — a customer mid-conversation with a person is
+            never handed back to the bot.
+          </span>
+        </span>
+      </label>
+
+      <label className="flex items-start gap-3 cursor-pointer">
+        <input
+          type="radio"
+          className="mt-1"
+          checked={policy === 'expire'}
+          disabled={saving}
+          onChange={() => save('expire', days)}
+        />
+        <span>
+          <span className="font-medium text-gray-900">Give it back to the AI after a while</span>
+          <span className="block text-sm text-gray-600">
+            If the agent has not replied for this many days, the AI resumes.
+          </span>
+          <span className="flex items-center gap-2 mt-2">
+            <input
+              type="number"
+              min={1}
+              max={365}
+              value={days}
+              disabled={saving || policy !== 'expire'}
+              onChange={(e) => setDays(Number(e.target.value))}
+              onBlur={() => {
+                const clamped = Math.min(365, Math.max(1, Math.round(days) || 7));
+                if (clamped !== days) setDays(clamped);
+                if (policy === 'expire') save('expire', clamped);
+              }}
+              className="w-20 px-2 py-1 border border-gray-300 rounded disabled:bg-gray-100"
+            />
+            <span className="text-sm text-gray-600">days</span>
+          </span>
+        </span>
+      </label>
+    </div>
+  );
+}
+
 function EmailAgentCard({ showToast }: { showToast: (msg: string, type: 'success' | 'error') => void }) {
   const [enabled, setEnabled] = useState(false);
   const [promptText, setPromptText] = useState('');
@@ -2678,6 +2801,7 @@ export function ChatSettings() {
       )}
 
       {/* ── Email agent (Gmail/Outlook tab) ──────────────────────── */}
+      {activeChannel === 'waba' && <HumanMuteCard showToast={showToast} />}
       {activeChannel === 'gmail' && <EmailAgentCard showToast={showToast} />}
 
       {/* ── Hidden channels hint ─────────────────────────────────── */}
