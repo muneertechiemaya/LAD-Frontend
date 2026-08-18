@@ -2,8 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { TrendingUp, Phone, Search, Brain, Linkedin, BarChart3, Calendar, MessageCircle, Zap } from 'lucide-react';
 import { getApiBaseUrl } from '@/lib/api-utils';
-import { getWalletUsageAnalytics } from '@lad/frontend-features/billing';
-
+import { getWalletUsageAnalytics } from '../../../sdk/features/billing/api';
 interface FeatureUsage {
   featureName: string;
   totalCredits: number;

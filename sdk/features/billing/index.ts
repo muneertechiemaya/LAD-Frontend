@@ -41,14 +41,7 @@ export {
   // Backward compatibility aliases
   getWalletBalance,
   getWalletBalanceLegacy,
-  rechargeWallet,
-  subscribeMonthly,
-  setupAutoRecharge,
-  getRecurring,
-  cancelRecurring,
-  getWalletUsageAnalytics,
 } from './api';
-
 // ============================================================================
 // HOOKS
 // ============================================================================
@@ -94,9 +87,4 @@ export type {
   LegacyWalletBalance,
   LegacyTransaction,
   CreditPackage,
-  RecurringPlan,
-  RecurringStatus,
-  PricingCatalogItem,
-  UsageAggregationGroup,
 } from './types';
-

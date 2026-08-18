@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useMemo } from 'react';
 import { Search, DollarSign, Calendar, CheckCircle, XCircle } from 'lucide-react';
-import { usePricing, type PricingCatalogItem } from '@lad/frontend-features/billing';
+import { usePricing } from '@/sdk/features/billing';
 import { LoadingSpinner } from '../LoadingSpinner';
 interface PricingGroup {
   component: string;
@@ -19,16 +19,16 @@ interface PricingGroup {
   };
 }
 export const PricingCatalog: React.FC = () => {
-  const { data: pricing, isLoading, error } = usePricing<PricingCatalogItem[]>();
+  const { data: pricing, isLoading, error } = usePricing();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedComponent, setSelectedComponent] = useState<string>('all');
   const [selectedProvider, setSelectedProvider] = useState<string>('all');
   const [showInactiveOnly, setShowInactiveOnly] = useState(false);
   // Group pricing by component → provider → model
   const groupedPricing = useMemo(() => {
-    if (!pricing || !Array.isArray(pricing)) return {};
+    if (!pricing) return {};
     const groups: { [component: string]: PricingGroup } = {};
-    pricing.forEach((item: PricingCatalogItem) => {
+    pricing.forEach((item) => {
       const component = item.component_type;
       const provider = item.provider || 'default';
       const model = item.model || 'standard';
@@ -41,7 +41,7 @@ export const PricingCatalog: React.FC = () => {
       groups[component].providers[provider].models.push({
         model,
         unit: item.unit,
-        costPerUnit: Number(item.cost_per_unit) || 0,
+        costPerUnit: parseFloat(item.cost_per_unit),
         isActive: item.is_active,
         effectiveFrom: item.effective_from,
         effectiveUntil: item.effective_until,

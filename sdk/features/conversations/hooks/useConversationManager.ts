@@ -94,9 +94,7 @@ export function useConversations(hookOptions?: UseConversationsOptions): UseConv
     const counts = { all: 0, whatsapp: 0, linkedin: 0, gmail: 0 };
     allConversations.forEach((conv) => {
       counts.all += conv.unreadCount;
-      if (conv.channel in counts) {
-        counts[conv.channel as keyof typeof counts] += conv.unreadCount;
-      }
+      counts[conv.channel] += conv.unreadCount;
     });
     return counts;
   }, [allConversations]);
@@ -183,15 +181,13 @@ export function useConversations(hookOptions?: UseConversationsOptions): UseConv
   );
 
   const muteConversation = useCallback(
-    (id?: string) => {
-      const targetId = id || selectedId;
-      if (!targetId) return;
+    (id: string) => {
       // Toggle mute
-      const conv = allConversations.find((c) => c.id === targetId);
+      const conv = allConversations.find((c) => c.id === id);
       const newStatus = conv?.status === 'muted' ? 'open' : 'muted';
-      statusMutation.mutate({ id: targetId, status: newStatus });
+      statusMutation.mutate({ id, status: newStatus });
     },
-    [statusMutation, allConversations, selectedId]
+    [statusMutation, allConversations]
   );
 
   return {
