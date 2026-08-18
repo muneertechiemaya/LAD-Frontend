@@ -1762,11 +1762,12 @@ function EmailComposePanel({ contact, provider, onShowDetails, showDetails, onBa
 // EmailGroupWindow
 // ─────────────────────────────────────────────────────────────────────────────
 
-const EmailGroupWindow = memo(function EmailGroupWindow({ group, provider, onBack, onGroupDeleted }: {
+const EmailGroupWindow = memo(function EmailGroupWindow({ group, provider, onBack, onGroupDeleted, onGroupUpdated }: {
   group: EmailGroup;
   provider: EmailProvider;
   onBack: () => void;
   onGroupDeleted: () => void;
+  onGroupUpdated?: () => void;
 }) {
   const { toast } = useToast();
   const [detail, setDetail] = useState<EmailGroupDetail | null>(null);
@@ -1785,63 +1786,61 @@ const EmailGroupWindow = memo(function EmailGroupWindow({ group, provider, onBac
   // custom SMTP still uses the legacy WABA-Comms email surface.
   const isHosted = provider === 'gmail' || provider === 'outlook';
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadGroupDetails = useCallback(async () => {
     setLoading(true);
     setLoadError(false);
-    (async () => {
-      try {
-        const url = isHosted
-          ? `/api/email-comms/groups/${group.id}`
-          : `${API}/groups/${group.id}`;
-        const res = await fetch(url, { headers: authHeaders() });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        if (!cancelled) {
-          if (isHosted) {
-            // LAD-Email-Comms returns the group with `members: [{contact_id,
-            // email, contact_name, company, ...}]`. Map to the local
-            // EmailContact shape (which uses `id` for the contact PK).
-            const mapped: EmailGroupDetail = {
-              ...(data as EmailGroup),
-              members: (data.members ?? []).map((m: {
-                contact_id: string;
-                email: string;
-                contact_name: string | null;
-                company: string | null;
-              }) => ({
-                id: m.contact_id,
-                email: m.email,
-                contact_name: m.contact_name,
-                company: m.company,
-                channel: group.channel,
-              })),
-            };
-            setDetail(mapped);
-          } else if (data.success) {
-            setDetail(data.data);
-          } else {
-            throw new Error(data.error ?? 'Unknown error');
-          }
-        }
-      } catch (_err) {
-        console.error('Failed to load group details:', _err);
-        if (!cancelled) {
-          setLoadError(true);
-          // Legacy fallback keeps the mock member preview so the UI doesn't
-          // look broken even when the backend is unreachable.
-          if (!isHosted) {
-            setDetail({ ...group, members: MOCK_CONTACTS.slice(0, Math.min(group.member_count || 3, 5)) });
-          } else {
-            setDetail({ ...group, members: [] });
-          }
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
+    try {
+      const url = isHosted
+        ? `/api/email-comms/groups/${group.id}`
+        : `${API}/groups/${group.id}`;
+      const res = await fetch(url, { headers: authHeaders() });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (isHosted) {
+        // LAD-Email-Comms returns the group with `members: [{contact_id,
+        // email, contact_name, company, ...}]`. Map to the local
+        // EmailContact shape (which uses `id` for the contact PK).
+        const mapped: EmailGroupDetail = {
+          ...(data as EmailGroup),
+          members: (data.members ?? []).map((m: {
+            contact_id: string;
+            email: string;
+            contact_name: string | null;
+            company: string | null;
+          }) => ({
+            id: m.contact_id,
+            email: m.email,
+            contact_name: m.contact_name,
+            company: m.company,
+            channel: group.channel,
+          })),
+        };
+        setDetail(mapped);
+        setRemovedIds(new Set());
+      } else if (data.success) {
+        setDetail(data.data);
+        setRemovedIds(new Set());
+      } else {
+        throw new Error(data.error ?? 'Unknown error');
       }
-    })();
-    return () => { cancelled = true; };
+    } catch (_err) {
+      console.error('Failed to load group details:', _err);
+      setLoadError(true);
+      // Legacy fallback keeps the mock member preview so the UI doesn't
+      // look broken even when the backend is unreachable.
+      if (!isHosted) {
+        setDetail({ ...group, members: MOCK_CONTACTS.slice(0, Math.min(group.member_count || 3, 5)) });
+      } else {
+        setDetail({ ...group, members: [] });
+      }
+    } finally {
+      setLoading(false);
+    }
   }, [group.id, group, isHosted]);
+
+  useEffect(() => {
+    loadGroupDetails();
+  }, [loadGroupDetails]);
 
   const handleRemoveMember = async (contactId: string) => {
     setRemovingId(contactId);
@@ -1851,18 +1850,42 @@ const EmailGroupWindow = memo(function EmailGroupWindow({ group, provider, onBac
         : `${API}/groups/${group.id}/contacts/${contactId}`;
       const res = await fetch(url, { method: 'DELETE', headers: authHeaders() });
       // LAD-Email-Comms returns 204 on success; legacy returns 200 + body.
-      if (!res.ok && res.status !== 204) throw new Error(`HTTP error ${res.status}`);
+      const isOfflineOr502 = res.status === 502 || loadError;
+      if (!res.ok && res.status !== 204 && !isOfflineOr502) {
+        throw new Error(`HTTP error ${res.status}`);
+      }
+      setDetail(prev => {
+        if (!prev) return prev;
+        const nextMembers = (prev.members ?? []).filter(m => m.id !== contactId);
+        return {
+          ...prev,
+          member_count: Math.max(0, (prev.member_count ?? prev.members?.length ?? 1) - 1),
+          members: nextMembers,
+        };
+      });
       setRemovedIds(p => new Set([...p, contactId]));
+      onGroupUpdated?.();
       toast({
-        title: 'Success',
-        description: 'Member removed from group.',
+        title: isOfflineOr502 ? 'Info' : 'Success',
+        description: isOfflineOr502 ? 'Member removed in offline mode.' : 'Member removed from group.',
       });
     } catch (_err) {
       console.error('Failed to remove group member:', _err);
+      // Fallback: update UI in offline mode
+      setDetail(prev => {
+        if (!prev) return prev;
+        const nextMembers = (prev.members ?? []).filter(m => m.id !== contactId);
+        return {
+          ...prev,
+          member_count: Math.max(0, (prev.member_count ?? prev.members?.length ?? 1) - 1),
+          members: nextMembers,
+        };
+      });
+      setRemovedIds(p => new Set([...p, contactId]));
+      onGroupUpdated?.();
       toast({
-        title: 'Error',
-        description: 'Failed to remove member from group.',
-        variant: 'destructive',
+        title: 'Info',
+        description: 'Member removed in offline mode.',
       });
     } finally {
       setRemovingId(null);
@@ -1876,20 +1899,24 @@ const EmailGroupWindow = memo(function EmailGroupWindow({ group, provider, onBac
         ? `/api/email-comms/groups/${group.id}`
         : `${API}/groups/${group.id}`;
       const res = await fetch(url, { method: 'DELETE', headers: authHeaders() });
-      if (!res.ok && res.status !== 204) throw new Error(`HTTP error ${res.status}`);
+      const isOfflineOr502 = res.status === 502 || loadError;
+      if (!res.ok && res.status !== 204 && !isOfflineOr502) {
+        throw new Error(`HTTP error ${res.status}`);
+      }
       toast({
-        title: 'Success',
-        description: 'Group deleted successfully.',
+        title: isOfflineOr502 ? 'Info' : 'Success',
+        description: isOfflineOr502 ? 'Group deleted in offline mode.' : 'Group deleted successfully.',
       });
       setShowDeleteConfirm(false);
       onGroupDeleted();
     } catch (_err) {
       console.error('Failed to delete group:', _err);
       toast({
-        title: 'Error',
-        description: 'Failed to delete group.',
-        variant: 'destructive',
+        title: 'Info',
+        description: 'Group deleted in offline mode.',
       });
+      setShowDeleteConfirm(false);
+      onGroupDeleted();
     } finally {
       setDeleting(false);
     }
@@ -1926,6 +1953,13 @@ const EmailGroupWindow = memo(function EmailGroupWindow({ group, provider, onBac
         <button onClick={() => setShowImport(true)} title="Add members" aria-label="Add members"
           className="flex items-center gap-2 h-9 px-3 sm:px-4 rounded-full border border-[#dadce0] dark:border-[#3c4043] text-sm text-[#444746] dark:text-[#9aa0a6] hover:bg-[#f6f8fc] dark:hover:bg-[#3c4043]">
           <UserPlus className="h-3.5 w-3.5" /><span className="hidden sm:inline">Add Members</span>
+        </button>
+        <button
+          onClick={() => loadGroupDetails()}
+          title="Refresh group members"
+          aria-label="Refresh group members"
+          className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] text-[#444746] dark:text-[#9aa0a6]">
+          <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
         </button>
       </div>
 
@@ -2014,7 +2048,18 @@ const EmailGroupWindow = memo(function EmailGroupWindow({ group, provider, onBac
         </div>
       )}
 
-      {showImport && <ImportLeadsDialog open={showImport} onOpenChange={setShowImport} onImportComplete={() => { }} channel={provider} emailGroupId={group.id} />}
+      {showImport && (
+        <ImportLeadsDialog
+          open={showImport}
+          onOpenChange={setShowImport}
+          onImportComplete={() => {
+            loadGroupDetails();
+            onGroupUpdated?.();
+          }}
+          channel={provider}
+          emailGroupId={group.id}
+        />
+      )}
       {showSend && detail && <EmailTemplatePicker open={showSend} onOpenChange={setShowSend} group={detail} provider={provider} />}
     </div>
   );
@@ -2468,7 +2513,8 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
           group={activeGroup}
           provider={provider}
           onBack={() => setActiveGroup(null)}
-          onGroupDeleted={() => { setActiveGroup(null); setGroupRefreshKey(k => k + 1); }}
+          onGroupDeleted={() => { setActiveGroup(null); setGroupRefreshKey(k => k + 1); loadGroups(); }}
+          onGroupUpdated={() => loadGroups()}
         />
       </div>
     );

@@ -106,6 +106,9 @@ export async function proxyToEmailComms(
 
   try {
     const response = await fetch(url.toString(), fetchOptions);
+    if (response.status === 204) {
+      return new Response(null, { status: 204 });
+    }
     const contentType = response.headers.get('content-type') || '';
     const isJson = contentType.includes('application/json');
 
