@@ -65,7 +65,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
         </div>
       }
     >
-      <div className="h-full flex flex-col border rounded-lg p-4 bg-[#0A1535] border-[#E2E8F0] dark:border-[#262831]" style={{ backgroundColor: '#0A1535' }}>
+      <div className="h-full flex flex-col border rounded-lg p-4 bg-white dark:bg-[#071131] border-slate-200 dark:border-[#262831]">
         <p className="text-xs text-slate-500 dark:text-slate-300 mb-4">{chartRangeLabel}</p>
         <div className="flex-1 min-h-[200px]">
           <ResponsiveContainer width="100%" height="100%">
@@ -91,13 +91,19 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
                 width={30}
               />
               <Tooltip
-                contentStyle={{
-                  backgroundColor: '#071131',
-                  border: '1px solid rgba(30, 41, 59, 0.8)',
-                  borderRadius: '8px',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+                content={({ active, payload, label }) => {
+                  if (active && payload && payload.length) {
+                    return (
+                      <div className="bg-white dark:bg-[#071131] border border-slate-200 dark:border-blue-950/60 rounded-lg p-2.5 shadow-md">
+                        <p className="text-xs font-semibold text-slate-800 dark:text-white">{label}</p>
+                        <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5 font-medium">
+                          calls : <span className="font-bold">{payload[0].value}</span>
+                        </p>
+                      </div>
+                    );
+                  }
+                  return null;
                 }}
-                labelStyle={{ color: '#f8fafc' }}
               />
               <Area
                 type="monotone"

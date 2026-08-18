@@ -50,9 +50,9 @@ export const WidgetWrapper: React.FC<WidgetWrapperProps> = ({
       ref={setNodeRef}
       style={style}
       className={cn(
-        'widget-card h-full flex flex-col overflow-hidden rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300',
-        'bg-[#041030] text-slate-100 hover:bg-[#041030]',
-        'border border-blue-950/40',
+        'widget-card h-full flex flex-col overflow-hidden rounded-[20px] shadow-sm hover:shadow-md transition-shadow duration-300',
+        'bg-white dark:bg-[#071131] text-slate-800 dark:text-slate-100',
+        'border border-slate-200 dark:border-blue-950/40',
         isEditMode && 'widget-card-edit cursor-move',
         isDragging && 'shadow-xl ring-2 ring-accent',
         className
@@ -62,7 +62,7 @@ export const WidgetWrapper: React.FC<WidgetWrapperProps> = ({
       {/* Widget Header */}
       <div
         className={cn(
-          "flex items-center justify-between px-2 sm:px-5 py-2 sm:py-4 bg-[#041030] border-b border-blue-950/40",
+          "flex items-center justify-between px-2 sm:px-5 py-2 sm:py-4 bg-white dark:bg-[#071131] border-b border-slate-200 dark:border-blue-950/40",
           headerClassName
         )}
         {...(isEditMode ? listeners : {})}
@@ -70,11 +70,11 @@ export const WidgetWrapper: React.FC<WidgetWrapperProps> = ({
         <div className="flex items-center gap-2">
           {isEditMode && (
             <div className="drag-handle cursor-grab active:cursor-grabbing">
-              <GripVertical className="h-4 w-4 text-muted-foreground dark:text-[#E0E0E0]" />
+              <GripVertical className="h-4 w-4 text-slate-500 dark:text-[#E0E0E0]" />
             </div>
           )}
-          {icon && <div className="text-slate-300">{icon}</div>}
-          <h3 className="font-semibold text-xs sm:text-sm font-display text-white">{title}</h3>
+          {icon && <div className="text-slate-600 dark:text-slate-300">{icon}</div>}
+          <h3 className="font-semibold text-xs sm:text-sm font-display text-slate-800 dark:text-white">{title}</h3>
         </div>
         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
           {headerActions}
@@ -84,7 +84,7 @@ export const WidgetWrapper: React.FC<WidgetWrapperProps> = ({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="widget-action-btn h-7 w-7 text-slate-300 hover:text-white"
+                  className="widget-action-btn h-7 w-7 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                   onClick={(e) => {
                     e.stopPropagation();
                     onSettings();
@@ -96,7 +96,7 @@ export const WidgetWrapper: React.FC<WidgetWrapperProps> = ({
               <Button
                 variant="ghost"
                 size="icon"
-                className="widget-action-btn h-7 w-7 hover:text-destructive text-slate-300 hover:text-white"
+                className="widget-action-btn h-7 w-7 text-slate-500 hover:text-destructive dark:text-slate-400 dark:hover:text-red-400"
                 onClick={(e) => {
                   e.stopPropagation();
                   removeWidget(id);

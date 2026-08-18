@@ -143,7 +143,7 @@ export const VoiceAgentsWidget: React.FC<VoiceAgentsWidgetProps> = ({ id }) => {
 
   if (loading) {
     return (
-      <WidgetWrapper id={id} title="Voice Agents" icon={<Bot className="h-4 w-4" />} className="bg-[#0A1535] dark:bg-[#0A1535]" headerClassName="bg-[#0A1535] dark:bg-[#0A1535]">
+      <WidgetWrapper id={id} title="Voice Agents" icon={<Bot className="h-4 w-4" />} className="bg-white dark:bg-[#071131]" headerClassName="bg-white dark:bg-[#071131]">
         <div className="flex items-center justify-center h-40">
           <p className="text-sm text-muted-foreground">Loading agents...</p>
         </div>
@@ -152,7 +152,7 @@ export const VoiceAgentsWidget: React.FC<VoiceAgentsWidgetProps> = ({ id }) => {
   }
 
   return (
-    <WidgetWrapper id={id} title="Voice Agents" icon={<Bot className="h-4 w-4" />} className="bg-[#0A1535] dark:bg-[#0A1535]" headerClassName="bg-[#0A1535] dark:bg-[#0A1535]">
+    <WidgetWrapper id={id} title="Voice Agents" icon={<Bot className="h-4 w-4" />}>
       <div className="space-y-3 h-full flex flex-col overflow-hidden">
         {agents.length === 0 ? (
           <div className="flex items-center justify-center h-40">
@@ -161,54 +161,51 @@ export const VoiceAgentsWidget: React.FC<VoiceAgentsWidgetProps> = ({ id }) => {
         ) : (
           <>
             <div className="space-y-3 flex-1 overflow-y-auto p-2">
-              {paginatedAgents.map((agent) => {
-                const isUnknown = agent.name.toLowerCase().includes('unknown');
-                return (
-                  <div
-                    key={agent.id}
-                    className={cn(
-                      'flex items-center justify-between p-3 rounded-xl border border-[#1e2e4a]',
-                      'bg-[#0A1535] dark:bg-[#0A1535] hover:bg-[#1a2a43] dark:hover:bg-[#1a2a43]',
-                      'transition-all duration-200 ease-out will-change-transform hover:-translate-y-0.5 hover:scale-[1.01]'
-                    )}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="p-2 rounded-lg bg-primary/10 shrink-0">
-                        <Bot className="h-4 w-4 text-primary" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-medium text-sm truncate text-white" title={agent.name}>{agent.name}</p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <Badge
-                            variant="secondary"
-                            className={`text-xs px-2 py-0 ${statusStyles[agent.status]}`}
-                          >
-                            {agent.status}
-                          </Badge>
-                        </div>
-                      </div>
+              {paginatedAgents.map((agent) => (
+                <div
+                  key={agent.id}
+                  className={cn(
+                    'flex items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-blue-950/40',
+                    'bg-white dark:bg-[#071131] hover:bg-slate-50 dark:hover:bg-[#0c1a42]',
+                    'transition-all duration-200 ease-out will-change-transform hover:-translate-y-0.5 hover:scale-[1.01]'
+                  )}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="p-2 rounded-lg bg-primary/10 shrink-0">
+                      <Bot className="h-4 w-4 text-primary" />
                     </div>
-                    <div className="flex items-center gap-4 text-right">
-                      <div>
-                        <p className="text-xs text-slate-400 flex items-center gap-1">
-                          <Phone className="h-3 w-3" />
-                          Today
-                        </p>
-                        <p className="font-semibold text-sm">{agent.callsToday}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-slate-400 flex items-center gap-1">
-                          <Activity className="h-3 w-3" />
-                          Success
-                        </p>
-                        <p className={cn('font-semibold text-sm', agent.successRate >= 80 ? 'text-green-600' : agent.successRate >= 60 ? 'text-amber-600' : 'text-red-600')}>
-                          {agent.successRate}%
-                        </p>
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm truncate text-slate-800 dark:text-white" title={agent.name}>{agent.name}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <Badge
+                          variant="secondary"
+                          className={`text-xs px-2 py-0 ${statusStyles[agent.status]}`}
+                        >
+                          {agent.status}
+                        </Badge>
                       </div>
                     </div>
                   </div>
-                );
-              })}
+                  <div className="flex items-center gap-4 text-right">
+                    <div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                        <Phone className="h-3 w-3" />
+                        Today
+                      </p>
+                      <p className="font-semibold text-sm text-slate-900 dark:text-white">{agent.callsToday}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                        <Activity className="h-3 w-3" />
+                        Success
+                      </p>
+                      <p className={cn('font-semibold text-sm', agent.successRate >= 80 ? 'text-green-600' : agent.successRate >= 60 ? 'text-amber-600' : 'text-red-600')}>
+                        {agent.successRate}%
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
 
             {/* Pagination */}

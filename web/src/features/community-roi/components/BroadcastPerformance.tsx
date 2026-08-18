@@ -235,6 +235,42 @@ const SCOPED_CSS = `
   font-family: ${FONT_UI};
   background: ${C.surface}; border: 1px solid ${C.hair}; border-radius: 16px;
 }
+
+/* Dark mode overrides */
+.dark .lad-bp-table {
+  background: #071131;
+  border: 1px solid rgba(30, 46, 74, 0.4);
+}
+.dark .lad-bp-table thead th {
+  background: #081331;
+  color: #94a3b8;
+  border-bottom: 1px solid rgba(30, 46, 74, 0.4);
+}
+.dark .lad-bp-table tbody td {
+  color: #f8fafc;
+}
+.dark .lad-bp-select-pill {
+  background: #071131;
+  border-color: rgba(30, 46, 74, 0.8);
+}
+.dark .lad-bp-select-pill:hover {
+  background: #0c1a42;
+}
+.dark .lad-bp-select-pill > select {
+  color: #f8fafc;
+}
+.dark .lad-bp-select-pill > select option {
+  background: #071131;
+  color: #f8fafc;
+}
+.dark .lad-bp-bar {
+  background: #1e293b;
+}
+.dark .lad-bp-empty {
+  background: #071131;
+  border-color: rgba(30, 46, 74, 0.4);
+  color: #94a3b8;
+}
 `;
 
 // ─── Chevron (inline SVG, 14px) ──────────────────────────────────────────────
