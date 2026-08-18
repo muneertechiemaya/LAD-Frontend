@@ -1,7 +1,9 @@
 // Vertical snapshots — public SDK surface.
-export { getPipelineOverview, setPipelineActive, setPipelineKnobs } from './api';
-export { usePipelines } from './hooks';
-export type { UsePipelinesState } from './hooks';
+export {
+  getPipelineOverview, setPipelineActive, setPipelineKnobs, requestKnobProposals,
+} from './api';
+export { usePipelines, useKnobProposals } from './hooks';
+export type { UsePipelinesState, UseKnobProposalsState } from './hooks';
 export type {
   PipelineKey,
   PipelineEngine,
@@ -11,4 +13,7 @@ export type {
   KnobOption,
   KnobDefinition,
   KnobValues,
+  ProposalSource,
+  KnobProposal,
+  KnobProposalsResult,
 } from './types';
