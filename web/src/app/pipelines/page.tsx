@@ -14,6 +14,18 @@
  * "Locked" is deliberately shown rather than hidden: hiding everything a
  * workspace lacks removes the only route by which they discover it exists.
  *
+ * BUILD STATE IS A SECOND, INDEPENDENT AXIS
+ * A pipeline the manifest marks `planned` is entitled and switchable, but no
+ * engine runs it yet. Rendering it identically to a `live` one is the single
+ * most misleading thing this page can do: the switch looks like it started
+ * work, and the tenant waits for an agent that was never going to reply. So a
+ * non-live pipeline is labelled, and switching it on says what that actually
+ * means — the choice is recorded and takes effect when the pipeline ships.
+ *
+ * Only `live` is treated as running. An unrecognised state — one added to a
+ * later manifest and deployed ahead of this page — reads as not-live, so a
+ * frontend that has not caught up understates rather than overstates.
+ *
  * The switch changes ACTIVATION only. It cannot grant an entitlement — the
  * server refuses, and the optimistic update in usePipelines rolls back.
  */
@@ -24,6 +36,29 @@ import { usePipelines } from '@lad/frontend-features/snapshots';
 import type { SnapshotPipeline, KnobValues } from '@lad/frontend-features/snapshots';
 import { KnobForm } from '@/components/pipelines/KnobForm';
 import { useAuth } from '@/contexts/AuthContext';
+
+/** Only `live` means an engine is actually running this pipeline. Unknown
+ *  states fail closed — see the header comment. */
+function isLive(pipeline: SnapshotPipeline) {
+  return pipeline.state === 'live';
+}
+
+/** Wording per known build state, falling back to a neutral label so a state
+ *  this build has never heard of still renders honestly. */
+const BUILD_STATE_LABEL: Record<string, string> = {
+  planned: 'Not running yet',
+  building: 'Being built',
+};
+
+function BuildStateBadge({ pipeline }: { pipeline: SnapshotPipeline }) {
+  if (isLive(pipeline)) return null;
+  const label = (pipeline.state && BUILD_STATE_LABEL[pipeline.state]) || 'Not running yet';
+  return (
+    <span className="shrink-0 rounded-md border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0.5 text-[11px] font-medium text-amber-800 dark:text-amber-300">
+      {label}
+    </span>
+  );
+}
 
 function EngineHint({ pipeline }: { pipeline: SnapshotPipeline }) {
   if (!pipeline.goal) return null;
@@ -48,6 +83,7 @@ function PipelineCard({
   onSaveKnobs: (values: KnobValues) => Promise<string[]>;
 }) {
   const { key, name, blurb, entitled, active, campaignCount, knobs, knobValues } = pipeline;
+  const live = isLive(pipeline);
   const toggleId = `pipeline-toggle-${key}`;
   const [showSettings, setShowSettings] = useState(false);
   const hasKnobs = entitled && knobs.length > 0;
@@ -63,6 +99,7 @@ function PipelineCard({
           <div className="flex items-center gap-2">
             <h3 className="text-base font-semibold text-gray-900 dark:text-white truncate">{name}</h3>
             {!entitled && <Lock className="h-3.5 w-3.5 text-gray-400 dark:text-slate-500 shrink-0" aria-hidden="true" />}
+            <BuildStateBadge pipeline={pipeline} />
           </div>
           <p className="mt-1 text-sm leading-relaxed text-gray-600 dark:text-slate-300">{blurb}</p>
         </div>
@@ -70,7 +107,11 @@ function PipelineCard({
         {entitled ? (
           <label htmlFor={toggleId} className="flex items-center gap-2 shrink-0 cursor-pointer">
             <span className="sr-only">
-              {active ? `Turn ${name} off` : `Turn ${name} on`}
+              {live
+                ? (active ? `Turn ${name} off` : `Turn ${name} on`)
+                : (active
+                    ? `Turn ${name} off. Not running yet.`
+                    : `Turn ${name} on. Not running yet — starts when this pipeline ships.`)}
             </span>
             <input
               id={toggleId}
@@ -94,9 +135,11 @@ function PipelineCard({
         <EngineHint pipeline={pipeline} />
         {entitled && (
           <span className="text-xs text-gray-500 dark:text-slate-400 tabular-nums">
-            {campaignCount === 0
-              ? 'No campaigns yet'
-              : `${campaignCount} campaign${campaignCount === 1 ? '' : 's'}`}
+            {!live
+              ? (active ? 'On — starts when this ships' : 'Available when this ships')
+              : campaignCount === 0
+                ? 'No campaigns yet'
+                : `${campaignCount} campaign${campaignCount === 1 ? '' : 's'}`}
           </span>
         )}
       </div>
