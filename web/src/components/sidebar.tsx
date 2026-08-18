@@ -27,6 +27,7 @@ import {
   PinOff,
   Contact,
   Gauge,
+  SlidersHorizontal,
 } from "lucide-react";
 import { NavLink } from "./NavLink";
 import { ThemeToggle } from "./ThemeToggle";
@@ -97,6 +98,12 @@ type NavItem = {
   details: string;
   requiredCapability?: string;
   requiredFeature?: string; // For feature-flag based access
+  /**
+   * Show only for a workspace on a vertical snapshot. Used instead of
+   * `requiredFeature` because the snapshot's feature key is vertical-specific
+   * (`wellness.snapshot`, …) and this list needs a static predicate.
+   */
+  requiresCuratedWorkspace?: boolean;
   children?: Omit<NavItem, 'children'>[];
 };
 export function Sidebar() {
@@ -104,7 +111,7 @@ export function Sidebar() {
   const router = useRouter();
   const dispatch = useDispatch();
   const queryClient = useQueryClient();
-  const { hasFeature, user: authUser } = useAuth();
+  const { hasFeature, user: authUser, isCuratedWorkspace } = useAuth();
   const { tenant, setTenantById, tenants } = useTenant();
   const { isDark } = useTheme();
   const reduxUser = useSelector((state: RootState) => state.auth.user);
@@ -125,6 +132,22 @@ export function Sidebar() {
   const [displayName, setDisplayName] = useState("User");
   const [isHydrated, setIsHydrated] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [activeConversationChannel, setActiveConversationChannel] = useState<string | null>(null);
+
+  // Listen for channel changes broadcasted from ConversationsPage
+  useEffect(() => {
+    const handleChannelChange = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      setActiveConversationChannel(detail?.channel ?? null);
+    };
+    window.addEventListener('conversations:channel-changed', handleChannelChange);
+    return () => window.removeEventListener('conversations:channel-changed', handleChannelChange);
+  }, []);
+
+  const isBlackGrayChannel =
+    pathname.startsWith('/conversations') &&
+    activeConversationChannel !== null &&
+    activeConversationChannel !== 'linkedin';
 
   // Load + persist pin preference (localStorage). Runs after hydration so
   // SSR HTML matches the initial client render (always unpinned on first
@@ -187,6 +210,16 @@ export function Sidebar() {
       details: "See your overall dashboard and metrics.",
       requiredCapability: "view_overview",
       requiredFeature: "overview",
+    },
+    // Curated workspaces only. Sits high because for a snapshot tenant this IS
+    // the home screen — it replaces the workflow builder as the place they go
+    // to decide what Mr LAD is doing.
+    {
+      href: "/pipelines",
+      label: "Pipelines",
+      icon: SlidersHorizontal,
+      details: "Switch the pipelines built for your industry on and off.",
+      requiresCuratedWorkspace: true,
     },
     {
       href: "/onboarding/advanced-search-ai",
@@ -284,6 +317,11 @@ export function Sidebar() {
   // additionally need the matching capability.
   // Items without any required* field are public (always shown).
   const hasNavAccess = (item: NavItem): boolean => {
+    // Snapshot gate — checked before the early return below, because an item
+    // scoped to a curated workspace may carry no capability or feature key of
+    // its own and would otherwise read as public.
+    if (item.requiresCuratedWorkspace && !isCuratedWorkspace) return false;
+
     if (!item.requiredCapability && !item.requiredFeature) return true;
 
     // Tenant feature gate — applies to every role, no bypass.
@@ -326,7 +364,14 @@ export function Sidebar() {
   return (
     <>
       {/* Mobile Top Bar */}
-      <div className="md:hidden fixed top-0 left-0 right-0 h-14 z-[60] bg-sidebar/95 backdrop-blur-2xl border-b border-sidebar-border flex items-center justify-between px-3">
+      <div
+        className={cn(
+          "md:hidden fixed top-0 left-0 right-0 h-14 z-[60] backdrop-blur-2xl border-b flex items-center justify-between px-3 transition-colors duration-300",
+          isBlackGrayChannel
+            ? "border-zinc-200 dark:border-zinc-800 bg-white/95 dark:bg-zinc-900"
+            : "border-sidebar-border bg-sidebar/95"
+        )}
+      >
         <button
           aria-label="Open menu"
           className="p-2 rounded-lg hover:bg-white/10 active:scale-95 transition"
@@ -352,7 +397,10 @@ export function Sidebar() {
       {/* Mobile Drawer */}
       <div
         className={cn(
-          "md:hidden fixed inset-y-0 left-0 w-[50%] bg-sidebar/95 backdrop-blur-2xl border-r border-sidebar-border shadow-2xl z-[70] flex flex-col",
+          "md:hidden fixed inset-y-0 left-0 w-[50%] backdrop-blur-2xl border-r shadow-2xl z-[70] flex flex-col transition-colors duration-300",
+          isBlackGrayChannel
+            ? "border-zinc-200 dark:border-zinc-800 bg-white/95 dark:bg-[#171717]"
+            : "border-sidebar-border bg-sidebar/95",
           "transition-transform duration-300 ease-out",
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full",
         )}
@@ -469,7 +517,7 @@ export function Sidebar() {
           })()}
         </nav>
         {/* Mobile User/Settings/Pricing/Logout */}
-        <div className="border-t border-sidebar-border p-3 space-y-2 mt-auto">
+        <div className={cn("border-t p-3 space-y-2 mt-auto border-sidebar-border", isBlackGrayChannel && "dark:border-zinc-800")}>
           {/* Tenant Selector */}
           <div className="mb-2">
             <span className="text-[10px] uppercase tracking-wider text-sidebar-foreground/40 font-bold px-3">Tenant</span>
@@ -553,11 +601,14 @@ export function Sidebar() {
       )}
       <aside
         className={cn(
-          "hidden md:flex flex-col shrink-0 h-screen border-r border-sidebar-border shadow-2xl",
-          "bg-white dark:bg-[#000724]",
+          "hidden md:flex flex-col shrink-0 h-screen border-r",
+          "bg-white border-gray-200",
+          isBlackGrayChannel
+            ? "dark:bg-[#171717] dark:border-zinc-800"
+            : "dark:bg-[#000724] dark:border-[#1a2a43]",
           "transition-all duration-500 ease-[cubic-bezier(.4,0,.2,1)]",
           "overflow-hidden fixed left-0 top-0 z-[5000]",
-          isExpanded ? "w-64" : "w-16",
+          isExpanded ? "w-64 shadow-2xl" : "w-16",
         )}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => { if (!isPinned) setIsHovered(false); }}
@@ -576,7 +627,7 @@ export function Sidebar() {
             fetchPriority="high"
             decoding="async"
             className={cn(
-              "object-contain drop-shadow-[0_4px_18px_rgba(0,0,0,0.45)] transition-all duration-500 ease-[cubic-bezier(.19,1,.22,1)]",
+              "object-contain transition-all duration-500 ease-[cubic-bezier(.19,1,.22,1)]",
               isExpanded ? "w-45 h-45" : "w-30 h-30",
             )}
             onError={(e) => {
@@ -656,10 +707,10 @@ export function Sidebar() {
                       "absolute inset-0 z-0 rounded-2xl",
                       "transition-all duration-400 ease-[cubic-bezier(.19,1,.22,1)]",
                       selfActive
-                        ? "bg-primary/95 backdrop-blur-xl shadow-[0_10px_30px_rgba(0,0,0,0.45)]"
+                        ? "bg-primary/95"
                         : childOnPath
                           ? "bg-primary/10 backdrop-blur-sm"  // soft tint — works on light & dark
-                          : "bg-transparent group-hover:bg-white/10 group-hover:backdrop-blur-sm group-hover:shadow-[0_8px_24px_rgba(0,0,0,0.38)]",
+                          : "bg-transparent group-hover:bg-white/10 group-hover:backdrop-blur-sm group-hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]",
                     )}
                   />
                   {/* Icon wrapper */}
@@ -796,7 +847,7 @@ export function Sidebar() {
           })()}
         </nav>
         {/* User Profile Inline Section */}
-        <div className="border-t border-sidebar-border mt-auto">
+        <div className={cn("border-t mt-auto border-sidebar-border", isBlackGrayChannel && "dark:border-zinc-800")}>
           {/* Avatar / profile row — click to toggle inline panel */}
           <div
             onClick={() => setIsUserPanelOpen((v) => !v)}

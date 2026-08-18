@@ -24,6 +24,7 @@ import {
   useWhatsAppEmbeddedSignup,
 } from '@lad/frontend-features/meta-onboarding';
 import type { WhatsAppAccount } from '@lad/frontend-features/meta-onboarding';
+import { CoexistenceHistoryNotice } from './CoexistenceHistoryNotice';
 
 function MethodBadge({ method }: { method: WhatsAppAccount['connection_method'] }) {
   const isEmbedded = method === 'embedded_signup';
@@ -73,7 +74,7 @@ export function WhatsAppEmbeddedSignup() {
   };
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 shadow-sm">
+    <div className="bg-white dark:bg-[#071131] rounded-lg border border-gray-200 dark:border-blue-950/40 mx-3 shadow-sm">
       {/* Header */}
       <div className="p-6 border-b border-gray-100 dark:border-gray-800">
         <div className="flex items-start justify-between gap-4">
@@ -189,37 +190,43 @@ export function WhatsAppEmbeddedSignup() {
             {accounts.map((account) => (
               <div
                 key={account.id}
-                className="flex items-center justify-between gap-4 p-4 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40"
+                className="p-4 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40"
               >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-medium text-gray-900 dark:text-gray-100 truncate">
-                      {account.display_name}
-                    </span>
-                    <MethodBadge method={account.connection_method} />
-                    {account.status !== 'active' && (
-                      <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-slate-300">
-                        {account.status}
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                        {account.display_name}
                       </span>
-                    )}
+                      <MethodBadge method={account.connection_method} />
+                      {account.status !== 'active' && (
+                        <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-slate-300">
+                          {account.status}
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-slate-300 truncate">
+                      {account.display_phone_number || 'Number pending verification'}
+                      {account.business_account_id && (
+                        <span className="text-gray-400 dark:text-slate-400">
+                          {' · '}WABA {account.business_account_id}
+                        </span>
+                      )}
+                    </p>
                   </div>
-                  <p className="mt-1 text-sm text-gray-500 dark:text-slate-300 truncate">
-                    {account.display_phone_number || 'Number pending verification'}
-                    {account.business_account_id && (
-                      <span className="text-gray-400 dark:text-slate-400">
-                        {' · '}WABA {account.business_account_id}
-                      </span>
-                    )}
-                  </p>
+                  <button
+                    onClick={() => handleDisconnect(account)}
+                    disabled={isDisconnecting}
+                    className="shrink-0 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md disabled:opacity-50 flex items-center gap-1.5"
+                  >
+                    <Unplug className="h-4 w-4" />
+                    Disconnect
+                  </button>
                 </div>
-                <button
-                  onClick={() => handleDisconnect(account)}
-                  disabled={isDisconnecting}
-                  className="shrink-0 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md disabled:opacity-50 flex items-center gap-1.5"
-                >
-                  <Unplug className="h-4 w-4" />
-                  Disconnect
-                </button>
+
+                {/* Meta refused the one-time history import — the only place the
+                    tenant can be told, since it happens after the handshake. */}
+                <CoexistenceHistoryNotice account={account} />
               </div>
             ))}
           </div>
