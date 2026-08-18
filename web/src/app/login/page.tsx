@@ -1,6 +1,8 @@
 "use client";
 import React from 'react';
 import Login from '../../components/auth/Login';
+import Header from '@/components/layout/Header';
+import Footer from '@/components/layout/Footer';
 import { motion } from 'framer-motion';
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -14,17 +16,17 @@ export default function LoginPage() {
     : '/hero-character-poster.jpg';
 
   return (
-    <div className="py-4 md:py-6 relative bg-background dark:bg-[#010726] flex flex-col justify-center min-h-[calc(100vh-100px)]">
-      <main className="flex-1 flex items-center justify-center">
-        <div className="w-full max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen py-20 relative bg-gradient-to-b from-background via-background to-background flex flex-col">
+      <main className="flex-1 flex items-start pt-8 md:pt-0 md:items-center justify-center">
+        <div className="w-full max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 items-center px-4 py-6 md:py-12">
           {/* Left: Hero / Illustration + marketing */}
           <motion.div
             initial={{ opacity: 0, x: -40 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.7 }}
-            className="hidden lg:flex lg:col-span-7 flex-col items-center justify-center"
+            className="hidden md:flex flex-col gap-6 items-start justify-center"
           >
-            <div className="relative w-full h-[480px] lg:h-[580px] xl:h-[640px]">
+            <div className="relative w-full h-[720px]">
               <video
                 key={videoSrc}
                 src={videoSrc}
@@ -38,11 +40,13 @@ export default function LoginPage() {
                 className="w-full h-full object-contain mix-blend-multiply dark:mix-blend-lighten"
               />
             </div>
-            <h2 className="text-4xl font-bold text-[#0b1957] dark:text-white">LAD — Let Agent Deal</h2>
-            <p className="text-lg text-gray-600 dark:text-gray-300 max-w-md">
+
+            {/* <h2 className="text-4xl font-bold text-[#0b1957] dark:text-white">LAD — Let Agent Deal</h2> */}
+            {/* <p className="text-lg text-gray-600 dark:text-gray-300 max-w-md">
               AI agents that autonomously handle sales — qualify leads, negotiate and close
               deals across voice, chat, email and social channels.
-            </p>
+            </p> */}
+
           </motion.div>
 
           {/* Right: Login form */}
@@ -50,7 +54,7 @@ export default function LoginPage() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="w-full lg:col-span-5 flex flex-col justify-center items-center lg:items-start p-2"
+            className="p-8 md:p-12 flex flex-col justify-center items-center"
           >
             <Login />
           </motion.div>
