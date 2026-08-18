@@ -131,6 +131,7 @@ export interface UseKnobProposalsState {
   isScanning: boolean;
   error: string | null;
   scan: (sampleConversationIds?: string[]) => Promise<void>;
+  scanUpload: (transcript: string, studioParticipants: string[]) => Promise<void>;
   dismiss: () => void;
 }
 
@@ -139,11 +140,13 @@ export function useKnobProposals(key: PipelineKey): UseKnobProposalsState {
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const scan = useCallback(async (sampleConversationIds: string[] = []) => {
+  const runScan = useCallback(async (
+    input: string[] | { transcript: string; studioParticipants: string[] },
+  ) => {
     setIsScanning(true);
     setError(null);
     try {
-      const data = await requestKnobProposals(key, sampleConversationIds);
+      const data = await requestKnobProposals(key, input);
       setResult(data);
       // A successful call that found nothing is not an error, but it does need
       // saying — an empty panel with no explanation reads as a broken feature.
@@ -168,10 +171,20 @@ export function useKnobProposals(key: PipelineKey): UseKnobProposalsState {
     }
   }, [key]);
 
+  const scan = useCallback(
+    (sampleConversationIds: string[] = []) => runScan(sampleConversationIds),
+    [runScan],
+  );
+  const scanUpload = useCallback(
+    (transcript: string, studioParticipants: string[]) =>
+      runScan({ transcript, studioParticipants }),
+    [runScan],
+  );
+
   const dismiss = useCallback(() => {
     setResult(null);
     setError(null);
   }, []);
 
-  return { result, isScanning, error, scan, dismiss };
+  return { result, isScanning, error, scan, scanUpload, dismiss };
 }

@@ -37,6 +37,7 @@ import type { SnapshotPipeline, KnobValues } from '@lad/frontend-features/snapsh
 import { KnobForm } from '@/components/pipelines/KnobForm';
 import { KnobProposals, ScanHistoryButton } from '@/components/pipelines/KnobProposals';
 import { ConversationPicker } from '@/components/pipelines/ConversationPicker';
+import { TranscriptUpload } from '@/components/pipelines/TranscriptUpload';
 import { useAuth } from '@/contexts/AuthContext';
 
 /** Only `live` means an engine is actually running this pipeline. Unknown
@@ -93,9 +94,10 @@ function PipelineCard({
   // with the card rather than with the settings panel so a scan survives the
   // panel being collapsed and reopened.
   const proposals = useKnobProposals(key);
-  // Idle → picking → reviewing. Held here rather than in the picker so leaving
-  // the picker cannot strand a half-made selection.
-  const [pickingChats, setPickingChats] = useState(false);
+  // Idle → (picking | uploading) → reviewing. One field, not two booleans, so
+  // the picker and the upload panel can never be open at once. Held here rather
+  // than in the panels so leaving one cannot strand a half-made selection.
+  const [sourceMode, setSourceMode] = useState<'pick' | 'upload' | null>(null);
 
   return (
     <div
@@ -188,16 +190,26 @@ function PipelineCard({
                   }}
                   onDismiss={proposals.dismiss}
                 />
-              ) : pickingChats ? (
+              ) : sourceMode === 'pick' ? (
                 <ConversationPicker
                   isScanning={proposals.isScanning}
-                  onCancel={() => setPickingChats(false)}
+                  onCancel={() => setSourceMode(null)}
                   onScan={async (ids) => {
                     await proposals.scan(ids);
                     // Leave the picker only once the scan has returned: closing
                     // on click would drop the user back to the buttons with no
                     // sign anything was happening.
-                    setPickingChats(false);
+                    setSourceMode(null);
+                  }}
+                />
+              ) : sourceMode === 'upload' ? (
+                <TranscriptUpload
+                  pipeline={key}
+                  isScanning={proposals.isScanning}
+                  onCancel={() => setSourceMode(null)}
+                  onScan={async (transcript, studioParticipants) => {
+                    await proposals.scanUpload(transcript, studioParticipants);
+                    setSourceMode(null);
                   }}
                 />
               ) : (
@@ -205,7 +217,8 @@ function PipelineCard({
                   isScanning={proposals.isScanning}
                   error={proposals.error}
                   onScan={() => void proposals.scan()}
-                  onPick={() => setPickingChats(true)}
+                  onPick={() => setSourceMode('pick')}
+                  onUpload={() => setSourceMode('upload')}
                 />
               )}
 

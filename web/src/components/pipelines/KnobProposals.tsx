@@ -239,11 +239,14 @@ export function ScanHistoryButton({
   error,
   onScan,
   onPick,
+  onUpload,
 }: {
   isScanning: boolean;
   error: string | null;
   onScan: () => void;
   onPick: () => void;
+  /** Open the WhatsApp-export upload — for history OLDER than the account. */
+  onUpload: () => void;
 }) {
   return (
     <div className="mt-1">
@@ -266,6 +269,14 @@ export function ScanHistoryButton({
           className="text-xs text-gray-600 dark:text-slate-300 underline underline-offset-2 hover:text-gray-900 dark:hover:text-white disabled:opacity-50"
         >
           or pick specific chats
+        </button>
+        <button
+          type="button"
+          onClick={onUpload}
+          disabled={isScanning}
+          className="text-xs text-gray-600 dark:text-slate-300 underline underline-offset-2 hover:text-gray-900 dark:hover:text-white disabled:opacity-50"
+        >
+          or upload a chat export
         </button>
       </div>
       {error && (
