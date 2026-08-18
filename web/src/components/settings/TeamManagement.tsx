@@ -319,7 +319,7 @@ export const TeamManagement: React.FC = () => {
       {loading && users.length === 0 ? (
         <TeamManagementSkeleton />
       ) : (
-        <div className="bg-white dark:bg-[#071131]/60 rounded-2xl border border-slate-200 dark:border-blue-950/40 shadow-sm overflow-hidden text-slate-800 dark:text-slate-100">
+        <div className="bg-white mx-6 dark:bg-[#071131]/60 rounded-2xl border border-slate-200 dark:border-blue-950/40 shadow-sm overflow-hidden text-slate-800 dark:text-slate-100">
           <div className="overflow-x-auto custom-scrollbar">
             <table className="w-full min-w-[700px]">
               <thead className="bg-slate-50/50 dark:bg-transparent border-b border-slate-200 dark:border-blue-950/40">
