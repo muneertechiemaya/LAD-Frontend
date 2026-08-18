@@ -162,14 +162,13 @@ export const BusinessHoursModal: React.FC<BusinessHoursModalProps> = ({ initialD
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-[560px] max-h-[calc(100dvh-5rem)] sm:max-h-[85dvh] flex flex-col bg-white dark:bg-[#132035] border border-transparent dark:border-[#2B7CFF]/20 rounded-2xl shadow-2xl overflow-hidden font-sans"
+        className="relative w-full max-w-[560px] max-h-[calc(100dvh-5rem)] sm:max-h-[85dvh] flex flex-col bg-white dark:bg-[#071131] border border-transparent dark:border-[#2B7CFF]/20 rounded-2xl shadow-2xl overflow-hidden font-sans"
         onClick={e => e.stopPropagation()}
       >
-        {/* Accent top bar */}
-        <div className="absolute top-0 left-0 right-0 h-[3px] bg-[#0B1957] dark:bg-[#2B7CFF] rounded-t-2xl z-30" />
+        
 
         {/* STICKY TOP HEADER (Close button stays pinned here during scroll) */}
-        <div className="sticky top-0 z-20 bg-white/95 dark:bg-[#132035]/95 backdrop-blur-md p-5 sm:p-8 pb-4 sm:pb-4 border-b border-gray-100 dark:border-slate-800/60 flex-shrink-0">
+        <div className="sticky top-0 z-20 bg-white/95 dark:bg-[#071131] backdrop-blur-md p-5 sm:p-8 pb-4 sm:pb-4 border-b border-gray-100 dark:border-slate-800/60 flex-shrink-0">
           {/* Fixed Close Button */}
           <button
             type="button"

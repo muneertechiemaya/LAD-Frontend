@@ -504,7 +504,7 @@ function EmailAgentCard({ showToast }: { showToast: (msg: string, type: 'success
   };
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm dark:bg-[#030a21]/60 dark:border-blue-950/40">
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm dark:bg-[#071131] dark:border-blue-950/40">
       <div className="px-5 py-4 border-b border-gray-100 dark:border-blue-950/40 flex items-center justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Email agent (Gmail &amp; Outlook)</h3>
@@ -520,7 +520,7 @@ function EmailAgentCard({ showToast }: { showToast: (msg: string, type: 'success
           onClick={() => handleToggle(!enabled)}
           disabled={loading}
           className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
-            enabled ? 'bg-red-500' : 'bg-gray-300'
+            enabled ? 'bg-red-500' : 'bg-input'
           } ${loading ? 'opacity-50' : ''}`}
         >
           <span
@@ -532,7 +532,7 @@ function EmailAgentCard({ showToast }: { showToast: (msg: string, type: 'success
       </div>
 
       <div className="px-5 py-4 space-y-3">
-        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 dark:bg-yellow-950/20 dark:border-yellow-900/30 dark:text-yellow-300 rounded-lg px-3 py-2">
           Reading inboxes needs the new read permission — accounts connected before the email
           agent existed must be <span className="font-medium">disconnected and reconnected once</span>{' '}
           in Settings → Integrations. The agent only answers mail received after it&apos;s enabled.
@@ -2451,7 +2451,7 @@ export function ChatSettings() {
           Saved values persist regardless of visibility. */}
       {activeChannel === 'linkedin' && (
       <>
-      <div className="bg-white dark:bg-[#030a21]/60 rounded-lg border border-gray-200 dark:border-blue-950/40 shadow-sm">
+      <div className="bg-white dark:bg-[#071131] rounded-lg border border-gray-200 dark:border-blue-950/40 shadow-sm">
         <div className="p-6 border-b border-gray-100 dark:border-blue-950/40">
           <div className="flex items-center gap-2 mb-1">
             <Linkedin className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -2543,7 +2543,7 @@ export function ChatSettings() {
                       ai_agent_reply_delay_seconds: Number.isFinite(v) ? Math.max(0, Math.min(300, v)) : 0,
                     }));
                   }}
-                  className="w-20 px-2 py-1.5 border border-gray-200 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  className="w-20 px-2 py-1.5 border border-gray-200 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-200 dark:[color-scheme:dark]"
                 />
                 <span className="text-xs text-gray-500 dark:text-slate-300 w-8">sec</span>
               </div>
@@ -2582,7 +2582,7 @@ export function ChatSettings() {
                         auto_withdraw_pending_days: Math.max(30, Math.floor(Number(prev.auto_withdraw_pending_days) || 90)),
                       }))
                     }
-                    className="w-16 px-2 py-1.5 border border-gray-200 rounded-md text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:bg-gray-100"
+                    className="w-16 px-2 py-1.5 border border-gray-200 rounded-md text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:bg-gray-100 dark:[color-scheme:dark]"
                   />
                   <span className="text-xs text-gray-500">days</span>
                 </div>
@@ -2616,7 +2616,7 @@ export function ChatSettings() {
       </div>
 
       {/* ───── LinkedIn Follow-up Sequence (post-acceptance cadence) ───── */}
-      <div className="bg-white dark:bg-[#030a21]/60 rounded-xl border border-gray-200 dark:border-blue-950/40 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-[#071131] rounded-xl border border-gray-200 dark:border-blue-950/40 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-gray-200 dark:border-blue-950/40">
           <div className="flex items-center gap-3 mb-1">
             <div className="p-2.5 bg-amber-50 dark:bg-amber-950/20 rounded-lg">
