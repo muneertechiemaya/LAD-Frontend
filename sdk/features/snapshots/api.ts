@@ -6,6 +6,7 @@
 import { apiGet, apiPatch, apiPost } from '../../shared/apiClient';
 import type {
   PipelineOverview, PipelineKey, KnobValues, KnobProposalsResult, SampleConversation,
+  TranscriptPreview,
 } from './types';
 
 const BASE = '/api/snapshot';
@@ -73,11 +74,42 @@ export async function setPipelineKnobs(
  */
 export async function requestKnobProposals(
   key: PipelineKey,
-  sampleConversationIds: string[] = []
+  input: string[] | {
+    sampleConversationIds?: string[];
+    /** A raw WhatsApp export, read INSTEAD of stored conversations. */
+    transcript?: string;
+    /** Which senders in that export are the studio. Required with transcript. */
+    studioParticipants?: string[];
+  } = []
 ): Promise<KnobProposalsResult> {
+  // The original signature took a bare id array; both shapes stay valid so
+  // existing callers keep working.
+  const opts = Array.isArray(input) ? { sampleConversationIds: input } : input;
+  const body: Record<string, unknown> = {};
+  if (opts.sampleConversationIds?.length) body.sampleConversationIds = opts.sampleConversationIds;
+  if (opts.transcript) {
+    body.transcript = opts.transcript;
+    body.studioParticipants = opts.studioParticipants ?? [];
+  }
   const res = await apiPost<{ success: boolean; data: KnobProposalsResult }>(
     `${BASE}/pipelines/${key}/knob-proposals`,
-    sampleConversationIds.length ? { sampleConversationIds } : {}
+    body
+  );
+  return res.data.data;
+}
+
+/**
+ * Parse an uploaded WhatsApp export and report who is in it. Free — no LLM
+ * call — and nothing is stored: the server parses and discards. This runs
+ * BEFORE a scan so the studio can say which participant is them.
+ */
+export async function previewTranscript(
+  key: PipelineKey,
+  transcript: string
+): Promise<TranscriptPreview> {
+  const res = await apiPost<{ success: boolean; data: TranscriptPreview }>(
+    `${BASE}/pipelines/${key}/transcript-preview`,
+    { transcript }
   );
   return res.data.data;
 }

@@ -2,6 +2,7 @@
 export {
   getPipelineOverview, setPipelineActive, setPipelineKnobs, requestKnobProposals,
   listSampleConversations,
+  previewTranscript,
 } from './api';
 export { usePipelines, useKnobProposals } from './hooks';
 export type { UsePipelinesState, UseKnobProposalsState } from './hooks';
@@ -18,4 +19,5 @@ export type {
   KnobProposal,
   KnobProposalsResult,
   SampleConversation,
+  TranscriptPreview,
 } from './types';

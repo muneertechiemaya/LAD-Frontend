@@ -144,3 +144,18 @@ export interface SampleConversation {
   /** The stage it reached, e.g. 'booking_completed'. Null when unknown. */
   stage: string | null;
 }
+
+/**
+ * What the server found inside an uploaded WhatsApp export, before any
+ * reading happens. Exists so the studio can mark which participant is THEM —
+ * the extractor trusts the studio's side like their written instructions, so
+ * a wrong mapping produces confident settings attributed to the wrong side.
+ */
+export interface TranscriptPreview {
+  participants: Array<{ name: string; messageCount: number }>;
+  messageCount: number;
+  /** Timestamped lines that were nobody speaking (encryption notices etc.). */
+  systemLines: number;
+  /** "<Media omitted>" and similar placeholders, dropped. */
+  skipped: number;
+}
