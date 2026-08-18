@@ -79,3 +79,50 @@ export interface PipelineOverview {
   version: string | null;
   pipelines: SnapshotPipeline[];
 }
+
+// ── Knob proposals: settings read out of the tenant's own history ──────────
+
+/**
+ * Where a proposed value was read from. Not decoration — it decides how much
+ * the value should be trusted:
+ *
+ *   prompt            the studio wrote this themselves. Highest trust.
+ *   customer_message  what customers ask. Shows demand, never establishes a fact.
+ *   agent_message     the agent's own past output. Lowest trust, because a
+ *                     hallucination reads exactly like a fact. Server caps
+ *                     these at 0.5 confidence whatever the model claimed.
+ */
+export type ProposalSource = 'prompt' | 'customer_message' | 'agent_message';
+
+export interface KnobProposal {
+  key: string;
+  label: string;
+  type: KnobType;
+  /** The proposed value, already validated against the knob's own schema. */
+  value: unknown;
+  /** What the setting holds today, so the reviewer sees a change, not a value. */
+  currentValue: unknown;
+  /** 0..1. */
+  confidence: number;
+  source: ProposalSource;
+  /** The verbatim quote this was read from. Never empty — unsourced proposals
+   *  are dropped server-side. */
+  evidence: string;
+  /** Set when the sources disagreed, describing the disagreement. */
+  conflict: string | null;
+  /** True when the source was the agent quoting itself, or a conflict exists. */
+  needsCloserReview: boolean;
+}
+
+export interface KnobProposalsResult {
+  proposals: KnobProposal[];
+  /** Values the server refused, with the reason. Shown as a count, not a list. */
+  rejected: Array<{ key?: string; why: string }>;
+  scanned: {
+    conversations: number;
+    prompts: number;
+    usedSamples?: boolean;
+  };
+  /** Present when nothing could be read at all. */
+  error?: string;
+}

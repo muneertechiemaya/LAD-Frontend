@@ -3,8 +3,10 @@
 // Routes through the shared apiClient, which (in the browser) goes same-origin
 // via the Next.js [feature]/[...path] proxy. The proxy mirrors backend paths
 // 1:1, so /api/snapshot/* needs no additional plumbing.
-import { apiGet, apiPatch } from '../../shared/apiClient';
-import type { PipelineOverview, PipelineKey, KnobValues } from './types';
+import { apiGet, apiPatch, apiPost } from '../../shared/apiClient';
+import type {
+  PipelineOverview, PipelineKey, KnobValues, KnobProposalsResult,
+} from './types';
 
 const BASE = '/api/snapshot';
 
@@ -53,6 +55,29 @@ export async function setPipelineKnobs(
   const res = await apiPatch<{ success: boolean; data: { key: PipelineKey; values: KnobValues } }>(
     `${BASE}/pipelines/${key}/knobs`,
     { values }
+  );
+  return res.data.data;
+}
+
+/**
+ * Read the workspace's own prompts and past conversations and PROPOSE settings,
+ * each carrying the quote it was read from.
+ *
+ * Writes nothing. Approved proposals are saved through setPipelineKnobs, so
+ * there is exactly one path that can change a tenant's settings.
+ *
+ * POST rather than GET because it costs LLM credits and is not safely
+ * repeatable. `sampleConversationIds` narrows the read to specific
+ * conversations — three that went the way the studio wants beat forty that
+ * did not.
+ */
+export async function requestKnobProposals(
+  key: PipelineKey,
+  sampleConversationIds: string[] = []
+): Promise<KnobProposalsResult> {
+  const res = await apiPost<{ success: boolean; data: KnobProposalsResult }>(
+    `${BASE}/pipelines/${key}/knob-proposals`,
+    sampleConversationIds.length ? { sampleConversationIds } : {}
   );
   return res.data.data;
 }
