@@ -638,7 +638,7 @@ function ComposeBroadcastDialog({
                       groupsList.map((g) => (
                         <SelectItem key={g.id} value={g.id}>
                           {g.name}
-                          <span className="text-muted-foreground">
+                          <span className="text-muted-foreground group-hover:text-white group-focus:text-white group-data-[highlighted]:text-white group-data-[state=checked]:text-white transition-colors">
                             {' '}
                             · {g.member_count} member
                             {g.member_count === 1 ? '' : 's'}
