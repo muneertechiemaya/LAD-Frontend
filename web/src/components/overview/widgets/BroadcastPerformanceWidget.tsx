@@ -29,7 +29,7 @@ export const BroadcastPerformanceWidget: React.FC<BroadcastPerformanceWidgetProp
       icon={<MessageSquare className="h-4 w-4" />}
     >
       <div className="w-full overflow-x-auto custom-scrollbar">
-        <div className="min-w-[620px]">
+        <div className="min-w-[720px]">
           <BroadcastPerformanceContainer chromeless />
         </div>
       </div>

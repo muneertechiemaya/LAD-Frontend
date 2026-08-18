@@ -216,14 +216,6 @@ const SCOPED_CSS = `
   to   { opacity: 1; }
 }
 
-@media (max-width: 880px) {
-  .lad-bp-table th.lad-bp-col-index,
-  .lad-bp-table td.lad-bp-col-index { display: none; }
-}
-@media (max-width: 720px) {
-  .lad-bp-table th.lad-bp-col-bar,
-  .lad-bp-table td.lad-bp-col-bar { display: none; }
-}
 @media (prefers-reduced-motion: reduce) {
   .lad-bp-bar-seg { transition: none !important; }
   .lad-bp-anim    { animation: none !important; }
