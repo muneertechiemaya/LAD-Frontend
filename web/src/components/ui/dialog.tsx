@@ -56,7 +56,7 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "bg-background dark:bg-[#161717] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-[100] flex flex-col w-[calc(100%-4rem)] max-w-[calc(100%-4rem)] translate-x-[-50%] translate-y-[-50%] rounded-3xl border shadow-2xl duration-200 sm:max-w-5xl sm:w-[90vw] h-auto max-h-[90vh] overflow-hidden p-0",
+          "bg-background dark:bg-[#071131] dark:border-[#1c2c4e] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-[100] flex flex-col w-[calc(100%-4rem)] max-w-[calc(100%-4rem)] translate-x-[-50%] translate-y-[-50%] rounded-3xl border shadow-2xl duration-200 sm:max-w-5xl sm:w-[90vw] h-auto max-h-[90vh] overflow-hidden p-0",
           className
         )}
         {...props}
@@ -65,7 +65,7 @@ function DialogContent({
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
-            className="absolute right-8 top-8 opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-0 focus:ring-offset-0 disabled:pointer-events-none z-50 border-0 bg-transparent p-0"
+            className="absolute right-8 top-8 opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-0 focus:ring-offset-0 disabled:pointer-events-none z-50 border-0 bg-transparent p-0 text-slate-400 hover:text-white"
           >
             <XIcon className="h-6 w-6" />
             <span className="sr-only">Close</span>
@@ -79,7 +79,7 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-header"
-      className={cn("flex items-center gap-4 px-4 py-4 sm:px-8 sm:py-6 border-b border-gray-100 dark:border-[#262831] bg-white dark:bg-[#161717] shrink-0 sm:text-left", className)}
+      className={cn("flex items-center gap-4 px-4 py-4 sm:px-8 sm:py-6 border-b border-gray-100 dark:border-[#1c2c4e] bg-white dark:bg-[#071131] shrink-0 sm:text-left", className)}
       {...props}
     />
   )
@@ -89,7 +89,7 @@ function DialogActions({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="dialog-footer"
       className={cn(
-        "flex justify-end gap-3 px-8 py-6 border-t border-gray-100 dark:border-[#262831] bg-gray-50/50 dark:bg-[#161717] shrink-0",
+        "flex justify-end gap-3 px-8 py-6 border-t border-gray-100 dark:border-[#1c2c4e] bg-gray-50/50 dark:bg-[#071131] shrink-0",
         className
       )}
       {...props}
