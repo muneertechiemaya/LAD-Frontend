@@ -357,7 +357,7 @@ export function CallConfiguration({
                             {n.base_number ?? normalizeE164Like(n.phone_number)}
                           </span>
                           {n.provider && (
-                            <span className="text-xs truncate text-muted-foreground transition-colors duration-100 group-data-[highlighted]:text-white/80 dark:group-data-[highlighted]:text-white/80">
+                            <span className="text-xs truncate text-slate-400 dark:text-slate-300 transition-colors duration-100 group-data-[highlighted]:text-white/80 dark:group-data-[highlighted]:text-white/80">
                               {n.provider}
                             </span>
                           )}
@@ -417,13 +417,13 @@ export function CallConfiguration({
                         <span className="font-medium overflow-hidden whitespace-nowrap text-ellipsis max-w-full">
                           {selectedAgent.name}
                         </span>
-                        <span className="text-[10px] sm:text-xs text-muted-foreground overflow-hidden whitespace-nowrap text-ellipsis max-w-full">
+                        <span className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-300 overflow-hidden whitespace-nowrap text-ellipsis max-w-full">
                           {selectedAgent.accent} • {selectedAgent.gender}
                         </span>
                       </div>
                     </div>
                   ) : (
-                    <span className="text-muted-foreground">
+                    <span className="text-slate-400 dark:text-slate-300">
                       No agents available
                     </span>
                   )}
@@ -442,7 +442,7 @@ export function CallConfiguration({
                             <span className="font-medium truncate">
                               {agent.name}
                             </span>
-                            <span className="text-xs truncate text-muted-foreground transition-colors duration-100 group-data-[highlighted]:text-white/80 dark:group-data-[highlighted]:text-white/80">
+                            <span className="text-xs truncate text-slate-400 dark:text-slate-300 transition-colors duration-100 group-data-[highlighted]:text-white/80 dark:group-data-[highlighted]:text-white/80">
                               {agent.description} • {agent.accent} •{" "}
                               {agent.gender}
                             </span>
