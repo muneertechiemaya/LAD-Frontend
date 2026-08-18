@@ -977,18 +977,18 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
           )}
         >
           <TabsList className={cn(
-            "mx-3 sm:mx-8 mt-4 sm:mt-6 max-w-[calc(100%-1.5rem)] sm:max-w-full overflow-x-auto justify-start flex-nowrap shrink-0 p-1 rounded-xl h-auto gap-1 border shadow-sm",
+            "mx-3 sm:mx-8 mt-4 sm:mt-6 max-w-[calc(100%-1.5rem)] sm:max-w-full overflow-x-auto justify-start flex-nowrap shrink-0 p-1 rounded-xl h-auto gap-1 border shadow-sm dark:shadow-md dark:shadow-black/40",
             isWhatsApp
               ? "bg-zinc-100 dark:bg-zinc-800/80 border-zinc-200 dark:border-zinc-700/80"
-              : "bg-blue-600 dark:bg-blue-600/90 border-blue-500/40"
+              : "bg-slate-100 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800/70"
           )}>
             <TabsTrigger
               value="single"
               className={cn(
                 "text-xs px-3 py-1.5 gap-1.5 rounded-lg font-medium transition-all shrink-0 whitespace-nowrap shadow-none data-[state=inactive]:shadow-none",
                 isWhatsApp
-                  ? "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/60 dark:hover:bg-zinc-700/50 data-[state=active]:bg-emerald-600 data-[state=active]:text-white dark:data-[state=active]:bg-emerald-600 dark:data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:shadow-sm"
-                  : "text-blue-100 hover:text-white hover:bg-white/10 data-[state=active]:bg-white data-[state=active]:text-slate-800 dark:data-[state=active]:bg-[#00051d] dark:data-[state=active]:text-slate-300 data-[state=active]:font-semibold data-[state=active]:shadow-sm"
+                  ? "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/60 dark:hover:bg-zinc-700/50 data-[state=active]:bg-emerald-600 data-[state=active]:text-white dark:data-[state=active]:bg-emerald-600 dark:data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:shadow-sm dark:data-[state=active]:shadow-md dark:data-[state=active]:shadow-black/30"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/40 data-[state=active]:bg-[#0B1957] data-[state=active]:text-white dark:data-[state=active]:bg-blue-600 dark:data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:shadow-sm dark:data-[state=active]:shadow-md dark:data-[state=active]:shadow-black/40"
               )}
             >
               <UserPlus className="h-3.5 w-3.5 shrink-0" />
@@ -999,8 +999,8 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
               className={cn(
                 "text-xs px-3 py-1.5 gap-1.5 rounded-lg font-medium transition-all shrink-0 whitespace-nowrap shadow-none data-[state=inactive]:shadow-none",
                 isWhatsApp
-                  ? "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/60 dark:hover:bg-zinc-700/50 data-[state=active]:bg-emerald-600 data-[state=active]:text-white dark:data-[state=active]:bg-emerald-600 dark:data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:shadow-sm"
-                  : "text-blue-100 hover:text-white hover:bg-white/10 data-[state=active]:bg-white data-[state=active]:text-slate-800 dark:data-[state=active]:bg-[#00051d] dark:data-[state=active]:text-slate-300 data-[state=active]:font-semibold data-[state=active]:shadow-sm"
+                  ? "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/60 dark:hover:bg-zinc-700/50 data-[state=active]:bg-emerald-600 data-[state=active]:text-white dark:data-[state=active]:bg-emerald-600 dark:data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:shadow-sm dark:data-[state=active]:shadow-md dark:data-[state=active]:shadow-black/30"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/40 data-[state=active]:bg-[#0B1957] data-[state=active]:text-white dark:data-[state=active]:bg-blue-600 dark:data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:shadow-sm dark:data-[state=active]:shadow-md dark:data-[state=active]:shadow-black/40"
               )}
             >
               <FileSpreadsheet className="h-3.5 w-3.5 shrink-0" />
@@ -1012,8 +1012,8 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                 className={cn(
                   "text-xs px-3 py-1.5 gap-1.5 rounded-lg font-medium transition-all shrink-0 whitespace-nowrap shadow-none data-[state=inactive]:shadow-none",
                   isWhatsApp
-                    ? "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/60 dark:hover:bg-zinc-700/50 data-[state=active]:bg-emerald-600 data-[state=active]:text-white dark:data-[state=active]:bg-emerald-600 dark:data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:shadow-sm"
-                    : "text-blue-100 hover:text-white hover:bg-white/10 data-[state=active]:bg-white data-[state=active]:text-slate-800 dark:data-[state=active]:bg-[#00051d] dark:data-[state=active]:text-slate-300 data-[state=active]:font-semibold data-[state=active]:shadow-sm"
+                    ? "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/60 dark:hover:bg-zinc-700/50 data-[state=active]:bg-emerald-600 data-[state=active]:text-white dark:data-[state=active]:bg-emerald-600 dark:data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:shadow-sm dark:data-[state=active]:shadow-md dark:data-[state=active]:shadow-black/30"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/40 data-[state=active]:bg-[#0B1957] data-[state=active]:text-white dark:data-[state=active]:bg-blue-600 dark:data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:shadow-sm dark:data-[state=active]:shadow-md dark:data-[state=active]:shadow-black/40"
                 )}
               >
                 <Globe className="h-3.5 w-3.5 shrink-0" />
@@ -1203,7 +1203,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                 "mt-2 w-full text-xs justify-center gap-1.5 border border-dashed transition-all",
                 isWhatsApp
                   ? "text-zinc-600 dark:text-zinc-400 border-zinc-300 dark:border-zinc-700 hover:border-zinc-400 dark:hover:border-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-zinc-200"
-                  : "text-blue-600 dark:text-blue-400 border-blue-400/40 dark:border-blue-500/40 hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-950/30"
+                  : "text-blue-600 dark:text-blue-400 border-blue-400/40 dark:border-blue-500/40 hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-950/30 hover:text-blue-600 dark:hover:text-blue-400"
               )}
               onClick={addLead}
             >
