@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     siteName: "Mr LAD",
     title: "Mr LAD — AI-Powered Sales Platform",
     description:
-      "One AI Sales Employee across LinkedIn, WhatsApp, Instagram, email, and voice — the output of an entire sales team.",
+      "One AI Sales Employee across LinkedIn, WhatsApp, Instagram, email, and voice. The output of an entire sales team.",
     url: SITE_URL,
     images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Mr LAD" }],
   },
