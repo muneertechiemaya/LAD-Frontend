@@ -1354,18 +1354,18 @@ export function CallLogsTable({
 
       {/* Booking Dialog */}
       <Dialog open={bookingDialogOpen} onOpenChange={setBookingDialogOpen}>
-        <DialogContent className="flex flex-col p-0 max-h-[90vh] overflow-hidden bg-white dark:bg-[#000724] border border-slate-200 dark:border-[#262831]">
+        <DialogContent className="flex flex-col p-0 max-h-[90vh] overflow-hidden bg-white dark:bg-[#071131] border border-slate-200 dark:border-blue-950/40 text-foreground dark:text-white">
           {/* Added padding and matching sub-borders to the dialog header line */}
-          <DialogHeader className="p-6 border-b border-slate-100 dark:border-[#262831] dark:bg-[#0e1a3a]/60">
+          <DialogHeader className="p-6 border-b border-slate-100 dark:border-blue-950/40">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-full bg-blue-50 dark:bg-blue-500 text-blue-600 dark:text-blue-950 border border-blue-100 dark:border-transparent shadow-sm flex items-center justify-center w-10 h-10">
+              <div className="p-2 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-sky-400 border border-blue-100 dark:border-blue-900/40 shadow-sm flex items-center justify-center w-10 h-10">
                 <CalendarRange className="h-5 w-5" />
               </div>
               <DialogTitle className="dark:text-white text-[#0b1957] text-left font-semibold text-lg leading-tight">
                   <span className="block md:inline">Schedule</span>{' '}
                   <span className="block md:inline">Appointment</span>
                   {selectedLead?.name && (
-                      <span className="block md:inline">
+                      <span className="block md:inline text-slate-500 dark:text-slate-400 font-normal">
                       <span> — </span>
                       <span className="md:hidden"><br /></span>
                                       {selectedLead.name}
