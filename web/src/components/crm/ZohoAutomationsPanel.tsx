@@ -192,7 +192,7 @@ export const ZohoAutomationsPanel: React.FC = () => {
             </p>
           </div>
         </div>
-        <Button onClick={handleScan} disabled={scanning} className="ml-auto">
+        <Button onClick={handleScan} disabled={scanning} className="ml-auto dark:text-white">
           {scanning ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
           {scanning ? 'Scanning…' : 'Scan open tasks'}
         </Button>
