@@ -86,7 +86,7 @@ export default function MediaInsertionModal({
             });
           }
         }
-      } catch { /* non-fatal — localStorage results still shown */ }
+      } catch { /* non-fatal - localStorage results still shown */ }
 
       // Sort newest first
       media.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());

@@ -79,10 +79,10 @@ const edgeTypes = { labeled: LabeledEdge };
 type SourceKey = 'zoho_recurring' | 'zoho_once' | 'ghl_recurring' | 'ghl_once' | 'linkedin_search' | 'linkedin_signal' | 'file_import' | 'web_extract';
 
 const SOURCES: { key: SourceKey; label: string; sub: string; icon: React.ReactNode; chip: string; recurring?: boolean }[] = [
-  { key: 'zoho_recurring', label: 'Zoho CRM — recurring', sub: 'Import new contacts daily', icon: <Repeat className="h-4 w-4 text-red-600" />, chip: 'bg-red-50 dark:bg-red-950/30', recurring: true },
-  { key: 'zoho_once', label: 'Zoho CRM — one-time', sub: 'Import synced contacts now', icon: <Users className="h-4 w-4 text-red-600" />, chip: 'bg-red-50 dark:bg-red-950/30' },
-  { key: 'ghl_once', label: 'GoHighLevel — one-time', sub: 'Import synced contacts now', icon: <Users className="h-4 w-4 text-blue-600" />, chip: 'bg-blue-50 dark:bg-blue-950/30' },
-  { key: 'ghl_recurring', label: 'GoHighLevel — recurring', sub: 'Import new contacts daily', icon: <Repeat className="h-4 w-4 text-blue-600" />, chip: 'bg-blue-50 dark:bg-blue-950/30', recurring: true },
+  { key: 'zoho_recurring', label: 'Zoho CRM (Recurring)', sub: 'Import new contacts daily', icon: <Repeat className="h-4 w-4 text-red-600" />, chip: 'bg-red-50 dark:bg-red-950/30', recurring: true },
+  { key: 'zoho_once', label: 'Zoho CRM (One-Time)', sub: 'Import synced contacts now', icon: <Users className="h-4 w-4 text-red-600" />, chip: 'bg-red-50 dark:bg-red-950/30' },
+  { key: 'ghl_once', label: 'GoHighLevel (One-Time)', sub: 'Import synced contacts now', icon: <Users className="h-4 w-4 text-blue-600" />, chip: 'bg-blue-50 dark:bg-blue-950/30' },
+  { key: 'ghl_recurring', label: 'GoHighLevel (Recurring)', sub: 'Import new contacts daily', icon: <Repeat className="h-4 w-4 text-blue-600" />, chip: 'bg-blue-50 dark:bg-blue-950/30', recurring: true },
   { key: 'file_import', label: 'File import (CSV / Excel)', sub: 'Upload a list and map columns', icon: <FileSpreadsheet className="h-4 w-4 text-emerald-600" />, chip: 'bg-emerald-50 dark:bg-emerald-950/30' },
   { key: 'linkedin_search', label: 'LinkedIn Search', sub: 'Find new leads by keywords', icon: <Search className="h-4 w-4 text-[#0077B5]" />, chip: 'bg-sky-50 dark:bg-sky-950/30' },
   { key: 'web_extract', label: 'Web page (exhibitors, directories)', sub: 'Pull companies off a page, then find the roles you name', icon: <Globe className="h-4 w-4 text-violet-600" />, chip: 'bg-violet-50 dark:bg-violet-950/30' },
@@ -91,7 +91,7 @@ const SOURCES: { key: SourceKey; label: string; sub: string; icon: React.ReactNo
 
 // Target fields the file columns map to. 'ignore' drops the column.
 const IMPORT_FIELDS = [
-  { value: 'ignore', label: '— Ignore —' },
+  { value: 'ignore', label: '- Ignore -' },
   { value: 'full_name', label: 'Full name' },
   { value: 'first_name', label: 'First name' },
   { value: 'last_name', label: 'Last name' },
@@ -180,7 +180,7 @@ const OUTREACH: { type: StepType; label: string; group: string; channel: Channel
   { type: 'whatsapp_send', label: 'Send WhatsApp', group: 'WhatsApp', channel: 'whatsapp', icon: <MessageCircle className="h-4 w-4 text-green-600" />, chip: 'bg-green-50 dark:bg-green-950/30' },
   { type: 'voice_agent_call', label: 'AI voice call', group: 'Voice', channel: 'voice', icon: <Phone className="h-4 w-4 text-violet-600" />, chip: 'bg-violet-50 dark:bg-violet-950/30' },
   { type: 'condition', label: 'Wait for condition', group: 'Logic', channel: 'linkedin', icon: <Clock className="h-4 w-4 text-slate-500" />, chip: 'bg-slate-100 dark:bg-slate-800/50' },
-  { type: 'condition', label: 'Router — fallback', group: 'Logic', channel: 'linkedin', icon: <GitFork className="h-4 w-4 text-rose-600" />, chip: 'bg-rose-50 dark:bg-rose-950/30', router: true },
+  { type: 'condition', label: 'Router (Fallback)', group: 'Logic', channel: 'linkedin', icon: <GitFork className="h-4 w-4 text-rose-600" />, chip: 'bg-rose-50 dark:bg-rose-950/30', router: true },
 ];
 
 const ROUTER_CHANNELS = [
@@ -215,23 +215,23 @@ const CONDITIONS = [
 // independent lookup so it can't break their exhaustiveness.
 const STEP_INSTRUCTIONS: Record<string, string> = {
   // Sources
-  zoho_recurring: 'Imports newly-created Zoho CRM contacts every day for the life of the campaign. Nothing is required — the tag filter is optional.',
+  zoho_recurring: 'Imports newly-created Zoho CRM contacts every day for the life of the campaign. Nothing is required - the tag filter is optional.',
   zoho_once: 'Imports contacts already synced from Zoho CRM, once. Nothing is required.',
   ghl_once: 'Imports contacts already synced from GoHighLevel, once. Nothing is required.',
-  ghl_recurring: 'Imports newly-created GoHighLevel contacts every day for the life of the campaign. Nothing is required — the tag filter is optional. GoHighLevel must be connected and synced first.',
-  file_import: "Imports leads from an uploaded CSV/Excel file. Needs a file with at least one column mapped to name, company, email, or LinkedIn URL. Rows with no LinkedIn URL are resolved automatically by name+company at send time — some may never match, and those retry indefinitely rather than fail. Map a LinkedIn URL column directly when you have one.",
+  ghl_recurring: 'Imports newly-created GoHighLevel contacts every day for the life of the campaign. Nothing is required - the tag filter is optional. GoHighLevel must be connected and synced first.',
+  file_import: "Imports leads from an uploaded CSV/Excel file. Needs a file with at least one column mapped to name, company, email, or LinkedIn URL. Rows with no LinkedIn URL are resolved automatically by name+company at send time - some may never match, and those retry indefinitely rather than fail. Map a LinkedIn URL column directly when you have one.",
   linkedin_search: 'Finds new leads by keyword, title, industry, or location. Needs at least one of those filled in.',
   linkedin_signal: 'Finds leads from hiring/buying signals. Needs a description of the signal to search for.',
   // LinkedIn outreach
-  linkedin_connect: "Sends a LinkedIn connection request — no prior connection needed. Needs an active LinkedIn account connected in Settings. Follow it with a Message step to reach leads once they accept.",
-  linkedin_message: "Sends a LinkedIn DM — but ONLY once a connection has already been accepted. If there is no Connection request step earlier in this sequence, the lead is never asked to connect, so this step waits for an acceptance that will never happen and no message is ever sent. Needs message text (supports {{first_name}}, {{company}}, {{web_insight}}, {{recent_post}}, {{article}}, {{news}}).",
-  linkedin_inmail: 'Sends a paid InMail straight to a non-connection — no prior connect step needed. Needs message text and a LinkedIn Premium / Sales Navigator / Recruiter seat with InMail credits on the sending account.',
+  linkedin_connect: "Sends a LinkedIn connection request - no prior connection needed. Needs an active LinkedIn account connected in Settings. Follow it with a Message step to reach leads once they accept.",
+  linkedin_message: "Sends a LinkedIn DM - but ONLY once a connection has already been accepted. If there is no Connection request step earlier in this sequence, the lead is never asked to connect, so this step waits for an acceptance that will never happen and no message is ever sent. Needs message text (supports {{first_name}}, {{company}}, {{web_insight}}, {{recent_post}}, {{article}}, {{news}}).",
+  linkedin_inmail: 'Sends a paid InMail straight to a non-connection - no prior connect step needed. Needs message text and a LinkedIn Premium / Sales Navigator / Recruiter seat with InMail credits on the sending account.',
   linkedin_visit: "Visits the lead's LinkedIn profile as a warm-up signal. Nothing is required; no sequence dependency, though it reads best placed before Connect/Message.",
   linkedin_follow: "Follows the lead's LinkedIn profile. Nothing is required; no sequence dependency.",
   // Other channels
   email_send: 'Sends an email. Needs a subject, a body, and a connected email sender.',
   whatsapp_send: 'Sends a WhatsApp message. Needs message text and a connected WhatsApp number.',
-  voice_agent_call: 'Places an AI voice call. Everything here is optional — with no agent selected the first available one is used, and the extra context is added to that agent\'s own instructions rather than replacing them.',
+  voice_agent_call: 'Places an AI voice call. Everything here is optional - with no agent selected the first available one is used, and the extra context is added to that agent\'s own instructions rather than replacing them.',
   condition: 'Pauses the lead here until the chosen condition (connection accepted, message replied, etc.) is met, then continues.',
   router: 'Watches the step placed right before it. After the set number of failed attempts, it stops retrying and reroutes the lead to the fallback channel instead.',
   // Macro nodes (by fixed id — see workflowTemplates.ts)
@@ -243,16 +243,16 @@ const STEP_INSTRUCTIONS: Record<string, string> = {
   [AI_STEP_ID]: 'Uses AI to clean up messy imported titles/names before outreach runs. Nothing is required. Most useful placed right after the contact source, before any outreach step.',
   [ENRICH_STEP_ID]: "Reveals a lead's email/phone via FullEnrich, spending credits per lead found. Nothing is required. Most useful before an Email or WhatsApp step that needs that contact info.",
   [EXPORT_STEP_ID]: 'Sends the final lead list to a file, database, email, WhatsApp, webhook, Sheet, or Slack. Needs at least one destination configured.',
-  [AUTOPOST_STEP_ID]: "Publishes on a recurring schedule to the tenant's own LinkedIn feed — not sent to leads. Needs post content from a LinkedIn content node.",
+  [AUTOPOST_STEP_ID]: "Publishes on a recurring schedule to the tenant's own LinkedIn feed - not sent to leads. Needs post content from a LinkedIn content node.",
   [CONTENT_STEP_ID]: 'Writes (or AI-generates) the text for the scheduled LinkedIn post.',
-  [APPROVAL_STEP_ID]: 'Holds a post for approval over WhatsApp/email before it publishes. Needs an approver contact, AND a LinkedIn auto-post node in this workflow — approval has nothing to gate without one.',
+  [APPROVAL_STEP_ID]: 'Holds a post for approval over WhatsApp/email before it publishes. Needs an approver contact, AND a LinkedIn auto-post node in this workflow - approval has nothing to gate without one.',
   // Rewritten against WebIntelStepService.executeWebScrapeStep, which resolves
   // `(stepConfig.url || '').trim() || resolveWebsite(leadData)`. The previous
   // text claimed a URL was required, that the step never uses the lead's own
   // site, and that {{web_insight}} comes from somewhere else — all three are
   // contradicted by that one line and by leadIntelTokens.resolveLeadIntelTokens,
   // where web_insight falls through to scrape.description || scrape.title.
-  [SCRAPE_STEP_ID]: "Reads a company website and stores the page text on the lead, so later steps have something concrete to work from. Runs before outreach. Leave the URL blank and it uses each lead's OWN site — their website field, else the domain from their work email. Enter a URL and every lead gets that same page instead. Whatever it reads feeds {{web_insight}} in your messages, unless a Web research node also ran, whose richer intel takes precedence.",
+  [SCRAPE_STEP_ID]: "Reads a company website and stores the page text on the lead, so later steps have something concrete to work from. Runs before outreach. Leave the URL blank and it uses each lead's OWN site - their website field, else the domain from their work email. Enter a URL and every lead gets that same page instead. Whatever it reads feeds {{web_insight}} in your messages, unless a Web research node also ran, whose richer intel takes precedence.",
   [RESEARCH_STEP_ID]: "Runs AI research on each lead's company from the open web. Nothing is required.",
   [SCORE_STEP_ID]: 'Scores each lead\'s buy-intent 0-100 and labels it hot/warm/cold. Nothing is required. Pairs naturally with a Multi-condition step placed right after it, to branch hot vs. cold leads.',
   [SPLIT_STEP_ID]: 'Sends variant A or B (roughly 50/50, sticky per lead) to compare two openers. Needs a message for BOTH variants.',
@@ -273,7 +273,7 @@ const AI_STARTERS: { label: string; prompt: string; icon: React.ReactNode; chip:
     label: 'LinkedIn outreach',
     chip: 'bg-[#0077B5]',
     icon: <Linkedin className="h-4 w-4 text-white" />,
-    prompt: 'Find [job title] at [industry] companies in [location], visit their profile, send a connection request, then message them once they accept — and follow up twice if they go quiet.',
+    prompt: 'Find [job title] at [industry] companies in [location], visit their profile, send a connection request, then message them once they accept - and follow up twice if they go quiet.',
   },
   {
     label: 'Email sequence',
@@ -692,11 +692,11 @@ function classifySamplePost(post: SamplePost, keywords: string[]): PostClassific
   ));
 
   const reason = !post.content.trim()
-    ? 'Empty post — nothing to match against.'
+    ? 'Empty post - nothing to match against.'
     : matched
       ? `${hit.length} of ${keywords.length} search keyword${keywords.length === 1 ? '' : 's'} appear in this post (${hit.join(', ')})${typeHit ? `, and it reads as a ${typeHit.label.toLowerCase()} signal` : ''}.`
       : hit.length
-        ? `Only ${hit.length} of ${keywords.length} search keywords appear (${hit.join(', ')}) — below the ${SIGNAL_MIN_MATCH_SCORE} relevance floor.`
+        ? `Only ${hit.length} of ${keywords.length} search keywords appear (${hit.join(', ')}) - below the ${SIGNAL_MIN_MATCH_SCORE} relevance floor.`
         : `None of the search keywords appear in this post${typeHit ? `, though it does read as a ${typeHit.label.toLowerCase()} signal` : ''}.`;
 
   return {
@@ -872,12 +872,12 @@ const POSTS_PATTERNS: RegExp[] = [
  */
 function signalRoute(signalQuery: string): { route: SignalRoute; reason: string } {
   const q = String(signalQuery || '').trim();
-  if (!q) return { route: 'posts', reason: 'No signal wording yet — the default source is posts.' };
+  if (!q) return { route: 'posts', reason: 'No signal wording yet - the default source is posts.' };
 
   if (AUTHORED_CONTENT_PATTERNS.some((re) => re.test(q))) {
     return {
       route: 'posts',
-      reason: 'This asks for people who WROTE something, which outranks any hiring words in it — so it searches the feed, and the lead is the author.',
+      reason: 'This asks for people who WROTE something, which outranks any hiring words in it - so it searches the feed, and the lead is the author.',
     };
   }
   if (JOBS_PATTERNS.some((re) => re.test(q))) {
@@ -932,7 +932,7 @@ function SignalTypeChips({ value, onChange, compact = false }: {
   return (
     <div>
       <div className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-        Common signals — tap to add the wording
+        Common signals - tap to add the wording
       </div>
       <div className="flex flex-wrap gap-1">
         {SIGNAL_TYPE_HINTS.filter((t) => !t.wellness).map((t) => (
@@ -952,9 +952,9 @@ function SignalTypeChips({ value, onChange, compact = false }: {
       </div>
       <p className="text-[10.5px] text-muted-foreground leading-snug mt-1">
         {compact
-          ? <>The classifier reads the type <em>out of</em> each post — nothing filters a search to one type, so these edit your wording.</>
+          ? <>The classifier reads the type <em>out of</em> each post - nothing filters a search to one type, so these edit your wording.</>
           : <>These are the signal types the classifier can report. It reads the type <em>out of</em> each
-            post — there is no setting that filters a search to one type — so these chips edit your wording
+            post - there is no setting that filters a search to one type - so these chips edit your wording
             rather than pretending to be a filter.</>}
       </p>
     </div>
@@ -1057,11 +1057,11 @@ function evaluateSampleJobs(jobs: SampleJob[], keywords: string[], titles: strin
       hit,
       missed,
       reason: !job.job_title.trim()
-        ? 'Empty listing — nothing to match against.'
+        ? 'Empty listing - nothing to match against.'
         : matched
           ? `${hit.length} of ${keywords.length} search keyword${keywords.length === 1 ? '' : 's'} appear in this listing (${hit.join(', ')}).`
           : hit.length
-            ? `Only ${hit.length} of ${keywords.length} search keywords appear (${hit.join(', ')}) — below the ${SIGNAL_MIN_MATCH_SCORE} relevance floor.`
+            ? `Only ${hit.length} of ${keywords.length} search keywords appear (${hit.join(', ')}) - below the ${SIGNAL_MIN_MATCH_SCORE} relevance floor.`
             : 'None of the search keywords appear in this listing.',
       company: matched ? (job.company_name.trim() || 'Unknown') : null,
       wouldEnrol: matched ? titles : [],
@@ -1130,13 +1130,13 @@ const SAMPLE_POST_SHAPES: {
     label: 'Should match',
     ageDays: 2,
     body: (signal, company) =>
-      `We're growing fast at ${company} and it's finally time — ${signal}. Doing this manually has become a real bottleneck this quarter. If this is your world, my DMs are open. Referrals very welcome.`,
+      `We're growing fast at ${company} and it's finally time - ${signal}. Doing this manually has become a real bottleneck this quarter. If this is your world, my DMs are open. Referrals very welcome.`,
   },
   {
     label: 'Borderline',
     ageDays: 11,
     body: (signal, company) =>
-      `Reflecting on the quarter at ${company}. We keep circling back to the same conversation — ${signal} — but nothing is signed off yet. Curious how other teams have approached it.`,
+      `Reflecting on the quarter at ${company}. We keep circling back to the same conversation - ${signal} - but nothing is signed off yet. Curious how other teams have approached it.`,
   },
   {
     label: 'Should NOT match',
@@ -1739,7 +1739,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         setWxError('Nothing found on that page. Some directories load their list with JavaScript, which this cannot read yet.');
       } else if (!data.complete) {
         // Never let a capped crawl read as an exhaustive one.
-        setWxNote(`Stopped early (${data.stoppedBecause}) — this list may be incomplete.`);
+        setWxNote(`Stopped early (${data.stoppedBecause}) - this list may be incomplete.`);
       }
     } catch (e: any) {
       setWxError(e?.message || 'Extraction failed');
@@ -1855,7 +1855,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
 
   const addRouter = () => {
     const id = `rt-${Date.now()}-${stepSeq++}`;
-    addWorkflowStep({ id, type: 'condition', channel: 'linkedin', title: 'Router — fallback', description: '3 tries → Email' });
+    addWorkflowStep({ id, type: 'condition', channel: 'linkedin', title: 'Router (Fallback)', description: '3 tries → Email' });
     setEditingId(id);
   };
 
@@ -2026,7 +2026,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       if (data?.success && data.content) {
         setCfg(eid, { content: data.content });
         updateWorkflowStep(eid, { description: data.content.slice(0, 40) });
-        setAutopostMsg({ ok: true, text: 'Draft generated — edit it below before posting.' });
+        setAutopostMsg({ ok: true, text: 'Draft generated - edit it below before posting.' });
       } else {
         setAutopostMsg({ ok: false, text: data?.error || 'Could not generate a post.' });
       }
@@ -2196,7 +2196,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       });
       const data = await res.json();
       if (!data?.success || !data?.lead) {
-        setTestError(data?.error || 'Could not generate a sample lead — fill the fields in yourself.');
+        setTestError(data?.error || 'Could not generate a sample lead - fill the fields in yourself.');
         return;
       }
       setTestLead((prev) => ({ ...prev, ...data.lead }));
@@ -2257,7 +2257,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   const generateAndTest = async () => {
     const signal = signalDraft.signal.trim();
     if (!signal) {
-      setSignalError('Describe the signal first — there is nothing to match on.');
+      setSignalError('Describe the signal first - there is nothing to match on.');
       return;
     }
     setSignalSampling(true); setSignalError(null); setSignalLive(null);
@@ -2353,7 +2353,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   /** Escape hatch: score one post the user pasted in, on its own. */
   const testManualPost = () => {
     const signal = signalDraft.signal.trim();
-    if (!signal) { setSignalError('Describe the signal first — there is nothing to match on.'); return; }
+    if (!signal) { setSignalError('Describe the signal first - there is nothing to match on.'); return; }
     if (!signalManual.content.trim()) { setSignalError('Paste the post text you want to check.'); return; }
     setSignalError(null); setSignalLive(null);
     // A pasted post is the posts route by definition, whatever the wording routes to.
@@ -2464,7 +2464,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     try {
       const definition = builderStateToDefinition({ source, workflowPreview, configs, perDay, days });
       await createStrategyMutation.mutateAsync({ name: name.trim(), definition });
-      setStrategyMsg({ ok: true, text: `Saved “${name.trim()}” — find it under My strategies.` });
+      setStrategyMsg({ ok: true, text: `Saved “${name.trim()}” - find it under My strategies.` });
     } catch (e: any) {
       const msg = e?.response?.data?.error || e?.message || 'Failed to save strategy.';
       setStrategyMsg({ ok: false, text: msg });
@@ -2486,7 +2486,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       const { warnings } = await importStrategyMutation.mutateAsync({ id: sharedId, name: t.name });
       applyTemplate(t);
       setStrategyMsg(warnings.length
-        ? { ok: false, text: `Imported with warnings: ${warnings.map((w) => `${w.type} — ${w.reason}`).join(' ')}` }
+        ? { ok: false, text: `Imported with warnings: ${warnings.map((w) => `${w.type} - ${w.reason}`).join(' ')}` }
         : { ok: true, text: `Imported “${t.name}” into your strategies.` });
     } catch (e: any) {
       const msg = e?.response?.data?.error || e?.message || 'Failed to import strategy.';
@@ -2733,7 +2733,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       // as the error text — a stack trace in the drawer tells the user nothing.
       const raw = await res.text();
       let d: any = null;
-      try { d = raw ? JSON.parse(raw) : null; } catch { /* not JSON — keep the status instead */ }
+      try { d = raw ? JSON.parse(raw) : null; } catch { /* not JSON - keep the status instead */ }
       if (!res.ok || !d?.url) throw new Error(d?.error || `Upload failed (${res.status})`);
       setCfg(targetStepId, {
         media_url: d.url,
@@ -2939,7 +2939,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         if (d?.success && Array.isArray(d.fields)) setZohoFields(d.fields);
         else { setZohoFields([]); setZohoFieldsError(d?.error || 'Could not load Zoho fields'); }
       })
-      .catch(() => { if (!cancelled) { setZohoFields([]); setZohoFieldsError('Could not load Zoho fields — is Zoho connected?'); } })
+      .catch(() => { if (!cancelled) { setZohoFields([]); setZohoFieldsError('Could not load Zoho fields - is Zoho connected?'); } })
       .finally(() => { if (!cancelled) setZohoFieldsLoading(false); });
     return () => { cancelled = true; };
   }, [editingId, zohoModule]);
@@ -2997,12 +2997,12 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       else if (step.type === 'linkedin_message' && !seenConnect) {
         issues.push({
           id: step.id,
-          message: "Add a 'Connection request' step before 'Message' — Message only sends once a connection is accepted, so without a Connect step earlier in the sequence it will wait forever and never send.",
+          message: "Add a 'Connection request' step before 'Message' - Message only sends once a connection is accepted, so without a Connect step earlier in the sequence it will wait forever and never send.",
         });
       }
     }
     if (workflowPreview.some((s) => s.id === APPROVAL_STEP_ID) && !workflowPreview.some((s) => s.id === AUTOPOST_STEP_ID)) {
-      issues.push({ id: APPROVAL_STEP_ID, message: 'The Approval node needs a LinkedIn post node — it gates what that node publishes.' });
+      issues.push({ id: APPROVAL_STEP_ID, message: 'The Approval node needs a LinkedIn post node - it gates what that node publishes.' });
     }
     // Broadcasts: catch the missing-required-field case here rather than letting
     // the backend validator answer with a 400 after the user hits Launch.
@@ -3084,7 +3084,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       const any = [sc.keywords, sc.job_titles, sc.industries, sc.locations]
         .some((v) => String(v || '').trim());
       if (!any) {
-        setError('Fill the LinkedIn Search targeting — at least one of job title, industry, location, or keywords.');
+        setError('Fill the LinkedIn Search targeting - at least one of job title, industry, location, or keywords.');
         setEditingId(SOURCE_STEP_ID);
         return;
       }
@@ -3144,7 +3144,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     if (workflowPreview.some((s) => s.id === SPLIT_STEP_ID)) {
       const spc = configs[SPLIT_STEP_ID] || {};
       if (!(spc.a?.body || '').trim() || !(spc.b?.body || '').trim()) {
-        setError('Write a message for BOTH variants in the A/B split test — otherwise there is nothing to compare.');
+        setError('Write a message for BOTH variants in the A/B split test - otherwise there is nothing to compare.');
         setEditingId(SPLIT_STEP_ID); return;
       }
     }
@@ -3164,7 +3164,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         setEditingId(APPROVAL_STEP_ID); return;
       }
       if (!workflowPreview.some((s) => s.id === AUTOPOST_STEP_ID)) {
-        setError('The Approval node needs a LinkedIn post node — it gates what that node publishes.');
+        setError('The Approval node needs a LinkedIn post node - it gates what that node publishes.');
         setEditingId(APPROVAL_STEP_ID); return;
       }
     }
@@ -3302,7 +3302,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             website: val(r, idx.website) || undefined,
           };
         }).filter((l) => l.name || l.company_name || l.email || l.linkedin_url);
-        if (!initialLeads.length) throw new Error('No usable rows after mapping — check your column mapping.');
+        if (!initialLeads.length) throw new Error('No usable rows after mapping - check your column mapping.');
       } else {
         // One-time import: fetch synced contacts now → initial_leads at create.
         const limit = Math.min(500, Math.max(1, parseInt(srcCfg.import_count, 10) || 100));
@@ -3317,7 +3317,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         // scheduled post can't run. Blocking here stopped a post-only workflow
         // from launching just because a source had been picked.
         if (!rows.length && !publisherOnly) {
-          throw new Error('No synced contacts found for this source — sync it first.');
+          throw new Error('No synced contacts found for this source - sync it first.');
         }
         initialLeads = rows.map((c: any, i: number) => ({
           id: String(c.source_id || c.id || i),
@@ -3858,7 +3858,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           // an empty canvas over a live campaign, say so — the nodes cannot be
           // recovered and overwriting would delete the workflow.
           setName(camp?.name || '');
-          setError('This Accelerator was created before edits were supported, so its steps cannot be reopened. Relaunching here would replace it — build it again, or leave it running.');
+          setError('This Accelerator was created before edits were supported, so its steps cannot be reopened. Relaunching here would replace it - build it again, or leave it running.');
         }
       } catch {
         setError('Could not load this Accelerator for editing.');
@@ -4175,7 +4175,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 </label>
               )}
               <p className="text-[11px] leading-snug text-muted-foreground">
-                Finds each contact&apos;s Instagram handle (from their Zoho profile, website, or search) and maps them to Instagram for inbound engagement. Read-only — Meta&apos;s API does not permit auto-following, liking, or DMing.
+                Finds each contact&apos;s Instagram handle (from their Zoho profile, website, or search) and maps them to Instagram for inbound engagement. Read-only - Meta&apos;s API does not permit auto-following, liking, or DMing.
               </p>
             </div>
           </>)}
@@ -4202,12 +4202,12 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             {/* Disclosure 1: not-connected is a distinct outcome server-side, and
                 invisible here without a probe. /contacts/local ensures the table
                 exists before reading, so it cannot separate "never connected"
-                from "connected, nothing synced" — the copy names both rather
+                from "connected, nothing synced" - the copy names both rather
                 than claiming to know which. */}
             {ghlContactsKnown && ghlContactCount === 0 && (
               <div className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 p-2.5 text-[11.5px] text-amber-900 dark:text-amber-200 leading-snug">
                 <strong>No synced GoHighLevel contacts found.</strong> Either the integration is not connected
-                yet or it has not run a sync. This source will import nothing until it has — connect and sync
+                yet or it has not run a sync. This source will import nothing until it has - connect and sync
                 GoHighLevel in Settings, then this campaign picks up new contacts on its next daily run.
               </div>
             )}
@@ -4231,7 +4231,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 </label>
               )}
               <p className="text-[11px] leading-snug text-muted-foreground">
-                Finds each contact&apos;s Instagram handle (from their GoHighLevel profile, website, or search) and maps them to Instagram for inbound engagement. Read-only — Meta&apos;s API does not permit auto-following, liking, or DMing.
+                Finds each contact&apos;s Instagram handle (from their GoHighLevel profile, website, or search) and maps them to Instagram for inbound engagement. Read-only - Meta&apos;s API does not permit auto-following, liking, or DMing.
               </p>
             </div>
           </>)}
@@ -4250,7 +4250,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
             <p className="text-xs text-muted-foreground">
               A page like this gives you <span className="font-medium text-foreground">companies</span>, not people.
-              Name the roles and LinkedIn is searched for whoever holds them at each company — leave it
+              Name the roles and LinkedIn is searched for whoever holds them at each company - leave it
               blank and there is nobody to contact.
             </p>
             <button type="button" onClick={runWebExtract} disabled={wxRunning || !wxUrl.trim()}
@@ -4306,7 +4306,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               <Input value={cfg.locations || ''} onChange={(e) => setCfg(editingId, { locations: e.target.value })} placeholder="e.g. Dubai, United Arab Emirates" /></div>
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Extra keywords (optional)</label>
               <Input value={cfg.keywords || ''} onChange={(e) => setCfg(editingId, { keywords: e.target.value })} placeholder="Anything else to match on" />
-              <p className="text-[11px] text-muted-foreground">Fill at least one field above — the search needs a title, industry, location, or keyword.</p></div>
+              <p className="text-[11px] text-muted-foreground">Fill at least one field above - the search needs a title, industry, location, or keyword.</p></div>
           </>)}
           {isSource && source === 'linkedin_signal' && (<>
             <div className="space-y-1">
@@ -4331,7 +4331,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 onChange={(next) => setCfg(editingId, { signal_query: next })}
                 compact />
               {/* One line, because tapping "Hiring" silently changes which source
-                  runs — and the Location helper below already talks about "the
+                  runs - and the Location helper below already talks about "the
                   jobs route", which reads as a non-sequitur if the route was
                   never named. Deliberately a line and not the test panel's box. */}
               {!!(cfg.signal_query || '').trim() && (() => {
@@ -4353,13 +4353,13 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               {/* These titles mean two different things depending on which source the
                   signal wording routes to, which is why the copy names both.
 
-                  POSTS — `decision_maker_titles` is read in
+                  POSTS - `decision_maker_titles` is read in
                   LeadGenerationService.executeSignalLeadGeneration and passed to
                   SignalDetectionService as intent.job_titles, whose only consumer is the
                   post-search keyword list. Nothing compares them to the author; the lead
                   enrolled is the post's author. So on this path they are search terms.
 
-                  JOBS — a job listing has no author, so the match yields a COMPANY and the
+                  JOBS - a job listing has no author, so the match yields a COMPANY and the
                   titles select which decision-makers at that company get enrolled. On this
                   path they genuinely do filter who is enrolled.
 
@@ -4384,7 +4384,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 That is the POSTS route, and it was the only route when this copy
                 was written. On the JOBS route the field does nothing at all: the
                 Unipile jobs search filters by LinkedIn location IDs, not typed
-                place names, and no resolver is wired — the backend logs a
+                place names, and no resolver is wired - the backend logs a
                 warning and searches worldwide. Nobody sees a server log, so a
                 user who types "Dubai" here would believe they had scoped the
                 search. Hence the split.
@@ -4396,13 +4396,13 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     The jobs search needs LinkedIn&apos;s own location IDs rather than a typed place name, so
                     results come back <strong>worldwide</strong>. Either filter the leads afterwards, or
                     reword the signal so it looks for what people <em>posted about</em> rather than for open
-                    roles — location does work on that route.
+                    roles - location does work on that route.
                   </p>
                 </div>
               ) : (
                 <p className="text-[11px] text-muted-foreground">
                   Leave blank to search worldwide. LinkedIn can’t filter posts by place, so Mr LAD
-                  searches everywhere and then keeps only people whose profile location matches —
+                  searches everywhere and then keeps only people whose profile location matches -
                   a very specific place may find fewer leads.
                 </p>
               )}
@@ -4490,7 +4490,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                       )}
                       {!t.template_id && t.touch_type !== 'industry_trend' && t.touch_type !== 'company_page_post' && (
                         <textarea className={`${field} min-h-[64px]`} value={t.message || ''} onChange={(e) => setTouch(i, { message: e.target.value })}
-                          placeholder={`Message for touch ${i + 1} — leave blank to let Mr LAD draft it`} />
+                          placeholder={`Message for touch ${i + 1} - leave blank to let Mr LAD draft it`} />
                       )}
                     </div>
                   );
@@ -4515,7 +4515,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     </span>
                     <span className="block text-[11px] text-muted-foreground leading-snug">
                       Play the whole cadence against a sample lead and read what each touch would
-                      actually send — before you launch.
+                      actually send - before you launch.
                     </span>
                   </span>
                 </a>
@@ -4555,13 +4555,13 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             </div>
             {/* The two channels genuinely differ now, so this is no longer one
                 sentence with a swapped noun. WhatsApp goes from the Mr LAD
-                number as a PDF — template body parameters cannot hold the
+                number as a PDF - template body parameters cannot hold the
                 multi-line breakdown, and one message per lead would read as
                 spam. Email still sends from the tenant's own mailbox with the
                 breakdown inline, because it has neither constraint. */}
             <p className="text-xs text-muted-foreground">
               {(cfg.channel || 'email') === 'whatsapp'
-                ? 'Sent from the Mr LAD WhatsApp number as a PDF attachment — one message, however many leads there are.'
+                ? 'Sent from the Mr LAD WhatsApp number as a PDF attachment - one message, however many leads there are.'
                 : 'Sent by Mr LAD via your connected email account while the campaign is running.'}
             </p>
           </>)}
@@ -4584,7 +4584,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               )}
               <p className="text-[11px] leading-snug text-muted-foreground">
                 Uses the tenant&apos;s connected MindBody account. MindBody identifies clients by phone, so a lead
-                with no phone number is skipped rather than booked under a guess. A booking is attempted once —
+                with no phone number is skipped rather than booked under a guess. A booking is attempted once -
                 a failure is recorded and the lead moves on rather than being re-booked every run.
               </p>
             </>);
@@ -4596,7 +4596,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             return (<>
               <div className="rounded-md bg-muted/50 px-2.5 py-2">
                 <p className="text-[11px] leading-snug text-muted-foreground">
-                  This runs <strong>once for the whole campaign</strong>, not once per lead — so where it sits on the
+                  This runs <strong>once for the whole campaign</strong>, not once per lead - so where it sits on the
                   canvas doesn&apos;t change when it fires.
                 </p>
               </div>
@@ -4659,17 +4659,17 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     </div>
                     <select className={field} value={cfg.group_id || ''}
                       onChange={(e) => setCfg(eid, { group_id: e.target.value })}>
-                      <option value="">— Choose an audience —</option>
+                      <option value="">- Choose an audience -</option>
                       {bcGroups.map((g) => (
                         <option key={g.id} value={g.id} disabled={!g.is_active}>
-                          {g.name} ({g.member_count}){g.is_active ? '' : ' — inactive'}
+                          {g.name} ({g.member_count}){g.is_active ? '' : ' - inactive'}
                         </option>
                       ))}
                     </select>
                     {bcGroupsLoading && <p className="text-[11px] text-muted-foreground">Loading audiences…</p>}
                     {bcGroupsError && <p className="text-[11px] text-amber-700 dark:text-amber-500">{bcGroupsError}</p>}
                     {!bcGroupsLoading && !bcGroups.length && !bcGroupsError && (
-                      <p className="text-[11px] text-muted-foreground">No saved audiences yet — create one, then add people to it.</p>
+                      <p className="text-[11px] text-muted-foreground">No saved audiences yet - create one, then add people to it.</p>
                     )}
                     {chosen && chosen.member_count === 0 && (
                       <p className="text-[11px] text-amber-700 dark:text-amber-500">
@@ -4704,7 +4704,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     onChange={(e) => setCfg(eid, { template_language: e.target.value })} /></div>
                 <p className="text-[11px] leading-snug text-muted-foreground">
                   A broadcast is business-initiated, so WhatsApp&apos;s 24-hour window is shut and free text cannot be
-                  delivered — Meta accepts it and then fails it silently. An <strong>approved template</strong> is required.
+                  delivered - Meta accepts it and then fails it silently. An <strong>approved template</strong> is required.
                 </p>
               </>) : (<>
                 <div className="space-y-1"><label className="text-xs font-medium text-foreground">Subject</label>
@@ -4719,7 +4719,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     onChange={(e) => setCfg(eid, { unsubscribe_url: e.target.value })} />
                   {!cfg.unsubscribe_url && (
                     <p className="text-[11px] leading-snug text-amber-700 dark:text-amber-500">
-                      Without a List-Unsubscribe header, bulk email is very likely to be filed as spam — whatever the
+                      Without a List-Unsubscribe header, bulk email is very likely to be filed as spam - whatever the
                       law says in your market.
                     </p>
                   )}</div>
@@ -4760,14 +4760,14 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     <div key={f.api_name} className="grid grid-cols-2 gap-2 items-center">
                       <span className="text-xs text-foreground truncate" title={`${f.field_label} (${f.data_type})`}>{f.field_label}</span>
                       <select className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs" value={zmap[f.api_name] || ''} onChange={(e) => setMap(f.api_name, e.target.value)}>
-                        <option value="">— Skip —</option>
+                        <option value="">- Skip -</option>
                         {WORKFLOW_DATA_POINTS.map((dp) => <option key={dp.key} value={dp.key}>{dp.label}</option>)}
                       </select>
                     </div>
                   ))}
                 </div>
               )}
-              <p className="text-[11px] leading-snug text-muted-foreground">Runs when a lead finishes the sequence — writes the mapped workflow &amp; enrichment data back onto its original Zoho record. Only non-empty values are written; blank fields are left untouched.</p>
+              <p className="text-[11px] leading-snug text-muted-foreground">Runs when a lead finishes the sequence - writes the mapped workflow &amp; enrichment data back onto its original Zoho record. Only non-empty values are written; blank fields are left untouched.</p>
             </>);
           })()}
 
@@ -4802,7 +4802,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   {mediaBuilder.loadingGallery ? (
                     <p className="py-3 text-center text-xs text-muted-foreground flex items-center justify-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</p>
                   ) : (!imgs.length && !vids.length) ? (
-                    <p className="py-3 text-center text-xs text-muted-foreground">No generated media yet — use the studio first.</p>
+                    <p className="py-3 text-center text-xs text-muted-foreground">No generated media yet - use the studio first.</p>
                   ) : (
                     <div className="grid grid-cols-3 gap-2 max-h-52 overflow-y-auto">
                       {imgs.map((it: any, i: number) => { const u = it?.url || it?.signed_url || (typeof it === 'string' ? it : ''); return u ? (
@@ -4870,7 +4870,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 <span className="text-xs font-semibold text-foreground">Otherwise (else)</span>
                 <BranchBody b={def} onChange={(p) => setCfg(eid, { default: { ...def, ...p } })} />
               </div>
-              <p className="text-[11px] leading-snug text-muted-foreground">Each lead runs exactly ONE branch — the first condition that matches, else the fallback. Conditions are checked top-to-bottom.</p>
+              <p className="text-[11px] leading-snug text-muted-foreground">Each lead runs exactly ONE branch - the first condition that matches, else the fallback. Conditions are checked top-to-bottom.</p>
             </>);
           })()}
 
@@ -4881,7 +4881,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 onChange={(e) => setCfg(editingId!, { instruction: e.target.value })}
                 placeholder={AI_DEFAULT_INSTRUCTION} />
             </div>
-            <p className="text-[11px] leading-snug text-muted-foreground">Runs on each lead before the outreach steps. It normalises the data — e.g. picks the single best job title when the column has a mix — and writes it back so the LinkedIn node resolves the right person. Uses your tenant&apos;s AI model.</p>
+            <p className="text-[11px] leading-snug text-muted-foreground">Runs on each lead before the outreach steps. It normalises the data - e.g. picks the single best job title when the column has a mix - and writes it back so the LinkedIn node resolves the right person. Uses your tenant&apos;s AI model.</p>
           </>)}
 
           {isDataEnrich && (() => {
@@ -4915,7 +4915,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             return (<>
               <div className="rounded-md border border-sky-200 bg-sky-50 dark:border-sky-900 dark:bg-sky-950/30 px-3 py-2">
                 <p className="text-[11px] text-sky-800 dark:text-sky-300">
-                  Posts to your own LinkedIn feed on a schedule while the campaign runs — it warms
+                  Posts to your own LinkedIn feed on a schedule while the campaign runs - it warms
                   your profile so the people you reach out to see recent activity. This posts
                   <strong> once per schedule</strong>, not once per lead.
                 </p>
@@ -5145,7 +5145,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                           <p className="text-[13px] font-medium text-foreground leading-snug">{p.question}</p>
                           {p.description && <p className="text-[11.5px] text-muted-foreground leading-snug">{p.description}</p>}
                           {isDescribe && (
-                            <p className="text-[11px] text-fuchsia-700 dark:text-fuchsia-300">Pre-filled from your post — edit if you want a different image.</p>
+                            <p className="text-[11px] text-fuchsia-700 dark:text-fuchsia-300">Pre-filled from your post - edit if you want a different image.</p>
                           )}
                           <textarea className={`${field} min-h-[80px]`} value={inlineAnswer}
                             onChange={(e) => setInlineAnswer(e.target.value)} placeholder="Type your answer…" />
@@ -5170,7 +5170,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                               {p.question || 'Pick an image for your post'}
                             </p>
                             {!outImgs.length ? (
-                              <p className="text-[12px] text-muted-foreground">No images came back — try the full studio.</p>
+                              <p className="text-[12px] text-muted-foreground">No images came back - try the full studio.</p>
                             ) : (
                               <div className="grid grid-cols-2 gap-2">
                                 {outImgs.map((im: any, i: number) => {
@@ -5204,7 +5204,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                           already the brief, so making everyone sit through the
                           questionnaire to restate it is the wrong default. */}
                       <button type="button" onClick={() => openStudio(true)} disabled={inlineMedia || !(cfg.content || '').trim()}
-                        title={!(cfg.content || '').trim() ? 'Write or generate the post first — the copy is what the image is based on' : undefined}
+                        title={!(cfg.content || '').trim() ? 'Write or generate the post first - the copy is what the image is based on' : undefined}
                         className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-fuchsia-300 bg-fuchsia-50 dark:bg-fuchsia-950/30 px-2.5 py-2 text-[12.5px] font-medium text-fuchsia-700 dark:text-fuchsia-300 hover:bg-fuchsia-100 dark:hover:bg-fuchsia-900/40 disabled:opacity-50">
                         <Wand2 className="h-3.5 w-3.5" /> Generate with AI
                       </button>
@@ -5231,7 +5231,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                         {mediaBuilder.loadingGallery ? (
                           <p className="py-3 text-center text-xs text-muted-foreground flex items-center justify-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</p>
                         ) : (!imgs.length && !vids.length) ? (
-                          <p className="py-3 text-center text-xs text-muted-foreground">Nothing generated yet — use Generate with AI first.</p>
+                          <p className="py-3 text-center text-xs text-muted-foreground">Nothing generated yet - use Generate with AI first.</p>
                         ) : (
                           <div className="grid grid-cols-3 gap-2 max-h-52 overflow-y-auto">
                             {imgs.map((it: any, i: number) => { const u = it?.url || it?.signed_url || (typeof it === 'string' ? it : ''); return u ? (
@@ -5278,7 +5278,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               <div className="rounded-md border border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30 px-3 py-2">
                 <p className="text-[11px] text-green-800 dark:text-green-300">
                   Nothing is published until you approve it. At each scheduled slot the post is
-                  drafted and sent to you — tap <strong>Approve</strong> and it goes out immediately.
+                  drafted and sent to you - tap <strong>Approve</strong> and it goes out immediately.
                 </p>
               </div>
               <div className="space-y-1"><label className="text-xs font-medium text-foreground">Send the draft to</label>
@@ -5295,7 +5295,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   placeholder={(cfg.approval_channel || 'whatsapp') === 'email' ? 'you@company.com' : '+971500000000'} />
               </div>
               <p className="text-[11px] leading-snug text-muted-foreground">
-                A draft nobody answers is released after 48 hours so the schedule keeps running —
+                A draft nobody answers is released after 48 hours so the schedule keeps running -
                 that slot is skipped, not posted.
               </p>
             </>);
@@ -5328,7 +5328,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   {liOrganizations.map((o) => <option key={o.id} value={o.id}>{o.name} (company page)</option>)}
                 </select>
                 {liOrganizations.length === 0 && (
-                  <p className="text-[11px] text-muted-foreground">No company pages found for this account — posting to your personal profile.</p>
+                  <p className="text-[11px] text-muted-foreground">No company pages found for this account - posting to your personal profile.</p>
                 )}</div>
 
               <div className="space-y-1"><label className="text-xs font-medium text-foreground">How often</label>
@@ -5362,7 +5362,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               {(() => {
                 const first = autopostFirstRun(freq, days, cfg.time || '09:00');
                 if (!first) {
-                  return <p className="text-[11px] text-amber-600">This schedule never fires — check the days and time.</p>;
+                  return <p className="text-[11px] text-amber-600">This schedule never fires - check the days and time.</p>;
                 }
                 const { next, away, dayGap, missedToday } = first;
                 // Amber once the first post is more than a day out — the case
@@ -5376,7 +5376,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     <p className={`text-[11.5px] ${far ? 'text-amber-800 dark:text-amber-300' : 'text-foreground'}`}>
                       First post: <strong>{next.toLocaleString(undefined, {
                         weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
-                      })}</strong> — {away}.
+                      })}</strong> - {away}.
                     </p>
                     {missedToday && (
                       <p className="text-[11px] text-amber-700/80 dark:text-amber-400/80 mt-0.5">
@@ -5416,11 +5416,11 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               <div className="rounded-md border border-pink-200 bg-pink-50 dark:border-pink-900 dark:bg-pink-950/30 px-3 py-2">
                 <p className="text-[11px] text-pink-800 dark:text-pink-300">
                   Randomly sends each lead <strong>one</strong> of two variants, so you can compare openers
-                  in a single campaign. The assignment sticks — a lead never receives both.
+                  in a single campaign. The assignment sticks - a lead never receives both.
                 </p>
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-foreground">Split — {pct}% A / {100 - pct}% B</label>
+                <label className="text-xs font-medium text-foreground">Split - {pct}% A / {100 - pct}% B</label>
                 <input type="range" min={10} max={90} step={5} value={pct} className="w-full"
                   onChange={(e) => { setCfg(eid, { split_pct: parseInt(e.target.value, 10) }); updateWorkflowStep(eid, { description: `${e.target.value} / ${100 - parseInt(e.target.value, 10)}` }); }} />
               </div>
@@ -5459,7 +5459,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 </button>
               </div>
               <div className="space-y-1"><label className="text-xs font-medium text-foreground">Tags</label>
-                <input className={field} value={cfg.tags || ''} onChange={(e) => setCfg(eid, { tags: e.target.value })} placeholder="hot-lead, webinar — comma separated" />
+                <input className={field} value={cfg.tags || ''} onChange={(e) => setCfg(eid, { tags: e.target.value })} placeholder="hot-lead, webinar - comma separated" />
                 <p className="text-[11px] text-muted-foreground">Added to any tags the lead already has.</p></div>
             </>);
           })()}
@@ -5474,7 +5474,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             return (<>
               <div className="rounded-md border border-pink-200 bg-pink-50 dark:border-pink-800 dark:bg-pink-950/30 px-3 py-2">
                 <p className="text-[11px] text-pink-900 dark:text-pink-200">
-                  Posts to <strong>your own Instagram account</strong> on a schedule — one post
+                  Posts to <strong>your own Instagram account</strong> on a schedule - one post
                   per campaign, not one per lead.
                 </p>
               </div>
@@ -5496,7 +5496,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   onChange={(e) => setCfg(eid, { media_url: e.target.value })}
                   placeholder={isReel ? 'https://…/video.mp4' : 'https://…/image.jpg'} />
                 <p className="text-[11px] text-muted-foreground">
-                  Instagram downloads this itself, so it has to be publicly reachable — a
+                  Instagram downloads this itself, so it has to be publicly reachable - a
                   private or expiring link fails while Instagram processes it, not when you save.
                 </p>
               </div>
@@ -5723,7 +5723,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     ? (hasLanding
                       ? 'Your landing page will offer this as a download once someone fills the form.'
                       : 'Add a Landing page node and this becomes a download people can fill a form to get.')
-                    : 'A per-lead report cannot go on a landing page — one public URL is shared by every visitor, so there is no way to know whose report to show. Switch to the campaign industry for that.'}
+                    : 'A per-lead report cannot go on a landing page - one public URL is shared by every visitor, so there is no way to know whose report to show. Switch to the campaign industry for that.'}
                 </p>
               </div>
             </>);
@@ -5736,7 +5736,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               <div className="rounded-md border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30 px-3 py-2">
                 <p className="text-[11px] text-amber-900 dark:text-amber-200">
                   <strong>Pauses each lead here</strong> until a person confirms. Use it for work
-                  Mr LAD cannot do itself — recording a video, building a deck, a judgement call.
+                  Mr LAD cannot do itself - recording a video, building a deck, a judgement call.
                 </p>
               </div>
 
@@ -5774,7 +5774,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   onChange={(e) => setCfg(eid, { assignee_to: e.target.value })}
                   placeholder={isWa ? '+9715…' : 'someone@yourcompany.com'} />
                 <p className="text-[11px] text-muted-foreground">
-                  They get a link to confirm — no Mr LAD login needed. Without someone to
+                  They get a link to confirm - no Mr LAD login needed. Without someone to
                   notify, leads would wait here forever.
                 </p>
               </div>
@@ -6071,7 +6071,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 <p className="text-[11px] text-muted-foreground">Stored on the lead under this name.</p></div>
               <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30 px-3 py-2">
                 <p className="text-[11px] text-amber-800 dark:text-amber-300">
-                  Public http/https addresses only — private, loopback and cloud-metadata hosts are refused.
+                  Public http/https addresses only - private, loopback and cloud-metadata hosts are refused.
                 </p>
               </div>
             </>);
@@ -6099,12 +6099,12 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               </p>
             </div>
             <p className="text-[12px] text-muted-foreground leading-snug">
-              Nothing to configure — the company name comes from each lead. Leads without a company are
+              Nothing to configure - the company name comes from each lead. Leads without a company are
               skipped automatically.
             </p>
             <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30 px-3 py-2">
               <p className="text-[11px] text-amber-800 dark:text-amber-300">
-                Costs LLM credits per lead and takes several seconds each — best paired with a lead-scoring
+                Costs LLM credits per lead and takes several seconds each - best paired with a lead-scoring
                 step so you only research leads worth the spend.
               </p>
             </div>
@@ -6114,7 +6114,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             <div className="rounded-md border border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950/30 px-3 py-2">
               <p className="text-[11px] text-yellow-800 dark:text-yellow-300">
                 Scores each lead <strong>0-100</strong> on buy intent (ICP fit + seniority + signals) and tags
-                them <strong>hot / warm / cold</strong>. Free — no external calls.
+                them <strong>hot / warm / cold</strong>. Free - no external calls.
               </p>
             </div>
             <p className="text-[12px] text-muted-foreground leading-snug">
@@ -6123,7 +6123,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             </p>
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Companies hiring (optional)</label>
               <input className={field} value={cfg.hiring_companies || ''} onChange={(e) => setCfg(editingId!, { hiring_companies: e.target.value })}
-                placeholder="Acme, Globex — comma separated" /></div>
+                placeholder="Acme, Globex - comma separated" /></div>
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Recently funded (optional)</label>
               <input className={field} value={cfg.funding_companies || ''} onChange={(e) => setCfg(editingId!, { funding_companies: e.target.value })}
                 placeholder="Comma separated" /></div>
@@ -6189,7 +6189,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               {has('google_sheets') && (
                 <div className="space-y-1"><label className="text-xs font-medium text-foreground">Google Sheet ID</label>
                   <input className={field} value={cfg.sheet_id || ''} onChange={(e) => setCfg(eid, { sheet_id: e.target.value })} placeholder="1AbC…xyz (from the sheet URL)" />
-                  <p className="text-[11px] text-muted-foreground">Uses your connected Google account — the Sheets scope must be granted.</p></div>
+                  <p className="text-[11px] text-muted-foreground">Uses your connected Google account - the Sheets scope must be granted.</p></div>
               )}
               {has('slack') && (
                 <div className="space-y-1"><label className="text-xs font-medium text-foreground">Slack incoming webhook</label>
@@ -6232,7 +6232,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 <p className="text-[11px] leading-snug text-muted-foreground">
                   {source === 'file_import'
                     ? 'Runs the export against the leads loaded above, so you can check the file and confirm your destinations work.'
-                    : 'Sends a test export (no leads are loaded yet for this source) — useful to confirm the destination settings are valid.'}
+                    : 'Sends a test export (no leads are loaded yet for this source) - useful to confirm the destination settings are valid.'}
                 </p>
                 {exportResult && (
                   <div className={`rounded-md border p-2.5 text-[11px] ${exportResult.success ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/30' : 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30'}`}>
@@ -6240,7 +6240,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     {typeof exportResult.count === 'number' && <p className="text-foreground font-medium">{exportResult.count} row{exportResult.count !== 1 ? 's' : ''} exported</p>}
                     {exportResult.results && Object.entries(exportResult.results).map(([k, v]: any) => (
                       <p key={k} className={v.ok ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}>
-                        {v.ok ? '✓' : '✕'} {k}{v.error ? ` — ${v.error}` : ''}{v.skipped ? ` — ${v.skipped}` : ''}
+                        {v.ok ? '✓' : '✕'} {k}{v.error ? ` - ${v.error}` : ''}{v.skipped ? ` - ${v.skipped}` : ''}
                       </p>
                     ))}
                     {exportResult.file_url && (
@@ -6254,7 +6254,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
 
           {!isSource && (editingStep.type === 'linkedin_connect' || editingStep.type === 'linkedin_message') && (<>
             {/* Who is this actually going to? Built from the SOURCE node's
-                targeting, because that is what decides who gets enrolled — this
+                targeting, because that is what decides who gets enrolled - this
                 node only decides what they receive. Connection requests cannot
                 be unsent, so seeing the people first is worth the extra call. */}
             {(() => {
@@ -6292,7 +6292,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   const t = res.liTemplates.find((x: any) => String(x.id) === e.target.value);
                   setCfg(editingId!, { linkedin_template_id: e.target.value || undefined, message: t?.content ?? t?.message ?? cfg.message });
                 }}>
-                  <option value="">— None (write below / AI-drafted) —</option>
+                  <option value="">- None (write below / AI-drafted) -</option>
                   {res.liTemplates.map((t: any) => <option key={t.id} value={t.id}>{t.name || t.title || 'Template'}</option>)}
                 </select></div>
             )}
@@ -6313,7 +6313,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   const t = res.liTemplates.find((x: any) => String(x.id) === e.target.value);
                   setCfg(editingId!, { linkedin_template_id: e.target.value || undefined, message: t?.content ?? t?.message ?? cfg.message });
                 }}>
-                  <option value="">— None (write below / AI-drafted) —</option>
+                  <option value="">- None (write below / AI-drafted) -</option>
                   {res.liTemplates.map((t: any) => <option key={t.id} value={t.id}>{t.name || t.title || 'Template'}</option>)}
                 </select></div>
             )}
@@ -6327,17 +6327,17 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           {!isSource && editingStep.type === 'whatsapp_send' && (<>
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">WhatsApp account</label>
               <select className={field} value={cfg.whatsapp_account_id || ''} onChange={(e) => setCfg(editingId!, { whatsapp_account_id: e.target.value || undefined })}>
-                <option value="">— Default connected account —</option>
+                <option value="">- Default connected account -</option>
                 {res.waAccounts.map((a: any) => <option key={a.id} value={a.id}>{a.slug || a.display_name || a.phone_number || a.id}</option>)}
               </select>
-              {res.waAccounts.length === 0 && <p className="text-[11px] text-muted-foreground">No WhatsApp account connected — connect one in Settings.</p>}</div>
+              {res.waAccounts.length === 0 && <p className="text-[11px] text-muted-foreground">No WhatsApp account connected - connect one in Settings.</p>}</div>
             {res.waTemplates.length > 0 && (
               <div className="space-y-1"><label className="text-xs font-medium text-foreground">Template (optional)</label>
                 <select className={field} value={cfg.whatsapp_template_id || ''} onChange={(e) => {
                   const t = res.waTemplates.find((x: any) => String(x.id) === e.target.value);
                   setCfg(editingId!, { whatsapp_template_id: e.target.value || undefined, message: t?.content ?? t?.body ?? cfg.message });
                 }}>
-                  <option value="">— None (write below / AI-drafted) —</option>
+                  <option value="">- None (write below / AI-drafted) -</option>
                   {res.waTemplates.map((t: any) => <option key={t.id} value={t.id}>{t.name || t.title || 'Template'}</option>)}
                 </select></div>
             )}
@@ -6351,17 +6351,17 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 const s = res.emailSenders.find((x: any) => x.email === e.target.value);
                 setCfg(editingId!, { from_email: e.target.value || undefined, email_provider: s?.provider || undefined });
               }}>
-                <option value="">— Default connected account —</option>
+                <option value="">- Default connected account -</option>
                 {res.emailSenders.map((s: any) => <option key={s.email} value={s.email}>{s.email}{s.provider ? ` (${s.provider})` : ''}</option>)}
               </select>
-              {res.emailSenders.length === 0 && <p className="text-[11px] text-muted-foreground">No email account connected — connect Gmail/Outlook in Settings.</p>}</div>
+              {res.emailSenders.length === 0 && <p className="text-[11px] text-muted-foreground">No email account connected - connect Gmail/Outlook in Settings.</p>}</div>
             {res.emailTemplates.length > 0 && (
               <div className="space-y-1"><label className="text-xs font-medium text-foreground">Template (optional)</label>
                 <select className={field} value={cfg.template_id || ''} onChange={(e) => {
                   const t = res.emailTemplates.find((x: any) => String(x.id) === e.target.value);
                   setCfg(editingId!, { template_id: e.target.value || undefined, subject: t?.subject ?? cfg.subject, body: t?.body ?? t?.content ?? cfg.body });
                 }}>
-                  <option value="">— None (write below / AI-drafted) —</option>
+                  <option value="">- None (write below / AI-drafted) -</option>
                   {res.emailTemplates.map((t: any) => <option key={t.id} value={t.id}>{t.name || t.title || 'Template'}</option>)}
                 </select></div>
             )}
@@ -6381,7 +6381,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           {!isSource && editingStep.type === 'voice_agent_call' && (<>
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Calling number</label>
               <select className={field} value={cfg.from_number || ''} onChange={(e) => setCfg(editingId!, { from_number: e.target.value || undefined })}>
-                <option value="">— Default number —</option>
+                <option value="">- Default number -</option>
                 {res.voiceNumbers.map((n: any) => <option key={n.phone_number} value={n.phone_number}>{n.phone_number}</option>)}
               </select>
               {res.voiceNumbers.length === 0 && <p className="text-[11px] text-muted-foreground">No voice number configured.</p>}</div>
@@ -6391,22 +6391,22 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 setCfg(editingId!, { agent_id: e.target.value || undefined, voice_id: a?.voice_id || undefined });
                 updateWorkflowStep(editingId!, { description: a?.name || 'AI voice call' });
               }}>
-                <option value="">— Select an agent —</option>
+                <option value="">- Select an agent -</option>
                 {res.voiceAgents.map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
-              {res.voiceAgents.length === 0 && <p className="text-[11px] text-muted-foreground">No voice agent found — create one in the Voice playground.</p>}</div>
+              {res.voiceAgents.length === 0 && <p className="text-[11px] text-muted-foreground">No voice agent found - create one in the Voice playground.</p>}</div>
             {/* The panel's description has always promised a "script" field.
                 It is real: the executor reads stepConfig.added_context ||
                 stepConfig.voiceContext, runs it through personalizeContext (so
                 {{tokens}} resolve per lead), and POSTs it to VOAG as
-                added_context — see channelDispatchers/voice.js and
+                added_context - see channelDispatchers/voice.js and
                 StepExecutors' voice step. It simply had no input, and the launch
                 payload did not send it. Both fixed. */}
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Extra context for the agent (optional)</label>
               <textarea className={`${field} min-h-[80px]`} value={cfg.added_context || ''}
                 onChange={(e) => setCfg(editingId!, { added_context: e.target.value })}
                 placeholder="e.g. They downloaded our logistics guide last week. Ask what prompted it before pitching." />
-              <p className="text-[11px] text-muted-foreground">Added to the agent&apos;s existing instructions for this call — it does not replace them. Supports {'{{first_name}}'}, {'{{company}}'} and the other lead tokens.</p></div>
+              <p className="text-[11px] text-muted-foreground">Added to the agent&apos;s existing instructions for this call - it does not replace them. Supports {'{{first_name}}'}, {'{{company}}'} and the other lead tokens.</p></div>
           </>)}
           {isRouter && (<>
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Attempts before falling back (1–10)</label>
@@ -6522,7 +6522,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           onChange={(e) => setSignalDraft((p) => ({ ...p, signal: e.target.value }))}
           placeholder="e.g. companies hiring Salesforce revenue operations managers" />
         <p className="text-[11px] text-muted-foreground leading-snug">
-          Prefilled from your source node. Edit it here to try a different wording — the source and the
+          Prefilled from your source node. Edit it here to try a different wording - the source and the
           search keywords below update as you type.
         </p>
 
@@ -6541,9 +6541,9 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             <p className="text-[10.5px] text-muted-foreground leading-snug mt-0.5">{routing.reason}</p>
             <p className="text-[10.5px] text-muted-foreground leading-snug mt-1">
               {isJobs
-                ? 'A job listing has no author, so each match yields a company — and the decision-maker titles below choose who gets enrolled there.'
+                ? 'A job listing has no author, so each match yields a company - and the decision-maker titles below choose who gets enrolled there.'
                 : routing.route === 'undecided'
-                  ? 'Add a phrase like “posting jobs for…” to force the jobs portal, or “posted about…” to force the feed — the samples below assume posts until then.'
+                  ? 'Add a phrase like “posting jobs for…” to force the jobs portal, or “posted about…” to force the feed - the samples below assume posts until then.'
                   : 'Each matching post yields its author, who is enrolled directly.'}
             </p>
           </div>
@@ -6560,13 +6560,13 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             onChange={(e) => setSignalDraft((p) => ({ ...p, titles: e.target.value }))} />
           <p className="text-[10.5px] text-muted-foreground leading-snug">
             {isJobs
-              ? 'Comma-separated. On this signal they choose who gets enrolled at each hiring company — a listing has no author, so these are how a company becomes people.'
+              ? 'Comma-separated. On this signal they choose who gets enrolled at each hiring company - a listing has no author, so these are how a company becomes people.'
               : 'Comma-separated. On this signal they only widen what the post search looks for; the post’s author is the lead either way.'}
           </p>
         </div>
 
         {/* Always rendered, never gated on being non-empty. Blank is not "no
-            information" — it means worldwide, and on the jobs route the gap
+            information" - it means worldwide, and on the jobs route the gap
             between "I scoped this to Dubai" and "this searched everywhere" is
             exactly what the user needs told.
 
@@ -6586,7 +6586,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             <div className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 p-2 text-[10.5px] leading-snug text-amber-900 dark:text-amber-200">
               <strong>Location is not applied on the jobs route.</strong> The jobs search needs
               LinkedIn&apos;s own location IDs rather than a typed place name, and that lookup is not wired
-              yet — so this searches <strong>worldwide</strong>
+              yet - so this searches <strong>worldwide</strong>
               {location ? <> and &ldquo;{location}&rdquo; is ignored</> : null}. Filter the leads afterwards,
               or reword the signal so it looks for what people posted about, where location does work.
             </div>
@@ -6616,7 +6616,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             <p className="text-[11px] text-muted-foreground">Nothing to search on yet.</p>
           )}
           <p className="text-[10.5px] text-muted-foreground leading-snug mt-1">
-            Derived from your wording — the search runs on these, not on the sentence.
+            Derived from your wording - the search runs on these, not on the sentence.
           </p>
           {titlesOverride && (
             // Driven by TITLES_CROWD_SIGNAL_WORDING — see the note there for
@@ -6638,8 +6638,8 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         {isJobs ? (<>
           <p>
             <strong>Real:</strong> the routing decision, the {SIGNAL_MIN_MATCH_SCORE} relevance floor, the
-            search keywords — including the hiring words stripped out of them, since the search is already
-            scoped to job listings — and the company-to-people expansion this describes.
+            search keywords - including the hiring words stripped out of them, since the search is already
+            scoped to job listings - and the company-to-people expansion this describes.
           </p>
           <p>
             <strong>Previewed:</strong> the sample listings and whether each one matches. A real run asks an
@@ -6647,7 +6647,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           </p>
           <p>
             <strong>No buy-intent score is shown for job matches</strong>, and that is deliberate. A real run
-            does score them — but from how well the listing matched and how closely the title matched, with
+            does score them - but from how well the listing matched and how closely the title matched, with
             no pain points, so the number is composed differently from a post lead&apos;s and is not
             comparable to one. It also depends on a person this preview has not found yet. Use{' '}
             <em>Run against real LinkedIn jobs</em> for real scores.
@@ -6655,14 +6655,14 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         </>) : (<>
           <p>
             <strong>Real:</strong> the search keywords, the {SIGNAL_MIN_MATCH_SCORE} relevance floor, the
-            post-to-lead mapping, and the whole buy-intent score and its breakdown — that scorer is a fixed
+            post-to-lead mapping, and the whole buy-intent score and its breakdown - that scorer is a fixed
             points table, so the arithmetic here is the arithmetic that runs.
           </p>
           <p>
             <strong>Previewed:</strong> the sample posts, and whether each one matches, how strong and urgent
             it is, and the pain points. At launch Gemini reads real posts; here it is keyword overlap in your
-            browser. The two agree on wording that is clearly too broad or clearly too narrow — which is what
-            this screen is for — and will disagree on borderline posts.
+            browser. The two agree on wording that is clearly too broad or clearly too narrow - which is what
+            this screen is for - and will disagree on borderline posts.
           </p>
           <p className="text-amber-800/90 dark:text-amber-300/90">
             For scale: a live run scanned 30 posts, kept 21, produced 18 leads and took about 98 seconds.
@@ -6679,7 +6679,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       <div className="rounded-xl border border-border bg-muted/20">
         <button type="button" onClick={() => setSignalAdvanced((v) => !v)}
           className="w-full flex items-center justify-between gap-2 p-2.5 text-left">
-          <span className="text-[11.5px] font-semibold text-foreground">Advanced — test a specific post</span>
+          <span className="text-[11.5px] font-semibold text-foreground">Advanced - test a specific post</span>
           <span className="text-[11px] text-muted-foreground">{signalAdvanced ? 'Hide' : 'Show'}</span>
         </button>
         {signalAdvanced && (
@@ -6807,13 +6807,13 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                           </div>
                           <p className="text-[10.5px] text-muted-foreground leading-snug mt-1">
                             A live search finds the actual people holding these titles at {r.company}, so the
-                            names — and their buy-intent scores — are only knowable on a real run.
+                            names - and their buy-intent scores - are only knowable on a real run.
                           </p>
                         </>
                       ) : (
                         <p className="text-[10.5px] text-amber-700 dark:text-amber-400 leading-snug">
                           No decision-maker titles set. On a jobs signal that leaves nobody to enrol from this
-                          company — add at least one title above.
+                          company - add at least one title above.
                         </p>
                       )}
                     </div>
@@ -6952,7 +6952,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             );
           })}
           <p className="text-[10.5px] text-muted-foreground leading-snug pt-1">
-            The post&apos;s <strong>author</strong> is the lead — author name, headline and company, in that
+            The post&apos;s <strong>author</strong> is the lead - author name, headline and company, in that
             order, plus their LinkedIn profile, which only the real search can supply. In live data the
             company often comes back as &ldquo;Unknown&rdquo; even when the post names one.
           </p>
@@ -6963,7 +6963,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       {signalLive && (
         <div className="space-y-2">
           {/* stats.signal_source is the run's OWN account of which source it
-              used — worth preferring over the local routing guess, since it is
+              used - worth preferring over the local routing guess, since it is
               the only place an LLM-arbitrated route becomes visible. */}
           {(() => {
             const ranJobs = String(signalLive.stats.signal_source || '') === 'jobs';
@@ -6971,7 +6971,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               ? ` in ${Math.round(signalLive.stats.latencyMs / 1000)}s` : '';
             return (
               <div className="rounded-lg border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/30 p-2.5 text-[11.5px] leading-relaxed text-emerald-900 dark:text-emerald-200">
-                <strong>Live run — everything below is real.</strong>{' '}
+                <strong>Live run - everything below is real.</strong>{' '}
                 {ranJobs
                   ? <>Searched the <strong>jobs portal</strong> and produced {signalLive.leads.length} lead{signalLive.leads.length === 1 ? '' : 's'}{secs}.</>
                   : <>Scanned {signalLive.stats.total_posts ?? 0} posts, kept {signalLive.stats.relevant_posts ?? 0}, produced {signalLive.leads.length} lead{signalLive.leads.length === 1 ? '' : 's'}{secs}.</>}
@@ -6994,7 +6994,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           )}
           {!signalLive.leads.length && !signalLive.stats.skipped_reason && (
             <div className="rounded-lg border border-border bg-muted/30 p-2.5 text-[11.5px] text-muted-foreground leading-snug">
-              Nothing cleared the relevance floor. That is a real answer about this wording — try the sample
+              Nothing cleared the relevance floor. That is a real answer about this wording - try the sample
               run above to see where it starts letting matches through.
             </div>
           )}
@@ -7029,7 +7029,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 )}
                 {/* Jobs route only. open_roles is the genuine intent tell — an
                     employer with four matching openings is hiring harder than
-                    one with a single req — and matched_title is what makes this
+                    one with a single req - and matched_title is what makes this
                     person's presence in the list explicable. */}
                 {l.openRoles !== null && (
                   <span className="px-1.5 py-0.5 rounded-full bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-900 text-[10px] font-semibold text-sky-800 dark:text-sky-300">
@@ -7065,7 +7065,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   a job lead's score is not comparable to a post lead's. */}
               {l.sourceType === 'linkedin_job' && (
                 <p className="text-[10px] text-muted-foreground mt-1 leading-snug">
-                  Scored from how well the listing matched and how closely the title matched — not from
+                  Scored from how well the listing matched and how closely the title matched - not from
                   anything this person wrote. Not directly comparable to a post lead&apos;s score.
                 </p>
               )}
@@ -7156,7 +7156,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             </p>
             <p>
               <strong>Nothing is sent to the prospect.</strong> Every message, connection request and call is
-              skipped. Anything the Export step delivers goes to the addresses you put on that node — yours.
+              skipped. Anything the Export step delivers goes to the addresses you put on that node - yours.
             </p>
             <p className="text-emerald-800/90 dark:text-emerald-300/90">
               This costs credits: live web research, AI-written reports and pages, and a real PDF render.
@@ -7166,7 +7166,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
 
           {isSignalSource && (
             <div className="rounded-lg border border-border bg-muted/30 p-2.5 text-[12px] leading-relaxed text-muted-foreground">
-              This half does not run your Signal Search — a test run never executes a contact source, so the
+              This half does not run your Signal Search - a test run never executes a contact source, so the
               lead below is one you supply, not one the signal found. Use <strong>Signal match</strong> to
               check the source itself.
             </div>
@@ -7175,7 +7175,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           {!runnable && !!workflowPreview.length && (
             <div className="rounded-lg border border-border bg-muted/30 p-2.5 text-[12px] leading-relaxed text-muted-foreground">
               Nothing in this workflow produces something to look at yet. A test run executes research,
-              scraping, scoring, reports, landing pages and exports — add one of those and there will be an
+              scraping, scoring, reports, landing pages and exports - add one of those and there will be an
               artifact to review.
             </div>
           )}
@@ -7300,7 +7300,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 ? signalIsJobs
                   ? 'Searching the jobs portal and expanding each company to decision-makers.'
                   : 'Searching LinkedIn and classifying each post. This takes about 98 seconds.'
-                : 'Real search, real results — takes up to ~98s and spends your LinkedIn account’s search budget, which is shared with your campaign’s connection requests.'}
+                : 'Real search, real results - takes up to ~98s and spends your LinkedIn account’s search budget, which is shared with your campaign’s connection requests.'}
             </p>
           </>) : (<>
             <Button className="w-full" onClick={runTest} disabled={testRunning || !workflowPreview.length}>
@@ -7407,7 +7407,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
       {!error && sequenceIssues.length > 0 && (
         <div className="mx-4 mt-3 rounded-lg bg-amber-50 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-900 p-3 text-sm text-amber-900 dark:text-amber-200 flex items-start gap-2">
           <span className="flex-1">
-            <strong className="font-semibold">Launch is disabled — fix the sequence first: </strong>
+            <strong className="font-semibold">Launch is disabled - fix the sequence first: </strong>
             {sequenceIssues[0].message}
             {sequenceIssues.length > 1 && ` (+${sequenceIssues.length - 1} more)`}
           </span>
@@ -7421,7 +7421,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
         <div className="mx-4 mt-3 rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-3 flex items-start gap-2">
           <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-[2px] text-amber-700 dark:text-amber-300" />
           <div className="flex-1 text-sm text-amber-900 dark:text-amber-200">
-            <strong className="font-semibold">Before you launch — how this differs from what you described:</strong>
+            <strong className="font-semibold">Before you launch - how this differs from what you described:</strong>
             <ul className="mt-1.5 space-y-1 list-disc pl-4">
               {aiWarnings.map((w, i) => <li key={i} className="leading-snug">{w}</li>)}
             </ul>
@@ -7472,7 +7472,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             <div className="flex-1 flex flex-col min-h-0">
             <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col">
               {/* Resting state: a calm starting screen rather than a form. The
-                  starters are real accelerators — each seeds the prompt with a
+                  starters are real accelerators - each seeds the prompt with a
                   shape Mr LAD handles well, which the user then edits. */}
               {!aiQuestions.length && !aiResult && (
                 <div className="flex-1 flex flex-col items-center justify-center text-center px-1">
@@ -7733,7 +7733,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
 
             <div>
               <div className="text-[15px] font-bold text-foreground">Start from a template</div>
-              <p className="text-[12.5px] text-muted-foreground mt-0.5 mb-3">Builds the whole pipeline — then tune each node</p>
+              <p className="text-[12.5px] text-muted-foreground mt-0.5 mb-3">Builds the whole pipeline - then tune each node</p>
 
               <div className="space-y-2.5">
                 {(() => {
@@ -7875,7 +7875,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   </button>
                 ))}
               </div>
-              <p className="text-[10.5px] text-muted-foreground leading-snug">Just a suggestion — pick any other step below instead if you&rsquo;d rather.</p>
+              <p className="text-[10.5px] text-muted-foreground leading-snug">Just a suggestion - pick any other step below instead if you&rsquo;d rather.</p>
             </div>
           )}
           {/* 1 · Contact source */}
