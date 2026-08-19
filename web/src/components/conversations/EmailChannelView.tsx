@@ -1777,7 +1777,6 @@ const EmailGroupWindow = memo(function EmailGroupWindow({ group, provider, onBac
   const [showSend, setShowSend] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
-  const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const providerColor = PROVIDER_COLOR[provider];
@@ -1816,10 +1815,8 @@ const EmailGroupWindow = memo(function EmailGroupWindow({ group, provider, onBac
           })),
         };
         setDetail(mapped);
-        setRemovedIds(new Set());
       } else if (data.success) {
         setDetail(data.data);
-        setRemovedIds(new Set());
       } else {
         throw new Error(data.error ?? 'Unknown error');
       }
@@ -1850,42 +1847,21 @@ const EmailGroupWindow = memo(function EmailGroupWindow({ group, provider, onBac
         : `${API}/groups/${group.id}/contacts/${contactId}`;
       const res = await fetch(url, { method: 'DELETE', headers: authHeaders() });
       // LAD-Email-Comms returns 204 on success; legacy returns 200 + body.
-      const isOfflineOr502 = res.status === 502 || loadError;
-      if (!res.ok && res.status !== 204 && !isOfflineOr502) {
+      if (!res.ok && res.status !== 204) {
         throw new Error(`HTTP error ${res.status}`);
       }
-      setDetail(prev => {
-        if (!prev) return prev;
-        const nextMembers = (prev.members ?? []).filter(m => m.id !== contactId);
-        return {
-          ...prev,
-          member_count: Math.max(0, (prev.member_count ?? prev.members?.length ?? 1) - 1),
-          members: nextMembers,
-        };
-      });
-      setRemovedIds(p => new Set([...p, contactId]));
-      onGroupUpdated?.();
       toast({
-        title: isOfflineOr502 ? 'Info' : 'Success',
-        description: isOfflineOr502 ? 'Member removed in offline mode.' : 'Member removed from group.',
+        title: 'Success',
+        description: 'Member removed from group.',
       });
-    } catch (_err) {
-      console.error('Failed to remove group member:', _err);
-      // Fallback: update UI in offline mode
-      setDetail(prev => {
-        if (!prev) return prev;
-        const nextMembers = (prev.members ?? []).filter(m => m.id !== contactId);
-        return {
-          ...prev,
-          member_count: Math.max(0, (prev.member_count ?? prev.members?.length ?? 1) - 1),
-          members: nextMembers,
-        };
-      });
-      setRemovedIds(p => new Set([...p, contactId]));
+      await loadGroupDetails();
       onGroupUpdated?.();
+    } catch (err) {
+      console.error('Failed to remove group member:', err);
       toast({
-        title: 'Info',
-        description: 'Member removed in offline mode.',
+        title: 'Error',
+        description: 'Failed to remove member from group.',
+        variant: 'destructive',
       });
     } finally {
       setRemovingId(null);
@@ -1899,32 +1875,29 @@ const EmailGroupWindow = memo(function EmailGroupWindow({ group, provider, onBac
         ? `/api/email-comms/groups/${group.id}`
         : `${API}/groups/${group.id}`;
       const res = await fetch(url, { method: 'DELETE', headers: authHeaders() });
-      const isOfflineOr502 = res.status === 502 || loadError;
-      if (!res.ok && res.status !== 204 && !isOfflineOr502) {
+      if (!res.ok && res.status !== 204) {
         throw new Error(`HTTP error ${res.status}`);
       }
       toast({
-        title: isOfflineOr502 ? 'Info' : 'Success',
-        description: isOfflineOr502 ? 'Group deleted in offline mode.' : 'Group deleted successfully.',
+        title: 'Success',
+        description: 'Group deleted successfully.',
       });
       setShowDeleteConfirm(false);
       onGroupDeleted();
-    } catch (_err) {
-      console.error('Failed to delete group:', _err);
+    } catch (err) {
+      console.error('Failed to delete group:', err);
       toast({
-        title: 'Info',
-        description: 'Group deleted in offline mode.',
+        title: 'Error',
+        description: 'Failed to delete group.',
+        variant: 'destructive',
       });
-      setShowDeleteConfirm(false);
-      onGroupDeleted();
     } finally {
       setDeleting(false);
     }
   };
 
   const visibleMembers = (detail?.members ?? []).filter(m =>
-    !removedIds.has(m.id) &&
-    (!search || (m.contact_name ?? '').toLowerCase().includes(search.toLowerCase()) || (m.email ?? '').toLowerCase().includes(search.toLowerCase())),
+    !search || (m.contact_name ?? '').toLowerCase().includes(search.toLowerCase()) || (m.email ?? '').toLowerCase().includes(search.toLowerCase()),
   );
 
   return (
