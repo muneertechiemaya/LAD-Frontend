@@ -315,7 +315,7 @@ export function CallConfiguration({
                     {countryCodes.map((code) => {
                       const country = DIAL_TO_COUNTRY[code];
                       return (
-                        <SelectItem key={code} value={code} className="pl-3 pr-6 text-xs justify-start transition-colors cursor-pointer text-slate-800 dark:text-white dark:focus:bg-[#2563eb] dark:focus:text-white dark:data-[state=checked]:focus:bg-[#2563eb] dark:data-[state=checked]:focus:text-white">
+                        <SelectItem key={code} value={code} className="pl-3 pr-6 text-xs justify-start transition-colors cursor-pointer text-slate-800 dark:text-white focus:bg-primary focus:text-primary-foreground dark:focus:bg-primary dark:focus:text-primary-foreground data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground dark:data-[state=checked]:bg-primary dark:data-[state=checked]:text-primary-foreground dark:data-[state=checked]:focus:bg-primary dark:data-[state=checked]:focus:text-primary-foreground">
                           <div className="flex items-center gap-3">
                             {country ? (
                               <Image
