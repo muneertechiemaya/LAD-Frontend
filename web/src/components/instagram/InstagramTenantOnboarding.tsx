@@ -441,7 +441,7 @@ export const InstagramTenantOnboarding: React.FC = () => {
                     enabled={a.ai_likes_enabled}
                     onToggle={() => handleToggleAi(a, 'ai_likes_enabled')}
                     unavailable={a.provider === 'meta' && !a.ai_likes_enabled}
-                    unavailableTitle="AI Likes isn't supported via Meta's official API — only available with direct sign-in (Unipile)."
+                    unavailableTitle="AI Likes isn't supported via Meta's official API. It is only available with direct sign-in (Unipile)."
                   />
                 </div>
               </li>
@@ -572,7 +572,7 @@ export const InstagramTenantOnboarding: React.FC = () => {
                   <Input
                     value={form.meta_verify_token}
                     onChange={(v) => setForm((f) => ({ ...f, meta_verify_token: v }))}
-                    placeholder="Choose any string — paste the same value into Meta webhooks setup"
+                    placeholder="Choose any string, then paste the same value into Meta webhooks setup"
                   />
                 </Field>
                 <Field label="Access Token" icon={MetaLogo} required>
@@ -608,7 +608,7 @@ export const InstagramTenantOnboarding: React.FC = () => {
                 <div className="flex items-center justify-between gap-3 rounded-md bg-emerald-950/20 px-3 py-2 text-sm text-emerald-200">
                   <span className="inline-flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4" />
-                    Signed in — account <span className="font-mono">{form.provider_account_id}</span> ready to connect.
+                    Signed in: account <span className="font-mono">{form.provider_account_id}</span> ready to connect.
                   </span>
                   <button
                     type="button"
@@ -637,7 +637,7 @@ export const InstagramTenantOnboarding: React.FC = () => {
                   <Input
                     value={form.provider_account_id}
                     onChange={(v) => setForm((f) => ({ ...f, provider_account_id: v }))}
-                    placeholder="e.g. WS_xxxxx — paste if you already have a connection id"
+                    placeholder="e.g. WS_xxxxx. Paste if you already have a connection ID."
                     mono
                   />
                 </Field>

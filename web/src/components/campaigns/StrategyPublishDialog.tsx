@@ -147,7 +147,7 @@ export function StrategyPublishDialog({ strategyId, strategyName, onClose, onPub
                   <ul className="space-y-1">
                     {preview.warnings.map((w, i) => (
                       <li key={i} className="text-[12.5px] text-amber-900/90 dark:text-amber-200/90">
-                        <strong className="font-semibold">{w.type}</strong> — {w.reason}
+                        <strong className="font-semibold">{w.type}</strong>: {w.reason}
                       </li>
                     ))}
                   </ul>

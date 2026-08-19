@@ -119,7 +119,9 @@ export const CombinedFunnelWidget: React.FC<{ id: string }> = ({ id }) => {
               key={p.key}
               onClick={() => setPeriod(p.key)}
               className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
-                active ? 'border-transparent bg-[#0F6E56] text-white' : 'border-border text-muted-foreground hover:bg-muted/50 dark:text-[#E0E0E0]/70'
+                active
+                  ? 'border-transparent bg-[#0F6E56] text-white'
+                  : 'border-slate-200 text-muted-foreground hover:bg-slate-100 dark:border-blue-950/40 dark:text-[#E0E0E0]/70 dark:hover:bg-white/5'
               }`}
             >
               {p.label}
@@ -148,16 +150,16 @@ export const CombinedFunnelWidget: React.FC<{ id: string }> = ({ id }) => {
       ) : data ? (
         <div className="flex flex-col gap-5">
           <div className="flex items-center justify-center gap-4 sm:gap-6">
-            <div className="text-center rounded-lg border border-border px-3 py-2 min-w-[84px]">
-              <p className="text-[11px] text-muted-foreground">New Leads</p>
-              <p className="text-lg font-medium dark:text-[#E0E0E0]">{num(first)}</p>
+            <div className="text-center rounded-lg border border-slate-200 bg-white dark:border-blue-950/40 dark:bg-[#071131] px-3 py-2 min-w-[84px]">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">New Leads</p>
+              <p className="text-lg font-medium text-slate-800 dark:text-[#E0E0E0]">{num(first)}</p>
             </div>
             <div className="text-center">
               <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Overall conversion</p>
-              <p className="text-3xl font-bold font-display dark:text-[#E0E0E0]">{overall}%</p>
+              <p className="text-3xl font-bold font-display text-slate-800 dark:text-[#E0E0E0]">{overall}%</p>
             </div>
-            <div className="text-center rounded-lg border border-emerald-200 dark:border-emerald-500/30 px-3 py-2 min-w-[84px]">
-              <p className="text-[11px] text-muted-foreground">Won (SAH)</p>
+            <div className="text-center rounded-lg border border-emerald-200 bg-white dark:border-emerald-500/30 dark:bg-[#071131] px-3 py-2 min-w-[84px]">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">Won (SAH)</p>
               <p className="text-lg font-medium text-emerald-700 dark:text-emerald-400">{num(last)}</p>
             </div>
           </div>
@@ -173,12 +175,12 @@ export const CombinedFunnelWidget: React.FC<{ id: string }> = ({ id }) => {
                 <div key={s.key}>
                   {i > 0 && (
                     <div className="flex items-center justify-center gap-2 py-0.5">
-                      <span className="text-[11px] font-medium text-muted-foreground bg-muted/60 dark:bg-white/5 rounded-full px-2 py-0.5">{conv != null ? `${conv}%` : '—'}</span>
+                      <span className="text-[11px] font-medium text-slate-700 bg-slate-100 rounded-full px-2 py-0.5 dark:text-slate-200 dark:bg-white/5">{conv != null ? `${conv}%` : '—'}</span>
                       {dropped > 0 && <span className="text-[10px] text-muted-foreground/70">{num(dropped)} dropped</span>}
                     </div>
                   )}
                   <div className="flex items-center gap-3">
-                    <div className="w-28 shrink-0 text-xs font-medium dark:text-[#E0E0E0]">{s.label}</div>
+                    <div className="w-28 shrink-0 text-xs font-medium text-slate-700 dark:text-[#E0E0E0]">{s.label}</div>
                     <div className="flex-1 flex justify-center">
                       <button
                         type="button"
@@ -259,28 +261,28 @@ const StageLeadsModal: React.FC<{ title: string; subtitle: string; fileLabel: st
   >
     <div
       onClick={(e) => e.stopPropagation()}
-      className="w-full max-w-3xl rounded-xl bg-white dark:bg-[#1A2A43] border border-gray-200 dark:border-[#2B7CFF]/20 shadow-2xl"
+      className="w-full max-w-3xl rounded-xl bg-white border border-gray-200 shadow-2xl dark:bg-[#000724] dark:border-blue-950/40"
       style={{ maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
     >
-      <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-200 dark:border-[#2B7CFF]/20" style={{ flexShrink: 0 }}>
+      <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-200 dark:border-blue-950/40 bg-white dark:bg-[#081331]" style={{ flexShrink: 0 }}>
         <div className="min-w-0">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-[#E0E0E0]">{title}</h3>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{title}</h3>
           <p className="text-xs text-muted-foreground">{subtitle}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => downloadLeadsCsv(leads, fileLabel)}
             disabled={leads.length === 0}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border hover:bg-muted/50 disabled:opacity-40 disabled:cursor-not-allowed dark:text-[#E0E0E0]"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border hover:bg-muted/50 dark:border-blue-950/60 dark:hover:bg-blue-950/30 text-slate-700 dark:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Download className="h-3.5 w-3.5" /> Download CSV
           </button>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-white" aria-label="Close">
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:text-slate-400 dark:hover:text-white" aria-label="Close">
             <X className="h-4 w-4" />
           </button>
         </div>
       </div>
-      <div style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto' }}>
+      <div className="bg-white dark:bg-[#000724]" style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto' }}>
         {leads.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-10">No leads in this stage for the selected period.</p>
         ) : (
@@ -290,18 +292,18 @@ const StageLeadsModal: React.FC<{ title: string; subtitle: string; fileLabel: st
                 and overlap rows. */}
             <thead>
               <tr className="text-left text-[11px] uppercase tracking-wide text-muted-foreground">
-                <th className="sticky top-0 z-10 bg-white dark:bg-[#1A2A43] border-b border-gray-200 dark:border-[#2B7CFF]/20 px-4 py-2 font-medium" style={{ width: '30%' }}>Name</th>
-                <th className="sticky top-0 z-10 bg-white dark:bg-[#1A2A43] border-b border-gray-200 dark:border-[#2B7CFF]/20 px-4 py-2 font-medium" style={{ width: '26%' }}>Company</th>
-                <th className="sticky top-0 z-10 bg-white dark:bg-[#1A2A43] border-b border-gray-200 dark:border-[#2B7CFF]/20 px-4 py-2 font-medium" style={{ width: '26%' }}>Campaign</th>
-                <th className="sticky top-0 z-10 bg-white dark:bg-[#1A2A43] border-b border-gray-200 dark:border-[#2B7CFF]/20 px-4 py-2 font-medium" style={{ width: '18%' }}>Next follow-up</th>
+                <th className="sticky top-0 z-10 bg-white dark:bg-[#071131] border-b border-gray-200 dark:border-blue-950/40 px-4 py-2 font-medium text-slate-700 dark:text-slate-300" style={{ width: '30%' }}>Name</th>
+                <th className="sticky top-0 z-10 bg-white dark:bg-[#071131] border-b border-gray-200 dark:border-blue-950/40 px-4 py-2 font-medium text-slate-700 dark:text-slate-300" style={{ width: '26%' }}>Company</th>
+                <th className="sticky top-0 z-10 bg-white dark:bg-[#071131] border-b border-gray-200 dark:border-blue-950/40 px-4 py-2 font-medium text-slate-700 dark:text-slate-300" style={{ width: '26%' }}>Campaign</th>
+                <th className="sticky top-0 z-10 bg-white dark:bg-[#071131] border-b border-gray-200 dark:border-blue-950/40 px-4 py-2 font-medium text-slate-700 dark:text-slate-300" style={{ width: '18%' }}>Next follow-up</th>
               </tr>
             </thead>
             <tbody>
               {leads.map((l) => (
-                <tr key={`${l.lead_id}-${l.campaign_name}`} className="border-b border-gray-100 dark:border-white/5 hover:bg-muted/40 dark:hover:bg-white/5">
+                <tr key={`${l.lead_id}-${l.campaign_name}`} className="border-b border-gray-100 dark:border-white/5 hover:bg-muted/40 dark:hover:bg-white/5 transition-colors">
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="font-medium truncate dark:text-[#E0E0E0]" title={l.name}>{l.name || 'Unknown'}</span>
+                      <span className="font-medium truncate text-slate-900 dark:text-[#E0E0E0]" title={l.name}>{l.name || 'Unknown'}</span>
                       {l.linkedin_url && (
                         <a href={l.linkedin_url} target="_blank" rel="noopener noreferrer" title="Open LinkedIn profile" className="text-[#2B7CFF] hover:opacity-80 shrink-0">
                           <Linkedin className="h-3.5 w-3.5" />

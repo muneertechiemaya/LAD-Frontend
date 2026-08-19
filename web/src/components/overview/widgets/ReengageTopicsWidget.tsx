@@ -88,17 +88,17 @@ export const ReengageTopicsWidget: React.FC<{ id: string }> = ({ id }) => {
       ) : (
         <div className="flex flex-col gap-2">
           <p className="text-[11px] text-muted-foreground">
-            Asked but didn’t book — message them a tailored offer.
+            Asked but didn’t book: message them a tailored offer.
           </p>
           {topics.map((t) => {
             const reachable = toMembers(t).length;
             return (
               <div
                 key={t.topic}
-                className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 dark:border-white/5 bg-white/60 dark:bg-white/[0.03] px-3 py-2"
+                className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.03] px-3 py-2"
               >
                 <div className="min-w-0">
-                  <p className="text-sm font-medium truncate dark:text-[#E0E0E0]">{t.topic}</p>
+                  <p className="text-sm font-medium truncate text-slate-800 dark:text-[#E0E0E0]">{t.topic}</p>
                   <p className="text-[11px] text-muted-foreground">
                     {t.count} didn’t book
                     {reachable < t.count && <span> · {reachable} on WhatsApp</span>}
@@ -107,7 +107,7 @@ export const ReengageTopicsWidget: React.FC<{ id: string }> = ({ id }) => {
                 <button
                   onClick={() => setActive(t)}
                   disabled={reachable === 0}
-                  className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-[#0B1957] hover:bg-[#081342] dark:bg-blue-600 dark:hover:bg-blue-700 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   <Megaphone className="h-3.5 w-3.5" />
                   Broadcast
