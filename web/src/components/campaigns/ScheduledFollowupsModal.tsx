@@ -392,7 +392,7 @@ export default function ScheduledFollowupsModal({ campaignId, open, onClose }: P
             <div>
               <DialogTitle>Scheduled Follow-ups</DialogTitle>
               <DialogDescription>
-                Connection-accepted leads — schedule or remove upcoming LinkedIn follow-ups.
+                Connection accepted leads. Schedule or remove upcoming LinkedIn follow-ups.
               </DialogDescription>
             </div>
           </div>
@@ -440,7 +440,7 @@ export default function ScheduledFollowupsModal({ campaignId, open, onClose }: P
             </div>
           )}
           <p className="text-[11px] text-slate-400 dark:text-[#7a8ba3]">
-            Optional — pick a saved template to send its message{selectedMedia ? ' + attachment' : ''} instead of an AI-generated follow-up.
+            Optional, pick a saved template to send its message{selectedMedia ? ' + attachment' : ''} instead of an AI-generated follow-up.
           </p>
         </div>
 
@@ -536,8 +536,7 @@ export default function ScheduledFollowupsModal({ campaignId, open, onClose }: P
               )}
 
               <p className="text-[11px] text-slate-400 dark:text-[#7a8ba3]">
-                Changes apply to leads who accept from now on. Follow-ups already listed below keep
-                the message they were scheduled with — remove and re-add one to change it.
+                Changes apply to leads who accept from now on. Follow-ups already listed below keep the message they were scheduled with. Remove and re-add one to change it.
               </p>
             </div>
           )}

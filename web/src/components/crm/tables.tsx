@@ -128,8 +128,8 @@ function RowActions({ onRemove }: { onRemove?: () => void }) {
         <button
           className="w-7 h-7 grid place-items-center rounded-md text-slate-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-600 dark:hover:text-rose-300"
           onClick={(e) => { e.stopPropagation(); onRemove(); }}
-          aria-label="Remove — not a fit"
-          title="Remove — not a fit"
+          aria-label="Remove: not a fit"
+          title="Remove: not a fit"
         >
           <Trash2 className="w-3.5 h-3.5" />
         </button>
@@ -531,7 +531,7 @@ export function AllContactsTable({
   return (
     <CrmTable
       title="All Contacts"
-      subtitle="Every contact in this tenant — imported, prospected, inbound, and customer."
+      subtitle="Every contact in this tenant: imported, prospected, inbound, and customer."
       count={rows.length}
       columns={columns}
       rows={rows}
@@ -610,7 +610,7 @@ export function ProspectsTable({
   return (
     <CrmTable
       title="Prospects"
-      subtitle="Top-of-funnel — sourced from Apollo, LinkedIn Sales Nav, imports, or referrals. Not yet qualified."
+      subtitle="Top-of-funnel. Sourced from Apollo, LinkedIn Sales Nav, imports, or referrals. Not yet qualified."
       count={rows.length}
       columns={columns}
       rows={rows}

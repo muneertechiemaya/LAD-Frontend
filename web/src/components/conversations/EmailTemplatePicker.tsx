@@ -799,7 +799,7 @@ export const EmailTemplatePicker = memo(function EmailTemplatePicker({
                   <ul className="mt-2 space-y-1 max-h-24 overflow-y-auto">
                     {sendResult.errors.map((err, i) => (
                       <li key={i} className="text-muted-foreground">
-                        <span className="text-red-400">·</span> {err.email} — {err.error}
+                        <span className="text-red-400">·</span> {err.email}: {err.error}
                       </li>
                     ))}
                   </ul>
@@ -900,7 +900,7 @@ function PersonalizationHints({ onInsert }: { onInsert: (v: string) => void }) {
             className="flex items-center gap-1 px-2 py-0.5 rounded bg-background border border-border text-xs font-mono hover:border-primary/50 hover:bg-primary/5 transition-colors"
           >
             <span className="text-primary">{label}</span>
-            <span className="text-muted-foreground hidden sm:inline">— {desc}</span>
+            <span className="text-muted-foreground hidden sm:inline">: {desc}</span>
           </button>
         ))}
       </div>
