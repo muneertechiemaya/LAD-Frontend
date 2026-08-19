@@ -1344,10 +1344,10 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
                                         ? <p className="text-blue-400">ⓘ {lead.connectionProviderDetail}</p>
                                         : lead.connectionSentWithMessage
                                           ? <p className="text-green-500">✓ Sent with message</p>
-                                          : <p className="text-amber-500">✓ Sent without message — LinkedIn daily connection limit reached</p>
+                                          : <p className="text-amber-500">✓ Sent without message. LinkedIn daily connection limit reached.</p>
                                     ) : lead.connectionStatus === 'PAUSED' ? (
                                       <p className="text-amber-500">
-                                        ⏸ Paused —{' '}
+                                        ⏸ Paused:{' '}
                                         {lead.pauseReason === 'DAILY_LIMIT'
                                           ? 'Daily limit reached'
                                           : lead.pauseReason === 'WEEKLY_LIMIT'
@@ -1356,7 +1356,7 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
                                       </p>
                                     ) : lead.connectionStatus === 'FAILED' ? (
                                       <p className="text-red-400">
-                                        ✗ Failed{lead.errorMessage ? ` — ${lead.errorMessage.slice(0, 80)}` : ''}
+                                        ✗ Failed{lead.errorMessage ? `: ${lead.errorMessage.slice(0, 80)}` : ''}
                                       </p>
                                     ) : isActive ? (
                                       <p className="text-blue-400">◆ Sending connection request…</p>

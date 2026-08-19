@@ -915,7 +915,7 @@ export const EmailTemplatePicker = memo(function EmailTemplatePicker({
                   <ul className="mt-2 space-y-1 max-h-32 overflow-y-auto pr-1">
                     {sendResult.errors.map((err, i) => (
                       <li key={i} className="text-slate-500 dark:text-slate-400">
-                        <span className="text-red-500 dark:text-red-400">·</span> {err.email} — {err.error}
+                        <span className="text-red-500 dark:text-red-400">·</span> {err.email}: {err.error}
                       </li>
                     ))}
                   </ul>
@@ -1037,7 +1037,7 @@ function PersonalizationHints({ onInsert }: { onInsert: (v: string) => void }) {
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white dark:bg-[#000724] border border-slate-200 dark:border-slate-800/80 hover:border-blue-400 dark:hover:border-blue-500/60 hover:bg-blue-50/50 dark:hover:bg-blue-950/30 text-xs font-mono transition-all shadow-xs"
           >
             <span className="text-blue-600 dark:text-blue-400 font-semibold">{label}</span>
-            <span className="text-slate-500 dark:text-slate-400 hidden sm:inline">— {desc}</span>
+            <span className="text-slate-500 dark:text-slate-400 hidden sm:inline">: {desc}</span>
           </button>
         ))}
       </div>

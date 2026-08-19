@@ -76,7 +76,7 @@ const edgeTypes = { labeled: LabeledEdge };
 
 // ─── Palette definitions ─────────────────────────────────────────────────────
 
-type SourceKey = 'zoho_recurring' | 'zoho_once' | 'ghl_recurring' | 'ghl_once' | 'linkedin_search' | 'linkedin_signal' | 'file_import';
+type SourceKey = 'zoho_recurring' | 'zoho_once' | 'ghl_recurring' | 'ghl_once' | 'linkedin_search' | 'linkedin_signal' | 'file_import' | 'web_extract';
 
 const SOURCES: { key: SourceKey; label: string; sub: string; icon: React.ReactNode; chip: string; recurring?: boolean }[] = [
   { key: 'zoho_recurring', label: 'Zoho CRM — recurring', sub: 'Import new contacts daily', icon: <Repeat className="h-4 w-4 text-red-600" />, chip: 'bg-red-50 dark:bg-red-950/30', recurring: true },
@@ -85,6 +85,7 @@ const SOURCES: { key: SourceKey; label: string; sub: string; icon: React.ReactNo
   { key: 'ghl_recurring', label: 'GoHighLevel — recurring', sub: 'Import new contacts daily', icon: <Repeat className="h-4 w-4 text-blue-600" />, chip: 'bg-blue-50 dark:bg-blue-950/30', recurring: true },
   { key: 'file_import', label: 'File import (CSV / Excel)', sub: 'Upload a list and map columns', icon: <FileSpreadsheet className="h-4 w-4 text-emerald-600" />, chip: 'bg-emerald-50 dark:bg-emerald-950/30' },
   { key: 'linkedin_search', label: 'LinkedIn Search', sub: 'Find new leads by keywords', icon: <Search className="h-4 w-4 text-[#0077B5]" />, chip: 'bg-sky-50 dark:bg-sky-950/30' },
+  { key: 'web_extract', label: 'Web page (exhibitors, directories)', sub: 'Pull companies off a page, then find the roles you name', icon: <Globe className="h-4 w-4 text-violet-600" />, chip: 'bg-violet-50 dark:bg-violet-950/30' },
   { key: 'linkedin_signal', label: 'LinkedIn Signal Search', sub: 'Find leads from hiring/buying signals', icon: <Radar className="h-4 w-4 text-[#0077B5]" />, chip: 'bg-sky-50 dark:bg-sky-950/30', recurring: true },
 ];
 
@@ -1706,6 +1707,46 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
   const [fileMapping, setFileMapping] = useState<Record<number, string>>({});
   const [fileError, setFileError] = useState<string | null>(null);
   const [fileParsing, setFileParsing] = useState(false);
+
+  // Web-extract source. Extraction runs HERE, in the config step, not at launch:
+  // a directory takes tens of seconds, and the companies should be on screen
+  // before a campaign is committed to them — the same shape as uploading a file
+  // and previewing the parsed grid.
+  const [wxUrl, setWxUrl] = useState('');
+  const [wxGoal, setWxGoal] = useState('the exhibiting companies at this event');
+  const [wxRoles, setWxRoles] = useState('');
+  const [wxRows, setWxRows] = useState<{ name: string; source_url?: string }[]>([]);
+  const [wxRunning, setWxRunning] = useState(false);
+  const [wxError, setWxError] = useState<string | null>(null);
+  const [wxNote, setWxNote] = useState<string | null>(null);
+
+  /** Pull the companies off the page so they can be reviewed before launch. */
+  const runWebExtract = async () => {
+    const url = wxUrl.trim();
+    if (!url) { setWxError('Paste the page URL first.'); return; }
+    setWxRunning(true); setWxError(null); setWxNote(null); setWxRows([]);
+    try {
+      const res = await fetchWithTenant('/api/campaigns/web-extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, goal: wxGoal.trim() || 'the companies listed on this page' }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.success) throw new Error(data?.error || `Extraction failed (${res.status})`);
+      const rows = (data.items || []).filter((i: any) => i?.name);
+      setWxRows(rows);
+      if (!rows.length) {
+        setWxError('Nothing found on that page. Some directories load their list with JavaScript, which this cannot read yet.');
+      } else if (!data.complete) {
+        // Never let a capped crawl read as an exhaustive one.
+        setWxNote(`Stopped early (${data.stoppedBecause}) — this list may be incomplete.`);
+      }
+    } catch (e: any) {
+      setWxError(e?.message || 'Extraction failed');
+    } finally {
+      setWxRunning(false);
+    }
+  };
   // GoHighLevel recurring source: how many contacts are actually synced.
   // `known` stays false until a probe lands, so the panel never flashes a
   // "not connected" warning at a tenant who simply has not been checked yet.
@@ -3133,6 +3174,15 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
     if (source === 'linkedin_signal' && !(configs[SOURCE_STEP_ID]?.signal_query || '').trim()) {
       setError('Describe the signal to search for in the LinkedIn Signal Search source.'); setEditingId(SOURCE_STEP_ID); return;
     }
+    if (source === 'web_extract') {
+      if (!wxRows.length) { setError('Fetch the companies in the Web page source first.'); setEditingId(SOURCE_STEP_ID); return; }
+      if (!wxRoles.trim()) {
+        // Without roles these rows are company-only, and the import router
+        // classifies company-without-person-or-title as SKIP — the campaign
+        // would enrol nobody at all.
+        setError('Name at least one role to find at each company in the Web page source.'); setEditingId(SOURCE_STEP_ID); return;
+      }
+    }
     if (source === 'file_import') {
       if (!fileRows.length) { setError('Upload a CSV/Excel file in the File import source.'); setEditingId(SOURCE_STEP_ID); return; }
       const mapped = Object.values(fileMapping);
@@ -3213,6 +3263,17 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             leadGenerationLimit: perDayN,
           },
         });
+      } else if (source === 'web_extract') {
+        // One row per company, carrying the roles. The import router splits the
+        // role cell and runs title discovery per (company, role) to find real
+        // people — the same path a company+designation spreadsheet takes.
+        initialLeads = wxRows.map((r, i) => ({
+          id: `web:${(r.name || `row-${i + 1}`).trim().toLowerCase()}`,
+          company_name: r.name,
+          title: wxRoles.trim(),
+          website: r.source_url || undefined,
+        }));
+        if (!initialLeads.length) throw new Error('No companies found on that page.');
       } else if (source === 'file_import') {
         // File import: build initial_leads from the parsed grid + header mapping.
         // Leads carrying name+company (but no LinkedIn URL) are resolved by the
@@ -4174,6 +4235,40 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               </p>
             </div>
           </>)}
+          {isSource && source === 'web_extract' && (<>
+            <label className="text-xs font-medium text-foreground">Page URL</label>
+            <input value={wxUrl} onChange={(e) => setWxUrl(e.target.value)}
+              placeholder="https://example.com/event/exhibitors/"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+            <label className="text-xs font-medium text-foreground">What to pull off the page</label>
+            <input value={wxGoal} onChange={(e) => setWxGoal(e.target.value)}
+              placeholder="the exhibiting companies at this event"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+            <label className="text-xs font-medium text-foreground">Roles to find at each company</label>
+            <input value={wxRoles} onChange={(e) => setWxRoles(e.target.value)}
+              placeholder="Marketing Director; Head of Events"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+            <p className="text-xs text-muted-foreground">
+              A page like this gives you <span className="font-medium text-foreground">companies</span>, not people.
+              Name the roles and LinkedIn is searched for whoever holds them at each company — leave it
+              blank and there is nobody to contact.
+            </p>
+            <button type="button" onClick={runWebExtract} disabled={wxRunning || !wxUrl.trim()}
+              className="flex items-center justify-center gap-2 rounded-lg border border-violet-300 bg-violet-50 dark:bg-violet-950/30 px-3 py-2 text-sm font-medium text-violet-700 dark:text-violet-300 disabled:opacity-50">
+              {wxRunning ? <><Loader2 className="h-4 w-4 animate-spin" /> Reading the page…</> : <><Globe className="h-4 w-4" /> Fetch companies</>}
+            </button>
+            {wxError && <p className="text-xs text-red-600">{wxError}</p>}
+            {wxNote && <p className="text-xs text-amber-600">{wxNote}</p>}
+            {!!wxRows.length && (<>
+              <p className="text-xs text-muted-foreground">
+                <span className="font-medium text-foreground">{wxRows.length}</span> compan{wxRows.length === 1 ? 'y' : 'ies'} found
+              </p>
+              <div className="max-h-[38vh] overflow-y-auto rounded-lg border border-border divide-y divide-border">
+                {wxRows.map((r, i) => (<div key={`${r.name}-${i}`} className="px-3 py-1.5 text-sm text-foreground">{r.name}</div>))}
+              </div>
+            </>)}
+          </>)}
+
           {isSource && source === 'file_import' && (<>
             <label className="flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border hover:border-emerald-400 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 cursor-pointer px-3 py-4 text-sm font-medium text-foreground transition-colors">
               <Upload className="h-4 w-4 text-emerald-600" />

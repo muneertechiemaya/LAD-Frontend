@@ -1101,9 +1101,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                 <div className="flex-1 min-w-0">
                   <p className={cn("text-sm font-medium mb-0.5", isWhatsApp ? "text-zinc-900 dark:text-zinc-200" : "")}>Extract contacts from any webpage</p>
                   <p className={cn("text-xs", isWhatsApp ? "text-zinc-500 dark:text-zinc-400" : "text-muted-foreground")}>
-                    Paste a URL — member directories, team pages, chapter listings, etc. We&apos;ll fetch the
-                    page (JavaScript-rendered pages supported) and use AI to pull out names, phones,
-                    emails, companies, and social profiles.
+                    Paste a URL. This can be a member directory, team page, chapter listing, or similar page. We&apos;ll fetch the page, including JavaScript-rendered pages, and use AI to extract names, phone numbers, emails, companies, and social profiles.
                   </p>
                 </div>
               </div>
