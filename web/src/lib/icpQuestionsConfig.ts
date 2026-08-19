@@ -87,7 +87,7 @@ export function formatQuestionForChat(question: ICPQuestion, currentStep: number
   // Remove any "Step X of Y" prefix if present (user doesn't want to see step numbers)
   let formatted = question.question;
   // Remove step prefix if it exists
-  formatted = formatted.replace(/^Step\s+\d+\s+of\s+\d+\s*[-:–-]\s*/i, '');
+  formatted = formatted.replace(/^Step\s+\d+\s+of\s+\d+\s*[—:–-]\s*/i, '');
   formatted = formatted.replace(/^Step\s+\d+\s+of\s+\d+\s+/i, '');
   if (question.example) {
     formatted += `\n(${question.example})`;
