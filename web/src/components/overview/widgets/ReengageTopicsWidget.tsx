@@ -88,7 +88,7 @@ export const ReengageTopicsWidget: React.FC<{ id: string }> = ({ id }) => {
       ) : (
         <div className="flex flex-col gap-2">
           <p className="text-[11px] text-muted-foreground">
-            Asked but didn’t book — message them a tailored offer.
+            Asked but didn’t book: message them a tailored offer.
           </p>
           {topics.map((t) => {
             const reachable = toMembers(t).length;

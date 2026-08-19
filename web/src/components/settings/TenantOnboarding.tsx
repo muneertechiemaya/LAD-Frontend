@@ -322,7 +322,7 @@ export function TenantOnboarding() {
             {/* Tenant ID (optional — link to existing LAD tenant) */}
             <div className="md:col-span-2">
               <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Tenant ID <span className="text-gray-400 dark:text-slate-300 font-normal">(optional — leave blank to create a new tenant, or paste an existing LAD tenant UUID to link this account)</span>
+                Tenant ID <span className="text-gray-400 dark:text-slate-300 font-normal">(optional: leave blank to create a new tenant, or paste an existing LAD tenant UUID to link this account)</span>
               </label>
               <input
                 type="text"
@@ -343,7 +343,7 @@ export function TenantOnboarding() {
               >
                 {FLOW_TEMPLATES.map((ft) => (
                   <option key={ft.id} value={ft.id} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
-                    {ft.label} — {ft.description}
+                    {ft.label}: {ft.description}
                   </option>
                 ))}
               </select>
@@ -443,7 +443,7 @@ export function TenantOnboarding() {
             {/* App ID */}
             <div>
               <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                App ID <span className="text-gray-400 dark:text-slate-300 font-normal">(Facebook App ID — required for template media uploads)</span>
+                App ID <span className="text-gray-400 dark:text-slate-300 font-normal">(Facebook App ID, required for template media uploads)</span>
               </label>
               <input
                 type="text"
@@ -457,7 +457,7 @@ export function TenantOnboarding() {
             {/* App Secret */}
             <div>
               <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                App Secret <span className="text-gray-400 dark:text-slate-300 font-normal">(Facebook App Secret — for webhook payload verification)</span>
+                App Secret <span className="text-gray-400 dark:text-slate-300 font-normal">(Facebook App Secret, used for webhook payload verification)</span>
               </label>
               <input
                 type="password"
