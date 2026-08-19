@@ -87,7 +87,7 @@ export function WhatsAppEmbeddedSignup() {
             </div>
             <p className="text-sm text-gray-500 dark:text-slate-300">
               Sign in with Meta to connect your WhatsApp Business number. We handle
-              the webhook setup and message registration for you — no access tokens
+              the webhook setup and message registration for you - no access tokens
               to copy.
             </p>
           </div>

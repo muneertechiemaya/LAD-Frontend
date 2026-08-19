@@ -122,7 +122,7 @@ export const CustomEmailIntegration: React.FC<Props> = ({ onStatusChange }) => {
       });
       const data = await r.json();
       if (r.ok && data.success) {
-        setTestResult({ ok: true, message: 'Connection successful — credentials work.' });
+        setTestResult({ ok: true, message: 'Connection successful - credentials work.' });
       } else {
         setTestResult({ ok: false, message: data.error || data.message || 'Connection test failed.' });
       }
@@ -203,7 +203,7 @@ export const CustomEmailIntegration: React.FC<Props> = ({ onStatusChange }) => {
           <div>
             <CardTitle>Custom Email (SMTP / Webmail)</CardTitle>
             <CardDescription>
-              Connect any mailbox via SMTP — Roundcube, cPanel mail, Zoho, Yandex,
+              Connect any mailbox via SMTP - Roundcube, cPanel mail, Zoho, Yandex,
               Fastmail, or your own server. Use this when Google or Microsoft can&apos;t.
             </CardDescription>
           </div>
@@ -334,7 +334,7 @@ export const CustomEmailIntegration: React.FC<Props> = ({ onStatusChange }) => {
                 />
                 {form.from_address && !fromAddressLooksLikeEmail && (
                   <p className="text-[11px] text-red-600 mt-1">
-                    Must be an email address (e.g. <code>you@yourdomain.com</code>) — not a hostname.
+                    Must be an email address (e.g. <code>you@yourdomain.com</code>) - not a hostname.
                   </p>
                 )}
               </div>
