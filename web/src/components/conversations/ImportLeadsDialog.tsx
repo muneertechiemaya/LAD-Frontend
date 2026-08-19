@@ -942,7 +942,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={cn(
-        "z-[6000] sm:w-[90vw] sm:max-w-5xl h-auto max-h-[90vh] flex flex-col p-0 gap-0 border",
+        "sm:w-[90vw] sm:max-w-5xl h-auto max-h-[90vh] flex flex-col p-0 gap-0 border",
         isWhatsApp
           ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-800"
           : "bg-white dark:bg-[#000724] border-slate-200 dark:border-slate-800"

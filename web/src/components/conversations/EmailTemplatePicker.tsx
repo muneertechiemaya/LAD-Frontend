@@ -452,9 +452,8 @@ export const EmailTemplatePicker = memo(function EmailTemplatePicker({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        overlayClassName="z-[6000]"
         className={cn(
-          "z-[6001] sm:w-[90vw] sm:max-w-5xl sm:h-[90vh] flex flex-col p-0 overflow-hidden",
+          "sm:w-[90vw] sm:max-w-5xl sm:h-[90vh] flex flex-col p-0 overflow-hidden",
           "bg-white dark:bg-[#000724] border border-slate-200 dark:border-slate-800/80 text-slate-900 dark:text-slate-100 shadow-2xl rounded-2xl"
         )}
       >

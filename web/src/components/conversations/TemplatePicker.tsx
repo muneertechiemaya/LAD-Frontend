@@ -327,9 +327,8 @@ export function TemplatePicker({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        overlayClassName="z-[6000]"
         className={cn(
-          "z-[6001] sm:w-[90vw] sm:h-[90vh] flex flex-col p-0 overflow-hidden",
+          "sm:w-[90vw] sm:h-[90vh] flex flex-col p-0 overflow-hidden",
           isWA
             ? "bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-2xl rounded-2xl"
             : ""
