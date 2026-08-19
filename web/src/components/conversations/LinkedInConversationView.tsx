@@ -163,7 +163,7 @@ const STATUS_CONFIG: Record<ConnectionStatus, {
     icon:       <Clock className="w-3 h-3" />,
     dotClass:   'bg-slate-300 dark:bg-slate-500',
     badgeClass: 'bg-slate-100 text-slate-500 dark:bg-slate-800/80 dark:text-slate-300',
-    bannerText: 'Connection request sent — chat will be available once they accept.',
+    bannerText: 'Connection request sent - chat will be available once they accept.',
   },
   accepted: {
     label:      'Connected',
@@ -554,7 +554,7 @@ export function LinkedInConversationView({
   const handleFileChosen = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setAttachInfo(`Selected "${file.name}" — media upload to LinkedIn DMs is queued for the next backend release.`);
+    setAttachInfo(`Selected "${file.name}" - media upload to LinkedIn DMs is queued for the next backend release.`);
     if (fileInputRef.current) fileInputRef.current.value = '';
     setTimeout(() => setAttachInfo(null), 6000);
   };
@@ -1119,7 +1119,7 @@ export function LinkedInConversationView({
                       </p>
                     </>
                   ) : (
-                    <p>No messages yet — start the conversation!</p>
+                    <p>No messages yet - start the conversation!</p>
                   )}
                 </div>
               ) : (
@@ -1383,8 +1383,8 @@ export function LinkedInConversationView({
                     </TooltipTrigger>
                     <TooltipContent side="top">
                       {agentEnabled
-                        ? 'AI auto-replies are ON — click to turn off'
-                        : 'AI auto-replies are OFF — click to turn on'}
+                        ? 'AI auto-replies are ON - click to turn off'
+                        : 'AI auto-replies are OFF - click to turn on'}
                     </TooltipContent>
                   </Tooltip>
 

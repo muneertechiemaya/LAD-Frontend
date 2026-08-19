@@ -241,7 +241,7 @@ export function TemplatePicker({
         );
         const data = await res.json();
         if (data.url) setHeaderMediaUrl(data.url);
-      } catch { /* silent — user can paste manually */ }
+      } catch { /* silent - user can paste manually */ }
       finally { setResolvingMedia(false); }
     } else {
       setHeaderMediaUrl('');

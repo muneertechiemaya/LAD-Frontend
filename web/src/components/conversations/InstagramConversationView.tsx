@@ -415,7 +415,7 @@ function InstagramConversationViewInner(): JSX.Element {
               {syncing && <RefreshCw className="h-3 w-3 animate-spin" />}
               {syncStatus?.status === 'failed'
                 ? `Sync failed: ${syncStatus.error || 'unknown error'}`
-                : `Syncing history — ${syncStatus?.threads_processed ?? 0} threads · ${syncStatus?.messages_inserted ?? 0} messages`}
+                : `Syncing history - ${syncStatus?.threads_processed ?? 0} threads · ${syncStatus?.messages_inserted ?? 0} messages`}
             </div>
           )}
           <div className="relative">
@@ -667,7 +667,7 @@ function InstagramConversationViewInner(): JSX.Element {
             <>
               The AI will stop replying on this conversation until you re-enable it.
               You can keep responding manually in the meantime, and inbound DMs will
-              still arrive — they just won&apos;t trigger an automated reply.
+              still arrive - they just won&apos;t trigger an automated reply.
             </>
           }
           confirmLabel="Pause AI"
@@ -1403,7 +1403,7 @@ function BubbleFooter({
       case 'sending': return 'Sending…';
       case 'sent':    return 'Sent';
       case 'read':    return readAt ? `Seen ${formatBubbleTime(readAt)}` : 'Seen';
-      case 'failed':  return lastError ? `Failed — ${lastError}` : 'Failed';
+      case 'failed':  return lastError ? `Failed - ${lastError}` : 'Failed';
       default:        return '';
     }
   })();
