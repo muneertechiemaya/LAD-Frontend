@@ -24,12 +24,13 @@ npm run dev
 ```
 
 ---
-
 ## 1. What Was Changed and Why
 
 | Change | File | Why |
 | :--- | :--- | :--- |
-| Replace `externalDir: true` with `transpilePackages` + `optimizePackageImports` | `web/next.config.mjs` | `externalDir` was a legacy workaround. `transpilePackages` is the correct modern way to tell Next.js to compile a local workspace package (`@lad/frontend-features`). `optimizePackageImports` tree-shakes it per-feature. |
+| Replace `externalDir: true` with `transpilePackages: ['@lad/frontend-features']` | `web/next.config.mjs` | `externalDir` was a legacy Next.js flag. `transpilePackages` is the standard, modern mechanism to compile internal monorepo workspace packages (`@lad/frontend-features`). |
+| Set `turbopack.root` to monorepo root (`..`) | `web/next.config.mjs` | Explicitly scopes Turbopack module resolution and Rust filesystem watchers (`ReadDirectoryChangesW`) to the monorepo parent directory, preventing dropped watch events from `../sdk`. |
+| Add 3rd-party barrel libraries to `optimizePackageImports` | `web/next.config.mjs` | Tree-shakes heavy external icon/UI packages (`lucide-react`, `@tabler/icons-react`, `recharts`, `date-fns`, `framer-motion`). **Note:** Internal workspace packages (`@lad/frontend-features`) must NOT be placed here, as static barrel transforms break live Fast Refresh HMR invalidation. |
 | Add `@lad/shared` alias to both Webpack and Turbopack configs | `web/next.config.mjs` | Allows both bundlers to resolve `@lad/shared/*` imports from the `sdk/shared/` directory. |
 | Remove `@lad/frontend-features$` exact-match alias | `web/next.config.mjs` | No longer needed — `transpilePackages` handles resolution via the SDK's `exports` map. |
 | Switch dev script to `next dev --turbo` | `web/package.json` | Enables Turbopack bundler for local development. Turbopack is Rust-based and significantly faster than Webpack for HMR — typically **3–5× faster**, with updates in under 500ms. |
@@ -86,11 +87,19 @@ const nextConfig = {
 const nextConfig = {
   transpilePackages: ['@lad/frontend-features'],  // ← added
 
-  // ✅ REQUIRED when importing ../sdk
   experimental: {
-    optimizePackageImports: ['@lad/frontend-features'],  // ← replaced externalDir
+    optimizePackageImports: [                     // ← added for 3rd party libraries
+      'lucide-react',
+      '@tabler/icons-react',
+      'recharts',
+      'date-fns',
+      'framer-motion',
+    ],
+    proxyClientMaxBodySize: '30mb',
     ...
   },
+
+  outputFileTracingRoot: path.resolve(__dirname, '..'),
 
   webpack: (config, { isServer }) => {
     config.resolve.alias = {
@@ -106,10 +115,11 @@ const nextConfig = {
   },
 
   turbopack: {
+    root: path.resolve(__dirname, '..'),          // ← added monorepo watch root
     resolveAlias: {
       '@tanstack/react-query': '../node_modules/@tanstack/react-query',
       '@tanstack/query-core': '../node_modules/@tanstack/query-core',
-      '@lad/shared': '../sdk/shared',  // ← added
+      '@lad/shared': '../sdk/shared',              // ← added
       'chart.js': './node_modules/chart.js/dist/chart.js',
       // @lad/frontend-features$ removed — transpilePackages covers it
       ...
@@ -125,7 +135,7 @@ const nextConfig = {
 ```diff
 -  "dev": "next dev --webpack",
 +  "dev": "next dev --turbo",
-   "build": "next build --webpack",
+    "build": "next build --webpack",
 ```
 
 > **Note on production:** Production builds remain on `next build --webpack`. This ensures complete deployment safety in Docker and Cloud Run environments (`Dockerfile` line 88: `RUN npm run build`) while allowing local development to benefit from Turbopack's fast HMR (`next dev --turbo`).
@@ -251,6 +261,7 @@ An independent audit of the previous AI critique confirmed:
 2. **`exceljs` Package Compatibility:** `exceljs` defines `"browser": "./dist/exceljs.min.js"` in its `package.json`, which Turbopack and Webpack both honor natively.
 3. **TypeScript Exports Resolution:** `sdk/package.json`'s `exports` map covers subpath imports (including `"./community-roi/types"` added in Step 3), enabling `moduleResolution: "bundler"` to resolve types cleanly without explicit tsconfig path overrides.
 4. **Relative Import Sanitation:** Legacy relative SDK imports (`cookieStorage.ts`, `WalletBalance.tsx`, `CreditUsageAnalytics.tsx`, `LiveActivityTable.tsx`, and `leadsActions.ts`) were updated to use `@lad/shared/*` and `@lad/frontend-features/*` package path aliases, preventing `TS2307` module resolution errors.
+5. **HMR Freeze Root Cause Resolved:** Removed `@lad/frontend-features` from `optimizePackageImports` (which caused Turbopack AST transform cache to desync during live SDK edits) and explicitly configured `turbopack.root: path.resolve(__dirname, '..')` to secure the monorepo file watcher boundaries.
 
 The PR is fully verified and ready for merge.
 

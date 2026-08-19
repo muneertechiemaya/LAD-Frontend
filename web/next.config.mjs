@@ -11,7 +11,13 @@ const nextConfig = {
   transpilePackages: ['@lad/frontend-features'],
   // ✅ REQUIRED when importing ../sdk
   experimental: {
-    optimizePackageImports: ['@lad/frontend-features'],
+    optimizePackageImports: [
+      'lucide-react',
+      '@tabler/icons-react',
+      'recharts',
+      'date-fns',
+      'framer-motion',
+    ],
     // Raise the middleware/proxy request-body cap (Next default 10MB) so large
     // multipart uploads survive the middleware layer. Media uploads (e.g.
     // LinkedIn template videos) are capped at 25MB by the backend; 30MB leaves
@@ -50,8 +56,9 @@ const nextConfig = {
     return config;
   },
 
-  // Allow Turbopack build - use relative paths (Turbopack doesn't support absolute paths)
+  // Turbopack monorepo build & HMR configuration
   turbopack: {
+    root: path.resolve(__dirname, '..'),
     resolveAlias: {
       // Force all @tanstack/react-query imports to use root node_modules (monorepo setup)
       '@tanstack/react-query': '../node_modules/@tanstack/react-query',
