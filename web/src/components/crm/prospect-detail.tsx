@@ -86,7 +86,7 @@ export default function ProspectDetail({ prospect, warmPath, warmPathSample = fa
       dailyCounts: daily,
       total7d: total,
       routes,
-      topConnection: warmPath?.top_connection?.name || '—',
+      topConnection: warmPath?.top_connection?.name || '-',
       lastDir,
     };
   }, [warmPath, events]);
@@ -130,7 +130,7 @@ export default function ProspectDetail({ prospect, warmPath, warmPathSample = fa
             <button
               onClick={onRemove}
               disabled={isRemoving}
-              title="Remove this prospect — not a fit"
+              title="Remove this prospect - not a fit"
               className="h-9 px-3 flex-1 md:flex-none rounded-lg text-[12.5px] font-medium text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/40 inline-flex items-center justify-center md:justify-start gap-1.5 disabled:opacity-50"
             >
               <Trash2 className="w-4 h-4" /> {isRemoving ? 'Removing…' : 'Not a fit'}
@@ -331,7 +331,7 @@ function KpiFit({ value }: { value: number | null }) {
             className="text-[14px] font-bold tabular-nums text-[#172560] dark:text-white"
             style={{ fontFamily: '"Space Grotesk", system-ui' }}
           >
-            {scored ? pct : '—'}
+            {scored ? pct : '-'}
           </span>
         </div>
       </div>
@@ -577,7 +577,7 @@ function FitRadar({ p }: { p: ProspectFixture }) {
       <LadCard>
         <LadCardHeader title="Fit signals" subtitle="Not scored yet" />
         <div className="py-10 text-center text-[12.5px] text-slate-500 dark:text-slate-300">
-          No fit signals for this prospect yet — fit is computed when it&apos;s
+          No fit signals for this prospect yet - fit is computed when it&apos;s
           discovered via a search (Apollo · Sales Nav · ABM).
         </div>
       </LadCard>
@@ -885,7 +885,7 @@ function Actions({ onAction, isActing, doNotContact, quietUntil }: {
         <ActionBtn
           Icon={Ban}
           label="Do not contact"
-          hint={doNotContact ? 'suppressed — click to lift' : 'hard suppress'}
+          hint={doNotContact ? 'suppressed - click to lift' : 'hard suppress'}
           danger
           active={!!doNotContact}
           disabled={isActing}

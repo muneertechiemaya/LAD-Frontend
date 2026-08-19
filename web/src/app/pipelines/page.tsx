@@ -122,7 +122,7 @@ function PipelineCard({
                 ? (active ? `Turn ${name} off` : `Turn ${name} on`)
                 : (active
                     ? `Turn ${name} off. Not running yet.`
-                    : `Turn ${name} on. Not running yet — starts when this pipeline ships.`)}
+                    : `Turn ${name} on. Not running yet - starts when this pipeline ships.`)}
             </span>
             <input
               id={toggleId}
@@ -147,7 +147,7 @@ function PipelineCard({
         {entitled && (
           <span className="text-xs text-gray-500 dark:text-slate-400 tabular-nums">
             {!live
-              ? (active ? 'On — starts when this ships' : 'Available when this ships')
+              ? (active ? 'On - starts when this ships' : 'Available when this ships')
               : campaignCount === 0
                 ? 'No campaigns yet'
                 : `${campaignCount} campaign${campaignCount === 1 ? '' : 's'}`}

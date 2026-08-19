@@ -31,7 +31,7 @@ const SOURCE_LABEL: Record<ProposalSource, string> = {
 
 /** Values are arbitrary knob types; render them the way the form shows them. */
 function displayValue(value: unknown): string {
-  if (value === null || value === undefined || value === '') return '—';
+  if (value === null || value === undefined || value === '') return '-';
   if (typeof value === 'boolean') return value ? 'On' : 'Off';
   if (Array.isArray(value)) return value.join('\n');
   return String(value);
@@ -180,7 +180,7 @@ export function KnobProposals({
       {flaggedCount > 0 && (
         <p className="mt-2 text-xs text-amber-800 dark:text-amber-300">
           {flaggedCount} {flaggedCount === 1 ? 'suggestion needs' : 'suggestions need'} a closer look
-          and {flaggedCount === 1 ? 'is' : 'are'} left unticked — they came from the assistant’s own
+          and {flaggedCount === 1 ? 'is' : 'are'} left unticked - they came from the assistant’s own
           replies, or your records disagreed.
         </p>
       )}

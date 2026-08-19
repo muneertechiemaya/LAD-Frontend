@@ -88,7 +88,7 @@ export default function LeadReportSection({
 
           {settledElsewhere && (
             <p className="mb-4 text-[12.5px] text-slate-500 dark:text-[#7a8ba3]">
-              The approver settled this from the link they were sent — showing their decision.
+              The approver settled this from the link they were sent - showing their decision.
             </p>
           )}
           {actionError && (
@@ -114,7 +114,7 @@ export default function LeadReportSection({
               {state === 'pending' && (
                 <span className="inline-flex items-center gap-1.5 text-[12.5px] text-slate-500 dark:text-[#7a8ba3]">
                   <Eye className="w-3.5 h-3.5" />
-                  Approver copy — not delivered to the tenant
+                  Approver copy - not delivered to the tenant
                 </span>
               )}
             </div>
@@ -122,7 +122,7 @@ export default function LeadReportSection({
             <GroundingLine grounding={grounding} />
 
             <p className="mt-3 text-[11.5px] text-slate-400 dark:text-[#5f7089]">
-              Figures the source doesn&apos;t support are scrubbed after generation — a sparse report is
+              Figures the source doesn&apos;t support are scrubbed after generation - a sparse report is
               the guard working.
             </p>
           </div>
@@ -166,7 +166,7 @@ function EmptyPanel({ name, onAdvance, disabled }: { name?: string; onAdvance: (
       </p>
       <p className="mt-1.5 text-[12.5px] leading-relaxed text-slate-500 dark:text-[#7a8ba3] max-w-md mx-auto">
         Run the web-research node to ground an audit for this lead. A report with no grounding is
-        refused — never generated with filler.
+        refused - never generated with filler.
       </p>
       <button
         type="button"
@@ -240,7 +240,7 @@ function StatusStrip({ state, report }: { state: ReportViewState; report: LeadRe
   if (state === 'pending') {
     return (
       <Strip tone="amber">
-        Generated {when(report.created_at)} · awaiting {report.approval_channel || 'email'} approval —
+        Generated {when(report.created_at)} · awaiting {report.approval_channel || 'email'} approval -
         not sent yet. The PDF below is the approver copy.
       </Strip>
     );
@@ -258,7 +258,7 @@ function StatusStrip({ state, report }: { state: ReportViewState; report: LeadRe
     return (
       <Strip tone="red">
         <span className="block">
-          Rejected — not sent{report.reject_reason ? ` · ${report.reject_reason}` : ''}.
+          Rejected - not sent{report.reject_reason ? ` · ${report.reject_reason}` : ''}.
         </span>
         {/* The stamp happens at approval, so a rejected report leaves the token empty. */}
         <span className="block mt-1 opacity-90">
