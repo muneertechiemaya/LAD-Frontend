@@ -110,7 +110,7 @@ export interface ModelDef {
 }
 
 export const MODELS: ModelDef[] = [
-  { id: "agent", name: "LAD Agent", sub: "Autonomous — plans & runs multi-step tasks", icon: Icon.agent },
+  { id: "agent", name: "LAD Agent", sub: "Autonomous - plans & runs multi-step tasks", icon: Icon.agent },
   { id: "flash", name: "LAD 2.5 Flash", sub: "Fast answers for quick lookups", icon: Icon.bolt },
   { id: "reason", name: "LAD Reasoning", sub: "Deeper analysis for complex ICPs", icon: Icon.sparkle },
 ];

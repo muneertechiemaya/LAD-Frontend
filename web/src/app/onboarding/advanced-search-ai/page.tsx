@@ -418,10 +418,10 @@ const WF_SOURCE_LABELS: Record<string, { label: string; sub: string }> = {
     linkedin_search:  { label: 'LinkedIn Search',            sub: 'Find new leads by keywords' },
     linkedin_signal:  { label: 'LinkedIn Signal Search',     sub: 'Find leads from hiring/buying signals' },
     file_import:      { label: 'File import (CSV / Excel)',  sub: 'Upload a list and map columns' },
-    zoho_once:        { label: 'Zoho CRM — one-time',        sub: 'Import synced contacts now' },
-    zoho_recurring:   { label: 'Zoho CRM — recurring',       sub: 'Import new contacts daily' },
-    ghl_once:         { label: 'GoHighLevel — one-time',     sub: 'Import synced contacts now' },
-    ghl_recurring:    { label: 'GoHighLevel — recurring',    sub: 'Import new contacts daily' },
+    zoho_once:        { label: 'Zoho CRM (One-Time)',        sub: 'Import synced contacts now' },
+    zoho_recurring:   { label: 'Zoho CRM (Recurring)',       sub: 'Import new contacts daily' },
+    ghl_once:         { label: 'GoHighLevel (One-Time)',     sub: 'Import synced contacts now' },
+    ghl_recurring:    { label: 'GoHighLevel (Recurring)',    sub: 'Import new contacts daily' },
 };
 
 /* ═══════════════════════════════════════════════
@@ -525,21 +525,21 @@ function buildOutreachJourney(leads: LeadProfile[], targeting: LeadTargeting | n
             channel: 'linkedin',
             label: 'LinkedIn',
             action: 'Visit profile → Connect → Message',
-            reason: hasLi ? 'LinkedIn profiles found — warm up with a connection request first.' : 'Start with LinkedIn to build familiarity before reaching out.',
+            reason: hasLi ? 'LinkedIn profiles found - warm up with a connection request first.' : 'Start with LinkedIn to build familiarity before reaching out.',
             recommended: true,
         },
         {
             channel: 'email',
             label: 'Email',
             action: 'Personalised cold email + follow-up sequence',
-            reason: hasEmail ? 'Email addresses available — follow up 3–5 days after LinkedIn connect.' : 'Enrich emails via enrichment tools after LinkedIn connection is accepted.',
+            reason: hasEmail ? 'Email addresses available - follow up 3–5 days after LinkedIn connect.' : 'Enrich emails via enrichment tools after LinkedIn connection is accepted.',
             recommended: true,
         },
         {
             channel: 'whatsapp',
             label: 'WhatsApp',
             action: 'Direct message, broadcast + follow-up sequence',
-            reason: isGCC ? 'GCC region — WhatsApp has very high open rates (98%). Use after email.' : 'Add WhatsApp as a follow-up channel for warm leads.',
+            reason: isGCC ? 'GCC region - WhatsApp has very high open rates (98%). Use after email.' : 'Add WhatsApp as a follow-up channel for warm leads.',
             recommended: true,
         },
         {
@@ -894,7 +894,7 @@ function importRoutingNotice(parsed: ParsedInboundLead[]): string {
             + `ones on your sheet** unless they happen to hold that exact role.`
             + (named > 0 ? `\n\nThe other ${named} named ${named === 1 ? 'row is' : 'rows are'} looked up directly.` : '')
             + `\n\nIf your sheet does name people, add a **Name** column (or **First Name** / **Last Name**) `
-            + `and re-upload — I'll then look each person up by name.`);
+            + `and re-upload - I'll then look each person up by name.`);
     }
     if (unusableLinks > 0) {
         parts.push(
@@ -2586,7 +2586,7 @@ export default function AdvancedSearchAIPage() {
                     const companyText = (
                         data.company_profile.overview ||
                         data.company_profile.description ||
-                        `${lead.current_company || 'Company'} — ${data.company_profile.industry || ''} ${data.company_profile.company_size_range ? `· ${data.company_profile.company_size_range} employees` : ''}`
+                        `${lead.current_company || 'Company'} - ${data.company_profile.industry || ''} ${data.company_profile.company_size_range ? `· ${data.company_profile.company_size_range} employees` : ''}`
                     ).trim();
                     if (companyText) { setProfileSummary(companyText); summaryText = companyText; }
                 }
@@ -3628,9 +3628,9 @@ export default function AdvancedSearchAIPage() {
                             + (unresolvedRoles > 0
                                 ? `\n\n${plural(unresolvedRoles, 'role search', 'role searches')} came back empty`
                                   + (emptyCompanies > 0
-                                    ? `, and ${plural(emptyCompanies, 'company', 'companies')} returned nobody at all — `
+                                    ? `, and ${plural(emptyCompanies, 'company', 'companies')} returned nobody at all - `
                                       + `${emptyCompanies === 1 ? 'it' : 'they'} can't be contacted without a profile.`
-                                    : ` — every company still has at least one person.`)
+                                    : ` - every company still has at least one person.`)
                                 : '')
                             + `\n\nReview them in the panel, then click **"Create Outreach Journey"** to configure your campaign.`,
                         // BOTH of these are required for the summary card and its
@@ -3649,7 +3649,7 @@ export default function AdvancedSearchAIPage() {
                 if (job.status === 'failed') {
                     setMessages(p => [...p.filter(m => m.id !== IMPORT_PROGRESS_MSG_ID), {
                         id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
-                        text: `⚠️ **Lead discovery failed.**\n\n${job.error || 'The search could not be completed.'}\n\nYour uploaded rows are saved — try the import again, or continue with the leads already found.`,
+                        text: `⚠️ **Lead discovery failed.**\n\n${job.error || 'The search could not be completed.'}\n\nYour uploaded rows are saved - try the import again, or continue with the leads already found.`,
                     }]);
                     return;
                 }
@@ -3661,7 +3661,7 @@ export default function AdvancedSearchAIPage() {
                 if (job.status !== 'paused' && Date.now() - started > MAX_MS) {
                     setMessages(p => [...p.filter(m => m.id !== IMPORT_PROGRESS_MSG_ID), {
                         id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
-                        text: `⏱️ Discovery is taking longer than expected. It's still running in the background — refresh in a few minutes to pick up the results.`,
+                        text: `⏱️ Discovery is taking longer than expected. It's still running in the background - refresh in a few minutes to pick up the results.`,
                     }]);
                     return;
                 }
@@ -3725,7 +3725,7 @@ export default function AdvancedSearchAIPage() {
         setMessages(p => [...p, {
             id: `a-attach-${Date.now()}`, role: 'ai', ts: new Date(),
             text: `⚠️ **Your campaign was created, but I could not attach the running search to it.**\n\n`
-                + `The search is still going. Without the link, anyone it finds from now on will NOT join this campaign — `
+                + `The search is still going. Without the link, anyone it finds from now on will NOT join this campaign - `
                 + `the leads already found are in it, and nothing else will arrive.\n\nRetry the link, or open the campaign as it stands.`,
             options: [
                 { label: '🔗 Retry the link', value: '__attach_retry__' },
@@ -3748,7 +3748,7 @@ export default function AdvancedSearchAIPage() {
         const now = new Date();
         const stamp = `${now.toLocaleDateString(undefined, { day: '2-digit', month: 'short' })} `
             + `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-        return `${sheet} — imported ${stamp}`;
+        return `${sheet} - imported ${stamp}`;
     }, [uploadedFileName]);
 
     /**
@@ -3837,16 +3837,16 @@ export default function AdvancedSearchAIPage() {
         setMessages(p => [...p, {
             id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
             text: (parkDraft
-                    ? `👍 **Carrying on in the background.**\n\nSet up the campaign now and launch whenever you're ready — `
+                    ? `👍 **Carrying on in the background.**\n\nSet up the campaign now and launch whenever you're ready - `
                       + `I'll keep searching, and everyone I find afterwards joins it automatically, spread across the days `
                       + `so your LinkedIn limits aren't breached.`
                     // The paused wording has to be accurate about WHEN: this job is
                     // not searching right now, it resumes on its own schedule.
                     : `👍 **Using the ${searchedSoFar.total} found so far.**\n\nSet up the campaign now and launch whenever `
                       + `you're ready. Searching picks up again by itself, and everyone found after that joins this same `
-                      + `campaign automatically — spread across the days so your LinkedIn limits aren't breached.`)
+                      + `campaign automatically - spread across the days so your LinkedIn limits aren't breached.`)
                 + (draftId
-                    ? `\n\n💾 Saved as a draft — **${draftCampaignName()}**. You can close this page and pick it up from `
+                    ? `\n\n💾 Saved as a draft - **${draftCampaignName()}**. You can close this page and pick it up from `
                       + `[Campaigns](/campaigns) whenever you like; the search keeps running either way.`
                     : ''),
             targeting: bgTargeting,
@@ -4115,7 +4115,7 @@ export default function AdvancedSearchAIPage() {
             if (counts.phone > 0) summaryText += `\n• Phone: ${counts.phone} number${counts.phone !== 1 ? 's' : ''}`;
             if (counts.website > 0) summaryText += `\n• Website: ${counts.website} URL${counts.website !== 1 ? 's' : ''}`;
             if (finalLocation) summaryText += `\n\n📍 Search location: **${finalLocation}**`;
-            summaryText += `\n\nBuilding profiles in the background — searching Google and LinkedIn for additional context on each lead.\n\nWhen ready, click **"Create Outreach Journey"** below to configure your campaign.`;
+            summaryText += `\n\nBuilding profiles in the background - searching Google and LinkedIn for additional context on each lead.\n\nWhen ready, click **"Create Outreach Journey"** below to configure your campaign.`;
 
             setMessages(p => p.filter(m => m.id !== processingId).concat({
                 id: `a-${Date.now()}`, role: 'ai', text: summaryText, ts: new Date(),
@@ -4294,7 +4294,7 @@ export default function AdvancedSearchAIPage() {
                     id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
                     text: sheetLocation
                         ? `${routingNotice}\n\nI'll focus the search on **${sheetLocation}**.`
-                        : `${routingNotice}\n\n📍 **Which location should I focus the search on?**\n\nType a city, country or region (e.g. **Dubai**, **UAE**, **MEA**) — or search worldwide.`,
+                        : `${routingNotice}\n\n📍 **Which location should I focus the search on?**\n\nType a city, country or region (e.g. **Dubai**, **UAE**, **MEA**) - or search worldwide.`,
                     importOptions: { needsLocation: !sheetLocation },
                     ...(sheetLocation ? {} : { options: [{ label: '🌍 Search worldwide', value: 'worldwide' }] }),
                 }));
@@ -4400,7 +4400,7 @@ export default function AdvancedSearchAIPage() {
                 return false;
             }
             if (!res.ok || !data?.success) {
-                wfPushAi(`⚠️ I couldn't save that sequence${data?.error ? ` — ${data.error}` : ''}. The pipeline is still here, so you can launch it or open it in the builder.`);
+                wfPushAi(`⚠️ I couldn't save that sequence${data?.error ? ` - ${data.error}` : ''}. The pipeline is still here, so you can launch it or open it in the builder.`);
                 return false;
             }
             return true;
@@ -4423,7 +4423,7 @@ export default function AdvancedSearchAIPage() {
         setWfDraft({ template: named, warnings });
         wfPushAi(
             `**"${name}"** is ready.\n\n`
-            + 'Launching enrols leads and starts sending — everything else here is reversible.',
+            + 'Launching enrols leads and starts sending - everything else here is reversible.',
             [
                 { label: `🚀 Launch "${name}"`, value: '__wf_launch__' },
                 { label: '💾 Save for later', value: '__wf_save__' },
@@ -4479,7 +4479,7 @@ export default function AdvancedSearchAIPage() {
         // batch is still the whole interview: the server is stateless and may
         // ask another round, at which point a fixed total would be a lie.
         const showTotal = wiz.queue.length > 1 && wiz.asked < wiz.queue.length;
-        parts.push(`🛠️ **Building your pipeline** — question ${wiz.asked + 1}${showTotal ? ` of ${wiz.queue.length}` : ''}`);
+        parts.push(`🛠️ **Building your pipeline** - question ${wiz.asked + 1}${showTotal ? ` of ${wiz.queue.length}` : ''}`);
         parts.push('');
         parts.push(q.question);
         if (q.why) parts.push(`\n*${q.why}*`);
@@ -4499,7 +4499,7 @@ export default function AdvancedSearchAIPage() {
         // the same control — naming the value it will use makes the one-tap
         // accept obvious without adding a second chip that does the same thing.
         opts.push({
-            label: q.default ? `⏭️ Skip — use "${q.default}"` : '⏭️ Skip this one',
+            label: q.default ? `⏭️ Skip - use "${q.default}"` : '⏭️ Skip this one',
             value: '__wf_skip__',
         });
         // The way out, on every question.
@@ -4539,7 +4539,7 @@ export default function AdvancedSearchAIPage() {
             if (res.status === 404 || res.status === 501) {
                 wfWizardRef.current = null;
                 wfPushAi(
-                    '🛠️ Building a workflow from a description isn\'t available on this environment yet.\n\nYou can still build this pipeline yourself — the Accelerator builder has a **Build with AI** tab where you can paste the same description, or you can drag the steps in by hand.',
+                    '🛠️ Building a workflow from a description isn\'t available on this environment yet.\n\nYou can still build this pipeline yourself - the Accelerator builder has a **Build with AI** tab where you can paste the same description, or you can drag the steps in by hand.',
                     [{ label: '🛠️ Open the builder', value: '__wf_bail__' }],
                 );
                 return;
@@ -4549,7 +4549,7 @@ export default function AdvancedSearchAIPage() {
             if (!res.ok || !data?.success) {
                 wfWizardRef.current = null;
                 wfPushAi(
-                    `⚠️ I couldn't build that workflow${data?.error ? ` — ${data.error}` : ''}. You can describe it again, or build it in the Accelerator builder.`,
+                    `⚠️ I couldn't build that workflow${data?.error ? ` - ${data.error}` : ''}. You can describe it again, or build it in the Accelerator builder.`,
                     [{ label: '🛠️ Open the builder', value: '__wf_bail__' }],
                 );
                 return;
@@ -4575,15 +4575,15 @@ export default function AdvancedSearchAIPage() {
                 // Numbered because the engine is linear — the order IS the
                 // pipeline, and a chip row would not say that.
                 const lines = nodes.map((n: any, i: number) =>
-                    `${i + 1}. **${n.title || n.type}**${n.description ? ` — ${n.description}` : ''}`);
+                    `${i + 1}. **${n.title || n.type}**${n.description ? ` - ${n.description}` : ''}`);
                 const parts: string[] = [
-                    `✅ **Your pipeline is ready — "${template.name || 'AI workflow'}"**`,
+                    `✅ **Your pipeline is ready - "${template.name || 'AI workflow'}"**`,
                     '',
                     ...lines,
                     '',
                 ];
                 if (template.notes) parts.push(`*${template.notes}*`, '');
-                parts.push('It\'s in the **Workflow** panel on the right — **nothing has launched yet**.');
+                parts.push('It\'s in the **Workflow** panel on the right - **nothing has launched yet**.');
                 parts.push('');
                 parts.push('**What should this sequence be called?** Type a name, or keep the suggested one.');
 
@@ -4631,7 +4631,7 @@ export default function AdvancedSearchAIPage() {
             // re-asks after every round would otherwise refill the queue
             // indefinitely without either counter ever ending the interview.
             if (wiz.rounds >= WF_MAX_ROUNDS || wiz.asked >= WF_MAX_QUESTIONS) {
-                wfBailToBuilder('🛠️ This is taking more back-and-forth than it should. I\'ve opened the builder so you can finish it directly — your description and answers are the starting point.');
+                wfBailToBuilder('🛠️ This is taking more back-and-forth than it should. I\'ve opened the builder so you can finish it directly - your description and answers are the starting point.');
                 return;
             }
             // Warnings can arrive mid-interview; surface them as they come
@@ -4681,7 +4681,7 @@ export default function AdvancedSearchAIPage() {
                 // Stop asking, but still let the server finish from what it has.
                 wiz.queue = [];
                 wiz.idx = 0;
-                wfPushAi('That\'s enough to work with — drafting the pipeline now.');
+                wfPushAi('That\'s enough to work with - drafting the pipeline now.');
                 void wfCallInterview({ ...wiz.answers });
                 return;
             }
@@ -4700,7 +4700,7 @@ export default function AdvancedSearchAIPage() {
         wfNamingRef.current = null;
         setWfDraft(null);
         wfWizardRef.current = { description, answers: {}, queue: [], idx: 0, asked: 0, rounds: 0 };
-        wfPushAi('🛠️ That reads like a **pipeline**, not a lead search — so let\'s build it rather than search for it. A couple of quick questions and I\'ll draft it for you.');
+        wfPushAi('🛠️ That reads like a **pipeline**, not a lead search - so let\'s build it rather than search for it. A couple of quick questions and I\'ll draft it for you.');
         void wfCallInterview({});
     }, [wfPushAi, wfCallInterview]);
 
@@ -4785,7 +4785,7 @@ export default function AdvancedSearchAIPage() {
                     setMessages(p => p.filter(m => m.id !== lid).concat(
                         {
                             id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
-                            text: `🔗 Those are LinkedIn **search** links, so there's no profile to open directly — but each one names a person and their company, so I'll look all **${rows.length}** of them up on LinkedIn.${skipped > 0 ? `\n\n_(${skipped} link${skipped === 1 ? '' : 's'} had no search text to work from, so I've left ${skipped === 1 ? 'it' : 'them'} out.)_` : ''}`,
+                            text: `🔗 Those are LinkedIn **search** links, so there's no profile to open directly - but each one names a person and their company, so I'll look all **${rows.length}** of them up on LinkedIn.${skipped > 0 ? `\n\n_(${skipped} link${skipped === 1 ? '' : 's'} had no search text to work from, so I've left ${skipped === 1 ? 'it' : 'them'} out.)_` : ''}`,
                         },
                         { id: importLoadingId, role: 'ai', text: '', ts: new Date(), loading: true },
                     ));
@@ -4901,7 +4901,7 @@ export default function AdvancedSearchAIPage() {
                 } else {
                     setMessages(p => p.filter(m => m.id !== lid).concat({
                         id: `a-${Date.now()}`, role: 'ai',
-                        text: `📱 **Ready to set up outreach!**\n\nI detected a contact in your message. To create a campaign:\n• **WhatsApp / Voice Call** — just a phone number is enough\n• **Email outreach** — provide an email address\n• **LinkedIn outreach** — provide a LinkedIn URL or name + company`,
+                        text: `📱 **Ready to set up outreach!**\n\nI detected a contact in your message. To create a campaign:\n• **WhatsApp / Voice Call** - just a phone number is enough\n• **Email outreach** - provide an email address\n• **LinkedIn outreach** - provide a LinkedIn URL or name + company`,
                         ts: new Date(),
                         options: [
                             { label: '🚀 Start Campaign Setup', value: '__start_campaign__' },
@@ -4956,7 +4956,7 @@ export default function AdvancedSearchAIPage() {
             if (isRefine) {
                 setMessages(p => p.filter(m => m.id !== lid).concat({
                     id: `a-${Date.now()}`, role: 'ai',
-                    text: `✏️ **Want to refine your leads?**\n\nHere's what you can do:\n• **Remove leads** — Click the 🗑️ icon next to any lead in the panel\n• **Upload new file** — Upload a different CSV to replace your current leads\n• **View leads** — Click on the leads panel to review all your uploaded contacts\n\nYou currently have **${inboundLeads.length}** leads loaded. Once you're happy with the list, click **"Create Outreach Journey"** to set up your campaign!`,
+                    text: `✏️ **Want to refine your leads?**\n\nHere's what you can do:\n• **Remove leads** - Click the 🗑️ icon next to any lead in the panel\n• **Upload new file** - Upload a different CSV to replace your current leads\n• **View leads** - Click on the leads panel to review all your uploaded contacts\n\nYou currently have **${inboundLeads.length}** leads loaded. Once you're happy with the list, click **"Create Outreach Journey"** to set up your campaign!`,
                     ts: new Date(),
                     targeting: targeting || undefined,
                 }));
@@ -5050,7 +5050,7 @@ export default function AdvancedSearchAIPage() {
                     const activities: any[] = c.recent_activities || [];
                     if (activities.length > 0) {
                         parts.push(`**Recent News & Activities:**`);
-                        activities.slice(0, 4).forEach((a: any) => parts.push(`• **${a.title}**${a.date ? ` _(${a.date})_` : ''}${a.source ? ` — ${a.source}` : ''}`));
+                        activities.slice(0, 4).forEach((a: any) => parts.push(`• **${a.title}**${a.date ? ` _(${a.date})_` : ''}${a.source ? ` - ${a.source}` : ''}`));
                         parts.push('');
                     }
 
@@ -5063,7 +5063,7 @@ export default function AdvancedSearchAIPage() {
                             // 0-100 score its own ICP scorer produced.
                             const n = normalizeIcpScore(dm.icp_score) ?? 0;
                             const score = n >= 80 ? `🟢 ${n}/100` : n >= 60 ? `🟡 ${n}/100` : `🟠 ${n}/100`;
-                            parts.push(`• **${dm.name || 'Unknown'}** — ${dm.title || 'N/A'}${dm.department ? ` · ${dm.department}` : ''} ${score}${dm.linkedin_url ? ` · [LinkedIn](${dm.linkedin_url})` : ''}`);
+                            parts.push(`• **${dm.name || 'Unknown'}** - ${dm.title || 'N/A'}${dm.department ? ` · ${dm.department}` : ''} ${score}${dm.linkedin_url ? ` · [LinkedIn](${dm.linkedin_url})` : ''}`);
                             if (dm.icp_rationale) parts.push(`  _${dm.icp_rationale}_`);
                         });
                         parts.push('');
@@ -5160,7 +5160,7 @@ export default function AdvancedSearchAIPage() {
                         if (r.companies?.length > 0) {
                             parts.push(`\n\n**Relevant Companies:**`);
                             r.companies.slice(0, 3).forEach((c: any) => {
-                                parts.push(`• **${c.name}** (${c.industry || 'Unknown'})${c.website ? ` — ${c.website}` : ''}`);
+                                parts.push(`• **${c.name}** (${c.industry || 'Unknown'})${c.website ? ` - ${c.website}` : ''}`);
                             });
                         }
                         if (r.insights?.length > 0) {
@@ -5341,13 +5341,13 @@ export default function AdvancedSearchAIPage() {
                                     console.error('[ProspectSearch] server error', resp.status, d?.error, d?.detail);
                                     setMessages(p => p.concat({
                                         id: `a-err-${Date.now()}`, role: 'ai',
-                                        text: `⚠️ The search failed on our side — this isn't your query. Please try again in a moment; if it keeps happening, let support know.`,
+                                        text: `⚠️ The search failed on our side - this isn't your query. Please try again in a moment; if it keeps happening, let support know.`,
                                         ts: new Date(),
                                     }));
                                 } else {
                                     setMessages(p => p.concat({
                                         id: `a-err-${Date.now()}`, role: 'ai',
-                                        text: `⚠️ I couldn't find specific prospects for that query. Try rephrasing — for example: *"General Managers at 5-star hotels in Dubai"* or *"CEOs of construction companies in Saudi Arabia"*.`,
+                                        text: `⚠️ I couldn't find specific prospects for that query. Try rephrasing - for example: *"General Managers at 5-star hotels in Dubai"* or *"CEOs of construction companies in Saudi Arabia"*.`,
                                         ts: new Date(),
                                     }));
                                 }
@@ -5467,13 +5467,13 @@ export default function AdvancedSearchAIPage() {
                             console.error('[ProspectSearch] server error', resp.status, d?.error, d?.detail);
                             setMessages(p => p.concat({
                                 id: `a-err-${Date.now()}`, role: 'ai',
-                                text: `⚠️ The search failed on our side — this isn't your query. Please try again in a moment; if it keeps happening, let support know.`,
+                                text: `⚠️ The search failed on our side - this isn't your query. Please try again in a moment; if it keeps happening, let support know.`,
                                 ts: new Date(),
                             }));
                         } else {
                             setMessages(p => p.concat({
                                 id: `a-err-${Date.now()}`, role: 'ai',
-                                text: `⚠️ I couldn't find specific prospects for that query. Try rephrasing — e.g. *"GMs at 5-star hotels in Dubai"* or *"owners of gyms in Abu Dhabi"*.`,
+                                text: `⚠️ I couldn't find specific prospects for that query. Try rephrasing - e.g. *"GMs at 5-star hotels in Dubai"* or *"owners of gyms in Abu Dhabi"*.`,
                                 ts: new Date(),
                             }));
                         }
@@ -5572,7 +5572,7 @@ export default function AdvancedSearchAIPage() {
                                 : extractedCompanyName
                                     ? `**${extractedCompanyName}**`
                                     : 'this person/company';
-                        const locationPromptMsg = `📍 I found ${whoLabel}. Which location should I search in?\n\n*(e.g., Dubai, London, New York — or type **global** to search worldwide)*`;
+                        const locationPromptMsg = `📍 I found ${whoLabel}. Which location should I search in?\n\n*(e.g., Dubai, London, New York - or type **global** to search worldwide)*`;
                         setPendingLocationRequest({
                             intent: previewIntent,
                             originalQuery: text,
@@ -5627,7 +5627,7 @@ export default function AdvancedSearchAIPage() {
                     setMessages(p => p.filter(m => m.id !== lid).concat(
                         {
                             id: `a-${Date.now()}`, role: 'ai', ts: new Date(),
-                            text: `🎯 Got it — **${person.name}**${person.company ? ` at **${person.company}**` : ''} is a specific person, so I'll skip the broad search and find their LinkedIn profile directly.`,
+                            text: `🎯 Got it - **${person.name}**${person.company ? ` at **${person.company}**` : ''} is a specific person, so I'll skip the broad search and find their LinkedIn profile directly.`,
                         },
                         { id: personLoadingId, role: 'ai', text: '', ts: new Date(), loading: true },
                     ));
@@ -5750,7 +5750,7 @@ export default function AdvancedSearchAIPage() {
                 // Business context only describes what the seller offers — it does NOT redefine
                 // who to target. The search query is the sole source of ICP target criteria.
                 let icpDesc = bizCtx
-                    ? `## Search Target (WHO to find):\n${icpBase}\n\n## Seller Context (WHAT they sell — use only to assess relevance, not to redefine the target):\n${bizCtx}`
+                    ? `## Search Target (WHO to find):\n${icpBase}\n\n## Seller Context (WHAT they sell - use only to assess relevance, not to redefine the target):\n${bizCtx}`
                     : icpBase;
                 const goodLeads = leads.filter(l => leadFeedback[l.id] === 'good');
                 const badLeads = leads.filter(l => leadFeedback[l.id] === 'bad');
@@ -5760,7 +5760,7 @@ export default function AdvancedSearchAIPage() {
                         parts.push(`\n\nUser marked these leads as GOOD matches (find more like these):\n${goodLeads.map(l => `- ${l.name}: ${l.headline || ''} at ${l.current_company || ''}${l.icp_reasoning ? ` (${l.icp_reasoning})` : ''}`).join('\n')}`);
                     }
                     if (badLeads.length > 0) {
-                        parts.push(`\n\nUser marked these leads as BAD matches (avoid similar profiles):\n${badLeads.map(l => { const c = leadFeedbackComments[l.id]; return `- ${l.name}: ${l.headline || ''} at ${l.current_company || ''}${c ? ` — Reason: "${c}"` : ''}${l.icp_reasoning ? ` (${l.icp_reasoning})` : ''}`; }).join('\n')}`);
+                        parts.push(`\n\nUser marked these leads as BAD matches (avoid similar profiles):\n${badLeads.map(l => { const c = leadFeedbackComments[l.id]; return `- ${l.name}: ${l.headline || ''} at ${l.current_company || ''}${c ? ` - Reason: "${c}"` : ''}${l.icp_reasoning ? ` (${l.icp_reasoning})` : ''}`; }).join('\n')}`);
                     }
                     icpDesc = parts.join('');
                 }
@@ -6113,7 +6113,7 @@ export default function AdvancedSearchAIPage() {
                         if (icpWasApplied) {
                             const strongCount = realLeads.filter(l => l.match_level === 'strong').length;
                             const moderateCount = realLeads.filter(l => l.match_level === 'moderate').length;
-                            finalText += `\n\n🎯 **ICP Qualification:** ${strongCount} strong match${strongCount !== 1 ? 'es' : ''}, ${moderateCount} moderate — sorted by relevance.`;
+                            finalText += `\n\n🎯 **ICP Qualification:** ${strongCount} strong match${strongCount !== 1 ? 'es' : ''}, ${moderateCount} moderate - sorted by relevance.`;
                         }
                     }
                     if (realLeads.length > 0) setTimeout(() => setShowPanel('leads'), 500);
@@ -6136,10 +6136,10 @@ export default function AdvancedSearchAIPage() {
             // already-contacted filter. Either way a bare summary reads as
             // "nothing found / broken search", so say what actually happened.
             if (realLeads.length === 0 && searchRateLimited && !searchErrorMessage) {
-                finalText += `\n\n⏳ **LinkedIn is temporarily rate-limiting searches** on this account — this is not a problem with your search terms or your account. Please wait a minute and run the same search again.`;
+                finalText += `\n\n⏳ **LinkedIn is temporarily rate-limiting searches** on this account - this is not a problem with your search terms or your account. Please wait a minute and run the same search again.`;
             } else if (realLeads.length === 0 && excludedAlreadyContacted > 0 && !searchErrorMessage) {
                 const n = excludedAlreadyContacted;
-                finalText += `\n\n🔎 **${n} matching ${n === 1 ? 'lead was' : 'leads were'} found but hidden** — you already sent ${n === 1 ? 'them a' : 'them'} connection request${n === 1 ? '' : 's'} in a previous campaign, so they're not shown again. Try a different search, or a lead you haven't contacted yet.`;
+                finalText += `\n\n🔎 **${n} matching ${n === 1 ? 'lead was' : 'leads were'} found but hidden** - you already sent ${n === 1 ? 'them a' : 'them'} connection request${n === 1 ? '' : 's'} in a previous campaign, so they're not shown again. Try a different search, or a lead you haven't contacted yet.`;
             }
 
             const journey = realLeads.length > 0 ? buildOutreachJourney(realLeads, ext) : undefined;
@@ -6326,7 +6326,7 @@ export default function AdvancedSearchAIPage() {
             return;
         }
         if (v === '__wf_bail__') {
-            wfBailToBuilder('🛠️ Opened the Accelerator builder — pick your steps there and configure each one.');
+            wfBailToBuilder('🛠️ Opened the Accelerator builder - pick your steps there and configure each one.');
             return;
         }
         if (v === '__wf_name__') {
@@ -6370,14 +6370,14 @@ export default function AdvancedSearchAIPage() {
             wfWizardRef.current = null;
             wfNamingRef.current = null;
             setWfDraft(null);
-            wfPushAi('Sure — describe the pipeline again and I\'ll draft it fresh. Say the steps in the order you want them to run.');
+            wfPushAi('Sure - describe the pipeline again and I\'ll draft it fresh. Say the steps in the order you want them to run.');
             return;
         }
         if (v === '__wf_cancel__') {
             wfWizardRef.current = null;
             wfNamingRef.current = null;
             setWfDraft(null);
-            wfPushAi('No problem — pipeline discarded. Nothing was launched. Describe another one any time, or search for leads as usual.');
+            wfPushAi('No problem - pipeline discarded. Nothing was launched. Describe another one any time, or search for leads as usual.');
             return;
         }
 
@@ -6397,7 +6397,7 @@ export default function AdvancedSearchAIPage() {
         }
         if (v === '__role_cancel__') {
             roleWizardRef.current = null;
-            rolePushAi('No problem — Accelerator setup cancelled. Pick another from the **Accelerators** menu any time.');
+            rolePushAi('No problem - Accelerator setup cancelled. Pick another from the **Accelerators** menu any time.');
             return;
         }
         if (v.startsWith('__role_builder__:')) {
@@ -6422,7 +6422,7 @@ export default function AdvancedSearchAIPage() {
             }
             setRolePreviewing(true);
             setIsSearching(true);
-            rolePushAi(`🔍 Previewing who this Accelerator would reach — searching for **${query}**…`);
+            rolePushAi(`🔍 Previewing who this Accelerator would reach - searching for **${query}**…`);
             try {
                 // Same structured targeting the Accelerator's source node will run with,
                 // so the preview reflects the real audience rather than an
@@ -6442,7 +6442,7 @@ export default function AdvancedSearchAIPage() {
                     count: leadCount,
                     targeting: previewTargeting,
                     icp_description: bizCtx
-                        ? `## Search Target (WHO to find):\n${query}\n\n## Seller Context (WHAT they sell — use only to assess relevance, not to redefine the target):\n${bizCtx}`
+                        ? `## Search Target (WHO to find):\n${query}\n\n## Seller Context (WHAT they sell - use only to assess relevance, not to redefine the target):\n${bizCtx}`
                         : query,
                     useSalesNav,
                     // Full 0–100 range: the preview is for judging fit, not enrolling.
@@ -6472,17 +6472,17 @@ export default function AdvancedSearchAIPage() {
                     };
                 });
                 if (previewLeads.length === 0) {
-                    rolePushAi('No profiles came back for that targeting. Widen the titles or location — say **cancel** and pick the Accelerator again, or open it in the builder to edit the search.');
+                    rolePushAi('No profiles came back for that targeting. Widen the titles or location - say **cancel** and pick the Accelerator again, or open it in the builder to edit the search.');
                 } else {
                     setLeads(previewLeads);
                     seedDefaultSelection(previewLeads);
                     setTotalResults(d?.total || previewLeads.length);
                     setShowPanel('leads');
-                    rolePushAi(`👀 Found **${d?.total || previewLeads.length}** matching profiles — they're in the **Leads** panel on the right. Happy with them? Activate the Accelerator below.`);
+                    rolePushAi(`👀 Found **${d?.total || previewLeads.length}** matching profiles - they're in the **Leads** panel on the right. Happy with them? Activate the Accelerator below.`);
                 }
             } catch (e) {
                 console.warn('[role-preview] search failed:', e);
-                rolePushAi('⚠️ The preview search failed. You can still activate the Accelerator — it runs its own search when it launches.');
+                rolePushAi('⚠️ The preview search failed. You can still activate the Accelerator - it runs its own search when it launches.');
             } finally {
                 setIsSearching(false);
                 setRolePreviewing(false);
@@ -6525,13 +6525,13 @@ export default function AdvancedSearchAIPage() {
                 // Remembered so "Open full builder" later carries the same answers.
                 setBuilderTemplate({ key: wiz.key, sourceCfg, nodeCfg, autoLaunch: false });
                 setShowPanel('workflow');
-                rolePushAi('Here\'s your Accelerator in the **Workflow** panel — every step, in order. Open the full builder if you want to edit a node, or hit **Activate & launch** above when it looks right.');
+                rolePushAi('Here\'s your Accelerator in the **Workflow** panel - every step, in order. Open the full builder if you want to edit a node, or hit **Activate & launch** above when it looks right.');
                 return;
             }
 
             setBuilderTemplate({ key: wiz.key, sourceCfg, nodeCfg, autoLaunch: v === '__role_launch__' });
             setShowCustomWorkflow(true);
-            rolePushAi('🚀 Building and launching your Accelerator — you\'ll land on the campaigns page when it\'s live.');
+            rolePushAi('🚀 Building and launching your Accelerator - you\'ll land on the campaigns page when it\'s live.');
             return;
         }
         // Special action: submit lead detail form data
@@ -6626,7 +6626,7 @@ export default function AdvancedSearchAIPage() {
                 // Add campaign overview message — msg.targeting triggers the 3-card UI
                 setMessages(p => [...p, {
                     id: `a-${Date.now()}`, role: 'ai',
-                    text: `✅ **Contact added!** Here's your campaign overview — click **"Create Outreach Journey"** to proceed:`,
+                    text: `✅ **Contact added!** Here's your campaign overview - click **"Create Outreach Journey"** to proceed:`,
                     ts: new Date(),
                     targeting: targeting || { keywords: [], industries: [], locations: [], job_titles: [], profile_language: [] },
                 }]);
@@ -6703,7 +6703,7 @@ export default function AdvancedSearchAIPage() {
         const refinementMessage = filterParts.length > 0
             ? `Re-search with my updated targeting filters${nationalityLabel ? ` [${nationalityLabel}]` : ''}:\n${filterParts.join('\n')}`
             : nationalityLabel
-                ? `Re-search — ${nationalityLabel}`
+                ? `Re-search - ${nationalityLabel}`
                 : 'Confirm my current targeting criteria';
 
         // Clear previous results so the UI shows fresh leads after the new search
@@ -6842,7 +6842,7 @@ export default function AdvancedSearchAIPage() {
             if (icpDesc && (goodLeads.length > 0 || badLeads.length > 0)) {
                 const parts = [icpDesc];
                 if (goodLeads.length > 0) parts.push(`\n\nUser marked these as GOOD matches (find more like these):\n${goodLeads.map(l => `- ${l.name}: ${l.headline || ''} at ${l.current_company || ''}`).join('\n')}`);
-                if (badLeads.length > 0) parts.push(`\n\nUser marked these as BAD matches (avoid similar):\n${badLeads.map(l => { const c = leadFeedbackComments[l.id]; return `- ${l.name}: ${l.headline || ''} at ${l.current_company || ''}${c ? ` — Reason: "${c}"` : ''}`; }).join('\n')}`);
+                if (badLeads.length > 0) parts.push(`\n\nUser marked these as BAD matches (avoid similar):\n${badLeads.map(l => { const c = leadFeedbackComments[l.id]; return `- ${l.name}: ${l.headline || ''} at ${l.current_company || ''}${c ? ` - Reason: "${c}"` : ''}`; }).join('\n')}`);
                 icpDesc = parts.join('');
             }
 
@@ -7770,7 +7770,7 @@ export default function AdvancedSearchAIPage() {
                                     disabled={mediaMode ? (mb.generating || mb.step === 'loading' || (mb.step === 'builder-brand-dna' && !brandDnaRequestedChanges)) : (busy || (creditBalance !== null && creditBalance <= 0 && msgCount >= 10))}
                                     onChange={e => { setInput(e.target.value); e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 100) + 'px'; }}
                                     onKeyDown={onKey}
-                                    placeholder={mediaMode ? (mb.step === 'builder-image-output' ? 'Type feedback to refine generated images...' : mediaPlaceholder) : (creditBalance !== null && creditBalance <= 0 && msgCount >= 10 ? 'Message limit reached — add credits to continue' : (typedPlaceholder || 'Ask Mr LAD...'))}
+                                    placeholder={mediaMode ? (mb.step === 'builder-image-output' ? 'Type feedback to refine generated images...' : mediaPlaceholder) : (creditBalance !== null && creditBalance <= 0 && msgCount >= 10 ? 'Message limit reached - add credits to continue' : (typedPlaceholder || 'Ask Mr LAD...'))}
                                     className="adv-chat-ta" />
                                 <div className="adv-chat-input-foot">
                                   {/* Left cluster — Accelerators sits beside +.
@@ -7875,7 +7875,7 @@ export default function AdvancedSearchAIPage() {
                                         <button
                                             className="adv-premium-btn"
                                             onClick={() => setUseSalesNav(v => !v)}
-                                            title={useSalesNav ? 'Premium Search ON — Google X-Ray + Sales Navigator (1 credit/search)' : 'Enable Premium Search: Google X-Ray + Sales Navigator (1 credit/search)'}
+                                            title={useSalesNav ? 'Premium Search ON - Google X-Ray + Sales Navigator (1 credit/search)' : 'Enable Premium Search: Google X-Ray + Sales Navigator (1 credit/search)'}
                                             style={{
                                                 display: 'flex', alignItems: 'center', gap: '4px',
                                                 padding: '3px 8px', borderRadius: '12px', border: 'none',
@@ -8084,10 +8084,10 @@ export default function AdvancedSearchAIPage() {
                                 <p className="adv-panel-desc">
                                     <span className="adv-navy">✦</span>
                                     {inboundMode
-                                        ? ' Leads imported from your file — ready to launch a campaign'
+                                        ? ' Leads imported from your file - ready to launch a campaign'
                                         : targeting
                                             ? `${targeting.job_titles?.length > 0 ? ` ${targeting.job_titles.join(', ')}` : ''}${targeting.industries?.length > 0 ? ` in ${targeting.industries.join(', ')}` : ''}${targeting.locations?.length > 0 ? ` located in ${targeting.locations.join(', ')}` : ''} who are focused on growth and lead generation.`
-                                            : ' Contacts ready for outreach — review and launch your campaign.'
+                                            : ' Contacts ready for outreach - review and launch your campaign.'
                                     }
                                 </p>
 
@@ -8130,7 +8130,7 @@ export default function AdvancedSearchAIPage() {
                                                       type="checkbox"
                                                       checked={selectedLeadIds.has(inboundLeadIds[i])}
                                                       onChange={(e) => { e.stopPropagation(); toggleLeadSelection(inboundLeadIds[i]); }}
-                                                      title={selectedLeadIds.has(inboundLeadIds[i]) ? 'Selected for campaign — uncheck to remove' : 'Add to campaign'}
+                                                      title={selectedLeadIds.has(inboundLeadIds[i]) ? 'Selected for campaign - uncheck to remove' : 'Add to campaign'}
                                                       className="mt-2.5 flex-shrink-0 cursor-pointer"
                                                       style={{ width: '17px', height: '17px', accentColor: '#4f46e5' }}
                                                   />
@@ -8279,7 +8279,7 @@ export default function AdvancedSearchAIPage() {
                                                         person is here.
 
                                                         Every part is individually optional. Job-sourced leads have no
-                                                        pain_points — nobody wrote anything — so the chip row must not
+                                                        pain_points - nobody wrote anything - so the chip row must not
                                                         render an empty strip; hence the guard on the whole block below
                                                         rather than on signal_context alone. */}
                                                     {(() => {
@@ -8339,7 +8339,7 @@ export default function AdvancedSearchAIPage() {
                                                 <div className="flex flex-col items-center gap-[4px] flex-shrink-0">
                                                     <input
                                                         type="checkbox"
-                                                        title={selectedLeadIds.has(lead.id) ? 'Selected for campaign — click to remove' : 'Add to campaign'}
+                                                        title={selectedLeadIds.has(lead.id) ? 'Selected for campaign - click to remove' : 'Add to campaign'}
                                                         checked={selectedLeadIds.has(lead.id)}
                                                         onChange={(e) => { e.stopPropagation(); toggleLeadSelection(lead.id); }}
                                                         onClick={(e) => e.stopPropagation()}
@@ -8586,7 +8586,7 @@ export default function AdvancedSearchAIPage() {
                 )}
 
                 {/* ═══════════════════════════════════════════════
-                    AI PLAYGROUND DRAWER — Chat + Card based
+                    AI PLAYGROUND DRAWER - Chat + Card based
                     ═══════════════════════════════════════════════ */}
                 {showPlayground && (
                     <div style={{
@@ -8973,7 +8973,7 @@ export default function AdvancedSearchAIPage() {
                                         }}
                                     >
                                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5" /></svg>
-                                        ✅ Profile Complete — Apply Context
+                                        ✅ Profile Complete - Apply Context
                                     </button>
                                 </div>
                             )}
@@ -9148,7 +9148,7 @@ export default function AdvancedSearchAIPage() {
                             </button>
                         </div>
                         <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '14px' }}>
-                            {badFeedbackPopup.leadName} — your feedback helps refine future searches.
+                            {badFeedbackPopup.leadName} - your feedback helps refine future searches.
                         </div>
 
                         {/* Quick-select chips */}
@@ -9776,7 +9776,7 @@ function RoleCardView({ card, onOpt, previewing, icp }: { card: NonNullable<Chat
                     {q?.target !== 'gate' && (
                         <div className="flex items-center gap-1.5 mt-2.5 text-[11px] text-slate-400 dark:text-slate-500">
                             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 4v7a4 4 0 0 1-4 4H4" /><path d="m9 10-5 5 5 5" /></svg>
-                            Type your answer below{q?.optional ? ' — or pick an option above' : ''}
+                            Type your answer below{q?.optional ? ' - or pick an option above' : ''}
                         </div>
                     )}
                 </div>
@@ -10251,20 +10251,20 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                               </div>
                               {resumeLabel && (
                                   <div className="mt-1 font-semibold">
-                                      Resuming {resumeLabel}. Nothing is lost — the remaining
+                                      Resuming {resumeLabel}. Nothing is lost - the remaining
                                       companies are queued.
                                   </div>
                               )}
                               {/* What is already found is fully resolved and usable NOW.
                                   The CTA for acting on it is the background button below,
                                   so say the leads are ready and let that button be the
-                                  single place to click — two competing calls to action on
+                                  single place to click - two competing calls to action on
                                   one card is worse than none. */}
                               {msg.importProgress.found > 0 && (
                                   <div className="mt-1.5 text-gray-700 dark:text-gray-300">
                                       The{' '}
                                       <span className="font-semibold">{msg.importProgress.found}</span>{' '}
-                                      found so far are ready to use — you don&apos;t have to
+                                      found so far are ready to use - you don&apos;t have to
                                       wait for the rest.
                                   </div>
                               )}
@@ -10285,7 +10285,7 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                           >
                               {paused
                                   ? 'Configure the campaign now with the leads found so far'
-                                  : 'Configure the campaign now — keep searching in the background'}
+                                  : 'Configure the campaign now - keep searching in the background'}
                           </button>
                       )}
                       {msg.importProgress.warnNoResults && (
@@ -10309,7 +10309,7 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                           <CheckCircle2 size={18} className="text-emerald-600 dark:text-emerald-400" />
                           <span className="text-[14px] font-bold text-emerald-800 dark:text-emerald-300">
             {msg.inboundSearching
-              ? `Still searching — ${msg.inboundSummary.total} found so far`
+              ? `Still searching - ${msg.inboundSummary.total} found so far`
               : `${msg.inboundSummary.total} Leads Ready`}</span>
                       </div>
                       <div className="flex gap-1.5 flex-wrap">
@@ -10329,7 +10329,7 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                       {!msg.targeting && (
                           <div className="mt-3 pt-3 border-t border-emerald-200/50 dark:border-emerald-800/50">
                               {/* Gated on discovery: a campaign built while the search is
-                                  still running enrols rows it never reached — placeholders
+                                  still running enrols rows it never reached - placeholders
                                   with no name and no LinkedIn URL, which can never be
                                   contacted and silently produce an empty campaign. */}
                               <button
@@ -10352,7 +10352,7 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
 
                 {/* ── Workflow-build caveats ──
                     Where the drafted pipeline differs from what was asked for
-                    — most often "in parallel" flattened to sequential, because
+                    - most often "in parallel" flattened to sequential, because
                     the engine runs one step at a time. Rendered as its own
                     panel, above the buttons, so it is read before the decision
                     rather than discovered after the campaign is live. */}
@@ -11329,7 +11329,7 @@ function CheckpointFormInline({
 
         // Industry: always included when present (previously dropped whenever a location existed).
         const indPart = t?.industries?.length
-            ? ` — ${t.industries[0].trim()}${more(t.industries)}`
+            ? ` - ${t.industries[0].trim()}${more(t.industries)}`
             : '';
 
         // Location: city (part before the comma) of the first location.
@@ -11955,7 +11955,7 @@ function CheckpointFormInline({
                 </div>
 
                 {/* Lead source this form can't edit (recurring Zoho import).
-                    Shown so it's obvious the campaign isn't LinkedIn-sourced —
+                    Shown so it's obvious the campaign isn't LinkedIn-sourced -
                     the steps below only change the outreach sequence, and the
                     source is carried through the save untouched. */}
                 {persistedLeadSource && (
@@ -11967,7 +11967,7 @@ function CheckpointFormInline({
                         {persistedLeadSource.zoho_tag ? ` · tag "${persistedLeadSource.zoho_tag}"` : ''}
                         {persistedLeadSource.zoho_modules === 'contacts_leads' ? ' · contacts + leads' : ''}
                         <br />
-                        Editing here changes the outreach sequence only — the source is kept as-is.
+                        Editing here changes the outreach sequence only - the source is kept as-is.
                     </div>
                 )}
 
@@ -11987,7 +11987,7 @@ function CheckpointFormInline({
                                 { value: '75', label: 'Above 75%', desc: 'High quality leads' },
                                 { value: '50', label: 'Above 50%', desc: 'Moderate fit and above' },
                                 { value: '25', label: 'Above 25%', desc: 'Include most leads' },
-                                { value: '0', label: 'All Leads — Within the LinkedIn Account Limits', desc: linkedInDailyLimit ? `Up to ${linkedInDailyLimit} leads/day based on your account limit` : 'No filtering — include everyone' },
+                                { value: '0', label: 'All Leads - Within the LinkedIn Account Limits', desc: linkedInDailyLimit ? `Up to ${linkedInDailyLimit} leads/day based on your account limit` : 'No filtering - include everyone' },
                             ].map((opt, i) => {
                                 const selected = icpThreshold === opt.value;
                                 const count = leads.filter(l => (l.icp_score ?? 0) >= parseInt(opt.value)).length;
@@ -12057,7 +12057,7 @@ function CheckpointFormInline({
                                         {!agentDealLoading && <div style={{ fontSize: '18px' }}>→</div>}
                                     </button>
                                     <div style={{ textAlign: 'center', fontSize: '11px', color: '#9ca3af', margin: '8px 0 2px' }} className="dark:text-gray-500">
-                                        — or configure manually —
+                                        - or configure manually -
                                     </div>
                                 </div>
                             )}
@@ -12074,10 +12074,10 @@ function CheckpointFormInline({
                                 }}
                               >
                                   {hasPhone && hasEmail
-                                    ? `📱✉️ Phone & email detected — select how you want to reach this contact${hasLinkedInInfo ? ' (LinkedIn available)' : ''}`
+                                    ? `📱✉️ Phone & email detected - select how you want to reach this contact${hasLinkedInInfo ? ' (LinkedIn available)' : ''}`
                                     : hasPhone
-                                      ? `📱 Phone detected — WhatsApp or Voice Call recommended${hasLinkedInInfo ? ' · LinkedIn available' : ''}`
-                                      : `✉️ Email detected — Email outreach recommended${hasLinkedInInfo ? ' · LinkedIn available' : ''}`}
+                                      ? `📱 Phone detected - WhatsApp or Voice Call recommended${hasLinkedInInfo ? ' · LinkedIn available' : ''}`
+                                      : `✉️ Email detected - Email outreach recommended${hasLinkedInInfo ? ' · LinkedIn available' : ''}`}
                               </div>
                             )}
 
@@ -12974,7 +12974,7 @@ function CheckpointFormInline({
                                               <div
                                                 className="text-[12px] text-[#9ca3af] dark:text-slate-300"
                                               >
-                                                  No agents found —
+                                                  No agents found -
                                                   <a
                                                     href="/voice-agent"
                                                     className="text-[#0b1957] dark:text-blue-300 underline"
@@ -13002,7 +13002,7 @@ function CheckpointFormInline({
                                                   <SelectContent  className="bg-white dark:bg-[#000724] border-slate-200 dark:border-[#262831]">
                                                       {voiceNumbers.map((n: any) => {
                                                           const num = n.phone_number || n.number || n.phoneNumber || '';
-                                                          const label = num + (n.number_type ? ` (${n.number_type})` : '') + (n.provider ? ` — ${n.provider}` : '');
+                                                          const label = num + (n.number_type ? ` (${n.number_type})` : '') + (n.provider ? ` - ${n.provider}` : '');
                                                           return (
                                                             <SelectItem
                                                               key={n.id || num}
@@ -13019,7 +13019,7 @@ function CheckpointFormInline({
                                               <div
                                                 className="text-[12px] text-[#9ca3af] dark:text-slate-300"
                                               >
-                                                  No phone numbers found —
+                                                  No phone numbers found -
                                                   <a
                                                     href="/voice-agent"
                                                     className="text-[#0b1957] dark:text-blue-300 underline"
@@ -13287,7 +13287,7 @@ function CheckpointFormInline({
                                                         </div>
                                                             {connMsg.length >= 300 && (
                                                                 <div style={{ fontSize: '11px', color: '#ef4444', marginTop: '2px', fontWeight: 500 }}>
-                                                                    LinkedIn hard limit is 300 characters. Message will be sent as-is — keep it concise.
+                                                                    LinkedIn hard limit is 300 characters. Message will be sent as-is - keep it concise.
                                                                 </div>
                                                             )}
 
@@ -13549,7 +13549,7 @@ function CheckpointFormInline({
                                                                 <>
                                                                     <div style={{ display: 'flex', gap: 8, fontSize: 11.5, color: '#6d28d9', background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: 9, padding: '9px 11px', lineHeight: 1.5 }}>
                                                                         <Check size={15} style={{ flexShrink: 0, marginTop: 1 }} />
-                                                                        <span>Leave the message box empty and each lead gets a <strong>unique AI-generated message</strong> from their live web presence &amp; LinkedIn posts. <strong>Write a message and it is sent as written</strong> — AI only fills the <code>{'{{web_insight}}'}</code>-style placeholders inside it.</span>
+                                                                        <span>Leave the message box empty and each lead gets a <strong>unique AI-generated message</strong> from their live web presence &amp; LinkedIn posts. <strong>Write a message and it is sent as written</strong> - AI only fills the <code>{'{{web_insight}}'}</code>-style placeholders inside it.</span>
                                                                     </div>
 
                                                                     {/* Nested granular control — clearly a child of the toggle above */}
@@ -13627,8 +13627,8 @@ function CheckpointFormInline({
                               const leadWord = `lead${qualifiedLeadCount !== 1 ? 's' : ''}`;
                               const desc = isOnce
                                   ? (inboundMode
-                                      ? `One-time send to your ${qualifiedLeadCount} selected ${leadWord} — no drip schedule`
-                                      : `Single-day run — targets up to ${perDay} leads once`)
+                                      ? `One-time send to your ${qualifiedLeadCount} selected ${leadWord} - no drip schedule`
+                                      : `Single-day run - targets up to ${perDay} leads once`)
                                   : (inboundMode
                                       ? `Reaches your ${qualifiedLeadCount} selected ${leadWord} over ${wd} working day${wd !== 1 ? 's' : ''}`
                                       : capped
@@ -13727,7 +13727,7 @@ function CheckpointFormInline({
                                   <div>
                                       <strong>No value proposition on file:</strong> nothing in this workspace says what
                                       you offer, so the agent will not describe it rather than guess. Connection notes
-                                      are unaffected — they never pitch — but follow-ups will open a conversation
+                                      are unaffected - they never pitch - but follow-ups will open a conversation
                                       without a pitch or a meeting request.
                                   </div>
                                   <div>
@@ -14024,7 +14024,7 @@ function TargetingFormInline({
                                 }}
                             />
                             <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '6px' }}>
-                                Separate multiple skills with commas — e.g. <em>Gas Detector, HVAC Controls, BMS</em>
+                                Separate multiple skills with commas - e.g. <em>Gas Detector, HVAC Controls, BMS</em>
                             </div>
                         </div>
                     )}
@@ -14048,9 +14048,9 @@ function TargetingFormInline({
                                         📢 Posted on LinkedIn in last 3 months
                                     </div>
                                     <div style={{ fontSize: '12px', color: '#6b7280', lineHeight: 1.4 }}>
-                                        Only show leads who have been active — posted, shared, or commented recently.
+                                        Only show leads who have been active - posted, shared, or commented recently.
                                         <br />
-                                        <span style={{ color: '#f59e0b', fontWeight: 500 }}>⚠ Sales Navigator only</span> — ignored for Classic API accounts.
+                                        <span style={{ color: '#f59e0b', fontWeight: 500 }}>⚠ Sales Navigator only</span> - ignored for Classic API accounts.
                                     </div>
                                 </div>
                                 {/* Toggle switch */}
@@ -14067,7 +14067,7 @@ function TargetingFormInline({
                                 </div>
                             </div>
                             <div style={{ fontSize: '11px', color: '#9ca3af', lineHeight: 1.5 }}>
-                                This filter is <strong>not saved</strong> between sessions — you must re-enable it each time you want it applied. It will not be auto-applied to campaigns or prospecting.
+                                This filter is <strong>not saved</strong> between sessions - you must re-enable it each time you want it applied. It will not be auto-applied to campaigns or prospecting.
                             </div>
                         </div>
                     )}
@@ -14194,7 +14194,7 @@ function AiMsgContextPanel({
       >
             {/* Header */}
         <div className="text-[#0b1957] dark:text-blue-300" style={{ fontSize: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-          ✨ AI Generate — tell us about your offer
+          ✨ AI Generate - tell us about your offer
           <span className="text-[#9ca3af] dark:text-slate-300"style={{ fontWeight: 400, fontSize: '11px' }}>
               Will use lead&apos;s web presence &amp; posts
           </span>
