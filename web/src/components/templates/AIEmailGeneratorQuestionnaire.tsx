@@ -156,7 +156,7 @@ export default function AIEmailGeneratorQuestionnaire({
       </div>
 
       {/* Question Card */}
-      <div className="bg-white dark:bg-blue-900/5 rounded-lg border border-gray-200 dark:border-gray-800 p-8 mb-8 shadow-sm">
+      <div className="bg-white dark:bg-[#071131] rounded-lg border border-gray-200 dark:border-gray-800 p-8 mb-8 shadow-sm">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{currentQuestion?.title}</h2>
         <p className="text-gray-600 dark:text-gray-400 mb-6">{currentQuestion?.description}</p>
 
