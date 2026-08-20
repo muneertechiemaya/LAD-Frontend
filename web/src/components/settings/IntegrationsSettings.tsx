@@ -15,7 +15,7 @@ import { TenantOnboarding } from './TenantOnboarding';
 import { WhatsAppEmbeddedSignup } from './WhatsAppEmbeddedSignup';
 import { GoHighLevelIntegration } from './GoHighLevelIntegration';
 import { ZohoIntegration } from './ZohoIntegration';
-import { BrandAssetsSettings } from './BrandAssetsSettings';
+import { MageSettings } from './MageSettings';
 import { useTenant } from '@/contexts/TenantContext';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
 import { safeStorage } from '@lad/shared/storage';
@@ -136,8 +136,8 @@ const INTEGRATIONS: IntegrationCard[] = [
     // and share it with the user, so this asks nothing of their Google account.
     // Distinct from the 'google' card above, which is their own Google sign-in.
     id: 'brand-assets',
-    name: 'Brand Assets Folder',
-    description: 'Upload logos and photos, or sync them from a shared Drive folder, for generated media.',
+    name: 'Media Generation Engine',
+    description: 'Brand DNA, reference imagery, generated media, and the shorthand the media agent understands.',
     icon: <FolderOpen className="h-6 w-6 text-indigo-600" />,
     iconBg: 'bg-indigo-50',
     category: 'Content',
@@ -641,7 +641,7 @@ export const IntegrationsSettings: React.FC = () => {
               }
             />
           )}
-          {activeView === 'brand-assets' && <BrandAssetsSettings />}
+          {activeView === 'brand-assets' && <MageSettings />}
           {activeView === 'linkedin' && <LinkedInIntegration />}
           {activeView === 'gohighlevel' && <GoHighLevelIntegration />}
           {activeView === 'zoho' && <ZohoIntegration />}
