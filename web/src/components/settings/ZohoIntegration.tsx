@@ -22,7 +22,6 @@ import {
   CheckSquare,
   Clock,
   Folder,
-  MoreVertical,
   Filter,
   Handshake,
   ClipboardCheck,
@@ -30,6 +29,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
 
 const ZOHO_API = '/api/social-integration/zoho';
@@ -338,15 +338,18 @@ export const ZohoIntegration: React.FC = () => {
         )}
         <div className="space-y-2 max-w-sm">
           <label className="text-sm font-medium text-[#172560] dark:text-white">Zoho data center (region)</label>
-          <select
-            value={region}
-            onChange={(e) => setRegion(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 dark:border-blue-950/40 bg-white dark:bg-[#040b25] px-3 py-2 text-sm text-[#172560] dark:text-white"
-          >
-            {ZOHO_REGIONS.map((r) => (
-              <option key={r.value} value={r.value}>{r.label}</option>
-            ))}
-          </select>
+          <Select value={region} onValueChange={(val) => setRegion(val)}>
+            <SelectTrigger className="w-full rounded-lg border border-slate-200 dark:border-blue-950/40 bg-white dark:bg-[#040b25] text-sm text-[#172560] dark:text-white h-10">
+              <SelectValue placeholder="Select region" />
+            </SelectTrigger>
+            <SelectContent className="bg-white dark:bg-[#071131] border border-slate-200 dark:border-blue-950/40">
+              {ZOHO_REGIONS.map((r) => (
+                <SelectItem key={r.value} value={r.value} className="text-[#172560] dark:text-white dark:focus:bg-[#2563eb] dark:focus:text-white">
+                  {r.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <p className="text-xs text-slate-500 dark:text-slate-400">
             Pick the region where your Zoho account is hosted (shown in your Zoho URL, e.g. crm.zoho.<b>eu</b>).
           </p>
@@ -355,7 +358,7 @@ export const ZohoIntegration: React.FC = () => {
           type="button"
           onClick={handleConnect}
           disabled={connecting}
-          className="h-9 px-4 rounded-lg text-sm font-semibold text-white bg-[#2563eb] hover:bg-blue-700 inline-flex items-center gap-2 transition-all disabled:opacity-50"
+          className="h-9 px-4 rounded-lg text-sm font-semibold text-white bg-[#0b1957] hover:bg-[#0b1957]/90 dark:bg-[#2b7cff] dark:hover:bg-[#2b7cff]/90 inline-flex items-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
         >
           {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           Connect with Zoho
@@ -396,12 +399,6 @@ export const ZohoIntegration: React.FC = () => {
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            className="w-8 h-8 rounded-lg border border-slate-200 dark:border-blue-950/40 flex items-center justify-center text-slate-400 hover:text-white dark:bg-[#040b25] transition-colors"
-          >
-            <MoreVertical className="w-4 h-4" />
-          </button>
         </div>
 
         {error && (
@@ -458,7 +455,7 @@ export const ZohoIntegration: React.FC = () => {
             type="button"
             onClick={handleSync}
             disabled={syncing}
-            className="h-9 px-4 rounded-lg text-sm font-semibold text-white bg-[#2563eb] hover:bg-blue-700 inline-flex items-center gap-2 transition-all disabled:opacity-50"
+            className="h-9 px-4 rounded-lg text-sm font-semibold text-white bg-[#0b1957] hover:bg-[#0b1957]/90 dark:bg-[#2b7cff] dark:hover:bg-[#2b7cff]/90 inline-flex items-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
           >
             {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
             {syncing ? 'Syncing…' : 'Sync from Zoho'}
@@ -506,14 +503,15 @@ export const ZohoIntegration: React.FC = () => {
             </div>
             <div className="flex items-center gap-2">
               <label className="text-sm text-slate-500 dark:text-slate-400">Module</label>
-              <select
-                value={pushModule}
-                onChange={(e) => setPushModule(e.target.value as 'Leads' | 'Contacts')}
-                className="rounded-lg border border-slate-200 dark:border-blue-950/40 bg-white dark:bg-[#071131] px-3 py-1.5 text-sm text-[#172560] dark:text-white"
-              >
-                <option value="Leads">Leads</option>
-                <option value="Contacts">Contacts</option>
-              </select>
+              <Select value={pushModule} onValueChange={(val) => setPushModule(val as 'Leads' | 'Contacts')}>
+                <SelectTrigger className="w-32 rounded-lg border border-slate-200 dark:border-blue-950/40 bg-white dark:bg-[#071131] text-sm text-[#172560] dark:text-white h-9">
+                  <SelectValue placeholder="Select module" />
+                </SelectTrigger>
+                <SelectContent className="bg-white dark:bg-[#071131] border border-slate-200 dark:border-blue-950/40">
+                  <SelectItem value="Leads" className="text-[#172560] dark:text-white dark:focus:bg-[#2563eb] dark:focus:text-white">Leads</SelectItem>
+                  <SelectItem value="Contacts" className="text-[#172560] dark:text-white dark:focus:bg-[#2563eb] dark:focus:text-white">Contacts</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <Input className="dark:bg-[#071131] dark:border-blue-950/40" placeholder="First name" value={pushForm.first_name} onChange={(e) => setPushForm({ ...pushForm, first_name: e.target.value })} />
