@@ -212,7 +212,6 @@ export const RecurringZohoCampaignModal: React.FC<{ open: boolean; onClose: () =
         </div>
 
         <div className="flex items-center justify-end gap-2 p-4 border-t border-border dark:border-blue-950/40 flex-shrink-0">
-          <Button variant="ghost" onClick={onClose} disabled={creating}>Cancel</Button>
           <Button onClick={handleCreate} disabled={creating}>
             {creating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Repeat className="h-4 w-4 mr-2" />}
             Create recurring campaign
