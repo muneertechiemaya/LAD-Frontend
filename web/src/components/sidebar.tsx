@@ -366,7 +366,7 @@ export function Sidebar() {
       {/* Mobile Top Bar */}
       <div
         className={cn(
-          "md:hidden fixed top-0 left-0 right-0 h-14 z-[60] backdrop-blur-2xl border-b flex items-center justify-between px-3 transition-colors duration-300",
+          "md:hidden fixed top-0 left-0 right-0 h-14 z-30 backdrop-blur-2xl border-b flex items-center justify-between px-3 transition-colors duration-300",
           isBlackGrayChannel
             ? "border-zinc-200 dark:border-zinc-800 bg-white/95 dark:bg-zinc-900"
             : "border-sidebar-border bg-sidebar/95"
@@ -397,7 +397,7 @@ export function Sidebar() {
       {/* Mobile Drawer */}
       <div
         className={cn(
-          "md:hidden fixed inset-y-0 left-0 w-[50%] backdrop-blur-2xl border-r shadow-2xl z-[70] flex flex-col transition-colors duration-300",
+          "md:hidden fixed inset-y-0 left-0 w-[50%] backdrop-blur-2xl border-r shadow-2xl z-40 flex flex-col transition-colors duration-300",
           isBlackGrayChannel
             ? "border-zinc-200 dark:border-zinc-800 bg-white/95 dark:bg-[#171717]"
             : "border-sidebar-border bg-sidebar/95",
@@ -595,7 +595,7 @@ export function Sidebar() {
       {/* Mobile Backdrop */}
       {isMobileMenuOpen && (
         <div
-          className="md:hidden fixed inset-0 bg-black/40 z-[65]"
+          className="md:hidden fixed inset-0 bg-black/40 z-40"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
@@ -607,7 +607,7 @@ export function Sidebar() {
             ? "dark:bg-[#171717] dark:border-zinc-800"
             : "dark:bg-[#000724] dark:border-[#1a2a43]",
           "transition-all duration-500 ease-[cubic-bezier(.4,0,.2,1)]",
-          "overflow-hidden fixed left-0 top-0 z-[5000]",
+          "overflow-hidden fixed left-0 top-0 z-40",
           isExpanded ? "w-64 shadow-2xl" : "w-16",
         )}
         onMouseEnter={() => setIsHovered(true)}
