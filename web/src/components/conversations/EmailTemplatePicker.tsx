@@ -458,7 +458,7 @@ export const EmailTemplatePicker = memo(function EmailTemplatePicker({
         )}
       >
         {/* Header */}
-        <DialogHeader className="px-6 pt-5 pb-4 border-b border-slate-100 dark:border-slate-800/80 bg-white dark:bg-[#000724] flex-shrink-0 flex-row items-center justify-between">
+        <DialogHeader className="px-6 pt-5 pb-4 border-b border-slate-100 dark:border-slate-800/80 bg-white dark:bg-[#081331] flex-shrink-0 flex-row items-center justify-between">
           <DialogTitle className="flex items-center gap-3 text-base font-semibold text-slate-900 dark:text-white">
             {(view === 'compose' || view === 'preview') && (
               <button
@@ -474,7 +474,7 @@ export const EmailTemplatePicker = memo(function EmailTemplatePicker({
                     setView('list');
                   }
                 }}
-                className="h-8 w-8 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#00051d] hover:bg-slate-100 dark:hover:bg-slate-800/60 text-slate-700 dark:text-slate-300 transition-colors shadow-2xs mr-1"
+                className="h-8 w-8 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#071131] hover:bg-slate-100 dark:hover:bg-slate-800/60 text-slate-700 dark:text-slate-300 transition-colors shadow-2xs mr-1"
                 title="Back to templates"
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -515,7 +515,7 @@ export const EmailTemplatePicker = memo(function EmailTemplatePicker({
                     placeholder="Search email templates..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="pl-9 h-10 rounded-xl bg-white dark:bg-[#00051d] border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:border-blue-500"
+                    className="pl-9 h-10 rounded-xl bg-white dark:bg-[#071131] border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:border-blue-500"
                   />
                 </div>
                 <Button
@@ -557,7 +557,7 @@ export const EmailTemplatePicker = memo(function EmailTemplatePicker({
                         tabIndex={0}
                         onClick={() => handleSelectTemplate(tpl)}
                         onKeyDown={e => e.key === 'Enter' && handleSelectTemplate(tpl)}
-                        className="w-full flex items-start gap-3.5 p-4 rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-[#00051d] hover:border-blue-400/60 dark:hover:border-blue-500/60 hover:bg-slate-50/80 dark:hover:bg-[#0B1957]/20 transition-all text-left group cursor-pointer shadow-2xs"
+                        className="w-full flex items-start gap-3.5 p-4 rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-[#071131] hover:border-blue-400/60 dark:hover:border-blue-500/60 hover:bg-slate-50/80 dark:hover:bg-[#081331] transition-all text-left group cursor-pointer shadow-2xs"
                       >
                         <div className="h-10 w-10 rounded-lg bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 flex items-center justify-center flex-shrink-0 text-blue-600 dark:text-blue-400 group-hover:scale-105 transition-transform mt-0.5">
                           <Mail className="h-5 w-5" />
@@ -618,7 +618,7 @@ export const EmailTemplatePicker = memo(function EmailTemplatePicker({
                       placeholder="e.g. Follow-up, Welcome, Promotion"
                       value={formName}
                       onChange={e => setFormName(e.target.value)}
-                      className="h-10 text-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-[#00051d] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:border-blue-500 rounded-xl"
+                      className="h-10 text-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-[#071131] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:border-blue-500 rounded-xl"
                       autoFocus
                     />
                   </div>
@@ -629,7 +629,7 @@ export const EmailTemplatePicker = memo(function EmailTemplatePicker({
                       placeholder="Email subject..."
                       value={formSubject}
                       onChange={e => setFormSubject(e.target.value)}
-                      className="h-10 text-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-[#00051d] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:border-blue-500 rounded-xl"
+                      className="h-10 text-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-[#071131] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:border-blue-500 rounded-xl"
                     />
                   </div>
 
@@ -639,7 +639,7 @@ export const EmailTemplatePicker = memo(function EmailTemplatePicker({
                       placeholder={`Hi {name},\n\nWrite your email content here...\n\nBest regards,\nYour Name`}
                       value={formBody}
                       onChange={e => setFormBody(e.target.value)}
-                      className="w-full h-64 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#00051d] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-colors"
+                      className="w-full h-64 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#071131] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-colors"
                     />
                   </div>
 
@@ -655,7 +655,7 @@ export const EmailTemplatePicker = memo(function EmailTemplatePicker({
 
                 {/* Right Column: Tips & Context (5 cols) */}
                 <div className="lg:col-span-5 space-y-4">
-                  <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800/80 bg-slate-50/60 dark:bg-[#00051d]/60 space-y-3">
+                  <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800/80 bg-slate-50/60 dark:bg-[#071131] space-y-3">
                     <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-semibold text-sm">
                       <Sparkles className="h-4 w-4" />
                       Template Guidelines
@@ -665,7 +665,7 @@ export const EmailTemplatePicker = memo(function EmailTemplatePicker({
                     </p>
                   </div>
 
-                  <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#00051d] space-y-3">
+                  <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#071131] space-y-3">
                     <div className="flex items-center gap-2 font-semibold text-sm text-slate-900 dark:text-white">
                       <Mail className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                       Target Broadcast Group
@@ -700,7 +700,7 @@ export const EmailTemplatePicker = memo(function EmailTemplatePicker({
                       placeholder="Email subject..."
                       value={sendSubject}
                       onChange={e => setSendSubject(e.target.value)}
-                      className="h-10 text-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-[#00051d] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:border-blue-500 rounded-xl"
+                      className="h-10 text-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-[#071131] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:border-blue-500 rounded-xl"
                     />
                   </div>
 
@@ -710,14 +710,14 @@ export const EmailTemplatePicker = memo(function EmailTemplatePicker({
                       placeholder="Email body..."
                       value={sendBody}
                       onChange={e => setSendBody(e.target.value)}
-                      className="w-full h-64 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#00051d] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm font-mono leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-colors"
+                      className="w-full h-64 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#071131] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm font-mono leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-colors"
                     />
                   </div>
 
                   <PersonalizationHints onInsert={(v) => setSendBody(prev => prev + v)} />
 
                   {/* Attachments */}
-                  <div className="space-y-2.5 p-4 rounded-2xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#00051d]">
+                  <div className="space-y-2.5 p-4 rounded-2xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#071131]">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Attachments</label>
                       <button
@@ -775,7 +775,7 @@ export const EmailTemplatePicker = memo(function EmailTemplatePicker({
                 {/* Right Column: Send Test & Recipients Preview (5 cols) */}
                 <div className="lg:col-span-5 space-y-4">
                   {/* Send test email */}
-                  <div className="rounded-2xl border border-amber-200 dark:border-amber-500/25 bg-amber-50/70 dark:bg-amber-500/[0.08] p-4 space-y-3">
+                  <div className="rounded-2xl border border-amber-200 dark:border-amber-500/25 bg-amber-50/70 dark:bg-[#071131] p-4 space-y-3">
                     <p className="text-xs font-semibold flex items-center gap-1.5 text-amber-800 dark:text-amber-300">
                       <Send className="h-3.5 w-3.5" />
                       Send a test email before broadcast
@@ -786,7 +786,7 @@ export const EmailTemplatePicker = memo(function EmailTemplatePicker({
                         placeholder="your@email.com"
                         value={testEmailAddr}
                         onChange={e => { setTestEmailAddr(e.target.value); setTestResult(null); }}
-                        className="h-9 text-xs flex-1 border-amber-200 dark:border-amber-500/30 bg-white dark:bg-[#00051d] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:ring-amber-500/30 focus-visible:border-amber-500 rounded-xl"
+                        className="h-9 text-xs flex-1 border-amber-200 dark:border-amber-500/30 bg-white dark:bg-[#000724] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:ring-amber-500/30 focus-visible:border-amber-500 rounded-xl"
                       />
                       <Button
                         size="sm"
@@ -838,7 +838,7 @@ export const EmailTemplatePicker = memo(function EmailTemplatePicker({
                   )}
 
                   {/* Recipients list card */}
-                  <div className="rounded-2xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#00051d] p-4 space-y-3">
+                  <div className="rounded-2xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#071131] p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <p className="text-xs font-semibold flex items-center gap-1.5 text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                         <Mail className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
@@ -897,11 +897,11 @@ export const EmailTemplatePicker = memo(function EmailTemplatePicker({
               </div>
               {!sendResult.queued && (
                 <div className="grid grid-cols-2 gap-3 w-full max-w-xs pt-2">
-                  <div className="p-3.5 rounded-xl bg-emerald-50/80 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20">
+                  <div className="p-3.5 rounded-xl bg-emerald-50/80 dark:bg-[#071131] border border-emerald-200 dark:border-emerald-500/20">
                     <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">{sendResult.sent}</p>
                     <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">Sent</p>
                   </div>
-                  <div className="p-3.5 rounded-xl bg-red-50/80 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20">
+                  <div className="p-3.5 rounded-xl bg-red-50/80 dark:bg-[#071131] border border-red-200 dark:border-red-500/20">
                     <p className="text-2xl font-bold text-red-700 dark:text-red-300">{sendResult.failed}</p>
                     <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">Failed</p>
                   </div>
@@ -926,7 +926,7 @@ export const EmailTemplatePicker = memo(function EmailTemplatePicker({
         </div>
 
         {/* Footer / Actions Bar */}
-        <DialogActions className="border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/60 dark:bg-[#000724]/90 px-6 py-3.5 sm:py-4 flex-shrink-0">
+        <DialogActions className="border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/60 dark:bg-[#081331] px-6 py-3.5 sm:py-4 flex-shrink-0">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 w-full">
             <div className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 text-center sm:text-left w-full sm:w-auto">
               {view === 'list' && (
@@ -1022,7 +1022,7 @@ export const EmailTemplatePicker = memo(function EmailTemplatePicker({
 
 function PersonalizationHints({ onInsert }: { onInsert: (v: string) => void }) {
   return (
-    <div className="rounded-xl bg-slate-50/80 dark:bg-[#00051d]/60 border border-slate-200 dark:border-slate-800/80 p-3.5 space-y-2">
+    <div className="rounded-xl bg-slate-50/80 dark:bg-[#071131] border border-slate-200 dark:border-slate-800/80 p-3.5 space-y-2">
       <div className="flex items-center gap-1.5">
         <Sparkles className="h-3.5 w-3.5 text-amber-500 dark:text-amber-400" />
         <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Personalisation variables</p>
@@ -1034,7 +1034,7 @@ function PersonalizationHints({ onInsert }: { onInsert: (v: string) => void }) {
             type="button"
             onClick={() => onInsert(label)}
             title={`Insert ${label} — ${desc}`}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white dark:bg-[#000724] border border-slate-200 dark:border-slate-800/80 hover:border-blue-400 dark:hover:border-blue-500/60 hover:bg-blue-50/50 dark:hover:bg-blue-950/30 text-xs font-mono transition-all shadow-xs"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white dark:bg-[#081331] border border-slate-200 dark:border-slate-800/80 hover:border-blue-400 dark:hover:border-blue-500/60 hover:bg-blue-50/50 dark:hover:bg-blue-950/30 text-xs font-mono transition-all shadow-xs"
           >
             <span className="text-blue-600 dark:text-blue-400 font-semibold">{label}</span>
             <span className="text-slate-500 dark:text-slate-400 hidden sm:inline">: {desc}</span>

@@ -252,7 +252,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
   const isWhatsApp = variant === 'whatsapp';
   const inputBorderClass = isWhatsApp
     ? "border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus-visible:ring-2 focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500 focus:border-emerald-500 focus-visible:outline-none"
-    : "border border-gray-300 dark:border-slate-700 bg-white dark:bg-[#00051d] text-foreground dark:text-white focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:border-blue-500 focus:border-blue-500 focus-visible:outline-none";
+    : "border border-gray-300 dark:border-slate-700/80 bg-white dark:bg-[#000724] text-foreground dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-500 focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:border-blue-500 focus:border-blue-500 focus-visible:outline-none shadow-2xs";
 
   // Email mode: channel is 'gmail' or 'outlook'
   const isEmailMode = channel === 'gmail' || channel === 'outlook';
@@ -951,7 +951,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
           "border-b px-6 py-4",
           isWhatsApp
             ? "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800"
-            : "bg-white dark:bg-[#000724] border-gray-100 dark:border-slate-800/80"
+            : "bg-white dark:bg-[#081331] border-gray-100 dark:border-slate-800/80"
         )}>
           <DialogTitle className="flex items-center gap-3">
             <div className={cn(
@@ -980,7 +980,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
             "mx-3 sm:mx-8 mt-4 sm:mt-6 max-w-[calc(100%-1.5rem)] sm:max-w-full overflow-x-auto justify-start flex-nowrap shrink-0 p-1 rounded-xl h-auto gap-1 border shadow-sm dark:shadow-md dark:shadow-black/40",
             isWhatsApp
               ? "bg-zinc-100 dark:bg-zinc-800/80 border-zinc-200 dark:border-zinc-700/80"
-              : "bg-slate-100 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800/70"
+              : "bg-slate-100 dark:bg-[#071131] border-slate-200 dark:border-slate-800/70"
           )}>
             <TabsTrigger
               value="single"
@@ -1029,7 +1029,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
               "border-2 border-dashed rounded-xl p-4 sm:p-8 text-center transition-colors",
               isWhatsApp
                 ? "border-zinc-300 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-950/40 hover:border-emerald-500/50 text-zinc-700 dark:text-zinc-300"
-                : "border-border dark:border-slate-800 dark:bg-[#00051d]/50 hover:border-blue-500/50"
+                : "border-border dark:border-slate-800 bg-white dark:bg-[#071131] hover:border-blue-500/50"
             )}>
               <Upload className={cn("h-10 w-10 mx-auto mb-3", isWhatsApp ? "text-zinc-400 dark:text-zinc-500" : "text-muted-foreground")} />
               <p className={cn("text-sm font-medium mb-1", isWhatsApp ? "text-zinc-900 dark:text-zinc-200" : "")}>Upload Excel file (.xlsx)</p>
@@ -1087,7 +1087,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
               "border-2 border-dashed rounded-xl p-3.5 sm:p-6",
               isWhatsApp
                 ? "border-zinc-300 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-950/40 text-zinc-700 dark:text-zinc-300"
-                : "border-border dark:border-slate-800 dark:bg-[#00051d]/50"
+                : "border-border dark:border-slate-800 bg-white dark:bg-[#071131]"
             )}>
               <div className="flex items-start gap-3 mb-4">
                 <div className={cn(
@@ -1213,7 +1213,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
 
         {/* ── Invalid Records Banner ──────────────── */}
         {hasValidationErrors && !importResult?.success && (
-          <div className="mx-3 sm:mx-8 mb-4 rounded-xl border overflow-hidden shadow-sm bg-amber-50/80 dark:bg-amber-500/[0.08] border-amber-200 dark:border-amber-500/25">
+          <div className="mx-3 sm:mx-8 mb-4 rounded-xl border overflow-hidden shadow-sm bg-amber-50/80 dark:bg-[#071131] border-amber-200 dark:border-amber-500/25">
             {/* Top row: summary + bulk actions */}
             <div className="px-3 py-2 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 min-w-0 text-amber-800 dark:text-amber-200/90">
@@ -1273,7 +1273,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
         {groups.length > 0 && !importResult?.success && !isEmailMode && (
           <div className={cn(
             "px-4 py-3 border-t",
-            isWhatsApp ? "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900" : "border-border dark:border-slate-800/80"
+            isWhatsApp ? "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900" : "border-border dark:border-slate-800/80 bg-white dark:bg-[#071131]"
           )}>
             <p className={cn(
               "text-xs font-semibold uppercase mb-2",
@@ -1319,10 +1319,10 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
             importResult.success
               ? isWhatsApp
                 ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/20'
-                : 'bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-500/20'
+                : 'bg-green-50 dark:bg-[#071131] text-green-700 dark:text-green-300 border border-green-200 dark:border-green-500/20'
               : isWhatsApp
                 ? 'bg-red-50 dark:bg-red-500/10 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-500/20'
-                : 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-500/20'
+                : 'bg-red-50 dark:bg-[#071131] text-red-700 dark:text-red-300 border border-red-200 dark:border-red-500/20'
           )}>
             {importResult.success ? (
               <div className="space-y-3">
@@ -1611,7 +1611,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
         {/* ── Footer ─────────────────────────────── */}
         <DialogActions className={cn(
           "border-t p-4 flex items-center justify-between",
-          isWhatsApp ? "border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/90" : "border-gray-100 dark:border-slate-800/80 bg-gray-50/50 dark:bg-[#000724]"
+          isWhatsApp ? "border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/90" : "border-gray-100 dark:border-slate-800/80 bg-gray-50/50 dark:bg-[#081331]"
         )}>
           {!importResult?.success ? (
             <div className="flex flex-col w-full space-y-4">
@@ -1744,7 +1744,7 @@ function LeadRow({ lead, index, errors, isSelected, onUpdate, onRemove, onToggle
   const hasErrors = Object.keys(errors).length > 0;
   const inputBorderClass = isWhatsApp
     ? "border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus-visible:ring-2 focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500 focus:border-emerald-500 focus-visible:outline-none"
-    : "border border-gray-300 dark:border-slate-700 bg-white dark:bg-[#00051d] text-foreground dark:text-white focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:border-blue-500 focus:border-blue-500 focus-visible:outline-none";
+    : "border border-gray-300 dark:border-slate-700/80 bg-white dark:bg-[#000724] text-foreground dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-500 focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:border-blue-500 focus:border-blue-500 focus-visible:outline-none shadow-2xs";
 
   return (
     <div
@@ -1758,9 +1758,9 @@ function LeadRow({ lead, index, errors, isSelected, onUpdate, onRemove, onToggle
             : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 hover:border-zinc-300 dark:hover:border-zinc-700'
           : hasErrors
             ? isSelected
-              ? 'border-red-400 dark:border-red-500/50 bg-red-50/60 dark:bg-red-500/[0.08] ring-2 ring-red-200 dark:ring-red-500/20'
-              : 'border-red-300 dark:border-red-500/30 bg-red-50/30 dark:bg-red-500/[0.04] hover:border-red-400 dark:hover:border-red-500/50'
-            : 'border-border dark:border-slate-800/80 hover:border-blue-500/30'
+              ? 'border-red-400 dark:border-red-500/50 bg-red-50/60 dark:bg-[#071131] ring-2 ring-red-200 dark:ring-red-500/20'
+              : 'border-red-300 dark:border-red-500/30 bg-red-50/30 dark:bg-[#071131] hover:border-red-400 dark:hover:border-red-500/50'
+            : 'border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-[#071131] hover:border-blue-500/30'
       )}
     >
       <div className="flex items-center justify-between mb-2.5">
