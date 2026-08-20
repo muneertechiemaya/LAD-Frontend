@@ -397,7 +397,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
 
   // ── Input / label class helpers ───────────────────────────────────────────
 
-  const inputCls  = 'w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-[#262831] rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-[#0C1936] text-gray-900 dark:text-white placeholder-gray-400 transition';
+  const inputCls  = 'w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-[#262831] rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-[#071131] text-gray-900 dark:text-white placeholder-gray-400 transition';
   const labelCls  = 'block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1.5';
   const fieldCls  = 'space-y-1.5';
 
@@ -464,7 +464,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
             </div>
 
             {showSaveMenu && (
-              <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-[#0C1936] rounded-xl shadow-lg border border-gray-100 dark:border-[#262831] py-1 z-50 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-100">
+              <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-[#071131] rounded-xl shadow-lg border border-gray-100 dark:border-[#262831] py-1 z-50 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-100">
                 <button
                   onClick={() => { setShowSaveMenu(false); handleSave(false);}}
                   className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-white hover:bg-gray-50 dark:hover:bg-[#253456] transition-colors cursor-pointer border-none outline-none bg-transparent"
@@ -507,7 +507,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
         {/* ── Mobile Sub-tabs (Design, Preview, Details) ── */}
         {activeTab === 'editor' && editorMode && (
             <div className="sm:hidden flex-shrink-0 bg-[#F8F9FE] dark:bg-[#000724] border-b border-gray-200 dark:border-[#262831] px-4 py-2.5 flex justify-center">
-              <div className="flex items-center bg-gray-200/55 dark:bg-[#0C1936] p-1 rounded-xl border border-gray-300/30 dark:border-[#262831] w-full max-w-sm shadow-xs">
+              <div className="flex items-center bg-gray-200/55 dark:bg-[#071131] p-1 rounded-xl border border-gray-300/30 dark:border-[#262831] w-full max-w-sm shadow-xs">
                 <button
                     onClick={() => setMobileSubTab('content')}
                     className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-semibold tracking-wide transition-all cursor-pointer ${
@@ -558,7 +558,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
               {editorMode && (
                 <div className="flex-shrink-0 bg-white dark:bg-[#000724] border-b border-gray-150 dark:border-[#262831] px-4 py-2 flex items-center justify-between gap-3">
                   <span className="text-[10px] sm:text-xs text-gray-400 dark:text-[#7a8ba3] font-bold uppercase tracking-wider shrink-0">Editing with:</span>
-                  <div className="flex-1 max-w-[240px] xs:max-w-[280px] sm:max-w-xs bg-gray-100/80 dark:bg-[#0C1936] p-0.5 rounded-lg border border-gray-200/60 dark:border-[#262831] flex" onMouseDown={(e) => e.stopPropagation()}>
+                  <div className="flex-1 max-w-[240px] xs:max-w-[280px] sm:max-w-xs bg-gray-100/80 dark:bg-[#071131] p-0.5 rounded-lg border border-gray-200/60 dark:border-[#262831] flex" onMouseDown={(e) => e.stopPropagation()}>
                     {EDITOR_OPTIONS.map(({ mode: m, icon }) => (
                       <button
                         key={m}
@@ -597,7 +597,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
                         <button
                           key={m}
                           onClick={() => { setEditorMode(m); setMountedEditors((prev) => new Set([...prev, m])); }}
-                          className="w-full flex items-start gap-4 p-5 bg-white dark:bg-[#0C1936] rounded-2xl border-2 border-gray-100 dark:border-[#262831] hover:border-blue-400 dark:hover:border-[#60a5fa]/50 hover:shadow-xs text-left transition-all group cursor-pointer"
+                          className="w-full flex items-start gap-4 p-5 bg-white dark:bg-[#071131] rounded-2xl border-2 border-gray-100 dark:border-[#262831] hover:border-blue-400 dark:hover:border-[#60a5fa]/50 hover:shadow-xs text-left transition-all group cursor-pointer"
                         >
                           <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-[#253456] group-hover:bg-blue-50 dark:group-hover:bg-[#253456] flex items-center justify-center text-gray-500 dark:text-[#7a8ba3] group-hover:text-blue-600 dark:group-hover:text-[#60a5fa] transition-colors flex-shrink-0 mt-0.5">
                             {icon}
@@ -622,6 +622,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
                           htmlContent={template.body_html || ''}
                           subject={template.subject}
                           onContentChange={(html) => set('body_html', html)}
+                          theme="blue"
                         />
                       </div>
                     )}
@@ -641,7 +642,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
                     {mountedEditors.has('simple') && (
                       <div className={editorMode === 'simple' ? 'space-y-4' : 'hidden'}>
                         {/* Personalisation toolbar */}
-                        <div className="flex flex-wrap items-center gap-2 px-4 py-3 bg-white dark:bg-[#0C1936] rounded-xl border border-gray-200 dark:border-[#262831]">
+                        <div className="flex flex-wrap items-center gap-2 px-4 py-3 bg-white dark:bg-[#071131] rounded-xl border border-gray-200 dark:border-[#262831]">
                           <span className="text-xs font-semibold text-gray-500 dark:text-[#7a8ba3] uppercase tracking-wide">Insert:</span>
                           {[
                             { label: 'First Name', val: '{{first_name}}' },
@@ -665,7 +666,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
                           onChange={handleInput}
                           placeholder={`Hi {{first_name}},\n\nStart writing your email here...\n\nBest regards,\n[Your Name]`}
                           rows={18}
-                          className="w-full px-4 py-3 border border-gray-200 dark:border-[#262831] rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm bg-white dark:bg-[#0C1936] text-gray-900 dark:text-white resize-y"
+                          className="w-full px-4 py-3 border border-gray-200 dark:border-[#262831] rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm bg-white dark:bg-[#071131] text-gray-900 dark:text-white resize-y"
                         />
                         <p className="text-xs text-gray-400 dark:text-[#7a8ba3] mt-1">
                           💡 Use <code className="bg-gray-100 dark:bg-[#253456] px-1 rounded text-gray-800 dark:text-gray-200">{'{{first_name}}'}</code>,{' '}
@@ -718,9 +719,9 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
                     Category <span className="text-red-400 normal-case font-normal tracking-normal">*</span>
                   </label>
                   <select name="category" value={template.category || ''} onChange={handleInput} className={inputCls}>
-                    <option value="" className="dark:bg-[#0C1936]">Select category</option>
+                    <option value="" className="dark:bg-[#071131]">Select category</option>
                     {CATEGORIES.map(({ value, label }) => (
-                      <option key={value} value={value} className="dark:bg-[#0C1936]">{label}</option>
+                      <option key={value} value={value} className="dark:bg-[#071131]">{label}</option>
                     ))}
                   </select>
                 </div>
@@ -866,7 +867,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
                         <button
                           key={id}
                           onClick={() => setDevice(id)}
-                          className={`p-1.5 rounded-md transition-all cursor-pointer ${device === id ? 'bg-white dark:bg-[#0C1936] text-blue-600 dark:text-[#60a5fa] shadow-xs' : 'text-gray-400 dark:text-[#7a8ba3] hover:text-gray-600 dark:hover:text-white'}`}
+                          className={`p-1.5 rounded-md transition-all cursor-pointer ${device === id ? 'bg-white dark:bg-[#071131] text-blue-600 dark:text-[#60a5fa] shadow-xs' : 'text-gray-400 dark:text-[#7a8ba3] hover:text-gray-600 dark:hover:text-white'}`}
                           title={id}
                         >
                           {icon}
@@ -879,7 +880,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
                   <div className={`rounded-xl border border-gray-200 dark:border-[#262831] bg-white dark:bg-[#000724] overflow-hidden ${device === 'mobile' ? 'max-w-[380px] mx-auto' : device === 'tablet' ? 'max-w-[600px] mx-auto' : 'w-full'}`}>
                     {/* Subject line preview */}
                     {template.subject && (
-                      <div className="border-b border-gray-100 dark:border-[#262831] px-4 py-2.5 bg-white dark:bg-[#0C1936]">
+                      <div className="border-b border-gray-100 dark:border-[#262831] px-4 py-2.5 bg-white dark:bg-[#071131]">
                         <p className="text-xs font-semibold text-gray-800 dark:text-white truncate">{template.subject}</p>
                         <p className="text-[11px] text-gray-400 dark:text-[#7a8ba3] mt-0.5">from: {template.name}</p>
                       </div>
@@ -967,7 +968,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
                     <button
                       key={id}
                       onClick={() => setDevice(id)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer ${device === id ? 'bg-white dark:bg-[#0C1936] text-blue-600 dark:text-[#60a5fa] shadow-xs' : 'text-gray-500 dark:text-[#7a8ba3] hover:text-gray-700 dark:hover:text-white'}`}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer ${device === id ? 'bg-white dark:bg-[#071131] text-blue-600 dark:text-[#60a5fa] shadow-xs' : 'text-gray-500 dark:text-[#7a8ba3] hover:text-gray-700 dark:hover:text-white'}`}
                     >
                       {icon}
                       <span className="hidden sm:inline">{label}</span>
@@ -1003,7 +1004,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
                     className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all cursor-pointer ${
                       testProvider === value
                         ? 'bg-amber-500 text-white border-amber-500'
-                        : 'bg-white dark:bg-[#0C1936] text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-900 hover:bg-amber-100 dark:hover:bg-[#253456]'
+                        : 'bg-white dark:bg-[#071131] text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-900 hover:bg-amber-100 dark:hover:bg-[#253456]'
                     }`}
                   >
                     {label}
@@ -1052,7 +1053,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
             </div>
 
             <div className="flex-1 overflow-auto p-6 bg-[#F8F9FE] dark:bg-[#000724]">
-              <div className={`mx-auto bg-white dark:bg-[#0C1936] rounded-xl shadow-xs transition-all duration-300 ${device === 'mobile' ? 'max-w-[375px]' : device === 'tablet' ? 'max-w-[768px]' : 'max-w-full'}`}>
+              <div className={`mx-auto bg-white dark:bg-[#071131] rounded-xl shadow-xs transition-all duration-300 ${device === 'mobile' ? 'max-w-[375px]' : device === 'tablet' ? 'max-w-[768px]' : 'max-w-full'}`}>
                 <EmailPreview htmlContent={previewHtml} subject={template.subject} showDeviceSelector={false} />
               </div>
             </div>
