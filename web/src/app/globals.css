@@ -821,7 +821,7 @@ body {
 .dark [data-slot="dialog-content"] textarea,
 .dark [data-slot="dialog-content"] select,
 .dark [data-slot="dialog-content"] [role="combobox"] {
-  background-color: rgba(15, 23, 42, 0.5) !important;
+  background-color: rgba(30, 41, 59, 0.5) !important;
   border-color: #1c2c4e !important;
   color: #ffffff !important;
 }
