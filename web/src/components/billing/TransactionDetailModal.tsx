@@ -6,9 +6,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogClose,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { ArrowUpRight, ArrowDownLeft, Copy, ExternalLink, CheckCircle2 } from 'lucide-react';
+import { ArrowUpRight, ArrowDownLeft, Copy, ExternalLink, CheckCircle2, X } from 'lucide-react';
 
 interface Transaction {
   id: string;
@@ -74,9 +75,9 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-white dark:bg-[#000319] rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-[560px] p-5 sm:p-6 text-slate-800 dark:text-white max-h-[92vh] overflow-y-auto custom-scrollbar">
-        <DialogHeader className="space-y-2 dark:bg-[#000319] sm:px-0 px-0">
-          <DialogTitle className="flex w-full items-center justify-start gap-3 text-left pl-0 text-slate-800 dark:text-white font-bold text-lg leading-tight dark:bg-dark-blue">
+      <DialogContent showCloseButton={false} className="bg-white dark:bg-[#000319] rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-[560px] p-5 sm:p-6 text-slate-800 dark:text-white max-h-[92vh] overflow-y-auto custom-scrollbar">
+        <DialogHeader className="flex flex-row items-center justify-between space-y-0 dark:bg-[#000319] sm:px-0 px-0 w-full">
+          <DialogTitle className="flex items-center gap-3 text-left pl-0 text-slate-800 dark:text-white font-bold text-lg leading-tight">
             <div
               className={`flex h-10 w-10 items-center justify-center rounded-xl border shrink-0 ${
                       transaction.type === 'credit'
@@ -92,9 +93,10 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
               </div>
               <span>Transaction Details</span>
             </DialogTitle>
-            {/*<DialogDescription className="text-xs font-semibold text-slate-400 dark:text-slate-300 uppercase tracking-wider mt-1">*/}
-              {/*{transaction.type === 'credit' ? 'Credit' : 'Debit'} transaction*/}
-            {/*</DialogDescription>*/}
+            <DialogClose className="p-2 rounded-lg opacity-70 transition-opacity hover:opacity-100 focus:outline-none disabled:pointer-events-none text-slate-400 hover:text-slate-700 dark:hover:text-white shrink-0 cursor-pointer">
+              <X className="h-5 w-5" />
+              <span className="sr-only">Close</span>
+            </DialogClose>
           </DialogHeader>
 
           <div className="space-y-4 pt-4">
