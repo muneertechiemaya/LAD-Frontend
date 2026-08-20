@@ -74,9 +74,9 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-white dark:bg-[#000319] rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-[560px] p-5 sm:p-6 text-slate-800 dark:text-white max-h-[92vh] overflow-y-auto custom-scrollbar">
-        <DialogHeader className="space-y-2 dark:bg-[#000319]">
-          <DialogTitle className="flex items-center gap-3 text-slate-800 dark:text-white font-bold text-lg leading-tight dark:bg-dark-blue">
+      <DialogContent className="bg-white dark:bg-[#000724] border border-slate-200 dark:border-blue-950/40 rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-[560px] p-5 sm:p-6 text-slate-800 dark:text-white max-h-[92vh] overflow-y-auto custom-scrollbar">
+        <DialogHeader className="space-y-2 dark:bg-[#081331] p-4 rounded-xl border-b border-slate-100 dark:border-blue-950/40">
+          <DialogTitle className="flex items-center gap-3 text-slate-800 dark:text-white font-bold text-lg leading-tight">
             <div
               className={`flex h-10 w-10 items-center justify-center rounded-xl border shrink-0 ${
                       transaction.type === 'credit'
