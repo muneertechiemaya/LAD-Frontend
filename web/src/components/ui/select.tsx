@@ -106,18 +106,18 @@ function SelectItem({
       className={cn(
         "relative flex w-full cursor-pointer items-center gap-2 rounded-md py-2 pr-8 pl-3 text-sm outline-none select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2 transition-colors duration-150 group",
 
-        // Light Mode
-        "data-[state=checked]:font-semibold focus:bg-primary/95 focus:text-primary-foreground data-[state=checked]:bg-primary/95 data-[state=checked]:text-primary-foreground data-[state=checked]:focus:bg-primary/95 data-[state=checked]:focus:text-primary-foreground",
+        // Light Mode — Solid #0B1957 for selected, hovered, and highlighted states
+        "data-[state=checked]:font-semibold focus:bg-[#0B1957] focus:text-white data-[highlighted]:bg-[#0B1957] data-[highlighted]:text-white data-[state=checked]:bg-[#0B1957] data-[state=checked]:text-white data-[state=checked]:focus:bg-[#0B1957] data-[state=checked]:focus:text-white",
 
-        // Dark Mode — Standard Light Blue (#2563eb) for active/hover/checked states
-        "dark:text-slate-200 dark:focus:bg-[#2563eb] dark:focus:text-white dark:data-[state=checked]:focus:bg-[#2563eb] dark:data-[state=checked]:focus:text-white dark:data-[state=checked]:bg-blue-600/20 dark:data-[state=checked]:text-white",
+        // Dark Mode — Light Blue (#2B7CFF) for active, hover, and checked states
+        "dark:text-slate-200 dark:focus:bg-[#2B7CFF] dark:focus:text-white dark:data-[highlighted]:bg-[#2B7CFF] dark:data-[highlighted]:text-white dark:data-[state=checked]:focus:bg-[#2B7CFF] dark:data-[state=checked]:focus:text-white dark:data-[state=checked]:bg-[#2B7CFF] dark:data-[state=checked]:text-white",
         className
       )}
       {...props}
     >
       <span className="absolute right-2 flex size-3.5 items-center justify-center">
         <SelectPrimitive.ItemIndicator>
-          <CheckIcon className="size-4 text-primary dark:text-white group-focus:text-primary-foreground dark:group-focus:text-white group-data-[state=checked]:text-primary-foreground dark:group-data-[state=checked]:text-white" />
+          <CheckIcon className="size-4 text-white group-focus:text-white group-data-[state=checked]:text-white dark:group-data-[state=checked]:text-white" />
         </SelectPrimitive.ItemIndicator>
       </span>
       <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>

@@ -242,26 +242,26 @@ export default function FollowupTouchesEditor({
                       <SelectValue placeholder="AI-generated (default)" />
                     </SelectTrigger>
                     <SelectContent className="bg-white dark:bg-[#000724] border-slate-200 dark:border-[#262831]">
-                      <SelectItem value="__default__" className="text-xs focus:bg-[#0B1957] focus:text-white cursor-pointer">
+                      <SelectItem value="__default__" className="text-xs cursor-pointer">
                         AI-generated (default)
                       </SelectItem>
-                      <SelectItem value="__industry_trend__" className="text-xs focus:bg-[#0B1957] focus:text-white cursor-pointer">
+                      <SelectItem value="__industry_trend__" className="text-xs cursor-pointer">
                         🔎 Research industry trend
                       </SelectItem>
-                      <SelectItem value="__company_post__" className="text-xs focus:bg-[#0B1957] focus:text-white cursor-pointer">
+                      <SelectItem value="__company_post__" className="text-xs cursor-pointer">
                         📣 Share a company-page post
                       </SelectItem>
                       {templates.map((t) => (
-                        <SelectItem key={t.id} value={t.id} className="text-xs focus:bg-[#0B1957] focus:text-white cursor-pointer">
+                        <SelectItem key={t.id} value={t.id} className="text-xs cursor-pointer">
                           {t.name}{t.is_default ? ' (Default)' : ''}
                         </SelectItem>
                       ))}
                       {selectedMissing && (
-                        <SelectItem value={touch.template_id as string} className="text-xs focus:bg-[#0B1957] focus:text-white cursor-pointer">
+                        <SelectItem value={touch.template_id as string} className="text-xs cursor-pointer">
                           (selected template unavailable)
                         </SelectItem>
                       )}
-                      <SelectItem value="__create__" className="text-xs focus:bg-[#0B1957] focus:text-white cursor-pointer font-medium text-amber-600 dark:text-amber-400">
+                      <SelectItem value="__create__" className="text-xs cursor-pointer font-medium text-amber-600 dark:text-amber-400">
                         ➕ Create new template…
                       </SelectItem>
                     </SelectContent>
