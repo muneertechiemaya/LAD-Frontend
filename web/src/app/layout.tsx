@@ -15,7 +15,7 @@ const SITE_URL =
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Mr LAD — AI-Powered Sales Platform",
+    default: "Mr LAD - AI-Powered Sales Platform",
     template: "%s · Mr LAD",
   },
   description:
@@ -24,15 +24,15 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "Mr LAD",
-    title: "Mr LAD — AI-Powered Sales Platform",
+    title: "Mr LAD - AI-Powered Sales Platform",
     description:
-      "One AI Sales Employee across LinkedIn, WhatsApp, Instagram, email, and voice — the output of an entire sales team.",
+      "One AI Sales Employee across LinkedIn, WhatsApp, Instagram, email, and voice. The output of an entire sales team.",
     url: SITE_URL,
     images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Mr LAD" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Mr LAD — AI-Powered Sales Platform",
+    title: "Mr LAD - AI-Powered Sales Platform",
     description:
       "One AI Sales Employee across LinkedIn, WhatsApp, Instagram, email, and voice.",
     images: ["/og-image.png"],
@@ -91,7 +91,7 @@ export default function RootLayout({
           }}
         />
         {/* Load the fonts the design actually uses (Inter for body, Space
-            Grotesk for headings — see globals.css). Preconnect first so the
+            Grotesk for headings - see globals.css). Preconnect first so the
             font CSS + files aren't gated behind a cold cross-origin handshake. */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link

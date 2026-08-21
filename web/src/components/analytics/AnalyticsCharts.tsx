@@ -106,7 +106,7 @@ export const AnalyticsCharts: React.FC<{ data: AnalyticsChartsData }> = ({ data 
               const prev = i > 0 ? funnel[i - 1].count : null;
               const pct = prev && prev > 0
                 ? `${((stage.count / prev) * 100).toFixed(0)}%`
-                : i === 0 ? '100%' : '—';
+                : i === 0 ? '100%' : '-';
               const color = stage.color || [C.navy, C.indigo, C.cyan, C.green, C.amber][i % 5];
               return (
                 <FunnelRow

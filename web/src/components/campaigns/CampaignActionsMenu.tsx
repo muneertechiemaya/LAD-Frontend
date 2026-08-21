@@ -68,7 +68,7 @@ export default function CampaignActionsMenu({
       const data = await res.json();
       if (res.ok && data?.success) {
         const d = data.data;
-        alert(`Pushed campaign leads to Zoho: ${d.inserted} inserted, ${d.updated} updated${d.failed ? `, ${d.failed} failed` : ''}${d.skipped_no_email ? ` (${d.skipped_no_email} skipped — no email)` : ''}.`);
+        alert(`Pushed campaign leads to Zoho: ${d.inserted} inserted, ${d.updated} updated${d.failed ? `, ${d.failed} failed` : ''}${d.skipped_no_email ? ` (${d.skipped_no_email} skipped - no email)` : ''}.`);
       } else {
         alert(`Push to Zoho failed: ${data?.error || 'unknown error'}`);
       }

@@ -26,7 +26,7 @@ export const TOOLS: Record<ToolId, ToolDef> = {
     label: "Find leads",
     tint: "#4f46e5",
     desc: "Discover accounts matching your ICP",
-    ph: "Describe the leads you want — role, industry, geography…",
+    ph: "Describe the leads you want: role, industry, geography…",
   },
   meet: {
     icon: Icon.calendar,
@@ -110,7 +110,7 @@ export interface ModelDef {
 }
 
 export const MODELS: ModelDef[] = [
-  { id: "agent", name: "LAD Agent", sub: "Autonomous — plans & runs multi-step tasks", icon: Icon.agent },
+  { id: "agent", name: "LAD Agent", sub: "Autonomous - plans & runs multi-step tasks", icon: Icon.agent },
   { id: "flash", name: "LAD 2.5 Flash", sub: "Fast answers for quick lookups", icon: Icon.bolt },
   { id: "reason", name: "LAD Reasoning", sub: "Deeper analysis for complex ICPs", icon: Icon.sparkle },
 ];

@@ -212,7 +212,7 @@ function MemberIntelCard({ member, onViewProfile }: MemberIntelCardProps) {
           </div>
           <div className="min-w-0">
             <p className="font-bold text-slate-900 text-sm truncate">{member.name}</p>
-            <p className="text-[11px] text-slate-500 truncate">{member.company_name || '—'}</p>
+            <p className="text-[11px] text-slate-500 truncate">{member.company_name || '-'}</p>
             {member.designation && (
               <p className="text-[10px] text-slate-400 truncate italic">{member.designation}</p>
             )}
@@ -451,7 +451,7 @@ export default function MemberIntelFeed({ members, onViewProfile }: MemberIntelF
           <div>
             <h2 className="text-lg font-bold text-slate-900">Member Intelligence</h2>
             <p className="text-xs text-slate-500 font-medium">
-              ABM research — company overview, decision makers &amp; next best actions
+              ABM research - company overview, decision makers &amp; next best actions
             </p>
           </div>
         </div>

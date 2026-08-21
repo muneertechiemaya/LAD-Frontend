@@ -216,14 +216,6 @@ const SCOPED_CSS = `
   to   { opacity: 1; }
 }
 
-@media (max-width: 880px) {
-  .lad-bp-table th.lad-bp-col-index,
-  .lad-bp-table td.lad-bp-col-index { display: none; }
-}
-@media (max-width: 720px) {
-  .lad-bp-table th.lad-bp-col-bar,
-  .lad-bp-table td.lad-bp-col-bar { display: none; }
-}
 @media (prefers-reduced-motion: reduce) {
   .lad-bp-bar-seg { transition: none !important; }
   .lad-bp-anim    { animation: none !important; }
@@ -234,6 +226,42 @@ const SCOPED_CSS = `
   color: ${C.muted}; font-size: 13px; font-weight: 500;
   font-family: ${FONT_UI};
   background: ${C.surface}; border: 1px solid ${C.hair}; border-radius: 16px;
+}
+
+/* Dark mode overrides */
+.dark .lad-bp-table {
+  background: #071131;
+  border: 1px solid rgba(30, 46, 74, 0.4);
+}
+.dark .lad-bp-table thead th {
+  background: #081331;
+  color: #94a3b8;
+  border-bottom: 1px solid rgba(30, 46, 74, 0.4);
+}
+.dark .lad-bp-table tbody td {
+  color: #f8fafc;
+}
+.dark .lad-bp-select-pill {
+  background: #071131;
+  border-color: rgba(30, 46, 74, 0.8);
+}
+.dark .lad-bp-select-pill:hover {
+  background: #0c1a42;
+}
+.dark .lad-bp-select-pill > select {
+  color: #f8fafc;
+}
+.dark .lad-bp-select-pill > select option {
+  background: #071131;
+  color: #f8fafc;
+}
+.dark .lad-bp-bar {
+  background: #1e293b;
+}
+.dark .lad-bp-empty {
+  background: #071131;
+  border-color: rgba(30, 46, 74, 0.4);
+  color: #94a3b8;
 }
 `;
 
@@ -480,8 +508,8 @@ export function BroadcastPerformance({
                 key={selectedId + '-rate'}
                 className="lad-bp-rate-pill lad-bp-anim"
                 style={{ background: band.bg, color: band.color }}
-                aria-label={`Read rate: ${pct1(readRate)} percent — ${band.label}`}
-                title={`${band.label} — ${pct1(readRate)}%`}
+                aria-label={`Read rate: ${pct1(readRate)} percent - ${band.label}`}
+                title={`${band.label} - ${pct1(readRate)}%`}
               >
                 <span className="num">{pct1(readRate)}</span>
                 <span className="unit">%</span>

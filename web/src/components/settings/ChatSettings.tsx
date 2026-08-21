@@ -426,6 +426,129 @@ function Toast({ message, type, onClose }: { message: string; type: 'success' | 
 // stack (LAD-WABA-Comms). Prompt lives in the prompts table (channel='email',
 // name='default'); the on/off flag in chat_settings.metadata.email_agent_enabled.
 
+// ── Human takeover ──────────────────────────────────────────────────────────
+// When a human agent replies in a chat the AI is muted so it cannot talk over
+// them. This controls whether that mute ever lifts. Note it governs REAL
+// takeovers only — a mute the escalation logic set on its own always expires,
+// so this cannot re-create the "nobody ever replied" bug.
+function HumanMuteCard({ showToast }: { showToast: (msg: string, type: 'success' | 'error') => void }) {
+  const [policy, setPolicy] = useState<'permanent' | 'expire'>('permanent');
+  const [days, setDays] = useState(7);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetchWithTenant(SETTINGS_API);
+        if (cancelled || !res.ok) return;
+        const s = await res.json();
+        const d = s?.data ?? s;
+        if (d?.human_mute_policy === 'expire') setPolicy('expire');
+        const n = Number(d?.human_mute_expiry_days);
+        if (Number.isFinite(n) && n >= 1 && n <= 365) setDays(n);
+      } catch { /* card renders with defaults */ }
+      finally { if (!cancelled) setLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const save = async (nextPolicy: 'permanent' | 'expire', nextDays: number) => {
+    const prevPolicy = policy;
+    const prevDays = days;
+    setPolicy(nextPolicy);
+    setDays(nextDays);
+    setSaving(true);
+    try {
+      const res = await fetchWithTenant(`${SETTINGS_API}?channel=waba`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          human_mute_policy: nextPolicy,
+          human_mute_expiry_days: nextDays,
+        }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      showToast(
+        nextPolicy === 'permanent'
+          ? 'Chats stay with the human agent'
+          : `AI resumes after ${nextDays} day${nextDays === 1 ? '' : 's'}`,
+        'success',
+      );
+    } catch {
+      setPolicy(prevPolicy);
+      setDays(prevDays);
+      showToast('Failed to update handover setting', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return null;
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+      <h3 className="text-lg font-semibold text-gray-900">When a human takes over a chat</h3>
+      <p className="text-sm text-gray-600 mt-1 mb-4">
+        Once one of your agents replies to a customer, the AI stops replying in that chat
+        so it never talks over them. Choose whether it ever picks the chat back up.
+      </p>
+
+      <label className="flex items-start gap-3 mb-3 cursor-pointer">
+        <input
+          type="radio"
+          className="mt-1"
+          checked={policy === 'permanent'}
+          disabled={saving}
+          onChange={() => save('permanent', days)}
+        />
+        <span>
+          <span className="font-medium text-gray-900">Keep it with the agent</span>
+          <span className="block text-sm text-gray-600">
+            The chat stays human-handled until someone turns the AI back on from the
+            conversation. Recommended - a customer mid-conversation with a person is
+            never handed back to the bot.
+          </span>
+        </span>
+      </label>
+
+      <label className="flex items-start gap-3 cursor-pointer">
+        <input
+          type="radio"
+          className="mt-1"
+          checked={policy === 'expire'}
+          disabled={saving}
+          onChange={() => save('expire', days)}
+        />
+        <span>
+          <span className="font-medium text-gray-900">Give it back to the AI after a while</span>
+          <span className="block text-sm text-gray-600">
+            If the agent has not replied for this many days, the AI resumes.
+          </span>
+          <span className="flex items-center gap-2 mt-2">
+            <input
+              type="number"
+              min={1}
+              max={365}
+              value={days}
+              disabled={saving || policy !== 'expire'}
+              onChange={(e) => setDays(Number(e.target.value))}
+              onBlur={() => {
+                const clamped = Math.min(365, Math.max(1, Math.round(days) || 7));
+                if (clamped !== days) setDays(clamped);
+                if (policy === 'expire') save('expire', clamped);
+              }}
+              className="w-20 px-2 py-1 border border-gray-300 rounded disabled:bg-gray-100"
+            />
+            <span className="text-sm text-gray-600">days</span>
+          </span>
+        </span>
+      </label>
+    </div>
+  );
+}
+
 function EmailAgentCard({ showToast }: { showToast: (msg: string, type: 'success' | 'error') => void }) {
   const [enabled, setEnabled] = useState(false);
   const [promptText, setPromptText] = useState('');
@@ -510,7 +633,7 @@ function EmailAgentCard({ showToast }: { showToast: (msg: string, type: 'success
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Email agent (Gmail &amp; Outlook)</h3>
           <p className="text-xs text-gray-500 mt-0.5">
             Automatically replies to new emails in your connected inboxes using the prompt
-            below — same AI brain as your WhatsApp agent. Replies stay in the original thread.
+            below - same AI brain as your WhatsApp agent. Replies stay in the original thread.
           </p>
         </div>
         <button
@@ -533,7 +656,7 @@ function EmailAgentCard({ showToast }: { showToast: (msg: string, type: 'success
 
       <div className="px-5 py-4 space-y-3">
         <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-          Reading inboxes needs the new read permission — accounts connected before the email
+          Reading inboxes needs the new read permission - accounts connected before the email
           agent existed must be <span className="font-medium">disconnected and reconnected once</span>{' '}
           in Settings → Integrations. The agent only answers mail received after it&apos;s enabled.
         </p>
@@ -672,12 +795,16 @@ export function ChatSettings() {
   const [linkedinAutomation, setLinkedinAutomation] = useState<{
     auto_like_posts: boolean;
     auto_comment_posts: boolean;
+    /** Ongoing background sweep of accepted connections' NEW posts. Separate
+     *  opt-in from the two flags above, which only fire at campaign-step time. */
+    post_monitoring_enabled: boolean;
     ai_agent_reply_delay_seconds: number;
     auto_withdraw_pending_enabled: boolean;
     auto_withdraw_pending_days: number;
   }>({
     auto_like_posts: false,
     auto_comment_posts: false,
+    post_monitoring_enabled: false,
     ai_agent_reply_delay_seconds: 0,
     auto_withdraw_pending_enabled: false,
     auto_withdraw_pending_days: 90,
@@ -719,6 +846,7 @@ export function ChatSettings() {
           setLinkedinAutomation({
             auto_like_posts:              !!liSettings.data.auto_like_posts,
             auto_comment_posts:           !!liSettings.data.auto_comment_posts,
+            post_monitoring_enabled:      !!liSettings.data.post_monitoring_enabled,
             ai_agent_reply_delay_seconds: Number.isFinite(rawDelay) ? Math.max(0, Math.min(300, rawDelay)) : 0,
             auto_withdraw_pending_enabled: !!liSettings.data.auto_withdraw_pending_enabled,
             auto_withdraw_pending_days:   Number.isFinite(rawWithdrawDays) ? Math.max(30, rawWithdrawDays) : 90,
@@ -868,7 +996,7 @@ export function ChatSettings() {
             setNewPromptName('SYSTEM_PROMPT');
             setNewPromptText(out.prompt_text);
           }
-          showToast('Draft generated — review it, then Save Changes', 'success');
+          showToast('Draft generated - review it, then Save Changes', 'success');
         } else {
           showToast('Failed to generate prompt', 'error');
         }
@@ -971,7 +1099,7 @@ export function ChatSettings() {
       wabaOk = res.ok;
     } catch { /* ignore */ }
     const allOk = personalOk && wabaOk;
-    showToast(allOk ? 'Chat behaviour saved' : 'Partially saved — check console', allOk ? 'success' : 'error');
+    showToast(allOk ? 'Chat behaviour saved' : 'Partially saved - check console', allOk ? 'success' : 'error');
     setSavingBehaviour(false);
   }, [chatSettings.typing_indicator, chatSettings.waba_typing_indicator, showToast]);
 
@@ -995,7 +1123,7 @@ export function ChatSettings() {
     // enabled flag, so the pre-check must too.
     if (offending.length > 0) {
       showToast(
-        `${offending.join(', ')}: delays past 24h need an approved WhatsApp template — pick one or disable the stage`,
+        `${offending.join(', ')}: delays past 24h need an approved WhatsApp template - pick one or disable the stage`,
         'error'
       );
       return;
@@ -1100,9 +1228,9 @@ export function ChatSettings() {
         } else if (okCount > 0 && failCount === 0) {
           showToast(`Scraped ${okCount} URL${okCount > 1 ? 's' : ''} (${totalChars} chars)`, 'success');
         } else if (okCount > 0 && failCount > 0) {
-          showToast(`Scraped ${okCount}/${diagnostics.length} URLs — see diagnostics below`, 'success');
+          showToast(`Scraped ${okCount}/${diagnostics.length} URLs - see diagnostics below`, 'success');
         } else {
-          showToast('No content extracted — see diagnostics below', 'error');
+          showToast('No content extracted - see diagnostics below', 'error');
         }
       } else {
         const errMsg = data?.detail || `HTTP ${res.status}`;
@@ -1314,7 +1442,7 @@ export function ChatSettings() {
                         handleToggleActive(prompt);
                       }}
                       className="flex-shrink-0"
-                      title={prompt.is_active ? 'Active — click to deactivate' : 'Inactive — click to activate'}
+                      title={prompt.is_active ? 'Active - click to deactivate' : 'Inactive - click to activate'}
                     >
                       {prompt.is_active ? (
                         <ToggleRight className="h-5 w-5 text-blue-500 dark:text-blue-400" />
@@ -1484,9 +1612,9 @@ export function ChatSettings() {
           </div>
           <p className="text-sm text-gray-500 dark:text-slate-300">
             Files (price list, brochure, menu…) the AI agents can attach automatically
-            when the customer asks — on WhatsApp, LinkedIn, and email. The system
+            when the customer asks - on WhatsApp, LinkedIn, and email. The system
             listens for the trigger keywords in the AI&apos;s reply, downloads the file
-            from the URL, and sends it as a real attachment — so customers never see
+            from the URL, and sends it as a real attachment - so customers never see
             a raw link.
           </p>
         </div>
@@ -1704,7 +1832,7 @@ export function ChatSettings() {
                       />
                       <p className="text-xs text-gray-500 dark:text-slate-300 mt-1">
                         Comma-separated. The file is sent when ANY keyword appears in
-                        the AI&apos;s reply (matches plurals + variants — e.g. &quot;pricelist&quot;
+                        the AI&apos;s reply (matches plurals + variants - e.g. &quot;pricelist&quot;
                         also matches &quot;prices&quot;, &quot;pricing&quot;, &quot;price list&quot;).
                       </p>
                     </div>
@@ -1748,9 +1876,9 @@ export function ChatSettings() {
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Company Website Context</h2>
           </div>
           <p className="text-sm text-gray-500 dark:text-slate-300">
-            Let the AI answer customer questions using content from your website or blog pages —
+            Let the AI answer customer questions using content from your website or blog pages -
             on WhatsApp, LinkedIn, and email. URLs are scraped once when you save and the text is
-            cached — no live requests on each reply.
+            cached - no live requests on each reply.
           </p>
         </div>
         <div className="p-6 space-y-5">
@@ -1769,7 +1897,7 @@ export function ChatSettings() {
                   web_scraping_enabled: !prev.web_scraping_enabled,
                 }))
               }
-              title={chatSettings.web_scraping_enabled ? 'On — click to disable' : 'Off — click to enable'}
+              title={chatSettings.web_scraping_enabled ? 'On - click to disable' : 'Off - click to enable'}
             >
               {chatSettings.web_scraping_enabled ? (
                 <ToggleRight className="h-6 w-6 text-blue-600 dark:text-blue-400" />
@@ -2076,7 +2204,7 @@ export function ChatSettings() {
                   onClick={() =>
                     setChatSettings((prev) => ({ ...prev, typing_indicator: !prev.typing_indicator }))
                   }
-                  title={chatSettings.typing_indicator ? 'On — click to disable' : 'Off — click to enable'}
+                  title={chatSettings.typing_indicator ? 'On - click to disable' : 'Off - click to enable'}
                 >
                   {chatSettings.typing_indicator ? (
                     <ToggleRight className="h-6 w-6 text-blue-500 dark:text-blue-400" />
@@ -2101,7 +2229,7 @@ export function ChatSettings() {
                   onClick={() =>
                     setChatSettings((prev) => ({ ...prev, waba_typing_indicator: !prev.waba_typing_indicator }))
                   }
-                  title={chatSettings.waba_typing_indicator ? 'On — click to disable' : 'Off — click to enable'}
+                  title={chatSettings.waba_typing_indicator ? 'On - click to disable' : 'Off - click to enable'}
                 >
                   {chatSettings.waba_typing_indicator ? (
                     <ToggleRight className="h-6 w-6 text-blue-500 dark:text-blue-400" />
@@ -2129,7 +2257,7 @@ export function ChatSettings() {
       )}
 
       {/* NOTE: the old Section 5 "Campaign Settings" card (campaign_frequency:
-          enable/interval/max-daily) was removed 2026-07-05 — the values were
+          enable/interval/max-daily) was removed 2026-07-05 - the values were
           never consumed by any campaign path. The field remains in the
           ChatSettings API type because the backend still stores/returns it. */}
 
@@ -2253,8 +2381,8 @@ export function ChatSettings() {
                                 {loadingTemplates
                                   ? 'Loading templates…'
                                   : needsTemplate
-                                  ? '— Pick a template (required) —'
-                                  : '— AI-generated (within 24 h) —'}
+                                  ? '- Pick a template (required) -'
+                                  : '- AI-generated (within 24 h) -'}
                               </SelectItem>
 
                               {approvedTemplates.map((t) => (
@@ -2270,7 +2398,7 @@ export function ChatSettings() {
                           </Select>
                           {templateMissing && (
                             <p className="text-[10px] text-red-600 dark:text-rose-400 mt-1">
-                              Required — delays past 24 h need an approved template
+                              Required - delays past 24 h need an approved template
                             </p>
                           )}
                         </td>
@@ -2294,7 +2422,7 @@ export function ChatSettings() {
               </table>
               {!loadingTemplates && approvedTemplates.length === 0 && (
                 <div className="px-4 py-2 bg-amber-50 dark:bg-amber-950/20 border-t border-amber-100 dark:border-amber-900/40 text-[11px] text-amber-700 dark:text-amber-400">
-                  No approved WhatsApp templates found. Add and approve templates in your Meta Business Manager — without a template, follow-ups past 24 h will fail to send.
+                  No approved WhatsApp templates found. Add and approve templates in your Meta Business Manager - without a template, follow-ups past 24 h will fail to send.
                 </div>
               )}
             </div>
@@ -2366,7 +2494,7 @@ export function ChatSettings() {
 
                         <SelectContent className="bg-white dark:bg-[#000724] border-slate-200 dark:border-[#262831]">
                           <SelectItem value="placeholder-fallback" className="text-xs">
-                            {loadingTemplates ? 'Loading templates…' : '— AI-generated (default) —'}
+                            {loadingTemplates ? 'Loading templates…' : '- AI-generated (default) -'}
                           </SelectItem>
                           {approvedTemplates.map((t) => (
                             <SelectItem key={`${t.name}-${t.language}`} value={t.name} className="text-xs">
@@ -2447,7 +2575,7 @@ export function ChatSettings() {
 
       {/* ── Section 7: LinkedIn Automation ──────────────────────── */}
       {/* Both LinkedIn cards (Automation + Follow-up Sequence) follow the
-          active System Prompts tab — shown only while LinkedIn is selected.
+          active System Prompts tab - shown only while LinkedIn is selected.
           Saved values persist regardless of visibility. */}
       {activeChannel === 'linkedin' && (
       <>
@@ -2463,7 +2591,7 @@ export function ChatSettings() {
           </div>
           <p className="text-sm text-gray-500 dark:text-slate-300">
             Automatically engage with the post used to personalise each connection request or follow-up message.
-            Actions fire after a successful send — never before.
+            Actions fire after a successful send - never before.
           </p>
         </div>
         <div className="p-6 space-y-5">
@@ -2483,7 +2611,7 @@ export function ChatSettings() {
                 onClick={() =>
                   setLinkedinAutomation((prev) => ({ ...prev, auto_like_posts: !prev.auto_like_posts }))
                 }
-                title={linkedinAutomation.auto_like_posts ? 'On — click to disable' : 'Off — click to enable'}
+                title={linkedinAutomation.auto_like_posts ? 'On - click to disable' : 'Off - click to enable'}
               >
                 {linkedinAutomation.auto_like_posts ? (
                   <ToggleRight className="h-6 w-6 text-blue-500 dark:text-blue-400" />
@@ -2500,7 +2628,7 @@ export function ChatSettings() {
                 <div>
                   <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Auto Comment on Post</p>
                   <p className="text-xs text-gray-500 dark:text-slate-300">
-                    AI generates a short, natural comment on the lead&apos;s most recent post — no generic phrases
+                    AI generates a short, natural comment on the lead&apos;s most recent post - no generic phrases
                   </p>
                 </div>
               </div>
@@ -2508,9 +2636,34 @@ export function ChatSettings() {
                 onClick={() =>
                   setLinkedinAutomation((prev) => ({ ...prev, auto_comment_posts: !prev.auto_comment_posts }))
                 }
-                title={linkedinAutomation.auto_comment_posts ? 'On — click to disable' : 'Off — click to enable'}
+                title={linkedinAutomation.auto_comment_posts ? 'On - click to disable' : 'Off - click to enable'}
               >
                 {linkedinAutomation.auto_comment_posts ? (
+                  <ToggleRight className="h-6 w-6 text-blue-500 dark:text-blue-400" />
+                ) : (
+                  <ToggleLeft className="h-6 w-6 text-gray-300 dark:text-gray-600" />
+                )}
+              </button>
+            </div>
+
+            {/* Ongoing post monitoring */}
+            <div className="flex items-center justify-between px-4 py-3 bg-white dark:bg-transparent">
+              <div className="flex items-center gap-2.5">
+                <Bell className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Monitor Prospect Posts</p>
+                  <p className="text-xs text-gray-500 dark:text-slate-300">
+                    Keep watching accepted connections and engage each time they post something new, not only during a campaign step. Uses the two settings above, capped daily and limited to business hours.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() =>
+                  setLinkedinAutomation((prev) => ({ ...prev, post_monitoring_enabled: !prev.post_monitoring_enabled }))
+                }
+                title={linkedinAutomation.post_monitoring_enabled ? 'On — click to disable' : 'Off — click to enable'}
+              >
+                {linkedinAutomation.post_monitoring_enabled ? (
                   <ToggleRight className="h-6 w-6 text-blue-500 dark:text-blue-400" />
                 ) : (
                   <ToggleLeft className="h-6 w-6 text-gray-300 dark:text-gray-600" />
@@ -2525,7 +2678,7 @@ export function ChatSettings() {
                 <div>
                   <p className="text-sm font-medium text-gray-800 dark:text-gray-200">AI Agent Reply Delay</p>
                   <p className="text-xs text-gray-500 dark:text-slate-300">
-                    Hold the AI&apos;s reply for this many seconds before sending — makes the response feel more human. 0 = instant.
+                    Hold the AI&apos;s reply for this many seconds before sending - makes the response feel more human. 0 = instant.
                   </p>
                 </div>
               </div>
@@ -2590,7 +2743,7 @@ export function ChatSettings() {
                   onClick={() =>
                     setLinkedinAutomation((prev) => ({ ...prev, auto_withdraw_pending_enabled: !prev.auto_withdraw_pending_enabled }))
                   }
-                  title={linkedinAutomation.auto_withdraw_pending_enabled ? 'On — click to disable' : 'Off — click to enable'}
+                  title={linkedinAutomation.auto_withdraw_pending_enabled ? 'On - click to disable' : 'Off - click to enable'}
                 >
                   {linkedinAutomation.auto_withdraw_pending_enabled ? (
                     <ToggleRight className="h-6 w-6 text-blue-500" />
@@ -2639,12 +2792,12 @@ export function ChatSettings() {
               <Sparkles className="h-4 w-4 text-amber-500 flex-shrink-0" />
               <div>
                 <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Auto-schedule sequence on acceptance</p>
-                <p className="text-xs text-gray-500 dark:text-slate-300">When off, no scheduled follow-ups are created — the live agent still replies to inbound DMs.</p>
+                <p className="text-xs text-gray-500 dark:text-slate-300">When off, no scheduled follow-ups are created. The live agent still replies to inbound DMs.</p>
               </div>
             </div>
             <button
               onClick={() => setLinkedinFollowup((prev) => ({ ...prev, enabled: !prev.enabled }))}
-              title={linkedinFollowup.enabled ? 'On — click to disable' : 'Off — click to enable'}
+              title={linkedinFollowup.enabled ? 'On - click to disable' : 'Off - click to enable'}
             >
               {linkedinFollowup.enabled ? (
                 <ToggleRight className="h-6 w-6 text-amber-500" />
@@ -2678,6 +2831,7 @@ export function ChatSettings() {
       )}
 
       {/* ── Email agent (Gmail/Outlook tab) ──────────────────────── */}
+      {activeChannel === 'waba' && <HumanMuteCard showToast={showToast} />}
       {activeChannel === 'gmail' && <EmailAgentCard showToast={showToast} />}
 
       {/* ── Hidden channels hint ─────────────────────────────────── */}

@@ -523,7 +523,7 @@ export function ChatGroupManager({
         const refreshed = await fetchGroups(channel);
         setGroups(refreshed);
       } else {
-        setSyncMessage(data.error || 'Sync failed — is a WAPA account connected?');
+        setSyncMessage(data.error || 'Sync failed - is a WAPA account connected?');
       }
     } catch {
       setSyncMessage('Failed to reach the service. Check your connection.');
@@ -899,7 +899,7 @@ export function ChatGroupManager({
                       ) : sourceContacts.length === 0 ? (
                         <div className={cn("text-center py-6 text-xs", isWA ? "text-zinc-400 dark:text-zinc-500" : "text-muted-foreground")}>
                           {['google', 'microsoft', 'other'].includes(selectedSource)
-                            ? 'Coming soon — integration not yet configured.'
+                            ? 'Coming soon - integration not yet configured.'
                             : sourceSearch ? 'No contacts found.' : 'No contacts available.'}
                         </div>
                       ) : (

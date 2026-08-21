@@ -533,7 +533,7 @@ export const WhatsAppIntegration: React.FC = () => {
     if (!ok || stillConnected) {
       setStatus('connected');
       setError(
-        'WhatsApp could not be disconnected — the connection is still active on the server. Please try again, and contact support if it persists.',
+        'WhatsApp could not be disconnected - the connection is still active on the server. Please try again, and contact support if it persists.',
       );
       setLoading(false);
       return;

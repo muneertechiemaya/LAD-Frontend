@@ -466,7 +466,7 @@ export default function WarmPathPanel({
               <div className="flex items-start gap-2 text-[12.5px] text-[#172560] dark:text-[#c9d4ee] bg-emerald-50 dark:bg-[#0d2a1e] ring-1 ring-emerald-200 dark:ring-[#1e4634] rounded-[11px] px-3 py-2 flex-1 min-w-[260px]">
                 <ShieldCheck className="w-4 h-4 mt-0.5 shrink-0" style={{ color: T.success }} />
                 <span>
-                  <b>1 member accepted.</b> They can now introduce you to {firstName} — the intro is drafted by
+                  <b>1 member accepted.</b> They can now introduce you to {firstName} - the intro is drafted by
                   their agent. {matchCount - 1} {matchCount - 1 === 1 ? 'request' : 'requests'} still pending.
                 </span>
               </div>

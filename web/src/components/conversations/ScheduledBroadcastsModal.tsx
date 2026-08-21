@@ -99,7 +99,7 @@ export function ScheduledBroadcastsModal({ open, onClose, channel }: ScheduledBr
                       )}
                       {r.status === 'sending' && <span className="text-[10px] text-amber-600">sending…</span>}
                     </div>
-                    <p className="text-[13px] text-muted-foreground truncate mt-0.5">{r.message_preview || '—'}</p>
+                    <p className="text-[13px] text-muted-foreground truncate mt-0.5">{r.message_preview || '-'}</p>
                   </div>
                   {r.status === 'scheduled' && (
                     <button

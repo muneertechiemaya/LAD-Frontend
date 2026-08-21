@@ -187,7 +187,7 @@ function ComposeForm({
             <SelectContent>
               {activeAccounts.length === 0 ? (
                 <div className="px-3 py-2 text-sm text-muted-foreground">
-                  No active accounts — connect Gmail / Outlook in Settings.
+                  No active accounts - connect Gmail / Outlook in Settings.
                 </div>
               ) : (
                 activeAccounts.map((a) => (

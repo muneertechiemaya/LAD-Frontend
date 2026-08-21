@@ -39,7 +39,7 @@ export function isCampaignNameTaken(err: unknown): boolean {
 export function campaignNameTakenMessage(name?: string): string {
   const quoted = name && name.trim() ? `"${name.trim()}"` : 'that name';
   return (
-    `A campaign called ${quoted} already exists — drafts and finished campaigns ` +
+    `A campaign called ${quoted} already exists - drafts and finished campaigns ` +
     `keep their names too. Rename this one, or open the existing campaign instead.`
   );
 }

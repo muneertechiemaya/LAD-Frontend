@@ -163,12 +163,12 @@ export const LeadJourneyWidget: React.FC<{ id: string }> = ({ id }) => {
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground truncate">
-                  {[r.company_name, r.industry].filter(Boolean).join(' · ') || '—'}
+                  {[r.company_name, r.industry].filter(Boolean).join(' · ') || '-'}
                 </p>
               </div>
               <div className="text-right whitespace-nowrap ml-3 shrink-0 max-w-[45%]">
                 <p className="text-xs font-medium truncate dark:text-[#E0E0E0]/90" title={r.campaign_name || ''}>
-                  {r.campaign_name || '—'}
+                  {r.campaign_name || '-'}
                 </p>
               </div>
             </div>

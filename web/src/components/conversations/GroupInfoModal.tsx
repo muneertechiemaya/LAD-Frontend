@@ -211,7 +211,7 @@ export function GroupInfoModal({ open, onClose, group, allGroups, channel, onCha
         </DialogHeader>
 
         {/* A broadcast LIST contains groups, not people, and has no send history
-            of its own — so it keeps the single-list view rather than growing
+            of its own - so it keeps the single-list view rather than growing
             tabs that would both be wrong for it. */}
         {!isBroadcastList && (
           <div className="flex border-b border-border px-2">
@@ -250,7 +250,7 @@ export function GroupInfoModal({ open, onClose, group, allGroups, channel, onCha
                 value={addValue}
                 onChange={(e) => setAddValue(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && !adding) addMembers(); }}
-                placeholder="Add by phone number — comma or space separated"
+                placeholder="Add by phone number, comma or space separated"
                 className="flex-1 h-8 px-2.5 text-sm rounded-md border border-border bg-background
                            focus:outline-none focus:ring-1 focus:ring-emerald-600"
               />

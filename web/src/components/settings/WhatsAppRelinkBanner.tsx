@@ -52,7 +52,7 @@ export const WhatsAppRelinkBanner: React.FC<{ linkState: LinkState | null }> = (
       <div className="flex items-center gap-2 mb-1">
         <AlertCircle className="h-4 w-4 flex-shrink-0 text-amber-600 dark:text-amber-400" />
         <span className="text-sm font-semibold text-amber-900 dark:text-amber-300">
-          WhatsApp disconnected — re-link required
+          WhatsApp disconnected - re-link required
         </span>
       </div>
       <p className="text-xs text-amber-800 dark:text-amber-200/90">

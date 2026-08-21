@@ -58,7 +58,7 @@ export const STAGE_META: Record<string, { label: string; color: string }> = {
 
 // ── Relative time helpers ────────────────────────────────────────────────
 export function rel(from?: string | null, now: Date = new Date()): string {
-  if (!from) return '—';
+  if (!from) return '-';
   const s = Math.max(1, Math.round((now.getTime() - new Date(from).getTime()) / 1000));
   if (s < 60) return `${s}s`;
   const m = Math.round(s / 60); if (m < 60) return `${m}m`;
@@ -68,12 +68,12 @@ export function rel(from?: string | null, now: Date = new Date()): string {
 }
 
 export function fmtDate(s?: string | null): string {
-  if (!s) return '—';
+  if (!s) return '-';
   return new Date(s).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' });
 }
 
 export function fmtCurrency(n: number, ccy = 'AED'): string {
-  if (n == null) return '—';
+  if (n == null) return '-';
   if (n >= 1_000_000) return `${ccy} ${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000)     return `${ccy} ${(n / 1_000).toFixed(1)}K`;
   return `${ccy} ${n}`;
@@ -141,7 +141,7 @@ export function CrmAvatar({
 }
 
 export function ChannelChips({ channels }: { channels?: ChannelKey[] }) {
-  if (!channels?.length) return <span className="text-[11.5px] text-slate-400">—</span>;
+  if (!channels?.length) return <span className="text-[11.5px] text-slate-400">-</span>;
   return (
     <div className="flex items-center gap-1">
       {channels.map((ch) => {

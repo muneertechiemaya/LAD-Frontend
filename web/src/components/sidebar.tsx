@@ -156,7 +156,7 @@ export function Sidebar() {
     try {
       const saved = window.localStorage.getItem('sidebar.pinned');
       if (saved === '1') setIsPinned(true);
-    } catch { /* localStorage blocked — fine, default is unpinned */ }
+    } catch { /* localStorage blocked - fine, default is unpinned */ }
   }, []);
   const togglePinned = () => {
     setIsPinned(prev => {
@@ -945,7 +945,7 @@ export function Sidebar() {
                 {/* Group the leading icon + label together so the layout
                     mirrors the Settings row above and the Logout row below.
                     When the sidebar collapses, only the ThemeToggle remains
-                    visible (centered) — the leading Palette icon hides to
+                    visible (centered) - the leading Palette icon hides to
                     avoid two icons in a 40px-wide column. */}
                 {isExpanded && (
                   <div className="flex items-center gap-2">
