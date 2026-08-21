@@ -50,7 +50,7 @@ const SERVICES: ServiceMeta[] = [
     port: 3000,
     paths: 143,
     ops: 199,
-    desc: 'Next.js /api routes — mostly thin proxies to the three backends with cookie-based auth translation.',
+    desc: 'Next.js /api routes - mostly thin proxies to the three backends with cookie-based auth translation.',
   },
 ];
 
@@ -269,7 +269,7 @@ export default function SwaggerExplorer({
               <p className="lead">
                 Each card opens an interactive Swagger UI. Endpoints are grouped by tag. Click any
                 operation, hit <strong>Try it out</strong>, fill the parameters, and execute against
-                the running service — your bearer token (set in the top bar, pre-filled with your
+                the running service - your bearer token (set in the top bar, pre-filled with your
                 session) is sent automatically.
               </p>
               <div className="lad-swagger-grid">

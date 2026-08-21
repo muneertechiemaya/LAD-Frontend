@@ -125,7 +125,7 @@ export const LinkedInFunnelWidget: React.FC<{ id: string }> = ({ id }) => {
             <div className="bg-muted/40 dark:bg-white/5 rounded-lg px-3 py-2">
               <p className="text-[11px] text-muted-foreground">Network size</p>
               <p className="text-lg font-medium dark:text-[#E0E0E0]">
-                {data?.linkedin_network_size != null ? num(data.linkedin_network_size) : '—'}
+                {data?.linkedin_network_size != null ? num(data.linkedin_network_size) : '-'}
               </p>
             </div>
           </div>
