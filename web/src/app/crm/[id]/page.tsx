@@ -17,6 +17,7 @@ import TopBar from '@/components/crm/top-bar';
 import ProspectDetail from '@/components/crm/prospect-detail';
 import { WARM_PATH } from '@/components/crm/data';
 import { toProspectFixture, toCrmEvents } from '@/components/crm/adapt';
+import { useToast } from '@/components/ui/app-toaster';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,14 +32,27 @@ export default function CrmDetailPage() {
   const detailQuery = useProspect(id);
   const eventsQuery = useProspectEvents(id, { limit: 100 });
   const followupsQuery = useProspectFollowups(id);
+  const { push } = useToast();
 
   // CRM "Take action" — pause outreach (quiet) or hard-suppress (do not contact).
   // The mutation invalidates the prospect cache, so do_not_contact / quiet_until
-  // re-render from the refreshed detailQuery.
+  // re-render from the refreshed detailQuery. onError surfaces a toast — without
+  // one, a failed click and a click that never registered look identical (the
+  // button just goes back to its normal state either way).
   const actionMutation = useProspectAction();
   const handleAction = (params: { doNotContact?: boolean; quietDays?: number }) => {
     if (!id) return;
-    actionMutation.mutate({ id, ...params });
+    actionMutation.mutate(
+      { id, ...params },
+      {
+        onError: (err) =>
+          push({
+            variant: 'error',
+            title: 'Action failed',
+            description: (err as Error)?.message || 'Could not update this contact. Please try again.',
+          }),
+      },
+    );
   };
 
   const fixture = useMemo(
@@ -97,6 +111,7 @@ export default function CrmDetailPage() {
           <ProspectDetail
             prospect={fixture}
             events={events}
+            eventsError={eventsQuery.isError}
             warmPath={WARM_PATH}
             warmPathSample
             onClose={back}
@@ -108,6 +123,7 @@ export default function CrmDetailPage() {
             quietUntil={detailQuery.data?.quiet_until ?? null}
             followups={followupsQuery.data ?? []}
             followupsLoading={followupsQuery.isLoading}
+            followupsError={followupsQuery.isError}
             // The report + accelerator API is keyed by the CORE lead id, not
             // this page's Master Agent prospect id.
             coreLeadId={detailQuery.data?.core_lead_id ?? null}
