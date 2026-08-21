@@ -23,6 +23,13 @@ const KNOWN_CHANNELS: readonly string[] = [
 // Kanban board only shows the active-pipeline stages (data.ts STAGES).
 const BOARD_STAGES: readonly string[] = ['new', 'contacted', 'engaged', 'qualified', 'sah'];
 
+/** Clamp a fit-style score to the documented 0..1 fraction — see the
+ *  fit_signals coercion below for why this backend value can't be trusted
+ *  to already be in range. */
+function clampUnit(n: number): number {
+  return Math.max(0, Math.min(1, n));
+}
+
 function initials(name: string): string {
   return (
     (name || '?')
@@ -94,7 +101,7 @@ export function toCrmContact(p: ProspectState): CrmContact {
     owner: '',
     createdAt: p.created_at,
     lastActivityAt: p.last_event_at,
-    fit: p.fit_score ?? undefined,
+    fit: p.fit_score != null ? clampUnit(p.fit_score) : undefined,
     warmPath: warmLabel(p),
     stage: p.lifecycle_stage as LifecycleStage,
   };
@@ -123,7 +130,7 @@ export function toKanbanLeads(list: ProspectState[]): KanbanLead[] {
         initials: initials(name),
         value: 0, // no deal value in prospect_state yet
         stageKey: p.lifecycle_stage as LifecycleStage,
-        fit: p.fit_score ?? 0,
+        fit: clampUnit(p.fit_score ?? 0),
         lastAt: p.last_event_at || p.updated_at,
         channels: channelsOf(p),
         warmPath: null,
@@ -158,8 +165,7 @@ export function toProspectFixture(p: ProspectState): ProspectFixture {
   // renders as a nonsensical "2100") or fly its radar vertex off the chart.
   const fit_signals: Record<string, number> = {};
   for (const [k, v] of Object.entries(p.fit_signals || {})) {
-    const n = typeof v === 'number' ? v : v ? 1 : 0;
-    fit_signals[k] = Math.max(0, Math.min(1, n));
+    fit_signals[k] = clampUnit(typeof v === 'number' ? v : v ? 1 : 0);
   }
 
   return {
@@ -175,7 +181,7 @@ export function toProspectFixture(p: ProspectState): ProspectFixture {
     lifecycle_stage: p.lifecycle_stage as LifecycleStage,
     last_channel: (p.last_channel as ChannelKey) || 'system',
     last_event_at: p.last_event_at || p.updated_at,
-    fit_score: p.fit_score ?? null,
+    fit_score: p.fit_score != null ? clampUnit(p.fit_score) : null,
     fit_signals,
     channel_rollups,
     intent_signals: [], // no Master Agent intent source yet

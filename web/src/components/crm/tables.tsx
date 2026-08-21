@@ -793,7 +793,12 @@ export function ClientsTable({
       label: 'Health', sortable: true,
       sortKey: (r) => r.health,
       render: (r) => {
-        const h = r.health ?? 0;
+        // Distinguish "not yet scored" from a real 0: collapsing a missing
+        // health score to 0 would paint every unscored client red/critical,
+        // which is a worse-than-worst-case reading rather than an honest
+        // "no data yet."
+        if (r.health == null) return <span className="text-[11.5px] text-slate-400">-</span>;
+        const h = r.health;
         return (
           <ScoreBar
             value={h / 100}
@@ -805,7 +810,8 @@ export function ClientsTable({
     {
       label: 'NPS', align: 'right',
       render: (r) => {
-        const n = r.nps ?? 0;
+        if (r.nps == null) return <span className="text-[11.5px] text-slate-400">-</span>;
+        const n = r.nps;
         return (
           <span
             className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold"
