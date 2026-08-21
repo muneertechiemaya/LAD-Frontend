@@ -602,18 +602,27 @@ export function ProspectsTable({
     { label: 'Fit',      sortable: true, sortKey: (r) => r.fit, render: (r) => (r.fit != null ? <ScoreBar value={r.fit} /> : <span className="text-[11.5px] text-slate-400">-</span>) },
     {
       label: 'Intent',
-      render: (r) => (
-        <span
-          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium"
-          style={{
-            background: (r.intentSignals ?? 0) > 0 ? '#fef3c7' : '#f1f5f9',
-            color: (r.intentSignals ?? 0) > 0 ? '#a16207' : '#64748b',
-          }}
-        >
-          <Radio className="w-3 h-3" /> {r.intentSignals ?? 0} signal
-          {(r.intentSignals ?? 0) === 1 ? '' : 's'}
-        </span>
-      ),
+      render: (r) => {
+        // toCrmContact never sets intentSignals (adapt.ts) — there's no
+        // Master Agent intent source wired up yet (see ProspectFixture's
+        // own `intent_signals: []` comment) — so it's always undefined for
+        // real data, not a genuine 0. `?? 0` was rendering every prospect
+        // as "0 signals" in a colored badge indistinguishable from a real
+        // "checked and found none" result.
+        if (r.intentSignals == null) return <span className="text-[11.5px] text-slate-400">-</span>;
+        const n = r.intentSignals;
+        return (
+          <span
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium"
+            style={{
+              background: n > 0 ? '#fef3c7' : '#f1f5f9',
+              color: n > 0 ? '#a16207' : '#64748b',
+            }}
+          >
+            <Radio className="w-3 h-3" /> {n} signal{n === 1 ? '' : 's'}
+          </span>
+        );
+      },
     },
     {
       label: 'Warm path',
