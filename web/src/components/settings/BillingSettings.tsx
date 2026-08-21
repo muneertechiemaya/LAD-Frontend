@@ -20,7 +20,7 @@ export const BillingSettings: React.FC = () => {
       </div>
 
       {/* Tabs for detailed views */}
-      <div className="dark:bg-[#071131] rounded-3xl shadow-md p-6 border border-transparent dark:border-blue-950/40">
+      <div className="dark:bg-[#071131] rounded-3xl shadow-md p-6 border border-border dark:border-blue-950/40">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-3 mb-6 bg-transparent dark:bg-[#071131] border border-transparent dark:border-blue-950/40 rounded-3xl">
             <TabsTrigger value="overview" className="flex items-center gap-2 text-slate-900 dark:text-slate-200 data-[state=active]:bg-blue-950 dark:data-[state=active]:bg-blue-950 data-[state=active]:text-white">
