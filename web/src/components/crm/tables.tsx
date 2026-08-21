@@ -684,6 +684,12 @@ export function ProspectsTable({
 export function LeadsTable({
   rows, onSelect, onRemove, pagination,
 }: { rows: CrmContact[]; onSelect: (c: CrmContact) => void; onRemove?: (c: CrmContact) => void; pagination?: CrmPagination }) {
+  // A sum across many rows is correct either way (undefined contributes 0 to
+  // the total regardless of what it "means"), but if not a single row has a
+  // real value yet, summing to a literal AED 0 reads as "this pipeline was
+  // assessed at zero" rather than "no deal values exist yet" — same
+  // distinction the row-level Value/Weighted cells below now make.
+  const anyValueSet = rows.some((r) => r.value != null);
   const totalPipeline = rows.reduce((a, r) => a + (r.value || 0), 0);
   const weighted = rows.reduce((a, r) => a + (r.value || 0) * (r.probability || 0), 0);
   const columns: Column<CrmContact>[] = [
@@ -692,18 +698,25 @@ export function LeadsTable({
     {
       label: 'Value', align: 'right', sortable: true, nowrap: true,
       sortKey: (r) => r.value,
+      // toCrmContact never sets value/probability for real leads (no deal
+      // pipeline data exists in prospect_state yet) — `?? 0` was rendering
+      // "AED 0" / a 0% ScoreBar on every real lead, indistinguishable from
+      // a deal genuinely assessed at zero value/probability.
       render: (r) => (
         <span className="text-[12.5px] font-semibold tabular-nums text-[#172560] dark:text-white">
-          {fmtCurrency(r.value ?? 0)}
+          {r.value != null ? fmtCurrency(r.value) : <span className="text-[11.5px] text-slate-400 font-normal">-</span>}
         </span>
       ),
     },
-    { label: 'Probability', sortable: true, sortKey: (r) => r.probability, render: (r) => <ScoreBar value={r.probability ?? 0} color="#16a34a" /> },
+    {
+      label: 'Probability', sortable: true, sortKey: (r) => r.probability,
+      render: (r) => (r.probability != null ? <ScoreBar value={r.probability} color="#16a34a" /> : <span className="text-[11.5px] text-slate-400">-</span>),
+    },
     {
       label: 'Weighted', align: 'right', nowrap: true,
       render: (r) => (
         <span className="text-[12px] tabular-nums text-slate-600 dark:text-[#7a8ba3]">
-          {fmtCurrency((r.value ?? 0) * (r.probability ?? 0))}
+          {r.value != null && r.probability != null ? fmtCurrency(r.value * r.probability) : '-'}
         </span>
       ),
     },
@@ -746,9 +759,9 @@ export function LeadsTable({
   ];
   const subtitle = (
     <>
-      Pipeline: <span className="font-semibold text-[#172560] dark:text-white">{fmtCurrency(totalPipeline)}</span>
+      Pipeline: <span className="font-semibold text-[#172560] dark:text-white">{anyValueSet ? fmtCurrency(totalPipeline) : '-'}</span>
       {' · '}
-      Weighted: <span className="font-semibold text-[#172560] dark:text-white">{fmtCurrency(weighted)}</span>
+      Weighted: <span className="font-semibold text-[#172560] dark:text-white">{anyValueSet ? fmtCurrency(weighted) : '-'}</span>
     </>
   );
   return (
@@ -770,30 +783,42 @@ export function LeadsTable({
 export function ClientsTable({
   rows, onSelect, onRemove, pagination,
 }: { rows: CrmContact[]; onSelect: (c: CrmContact) => void; onRemove?: (c: CrmContact) => void; pagination?: CrmPagination }) {
+  const anyMrrSet = rows.some((r) => r.mrr != null);
   const totalMrr = rows.reduce((a, r) => a + (r.mrr || 0), 0);
   const totalArr = totalMrr * 12;
   const columns: Column<CrmContact>[] = [
     { label: 'Client', nowrap: true, render: (r) => <NameCell row={r} withCompany /> },
     {
       label: 'Plan',
-      render: (r) => (
-        <span
-          className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold"
-          style={{
-            background: r.plan === 'Enterprise' ? '#e8ebf7' : r.plan === 'Growth' ? '#dbeafe' : '#f1f5f9',
-            color: r.plan === 'Enterprise' ? '#0B1957' : r.plan === 'Growth' ? '#1d4ed8' : '#475569',
-          }}
-        >
-          {r.plan}
-        </span>
-      ),
+      // toCrmContact never sets plan for real clients — rendering undefined
+      // produced a blank, colorless pill (background/color both fell to the
+      // "else" branch, text empty) instead of the same "-" every other
+      // unset field in this table already uses.
+      render: (r) => {
+        if (!r.plan) return <span className="text-[11.5px] text-slate-400">-</span>;
+        return (
+          <span
+            className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold"
+            style={{
+              background: r.plan === 'Enterprise' ? '#e8ebf7' : r.plan === 'Growth' ? '#dbeafe' : '#f1f5f9',
+              color: r.plan === 'Enterprise' ? '#0B1957' : r.plan === 'Growth' ? '#1d4ed8' : '#475569',
+            }}
+          >
+            {r.plan}
+          </span>
+        );
+      },
     },
     {
       label: 'MRR', align: 'right', sortable: true, nowrap: true,
       sortKey: (r) => r.mrr,
+      // Same distinguish-null-from-zero fix as Health/NPS above — no live
+      // client data exists yet in prospect_state, so `?? 0` was rendering
+      // every client's MRR as a real-looking "USD 0" (and ARR, derived from
+      // it, the same).
       render: (r) => (
         <span className="text-[12.5px] font-semibold tabular-nums text-[#172560] dark:text-white">
-          {fmtCurrency(r.mrr ?? 0, 'USD')}
+          {r.mrr != null ? fmtCurrency(r.mrr, 'USD') : <span className="text-[11.5px] text-slate-400 font-normal">-</span>}
         </span>
       ),
     },
@@ -801,7 +826,7 @@ export function ClientsTable({
       label: 'ARR', align: 'right', nowrap: true,
       render: (r) => (
         <span className="text-[12px] tabular-nums text-slate-600 dark:text-[#7a8ba3]">
-          {fmtCurrency((r.mrr ?? 0) * 12, 'USD')}
+          {r.mrr != null ? fmtCurrency(r.mrr * 12, 'USD') : '-'}
         </span>
       ),
     },
@@ -891,9 +916,9 @@ export function ClientsTable({
   ];
   const subtitle = (
     <>
-      MRR: <span className="font-semibold text-[#172560] dark:text-white">{fmtCurrency(totalMrr, 'USD')}</span>
+      MRR: <span className="font-semibold text-[#172560] dark:text-white">{anyMrrSet ? fmtCurrency(totalMrr, 'USD') : '-'}</span>
       {' · '}
-      ARR: <span className="font-semibold text-[#172560] dark:text-white">{fmtCurrency(totalArr, 'USD')}</span>
+      ARR: <span className="font-semibold text-[#172560] dark:text-white">{anyMrrSet ? fmtCurrency(totalArr, 'USD') : '-'}</span>
     </>
   );
   return (
