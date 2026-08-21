@@ -130,7 +130,7 @@ export function toKanbanLeads(list: ProspectState[]): KanbanLead[] {
         initials: initials(name),
         value: 0, // no deal value in prospect_state yet
         stageKey: p.lifecycle_stage as LifecycleStage,
-        fit: clampUnit(p.fit_score ?? 0),
+        fit: p.fit_score != null ? clampUnit(p.fit_score) : undefined,
         lastAt: p.last_event_at || p.updated_at,
         channels: channelsOf(p),
         warmPath: null,
