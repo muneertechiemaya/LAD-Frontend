@@ -69,15 +69,22 @@ export default function CrmPage() {
   const contacts = useMemo(() => toCrmContacts(prospects), [prospects]);
   const kanbanLeads = useMemo(() => toKanbanLeads(prospects), [prospects]);
 
-  const counts = useMemo(
-    () => ({
-      all: contacts.length,
-      prospects: contacts.filter((c) => c.type === 'prospect').length,
-      leads: contacts.filter((c) => c.type === 'lead').length,
-      clients: contacts.filter((c) => c.type === 'client').length,
-    }),
-    [contacts]
-  );
+  // The 4 summary cards must reflect the TENANT'S true totals, not just the
+  // current 50-row page — contacts.length silently capped every count at
+  // PAGE_SIZE for any tenant with more than one page. lifecycleToType's
+  // bucketing (adapt.ts) only has 3 "non-prospect" source stages (qualified/
+  // sah -> lead, won -> client; everything else, including the new
+  // 'contacted' stage, falls into the prospect catch-all) — so 3 cheap
+  // limit=1 requests (read only X-Total-Count, no rows) are enough to get
+  // every bucket's real total, instead of fetching + counting every row.
+  const qualifiedTotal = useProspects({ lifecycle_stage: 'qualified', limit: 1 }).data?.total ?? 0;
+  const sahTotal = useProspects({ lifecycle_stage: 'sah', limit: 1 }).data?.total ?? 0;
+  const wonTotal = useProspects({ lifecycle_stage: 'won', limit: 1 }).data?.total ?? 0;
+  const counts = useMemo(() => {
+    const leads = qualifiedTotal + sahTotal;
+    const clients = wonTotal;
+    return { all: total, prospects: Math.max(0, total - leads - clients), leads, clients };
+  }, [total, qualifiedTotal, sahTotal, wonTotal]);
 
   // Open a contact's full detail page.
   const openDetail = (idOrContact: string | CrmContact) => {
