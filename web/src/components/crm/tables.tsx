@@ -231,6 +231,9 @@ interface Column<R> {
   align?: 'left' | 'right';
   nowrap?: boolean;
   sortable?: boolean;
+  /** Raw value to sort by — required for sortable columns, since `render`
+   *  produces JSX rather than a comparable value. */
+  sortKey?: (row: R) => string | number | null | undefined;
   render: (row: R) => React.ReactNode;
 }
 
@@ -259,6 +262,7 @@ function CrmTable<R extends CrmContact>({
 }: CrmTableProps<R>) {
   const [q, setQ] = useState('');
   const [activeFilters, setActiveFilters] = useState<Record<string, string | null>>({});
+  const [sort, setSort] = useState<{ index: number; dir: 'asc' | 'desc' } | null>(null);
 
   const filtered = useMemo(() => {
     let out = rows;
@@ -274,14 +278,39 @@ function CrmTable<R extends CrmContact>({
     return out;
   }, [q, activeFilters, rows]);
 
-  // Export the CURRENTLY FILTERED rows to CSV. The button is disabled when
-  // there is nothing to export, so this guard is defensive only.
+  // Sorting is separate from filtering above: it reorders without changing
+  // which/how-many rows are shown, so filtered.length (header count, Pager
+  // visibleCount) stays correct regardless of sort state.
+  const sorted = useMemo(() => {
+    const col = sort ? columns[sort.index] : null;
+    if (!sort || !col?.sortKey) return filtered;
+    const dir = sort.dir === 'asc' ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      const av = col.sortKey!(a);
+      const bv = col.sortKey!(b);
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1; // nulls/missing values sort last regardless of direction
+      if (bv == null) return -1;
+      if (av < bv) return -dir;
+      if (av > bv) return dir;
+      return 0;
+    });
+  }, [filtered, sort, columns]);
+
+  const toggleSort = (index: number) => {
+    setSort((prev) =>
+      prev?.index === index ? { index, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { index, dir: 'desc' }
+    );
+  };
+
+  // Export the CURRENTLY FILTERED + SORTED rows to CSV. The button is
+  // disabled when there is nothing to export, so this guard is defensive only.
   const handleExport = useCallback(() => {
-    if (!filtered.length) return;
-    const csv = buildContactsCsv(filtered as CrmContact[]);
+    if (!sorted.length) return;
+    const csv = buildContactsCsv(sorted as CrmContact[]);
     const ts = new Date().toISOString().slice(0, 10);
     downloadCsv(`${slugify(title)}-${ts}.csv`, csv);
-  }, [filtered, title]);
+  }, [sorted, title]);
 
   return (
     <section className="bg-white dark:bg-[#000724] rounded-[20px] border border-slate-200 dark:border-[#262831] overflow-hidden">
@@ -353,24 +382,34 @@ function CrmTable<R extends CrmContact>({
                   aria-label="Select all rows"
                 />
               </th>
-              {columns.map((c, i) => (
-                <th
-                  key={i}
-                  className={`px-3 py-2.5 text-[10.5px] uppercase tracking-wider font-semibold text-slate-500 dark:text-[#7a8ba3] whitespace-nowrap ${
-                    c.align === 'right' ? 'text-right' : 'text-left'
-                  }`}
-                >
-                  <span className="inline-flex items-center gap-1">
-                    {c.label}
-                    {c.sortable && <ChevronsUpDown className="w-3 h-3 opacity-50" />}
-                  </span>
-                </th>
-              ))}
+              {columns.map((c, i) => {
+                const canSort = c.sortable && !!c.sortKey;
+                const active = sort?.index === i;
+                return (
+                  <th
+                    key={i}
+                    onClick={canSort ? () => toggleSort(i) : undefined}
+                    className={`px-3 py-2.5 text-[10.5px] uppercase tracking-wider font-semibold text-slate-500 dark:text-[#7a8ba3] whitespace-nowrap ${
+                      c.align === 'right' ? 'text-right' : 'text-left'
+                    } ${canSort ? 'cursor-pointer select-none hover:text-[#172560] dark:hover:text-white' : ''}`}
+                  >
+                    <span className="inline-flex items-center gap-1">
+                      {c.label}
+                      {c.sortable && (
+                        <ChevronsUpDown
+                          className={`w-3 h-3 ${active ? 'text-[#172560] dark:text-white' : 'opacity-50'}`}
+                          style={active ? { transform: sort!.dir === 'asc' ? 'scaleY(-1)' : undefined } : undefined}
+                        />
+                      )}
+                    </span>
+                  </th>
+                );
+              })}
               <th className="w-12 px-3 py-2.5"></th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map((r) => (
+            {sorted.map((r) => (
               <tr
                 key={r.id}
                 onClick={() => onRowClick?.(r)}
@@ -497,6 +536,7 @@ export function AllContactsTable({
     { label: 'Owner',   nowrap: true, render: (r) => <OwnerCell ownerId={r.owner} /> },
     {
       label: 'Last activity', sortable: true, nowrap: true,
+      sortKey: (r) => r.lastActivityAt,
       render: (r) => (
         <span className="text-[12px] tabular-nums text-slate-600 dark:text-[#7a8ba3]" title={r.lastActivityAt ?? ''}>
           {r.lastActivityAt ? `${rel(r.lastActivityAt)} ago` : '-'}
@@ -505,6 +545,7 @@ export function AllContactsTable({
     },
     {
       label: 'Created', sortable: true, nowrap: true,
+      sortKey: (r) => r.createdAt,
       render: (r) => (
         <span className="text-[12px] text-slate-500 dark:text-[#7a8ba3] tabular-nums">
           {fmtDate(r.createdAt)}
@@ -551,7 +592,7 @@ export function ProspectsTable({
     { label: 'Prospect', nowrap: true, render: (r) => <NameCell row={r} withCompany /> },
     { label: 'Industry', render: (r) => <span className="text-[12px] text-[#172560] dark:text-white">{r.industry}</span> },
     { label: 'Geo',      render: (r) => <span className="text-[12px] text-slate-600 dark:text-[#7a8ba3]">{r.geo}</span> },
-    { label: 'Fit',      sortable: true, render: (r) => (r.fit != null ? <ScoreBar value={r.fit} /> : <span className="text-[11.5px] text-slate-400">-</span>) },
+    { label: 'Fit',      sortable: true, sortKey: (r) => r.fit, render: (r) => (r.fit != null ? <ScoreBar value={r.fit} /> : <span className="text-[11.5px] text-slate-400">-</span>) },
     {
       label: 'Intent',
       render: (r) => (
@@ -587,6 +628,7 @@ export function ProspectsTable({
     { label: 'Owner',    nowrap: true, render: (r) => <OwnerCell ownerId={r.owner} /> },
     {
       label: 'Last touch', sortable: true, nowrap: true,
+      sortKey: (r) => r.lastActivityAt,
       render: (r) => (
         <span className="text-[12px] tabular-nums text-slate-600 dark:text-[#7a8ba3]">
           {r.lastActivityAt ? `${rel(r.lastActivityAt)} ago` : '-'}
@@ -633,13 +675,14 @@ export function LeadsTable({
     { label: 'Stage', render: (r) => <StagePill stage={r.stage} /> },
     {
       label: 'Value', align: 'right', sortable: true, nowrap: true,
+      sortKey: (r) => r.value,
       render: (r) => (
         <span className="text-[12.5px] font-semibold tabular-nums text-[#172560] dark:text-white">
           {fmtCurrency(r.value ?? 0)}
         </span>
       ),
     },
-    { label: 'Probability', sortable: true, render: (r) => <ScoreBar value={r.probability ?? 0} color="#16a34a" /> },
+    { label: 'Probability', sortable: true, sortKey: (r) => r.probability, render: (r) => <ScoreBar value={r.probability ?? 0} color="#16a34a" /> },
     {
       label: 'Weighted', align: 'right', nowrap: true,
       render: (r) => (
@@ -652,6 +695,7 @@ export function LeadsTable({
     { label: 'Next step', render: (r) => <span className="text-[12px] text-[#172560] dark:text-white">{r.nextStep || '-'}</span> },
     {
       label: 'Expected close', sortable: true, nowrap: true,
+      sortKey: (r) => r.expectedClose,
       render: (r) => (
         <span className="text-[12px] tabular-nums text-slate-600 dark:text-[#7a8ba3]">
           {fmtDate(r.expectedClose)}
@@ -661,6 +705,7 @@ export function LeadsTable({
     { label: 'Owner', nowrap: true, render: (r) => <OwnerCell ownerId={r.owner} /> },
     {
       label: 'Last activity', sortable: true, nowrap: true,
+      sortKey: (r) => r.lastActivityAt,
       render: (r) => (
         <span className="text-[12px] tabular-nums text-slate-600 dark:text-[#7a8ba3]">
           {r.lastActivityAt ? `${rel(r.lastActivityAt)} ago` : '-'}
@@ -729,6 +774,7 @@ export function ClientsTable({
     },
     {
       label: 'MRR', align: 'right', sortable: true, nowrap: true,
+      sortKey: (r) => r.mrr,
       render: (r) => (
         <span className="text-[12.5px] font-semibold tabular-nums text-[#172560] dark:text-white">
           {fmtCurrency(r.mrr ?? 0, 'USD')}
@@ -745,6 +791,7 @@ export function ClientsTable({
     },
     {
       label: 'Health', sortable: true,
+      sortKey: (r) => r.health,
       render: (r) => {
         const h = r.health ?? 0;
         return (
@@ -776,6 +823,7 @@ export function ClientsTable({
     { label: 'CSM', nowrap: true, render: (r) => <OwnerCell ownerId={r.csm} /> },
     {
       label: 'Renewal', sortable: true, nowrap: true,
+      sortKey: (r) => r.renewalDate,
       render: (r) => {
         if (!r.renewalDate) return <span className="text-[11.5px] text-slate-400">-</span>;
         const days = Math.round(
