@@ -93,7 +93,19 @@ export default function CrmDetailPage() {
     if (!ok) return;
     removeMutation.mutate(
       { id, reason: 'not_a_fit' },
-      { onSuccess: () => router.push('/crm') },
+      {
+        onSuccess: () => router.push('/crm'),
+        // Same gap as the action mutation above, same fix: without this,
+        // a failed removal leaves the user on the same page with the
+        // button just back to normal — no way to tell "it failed" from
+        // "it never registered".
+        onError: (err) =>
+          push({
+            variant: 'error',
+            title: 'Could not remove contact',
+            description: (err as Error)?.message || 'Please try again.',
+          }),
+      },
     );
   };
 

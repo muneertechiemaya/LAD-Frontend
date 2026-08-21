@@ -23,6 +23,7 @@ import {
 import { Pager, type CrmPagination } from '@/components/crm/shared';
 import { STAGES, type CrmContact } from '@/components/crm/data';
 import { toCrmContacts, toKanbanLeads } from '@/components/crm/adapt';
+import { useToast } from '@/components/ui/app-toaster';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,6 +43,7 @@ const EMPTY_BOX =
 
 export default function CrmPage() {
   const router = useRouter();
+  const { push } = useToast();
   const [view, setView] = useState<CrmView>('board');
   const [page, setPage] = useState(1); // 1-indexed
 
@@ -98,7 +100,22 @@ export default function CrmPage() {
     const ok = window.confirm(
       `Remove ${c.name} as “not a fit”? They’ll be hidden from your pipeline (an admin can restore it).`,
     );
-    if (ok) removeMutation.mutate({ id: c.id, reason: 'not_a_fit' });
+    if (!ok) return;
+    removeMutation.mutate(
+      { id: c.id, reason: 'not_a_fit' },
+      {
+        // Bare .mutate() with no callbacks — a failed removal left the row
+        // sitting there with zero indication anything went wrong, same gap
+        // as the detail page's own handleRemove and the action mutation
+        // fixed earlier this session.
+        onError: (err) =>
+          push({
+            variant: 'error',
+            title: 'Could not remove contact',
+            description: (err as Error)?.message || 'Please try again.',
+          }),
+      },
+    );
   };
 
   const crumbs: Crumb[] =
