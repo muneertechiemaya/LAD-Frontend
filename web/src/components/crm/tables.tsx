@@ -236,6 +236,14 @@ interface Column<R> {
   /** Raw value to sort by — required for sortable columns, since `render`
    *  produces JSX rather than a comparable value. */
   sortKey?: (row: R) => string | number | null | undefined;
+  /** When set, sorting this column also asks the server to sort the WHOLE
+   *  tenant by this field (not just the loaded page) — see onSortChange.
+   *  Only last_event_at/fit_score/sah_at/created_at are real prospect_state
+   *  columns the backend can order by; columns backed by data the schema
+   *  doesn't track at all (Value, MRR, Health, ...) have no server
+   *  equivalent and stay page-local — every row is "-" for those anyway,
+   *  so page-local sorting is already a no-op, not a gap. */
+  serverSortKey?: 'last_event_at' | 'fit_score' | 'sah_at' | 'created_at';
   render: (row: R) => React.ReactNode;
 }
 
@@ -264,10 +272,15 @@ interface CrmTableProps<R extends CrmContact> {
    *  Without it, searching for a real contact outside the current page
    *  silently read as "No matches". */
   onSearchChange?: (q: string) => void;
+  /** Fired when the user clicks a column whose `serverSortKey` is set - see
+   *  Column.serverSortKey. Same "current page isn't the whole story" gap as
+   *  onSearchChange: without this, "sort oldest first" only reordered
+   *  whatever 50 rows were already loaded, not the tenant's true oldest. */
+  onSortChange?: (sortBy: NonNullable<Column<CrmContact>['serverSortKey']>, sortDir: 'asc' | 'desc') => void;
 }
 
 function CrmTable<R extends CrmContact>({
-  title, subtitle, count, columns, rows, filters, onRowClick, onRemove, pagination, onSearchChange,
+  title, subtitle, count, columns, rows, filters, onRowClick, onRemove, pagination, onSearchChange, onSortChange,
 }: CrmTableProps<R>) {
   const [q, setQ] = useState('');
 
@@ -314,9 +327,13 @@ function CrmTable<R extends CrmContact>({
   }, [filtered, sort, columns]);
 
   const toggleSort = (index: number) => {
-    setSort((prev) =>
-      prev?.index === index ? { index, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { index, dir: 'desc' }
-    );
+    setSort((prev) => {
+      const next: { index: number; dir: 'asc' | 'desc' } =
+        prev?.index === index ? { index, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { index, dir: 'desc' };
+      const serverKey = columns[index]?.serverSortKey;
+      if (serverKey) onSortChange?.(serverKey, next.dir);
+      return next;
+    });
   };
 
   // Export the CURRENTLY FILTERED + SORTED rows to CSV. The button is
@@ -544,8 +561,8 @@ function NameCell({ row, withCompany = false }: { row: CrmContact; withCompany?:
 
 // ── ALL CONTACTS ────────────────────────────────────────────────────────
 export function AllContactsTable({
-  rows, onSelect, onRemove, pagination, onSearchChange,
-}: { rows: CrmContact[]; onSelect: (c: CrmContact) => void; onRemove?: (c: CrmContact) => void; pagination?: CrmPagination; onSearchChange?: (q: string) => void }) {
+  rows, onSelect, onRemove, pagination, onSearchChange, onSortChange,
+}: { rows: CrmContact[]; onSelect: (c: CrmContact) => void; onRemove?: (c: CrmContact) => void; pagination?: CrmPagination; onSearchChange?: (q: string) => void; onSortChange?: CrmTableProps<CrmContact>['onSortChange'] }) {
   const columns: Column<CrmContact>[] = [
     { label: 'Contact', nowrap: true, render: (r) => <NameCell row={r} /> },
     { label: 'Type',    render: (r) => <TypePill type={r.type} /> },
@@ -562,7 +579,7 @@ export function AllContactsTable({
     { label: 'Owner',   nowrap: true, render: (r) => <OwnerCell ownerId={r.owner} /> },
     {
       label: 'Last activity', sortable: true, nowrap: true,
-      sortKey: (r) => r.lastActivityAt,
+      sortKey: (r) => r.lastActivityAt, serverSortKey: 'last_event_at',
       render: (r) => (
         <span className="text-[12px] tabular-nums text-slate-600 dark:text-[#7a8ba3]" title={r.lastActivityAt ?? ''}>
           {r.lastActivityAt ? `${rel(r.lastActivityAt)} ago` : '-'}
@@ -571,7 +588,7 @@ export function AllContactsTable({
     },
     {
       label: 'Created', sortable: true, nowrap: true,
-      sortKey: (r) => r.createdAt,
+      sortKey: (r) => r.createdAt, serverSortKey: 'created_at',
       render: (r) => (
         <span className="text-[12px] text-slate-500 dark:text-[#7a8ba3] tabular-nums">
           {fmtDate(r.createdAt)}
@@ -620,14 +637,15 @@ export function AllContactsTable({
       onRemove={onRemove}
       pagination={pagination}
       onSearchChange={onSearchChange}
+      onSortChange={onSortChange}
     />
   );
 }
 
 // ── PROSPECTS ───────────────────────────────────────────────────────────
 export function ProspectsTable({
-  rows, onSelect, onRemove, pagination, onSearchChange,
-}: { rows: CrmContact[]; onSelect: (c: CrmContact) => void; onRemove?: (c: CrmContact) => void; pagination?: CrmPagination; onSearchChange?: (q: string) => void }) {
+  rows, onSelect, onRemove, pagination, onSearchChange, onSortChange,
+}: { rows: CrmContact[]; onSelect: (c: CrmContact) => void; onRemove?: (c: CrmContact) => void; pagination?: CrmPagination; onSearchChange?: (q: string) => void; onSortChange?: CrmTableProps<CrmContact>['onSortChange'] }) {
   const columns: Column<CrmContact>[] = [
     { label: 'Prospect', nowrap: true, render: (r) => <NameCell row={r} withCompany /> },
     {
@@ -642,7 +660,7 @@ export function ProspectsTable({
         ? <span className="text-[12px] text-slate-600 dark:text-[#7a8ba3]">{r.geo}</span>
         : <span className="text-[11.5px] text-slate-400">-</span>,
     },
-    { label: 'Fit',      sortable: true, sortKey: (r) => r.fit, render: (r) => (r.fit != null ? <ScoreBar value={r.fit} /> : <span className="text-[11.5px] text-slate-400">-</span>) },
+    { label: 'Fit',      sortable: true, sortKey: (r) => r.fit, serverSortKey: 'fit_score', render: (r) => (r.fit != null ? <ScoreBar value={r.fit} /> : <span className="text-[11.5px] text-slate-400">-</span>) },
     {
       label: 'Intent',
       render: (r) => {
@@ -687,7 +705,7 @@ export function ProspectsTable({
     { label: 'Owner',    nowrap: true, render: (r) => <OwnerCell ownerId={r.owner} /> },
     {
       label: 'Last touch', sortable: true, nowrap: true,
-      sortKey: (r) => r.lastActivityAt,
+      sortKey: (r) => r.lastActivityAt, serverSortKey: 'last_event_at',
       render: (r) => (
         <span className="text-[12px] tabular-nums text-slate-600 dark:text-[#7a8ba3]">
           {r.lastActivityAt ? `${rel(r.lastActivityAt)} ago` : '-'}
@@ -723,14 +741,15 @@ export function ProspectsTable({
       onRemove={onRemove}
       pagination={pagination}
       onSearchChange={onSearchChange}
+      onSortChange={onSortChange}
     />
   );
 }
 
 // ── LEADS ───────────────────────────────────────────────────────────────
 export function LeadsTable({
-  rows, onSelect, onRemove, pagination, onSearchChange,
-}: { rows: CrmContact[]; onSelect: (c: CrmContact) => void; onRemove?: (c: CrmContact) => void; pagination?: CrmPagination; onSearchChange?: (q: string) => void }) {
+  rows, onSelect, onRemove, pagination, onSearchChange, onSortChange,
+}: { rows: CrmContact[]; onSelect: (c: CrmContact) => void; onRemove?: (c: CrmContact) => void; pagination?: CrmPagination; onSearchChange?: (q: string) => void; onSortChange?: CrmTableProps<CrmContact>['onSortChange'] }) {
   // A sum across many rows is correct either way (undefined contributes 0 to
   // the total regardless of what it "means"), but if not a single row has a
   // real value yet, summing to a literal AED 0 reads as "this pipeline was
@@ -781,7 +800,7 @@ export function LeadsTable({
     { label: 'Owner', nowrap: true, render: (r) => <OwnerCell ownerId={r.owner} /> },
     {
       label: 'Last activity', sortable: true, nowrap: true,
-      sortKey: (r) => r.lastActivityAt,
+      sortKey: (r) => r.lastActivityAt, serverSortKey: 'last_event_at',
       render: (r) => (
         <span className="text-[12px] tabular-nums text-slate-600 dark:text-[#7a8ba3]">
           {r.lastActivityAt ? `${rel(r.lastActivityAt)} ago` : '-'}
@@ -830,14 +849,15 @@ export function LeadsTable({
       onRemove={onRemove}
       pagination={pagination}
       onSearchChange={onSearchChange}
+      onSortChange={onSortChange}
     />
   );
 }
 
 // ── CLIENTS ─────────────────────────────────────────────────────────────
 export function ClientsTable({
-  rows, onSelect, onRemove, pagination, onSearchChange,
-}: { rows: CrmContact[]; onSelect: (c: CrmContact) => void; onRemove?: (c: CrmContact) => void; pagination?: CrmPagination; onSearchChange?: (q: string) => void }) {
+  rows, onSelect, onRemove, pagination, onSearchChange, onSortChange,
+}: { rows: CrmContact[]; onSelect: (c: CrmContact) => void; onRemove?: (c: CrmContact) => void; pagination?: CrmPagination; onSearchChange?: (q: string) => void; onSortChange?: CrmTableProps<CrmContact>['onSortChange'] }) {
   const anyMrrSet = rows.some((r) => r.mrr != null);
   const totalMrr = rows.reduce((a, r) => a + (r.mrr || 0), 0);
   const totalArr = totalMrr * 12;
@@ -991,6 +1011,7 @@ export function ClientsTable({
       onRemove={onRemove}
       pagination={pagination}
       onSearchChange={onSearchChange}
+      onSortChange={onSortChange}
     />
   );
 }
