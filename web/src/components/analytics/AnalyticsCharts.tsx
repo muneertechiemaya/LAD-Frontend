@@ -145,7 +145,7 @@ export const AnalyticsCharts: React.FC<{ data: AnalyticsChartsData }> = ({ data 
                   <CartesianGrid strokeDasharray="3 3" stroke="#24364d" horizontal={false} />
                   <XAxis type="number" tick={{ fontSize: 9, fill: '#7a8ba3' }} tickLine={false} axisLine={false} />
                   <YAxis type="category" dataKey="name" tick={{ fontSize: 9, fill: '#8fa1be' }} tickLine={false} axisLine={false} width={64} />
-                  <Tooltip content={<ChartTooltip />} />
+                  <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(255, 255, 255, 0.07)', className: 'dark:!fill-white/[0.07] !fill-slate-900/[0.04]' }} />
                   <Bar dataKey="Sent"      fill={C.navy}   radius={[0,3,3,0]} stackId="a" />
                   <Bar dataKey="Connected" fill={C.indigo} radius={[0,3,3,0]} stackId="b" />
                   <Bar dataKey="Replied"   fill={C.green}  radius={[0,3,3,0]} stackId="c" />
@@ -215,7 +215,7 @@ export const AnalyticsCharts: React.FC<{ data: AnalyticsChartsData }> = ({ data 
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" className="dark:stroke-[#262831]" />
                 <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748b' }} className="dark:fill-[#7a8ba3]" tickLine={false} axisLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
-                <Tooltip content={<ChartTooltip />} />
+                <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(255, 255, 255, 0.07)', className: 'dark:!fill-white/[0.07] !fill-slate-900/[0.04]' }} />
                 <Legend wrapperStyle={{ fontSize: 11, color: '#64748b' }} className="dark:text-slate-300" />
                 <Bar dataKey="sent"      name="Sent"      fill={C.navy}   radius={[4,4,0,0]} />
                 <Bar dataKey="connected" name="Connected" fill={C.indigo} radius={[4,4,0,0]} />
