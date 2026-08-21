@@ -1118,19 +1118,19 @@ const BookingSlot: React.FC<BookingSlotProps> = ({
                       Booking Information
                     </h4>
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="flex flex-col gap-1 bg-white dark:bg-[#071131] rounded-lg p-3 border border-gray-100 dark:border-blue-950/40">
+                      <div className="flex flex-col gap-1 bg-white dark:bg-[#030a21]/60 rounded-lg p-3 border border-gray-100 dark:border-blue-950/40">
                         <span className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-300 font-bold">Organization ID</span>
                         <p className="text-xs text-gray-900 dark:text-white font-mono truncate">{tenantId || 'Missing'}</p>
                       </div>
-                      <div className="flex flex-col gap-1 bg-white dark:bg-[#071131] rounded-lg p-3 border border-gray-100 dark:border-blue-950/40">
+                      <div className="flex flex-col gap-1 bg-white dark:bg-[#030a21]/60 rounded-lg p-3 border border-gray-100 dark:border-blue-950/40">
                         <span className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-300 font-bold">Student / Lead ID</span>
                         <p className="text-xs text-gray-900 dark:text-white font-mono truncate">{studentId || String(leadId)}</p>
                       </div>
-                      <div className="flex flex-col gap-1 bg-white dark:bg-[#071131] rounded-lg p-3 border border-gray-100 dark:border-blue-950/40">
+                      <div className="flex flex-col gap-1 bg-white dark:bg-[#030a21]/60 rounded-lg p-3 border border-gray-100 dark:border-blue-950/40">
                         <span className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-300 font-bold">Assigned User</span>
                         <p className="text-xs text-gray-900 dark:text-white font-mono truncate">{String(assignedUserId || createdBy || selectedUser || '')}</p>
                       </div>
-                      <div className="flex flex-col gap-1 bg-white dark:bg-[#071131] rounded-lg p-3 border border-gray-100 dark:border-blue-950/40">
+                      <div className="flex flex-col gap-1 bg-white dark:bg-[#030a21]/60 rounded-lg p-3 border border-gray-100 dark:border-blue-950/40">
                         <span className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-slate-300 font-bold">Source</span>
                         <p className="text-xs text-gray-900 dark:text-white">user_ui</p>
                       </div>
@@ -1165,7 +1165,7 @@ const BookingSlot: React.FC<BookingSlotProps> = ({
               <Button
                 onClick={handleConfirmBooking}
                 disabled={loading || !tenantId || !createdBy}
-                className="bg-[#0B1957] dark:bg-sky-600 hover:bg-[#0B1957]/90 dark:hover:bg-sky-500 text-white px-8 h-11 font-bold shadow-md rounded-lg transition-all"
+                className="bg-[#0B1957] dark:bg-[#2B7CFF] hover:bg-[#0B1957]/90 dark:hover:bg-sky-500 text-white px-8 h-11 font-bold shadow-md rounded-lg transition-all"
               >
                 {loading ? 'Booking...' : 'Confirm Booking'}
               </Button>
