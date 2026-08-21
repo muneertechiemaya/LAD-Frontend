@@ -224,7 +224,10 @@ export interface KanbanLead {
   name: string;
   company: string;
   initials: string;
-  value: number;
+  /** Undefined when deal value isn't tracked for this prospect — distinct
+   *  from a real value of 0. KanbanBoard hides the badge/pipeline total
+   *  in that case rather than showing a misleading "AED 0". */
+  value?: number;
   stageKey: LifecycleStage;
   /** Undefined when the prospect hasn't been fit-scored yet — distinct from a
    *  real score of 0. KanbanBoard hides the badge entirely in that case. */

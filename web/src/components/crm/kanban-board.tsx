@@ -27,6 +27,11 @@ export default function KanbanBoard({ stages = [], leads = [], selectedLeadId, o
             return lStage === stageKey;
           });
           const pipelineValue = stageLeads.reduce((a, l) => a + (l.value || 0), 0);
+          // Deal value isn't tracked in prospect_state at all today, so every
+          // lead's `value` is undefined — summing undefineds trivially gives
+          // 0, which read as "these deals are worth nothing" rather than the
+          // true "we don't know yet".
+          const anyValueTracked = stageLeads.some((l) => l.value != null);
 
           return (
             <div
@@ -62,7 +67,11 @@ export default function KanbanBoard({ stages = [], leads = [], selectedLeadId, o
 
               {/* Subheader */}
               <p className="text-[11px] text-slate-500 dark:text-slate-400 px-1 mb-2">
-                {stageLeads.length > 0 ? `${fmtCurrency(pipelineValue)} pipeline` : 'AED 0 pipeline'}
+                {stageLeads.length === 0
+                  ? 'AED 0 pipeline'
+                  : anyValueTracked
+                    ? `${fmtCurrency(pipelineValue)} pipeline`
+                    : `${stageLeads.length} deal${stageLeads.length === 1 ? '' : 's'} · value not tracked`}
               </p>
 
               {stageLeads.length > 0 ? (
