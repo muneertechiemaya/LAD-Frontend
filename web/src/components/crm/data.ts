@@ -226,7 +226,9 @@ export interface KanbanLead {
   initials: string;
   value: number;
   stageKey: LifecycleStage;
-  fit: number;
+  /** Undefined when the prospect hasn't been fit-scored yet — distinct from a
+   *  real score of 0. KanbanBoard hides the badge entirely in that case. */
+  fit?: number;
   lastAt: string;
   channels: ChannelKey[];
   warmPath: string | null;
