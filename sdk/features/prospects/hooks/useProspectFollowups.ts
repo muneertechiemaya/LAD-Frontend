@@ -1,5 +1,5 @@
 /**
- * Prospects feature — useProspectFollowups hook.
+ * Prospects feature - useProspectFollowups hook.
  *
  * Upcoming scheduled automatic follow-ups for a prospect, across channels.
  */

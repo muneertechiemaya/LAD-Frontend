@@ -1,5 +1,5 @@
 /**
- * Conversations Feature — agent-response feedback
+ * Conversations Feature - agent-response feedback
  *
  * Thumbs up/down on what the AI said, and on a thumbs-down, what it should
  * have said instead. Corrections are appended to the tenant's WABA system
@@ -30,7 +30,7 @@ export interface SubmitFeedbackRequest {
   /** What the agent SHOULD have said. Only meaningful on a dislike. */
   expectedResponse?: string;
   /**
-   * What it actually said. Optional — the backend falls back to the stored
+   * What it actually said. Optional - the backend falls back to the stored
    * message text, so the caller does not have to echo it back.
    */
   actualResponse?: string;
@@ -43,7 +43,7 @@ export interface SubmitFeedbackResponse {
   is_active: boolean;
   /**
    * False when a dislike carried no expected response. The feedback is
-   * recorded, but nothing was learned — surface this so the reviewer knows
+   * recorded, but nothing was learned - surface this so the reviewer knows
    * the agent will keep making the same mistake.
    */
   willTrain: boolean;
@@ -59,7 +59,7 @@ export async function submitMessageFeedback(
   req: SubmitFeedbackRequest
 ): Promise<SubmitFeedbackResponse> {
   // proxyClient wraps the response body in `.data`, so the service payload
-  // is at response.data.* — matching every other call in this feature.
+  // is at response.data.* - matching every other call in this feature.
   const response = await proxyClient.post<{
     success: boolean;
     data: { id: string; rating: FeedbackRating; is_active: boolean };
@@ -96,7 +96,7 @@ export interface LearnedCorrection {
   is_active: boolean;
   /**
    * Whether this correction actually reaches the prompt. Only the newest
-   * `max_in_prompt` ACTIVE ones do — an active correction past that cap is
+   * `max_in_prompt` ACTIVE ones do - an active correction past that cap is
    * stored and visible but has no effect, and the panel must say so rather
    * than let someone believe it applies.
    */

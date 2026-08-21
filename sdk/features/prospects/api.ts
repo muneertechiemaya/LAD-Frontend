@@ -1,5 +1,5 @@
 /**
- * Prospects feature — API functions.
+ * Prospects feature - API functions.
  *
  * All requests flow through the shared apiClient, which targets the app's own
  * /api/* routes in browsers and the backend URL in SSR. The Next.js proxy at
