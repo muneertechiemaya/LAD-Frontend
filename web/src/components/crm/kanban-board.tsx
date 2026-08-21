@@ -49,13 +49,15 @@ export default function KanbanBoard({ stages = [], leads = [], selectedLeadId, o
                     {stageLeads.length}
                   </span>
                 </div>
-                <button
-                  onClick={() => onAddDeal?.(stageKey)}
-                  className="w-6 h-6 grid place-items-center rounded-md text-slate-400 hover:bg-white dark:hover:bg-[#121c3b] hover:text-[#172560] dark:hover:text-white transition-colors"
-                  aria-label={`Add deal to ${s.label}`}
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                </button>
+                {onAddDeal && (
+                  <button
+                    onClick={() => onAddDeal(stageKey)}
+                    className="w-6 h-6 grid place-items-center rounded-md text-slate-400 hover:bg-white dark:hover:bg-[#121c3b] hover:text-[#172560] dark:hover:text-white transition-colors"
+                    aria-label={`Add deal to ${s.label}`}
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
 
               {/* Subheader */}

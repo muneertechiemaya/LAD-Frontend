@@ -135,9 +135,11 @@ function RowActions({ onRemove }: { onRemove?: () => void }) {
         </button>
       )}
       <button
-        className="w-7 h-7 grid place-items-center rounded-md text-slate-400 hover:bg-slate-100 dark:hover:bg-[#1a2a43] dark:hover:text-white hover:text-[#172560]"
+        disabled
+        className="w-7 h-7 grid place-items-center rounded-md text-slate-400 opacity-50 cursor-not-allowed"
         onClick={(e) => e.stopPropagation()}
         aria-label="Row actions"
+        title="Not available yet"
       >
         <MoreVertical className="w-3.5 h-3.5" />
       </button>
@@ -363,8 +365,9 @@ function CrmTable<R extends CrmContact>({
             <Download className="w-3.5 h-3.5" /> Export
           </button>
           <button
-            className="h-9 px-3.5 rounded-lg text-[12.5px] bg-primary/95 font-semibold text-white inline-flex items-center gap-1.5"
-            
+            disabled
+            title="Not available yet"
+            className="h-9 px-3.5 rounded-lg text-[12.5px] bg-primary/95 font-semibold text-white inline-flex items-center gap-1.5 opacity-50 cursor-not-allowed"
           >
             <Plus className="w-3.5 h-3.5" /> New
           </button>
