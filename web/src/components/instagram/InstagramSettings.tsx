@@ -201,7 +201,7 @@ const AIGoalsPanel: React.FC = () => {
         <EmptyState
           icon={Target}
           title="No goals yet"
-          blurb="Create your first AI Goal — bookings, sales, email captures — and AI will steer every reply toward it."
+          blurb="Create your first AI Goal: bookings, sales, or email captures. AI will steer every reply toward it."
         />
       )}
 

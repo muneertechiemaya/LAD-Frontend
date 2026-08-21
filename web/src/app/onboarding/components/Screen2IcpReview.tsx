@@ -201,7 +201,7 @@ export default function Screen2IcpReview({
         </Section>
 
         {/* Job titles */}
-        <Section title="Job titles" hint="Free text — partial matches are OK.">
+        <Section title="Job titles" hint="Free text. Partial matches are OK.">
           <IndustryChipInput
             value={icp.person.job_titles_includes ?? []}
             onChange={(v) => updatePerson('job_titles_includes', v)}

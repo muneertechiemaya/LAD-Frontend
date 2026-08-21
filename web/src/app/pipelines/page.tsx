@@ -32,9 +32,12 @@
 
 import React, { useState } from 'react';
 import { Lock, Loader2, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react';
-import { usePipelines } from '@lad/frontend-features/snapshots';
+import { usePipelines, useKnobProposals } from '@lad/frontend-features/snapshots';
 import type { SnapshotPipeline, KnobValues } from '@lad/frontend-features/snapshots';
 import { KnobForm } from '@/components/pipelines/KnobForm';
+import { KnobProposals, ScanHistoryButton } from '@/components/pipelines/KnobProposals';
+import { ConversationPicker } from '@/components/pipelines/ConversationPicker';
+import { TranscriptUpload } from '@/components/pipelines/TranscriptUpload';
 import { useAuth } from '@/contexts/AuthContext';
 
 /** Only `live` means an engine is actually running this pipeline. Unknown
@@ -87,6 +90,14 @@ function PipelineCard({
   const toggleId = `pipeline-toggle-${key}`;
   const [showSettings, setShowSettings] = useState(false);
   const hasKnobs = entitled && knobs.length > 0;
+  // Per-card, so two open cards do not share one set of suggestions. Mounted
+  // with the card rather than with the settings panel so a scan survives the
+  // panel being collapsed and reopened.
+  const proposals = useKnobProposals(key);
+  // Idle → (picking | uploading) → reviewing. One field, not two booleans, so
+  // the picker and the upload panel can never be open at once. Held here rather
+  // than in the panels so leaving one cannot strand a half-made selection.
+  const [sourceMode, setSourceMode] = useState<'pick' | 'upload' | null>(null);
 
   return (
     <div
@@ -161,12 +172,63 @@ function PipelineCard({
           {/* Mounted only when open so each card keeps its own draft state and
               a collapse discards edits rather than holding them invisibly. */}
           {showSettings && (
-            <KnobForm
-              knobs={knobs}
-              values={knobValues}
-              saving={saving}
-              onSave={onSaveKnobs}
-            />
+            <>
+              {/* Offered above the form: filling 27 fields by hand is the real
+                  cost here, and most of the answers are already in the
+                  workspace's own history. */}
+              {proposals.result ? (
+                <KnobProposals
+                  result={proposals.result}
+                  saving={saving}
+                  onApply={async (values) => {
+                    const errs = await onSaveKnobs(values);
+                    // Keep the panel open when the server rejected something —
+                    // dismissing would hide both the errors and the evidence
+                    // needed to judge them.
+                    if (!errs.length) proposals.dismiss();
+                    return errs;
+                  }}
+                  onDismiss={proposals.dismiss}
+                />
+              ) : sourceMode === 'pick' ? (
+                <ConversationPicker
+                  isScanning={proposals.isScanning}
+                  onCancel={() => setSourceMode(null)}
+                  onScan={async (ids) => {
+                    await proposals.scan(ids);
+                    // Leave the picker only once the scan has returned: closing
+                    // on click would drop the user back to the buttons with no
+                    // sign anything was happening.
+                    setSourceMode(null);
+                  }}
+                />
+              ) : sourceMode === 'upload' ? (
+                <TranscriptUpload
+                  pipeline={key}
+                  isScanning={proposals.isScanning}
+                  onCancel={() => setSourceMode(null)}
+                  onScan={async (transcript, studioParticipants) => {
+                    await proposals.scanUpload(transcript, studioParticipants);
+                    setSourceMode(null);
+                  }}
+                />
+              ) : (
+                <ScanHistoryButton
+                  isScanning={proposals.isScanning}
+                  error={proposals.error}
+                  onScan={() => void proposals.scan()}
+                  onPick={() => setSourceMode('pick')}
+                  onUpload={() => setSourceMode('upload')}
+                />
+              )}
+
+              <KnobForm
+                knobs={knobs}
+                values={knobValues}
+                saving={saving}
+                onSave={onSaveKnobs}
+              />
+            </>
           )}
         </>
       )}
