@@ -582,7 +582,7 @@ export default function TemplatesPage() {
                   <EmptyState
                     icon={<MessageSquare className="w-8 h-8 text-[#0b1957]/40 dark:text-white" />}
                     title="No personal WhatsApp templates yet"
-                    subtitle="Save a reusable personal WhatsApp message — no Meta approval required"
+                    subtitle="Save a reusable personal WhatsApp message - no Meta approval required"
                     ctaLabel="New Personal Template"
                     onCta={() => { setWapaEditing(null); setWapaModalOpen(true); }}
                   />
@@ -673,7 +673,7 @@ export default function TemplatesPage() {
               <EmptyState
                 icon={<Instagram className="w-8 h-8 text-[#0b1957]/40 dark:text-white" />}
                 title="No Instagram templates yet"
-                subtitle="Save reusable Instagram DMs — no Meta approval required"
+                subtitle="Save reusable Instagram DMs - no Meta approval required"
                 ctaLabel="New Instagram Template"
                 onCta={() => { setIgEditing(null); setIgModalOpen(true); }}
               />

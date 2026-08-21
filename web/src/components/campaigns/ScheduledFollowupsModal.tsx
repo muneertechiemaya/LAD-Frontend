@@ -95,7 +95,7 @@ function describeTouches(
   touches: FollowupTouch[] | undefined,
   templates: Array<{ id: string; name: string }> | undefined
 ): string {
-  if (!touches || touches.length === 0) return '—';
+  if (!touches || touches.length === 0) return '-';
   return touches
     .map((t) => {
       const when = t.hours % 24 === 0 ? `${t.hours / 24}d` : `${t.hours}h`;
@@ -115,9 +115,9 @@ const PRESETS: Array<{ label: string; hours: number }> = [
 ];
 
 function fmtDateTime(iso: string | null): string {
-  if (!iso) return '—';
+  if (!iso) return '-';
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
+  if (Number.isNaN(d.getTime())) return '-';
   return d.toLocaleString(undefined, {
     month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
   });
