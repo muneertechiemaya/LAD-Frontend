@@ -136,14 +136,20 @@ export default function ProspectDetail({ prospect, warmPath, warmPathSample = fa
               <Trash2 className="w-4 h-4" /> {isRemoving ? 'Removing…' : 'Not a fit'}
             </button>
           )}
-          <button className="h-9 px-3 flex-1 md:flex-none rounded-lg text-[12.5px] font-medium text-[#172560] dark:text-white border border-slate-200 dark:border-[#262831] hover:bg-slate-50 dark:hover:bg-[#1a2a43] inline-flex items-center justify-center md:justify-start gap-1.5">
+          <button
+            disabled
+            title="Not available yet"
+            className="h-9 px-3 flex-1 md:flex-none rounded-lg text-[12.5px] font-medium text-[#172560] dark:text-white border border-slate-200 dark:border-[#262831] inline-flex items-center justify-center md:justify-start gap-1.5 opacity-50 cursor-not-allowed"
+          >
             <MoreHorizontal className="w-4 h-4" /> More
           </button>
           <button
             type="button"
-            className="h-10 px-4 flex-1 md:flex-none rounded-xl text-xs font-bold uppercase tracking-wider text-white !text-white inline-flex items-center justify-center gap-2 shadow-md transition-all duration-200 hover:opacity-95 active:scale-[0.99] cursor-pointer outline-none border-none
-            bg-[#0b1957] hover:bg-[#122572]
-            dark:bg-[#2563eb] dark:hover:bg-blue-700"
+            disabled
+            title="Not available yet"
+            className="h-10 px-4 flex-1 md:flex-none rounded-xl text-xs font-bold uppercase tracking-wider text-white !text-white inline-flex items-center justify-center gap-2 shadow-md transition-all duration-200 outline-none border-none opacity-50 cursor-not-allowed
+            bg-[#0b1957]
+            dark:bg-[#2563eb]"
           >
             <SendHorizontal className="w-4 h-4 shrink-0 stroke-[2.5] text-white !text-white" />
             <span className="text-white !text-white">Message</span>
@@ -872,8 +878,8 @@ function Actions({ onAction, isActing, doNotContact, quietUntil }: {
     <LadCard>
       <LadCardHeader title="Take action" />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-        <ActionBtn Icon={Route} label="Ask for intro" hint="via Anil" primary />
-        <ActionBtn Icon={SendHorizontal} label="Send message" hint="best: LinkedIn" />
+        <ActionBtn Icon={Route} label="Ask for intro" hint="Not available yet" primary disabled />
+        <ActionBtn Icon={SendHorizontal} label="Send message" hint="Not available yet" disabled />
         <ActionBtn
           Icon={MoonStar}
           label={quietActive ? 'Quieted' : 'Quiet 7d'}
