@@ -563,7 +563,7 @@ export function PersonalWaTemplateManager() {
           <div>
             <h2 className="text-sm font-bold text-slate-800 dark:text-white">Personal WA Templates</h2>
             <p className="text-xs text-slate-400 dark:text-slate-300 mt-0.5">
-              Saved messages — no Meta approval required
+              Saved messages - no Meta approval required
             </p>
           </div>
         </div>

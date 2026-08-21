@@ -331,7 +331,7 @@ function AgentAvatar({
     <button
       className="flex-shrink-0 w-8 h-8 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center text-xs font-semibold ring-1 ring-violet-200 hover:ring-violet-400 hover:bg-violet-200 transition-all cursor-pointer"
       onClick={() => onClick?.(agentId)}
-      title={`${name || 'Human Agent'} — click to view profile`}
+      title={`${name || 'Human Agent'} - click to view profile`}
       aria-label="Open agent profile"
     >
       {initial}
