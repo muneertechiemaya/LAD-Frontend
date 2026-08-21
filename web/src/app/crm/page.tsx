@@ -31,6 +31,10 @@ export const dynamic = 'force-dynamic';
 // the board + tables snappy while the pager walks through every record.
 const PAGE_SIZE = 50;
 
+// Mirrors ListProspectsParams['sort_by'] — the only fields the backend
+// actually indexes on prospect_state (sdk/features/prospects/types.ts).
+type ServerSortBy = 'last_event_at' | 'fit_score' | 'sah_at' | 'created_at';
+
 const VIEW_TITLES: Record<Exclude<CrmView, 'board'>, string> = {
   all: 'All Contacts',
   prospects: 'Prospects',
@@ -47,6 +51,7 @@ export default function CrmPage() {
   const [view, setView] = useState<CrmView>('board');
   const [page, setPage] = useState(1); // 1-indexed
   const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<{ by: ServerSortBy; dir: 'asc' | 'desc' } | null>(null);
 
   // The table's own search box narrows the current page instantly and
   // locally; this debounced callback additionally re-queries the server
@@ -60,12 +65,23 @@ export default function CrmPage() {
     setPage(1);
   };
 
-  // Each table tab mounts a fresh CrmTable (its own local search box always
-  // starts empty), and the board view has no search box at all - so a lifted
-  // `search` surviving a tab switch would silently keep filtering rows on a
-  // screen with no visible/clearable search input showing why.
+  // Mirrors handleSearchChange: a column's local sort only reordered the
+  // loaded page (e.g. "oldest first" surfaced the oldest of THIS page's 50,
+  // not the tenant's true oldest contact, who could be on any other page).
+  // Only fires for columns whose Column.serverSortKey is set - see tables.tsx.
+  const handleSortChange = (by: ServerSortBy, dir: 'asc' | 'desc') => {
+    setSort({ by, dir });
+    setPage(1);
+  };
+
+  // Each table tab mounts a fresh CrmTable (its own local search/sort state
+  // always starts empty), and the board view has no search box or column
+  // headers at all - so a lifted search/sort surviving a tab switch would
+  // silently keep filtering/reordering rows on a screen with no visible way
+  // to see or clear it.
   React.useEffect(() => {
     setSearch('');
+    setSort(null);
     setPage(1);
   }, [view]);
 
@@ -73,6 +89,8 @@ export default function CrmPage() {
   const listQuery = useProspects({
     limit: PAGE_SIZE,
     offset: (page - 1) * PAGE_SIZE,
+    sort_by: sort?.by,
+    sort_dir: sort?.dir,
     search: search.trim() || undefined,
   });
   const prospects = useMemo(() => listQuery.data?.items ?? [], [listQuery.data]);
@@ -184,10 +202,10 @@ export default function CrmPage() {
           )}
         </div>
       );
-    if (view === 'all') return <AllContactsTable rows={filteredContacts} onSelect={openDetail} onRemove={handleRemove} pagination={pagination} onSearchChange={handleSearchChange} />;
-    if (view === 'prospects') return <ProspectsTable rows={filteredContacts} onSelect={openDetail} onRemove={handleRemove} pagination={pagination} onSearchChange={handleSearchChange} />;
-    if (view === 'leads') return <LeadsTable rows={filteredContacts} onSelect={openDetail} onRemove={handleRemove} pagination={pagination} onSearchChange={handleSearchChange} />;
-    if (view === 'clients') return <ClientsTable rows={filteredContacts} onSelect={openDetail} onRemove={handleRemove} pagination={pagination} onSearchChange={handleSearchChange} />;
+    if (view === 'all') return <AllContactsTable rows={filteredContacts} onSelect={openDetail} onRemove={handleRemove} pagination={pagination} onSearchChange={handleSearchChange} onSortChange={handleSortChange} />;
+    if (view === 'prospects') return <ProspectsTable rows={filteredContacts} onSelect={openDetail} onRemove={handleRemove} pagination={pagination} onSearchChange={handleSearchChange} onSortChange={handleSortChange} />;
+    if (view === 'leads') return <LeadsTable rows={filteredContacts} onSelect={openDetail} onRemove={handleRemove} pagination={pagination} onSearchChange={handleSearchChange} onSortChange={handleSortChange} />;
+    if (view === 'clients') return <ClientsTable rows={filteredContacts} onSelect={openDetail} onRemove={handleRemove} pagination={pagination} onSearchChange={handleSearchChange} onSortChange={handleSortChange} />;
     return null;
   };
 

@@ -137,6 +137,10 @@ export interface ListProspectsParams {
   search?: string;
   limit?: number;
   offset?: number;
+  /** Server-side sort — only fields the backend actually indexes on
+   *  prospect_state. Omit for the backend's default (last_event_at desc). */
+  sort_by?: 'last_event_at' | 'fit_score' | 'sah_at' | 'created_at';
+  sort_dir?: 'asc' | 'desc';
 }
 
 export interface ListProspectEventsParams {
