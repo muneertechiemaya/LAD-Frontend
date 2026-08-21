@@ -60,6 +60,15 @@ export default function CrmPage() {
     setPage(1);
   };
 
+  // Each table tab mounts a fresh CrmTable (its own local search box always
+  // starts empty), and the board view has no search box at all - so a lifted
+  // `search` surviving a tab switch would silently keep filtering rows on a
+  // screen with no visible/clearable search input showing why.
+  React.useEffect(() => {
+    setSearch('');
+    setPage(1);
+  }, [view]);
+
   // ── Live data (one server-side page at a time) ──────────────────────────────
   const listQuery = useProspects({
     limit: PAGE_SIZE,
@@ -96,14 +105,21 @@ export default function CrmPage() {
   // 'contacted' stage, falls into the prospect catch-all) — so 3 cheap
   // limit=1 requests (read only X-Total-Count, no rows) are enough to get
   // every bucket's real total, instead of fetching + counting every row.
+  //
+  // Unfiltered on purpose: `total` above now reflects an active table
+  // search (server-side, see `search` state), so the summary cards need
+  // their OWN unsearched total — otherwise typing into the search box
+  // made "All Contacts"/"Prospects" collapse to the search's match count
+  // instead of staying the tenant's real totals.
+  const trueTotal = useProspects({ limit: 1 }).data?.total ?? 0;
   const qualifiedTotal = useProspects({ lifecycle_stage: 'qualified', limit: 1 }).data?.total ?? 0;
   const sahTotal = useProspects({ lifecycle_stage: 'sah', limit: 1 }).data?.total ?? 0;
   const wonTotal = useProspects({ lifecycle_stage: 'won', limit: 1 }).data?.total ?? 0;
   const counts = useMemo(() => {
     const leads = qualifiedTotal + sahTotal;
     const clients = wonTotal;
-    return { all: total, prospects: Math.max(0, total - leads - clients), leads, clients };
-  }, [total, qualifiedTotal, sahTotal, wonTotal]);
+    return { all: trueTotal, prospects: Math.max(0, trueTotal - leads - clients), leads, clients };
+  }, [trueTotal, qualifiedTotal, sahTotal, wonTotal]);
 
   // Open a contact's full detail page.
   const openDetail = (idOrContact: string | CrmContact) => {
