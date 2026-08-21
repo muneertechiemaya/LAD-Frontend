@@ -639,7 +639,7 @@ export function CallLogsTable({
     //     const cost = row.original.cost || row.original.call_cost;
     //     return (
     //       <span className="font-mono text-sm">
-    //         {cost ? `$${Number(cost).toFixed(2)}` : "—"}
+    //         {cost ? `$${Number(cost).toFixed(2)}` : " - "}
     //       </span>
     //     );
     //   },
@@ -1255,7 +1255,7 @@ export function CallLogsTable({
           </Table>
         </div>
       </div>
-      {/* Pagination Controls – Server-Side Pagination */}
+      {/* Pagination Controls-Server-Side Pagination */}
       {table.getRowModel().rows.length > 0 && onPageChange && (
         <div className="flex items-center justify-between px-2 xs:px-4 py-3 gap-2 border-t border-[#E2E8F0] dark:border-[#262831] bg-[#F8FAFC] dark:bg-[#000724]">
           {/* Left Side: Records per page */}

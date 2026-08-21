@@ -117,7 +117,7 @@ export const BillingDashboard: React.FC<BillingDashboardProps> = ({ customerId }
     <div className="space-y-6">
       {/* Credit Balance Summary */}
       <div className="bg-gradient-to-br from-primary to-primary/80 text-[#ffffff] p-6 rounded-xl shadow-lg dark:from-[#051139] dark:to-[#02081e] dark:border dark:border-blue-950/50">
-        {/* Self-serve credit top-up is not offered here — no Add Credits action. */}
+        {/* Self-serve credit top-up is not offered here - no Add Credits action. */}
         <div className="flex items-center mb-6">
           <Wallet className="h-5 w-5 mr-2 text-[#ffffff] dark:text-blue-400" />
           <h3 className="text-lg font-bold text-[#ffffff]">Billing Summary</h3>
@@ -161,7 +161,7 @@ export const BillingDashboard: React.FC<BillingDashboardProps> = ({ customerId }
           </div>
         )}
       </div>
-      {/* Quick Actions — two cards since the Add Credits tile was removed. */}
+      {/* Quick Actions - two cards since the Add Credits tile was removed. */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Link
           href="/pricing"

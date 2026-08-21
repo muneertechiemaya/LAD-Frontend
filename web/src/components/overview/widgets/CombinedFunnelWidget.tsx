@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * CombinedFunnelWidget — one cross-channel lead funnel, with a time filter and
+ * CombinedFunnelWidget - one cross-channel lead funnel, with a time filter and
  * drill-down.
  *
  * Stages: New Leads (connection requests sent) → Accepted → Responded →
@@ -13,7 +13,7 @@
  * stage. Clicking a stage opens a modal listing that stage's leads (name,
  * company, campaign, LinkedIn) for the selected window.
  *
- * Data: GET /api/campaigns/lead-journey?from=&to= — returns counts + the lead
+ * Data: GET /api/campaigns/lead-journey?from=&to= - returns counts + the lead
  * lists per stage. Channel-agnostic → always shown.
  */
 import React, { useCallback, useEffect, useState } from 'react';
@@ -249,7 +249,7 @@ function downloadLeadsCsv(leads: LeadRow[], fileLabel: string) {
 
 // Rendered via createPortal(document.body): WidgetWrapper carries a dnd-kit
 // `transform`, and a transformed ancestor becomes the containing block for
-// position:fixed — so without the portal this modal positions/dims against the
+// position:fixed - so without the portal this modal positions/dims against the
 // widget CARD instead of the viewport (headers pushed off-screen on long lists).
 const StageLeadsModal: React.FC<{ title: string; subtitle: string; fileLabel: string; leads: LeadRow[]; onClose: () => void }> = ({ title, subtitle, fileLabel, leads, onClose }) => {
   if (typeof document === 'undefined') return null;
@@ -287,7 +287,7 @@ const StageLeadsModal: React.FC<{ title: string; subtitle: string; fileLabel: st
           <p className="text-sm text-muted-foreground text-center py-10">No leads in this stage for the selected period.</p>
         ) : (
           <table className="w-full text-sm" style={{ tableLayout: 'fixed' }}>
-            {/* Sticky must be on <th>, not <thead> — browsers ignore sticky on
+            {/* Sticky must be on <th>, not <thead> - browsers ignore sticky on
                 thead, so with long (scrolling) lists the header would scroll away
                 and overlap rows. */}
             <thead>

@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * InstagramActivityWidget — Instagram DM activity.
+ * InstagramActivityWidget - Instagram DM activity.
  *
  * DM thread counts (total / unread) and active connected accounts, derived from
  * GET /api/instagram-conversations/conversations and /accounts (no dedicated

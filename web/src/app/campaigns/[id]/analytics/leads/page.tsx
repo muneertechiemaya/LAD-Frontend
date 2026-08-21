@@ -121,10 +121,10 @@ export default function CampaignLeadsPage() {
         });
         refetch();
       } else if (response.success && response.status === 'pending') {
-        // Async path — request submitted to Apollo phone service, webhook delivers within 2-5 min
+        // Async path - request submitted to Apollo phone service, webhook delivers within 2-5 min
         push({
           title: 'Request Submitted',
-          description: response.message || 'Phone reveal submitted. The number will appear within 2–5 minutes - refresh to check.'
+          description: response.message || 'Phone reveal submitted. The number will appear within 2-5 minutes - refresh to check.'
         });
       } else {
         push({ title: 'Error', description: response.error || 'Failed to reveal phone number' });
@@ -364,7 +364,7 @@ export default function CampaignLeadsPage() {
       } catch { /* non-fatal - user will see "no account" error on send */ }
     }
 
-    // Use cached message if available — skip LLM call entirely
+    // Use cached message if available - skip LLM call entirely
     const cacheKey = `${lead.id}_${channel}`;
     const cached = followupCache.current.get(cacheKey);
     if (cached) {
@@ -373,7 +373,7 @@ export default function CampaignLeadsPage() {
       return;
     }
 
-    // No cache — generate via LLM
+    // No cache - generate via LLM
     setFollowupMessage('');
     setFollowupSubject('');
     setFollowupContext(null);
@@ -448,7 +448,7 @@ export default function CampaignLeadsPage() {
       setFollowupSending(false);
     }
   }, [followupLead, followupChannel, followupMessage, followupSubject, followupFromEmail, followupContext, campaignId, push, refetch]);
-  // The server already applied both the engagement filter and the search —
+  // The server already applied both the engagement filter and the search  - 
   // re-filtering here would only remove rows the server deliberately returned
   // (its search covers more fields than name/email/company/title).
   const filteredLeads = leads;

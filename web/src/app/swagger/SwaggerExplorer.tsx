@@ -194,7 +194,7 @@ export default function SwaggerExplorer({
         .lad-swagger-back:hover { background: #f1f5f9; }
         .lad-swagger-crumb { color: #475569; }
         .lad-swagger-crumb strong { color: #0f172a; }
-        /* Hide swagger's own auth scheme bar — we manage from the topbar */
+        /* Hide swagger's own auth scheme bar - we manage from the topbar */
         .swagger-ui .scheme-container { display: none; }
         .lad-swagger-toast { position: fixed; bottom: 20px; right: 20px; background: #0f172a; color: #e2e8f0; padding: 10px 16px; border-radius: 6px; font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); z-index: 200; }
       `}</style>

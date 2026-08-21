@@ -740,7 +740,7 @@ if (!id) return null;
 //         alert("Popup blocked! Please allow popups for this site to open the calling interface.");
 //       }
 //     } else if (rows.length > 1) {
-//       // ✅ bulk flow — just pass ids, and page.tsx will fetch + show list
+//       // ✅ bulk flow - just pass ids, and page.tsx will fetch + show list
 //       const encodedIds = encodeURIComponent(btoa(JSON.stringify(ids)));
 //       const href = `${ERP_URL}/make-call?bulk=1&ids=${encodedIds}`;
 //       //       const newWindow = window.open(href, "_blank");

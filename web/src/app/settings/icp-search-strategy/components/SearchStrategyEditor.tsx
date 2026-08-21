@@ -1,6 +1,6 @@
 /**
- * SearchStrategyEditor — pure controlled form for the SearchStrategy block of
- * an IcpDefinition. No data fetching, no persistence — the parent feeds in
+ * SearchStrategyEditor - pure controlled form for the SearchStrategy block of
+ * an IcpDefinition. No data fetching, no persistence - the parent feeds in
  * the current value, applies the user's edits via `onChange`, and chooses
  * when to save.
  *

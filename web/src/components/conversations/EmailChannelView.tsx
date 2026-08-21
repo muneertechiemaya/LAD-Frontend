@@ -86,7 +86,7 @@ interface EmailMessage {
   sent_at: string;
 }
 
-// Defined at module level — not inside the component — to avoid redefining on
+// Defined at module level - not inside the component - to avoid redefining on
 // every render and to allow usage in ComposeWindow props.
 type ComposeInstance = {
   id: string;
@@ -202,7 +202,7 @@ const MOCK_EMAIL_DETAILS: Record<string, {
 }> = {};
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Emoji categories (module-level constant – created once, never re-allocated)
+// Emoji categories (module-level constant-created once, never re-allocated)
 // ─────────────────────────────────────────────────────────────────────────────
 const EMOJI_CATS = [
   { id: 'smileys', icon: '😊', label: 'Smileys', emojis: ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '🥲', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🤧', '🥵', '🥶', '🥴', '😵', '🤯', '🤠', '🥳', '🥸', '😎', '🤓', '🧐', '😕', '😟', '🙁', '☹️', '😮', '😯', '😲', '😳', '🥺', '😦', '😧', '😨', '😰', '😥', '😢', '😭', '😱', '😖', '😣', '😞', '😓', '😩', '😫', '🥱', '😤', '😡', '😠', '🤬', '😈', '👿', '💀', '☠️', '💩', '🤡', '👹', '👺', '👻', '👽', '👾', '🤖'] },
@@ -316,7 +316,7 @@ function Avatar({ name, id, size = 'md' }: { name?: string | null; id: string; s
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TBtn — reusable icon toolbar button
+// TBtn - reusable icon toolbar button
 // ─────────────────────────────────────────────────────────────────────────────
 
 function TBtn({ icon: Icon, label, onClick, active }: { icon: React.ElementType; label: string; onClick: () => void; active?: boolean }) {
@@ -339,7 +339,7 @@ function TBtn({ icon: Icon, label, onClick, active }: { icon: React.ElementType;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ComposeWindow — floating Gmail-style compose
+// ComposeWindow - floating Gmail-style compose
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface ComposeWindowProps {
@@ -496,7 +496,7 @@ function ComposeWindow({
   const handleBulletList = () => bodyRef.current && insertAtCursor(bodyRef.current, body, setBody, '\n• ');
   const handleNumberedList = () => bodyRef.current && insertAtCursor(bodyRef.current, body, setBody, '\n1. ');
 
-  // Minimized — just the header tab
+  // Minimized - just the header tab
   if (minimized) {
     return (
       <div
@@ -792,7 +792,7 @@ function ComposeWindow({
             </button>
           </div>
 
-          {/* Agent Toggle — mirrors WABAChatWindow composer */}
+          {/* Agent Toggle - mirrors WABAChatWindow composer */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
@@ -883,7 +883,7 @@ function ComposeWindow({
                     </div>
                   </div>
 
-                  {/* Category tabs — auto-highlights on scroll */}
+                  {/* Category tabs - auto-highlights on scroll */}
                   <div className="flex items-center gap-0 px-2 pb-1.5 border-b border-[#f1f3f4] dark:border-[#3c4043] flex-shrink-0 overflow-x-auto no-scrollbar">
                     {EMOJI_CATS.map(cat => (
                       <button
@@ -906,7 +906,7 @@ function ComposeWindow({
                     ))}
                   </div>
 
-                  {/* Emoji grid — scrollable, updates category tabs */}
+                  {/* Emoji grid - scrollable, updates category tabs */}
                   <div
                     ref={emojiScrollRef}
                     onScroll={handleEmojiScroll}
@@ -1322,7 +1322,7 @@ function ContactDetailsPanel({ contact, provider, groups, onClose, onAddToGroup 
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// EmailComposePanel — email thread + reply box
+// EmailComposePanel - email thread + reply box
 // ─────────────────────────────────────────────────────────────────────────────
 
 function EmailComposePanel({ contact, provider, onShowDetails, showDetails, onBack, onSentSuccess, onForward }: {
@@ -1650,7 +1650,7 @@ function EmailComposePanel({ contact, provider, onShowDetails, showDetails, onBa
                       {msg.body_html
                         ? <div
                           className="prose prose-sm max-w-none text-sm dark:prose-invert"
-                          // sanitizeHtml strips dangerous content — replace with DOMPurify.sanitize() in production
+                          // sanitizeHtml strips dangerous content - replace with DOMPurify.sanitize() in production
                           dangerouslySetInnerHTML={{ __html: sanitizeHtml(msg.body_html) }}
                         />
                         : <p className="text-sm text-[#5f6368] dark:text-[#9aa0a6] italic">No content</p>}
@@ -2095,7 +2095,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
   //
   // Gmail / Outlook short-circuit:
   // The legacy /api/email-conversations/{contacts,groups,labels} endpoints
-  // proxy to LAD-WABA-Comms — those email surfaces don't exist there yet
+  // proxy to LAD-WABA-Comms - those email surfaces don't exist there yet
   // and the calls 502 in the network panel. The Sent folder is now powered
   // by LAD-Email-Comms (EmailBroadcastsSentList), so the legacy fetches buy
   // us nothing for those providers. Skip them and set empty state.
@@ -2321,7 +2321,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
     setCreatingGroup(true);
 
     // Hosted providers (Gmail / Outlook) → LAD-Email-Comms POST /groups.
-    // Response is the created group as { id, name, color, ... } — no
+    // Response is the created group as { id, name, color, ... } - no
     // { success, data } envelope. Insert it directly into state.
     if (isHostedProvider) {
       try {
@@ -2397,7 +2397,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
   const handleCreateLabel = async () => {
     const name = newLabelName.trim();
     if (!name) return;
-    // Same Phase-2 gate as handleCreateGroup — see the comment there.
+    // Same Phase-2 gate as handleCreateGroup - see the comment there.
     if (isHostedProvider) {
       setCreatingLabel(false);
       setCreateLabelError('');
@@ -2658,7 +2658,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
             </div>
           </div>
         )}
-        {/* Right: icons — Gmail order: Help → Settings → Apps → Avatar */}
+        {/* Right: icons - Gmail order: Help → Settings → Apps → Avatar */}
         <div className="flex items-center gap-0.5 flex-shrink-0 pl-1 md:pl-2 ml-auto">
           <button
             onClick={() => setShowImport(true)}
@@ -2914,7 +2914,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
             </div>
           </div>{/* end scrollable area */}
 
-          {/* Meet — pinned to bottom */}
+          {/* Meet - pinned to bottom */}
           <div className="mt-auto pt-2 border-t border-[#e0e0e0] dark:border-[#3c4043] flex-shrink-0">
             {sidebarOpen ? (
               <>
@@ -3086,7 +3086,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
                 {filteredContacts.length > 0 && (
                   <div className="flex items-center gap-2 text-xs text-[#5f6368] dark:text-[#9aa0a6] pr-1">
                     <span className="hidden sm:inline" aria-live="polite">
-                      {page * pageSize + 1}–{Math.min((page + 1) * pageSize, filteredContacts.length)} of {filteredContacts.length}
+                      {page * pageSize + 1}-{Math.min((page + 1) * pageSize, filteredContacts.length)} of {filteredContacts.length}
                     </span>
                     <div className="flex">
                       <button disabled={page === 0} onClick={() => setPage(p => p - 1)} title="Previous page" aria-label="Previous page"
@@ -3306,10 +3306,10 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
           )}
         </main>
 
-        {/* Right sidebar — Google apps + sliding panels */}
+        {/* Right sidebar - Google apps + sliding panels */}
         <div className="hidden md:flex flex-shrink-0 flex-row">
 
-          {/* Panel content — slides in when an icon is active */}
+          {/* Panel content - slides in when an icon is active */}
           {activeRightPanel && (
             <div className="w-[300px] border-l border-[#dadce0] dark:border-[#3c4043] bg-white dark:bg-[#2d2d2d] flex flex-col overflow-hidden mb-2 rounded-2xl mr-1 shadow-sm">
 

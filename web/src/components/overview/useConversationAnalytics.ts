@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * useConversationAnalytics — shared client hook for the tenant Overview's
+ * useConversationAnalytics - shared client hook for the tenant Overview's
  * conversation analytics (funnel + daily-volume spike + unconverted-topic
  * segments), served by LAD-Master-Agent via /api/analytics/overview.
  *

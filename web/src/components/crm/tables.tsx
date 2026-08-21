@@ -149,7 +149,7 @@ function RowActions({ onRemove }: { onRemove?: () => void }) {
 // Used by the Export button in every CrmTable view. Renders the CURRENTLY
 // FILTERED rows (so the user gets what they're seeing, not the whole table)
 // to a UTF-8 CSV with a BOM so Excel opens it cleanly. Stable, well-known
-// CrmContact fields are exported regardless of which view is showing —
+// CrmContact fields are exported regardless of which view is showing  - 
 // users typically want all the underlying data, not just the visible cells.
 
 // Stable column order for the exported CSV. Centralised so all four views
@@ -205,8 +205,8 @@ function buildContactsCsv(rows: CrmContact[]): string {
 }
 
 function downloadCsv(filename: string, csv: string): void {
-  // Guard for SSR-style invocation (shouldn't happen — this lives in a
-  // 'use client' file — but fail safely if it ever does).
+  // Guard for SSR-style invocation (shouldn't happen - this lives in a
+  // 'use client' file - but fail safely if it ever does).
   if (typeof window === 'undefined' || typeof document === 'undefined') return;
   // Prepend BOM so Excel auto-detects UTF-8.
   const blob = new Blob(['﻿', csv], { type: 'text/csv;charset=utf-8' });

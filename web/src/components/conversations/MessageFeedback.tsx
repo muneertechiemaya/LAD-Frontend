@@ -1,12 +1,12 @@
 'use client';
 
 /**
- * Agent-response feedback — thumbs up/down on an AI reply, and on a
+ * Agent-response feedback - thumbs up/down on an AI reply, and on a
  * thumbs-down, a short form capturing what it should have said.
  *
  * The correction is appended to the tenant's WABA system prompt on the next
  * turn, so this is the fastest path from "the bot said something wrong" to
- * "the bot stops saying it" — no prompt editing, no deploy.
+ * "the bot stops saying it" - no prompt editing, no deploy.
  *
  * Only rendered for AI messages. A human agent's own reply has nothing to
  * learn from, and the backend rejects rating anything but an assistant
@@ -23,7 +23,7 @@ import {
 interface MessageFeedbackProps {
   conversationId: string;
   messageId: string;
-  /** The reply being rated — prefilled as "what it said" in the form. */
+  /** The reply being rated - prefilled as "what it said" in the form. */
   content: string;
   /** Existing verdict, so a reload doesn't reset the thumbs. */
   initialRating?: FeedbackRating | null;
@@ -150,7 +150,7 @@ export function MessageFeedback({
             >
               Cancel
             </button>
-            {/* Saving without a correction is allowed but labelled honestly —
+            {/* Saving without a correction is allowed but labelled honestly  - 
                 it records the verdict and teaches nothing. */}
             <button
               type="button"

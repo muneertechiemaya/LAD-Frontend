@@ -108,11 +108,11 @@
 //                       i % 2 === 0 ? "bg-white/40 dark:bg-white/[0.03]" : ""
 //                     }`}
 //                   >
-//                     <td className="p-5 font-medium">{n.label || "—"}</td>
+//                     <td className="p-5 font-medium">{n.label || " - "}</td>
 //                     <td className="p-5 font-mono">{n.e164}</td>
-//                     <td className="p-5 capitalize">{n.provider || "—"}</td>
-//                     <td className="p-5 font-mono">{n.sid || "—"}</td>
-//                     <td className="p-5 font-mono">{n.account || "—"}</td>
+//                     <td className="p-5 capitalize">{n.provider || " - "}</td>
+//                     <td className="p-5 font-mono">{n.sid || " - "}</td>
+//                     <td className="p-5 font-mono">{n.account || " - "}</td>
 //                   </tr>
 //                 ))
 //               )}
@@ -153,11 +153,11 @@ export default function PhoneNumbersPage() {
   const [filterProvider, setFilterProvider] = useState("All");
 
   const fetchData = useCallback(async () => {
-    // The payload is { success, data, count } — the rows are under `data`.
+    // The payload is { success, data, count } - the rows are under `data`.
     // Reading `.numbers` yielded undefined, and setItems(undefined) made the
     // `items.filter(...)` below throw during render, taking the whole page to
     // the error boundary. Coerce to an array so no future shape change can
-    // crash the page again — an empty table beats "Something went wrong".
+    // crash the page again - an empty table beats "Something went wrong".
     const response = await apiGet<{ success: boolean; data: PhoneNumber[]; count: number }>("/api/voice-agent/numbers");
     if (response.success) {
       setItems(Array.isArray(response.data) ? response.data : []);
@@ -172,7 +172,7 @@ export default function PhoneNumbersPage() {
     const searchLower = search.toLowerCase();
     // Only fields the API actually returns. The previous list matched on
     // label / sid / account / type, none of which exist on this payload, so
-    // every one of those terms was dead — any search that wasn't a provider
+    // every one of those terms was dead - any search that wasn't a provider
     // or status match silently returned nothing.
     const matchesSearch =
       displayNumber(n).toLowerCase().includes(searchLower) ||

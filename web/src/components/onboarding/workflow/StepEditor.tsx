@@ -61,7 +61,7 @@ export default function StepEditor({ step, onClose, campaignId }: StepEditorProp
     delayDays: parsedDelay.days,
     delayHours: parsedDelay.hours,
     leadLimit: step.leadLimit || 10,
-    // AI Media step — permanent quadruple set after import-generated
+    // AI Media step - permanent quadruple set after import-generated
     mediaPrompt: step.mediaPrompt || '',
     mediaUrl: step.mediaUrl || '',
     mediaType: step.mediaType || '',
@@ -318,7 +318,7 @@ export default function StepEditor({ step, onClose, campaignId }: StepEditorProp
                 placeholder="10"
               />
               <p className="mt-1 text-xs text-gray-500">
-                Number of leads to generate per day {dailyLimit !== null ? `(1–${dailyLimit})` : '(minimum 1)'}
+                Number of leads to generate per day {dailyLimit !== null ? `(1-${dailyLimit})` : '(minimum 1)'}
               </p>
             </div>
           </div>

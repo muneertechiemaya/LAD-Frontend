@@ -46,7 +46,7 @@ function DialogContent({
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
-  /** Restyle the backdrop — needed to raise a dialog above a high-z-index
+  /** Restyle the backdrop - needed to raise a dialog above a high-z-index
    *  overlay, since the portal makes it a sibling of <body>, not a child. */
   overlayClassName?: string
 }) {

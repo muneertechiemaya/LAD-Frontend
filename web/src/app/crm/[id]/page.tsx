@@ -1,5 +1,5 @@
 'use client';
-// /crm/[id] — full-page prospect / lead / client detail.
+// /crm/[id] - full-page prospect / lead / client detail.
 //
 // Opened when a row is clicked in /crm. Fetches the prospect + its event
 // timeline from the Master Agent and renders the rich ProspectDetail panel
@@ -32,7 +32,7 @@ export default function CrmDetailPage() {
   const eventsQuery = useProspectEvents(id, { limit: 100 });
   const followupsQuery = useProspectFollowups(id);
 
-  // CRM "Take action" — pause outreach (quiet) or hard-suppress (do not contact).
+  // CRM "Take action" - pause outreach (quiet) or hard-suppress (do not contact).
   // The mutation invalidates the prospect cache, so do_not_contact / quiet_until
   // re-render from the refreshed detailQuery.
   const actionMutation = useProspectAction();
@@ -47,7 +47,7 @@ export default function CrmDetailPage() {
   );
   const events = useMemo(() => toCrmEvents(eventsQuery.data), [eventsQuery.data]);
 
-  // Option C — enrich the prospect's LinkedIn profile on first open (company +
+  // Option C - enrich the prospect's LinkedIn profile on first open (company +
   // employment + warm-path signals) when it hasn't been enriched yet. Fire once,
   // best-effort; refetch shortly after so the freshly-pulled data renders.
   const enrichMutation = useEnrichProspect();

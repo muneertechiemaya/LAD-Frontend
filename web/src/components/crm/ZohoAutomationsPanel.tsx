@@ -14,8 +14,8 @@ import { fetchWithTenant } from '@/lib/fetch-with-tenant';
 type SortKey = 'recent' | 'contact' | 'channel' | 'subject';
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'recent', label: 'Newest first' },
-  { value: 'contact', label: 'Contact A–Z' },
-  { value: 'subject', label: 'Task A–Z' },
+  { value: 'contact', label: 'Contact A-Z' },
+  { value: 'subject', label: 'Task A-Z' },
   { value: 'channel', label: 'Channel' },
 ];
 

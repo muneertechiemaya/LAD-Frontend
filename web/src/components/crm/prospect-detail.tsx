@@ -1,6 +1,6 @@
 'use client';
 // Prospect detail panel that opens below the kanban / table when a contact is
-// selected. Compositional file — most of the visual logic lives in the smaller
+// selected. Compositional file - most of the visual logic lives in the smaller
 // sub-components below.
 
 import * as React from 'react';
@@ -25,7 +25,7 @@ import type { ProspectFollowup } from '@lad/frontend-features/prospects';
 interface ProspectDetailProps {
   prospect: ProspectFixture;
   warmPath: WarmPath;
-  /** When true, render a "Sample data" caption — the warm-path graph isn't
+  /** When true, render a "Sample data" caption - the warm-path graph isn't
    *  wired to a live relationship-graph source yet (R18). */
   warmPathSample?: boolean;
   events?: ProspectEvent[];
@@ -33,7 +33,7 @@ interface ProspectDetailProps {
   /** Soft-delete this prospect ("not a fit"). When omitted, the button is hidden. */
   onRemove?: () => void;
   isRemoving?: boolean;
-  /** CRM "Take action" — do-not-contact / quiet (pause outreach). */
+  /** CRM "Take action" - do-not-contact / quiet (pause outreach). */
   onAction?: (p: { doNotContact?: boolean; quietDays?: number }) => void;
   isActing?: boolean;
   doNotContact?: boolean;
@@ -42,7 +42,7 @@ interface ProspectDetailProps {
   followups?: ProspectFollowup[];
   followupsLoading?: boolean;
   /**
-   * The prospect's `core_lead_id` — the id `campaign_leads` and
+   * The prospect's `core_lead_id` - the id `campaign_leads` and
    * `campaign_analytics` are keyed by, and the only one the report API resolves.
    * Omitted or null ⇒ the report + accelerator sections are not rendered.
    */
@@ -263,7 +263,7 @@ export default function ProspectDetail({ prospect, warmPath, warmPathSample = fa
 /**
  * The two accelerator sections, sharing one fetch.
  *
- * Renders NOTHING when the lead is not enrolled in a campaign — most CRM
+ * Renders NOTHING when the lead is not enrolled in a campaign - most CRM
  * contacts are not, and an empty "no sequence" card on every one of them would
  * be noise rather than information.
  */
@@ -487,7 +487,7 @@ function KpiLast({
 
 // ── Activity heatmap ─────────────────────────────────────────────────────
 // Map raw event channels (incl. aliases) onto the heatmap's canonical rows.
-// Personal WA (wapa) and Business WA (waba) both roll up under "WhatsApp" — without
+// Personal WA (wapa) and Business WA (waba) both roll up under "WhatsApp" - without
 // this, wapa events fall through to the "Signal" (intent) catch-all.
 const HEATMAP_CHANNEL: Record<string, ChannelKey> = {
   whatsapp: 'whatsapp', waba: 'whatsapp', wapa: 'whatsapp', personal_whatsapp: 'whatsapp',

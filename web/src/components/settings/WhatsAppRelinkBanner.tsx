@@ -5,7 +5,7 @@
  *
  * WHY THIS EXISTS
  * When WhatsApp revokes a linked device, LAD-WAPA-Comms wipes the stored
- * credentials on purpose — dead creds must not be retried forever. The side
+ * credentials on purpose - dead creds must not be retried forever. The side
  * effect is that the account DISAPPEARS from GET /accounts, so the settings page
  * showed a plain "Disconnected" that looked exactly like "never set up". One
  * tenant sat dead for three days because nothing distinguished the two.

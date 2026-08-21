@@ -49,7 +49,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* Favicon — MrLAD square mark */}
+        {/* Favicon - MrLAD square mark */}
         <link rel="icon" href="/MrLad-code.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/MrLad-code.svg" />
         

@@ -328,7 +328,7 @@ export const WARM_PATH: WarmPath = {
     headline: 'Head of Partnerships, BlueBridge',
     confidence: 0.92,
   },
-  shared_employer: { company: 'Cigna MENA', overlap: '2019–2022 (3 yrs)', confidence: 0.88 },
+  shared_employer: { company: 'Cigna MENA', overlap: '2019-2022 (3 yrs)', confidence: 0.88 },
   mutual_connections: [
     { name: 'Reem Al-Hashimi', title: 'VP Marketing, Sehha', confidence: 0.74 },
     { name: 'Daniel Okonkwo',  title: 'Founder, Loop Capital', confidence: 0.61 },

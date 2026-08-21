@@ -46,14 +46,14 @@ interface PendingFile {
 
 export interface MessageComposerProps {
   channel:         Channel;
-  /** Explicit backend routing channel — 'personal' for Baileys, 'waba' for Meta Graph API.
+  /** Explicit backend routing channel - 'personal' for Baileys, 'waba' for Meta Graph API.
    *  When omitted, falls back to inferring from `channel` (always 'waba' for 'whatsapp'). */
   backendChannel?: 'personal' | 'waba';
   onSendMessage:   (payload: RichMessagePayload) => void;
   /** Broadcast-mode template send (no conversationId). When set, picking a
    *  template calls this instead of the per-conversation send endpoint. */
   onSendTemplate?: (templateName: string, languageCode: string, parameters: string[]) => void | Promise<void>;
-  /** Broadcast-mode target count (selected groups) — shown in the template dialog. */
+  /** Broadcast-mode target count (selected groups) - shown in the template dialog. */
   broadcastTargetCount?: number;
   disabled?:       boolean;
   contactName?:    string;
@@ -767,7 +767,7 @@ export const MessageComposer = memo(function MessageComposer({
 
       <div className="flex items-end gap-2">
 
-        {/* ── Agent type toggle (chat only — hidden for group broadcast) ── */}
+        {/* ── Agent type toggle (chat only - hidden for group broadcast) ── */}
         {conversationId && (
         <div className="hidden lg:block">
           <DropdownMenu>
@@ -794,7 +794,7 @@ export const MessageComposer = memo(function MessageComposer({
         </div>
         )}
 
-        {/* ── "+" Attachment menu (always visible — the only path to Send Template
+        {/* ── "+" Attachment menu (always visible - the only path to Send Template
               in broadcast mode, so it must work on mobile too) ── */}
         <div ref={attachBtnRef} className="relative flex-shrink-0">
           <button
@@ -815,7 +815,7 @@ export const MessageComposer = memo(function MessageComposer({
               <div className="grid grid-cols-3 gap-1">
                 {[
                   // Sticker is emoji-text (inserted into the message input), so it
-                  // broadcasts fine as text — keep it in every mode. Broadcast mode
+                  // broadcasts fine as text - keep it in every mode. Broadcast mode
                   // additionally offers Send Template.
                   ...ATTACH_ITEMS,
                   ...(onSendTemplate && !conversationId
@@ -921,7 +921,7 @@ export const MessageComposer = memo(function MessageComposer({
         </div>
       )}
 
-      {/* ── Hint bar (chat only — hidden for group broadcast) ── */}
+      {/* ── Hint bar (chat only - hidden for group broadcast) ── */}
       {conversationId && (
         <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-2 px-1 hidden lg:block">
           Enter to send · Shift+Enter for new line

@@ -235,7 +235,7 @@
     @apply bg-[hsl(var(--gmail))]/10 text-[hsl(var(--gmail))] border-[hsl(var(--gmail))]/20;
   }
 
-  /* Message bubbles — WhatsApp styling */
+  /* Message bubbles - WhatsApp styling */
   .message-bubble-incoming {
     background: #ffffff;
     color: #111b21;
@@ -351,7 +351,7 @@
     scrollbar-color: #e5e7eb transparent;
   }
   
-  /* Global dark mode scrollbar — applies to ALL scrollable elements */
+  /* Global dark mode scrollbar - applies to ALL scrollable elements */
   .dark *::-webkit-scrollbar {
     width: 8px;
     height: 8px;

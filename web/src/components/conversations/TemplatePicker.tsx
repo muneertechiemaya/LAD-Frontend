@@ -55,7 +55,7 @@ type NameFormat = 'first' | 'full';
 interface BatchOptions {
   batchSize: number;      // how many messages per batch
   delayMin: number;       // minimum delay between batches (seconds)
-  delayRandom: number;    // additional random 0–N seconds added to delay
+  delayRandom: number;    // additional random 0-N seconds added to delay
   dailyLimit: number;     // maximum messages to send in a single day
 }
 
@@ -124,7 +124,7 @@ export function TemplatePicker({
   const [refreshKey, setRefreshKey] = useState(0);
   const [nameFormat, setNameFormat] = useState<NameFormat>('first');
   const [batchSize, setBatchSize] = useState(5);
-  const [delayMin, setDelayMin] = useState(120);      // seconds — min 120 enforced
+  const [delayMin, setDelayMin] = useState(120);      // seconds - min 120 enforced
   const [delayRandom, setDelayRandom] = useState(30); // extra random seconds
   const [dailyLimit, setDailyLimit] = useState(250);  // max messages to send per day
 
@@ -195,7 +195,7 @@ export function TemplatePicker({
     const params = template.parameters || [];
     const defaults = params.map((p) => {
       const key = p.toLowerCase();
-      // Exact match against a FIELD_OPTIONS sentinel — e.g. param "member_first_name" → '{member_first_name}'
+      // Exact match against a FIELD_OPTIONS sentinel - e.g. param "member_first_name" → '{member_first_name}'
       const exactMatch = FIELD_OPTIONS.find(
         o => o.value !== '__custom__' && o.value.toLowerCase() === `{${key}}`
       );
@@ -232,7 +232,7 @@ export function TemplatePicker({
       return;
     }
     if (template.header_url) {
-      // handle is not a URL — ask the backend to resolve it via Meta Graph API
+      // handle is not a URL - ask the backend to resolve it via Meta Graph API
       setHeaderMediaUrl('');
       setResolvingMedia(true);
       try {
@@ -258,7 +258,7 @@ export function TemplatePicker({
 
   const handleSend = useCallback(() => {
     if (!selectedTemplate) return;
-    // WABA handles rate-limiting server-side — pass zeroes so the backend sends
+    // WABA handles rate-limiting server-side - pass zeroes so the backend sends
     // without artificial throttling. Personal WA uses the user-configured schedule
     // to avoid account restrictions from rapid bulk sends.
     // Guard against NaN values (a cleared number input puts NaN into state).

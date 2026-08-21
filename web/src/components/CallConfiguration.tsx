@@ -120,7 +120,7 @@ export function CallConfiguration({
     if (!agent.voice_sample_url.startsWith('gs://')) return agent.voice_sample_url;
 
     // For gs:// URLs, route through the recording proxy.
-    // The token is an HTTP-only cookie — JavaScript cannot read it, but the browser
+    // The token is an HTTP-only cookie - JavaScript cannot read it, but the browser
     // automatically sends it with same-origin <audio> requests.
     // The proxy reads the cookie server-side (via Next.js cookies()), so no token
     // param is needed in the URL.
@@ -287,10 +287,10 @@ export function CallConfiguration({
               <label className="text-sm font-medium text-gray-700 dark:text-white mb-1 block">
                 Phone Number
               </label>
-              {/* Unified container — same height/border as CallOptions */}
+              {/* Unified container - same height/border as CallOptions */}
               <div className="flex rounded-[10px] border border-gray-200 dark:border-blue-950/40 overflow-hidden focus-within:ring-2 focus-within:ring-gray-200 min-h-[48px] bg-white dark:bg-slate-800/50">
 
-                {/* Left: flag + country code selector — styled like CallOptions button */}
+                {/* Left: flag + country code selector - styled like CallOptions button */}
                 <Select
                   value={activeCode}
                   onValueChange={onSelectedCountryCodeChange}

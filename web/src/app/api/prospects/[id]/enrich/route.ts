@@ -1,7 +1,7 @@
 /**
- * POST /api/prospects/[id]/enrich — Option C on-open enrichment trigger.
+ * POST /api/prospects/[id]/enrich - Option C on-open enrichment trigger.
  *
- * Resolves tenant_id (DEV_TENANT_OVERRIDE / JWT / cookie — same as the
+ * Resolves tenant_id (DEV_TENANT_OVERRIDE / JWT / cookie - same as the
  * Master-Agent proxy) and forwards to LAD_backend's service-token-guarded
  * enrich endpoint, which does the Unipile profile fetch + emits the
  * enrichment.profile_enriched event to the Master Agent. Best-effort.

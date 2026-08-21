@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * LinkedIn Context Panel — right-rail companion to the LinkedIn chat view.
+ * LinkedIn Context Panel - right-rail companion to the LinkedIn chat view.
  *
  * Mirrors the WhatsApp ConversationContextPanel but is scoped to what the
  * LinkedIn backend currently supports:
@@ -211,7 +211,7 @@ export function LinkedInContextPanel({ conversation, onClose }: Props) {
     setAgentSaving(true);
     setAgentEnabled(next);   // optimistic
     try {
-      // Read CURRENT values then PUT — backend expects every field we want to
+      // Read CURRENT values then PUT - backend expects every field we want to
       // keep. If we omit a field here, the backend's clamp logic resets it
       // (e.g. ai_agent_reply_delay_seconds would silently flip back to 0
       // every time the user toggles the agent on/off from this panel).
@@ -622,10 +622,10 @@ export function LinkedInContextPanel({ conversation, onClose }: Props) {
                   <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">Monitor Their Posts</p>
                   <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
                     {!pmTenantEnabled
-                      ? 'Off tenant-wide — enable in Settings → Chat → LinkedIn'
+                      ? 'Off tenant-wide - enable in Settings → Chat → LinkedIn'
                       : pmPaused
                         ? 'Paused for this lead'
-                        : 'On — engages new posts'}
+                        : 'On - engages new posts'}
                   </p>
                 </div>
               </div>
@@ -740,7 +740,7 @@ export function LinkedInContextPanel({ conversation, onClose }: Props) {
             </div>
           </TabsContent>
 
-          {/* Internal comments — placeholder */}
+          {/* Internal comments - placeholder */}
           <TabsContent value="internal" className="pt-3">
             <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center py-3">
               Internal comments coming soon.
