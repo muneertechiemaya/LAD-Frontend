@@ -46,9 +46,26 @@ export default function CrmPage() {
   const { push } = useToast();
   const [view, setView] = useState<CrmView>('board');
   const [page, setPage] = useState(1); // 1-indexed
+  const [search, setSearch] = useState('');
+
+  // The table's own search box narrows the current page instantly and
+  // locally; this debounced callback additionally re-queries the server
+  // across the WHOLE tenant, not just the loaded page - without it, a real
+  // contact outside the current page read as a false "No matches" on any
+  // tenant with more than one page. A new search term needs its own page
+  // count, so land back on page 1 rather than stranding the user on
+  // whatever page number they were on for the old (unfiltered) list.
+  const handleSearchChange = (q: string) => {
+    setSearch(q);
+    setPage(1);
+  };
 
   // ── Live data (one server-side page at a time) ──────────────────────────────
-  const listQuery = useProspects({ limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE });
+  const listQuery = useProspects({
+    limit: PAGE_SIZE,
+    offset: (page - 1) * PAGE_SIZE,
+    search: search.trim() || undefined,
+  });
   const prospects = useMemo(() => listQuery.data?.items ?? [], [listQuery.data]);
   const total = listQuery.data?.total ?? 0;
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -151,10 +168,10 @@ export default function CrmPage() {
           )}
         </div>
       );
-    if (view === 'all') return <AllContactsTable rows={filteredContacts} onSelect={openDetail} onRemove={handleRemove} pagination={pagination} />;
-    if (view === 'prospects') return <ProspectsTable rows={filteredContacts} onSelect={openDetail} onRemove={handleRemove} pagination={pagination} />;
-    if (view === 'leads') return <LeadsTable rows={filteredContacts} onSelect={openDetail} onRemove={handleRemove} pagination={pagination} />;
-    if (view === 'clients') return <ClientsTable rows={filteredContacts} onSelect={openDetail} onRemove={handleRemove} pagination={pagination} />;
+    if (view === 'all') return <AllContactsTable rows={filteredContacts} onSelect={openDetail} onRemove={handleRemove} pagination={pagination} onSearchChange={handleSearchChange} />;
+    if (view === 'prospects') return <ProspectsTable rows={filteredContacts} onSelect={openDetail} onRemove={handleRemove} pagination={pagination} onSearchChange={handleSearchChange} />;
+    if (view === 'leads') return <LeadsTable rows={filteredContacts} onSelect={openDetail} onRemove={handleRemove} pagination={pagination} onSearchChange={handleSearchChange} />;
+    if (view === 'clients') return <ClientsTable rows={filteredContacts} onSelect={openDetail} onRemove={handleRemove} pagination={pagination} onSearchChange={handleSearchChange} />;
     return null;
   };
 

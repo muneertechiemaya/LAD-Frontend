@@ -132,6 +132,9 @@ export interface ProspectEvent {
 export interface ListProspectsParams {
   lifecycle_stage?: LifecycleStage;
   channel?: Channel;
+  /** Case-insensitive substring match against name/email/phone/company,
+   *  server-side across the whole tenant (not just the current page). */
+  search?: string;
   limit?: number;
   offset?: number;
 }
