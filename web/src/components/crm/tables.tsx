@@ -568,17 +568,30 @@ export function AllContactsTable({
   const filters: FilterDef[] = [
     {
       key: 'type', label: 'Type',
+      // lifecycleToType (adapt.ts) — the only place that ever computes a
+      // real contact's `type` — exclusively returns 'prospect' | 'lead' |
+      // 'client'. 'imported'/'inbound' are still valid ContactType values
+      // (used by data.ts's unused legacy fixture rows) but no live prospect
+      // can ever have one, so those 2 options always produced
+      // "No matches." — same dead-option shape as the Owner/CSM and Leads
+      // Stage filter fixes above.
       options: [
         { value: 'prospect', label: 'Prospects' },
         { value: 'lead',     label: 'Leads' },
         { value: 'client',   label: 'Clients' },
-        { value: 'imported', label: 'Imported' },
-        { value: 'inbound',  label: 'Inbound' },
       ],
     },
     {
       key: 'owner', label: 'Owner',
-      options: Object.entries(CRM_OWNERS).map(([k, v]) => ({ value: k, label: v.name })),
+      // Derived from the actual rows, same as the Industry filter above —
+      // was a hardcoded CRM_OWNERS list that offered 4 names no real
+      // contact is ever assigned to (toCrmContact always sets owner: ''),
+      // so every option silently produced "No matches." regardless of
+      // which one you picked.
+      options: [...new Set(rows.map((r) => r.owner).filter(Boolean))].map((id) => ({
+        value: id as string,
+        label: CRM_OWNERS[id as string]?.name || (id as string),
+      })),
     },
   ];
   return (
@@ -677,7 +690,10 @@ export function ProspectsTable({
     },
     {
       key: 'owner', label: 'Owner',
-      options: Object.entries(CRM_OWNERS).map(([k, v]) => ({ value: k, label: v.name })),
+      options: [...new Set(rows.map((r) => r.owner).filter(Boolean))].map((id) => ({
+        value: id as string,
+        label: CRM_OWNERS[id as string]?.name || (id as string),
+      })),
     },
   ];
   return (
@@ -760,16 +776,23 @@ export function LeadsTable({
   const filters: FilterDef[] = [
     {
       key: 'stage', label: 'Stage',
+      // LeadsTable only ever receives type === 'lead' rows (page.tsx), and
+      // lifecycleToType (adapt.ts) only maps 'qualified'/'sah' to 'lead' —
+      // 'new'/'contacted'/'engaged' are always type 'prospect'. Listing them
+      // here meant picking "Contacted" or "Engaged" always produced
+      // "No matches.", the same dead-option shape as the Owner/CSM filter
+      // fix above.
       options: [
-        { value: 'contacted', label: 'Contacted' },
-        { value: 'engaged',   label: 'Engaged' },
         { value: 'qualified', label: 'Qualified' },
         { value: 'sah',       label: 'Handed off' },
       ],
     },
     {
       key: 'owner', label: 'Owner',
-      options: Object.entries(CRM_OWNERS).map(([k, v]) => ({ value: k, label: v.name })),
+      options: [...new Set(rows.map((r) => r.owner).filter(Boolean))].map((id) => ({
+        value: id as string,
+        label: CRM_OWNERS[id as string]?.name || (id as string),
+      })),
     },
   ];
   const subtitle = (
@@ -926,7 +949,10 @@ export function ClientsTable({
     },
     {
       key: 'csm', label: 'CSM',
-      options: Object.entries(CRM_OWNERS).map(([k, v]) => ({ value: k, label: v.name })),
+      options: [...new Set(rows.map((r) => r.csm).filter(Boolean))].map((id) => ({
+        value: id as string,
+        label: CRM_OWNERS[id as string]?.name || (id as string),
+      })),
     },
   ];
   const subtitle = (
