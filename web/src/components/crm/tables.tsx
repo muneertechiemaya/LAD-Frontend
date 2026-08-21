@@ -573,7 +573,15 @@ export function AllContactsTable({
     },
     {
       key: 'owner', label: 'Owner',
-      options: Object.entries(CRM_OWNERS).map(([k, v]) => ({ value: k, label: v.name })),
+      // Derived from the actual rows, same as the Industry filter above —
+      // was a hardcoded CRM_OWNERS list that offered 4 names no real
+      // contact is ever assigned to (toCrmContact always sets owner: ''),
+      // so every option silently produced "No matches." regardless of
+      // which one you picked.
+      options: [...new Set(rows.map((r) => r.owner).filter(Boolean))].map((id) => ({
+        value: id as string,
+        label: CRM_OWNERS[id as string]?.name || (id as string),
+      })),
     },
   ];
   return (
@@ -653,7 +661,10 @@ export function ProspectsTable({
     },
     {
       key: 'owner', label: 'Owner',
-      options: Object.entries(CRM_OWNERS).map(([k, v]) => ({ value: k, label: v.name })),
+      options: [...new Set(rows.map((r) => r.owner).filter(Boolean))].map((id) => ({
+        value: id as string,
+        label: CRM_OWNERS[id as string]?.name || (id as string),
+      })),
     },
   ];
   return (
@@ -732,7 +743,10 @@ export function LeadsTable({
     },
     {
       key: 'owner', label: 'Owner',
-      options: Object.entries(CRM_OWNERS).map(([k, v]) => ({ value: k, label: v.name })),
+      options: [...new Set(rows.map((r) => r.owner).filter(Boolean))].map((id) => ({
+        value: id as string,
+        label: CRM_OWNERS[id as string]?.name || (id as string),
+      })),
     },
   ];
   const subtitle = (
@@ -877,7 +891,10 @@ export function ClientsTable({
     },
     {
       key: 'csm', label: 'CSM',
-      options: Object.entries(CRM_OWNERS).map(([k, v]) => ({ value: k, label: v.name })),
+      options: [...new Set(rows.map((r) => r.csm).filter(Boolean))].map((id) => ({
+        value: id as string,
+        label: CRM_OWNERS[id as string]?.name || (id as string),
+      })),
     },
   ];
   const subtitle = (
