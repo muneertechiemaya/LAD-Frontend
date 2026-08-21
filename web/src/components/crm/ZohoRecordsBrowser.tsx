@@ -148,7 +148,7 @@ export const ZohoRecordsBrowser: React.FC = () => {
         }
       } catch { /* transient */ }
       if (tries < 120) setTimeout(tick, 3000);
-      else { pollingRef.current = false; setSyncing(false); setError('Sync is taking longer than expected — refresh shortly.'); }
+      else { pollingRef.current = false; setSyncing(false); setError('Sync is taking longer than expected - refresh shortly.'); }
     };
     setTimeout(tick, 3000);
   }, [loadRecords, recordType, search, pageSize]);
@@ -164,7 +164,7 @@ export const ZohoRecordsBrowser: React.FC = () => {
       const res = await fetchWithTenant(`${ZOHO_API}/sync`, { method: 'POST' });
       const data = await res.json();
       if (res.ok && data?.success) {
-        setSuccess('Sync started — pulling from Zoho. This can take a minute for large accounts…');
+        setSuccess('Sync started - pulling from Zoho. This can take a minute for large accounts…');
         pollSyncStatus();
       } else { setSyncing(false); setError(data?.error || 'Sync failed'); }
     } catch { setSyncing(false); setError('Sync failed'); }
@@ -305,7 +305,7 @@ export const ZohoRecordsBrowser: React.FC = () => {
                       <div className="min-w-0">
                         <div className="text-xs font-semibold text-[#172560] dark:text-white truncate">{r.deal_name || 'Untitled deal'}</div>
                         <div className="text-[11px] text-slate-500 dark:text-[#7a8ba3] truncate">
-                          {[r.account_name, r.contact_name].filter(Boolean).join(' · ') || '—'}
+                          {[r.account_name, r.contact_name].filter(Boolean).join(' · ') || '-'}
                         </div>
                       </div>
                     </div>
@@ -344,7 +344,7 @@ export const ZohoRecordsBrowser: React.FC = () => {
                         {initialsOf(r.name)}
                       </div>
                       <div className="min-w-0">
-                        <div className="text-xs font-semibold text-[#172560] dark:text-white truncate">{r.name || '—'}</div>
+                        <div className="text-xs font-semibold text-[#172560] dark:text-white truncate">{r.name || '-'}</div>
                         <div className="text-[11px] text-slate-500 dark:text-[#7a8ba3] flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
                           {r.email && <span className="inline-flex items-center gap-1"><Mail className="h-3 w-3" />{r.email}</span>}
                           {r.phone && <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3" />{r.phone}</span>}
