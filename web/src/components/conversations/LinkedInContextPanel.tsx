@@ -265,6 +265,57 @@ export function LinkedInContextPanel({ conversation, onClose }: Props) {
       .catch(() => setFollowupPaused(false));
   }, [conversation.id, conversation.campaign_id, conversation.lead_id, followupSupported]);
 
+  // ── Per-lead post-monitoring toggle ─────────────────────────────────────
+  // Reads/writes campaign_leads.lead_data.post_monitoring_paused. The tenant-wide
+  // setting (Settings → Chat → LinkedIn → Monitor Prospect Posts) is the master
+  // switch; `pmTenantEnabled` reflects it so the row can say why it is inert.
+  const [pmPaused, setPmPaused] = useState<boolean | null>(null);
+  const [pmTenantEnabled, setPmTenantEnabled] = useState(false);
+  const [pmSaving, setPmSaving] = useState(false);
+
+  useEffect(() => {
+    if (!followupSupported) { setPmPaused(false); return; }
+    const q = new URLSearchParams({
+      campaign_id: String(conversation.campaign_id),
+      lead_id:     String(conversation.lead_id),
+    });
+    fetch(`${API_BASE}/conversations/${encodeURIComponent(conversation.id)}/post-monitoring?${q.toString()}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d?.success) {
+          setPmPaused(d.data?.paused === true);
+          setPmTenantEnabled(d.data?.tenantEnabled === true);
+        } else {
+          setPmPaused(false);
+        }
+      })
+      .catch(() => setPmPaused(false));
+  }, [conversation.id, conversation.campaign_id, conversation.lead_id, followupSupported]);
+
+  const togglePostMonitoring = async () => {
+    if (pmPaused === null || !followupSupported) return;
+    const next = !pmPaused;
+    setPmSaving(true);
+    setPmPaused(next); // optimistic
+    try {
+      const r = await fetch(`${API_BASE}/conversations/${encodeURIComponent(conversation.id)}/post-monitoring`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paused:      next,
+          campaign_id: conversation.campaign_id,
+          lead_id:     conversation.lead_id,
+        }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!d?.success) setPmPaused(!next); // revert on backend error
+    } catch {
+      setPmPaused(!next);
+    } finally {
+      setPmSaving(false);
+    }
+  };
+
   const toggleFollowupPause = async () => {
     if (followupPaused === null || !followupSupported) return;
     const next = !followupPaused;
@@ -557,6 +608,49 @@ export function LinkedInContextPanel({ conversation, onClose }: Props) {
             </div>
             <p className="mt-1.5 text-[10px] text-slate-400 dark:text-slate-500">
               Pause to stop the scheduled 4-touch sequence for this lead only. The live AI agent still replies to inbound messages.
+            </p>
+          </div>
+        )}
+
+          {/* Per-lead post-monitoring toggle */}
+        {followupSupported && (
+          <div className="px-4 py-4 border-b border-border dark:border-slate-800">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <Sparkles className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">Monitor Their Posts</p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                    {!pmTenantEnabled
+                      ? 'Off tenant-wide — enable in Settings → Chat → LinkedIn'
+                      : pmPaused
+                        ? 'Paused for this lead'
+                        : 'On — engages new posts'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={!pmPaused}
+                onClick={togglePostMonitoring}
+                disabled={pmPaused === null || pmSaving}
+                className={cn(
+                  'relative inline-flex h-5 w-9 flex-shrink-0 rounded-full transition-colors',
+                  !pmPaused ? 'bg-blue-500' : 'bg-slate-300 dark:bg-slate-700',
+                  pmSaving && 'opacity-60'
+                )}
+              >
+                <span
+                  className={cn(
+                    'inline-block h-4 w-4 mt-0.5 ml-0.5 rounded-full bg-white transition-transform',
+                    !pmPaused && 'translate-x-4'
+                  )}
+                />
+              </button>
+            </div>
+            <p className="mt-1.5 text-[10px] text-slate-400 dark:text-slate-500">
+              Pause to stop auto like/comment on this lead&apos;s new posts. Follow-ups and replies are unaffected.
             </p>
           </div>
         )}
