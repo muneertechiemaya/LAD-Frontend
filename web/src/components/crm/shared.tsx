@@ -179,8 +179,14 @@ export interface CrmPagination {
  * The "Showing a–b of N" range is derived from the pagination window alone
  * (the last page may be short), so it stays consistent across the board and
  * every table tab regardless of client-side filtering within the page.
+ *
+ * `matchCount`, when passed, is the number of CURRENT-PAGE rows that survive
+ * an active in-page search/filter — since that search only narrows the page
+ * already fetched (see CrmTable), the range/total above still describe the
+ * unfiltered server-side page. Without this note the two numbers read as
+ * contradictory (e.g. a 2-row search result next to "Showing 1–18 of 18").
  */
-export function Pager({ pagination }: { pagination: CrmPagination }) {
+export function Pager({ pagination, matchCount }: { pagination: CrmPagination; matchCount?: number }) {
   const { page, pageCount, total, pageSize, onPageChange, loading } = pagination;
   const start = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const windowSize = Math.max(0, Math.min(pageSize, total - (page - 1) * pageSize));
@@ -195,6 +201,12 @@ export function Pager({ pagination }: { pagination: CrmPagination }) {
           {start}{end !== start ? `–${end}` : ''}
         </span>{' '}
         of <span className="tabular-nums">{total.toLocaleString()}</span>
+        {matchCount != null && (
+          <>
+            {' '}· <span className="font-semibold text-[#172560] dark:text-white tabular-nums">{matchCount}</span>{' '}
+            match{matchCount === 1 ? 'es' : ''} your search on this page
+          </>
+        )}
       </span>
       <div className="flex items-center gap-1.5">
         <button
