@@ -259,7 +259,6 @@ function CrmTable<R extends CrmContact>({
 }: CrmTableProps<R>) {
   const [q, setQ] = useState('');
   const [activeFilters, setActiveFilters] = useState<Record<string, string | null>>({});
-  const isFiltering = q.trim().length > 0 || Object.values(activeFilters).some((v) => v != null);
 
   const filtered = useMemo(() => {
     let out = rows;
@@ -416,7 +415,7 @@ function CrmTable<R extends CrmContact>({
 
       <footer className="px-5 py-3 border-t border-slate-100 dark:border-[#262831] text-[12px] text-slate-500 dark:text-[#7a8ba3]">
         {pagination ? (
-          <Pager pagination={pagination} matchCount={isFiltering ? filtered.length : undefined} />
+          <Pager pagination={pagination} visibleCount={filtered.length} />
         ) : (
           <span>
             Showing <span className="font-semibold text-[#172560] dark:text-white">{filtered.length}</span> of {count}

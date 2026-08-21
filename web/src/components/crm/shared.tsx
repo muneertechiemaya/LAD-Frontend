@@ -180,19 +180,23 @@ export interface CrmPagination {
  * (the last page may be short), so it stays consistent across the board and
  * every table tab regardless of client-side filtering within the page.
  *
- * `matchCount`, when passed, is the number of CURRENT-PAGE rows that survive
- * an active in-page search/filter — since that search only narrows the page
- * already fetched (see CrmTable), the range/total above still describe the
- * unfiltered server-side page. Without this note the two numbers read as
- * contradictory (e.g. a 2-row search result next to "Showing 1–18 of 18").
+ * `visibleCount`, when passed, is how many of THIS page's rows are actually
+ * rendered in the table body right now. CrmTable narrows that in two ways
+ * that are both invisible to this range/total: its own search box/column
+ * filters, and (for the Prospects/Leads/Clients tabs) page.tsx's own
+ * type filter applied before rows ever reach CrmTable. Whenever the two
+ * numbers disagree — e.g. a 2-row search result, or an empty Clients tab —
+ * next to "Showing 1–18 of 18" — this renders a clarifying count so they
+ * don't read as contradictory.
  */
-export function Pager({ pagination, matchCount }: { pagination: CrmPagination; matchCount?: number }) {
+export function Pager({ pagination, visibleCount }: { pagination: CrmPagination; visibleCount?: number }) {
   const { page, pageCount, total, pageSize, onPageChange, loading } = pagination;
   const start = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const windowSize = Math.max(0, Math.min(pageSize, total - (page - 1) * pageSize));
   const end = total === 0 ? 0 : start + windowSize - 1;
   const canPrev = page > 1 && !loading;
   const canNext = page < pageCount && !loading;
+  const narrowed = visibleCount != null && visibleCount !== windowSize;
   return (
     <div className="flex items-center justify-between gap-3 text-[12px] text-slate-500 dark:text-[#7a8ba3]">
       <span>
@@ -201,10 +205,10 @@ export function Pager({ pagination, matchCount }: { pagination: CrmPagination; m
           {start}{end !== start ? `–${end}` : ''}
         </span>{' '}
         of <span className="tabular-nums">{total.toLocaleString()}</span>
-        {matchCount != null && (
+        {narrowed && (
           <>
-            {' '}· <span className="font-semibold text-[#172560] dark:text-white tabular-nums">{matchCount}</span>{' '}
-            match{matchCount === 1 ? 'es' : ''} your search on this page
+            {' '}· <span className="font-semibold text-[#172560] dark:text-white tabular-nums">{visibleCount}</span>{' '}
+            visible below
           </>
         )}
       </span>
