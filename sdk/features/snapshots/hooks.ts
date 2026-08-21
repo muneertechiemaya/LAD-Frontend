@@ -6,8 +6,12 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { getPipelineOverview, setPipelineActive, setPipelineKnobs } from './api';
-import type { PipelineOverview, PipelineKey, KnobValues } from './types';
+import {
+  getPipelineOverview, setPipelineActive, setPipelineKnobs, requestKnobProposals,
+} from './api';
+import type {
+  PipelineOverview, PipelineKey, KnobValues, KnobProposalsResult,
+} from './types';
 
 export interface UsePipelinesState {
   overview: PipelineOverview | null;
@@ -114,4 +118,73 @@ export function usePipelines(): UsePipelinesState {
   }, []);
 
   return { overview, isLoading, error, pendingKey, savingKey, toggle, saveKnobs, reload: load };
+}
+
+/**
+ * Reading a workspace's history into proposed settings.
+ *
+ * Kept OUT of usePipelines deliberately: that hook loads on mount for every
+ * visitor, and this costs LLM credits and only runs when someone asks for it.
+ */
+export interface UseKnobProposalsState {
+  result: KnobProposalsResult | null;
+  isScanning: boolean;
+  error: string | null;
+  scan: (sampleConversationIds?: string[]) => Promise<void>;
+  scanUpload: (transcript: string, studioParticipants: string[]) => Promise<void>;
+  dismiss: () => void;
+}
+
+export function useKnobProposals(key: PipelineKey): UseKnobProposalsState {
+  const [result, setResult] = useState<KnobProposalsResult | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const runScan = useCallback(async (
+    input: string[] | { transcript: string; studioParticipants: string[] },
+  ) => {
+    setIsScanning(true);
+    setError(null);
+    try {
+      const data = await requestKnobProposals(key, input);
+      setResult(data);
+      // A successful call that found nothing is not an error, but it does need
+      // saying — an empty panel with no explanation reads as a broken feature.
+      if (!data.proposals.length) {
+        setError(data.error || 'Nothing in your history matched these settings.');
+      }
+    } catch (err) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      const serverMessage =
+        (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      // 402 is the credit gate and 422 means there was nothing to read. Both are
+      // the tenant's situation rather than a fault, so they carry the server's
+      // own wording instead of a generic failure.
+      setError(
+        status === 402 || status === 422
+          ? serverMessage || 'Could not read your history right now.'
+          : 'Could not read your history. Please try again.'
+      );
+      setResult(null);
+    } finally {
+      setIsScanning(false);
+    }
+  }, [key]);
+
+  const scan = useCallback(
+    (sampleConversationIds: string[] = []) => runScan(sampleConversationIds),
+    [runScan],
+  );
+  const scanUpload = useCallback(
+    (transcript: string, studioParticipants: string[]) =>
+      runScan({ transcript, studioParticipants }),
+    [runScan],
+  );
+
+  const dismiss = useCallback(() => {
+    setResult(null);
+    setError(null);
+  }, []);
+
+  return { result, isScanning, error, scan, scanUpload, dismiss };
 }

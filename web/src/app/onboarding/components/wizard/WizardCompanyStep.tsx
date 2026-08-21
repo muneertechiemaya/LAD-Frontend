@@ -112,7 +112,7 @@ export default function WizardCompanyStep({ onBack, onContinue }: WizardCompanyS
             className="w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-[#262831] bg-white dark:bg-[#000724] text-[13px] text-[#172560] dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B1957]/30"
           />
         </Field>
-        <Field label="What you sell" hint="One line is fine — keeps the chat focused.">
+        <Field label="What you sell" hint="One line is fine. Keeps the chat focused.">
           <textarea
             rows={2}
             value={form.valueProposition || ''}
@@ -121,7 +121,7 @@ export default function WizardCompanyStep({ onBack, onContinue }: WizardCompanyS
             className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-[#262831] bg-white dark:bg-[#000724] text-[13px] text-[#172560] dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B1957]/30 resize-none"
           />
         </Field>
-        <Field label="Products & services" hint="A short list — what the prospect actually buys.">
+        <Field label="Products & services" hint="A short list of what the prospect actually buys.">
           <textarea
             rows={2}
             value={form.productsServices || ''}

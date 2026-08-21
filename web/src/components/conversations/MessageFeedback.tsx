@@ -60,7 +60,7 @@ export function MessageFeedback({
       setExpected('');
     } catch {
       setRating(previous);
-      setError('Could not save — try again');
+      setError('Could not save - try again');
     } finally {
       setSaving(false);
     }
@@ -132,7 +132,7 @@ export function MessageFeedback({
             rows={3}
             value={expected}
             onChange={(e) => setExpected(e.target.value)}
-            placeholder="e.g. We don't run kids classes on Thursdays — the next one is Saturday at 10am."
+            placeholder="e.g. We don't run kids classes on Thursdays - the next one is Saturday at 10am."
             className="w-full rounded border border-black/10 bg-white p-2 text-[#111b21] outline-none focus:border-emerald-500 dark:border-white/10 dark:bg-[#2a3942] dark:text-white/90"
           />
           <p className="mt-1 text-[11px] text-[#667781] dark:text-white/50">

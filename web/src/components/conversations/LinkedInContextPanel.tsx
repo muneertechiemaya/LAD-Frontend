@@ -531,7 +531,7 @@ export function LinkedInContextPanel({ conversation, onClose }: Props) {
                       ? 'Paused for this lead'
                       : followupPendingCount > 0
                         ? `${followupPendingCount} queued · sends via agent prompt`
-                        : 'On — sends via agent prompt'}
+                        : 'On - sends via agent prompt'}
                   </p>
                 </div>
               </div>
@@ -594,7 +594,7 @@ export function LinkedInContextPanel({ conversation, onClose }: Props) {
                 <AlertCircle className="w-4 h-4 text-amber-500/90 dark:text-amber-400/90 flex-shrink-0 mt-0.5" />
                 <div className="text-[11px] leading-relaxed text-slate-700 dark:text-slate-300">
                   <p className="font-semibold text-slate-900 dark:text-slate-100 mb-1">
-                    Assignment for LinkedIn — coming soon
+                    Assignment for LinkedIn - coming soon
                   </p>
                   <p className="text-slate-600 dark:text-slate-400">
                     Per-conversation assignment for LinkedIn requires the

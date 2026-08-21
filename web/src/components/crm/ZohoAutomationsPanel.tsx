@@ -83,7 +83,7 @@ export const ZohoAutomationsPanel: React.FC = () => {
       if (res.ok && data?.success) {
         const s = data.data || {};
         const li = s.resolved_linkedin ? ` (${s.resolved_linkedin} LinkedIn profiles resolved)` : '';
-        setBanner({ kind: 'ok', text: `Scanned ${s.scanned || 0} tasks — ${s.proposed || 0} proposed, ${s.skipped || 0} skipped${li}.` });
+        setBanner({ kind: 'ok', text: `Scanned ${s.scanned || 0} tasks - ${s.proposed || 0} proposed, ${s.skipped || 0} skipped${li}.` });
         load();
       } else {
         setBanner({ kind: 'err', text: data?.error || 'Scan failed' });
@@ -106,7 +106,7 @@ export const ZohoAutomationsPanel: React.FC = () => {
       if (res.ok && data?.success) {
         const s = data.data || {};
         const li = s.resolved_linkedin ? `, ${s.resolved_linkedin} LinkedIn resolved` : '';
-        setBanner({ kind: 'ok', text: `Searched Zoho for "${query}" — ${s.scanned || 0} matching tasks, ${s.proposed || 0} actionable, ${s.skipped || 0} skipped${li} (see History).` });
+        setBanner({ kind: 'ok', text: `Searched Zoho for "${query}": ${s.scanned || 0} matching tasks, ${s.proposed || 0} actionable, ${s.skipped || 0} skipped${li} (see History).` });
         setShowHistory(true);
         load();
       } else {
@@ -188,7 +188,7 @@ export const ZohoAutomationsPanel: React.FC = () => {
           <div>
             <div className="text-sm font-semibold text-[#172560] dark:text-white">Task Automations</div>
             <p className="text-xs text-slate-500 dark:text-[#7a8ba3]">
-              Turn open Zoho tasks into LinkedIn / WhatsApp / Email actions — you approve each before it sends.
+              Turn open Zoho tasks into LinkedIn / WhatsApp / Email actions. You approve each before it sends.
             </p>
           </div>
         </div>
@@ -281,7 +281,7 @@ export const ZohoAutomationsPanel: React.FC = () => {
             </Button>
           )}
           {search.trim() && visibleHistory.length > 0 && (
-            <div className="text-xs">{visibleHistory.length} matching item(s) in History below — likely skipped (e.g. no LinkedIn URL, or unsupported channel).</div>
+            <div className="text-xs">{visibleHistory.length} matching item(s) in History below. Likely skipped (e.g. no LinkedIn URL, or unsupported channel).</div>
           )}
         </div>
       ) : (
@@ -348,7 +348,7 @@ export const ZohoAutomationsPanel: React.FC = () => {
                       : a.status === 'rejected' ? <X className="h-3.5 w-3.5 text-muted-foreground" />
                       : <Ban className="h-3.5 w-3.5 text-muted-foreground" />}
                     <span className="text-foreground truncate">{a.subject || 'Task'}</span>
-                    <span className="text-muted-foreground truncate">— {a.contact_name || ''}</span>
+                    <span className="text-muted-foreground truncate">: {a.contact_name || ''}</span>
                   </span>
                   <span className="text-muted-foreground capitalize flex-shrink-0">
                     {a.status === 'skipped' ? (a.reason || 'skipped') : a.status}

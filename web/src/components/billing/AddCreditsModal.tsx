@@ -35,7 +35,7 @@ interface AddCreditsModalProps {
 
 /** "$0.033 / credit" — the comparison that makes the bigger packs legible. */
 function perCredit(pkg: CreditPackage): string {
-  if (!pkg.credits) return '—';
+  if (!pkg.credits) return '-';
   return `$${(pkg.price / pkg.credits).toFixed(3)} / credit`;
 }
 

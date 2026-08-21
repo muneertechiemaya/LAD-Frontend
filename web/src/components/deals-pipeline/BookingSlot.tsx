@@ -688,7 +688,7 @@ const BookingSlot: React.FC<BookingSlotProps> = ({
     }
   };
   const formatTime = (time: string) => {
-    if (!time || !time.includes(':')) return time || '—';
+    if (!time || !time.includes(':')) return time || '-';
     const [hours, minutes = '00'] = time.split(':');
     const hour = parseInt(hours, 10);
     if (Number.isNaN(hour)) return time;
@@ -697,10 +697,10 @@ const BookingSlot: React.FC<BookingSlotProps> = ({
     return `${displayHour}:${minutes} ${ampm}`;
   };
   const formatDate = (dateString: string) => {
-    if (!dateString) return '—';
+    if (!dateString) return '-';
     const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(dateString);
     const date = new Date(dateOnly ? `${dateString}T00:00:00` : dateString);
-    if (isNaN(date.getTime())) return '—';
+    if (isNaN(date.getTime())) return '-';
     return date.toLocaleDateString('en-US', {
       weekday: 'short',
       year: 'numeric',

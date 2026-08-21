@@ -149,7 +149,7 @@ export const RecurringZohoCampaignModal: React.FC<{ open: boolean; onClose: () =
             </div>
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground">Only contacts with tag (optional)</label>
-              <Input value={tag} onChange={(e) => setTag(e.target.value)} placeholder="e.g. Auto-Conversion Lead — leave blank for all new" />
+              <Input value={tag} onChange={(e) => setTag(e.target.value)} placeholder="e.g. Auto-Conversion Lead. Leave blank for all new." />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">

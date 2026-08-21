@@ -56,7 +56,7 @@ interface TenantDetail {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmt(dateStr: string) {
-  if (!dateStr) return '—';
+  if (!dateStr) return '-';
   return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
@@ -176,15 +176,15 @@ function DetailPanel({ tenantId, environment, onClose }: {
                     </p>
                     {[
                       { label: 'Tenant ID',  value: detail.tenant.id,   icon: Building2 },
-                      { label: 'User ID',    value: detail.users[0]?.id || '—', icon: User },
-                      { label: 'Database',   value: detail.tenant.db_name || detail.tenant.db_label || '—', icon: Database },
-                      { label: 'DB URL',     value: detail.tenant.db_url || '—', icon: Key },
+                      { label: 'User ID',    value: detail.users[0]?.id || '-', icon: User },
+                      { label: 'Database',   value: detail.tenant.db_name || detail.tenant.db_label || '-', icon: Database },
+                      { label: 'DB URL',     value: detail.tenant.db_url || '-', icon: Key },
                     ].map(({ label, value, icon: Icon }) => (
                       <div key={label} className="flex items-center gap-3 px-4 py-3 border-b border-gray-800/50 last:border-0">
                         <Icon size={13} className="text-gray-600 shrink-0" />
                         <span className="text-xs text-gray-500 w-24 shrink-0">{label}</span>
                         <span className="font-mono text-xs text-gray-200 flex-1 truncate">{value}</span>
-                        {value !== '—' && <CopyBtn text={value} />}
+                        {value !== '-' && <CopyBtn text={value} />}
                       </div>
                     ))}
                   </div>
@@ -195,7 +195,7 @@ function DetailPanel({ tenantId, environment, onClose }: {
                       Login Credentials
                     </p>
                     {[
-                      { label: 'Email',     value: detail.users[0]?.email || detail.tenant.email || '—', icon: Mail },
+                      { label: 'Email',     value: detail.users[0]?.email || detail.tenant.email || '-', icon: Mail },
                       { label: 'Login URL', value: 'https://web.mrlads.com/login', icon: ExternalLink },
                     ].map(({ label, value, icon: Icon }) => (
                       <div key={label} className="flex items-center gap-3 px-4 py-3 border-b border-gray-800/50 last:border-0">
@@ -543,7 +543,7 @@ export default function TenantManagePage() {
                 <div className="flex items-center gap-1.5">
                   <Database size={11} className={t.has_db ? 'text-green-500' : 'text-gray-600'} />
                   <span className="text-xs text-gray-400 font-mono truncate">
-                    {t.db_label?.split(' - ')[0] || (t.has_db ? 'configured' : '—')}
+                    {t.db_label?.split(' - ')[0] || (t.has_db ? 'configured' : '-')}
                   </span>
                 </div>
 

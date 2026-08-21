@@ -274,7 +274,7 @@ function TagGroup({ items, selected, onChange, locked = [] }: {
             key={item}
             type="button"
             onClick={() => toggle(item)}
-            title={isLocked ? 'Required — always enabled. Cannot be removed.' : undefined}
+            title={isLocked ? 'Required - always enabled. Cannot be removed.' : undefined}
             className={`px-2.5 py-1 rounded text-xs font-mono transition-all border inline-flex items-center gap-1
               ${isLocked
                 ? 'bg-cyan-900/40 border-cyan-500 text-cyan-300 cursor-not-allowed'
@@ -367,7 +367,7 @@ function StepAdmin({ form, set }: { form: FormData; set: (k: keyof FormData, v: 
         <FieldRow label="Admin Email" required>
           <TextInput value={form.adminEmail} onChange={v => set('adminEmail', v)} placeholder="jane@acme.com" type="email" />
         </FieldRow>
-        <FieldRow label="Password" required hint="Min 8 chars — save this, it won't be shown again">
+        <FieldRow label="Password" required hint="Min 8 chars. Save this, it won't be shown again.">
           <div className="relative">
             <input
               type={showPw ? 'text' : 'password'}
@@ -448,7 +448,7 @@ function StepWaba({ form, set }: { form: FormData; set: (k: keyof FormData, v: a
   return (
     <div>
       <h2 className="text-lg font-semibold text-white mb-4">WhatsApp Business API</h2>
-      <p className="text-sm text-gray-500 mb-6">Optional — configure WABA integration for this tenant.</p>
+      <p className="text-sm text-gray-500 mb-6">Optional: configure WABA integration for this tenant.</p>
 
       <div className="mb-6">
         <Toggle checked={form.enableWaba} onChange={v => set('enableWaba', v)} label="Enable WABA integration" />
@@ -480,7 +480,7 @@ function StepWaba({ form, set }: { form: FormData; set: (k: keyof FormData, v: a
             </FieldRow>
           </div>
           <div className="col-span-2">
-            <FieldRow label="App Secret" required hint="Facebook App Secret — used to verify webhook HMAC signatures (Meta App Dashboard → Settings → Basic)">
+            <FieldRow label="App Secret" required hint="Facebook App Secret, used to verify webhook HMAC signatures (Meta App Dashboard → Settings → Basic)">
               <TextInput value={form.wabaAppSecret} onChange={v => set('wabaAppSecret', v)} placeholder="32-character hex string" type="password" />
             </FieldRow>
           </div>
@@ -645,7 +645,7 @@ function ReviewRow({ label, value, mono }: { label: string; value: string; mono?
   return (
     <div className="flex justify-between items-center py-2 border-b border-gray-800 last:border-0">
       <span className="text-xs text-gray-500 w-44 shrink-0">{label}</span>
-      <span className={`text-sm text-gray-200 text-right ${mono ? 'font-mono text-xs' : ''}`}>{value || '—'}</span>
+      <span className={`text-sm text-gray-200 text-right ${mono ? 'font-mono text-xs' : ''}`}>{value || '-'}</span>
     </div>
   );
 }
@@ -679,7 +679,7 @@ function StepReview({ form }: { form: FormData }) {
 
         <div className="bg-[#1a1f2e] rounded-lg border border-gray-800 p-4">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Database</p>
-          <ReviewRow label="Auto-create" value={form.createDatabase ? 'Yes — run full DDL' : 'No — custom URL'} />
+          <ReviewRow label="Auto-create" value={form.createDatabase ? 'Yes: run full DDL' : 'No: custom URL'} />
           {!form.createDatabase && <ReviewRow label="Custom URL" value={form.customDbUrl} mono />}
         </div>
 
@@ -735,7 +735,7 @@ function ProvisionLog({ logs, done, result, onReset }: {
               'text-gray-600'
             }>
               {l.step}
-              {l.detail && <span className="text-gray-600 ml-2">— {l.detail}</span>}
+              {l.detail && <span className="text-gray-600 ml-2">- {l.detail}</span>}
             </span>
           </div>
         ))}
@@ -893,7 +893,7 @@ export default function TenantOnboardPage() {
           capabilities: [...new Set([...prev.capabilities, ...next.essential_capabilities])],
         }));
       })
-      .catch(() => { /* silent — UI falls back to hardcoded DEFAULT_* lists */ });
+      .catch(() => { /* silent - UI falls back to hardcoded DEFAULT_* lists */ });
     return () => { cancelled = true; };
   }, [authState]);
 

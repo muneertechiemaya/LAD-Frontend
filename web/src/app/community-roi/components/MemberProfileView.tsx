@@ -517,7 +517,7 @@ export default function MemberProfileView({ memberId, onBack }: MemberProfileVie
               </>
             ) : (
               <>
-                <span className="text-2xl font-bold text-slate-300 leading-tight">—</span>
+                <span className="text-2xl font-bold text-slate-300 leading-tight">-</span>
                 <span className="text-[11px] font-medium text-slate-400 italic">No meetings yet</span>
               </>
             )}

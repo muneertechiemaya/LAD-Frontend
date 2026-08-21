@@ -2039,7 +2039,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
 
       {/* Messages */}
       {/*
-        68 px = px-4 (16) + avatar w-10 (40) + gap-3 (12) — matches the
+        68 px = px-4 (16) + avatar w-10 (40) + gap-3 (12) - matches the
         header's contact-name start position exactly.
         We target both sides:
           • ml-[68px]  on the incoming bubble container
@@ -2225,7 +2225,7 @@ const [voicePlayProgress, setVoicePlayProgress] = useState(0);
             <DropdownMenuTrigger asChild>
               <button
                 className={cn('h-9 w-9 flex items-center justify-center rounded-full transition-colors hover:bg-[#00a884]/10 dark:hover:bg-[#00a884]/20 flex-shrink-0', agentType === 'human' && 'text-orange-500')}
-                title={agentType === 'human' ? 'Human agent — tap to hand back to Mr LAD' : 'Mr LAD is replying — tap to take over'}
+                title={agentType === 'human' ? 'Human agent - tap to hand back to Mr LAD' : 'Mr LAD is replying - tap to take over'}
               >
                 {agentType === 'human' ? <User className="h-5 w-5" /> : <img src={isDark ? '/logo-white.svg' : '/logo.svg'} alt="Mr LAD" className="h-7 w-7 object-contain" />}
               </button>
@@ -2648,7 +2648,7 @@ function WABASidebar({
       const res = await fetchWithTenant('/api/whatsapp-conversations/wa-groups/sync', { method: 'POST' });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.success === false) {
-        setGroupBroadcastResult(data.error || 'Sync failed — is your Personal WhatsApp connected?');
+        setGroupBroadcastResult(data.error || 'Sync failed - is your Personal WhatsApp connected?');
       } else {
         setGroupBroadcastResult(data.message || `Synced ${data.synced ?? 0} WhatsApp group${data.synced === 1 ? '' : 's'}.`);
         // Refresh the panel list so the newly-synced groups appear.
@@ -2674,8 +2674,8 @@ function WABASidebar({
     setPanelSelectionMode(true); // show checkboxes so the loaded set is visible/editable
     setGroupBroadcastResult(
       present.length < ids.length
-        ? `${present.length}/${ids.length} groups from "${list.name}" available — re-sync if some are missing.`
-        : `Loaded "${list.name}" — ${present.length} group${present.length === 1 ? '' : 's'} selected. Compose a message to broadcast.`,
+        ? `${present.length}/${ids.length} groups from "${list.name}" available - re-sync if some are missing.`
+        : `Loaded "${list.name}" - ${present.length} group${present.length === 1 ? '' : 's'} selected. Compose a message to broadcast.`,
     );
   }, [newChatGroups]);
 
@@ -3798,7 +3798,7 @@ function WABASidebar({
       </div>
 
       {/* ════════════════════════════════════════════════════════════════════
-          Rich New Chat Overlay — mirrors ConversationSidebar's isNewChatOpen panel
+          Rich New Chat Overlay - mirrors ConversationSidebar's isNewChatOpen panel
           absolute inset-0 z-30 so it covers only this sidebar column
       ════════════════════════════════════════════════════════════════════ */}
       {isNewChatOpen && (
@@ -4360,7 +4360,7 @@ function WABASidebar({
                       title={
                         isBroadcastList
                           ? `Load ${memberGroupCount} group${memberGroupCount !== 1 ? 's' : ''} from "${group.name}"`
-                          : panelSelectionMode ? undefined : `Open ${group.name} — double-click to multi-select`
+                          : panelSelectionMode ? undefined : `Open ${group.name} - double-click to multi-select`
                       }
                       className="group/item relative px-4 py-3 hover:bg-zinc-100/80 dark:hover:bg-zinc-800/60 transition-colors cursor-pointer select-none border-b border-zinc-100 dark:border-zinc-800/40"
                     >
@@ -4533,7 +4533,7 @@ function WABASidebar({
               <p className="px-4 pt-1 text-[10px] text-zinc-500 dark:text-zinc-400">
                 {groupBroadcastSending
                   ? 'Sending…'
-                  : 'Compose below (text, photo, document, poll…) — posts into each selected group chat · throttled · max 250/day'}
+                  : 'Compose below (text, photo, document, poll…) - posts into each selected group chat · throttled · max 250/day'}
               </p>
               {groupBroadcastResult && (
                 <p className="px-4 pt-1 text-[11px] text-emerald-600 dark:text-emerald-400">{groupBroadcastResult}</p>
@@ -4651,7 +4651,7 @@ function WABASidebar({
             <p className="text-muted-foreground text-xs mt-0.5">
               Sent <strong>{sendSummary.sent}</strong> today.{' '}
               <strong>{sendSummary.queued}</strong> remaining scheduled across{' '}
-              <strong>{sendSummary.scheduledDays}</strong> day{sendSummary.scheduledDays !== 1 ? 's' : ''} — continues at 9:00 AM daily.
+              <strong>{sendSummary.scheduledDays}</strong> day{sendSummary.scheduledDays !== 1 ? 's' : ''} - continues at 9:00 AM daily.
             </p>
           </div>
           <button className="text-muted-foreground hover:text-foreground text-xs mt-0.5" onClick={() => setSendSummary(null)}>✕</button>

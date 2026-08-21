@@ -579,7 +579,7 @@ export function usePlayground({
     advanceBuilderStep: async (userInput?: string | string[], action?: string) => {
       if (demoTimerRef.current) clearTimeout(demoTimerRef.current);
 
-      console.warn(`[Playground] advanceBuilderStep — input: ${userInput}, action: ${action}`);
+      console.warn(`[Playground] advanceBuilderStep - input: ${userInput}, action: ${action}`);
 
       setStep("guided-journey"); // Show loading screen while waiting
 

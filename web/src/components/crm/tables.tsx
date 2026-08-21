@@ -51,7 +51,7 @@ function TypePill({ type }: { type: CrmContact['type'] }) {
 }
 
 function StagePill({ stage }: { stage?: string }) {
-  if (!stage) return <span className="text-[11.5px] text-slate-400">—</span>;
+  if (!stage) return <span className="text-[11.5px] text-slate-400">-</span>;
   const m = ({
     new:       { label: 'New',         color: '#64748b', bg: '#f1f5f9' },
     contacted: { label: 'Contacted',   color: '#0ea5e9', bg: '#e0f2fe' },
@@ -90,7 +90,7 @@ function ScoreBar({ value, color = T.primary }: { value: number; color?: string 
 }
 
 function EmailCell({ email, verified }: { email?: string | null; verified?: boolean }) {
-  if (!email) return <span className="text-[11.5px] text-slate-400">—</span>;
+  if (!email) return <span className="text-[11.5px] text-slate-400">-</span>;
   return (
     <div className="flex items-center gap-1.5 min-w-0">
       <span className="text-[12px] text-[#172560] dark:text-white truncate">{email}</span>
@@ -100,7 +100,7 @@ function EmailCell({ email, verified }: { email?: string | null; verified?: bool
 }
 
 function PhoneCell({ phone, verified }: { phone?: string | null; verified?: boolean }) {
-  if (!phone) return <span className="text-[11.5px] text-slate-400">—</span>;
+  if (!phone) return <span className="text-[11.5px] text-slate-400">-</span>;
   return (
     <div className="flex items-center gap-1.5 min-w-0">
       <span className="text-[12px] tabular-nums text-[#172560] dark:text-white truncate">{phone}</span>
@@ -110,9 +110,9 @@ function PhoneCell({ phone, verified }: { phone?: string | null; verified?: bool
 }
 
 function OwnerCell({ ownerId }: { ownerId?: string }) {
-  if (!ownerId) return <span className="text-[11.5px] text-slate-400">—</span>;
+  if (!ownerId) return <span className="text-[11.5px] text-slate-400">-</span>;
   const o = CRM_OWNERS[ownerId];
-  if (!o) return <span className="text-[11.5px] text-slate-400">—</span>;
+  if (!o) return <span className="text-[11.5px] text-slate-400">-</span>;
   return (
     <div className="flex items-center gap-2">
       <CrmAvatar name={o.name} initials={o.initials} tone={o.tone} size={22} />
@@ -128,8 +128,8 @@ function RowActions({ onRemove }: { onRemove?: () => void }) {
         <button
           className="w-7 h-7 grid place-items-center rounded-md text-slate-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-600 dark:hover:text-rose-300"
           onClick={(e) => { e.stopPropagation(); onRemove(); }}
-          aria-label="Remove — not a fit"
-          title="Remove — not a fit"
+          aria-label="Remove: not a fit"
+          title="Remove: not a fit"
         >
           <Trash2 className="w-3.5 h-3.5" />
         </button>
@@ -499,7 +499,7 @@ export function AllContactsTable({
       label: 'Last activity', sortable: true, nowrap: true,
       render: (r) => (
         <span className="text-[12px] tabular-nums text-slate-600 dark:text-[#7a8ba3]" title={r.lastActivityAt ?? ''}>
-          {r.lastActivityAt ? `${rel(r.lastActivityAt)} ago` : '—'}
+          {r.lastActivityAt ? `${rel(r.lastActivityAt)} ago` : '-'}
         </span>
       ),
     },
@@ -531,7 +531,7 @@ export function AllContactsTable({
   return (
     <CrmTable
       title="All Contacts"
-      subtitle="Every contact in this tenant — imported, prospected, inbound, and customer."
+      subtitle="Every contact in this tenant: imported, prospected, inbound, and customer."
       count={rows.length}
       columns={columns}
       rows={rows}
@@ -551,7 +551,7 @@ export function ProspectsTable({
     { label: 'Prospect', nowrap: true, render: (r) => <NameCell row={r} withCompany /> },
     { label: 'Industry', render: (r) => <span className="text-[12px] text-[#172560] dark:text-white">{r.industry}</span> },
     { label: 'Geo',      render: (r) => <span className="text-[12px] text-slate-600 dark:text-[#7a8ba3]">{r.geo}</span> },
-    { label: 'Fit',      sortable: true, render: (r) => (r.fit != null ? <ScoreBar value={r.fit} /> : <span className="text-[11.5px] text-slate-400">—</span>) },
+    { label: 'Fit',      sortable: true, render: (r) => (r.fit != null ? <ScoreBar value={r.fit} /> : <span className="text-[11.5px] text-slate-400">-</span>) },
     {
       label: 'Intent',
       render: (r) => (
@@ -579,7 +579,7 @@ export function ProspectsTable({
             {r.warmPath}
           </span>
         ) : (
-          <span className="text-[11.5px] text-slate-400">—</span>
+          <span className="text-[11.5px] text-slate-400">-</span>
         ),
     },
     { label: 'Channels', render: (r) => <ChannelChips channels={r.channels} /> },
@@ -589,7 +589,7 @@ export function ProspectsTable({
       label: 'Last touch', sortable: true, nowrap: true,
       render: (r) => (
         <span className="text-[12px] tabular-nums text-slate-600 dark:text-[#7a8ba3]">
-          {r.lastActivityAt ? `${rel(r.lastActivityAt)} ago` : '—'}
+          {r.lastActivityAt ? `${rel(r.lastActivityAt)} ago` : '-'}
         </span>
       ),
     },
@@ -610,7 +610,7 @@ export function ProspectsTable({
   return (
     <CrmTable
       title="Prospects"
-      subtitle="Top-of-funnel — sourced from Apollo, LinkedIn Sales Nav, imports, or referrals. Not yet qualified."
+      subtitle="Top-of-funnel. Sourced from Apollo, LinkedIn Sales Nav, imports, or referrals. Not yet qualified."
       count={rows.length}
       columns={columns}
       rows={rows}
@@ -649,7 +649,7 @@ export function LeadsTable({
       ),
     },
     { label: 'Source',    render: (r) => <span className="text-[12px] text-slate-600 dark:text-[#7a8ba3]">{r.source}</span> },
-    { label: 'Next step', render: (r) => <span className="text-[12px] text-[#172560] dark:text-white">{r.nextStep || '—'}</span> },
+    { label: 'Next step', render: (r) => <span className="text-[12px] text-[#172560] dark:text-white">{r.nextStep || '-'}</span> },
     {
       label: 'Expected close', sortable: true, nowrap: true,
       render: (r) => (
@@ -663,7 +663,7 @@ export function LeadsTable({
       label: 'Last activity', sortable: true, nowrap: true,
       render: (r) => (
         <span className="text-[12px] tabular-nums text-slate-600 dark:text-[#7a8ba3]">
-          {r.lastActivityAt ? `${rel(r.lastActivityAt)} ago` : '—'}
+          {r.lastActivityAt ? `${rel(r.lastActivityAt)} ago` : '-'}
         </span>
       ),
     },
@@ -777,7 +777,7 @@ export function ClientsTable({
     {
       label: 'Renewal', sortable: true, nowrap: true,
       render: (r) => {
-        if (!r.renewalDate) return <span className="text-[11.5px] text-slate-400">—</span>;
+        if (!r.renewalDate) return <span className="text-[11.5px] text-slate-400">-</span>;
         const days = Math.round(
           (new Date(r.renewalDate).getTime() - NOW.getTime()) / (1000 * 60 * 60 * 24)
         );
@@ -801,7 +801,7 @@ export function ClientsTable({
       label: 'Last contact', nowrap: true,
       render: (r) => (
         <span className="text-[12px] tabular-nums text-slate-600 dark:text-[#7a8ba3]">
-          {r.lastActivityAt ? `${rel(r.lastActivityAt)} ago` : '—'}
+          {r.lastActivityAt ? `${rel(r.lastActivityAt)} ago` : '-'}
         </span>
       ),
     },

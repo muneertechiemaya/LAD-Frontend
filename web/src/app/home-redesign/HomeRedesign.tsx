@@ -284,7 +284,7 @@ export default function HomeRedesign() {
                       onClick={() => {
                         if (r.kind === "ICP") {
                           addTool("find");
-                          setValue("Get leads from my active ICP — VP of Sales · UK SaaS");
+                          setValue("Get leads from my active ICP: VP of Sales · UK SaaS");
                         } else if (r.kind === "search") {
                           addTool("find");
                           setValue(r.title);

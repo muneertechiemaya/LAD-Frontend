@@ -124,7 +124,7 @@ export default function CampaignLeadsPage() {
         // Async path — request submitted to Apollo phone service, webhook delivers within 2-5 min
         push({
           title: 'Request Submitted',
-          description: response.message || 'Phone reveal submitted. The number will appear within 2–5 minutes — refresh to check.'
+          description: response.message || 'Phone reveal submitted. The number will appear within 2–5 minutes - refresh to check.'
         });
       } else {
         push({ title: 'Error', description: response.error || 'Failed to reveal phone number' });
@@ -361,7 +361,7 @@ export default function CampaignLeadsPage() {
           setConnectedSenders(data.data);
           setFollowupFromEmail(data.data[0].email);
         }
-      } catch { /* non-fatal — user will see "no account" error on send */ }
+      } catch { /* non-fatal - user will see "no account" error on send */ }
     }
 
     // Use cached message if available — skip LLM call entirely
@@ -677,7 +677,7 @@ export default function CampaignLeadsPage() {
                   </select>
                 ) : (
                   <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-md px-3 py-2">
-                    No connected email account — connect Gmail or Outlook in Settings → Integrations.
+                    No connected email account - connect Gmail or Outlook in Settings → Integrations.
                   </p>
                 )}
               </div>

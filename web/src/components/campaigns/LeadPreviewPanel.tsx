@@ -174,7 +174,7 @@ export default function LeadPreviewPanel({
 
           <p className="text-[11px] text-muted-foreground inline-flex items-start gap-1">
             <Sparkles className="h-3 w-3 mt-0.5 flex-shrink-0" />
-            Scores come from your ICP profile. Anything under 50% is a weak match — tighten the
+            Scores come from your ICP profile. Anything under 50% is a weak match - tighten the
             targeting on the source node if too many look wrong.
           </p>
         </div>

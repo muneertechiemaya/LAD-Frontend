@@ -385,7 +385,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
       if (data.success && (data.sent ?? 0) > 0) {
         setTestResult({ ok: true, message: `Test email sent to ${addr}` });
       } else {
-        const errMsg = data.errors?.[0]?.error || data.error || data.detail || 'Send failed — check your email account is connected in Settings → Integrations.';
+        const errMsg = data.errors?.[0]?.error || data.error || data.detail || 'Send failed - check your email account is connected in Settings → Integrations.';
         setTestResult({ ok: false, message: errMsg });
       }
     } catch (e) {
@@ -707,7 +707,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
                     placeholder="e.g. Quick question about {{company}}" className={inputCls} />
                   {template.subject.length > 0 && (
                     <p className={`text-[11px] ${template.subject.length > 50 ? 'text-amber-500 dark:text-amber-400' : 'text-gray-400 dark:text-[#7a8ba3]'}`}>
-                      {template.subject.length}/50 chars — {template.subject.length <= 50 ? 'good length ✓' : 'consider shortening'}
+                      {template.subject.length}/50 chars - {template.subject.length <= 50 ? 'good length ✓' : 'consider shortening'}
                     </p>
                   )}
                 </div>

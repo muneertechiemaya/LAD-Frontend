@@ -90,15 +90,15 @@ export const BusinessHoursModal: React.FC<BusinessHoursModalProps> = ({ initialD
   const [activeDays, setActiveDays] = useState<number[]>(initialData?.activeDays ?? [0, 1, 2, 3, 4]);
 
   const timezoneOptions = [
-    { value: 'UTC+0', label: 'UTC — Coordinated Universal Time (UTC+0)', short: 'UTC(UTC+0)' },
-    { value: 'GMT+0', label: 'GMT — Greenwich Mean Time (UTC+0)', short: 'GMT(UTC+0)' },
-    { value: 'GST+4', label: 'GST — Gulf Standard Time (UTC+4)', short: 'GST(UTC+4)' },
-    { value: 'IST+5:30', label: 'IST — India Standard Time (UTC+5:30)', short: 'IST(UTC+5:30)' },
-    { value: 'EST-5', label: 'EST — Eastern Standard Time (UTC−5)', short: 'EST(UTC-5)' },
-    { value: 'PST-8', label: 'PST — Pacific Standard Time (UTC−8)', short: 'PST(UTC-8)' },
-    { value: 'CET+1', label: 'CET — Central European Time (UTC+1)', short: 'CET(UTC+1)' },
-    { value: 'JST+9', label: 'JST — Japan Standard Time (UTC+9)', short: 'JST(UTC+9)' },
-    { value: 'AEST+10', label: 'AEST — Australian Eastern Time (UTC+10)', short: 'AEST(UTC+10)' },
+    { value: 'UTC+0', label: 'UTC - Coordinated Universal Time (UTC+0)', short: 'UTC(UTC+0)' },
+    { value: 'GMT+0', label: 'GMT - Greenwich Mean Time (UTC+0)', short: 'GMT(UTC+0)' },
+    { value: 'GST+4', label: 'GST - Gulf Standard Time (UTC+4)', short: 'GST(UTC+4)' },
+    { value: 'IST+5:30', label: 'IST - India Standard Time (UTC+5:30)', short: 'IST(UTC+5:30)' },
+    { value: 'EST-5', label: 'EST - Eastern Standard Time (UTC−5)', short: 'EST(UTC-5)' },
+    { value: 'PST-8', label: 'PST - Pacific Standard Time (UTC−8)', short: 'PST(UTC-8)' },
+    { value: 'CET+1', label: 'CET - Central European Time (UTC+1)', short: 'CET(UTC+1)' },
+    { value: 'JST+9', label: 'JST - Japan Standard Time (UTC+9)', short: 'JST(UTC+9)' },
+    { value: 'AEST+10', label: 'AEST - Australian Eastern Time (UTC+10)', short: 'AEST(UTC+10)' },
   ];
 
   const toggleDay = (i: number) => {

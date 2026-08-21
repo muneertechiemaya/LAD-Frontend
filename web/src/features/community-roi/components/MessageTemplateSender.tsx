@@ -228,8 +228,8 @@ function suggestField(body: string, paramNumber: number, templateName?: string):
 
 /** "A, B and C" — drops empty/"—" slots so a short week never shows a dangling dash. */
 function joinNames(names: string[]): string {
-  const parts = (names || []).filter(n => n && n !== '—');
-  if (parts.length === 0) return '—';
+  const parts = (names || []).filter(n => n && n !== '-');
+  if (parts.length === 0) return '-';
   if (parts.length === 1) return parts[0];
   return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
 }
@@ -257,7 +257,7 @@ function resolveParam(
     const weekKey = allReasonsMatch[1] as WeekKey;
     const memberRecs = recData?.[member?.id];
     const ready = memberRecs?.[`${weekKey}_with_reasons` as WeekReasonKey];
-    if (ready && ready !== '—') return ready;
+    if (ready && ready !== '-') return ready;
     return joinNames(memberRecs?.[weekKey] ?? []);
   }
   // One bullet line: "Name — reason". Served ready-made by the backend
@@ -268,7 +268,7 @@ function resolveParam(
     const idx = parseInt(lineMatch[2], 10) - 1;
     const memberRecs = recData?.[member?.id];
     const lines = memberRecs?.[`${weekKey}_lines` as WeekLinesKey];
-    return lines?.[idx] || memberRecs?.[weekKey]?.[idx] || '—';
+    return lines?.[idx] || memberRecs?.[weekKey]?.[idx] || '-';
   }
   // Whole-week list of names only, in one variable.
   const allNamesMatch = field.match(/^rec_(week[1-4])_all$/);
@@ -283,7 +283,7 @@ function resolveParam(
     const rankIdx = parseInt(parts[2]) - 1;
     const memberRecs = recData?.[member?.id];
     const weekRecs = memberRecs?.[weekKey] ?? [];
-    return weekRecs[rankIdx] || '—';
+    return weekRecs[rankIdx] || '-';
   }
   return String(member?.[field] ?? '');
 }
@@ -316,7 +316,7 @@ function FailedRecipientsButton({
     )
       .then(r => r.json())
       .then(json => { if (!cancelled && json?.success) setCount(json.count); })
-      .catch(() => { /* silent — feature is optional */ });
+      .catch(() => { /* silent - feature is optional */ });
     return () => { cancelled = true; };
   }, [templateName]);
 
@@ -494,7 +494,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
         );
         const data = await res.json();
         if (data.url) setHeaderMediaUrl(data.url);
-      } catch { /* silent — user can paste URL manually */ }
+      } catch { /* silent - user can paste URL manually */ }
       finally { setResolvingMedia(false); }
     } else {
       setHeaderMediaUrl('');
@@ -593,7 +593,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
           if (data.failed > 0) {
             console.warn(`[TemplateSend] ${data.sent} sent, ${data.failed} failed`, data.results);
           } else {
-            console.warn(`[TemplateSend] Complete — ${data.sent} sent`);
+            console.warn(`[TemplateSend] Complete - ${data.sent} sent`);
           }
         })
         .catch(err => console.error('[TemplateSend] Error:', err));
@@ -676,7 +676,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
                     </div>
                     {t.quality_pending && (
                       <p className="text-[10px] text-amber-600 mt-1 mb-1">
-                        ⚠️ Meta is assessing quality — delivery may be limited until approved.
+                        ⚠️ Meta is assessing quality - delivery may be limited until approved.
                       </p>
                     )}
                     <p className="text-xs text-slate-500 font-mono leading-relaxed line-clamp-3">
@@ -801,7 +801,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
                   />
                   <p className="text-[10px] text-slate-400 mt-1">
                     {headerMediaUrl
-                      ? `✓ ${selectedTemplate?.header_type} ready to attach — edit URL to change`
+                      ? `✓ ${selectedTemplate?.header_type} ready to attach - edit URL to change`
                       : `Paste a public URL for the ${selectedTemplate?.header_type} to attach to this template`}
                   </p>
                 </>
@@ -827,7 +827,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
                     <span className="text-sm font-medium text-slate-700">Parameter {paramNum}</span>
                     {resolved !== null && (
                       <span className="ml-auto text-xs text-slate-400">
-                        Preview: <span className="font-semibold text-slate-700">{resolved || '—'}</span>
+                        Preview: <span className="font-semibold text-slate-700">{resolved || '-'}</span>
                       </span>
                     )}
                   </div>
@@ -850,7 +850,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
                       {FIELD_OPTIONS.filter(o => o.group === 'date').map(opt => {
                         const date = resolveParam(null, opt.value, '');
                         return (
-                          <option key={opt.value} value={opt.value}>{opt.label} — {date}</option>
+                          <option key={opt.value} value={opt.value}>{opt.label} - {date}</option>
                         );
                       })}
                     </optgroup>
@@ -860,7 +860,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
                         const previewName = previewMember
                           ? resolveParam(previewMember, opt.value, '', memberRecData)
                           : null;
-                        const suffix = previewName && previewName !== '—' ? ` (${previewName})` : '';
+                        const suffix = previewName && previewName !== '-' ? ` (${previewName})` : '';
                         return (
                           <option key={opt.value} value={opt.value}>{opt.label}{suffix}</option>
                         );
@@ -992,7 +992,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
                     {/* Show resolved param preview per member */}
                     {paramMapping.length > 0 && hasPhone && (
                       <p className="text-[10px] text-slate-400 ml-2 max-w-[120px] truncate">
-                        {paramMapping.map(m => resolveParam(member, m.field, m.customValue, memberRecData) || '—').join(' · ')}
+                        {paramMapping.map(m => resolveParam(member, m.field, m.customValue, memberRecData) || '-').join(' · ')}
                       </p>
                     )}
                   </label>
@@ -1005,7 +1005,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
             📱 Will send to <strong>{recipientCount}</strong> {recipientCount === 1 ? 'member' : 'members'}
             {noPhoneCount > 0 && (
               <span className="block mt-1 text-xs text-amber-700">
-                ⚠ {noPhoneCount} member{noPhoneCount > 1 ? 's' : ''} skipped — no phone number on file
+                ⚠ {noPhoneCount} member{noPhoneCount > 1 ? 's' : ''} skipped - no phone number on file
               </span>
             )}
           </div>
