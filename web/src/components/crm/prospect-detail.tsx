@@ -29,6 +29,10 @@ interface ProspectDetailProps {
    *  wired to a live relationship-graph source yet (R18). */
   warmPathSample?: boolean;
   events?: ProspectEvent[];
+  /** The events fetch failed — Activity/Recent activity below render off
+   *  `events` regardless, so without this flag a failed fetch (events=[])
+   *  is visually identical to a genuinely quiet contact. */
+  eventsError?: boolean;
   onClose: () => void;
   /** Soft-delete this prospect ("not a fit"). When omitted, the button is hidden. */
   onRemove?: () => void;
@@ -41,6 +45,9 @@ interface ProspectDetailProps {
   /** Upcoming scheduled automatic follow-ups for this prospect. */
   followups?: ProspectFollowup[];
   followupsLoading?: boolean;
+  /** The follow-ups fetch failed — without this flag it renders identically
+   *  to "no follow-ups queued" (loading=false, followups=[]). */
+  followupsError?: boolean;
   /**
    * The prospect's `core_lead_id` — the id `campaign_leads` and
    * `campaign_analytics` are keyed by, and the only one the report API resolves.
@@ -56,7 +63,7 @@ function degreeLabel(nd?: string | null): string {
   return (nd && (m[nd] || nd.replace(/_/g, ' ').toLowerCase())) || '';
 }
 
-export default function ProspectDetail({ prospect, warmPath, warmPathSample = false, events = [], onClose, onRemove, isRemoving = false, onAction, isActing = false, doNotContact = false, quietUntil = null, followups = [], followupsLoading = false, coreLeadId = null }: ProspectDetailProps) {
+export default function ProspectDetail({ prospect, warmPath, warmPathSample = false, events = [], eventsError = false, onClose, onRemove, isRemoving = false, onAction, isActing = false, doNotContact = false, quietUntil = null, followups = [], followupsLoading = false, followupsError = false, coreLeadId = null }: ProspectDetailProps) {
   const [warmOpen, setWarmOpen] = useState(false);
   const sectionRef = useRef<HTMLDivElement | null>(null);
 
@@ -240,6 +247,12 @@ export default function ProspectDetail({ prospect, warmPath, warmPathSample = fa
         <WarmPathPanel wp={warmPath} prospect={prospect} open={warmOpen} onToggle={toggleWarm} />
       </div>
 
+      {eventsError && (
+        <div className="rounded-xl border border-rose-200 bg-rose-50 dark:border-rose-900/60 dark:bg-rose-950/30 p-3 text-[12.5px] text-rose-700 dark:text-rose-300">
+          Couldn&apos;t load this contact&apos;s activity — the Activity chart and Recent activity below may be
+          missing events, not showing that the contact is actually quiet.
+        </div>
+      )}
       <ActivityHeatmap events={events} days={30} />
 
       <AcceleratorPanels coreLeadId={coreLeadId} firstName={prospect.full_name?.split(' ')[0]} />
@@ -257,7 +270,7 @@ export default function ProspectDetail({ prospect, warmPath, warmPathSample = fa
         </div>
         <div className="space-y-4">
           <Actions onAction={onAction} isActing={isActing} doNotContact={doNotContact} quietUntil={quietUntil} />
-          <NextFollowups followups={followups} loading={followupsLoading} />
+          <NextFollowups followups={followups} loading={followupsLoading} error={followupsError} />
         </div>
       </div>
     </div>
@@ -972,16 +985,22 @@ function futureWhen(iso?: string | null): { abs: string; badge: string | null } 
 }
 
 /** Upcoming automatic follow-ups the Master Agent has scheduled across channels. */
-function NextFollowups({ followups, loading }: { followups: ProspectFollowup[]; loading?: boolean }) {
+function NextFollowups({
+  followups, loading, error,
+}: { followups: ProspectFollowup[]; loading?: boolean; error?: boolean }) {
   return (
     <LadCard>
       <LadCardHeader
         title="Next follow-ups"
         subtitle={
-          loading ? 'Loading…' : followups.length ? `${followups.length} scheduled` : 'Automatic outreach'
+          error ? 'Could not load' : loading ? 'Loading…' : followups.length ? `${followups.length} scheduled` : 'Automatic outreach'
         }
       />
-      {loading ? (
+      {error ? (
+        <p className="text-[13px] text-rose-600 dark:text-rose-300">
+          Couldn&apos;t check the schedule — this isn&apos;t necessarily &quot;no follow-ups queued.&quot;
+        </p>
+      ) : loading ? (
         <p className="text-[13px] text-slate-500 dark:text-slate-300">Checking the schedule…</p>
       ) : followups.length === 0 ? (
         <div className="flex items-center gap-2 text-[13px] text-slate-500 dark:text-slate-300">
