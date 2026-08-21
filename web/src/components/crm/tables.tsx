@@ -536,7 +536,12 @@ export function AllContactsTable({
     { label: 'Contact', nowrap: true, render: (r) => <NameCell row={r} /> },
     { label: 'Type',    render: (r) => <TypePill type={r.type} /> },
     { label: 'Source',  render: (r) => <span className="text-[12px] text-slate-600 dark:text-[#7a8ba3]">{r.source}</span> },
-    { label: 'Company', render: (r) => <span className="text-[12px] text-[#172560] dark:text-white">{r.company}</span> },
+    {
+      label: 'Company',
+      render: (r) => r.company
+        ? <span className="text-[12px] text-[#172560] dark:text-white">{r.company}</span>
+        : <span className="text-[11.5px] text-slate-400">-</span>,
+    },
     { label: 'Email',   render: (r) => <EmailCell email={r.email} verified={r.emailVerified} /> },
     { label: 'Phone',   render: (r) => <PhoneCell phone={r.phone} verified={r.phoneVerified} /> },
     { label: 'Channels',render: (r) => <ChannelChips channels={r.channels} /> },
@@ -597,8 +602,18 @@ export function ProspectsTable({
 }: { rows: CrmContact[]; onSelect: (c: CrmContact) => void; onRemove?: (c: CrmContact) => void; pagination?: CrmPagination }) {
   const columns: Column<CrmContact>[] = [
     { label: 'Prospect', nowrap: true, render: (r) => <NameCell row={r} withCompany /> },
-    { label: 'Industry', render: (r) => <span className="text-[12px] text-[#172560] dark:text-white">{r.industry}</span> },
-    { label: 'Geo',      render: (r) => <span className="text-[12px] text-slate-600 dark:text-[#7a8ba3]">{r.geo}</span> },
+    {
+      label: 'Industry',
+      render: (r) => r.industry
+        ? <span className="text-[12px] text-[#172560] dark:text-white">{r.industry}</span>
+        : <span className="text-[11.5px] text-slate-400">-</span>,
+    },
+    {
+      label: 'Geo',
+      render: (r) => r.geo
+        ? <span className="text-[12px] text-slate-600 dark:text-[#7a8ba3]">{r.geo}</span>
+        : <span className="text-[11.5px] text-slate-400">-</span>,
+    },
     { label: 'Fit',      sortable: true, sortKey: (r) => r.fit, render: (r) => (r.fit != null ? <ScoreBar value={r.fit} /> : <span className="text-[11.5px] text-slate-400">-</span>) },
     {
       label: 'Intent',
