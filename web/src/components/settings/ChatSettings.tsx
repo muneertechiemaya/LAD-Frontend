@@ -795,12 +795,16 @@ export function ChatSettings() {
   const [linkedinAutomation, setLinkedinAutomation] = useState<{
     auto_like_posts: boolean;
     auto_comment_posts: boolean;
+    /** Ongoing background sweep of accepted connections' NEW posts. Separate
+     *  opt-in from the two flags above, which only fire at campaign-step time. */
+    post_monitoring_enabled: boolean;
     ai_agent_reply_delay_seconds: number;
     auto_withdraw_pending_enabled: boolean;
     auto_withdraw_pending_days: number;
   }>({
     auto_like_posts: false,
     auto_comment_posts: false,
+    post_monitoring_enabled: false,
     ai_agent_reply_delay_seconds: 0,
     auto_withdraw_pending_enabled: false,
     auto_withdraw_pending_days: 90,
@@ -842,6 +846,7 @@ export function ChatSettings() {
           setLinkedinAutomation({
             auto_like_posts:              !!liSettings.data.auto_like_posts,
             auto_comment_posts:           !!liSettings.data.auto_comment_posts,
+            post_monitoring_enabled:      !!liSettings.data.post_monitoring_enabled,
             ai_agent_reply_delay_seconds: Number.isFinite(rawDelay) ? Math.max(0, Math.min(300, rawDelay)) : 0,
             auto_withdraw_pending_enabled: !!liSettings.data.auto_withdraw_pending_enabled,
             auto_withdraw_pending_days:   Number.isFinite(rawWithdrawDays) ? Math.max(30, rawWithdrawDays) : 90,
@@ -2634,6 +2639,31 @@ export function ChatSettings() {
                 title={linkedinAutomation.auto_comment_posts ? 'On - click to disable' : 'Off - click to enable'}
               >
                 {linkedinAutomation.auto_comment_posts ? (
+                  <ToggleRight className="h-6 w-6 text-blue-500 dark:text-blue-400" />
+                ) : (
+                  <ToggleLeft className="h-6 w-6 text-gray-300 dark:text-gray-600" />
+                )}
+              </button>
+            </div>
+
+            {/* Ongoing post monitoring */}
+            <div className="flex items-center justify-between px-4 py-3 bg-white dark:bg-transparent">
+              <div className="flex items-center gap-2.5">
+                <Bell className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Monitor Prospect Posts</p>
+                  <p className="text-xs text-gray-500 dark:text-slate-300">
+                    Keep watching accepted connections and engage each time they post something new, not only during a campaign step. Uses the two settings above, capped daily and limited to business hours.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() =>
+                  setLinkedinAutomation((prev) => ({ ...prev, post_monitoring_enabled: !prev.post_monitoring_enabled }))
+                }
+                title={linkedinAutomation.post_monitoring_enabled ? 'On — click to disable' : 'Off — click to enable'}
+              >
+                {linkedinAutomation.post_monitoring_enabled ? (
                   <ToggleRight className="h-6 w-6 text-blue-500 dark:text-blue-400" />
                 ) : (
                   <ToggleLeft className="h-6 w-6 text-gray-300 dark:text-gray-600" />
