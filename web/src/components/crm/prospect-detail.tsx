@@ -33,6 +33,11 @@ interface ProspectDetailProps {
    *  `events` regardless, so without this flag a failed fetch (events=[])
    *  is visually identical to a genuinely quiet contact. */
   eventsError?: boolean;
+  /** True when `events` was cut off by the fetch's own page-size limit —
+   *  the backend has no total-event-count endpoint, so MiniFeed's "N total
+   *  events" label would otherwise silently overclaim completeness for any
+   *  contact with more history than fits in one fetch. */
+  eventsTruncated?: boolean;
   onClose: () => void;
   /** Soft-delete this prospect ("not a fit"). When omitted, the button is hidden. */
   onRemove?: () => void;
@@ -63,7 +68,7 @@ function degreeLabel(nd?: string | null): string {
   return (nd && (m[nd] || nd.replace(/_/g, ' ').toLowerCase())) || '';
 }
 
-export default function ProspectDetail({ prospect, warmPath, warmPathSample = false, events = [], eventsError = false, onClose, onRemove, isRemoving = false, onAction, isActing = false, doNotContact = false, quietUntil = null, followups = [], followupsLoading = false, followupsError = false, coreLeadId = null }: ProspectDetailProps) {
+export default function ProspectDetail({ prospect, warmPath, warmPathSample = false, events = [], eventsError = false, eventsTruncated = false, onClose, onRemove, isRemoving = false, onAction, isActing = false, doNotContact = false, quietUntil = null, followups = [], followupsLoading = false, followupsError = false, coreLeadId = null }: ProspectDetailProps) {
   const [warmOpen, setWarmOpen] = useState(false);
   const sectionRef = useRef<HTMLDivElement | null>(null);
 
@@ -266,7 +271,7 @@ export default function ProspectDetail({ prospect, warmPath, warmPathSample = fa
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2">
-          <MiniFeed events={events} />
+          <MiniFeed events={events} truncated={eventsTruncated} />
         </div>
         <div className="space-y-4">
           <Actions onAction={onAction} isActing={isActing} doNotContact={doNotContact} quietUntil={quietUntil} />
@@ -836,11 +841,19 @@ function IntentStrip({ signals }: { signals: ProspectFixture['intent_signals'] }
 }
 
 // ── Mini feed ────────────────────────────────────────────────────────────
-function MiniFeed({ events }: { events: ProspectEvent[] }) {
+function MiniFeed({ events, truncated = false }: { events: ProspectEvent[]; truncated?: boolean }) {
   const recent = events.slice(0, 6);
   return (
     <LadCard>
-      <LadCardHeader title="Recent activity" subtitle={`${events.length} total events`} />
+      <LadCardHeader
+        title="Recent activity"
+        subtitle={
+          // The backend's events endpoint has no total-count support (unlike
+          // /api/prospects), so "N total events" would overclaim completeness
+          // for any contact whose real history exceeds the fetch limit.
+          truncated ? `${events.length}+ events (most recent shown)` : `${events.length} total events`
+        }
+      />
       <ul className="space-y-2.5">
         {recent.map((e) => {
           const m = CH[e.channel] || CH.system;

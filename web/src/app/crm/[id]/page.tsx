@@ -21,6 +21,12 @@ import { useToast } from '@/components/ui/app-toaster';
 
 export const dynamic = 'force-dynamic';
 
+// The events endpoint has no total-count support (unlike /api/prospects'
+// X-Total-Count) — capping the fetch here means we can only ever know
+// "at least this many", never a true total, for any contact whose real
+// history exceeds this limit.
+const EVENTS_LIMIT = 100;
+
 const BOX =
   'rounded-[20px] border border-slate-200 dark:border-[#262831] bg-white dark:bg-[#000724] p-10 text-center text-[13px] text-slate-500 dark:text-[#7a8ba3]';
 
@@ -30,7 +36,7 @@ export default function CrmDetailPage() {
   const router = useRouter();
 
   const detailQuery = useProspect(id);
-  const eventsQuery = useProspectEvents(id, { limit: 100 });
+  const eventsQuery = useProspectEvents(id, { limit: EVENTS_LIMIT });
   const followupsQuery = useProspectFollowups(id);
   const { push } = useToast();
 
@@ -60,6 +66,7 @@ export default function CrmDetailPage() {
     [detailQuery.data]
   );
   const events = useMemo(() => toCrmEvents(eventsQuery.data), [eventsQuery.data]);
+  const eventsTruncated = events.length >= EVENTS_LIMIT;
 
   // Option C — enrich the prospect's LinkedIn profile on first open (company +
   // employment + warm-path signals) when it hasn't been enriched yet. Fire once,
@@ -111,6 +118,7 @@ export default function CrmDetailPage() {
           <ProspectDetail
             prospect={fixture}
             events={events}
+            eventsTruncated={eventsTruncated}
             eventsError={eventsQuery.isError}
             warmPath={WARM_PATH}
             warmPathSample
