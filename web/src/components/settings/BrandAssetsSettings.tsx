@@ -303,7 +303,13 @@ export const BrandAssetsSettings: React.FC = () => {
       const res = await fetch(`${WORKER_URL}/brand-assets/connect`, {
         method: 'POST',
         headers: jsonHeaders(),
-        body: JSON.stringify({ email, role: 'writer', notify: true }),
+        // notify is deliberately omitted so the worker decides via
+        // BRAND_ASSETS_NOTIFY_ON_SHARE (off by default). Drive sends share
+        // invites as the authenticated principal, and ours is the service
+        // account, so a notification arrives as "mage-ads-project@...
+        // gserviceaccount.com has invited you" and reads as spam. Access is
+        // granted either way; the notice below surfaces the folder instead.
+        body: JSON.stringify({ email, role: 'writer' }),
       });
       if (!res.ok) throw new Error(await readError(res, 'Could not create the folder.'));
       setConnectEmail('');
@@ -328,7 +334,9 @@ export const BrandAssetsSettings: React.FC = () => {
       const res = await fetch(`${WORKER_URL}/brand-assets/collaborators/add`, {
         method: 'POST',
         headers: jsonHeaders(),
-        body: JSON.stringify({ email, role: inviteRole, notify: true }),
+        // As in handleConnect: let BRAND_ASSETS_NOTIFY_ON_SHARE decide rather
+        // than forcing an invite from the service account address.
+        body: JSON.stringify({ email, role: inviteRole }),
       });
       if (!res.ok) throw new Error(await readError(res, 'Could not grant access.'));
       setInviteEmail('');

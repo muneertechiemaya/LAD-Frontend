@@ -14,7 +14,7 @@
  * direct with the JWT rather than through fetchWithTenant.
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Images,
   Fingerprint,
@@ -100,6 +100,9 @@ export const MageSettings: React.FC = () => {
 
   const [extractUrl, setExtractUrl] = useState('');
   const [extractRun, setExtractRun] = useState<ExtractionRun | null>(null);
+  // Cleared on unmount so a running poll loop stops instead of spending its
+  // full 20-minute budget fetching for a component nobody is looking at.
+  const mountedRef = useRef(true);
   const [changeTarget, setChangeTarget] = useState<string | null>(null);
   const [changeText, setChangeText] = useState('');
   const [showWizard, setShowWizard] = useState(false);
@@ -151,6 +154,16 @@ export const MageSettings: React.FC = () => {
       setLoading(false);
     })();
   }, [loadOverview]);
+
+  // Assigned in the body, not just the cleanup: StrictMode mounts, unmounts and
+  // remounts, and a ref survives that — so a cleanup-only version would latch
+  // false on the remount and stop every later poll from running.
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   // ── gallery ───────────────────────────────────────────────────────────────
 
@@ -281,11 +294,27 @@ export const MageSettings: React.FC = () => {
       // same way the media chat does so the wait is not a blank screen.
       for (let i = 0; i < 240; i += 1) {
         await new Promise((r) => setTimeout(r, 5000));
+        if (!mountedRef.current) return;
         try {
           const res = await fetch(`${WORKER_URL}/mage/brand-dna/extract/${runId}`, {
             headers: headers(),
           });
-          if (!res.ok) continue;
+          if (!mountedRef.current) return;
+          if (!res.ok) {
+            // A rejected token or a run the worker has already evicted will not
+            // start working on the next tick, and polling those to the end of
+            // the budget leaves the user watching a spinner that never resolves.
+            // Everything else (a 502, a cold start) is worth retrying.
+            if ([401, 403, 404].includes(res.status)) {
+              setExtractRun({
+                run_id: runId,
+                status: 'failed',
+                message: await readError(res, 'Lost track of this extraction.'),
+              });
+              return;
+            }
+            continue;
+          }
           const data = await res.json();
           setExtractRun({ run_id: runId, ...data });
           if (['completed', 'failed', 'error'].includes(String(data.status))) {
@@ -295,6 +324,15 @@ export const MageSettings: React.FC = () => {
         } catch {
           // Transient — keep polling.
         }
+      }
+      // Ran out the budget without a terminal status. Say so rather than
+      // leaving the card spinning forever.
+      if (mountedRef.current) {
+        setExtractRun({
+          run_id: runId,
+          status: 'failed',
+          message: 'Still running after 20 minutes. Reopen this page to check on it.',
+        });
       }
     },
     [headers, loadOverview],
