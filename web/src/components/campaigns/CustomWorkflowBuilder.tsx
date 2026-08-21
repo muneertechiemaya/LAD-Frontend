@@ -60,9 +60,10 @@ function CustomSelect({
     if (options && options.length > 0) return options;
     const parsed: Array<{ value: string; label: React.ReactNode }> = [];
     React.Children.forEach(children, (child) => {
-      if (React.isValidElement(child) && (child.type === 'option' || (child.props && 'value' in child.props))) {
-        const val = child.props.value !== undefined ? String(child.props.value) : String(child.props.children);
-        const lbl = child.props.children;
+      if (React.isValidElement(child)) {
+        const props = child.props as any;
+        const val = props?.value !== undefined ? String(props.value) : String(props?.children ?? '');
+        const lbl = props?.children;
         parsed.push({ value: val, label: lbl });
       }
     });
@@ -93,7 +94,7 @@ function CustomSelect({
           const itemVal = opt.value === '' ? '__none__' : opt.value;
           return (
             <SelectItem key={`${itemVal}-${idx}`} value={itemVal} className="text-xs">
-              {opt.label}
+              {opt.label as any}
             </SelectItem>
           );
         })}
@@ -260,6 +261,22 @@ const ROUTER_CHANNELS = [
 const IconChip = ({ icon, chip, size = 'h-9 w-9' }: { icon: React.ReactNode; chip: string; size?: string }) => (
   <span className={`${size} ${chip} rounded-lg flex items-center justify-center flex-shrink-0`}>{icon}</span>
 );
+
+function MultiCondBranchBody({ b, onChange }: { b: any; onChange: (p: any) => void }) {
+  return (
+    <>
+      <CustomSelect className="w-full text-xs" value={b.channel || 'email'} onValueChange={(val) => onChange({ channel: val })}>
+        <option value="email">Send email</option>
+        <option value="linkedin">LinkedIn message</option>
+        <option value="whatsapp">WhatsApp</option>
+      </CustomSelect>
+      {(b.channel || 'email') === 'email' && (
+        <Input value={b.subject || ''} onChange={(e) => onChange({ subject: e.target.value })} placeholder="Email subject" />
+      )}
+      <textarea className="w-full rounded-md border border-input dark:border-slate-700/80 bg-background dark:bg-slate-800/50 px-2 py-1.5 text-xs min-h-[56px]" value={b.body || ''} onChange={(e) => onChange({ body: e.target.value })} placeholder="Message (leave blank to let Mr LAD draft it)" />
+    </>
+  );
+}
 
 const CONDITIONS = [
   { value: 'connection_accepted', label: 'Connection accepted', action: 'CONNECTION_ACCEPTED' },
@@ -4414,7 +4431,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 {touches.map((t, i) => {
                   const h = t.hours ?? 24;
                   return (
-                    <div key={i} className="rounded-lg border border-border p-2.5 space-y-2 bg-muted/20">
+                    <div key={i} className="rounded-lg border border-border dark:border-blue-950/40 p-2.5 space-y-2 bg-muted/20 dark:bg-[#030a21]/60">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-semibold text-foreground">Touch {i + 1}</span>
                         {touches.length > 1 && (
@@ -4465,7 +4482,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   );
                 })}
                 {touches.length < 7 && (
-                  <button onClick={addTouch} className="text-xs font-semibold text-amber-600 hover:text-amber-700 flex items-center gap-1">
+                  <button onClick={addTouch} className="text-xs font-semibold text-amber-600 dark:text-sky-400 hover:text-amber-700 dark:hover:text-sky-300 flex items-center gap-1">
                     <span className="text-base leading-none">+</span> Add another touch
                   </button>
                 )}
@@ -4475,11 +4492,11 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   href="/followup-simulator.html"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-1 flex items-start gap-2 rounded-lg border border-dashed border-border p-2.5 hover:border-amber-500 hover:bg-amber-50/50 dark:hover:bg-amber-950/20 transition-colors group"
+                  className="mt-1 flex items-start gap-2 rounded-lg border border-dashed border-border p-2.5 hover:border-indigo-600 hover:bg-muted/30 transition-colors group"
                 >
                   <span className="text-base leading-none mt-0.5">🧪</span>
                   <span className="min-w-0">
-                    <span className="block text-xs font-semibold text-foreground group-hover:text-amber-700">
+                    <span className="block text-xs font-semibold text-foreground">
                       Test this sequence first
                     </span>
                     <span className="block text-[11px] text-muted-foreground leading-snug">
@@ -4798,15 +4815,6 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             const setCase = (i: number, patch: any) => { const next = cases.map((c, idx) => (idx === i ? { ...c, ...patch } : c)); setCfg(eid, { cases: next }); updateWorkflowStep(eid, { description: `${next.length} conditions + else` }); };
             const addCase = () => { if (cases.length >= 6) return; const next = [...cases, { op: 'equals', value: '', channel: 'email', subject: '', body: '' }]; setCfg(eid, { cases: next }); updateWorkflowStep(eid, { description: `${next.length} conditions + else` }); };
             const removeCase = (i: number) => { if (cases.length <= 1) return; const next = cases.filter((_, idx) => idx !== i); setCfg(eid, { cases: next }); updateWorkflowStep(eid, { description: `${next.length} conditions + else` }); };
-            const BranchBody = ({ b, onChange }: { b: any; onChange: (p: any) => void }) => (<>
-              <CustomSelect className="w-full text-xs" value={b.channel || 'email'} onValueChange={(val) => onChange({ channel: val })}>
-                <option value="email">Send email</option><option value="linkedin">LinkedIn message</option><option value="whatsapp">WhatsApp</option>
-              </CustomSelect>
-              {(b.channel || 'email') === 'email' && (
-                <Input value={b.subject || ''} onChange={(e) => onChange({ subject: e.target.value })} placeholder="Email subject" />
-              )}
-              <textarea className="w-full rounded-md border border-input dark:border-slate-700/80 bg-background dark:bg-slate-800/50 px-2 py-1.5 text-xs min-h-[56px]" value={b.body || ''} onChange={(e) => onChange({ body: e.target.value })} placeholder="Message (leave blank to let Mr LAD draft it)" />
-            </>);
             return (<>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-foreground">Branch on {mcFieldsLoading && <span className="text-muted-foreground">· loading fields…</span>}</label>
@@ -4829,7 +4837,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     </CustomSelect>
                     <Input value={c.value || ''} onChange={(e) => setCase(i, { value: e.target.value })} placeholder="e.g. person1" />
                   </div>
-                  <BranchBody b={c} onChange={(p) => setCase(i, p)} />
+                  <MultiCondBranchBody b={c} onChange={(p) => setCase(i, p)} />
                 </div>
               ))}
               {cases.length < 6 && (
@@ -4837,7 +4845,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               )}
               <div className="rounded-lg border border-dashed border-border dark:border-blue-950/40 p-2.5 space-y-2 bg-card dark:bg-[#030a21]/60">
                 <span className="text-xs font-semibold text-foreground">Otherwise (else)</span>
-                <BranchBody b={def} onChange={(p) => setCfg(eid, { default: { ...def, ...p } })} />
+                <MultiCondBranchBody b={def} onChange={(p) => setCfg(eid, { default: { ...def, ...p } })} />
               </div>
               <p className="text-[11px] leading-snug text-muted-foreground">Each lead runs exactly ONE branch — the first condition that matches, else the fallback. Conditions are checked top-to-bottom.</p>
             </>);
@@ -5323,7 +5331,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               )}
 
               <div className="space-y-1"><label className="text-xs font-medium text-foreground">Time</label>
-                <input type="time" className={field} value={cfg.time || '09:00'}
+                <input type="time" className={`${field} dark:[color-scheme:dark] dark:bg-slate-800/50 dark:text-white dark:border-slate-700/80`} value={cfg.time || '09:00'}
                   onChange={(e) => { setCfg(eid, { time: e.target.value }); updateWorkflowStep(eid, { description: describe(freq, days) }); }} />
                 <p className="text-[11px] text-muted-foreground">Your local timezone. Posting stops when the campaign is paused or finishes.</p></div>
 
@@ -5366,7 +5374,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
             const pct = Math.min(100, Math.max(0, parseInt(cfg.split_pct, 10) || 50));
             const setV = (k: 'a' | 'b', patch: any) => setCfg(eid, { [k]: { ...(cfg[k] || {}), ...patch } });
             const variant = (k: 'a' | 'b', label: string) => (
-              <div className="rounded-lg border border-border p-2.5 space-y-1.5">
+              <div className="rounded-lg border border-border dark:border-blue-950/40 p-2.5 space-y-1.5 bg-muted/20 dark:bg-[#030a21]/60">
                 <div className="flex items-center justify-between">
                   <span className="text-[12px] font-semibold text-foreground">Variant {label}</span>
                   <span className="text-[11px] text-muted-foreground">{k === 'a' ? pct : 100 - pct}% of leads</span>
@@ -5423,7 +5431,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   </div>
                 ))}
                 <button type="button" onClick={() => setCfg(eid, { fields: [...rows, { key: '', value: '' }] })}
-                  className="text-[12px] font-medium text-[#0b1957] dark:text-sky-300 hover:underline inline-flex items-center gap-1">
+                  className="text-[12px] font-medium text-[#0b1957] dark:text-sky-400 hover:underline inline-flex items-center gap-1">
                   <Plus className="h-3 w-3" /> Add field
                 </button>
               </div>
@@ -6026,7 +6034,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   </div>
                 ))}
                 <button type="button" onClick={() => setCfg(eid, { headers: [...hdrs, { key: '', value: '' }] })}
-                  className="text-[12px] font-medium text-[#0b1957] dark:text-sky-300 hover:underline inline-flex items-center gap-1">
+                  className="text-[12px] font-medium text-[#0b1957] dark:text-sky-400 hover:underline inline-flex items-center gap-1">
                   <Plus className="h-3 w-3" /> Add header
                 </button>
               </div>
@@ -6413,7 +6421,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           )}
         </div>
         <div className="p-3 border-t border-border bg-muted/20 dark:bg-[#030a21]/60 dark:border-blue-950/40">
-          <Button className="w-full" onClick={() => setEditingId(null)}>Done</Button>
+          <Button className="w-full dark:text-white" onClick={() => setEditingId(null)}>Done</Button>
         </div>
       </div>
     );
@@ -6678,7 +6686,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               </div>
               <div className="space-y-1">
                 <label className="text-[11px] font-medium text-muted-foreground">Posted</label>
-                <Input type="date" value={signalManual.posted_at}
+                <Input type="date" className="dark:[color-scheme:dark]" value={signalManual.posted_at}
                   onChange={(e) => setSignalManual((p) => ({ ...p, posted_at: e.target.value }))} />
               </div>
             </div>
@@ -7854,7 +7862,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           {/* 1 · Contact source */}
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-600 text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">1</span>
+              <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-[#2b7cff] text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">1</span>
               <span className="text-sm font-semibold text-foreground">Contact source</span>
             </div>
             <p className="text-xs text-muted-foreground mb-2.5 ml-7">Where leads enter this Accelerator</p>
@@ -7865,8 +7873,8 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                   <button key={s.key} onClick={() => pickSource(s.key)}
                     className={`relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
                       active
-                        ? 'border-[#0b1957] dark:border-sky-400 bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-sky-400/20'
-                        : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-sky-400/40 hover:bg-muted/40'
+                        ? 'border-[#0b1957] dark:border-[#2b7cff] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2b7cff]/30'
+                        : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2b7cff]/50 hover:bg-muted/40'
                     }`}>
                     <IconChip icon={s.icon} chip={s.chip} />
                     <span className="min-w-0 flex-1">
@@ -7879,7 +7887,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                       <span className="block text-xs text-muted-foreground truncate">{s.sub}</span>
                     </span>
                     {active && (
-                      <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-500 flex items-center justify-center flex-shrink-0">
+                      <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-[#2b7cff] flex items-center justify-center flex-shrink-0">
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                       </span>
                     )}
@@ -7903,7 +7911,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           {/* 2 · Outreach steps, grouped by channel */}
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-600 text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">2</span>
+              <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-[#2b7cff] text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">2</span>
               <span className="text-sm font-semibold text-foreground">Outreach steps</span>
             </div>
             <p className="text-xs text-muted-foreground mb-2.5 ml-7">Click to add to the sequence</p>
@@ -7913,10 +7921,10 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                 <div className="space-y-1">
                   {OUTREACH.filter((o) => o.group === group).map((o) => (
                     <button key={o.label} onClick={() => (o.router ? addRouter() : addOutreach(o.type))}
-                      className="group w-full flex items-center gap-2.5 rounded-lg border border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 px-2.5 py-2 text-left hover:border-[#0b1957]/30 dark:hover:border-sky-400/40 hover:bg-muted/40 transition-all">
+                      className="group w-full flex items-center gap-2.5 rounded-lg border border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 px-2.5 py-2 text-left hover:border-[#0b1957]/30 dark:hover:border-[#2b7cff]/50 hover:bg-muted/40 transition-all">
                       <IconChip icon={o.icon} chip={o.chip} size="h-7 w-7" />
                       <span className="text-[13px] font-medium text-foreground truncate flex-1">{o.label}</span>
-                      <span className="h-6 w-6 rounded-full border border-border dark:border-blue-950/40 text-muted-foreground group-hover:bg-[#0b1957] dark:group-hover:bg-sky-600 group-hover:border-[#0b1957] dark:group-hover:border-sky-600 group-hover:text-white flex items-center justify-center transition-colors flex-shrink-0">
+                      <span className="h-6 w-6 rounded-full border border-border dark:border-blue-950/40 text-muted-foreground group-hover:bg-[#0b1957] dark:group-hover:bg-[#2b7cff] group-hover:border-[#0b1957] dark:group-hover:border-[#2b7cff] group-hover:text-white flex items-center justify-center transition-colors flex-shrink-0">
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
                       </span>
                     </button>
@@ -7931,7 +7939,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               return (
                 <button onClick={addMultiCond}
                   className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
-                    added ? 'border-[#0b1957] dark:border-[#2B7CFF] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2B7CFF]/20' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2B7CFF]/50 hover:bg-muted/40'
+                    added ? 'border-[#0b1957] dark:border-[#2b7cff] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2b7cff]/30' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2b7cff]/50 hover:bg-muted/40'
                   }`}>
                   <IconChip icon={<Split className="h-4 w-4 text-amber-600" />} chip="bg-amber-50 dark:bg-amber-950/30" />
                   <span className="min-w-0 flex-1">
@@ -7939,7 +7947,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     <span className="block text-xs text-muted-foreground truncate">Route by tag / field → different message</span>
                   </span>
                   {added && (
-                    <span className="h-5 w-5 rounded-full bg-[#0b1957] flex items-center justify-center flex-shrink-0">
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-[#2b7cff] flex items-center justify-center flex-shrink-0">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </span>
                   )}
@@ -7952,7 +7960,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               return (
                 <button onClick={addAiParse}
                   className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
-                    added ? 'border-[#0b1957] dark:border-[#2B7CFF] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2B7CFF]/20' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2B7CFF]/50 hover:bg-muted/40'
+                    added ? 'border-[#0b1957] dark:border-[#2b7cff] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2b7cff]/30' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2b7cff]/50 hover:bg-muted/40'
                   }`}>
                   <IconChip icon={<Sparkles className="h-4 w-4 text-violet-600" />} chip="bg-violet-50 dark:bg-violet-950/30" />
                   <span className="min-w-0 flex-1">
@@ -7960,7 +7968,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     <span className="block text-xs text-muted-foreground truncate">Clean messy titles / names before LinkedIn</span>
                   </span>
                   {added && (
-                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-500 flex items-center justify-center flex-shrink-0">
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-[#2b7cff] flex items-center justify-center flex-shrink-0">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </span>
                   )}
@@ -7973,7 +7981,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               return (
                 <button onClick={addDataEnrich}
                   className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
-                    added ? 'border-[#0b1957] dark:border-[#2B7CFF] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2B7CFF]/20' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2B7CFF]/50 hover:bg-muted/40'
+                    added ? 'border-[#0b1957] dark:border-[#2b7cff] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2b7cff]/30' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2b7cff]/50 hover:bg-muted/40'
                   }`}>
                   <IconChip icon={<Contact className="h-4 w-4 text-teal-600" />} chip="bg-teal-50 dark:bg-teal-950/30" />
                   <span className="min-w-0 flex-1">
@@ -7981,7 +7989,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     <span className="block text-xs text-muted-foreground truncate">Reveal email &amp; phone (FullEnrich)</span>
                   </span>
                   {added && (
-                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-500 flex items-center justify-center flex-shrink-0">
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-[#2b7cff] flex items-center justify-center flex-shrink-0">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </span>
                   )}
@@ -7994,7 +8002,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               return (
                 <button onClick={addExport}
                   className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
-                    added ? 'border-[#0b1957] dark:border-[#2B7CFF] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2B7CFF]/20' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2B7CFF]/50 hover:bg-muted/40'
+                    added ? 'border-[#0b1957] dark:border-[#2b7cff] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2b7cff]/30' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2b7cff]/50 hover:bg-muted/40'
                   }`}>
                   <IconChip icon={<Download className="h-4 w-4 text-cyan-700" />} chip="bg-cyan-50 dark:bg-cyan-950/30" />
                   <span className="min-w-0 flex-1">
@@ -8002,7 +8010,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     <span className="block text-xs text-muted-foreground truncate">File · DB · Email · WhatsApp · more</span>
                   </span>
                   {added && (
-                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-500 flex items-center justify-center flex-shrink-0">
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-[#2b7cff] flex items-center justify-center flex-shrink-0">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </span>
                   )}
@@ -8015,7 +8023,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               return (
                 <button onClick={addInstagramPost}
                   className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
-                    added ? 'border-[#0b1957] dark:border-[#2B7CFF] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2B7CFF]/20' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2B7CFF]/50 hover:bg-muted/40'
+                    added ? 'border-[#0b1957] dark:border-[#2b7cff] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2b7cff]/30' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2b7cff]/50 hover:bg-muted/40'
                   }`}>
                   <IconChip icon={<Instagram className="h-4 w-4 text-pink-600" />} chip="bg-pink-50 dark:bg-pink-950/30" />
                   <span className="min-w-0 flex-1">
@@ -8023,7 +8031,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     <span className="block text-xs text-muted-foreground truncate">Image or Reel · On a schedule</span>
                   </span>
                   {added && (
-                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-500 flex items-center justify-center flex-shrink-0">
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-[#2b7cff] flex items-center justify-center flex-shrink-0">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </span>
                   )}
@@ -8037,7 +8045,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               return (
                 <button onClick={addReport}
                   className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
-                    added ? 'border-[#0b1957] dark:border-[#2B7CFF] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2B7CFF]/20' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2B7CFF]/50 hover:bg-muted/40'
+                    added ? 'border-[#0b1957] dark:border-[#2b7cff] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2b7cff]/30' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2b7cff]/50 hover:bg-muted/40'
                   }`}>
                   <IconChip icon={<FileText className="h-4 w-4 text-teal-700" />} chip="bg-teal-50 dark:bg-teal-950/30" />
                   <span className="min-w-0 flex-1">
@@ -8045,7 +8053,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     <span className="block text-xs text-muted-foreground truncate">PDF · Attach or offer as a download</span>
                   </span>
                   {added && (
-                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-500 flex items-center justify-center flex-shrink-0">
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-[#2b7cff] flex items-center justify-center flex-shrink-0">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </span>
                   )}
@@ -8059,7 +8067,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               return (
                 <button onClick={addHumanTask}
                   className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
-                    added ? 'border-[#0b1957] dark:border-[#2B7CFF] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2B7CFF]/20' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2B7CFF]/50 hover:bg-muted/40'
+                    added ? 'border-[#0b1957] dark:border-[#2b7cff] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2b7cff]/30' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2b7cff]/50 hover:bg-muted/40'
                   }`}>
                   <IconChip icon={<UserCheck className="h-4 w-4 text-amber-600" />} chip="bg-amber-50 dark:bg-amber-950/30" />
                   <span className="min-w-0 flex-1">
@@ -8067,7 +8075,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     <span className="block text-xs text-muted-foreground truncate">Pauses the lead until someone confirms</span>
                   </span>
                   {added && (
-                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-500 flex items-center justify-center flex-shrink-0">
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-[#2b7cff] flex items-center justify-center flex-shrink-0">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </span>
                   )}
@@ -8081,7 +8089,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               return (
                 <button onClick={addLandingPage}
                   className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
-                    added ? 'border-[#0b1957] dark:border-[#2B7CFF] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2B7CFF]/20' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2B7CFF]/50 hover:bg-muted/40'
+                    added ? 'border-[#0b1957] dark:border-[#2b7cff] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2b7cff]/30' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2b7cff]/50 hover:bg-muted/40'
                   }`}>
                   <IconChip icon={<LayoutTemplate className="h-4 w-4 text-emerald-700" />} chip="bg-emerald-50 dark:bg-emerald-950/30" />
                   <span className="min-w-0 flex-1">
@@ -8089,7 +8097,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     <span className="block text-xs text-muted-foreground truncate">AI-written from your ICP · Captures leads</span>
                   </span>
                   {added && (
-                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-500 flex items-center justify-center flex-shrink-0">
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-[#2b7cff] flex items-center justify-center flex-shrink-0">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </span>
                   )}
@@ -8111,7 +8119,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               return (
                 <button key={b.id} onClick={b.on}
                   className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
-                    added2 ? 'border-[#0b1957] dark:border-sky-400 bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-sky-400/20' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-sky-400/40 hover:bg-muted/40'
+                    added2 ? 'border-[#0b1957] dark:border-[#2b7cff] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2b7cff]/30' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2b7cff]/50 hover:bg-muted/40'
                   }`}>
                   <IconChip icon={b.icon} chip={b.chip} />
                   <span className="min-w-0 flex-1">
@@ -8119,7 +8127,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     <span className="block text-xs text-muted-foreground truncate">{b.sub}</span>
                   </span>
                   {added2 && (
-                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-500 flex items-center justify-center flex-shrink-0">
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-[#2b7cff] flex items-center justify-center flex-shrink-0">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </span>
                   )}
@@ -8132,7 +8140,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               return (
                 <button onClick={addAutopost}
                   className={`mt-2 relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
-                    added ? 'border-[#0b1957] dark:border-[#2B7CFF] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2B7CFF]/20' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2B7CFF]/50 hover:bg-muted/40'
+                    added ? 'border-[#0b1957] dark:border-[#2b7cff] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2b7cff]/30' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2b7cff]/50 hover:bg-muted/40'
                   }`}>
                   <IconChip icon={<Megaphone className="h-4 w-4 text-[#0077B5]" />} chip="bg-sky-50 dark:bg-sky-950/30" />
                   <span className="min-w-0 flex-1">
@@ -8140,7 +8148,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     <span className="block text-xs text-muted-foreground truncate">Recurring posts to your own feed</span>
                   </span>
                   {added && (
-                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-500 flex items-center justify-center flex-shrink-0">
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-[#2b7cff] flex items-center justify-center flex-shrink-0">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </span>
                   )}
@@ -8152,7 +8160,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           {/* 3 · Follow-ups */}
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-600 text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">3</span>
+              <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-[#2b7cff] text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">3</span>
               <span className="text-sm font-semibold text-foreground">Follow-ups</span>
             </div>
             <p className="text-xs text-muted-foreground mb-2.5 ml-7">Automatic touch points after your outreach</p>
@@ -8161,7 +8169,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               return (
                 <button onClick={addFollowup}
                   className={`relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
-                    added ? 'border-[#0b1957] dark:border-[#2B7CFF] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2B7CFF]/20' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2B7CFF]/50 hover:bg-muted/40'
+                    added ? 'border-[#0b1957] dark:border-[#2b7cff] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2b7cff]/30' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2b7cff]/50 hover:bg-muted/40'
                   }`}>
                   <IconChip icon={<ListOrdered className="h-4 w-4 text-indigo-600" />} chip="bg-indigo-50 dark:bg-indigo-950/30" />
                   <span className="min-w-0 flex-1">
@@ -8169,7 +8177,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     <span className="block text-xs text-muted-foreground truncate">Touches · spacing · channel · human review</span>
                   </span>
                   {added && (
-                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-500 flex items-center justify-center flex-shrink-0">
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-[#2b7cff] flex items-center justify-center flex-shrink-0">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </span>
                   )}
@@ -8181,7 +8189,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           {/* 4 · Analytics */}
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-600 text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">4</span>
+              <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-[#2b7cff] text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">4</span>
               <span className="text-sm font-semibold text-foreground">Analytics</span>
             </div>
             <p className="text-xs text-muted-foreground mb-2.5 ml-7">Campaign stats to your inbox or WhatsApp</p>
@@ -8190,7 +8198,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               return (
                 <button onClick={addAnalytics}
                   className={`relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
-                    added ? 'border-[#0b1957] dark:border-[#2B7CFF] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2B7CFF]/20' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2B7CFF]/50 hover:bg-muted/40'
+                    added ? 'border-[#0b1957] dark:border-[#2b7cff] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2b7cff]/30' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2b7cff]/50 hover:bg-muted/40'
                   }`}>
                   <IconChip icon={<BarChart3 className="h-4 w-4 text-cyan-600" />} chip="bg-cyan-50 dark:bg-cyan-950/30" />
                   <span className="min-w-0 flex-1">
@@ -8198,7 +8206,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     <span className="block text-xs text-muted-foreground truncate">Channel · frequency · data to send</span>
                   </span>
                   {added && (
-                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-500 flex items-center justify-center flex-shrink-0">
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-[#2b7cff] flex items-center justify-center flex-shrink-0">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </span>
                   )}
@@ -8210,7 +8218,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           {/* ── 5. AI Media ───────────────────────────────────────────────── */}
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-600 text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">5</span>
+              <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-[#2b7cff] text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">5</span>
               <span className="text-sm font-semibold text-foreground">AI Media</span>
             </div>
             <p className="text-xs text-muted-foreground mb-2.5 ml-7">Generate a brand image or video to attach to outreach</p>
@@ -8219,7 +8227,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               return (
                 <button onClick={addMedia}
                   className={`relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
-                    added ? 'border-[#0b1957] dark:border-[#2B7CFF] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2B7CFF]/20' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2B7CFF]/50 hover:bg-muted/40'
+                    added ? 'border-[#0b1957] dark:border-[#2b7cff] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2b7cff]/30' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2b7cff]/50 hover:bg-muted/40'
                   }`}>
                   <IconChip icon={<Wand2 className="h-4 w-4 text-fuchsia-600" />} chip="bg-fuchsia-50 dark:bg-fuchsia-950/30" />
                   <span className="min-w-0 flex-1">
@@ -8227,7 +8235,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     <span className="block text-xs text-muted-foreground truncate">Image / video · attaches to email &amp; WhatsApp</span>
                   </span>
                   {added && (
-                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-500 flex items-center justify-center flex-shrink-0">
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-[#2b7cff] flex items-center justify-center flex-shrink-0">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </span>
                   )}
@@ -8239,7 +8247,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
           {/* ── 6. Sync back to CRM ───────────────────────────────────────── */}
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-600 text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">6</span>
+              <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-[#2b7cff] text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">6</span>
               <span className="text-sm font-semibold text-foreground">Sync back to Zoho</span>
             </div>
             <p className="text-xs text-muted-foreground mb-2.5 ml-7">Write campaign data back onto the Zoho contact</p>
@@ -8248,7 +8256,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
               return (
                 <button onClick={addZohoUpdate}
                   className={`relative w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
-                    added ? 'border-[#0b1957] dark:border-[#2B7CFF] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2B7CFF]/20' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2B7CFF]/50 hover:bg-muted/40'
+                    added ? 'border-[#0b1957] dark:border-[#2b7cff] bg-[#0b1957]/[0.04] dark:bg-[#030a21]/60 shadow-sm ring-1 ring-[#0b1957]/20 dark:ring-[#2b7cff]/30' : 'border-border dark:border-blue-950/40 bg-card dark:bg-[#030a21]/60 hover:border-[#0b1957]/30 dark:hover:border-[#2b7cff]/50 hover:bg-muted/40'
                   }`}>
                   <IconChip icon={<DatabaseZap className="h-4 w-4 text-red-600" />} chip="bg-red-50 dark:bg-red-950/30" />
                   <span className="min-w-0 flex-1">
@@ -8256,7 +8264,7 @@ export function CustomWorkflowBuilder({ onClose, initialTemplateKey, initialSour
                     <span className="block text-xs text-muted-foreground truncate">Map fields · write-back on completion</span>
                   </span>
                   {added && (
-                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-sky-500 flex items-center justify-center flex-shrink-0">
+                    <span className="h-5 w-5 rounded-full bg-[#0b1957] dark:bg-[#2b7cff] flex items-center justify-center flex-shrink-0">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </span>
                   )}
