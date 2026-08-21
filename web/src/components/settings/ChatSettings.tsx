@@ -798,6 +798,12 @@ export function ChatSettings() {
     /** Ongoing background sweep of accepted connections' NEW posts. Separate
      *  opt-in from the two flags above, which only fire at campaign-step time. */
     post_monitoring_enabled: boolean;
+    /** Inbound connection requests: research the sender and ask the tenant to
+     *  approve before anything is accepted. */
+    inbound_invite_review_enabled: boolean;
+    /** Where the approval card is delivered (phone number or email address). */
+    invite_approval_to: string;
+    invite_approval_channel: 'whatsapp' | 'email';
     ai_agent_reply_delay_seconds: number;
     auto_withdraw_pending_enabled: boolean;
     auto_withdraw_pending_days: number;
@@ -805,6 +811,9 @@ export function ChatSettings() {
     auto_like_posts: false,
     auto_comment_posts: false,
     post_monitoring_enabled: false,
+    inbound_invite_review_enabled: false,
+    invite_approval_to: '',
+    invite_approval_channel: 'whatsapp' as 'whatsapp' | 'email',
     ai_agent_reply_delay_seconds: 0,
     auto_withdraw_pending_enabled: false,
     auto_withdraw_pending_days: 90,
@@ -847,6 +856,9 @@ export function ChatSettings() {
             auto_like_posts:              !!liSettings.data.auto_like_posts,
             auto_comment_posts:           !!liSettings.data.auto_comment_posts,
             post_monitoring_enabled:      !!liSettings.data.post_monitoring_enabled,
+            inbound_invite_review_enabled: !!liSettings.data.inbound_invite_review_enabled,
+            invite_approval_to:            liSettings.data.invite_approval_to || '',
+            invite_approval_channel:       liSettings.data.invite_approval_channel === 'email' ? 'email' : 'whatsapp',
             ai_agent_reply_delay_seconds: Number.isFinite(rawDelay) ? Math.max(0, Math.min(300, rawDelay)) : 0,
             auto_withdraw_pending_enabled: !!liSettings.data.auto_withdraw_pending_enabled,
             auto_withdraw_pending_days:   Number.isFinite(rawWithdrawDays) ? Math.max(30, rawWithdrawDays) : 90,
@@ -2669,6 +2681,73 @@ export function ChatSettings() {
                   <ToggleLeft className="h-6 w-6 text-gray-300 dark:text-gray-600" />
                 )}
               </button>
+            </div>
+
+            {/* Inbound connection requests → approval card */}
+            <div className="px-4 py-3 bg-white dark:bg-transparent">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <CheckCircle className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Review Inbound Requests</p>
+                    <p className="text-xs text-gray-500 dark:text-slate-300">
+                      When someone asks to connect, Mr LAD researches them and sends you a card to approve. Nothing is accepted without your say-so.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() =>
+                    setLinkedinAutomation((prev) => ({ ...prev, inbound_invite_review_enabled: !prev.inbound_invite_review_enabled }))
+                  }
+                  title={linkedinAutomation.inbound_invite_review_enabled ? 'On — click to disable' : 'Off — click to enable'}
+                >
+                  {linkedinAutomation.inbound_invite_review_enabled ? (
+                    <ToggleRight className="h-6 w-6 text-blue-500 dark:text-blue-400" />
+                  ) : (
+                    <ToggleLeft className="h-6 w-6 text-gray-300 dark:text-gray-600" />
+                  )}
+                </button>
+              </div>
+
+              {/* Where the card goes. Only meaningful once review is on, and the
+                  sweep silently does nothing without a contact — so surface that. */}
+              {linkedinAutomation.inbound_invite_review_enabled && (
+                <div className="mt-3 pl-6 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={linkedinAutomation.invite_approval_channel}
+                      onChange={(e) =>
+                        setLinkedinAutomation((prev) => ({
+                          ...prev,
+                          invite_approval_channel: e.target.value === 'email' ? 'email' : 'whatsapp',
+                        }))
+                      }
+                      className="px-2 py-1.5 border border-gray-200 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    >
+                      <option value="whatsapp">WhatsApp</option>
+                      <option value="email">Email</option>
+                    </select>
+                    <input
+                      type="text"
+                      value={linkedinAutomation.invite_approval_to}
+                      onChange={(e) =>
+                        setLinkedinAutomation((prev) => ({ ...prev, invite_approval_to: e.target.value }))
+                      }
+                      placeholder={
+                        linkedinAutomation.invite_approval_channel === 'email'
+                          ? 'you@company.com'
+                          : '+971500000000'
+                      }
+                      className="flex-1 px-2 py-1.5 border border-gray-200 dark:border-blue-950/60 bg-white dark:bg-[#030a21] dark:text-white rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    />
+                  </div>
+                  {!linkedinAutomation.invite_approval_to.trim() && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400">
+                      Add a contact — without one the approval card cannot be delivered and nothing will reach you.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* AI Agent reply delay */}
