@@ -46,7 +46,7 @@ export default function CrmDetailPage() {
   // one, a failed click and a click that never registered look identical (the
   // button just goes back to its normal state either way).
   const actionMutation = useProspectAction();
-  const handleAction = (params: { doNotContact?: boolean; quietDays?: number }) => {
+  const handleAction = (params: { doNotContact?: boolean; quietDays?: number; clearQuiet?: boolean }) => {
     if (!id) return;
     actionMutation.mutate(
       { id, ...params },

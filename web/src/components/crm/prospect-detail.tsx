@@ -43,7 +43,7 @@ interface ProspectDetailProps {
   onRemove?: () => void;
   isRemoving?: boolean;
   /** CRM "Take action" — do-not-contact / quiet (pause outreach). */
-  onAction?: (p: { doNotContact?: boolean; quietDays?: number }) => void;
+  onAction?: (p: { doNotContact?: boolean; quietDays?: number; clearQuiet?: boolean }) => void;
   isActing?: boolean;
   doNotContact?: boolean;
   quietUntil?: string | null;
@@ -894,7 +894,7 @@ function MiniFeed({ events, truncated = false }: { events: ProspectEvent[]; trun
 
 // ── Action strip ─────────────────────────────────────────────────────────
 function Actions({ onAction, isActing, doNotContact, quietUntil }: {
-  onAction?: (p: { doNotContact?: boolean; quietDays?: number }) => void;
+  onAction?: (p: { doNotContact?: boolean; quietDays?: number; clearQuiet?: boolean }) => void;
   isActing?: boolean;
   doNotContact?: boolean;
   quietUntil?: string | null;
@@ -912,7 +912,7 @@ function Actions({ onAction, isActing, doNotContact, quietUntil }: {
           hint={quietActive ? `until ${new Date(quietUntil!).toLocaleDateString()}` : 'pause outreach'}
           active={quietActive}
           disabled={isActing}
-          onClick={() => onAction?.({ quietDays: quietActive ? 0 : 7 })}
+          onClick={() => onAction?.(quietActive ? { clearQuiet: true } : { quietDays: 7 })}
         />
         <ActionBtn
           Icon={Ban}

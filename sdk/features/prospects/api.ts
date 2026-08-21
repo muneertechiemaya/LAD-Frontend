@@ -115,11 +115,17 @@ export async function getProspectFollowups(id: string): Promise<ProspectFollowup
 /**
  * Apply a CRM "Take action" to a prospect.
  *   doNotContact: hard-suppress (true) / lift the suppression (false)
- *   quietDays:    pause outreach for N days (0 clears the pause)
+ *   quietDays:    pause outreach for N days (must be >= 1)
+ *   clearQuiet:   clear an existing pause (quiet_until=NULL)
+ *
+ * The backend rejects quietDays=0 (422) - "pause for zero days" used to be
+ * ambiguous with "clear the pause". Clearing is now this separate flag;
+ * quietDays and clearQuiet are mutually exclusive (backend 409s otherwise).
  */
 export interface ProspectActionParams {
   doNotContact?: boolean;
   quietDays?: number;
+  clearQuiet?: boolean;
 }
 export interface ProspectActionResult {
   id: string;
@@ -133,6 +139,7 @@ export async function prospectAction(
   const qs = buildQuery({
     do_not_contact: params.doNotContact,
     quiet_days: params.quietDays,
+    clear_quiet: params.clearQuiet,
   });
   const response = await apiPost<ProspectActionResult>(`/api/prospects/${id}/action${qs}`, {});
   return response.data;
