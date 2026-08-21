@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Loader2, Repeat, Linkedin, Mail, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,6 +29,18 @@ export const RecurringZohoCampaignModal: React.FC<{ open: boolean; onClose: () =
 
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Keyboard users have no other way to dismiss this modal: the overlay
+  // click-to-close only reaches mouse users, and nothing was listening for
+  // Escape.
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [open, onClose]);
 
   if (!open) return null;
 
@@ -117,16 +129,22 @@ export const RecurringZohoCampaignModal: React.FC<{ open: boolean; onClose: () =
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div className="bg-card rounded-xl border border-border w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="bg-card rounded-xl border border-border w-full max-w-lg max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="recurring-zoho-campaign-title"
+      >
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-2">
             <Repeat className="h-5 w-5 text-primary" />
             <div>
-              <div className="text-sm font-semibold text-foreground">Recurring Zoho campaign</div>
+              <div id="recurring-zoho-campaign-title" className="text-sm font-semibold text-foreground">Recurring Zoho campaign</div>
               <p className="text-xs text-muted-foreground">Imports new Zoho contacts daily and runs them through your sequence.</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="h-5 w-5" /></button>
+          <button onClick={onClose} aria-label="Close" className="text-muted-foreground hover:text-foreground"><X className="h-5 w-5" /></button>
         </div>
 
         <div className="p-4 space-y-4">

@@ -381,8 +381,10 @@ function CrmTable<R extends CrmContact>({
               <th className="w-9 px-3 py-2.5">
                 <input
                   type="checkbox"
-                  className="rounded border-slate-300 focus:ring-[#0B1957]/30 dark:appearance-none dark:w-4 dark:h-4 dark:shrink-0 dark:rounded-[5px] dark:border-2 dark:border-[#1c2c4e] dark:bg-transparent dark:checked:bg-blue-600 dark:checked:border-blue-600 dark:focus-visible:ring-1 dark:focus-visible:ring-blue-500/50 dark:cursor-pointer dark:relative dark:checked:after:content-[''] dark:checked:after:absolute dark:checked:after:left-[4px] dark:checked:after:top-[0px] dark:checked:after:w-[4px] dark:checked:after:h-[8px] dark:checked:after:border-white dark:checked:after:border-r-2 dark:checked:after:border-b-2 dark:checked:after:rotate-45 dark:transition-all"
-                  aria-label="Select all rows"
+                  disabled
+                  title="Not available yet"
+                  className="rounded border-slate-300 opacity-50 cursor-not-allowed dark:appearance-none dark:w-4 dark:h-4 dark:shrink-0 dark:rounded-[5px] dark:border-2 dark:border-[#1c2c4e] dark:bg-transparent"
+                  aria-label="Select all rows (not available yet)"
                 />
               </th>
               {columns.map((c, i) => {
@@ -421,8 +423,10 @@ function CrmTable<R extends CrmContact>({
                 <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                   <input
                     type="checkbox"
-                    className="rounded border-slate-300 focus:ring-[#0B1957]/30 dark:appearance-none dark:w-4 dark:h-4 dark:shrink-0 dark:rounded-[5px] dark:border-2 dark:border-[#1c2c4e] dark:bg-transparent dark:checked:bg-blue-600 dark:checked:border-blue-600 dark:focus-visible:ring-1 dark:focus-visible:ring-blue-500/50 dark:cursor-pointer dark:relative dark:checked:after:content-[''] dark:checked:after:absolute dark:checked:after:left-[4px] dark:checked:after:top-[0px] dark:checked:after:w-[4px] dark:checked:after:h-[8px] dark:checked:after:border-white dark:checked:after:border-r-2 dark:checked:after:border-b-2 dark:checked:after:rotate-45 dark:transition-all"
-                    aria-label={`Select ${r.name}`}
+                    disabled
+                    title="Not available yet"
+                    className="rounded border-slate-300 opacity-50 cursor-not-allowed dark:appearance-none dark:w-4 dark:h-4 dark:shrink-0 dark:rounded-[5px] dark:border-2 dark:border-[#1c2c4e] dark:bg-transparent"
+                    aria-label={`Select ${r.name} (not available yet)`}
                   />
                 </td>
                 {columns.map((c, j) => (
