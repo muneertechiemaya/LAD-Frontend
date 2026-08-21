@@ -563,12 +563,17 @@ export function AllContactsTable({
   const filters: FilterDef[] = [
     {
       key: 'type', label: 'Type',
+      // lifecycleToType (adapt.ts) — the only place that ever computes a
+      // real contact's `type` — exclusively returns 'prospect' | 'lead' |
+      // 'client'. 'imported'/'inbound' are still valid ContactType values
+      // (used by data.ts's unused legacy fixture rows) but no live prospect
+      // can ever have one, so those 2 options always produced
+      // "No matches." — same dead-option shape as the Owner/CSM and Leads
+      // Stage filter fixes above.
       options: [
         { value: 'prospect', label: 'Prospects' },
         { value: 'lead',     label: 'Leads' },
         { value: 'client',   label: 'Clients' },
-        { value: 'imported', label: 'Imported' },
-        { value: 'inbound',  label: 'Inbound' },
       ],
     },
     {
@@ -734,9 +739,13 @@ export function LeadsTable({
   const filters: FilterDef[] = [
     {
       key: 'stage', label: 'Stage',
+      // LeadsTable only ever receives type === 'lead' rows (page.tsx), and
+      // lifecycleToType (adapt.ts) only maps 'qualified'/'sah' to 'lead' —
+      // 'new'/'contacted'/'engaged' are always type 'prospect'. Listing them
+      // here meant picking "Contacted" or "Engaged" always produced
+      // "No matches.", the same dead-option shape as the Owner/CSM filter
+      // fix above.
       options: [
-        { value: 'contacted', label: 'Contacted' },
-        { value: 'engaged',   label: 'Engaged' },
         { value: 'qualified', label: 'Qualified' },
         { value: 'sah',       label: 'Handed off' },
       ],
