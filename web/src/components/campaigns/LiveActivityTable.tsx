@@ -208,7 +208,7 @@ const LeadInsightsPanel: React.FC<{
       <div className="flex items-center gap-2 mb-2">
         <Sparkles className="w-4 h-4 text-blue-500" />
         <p className="text-xs font-semibold text-[#1E293B] uppercase tracking-wide">
-          Agent Insights — Sources Gathered
+          Agent Insights - Sources Gathered
         </p>
         <span className="text-[10px] text-[#64748B] ml-auto">
           {sources.length} link{sources.length === 1 ? '' : 's'}
@@ -275,7 +275,7 @@ const LeadInsightsPanel: React.FC<{
                         rel="noopener noreferrer"
                         title={
                           isHook
-                            ? `★ Used in connection request — ${s.title || s.url}`
+                            ? `★ Used in connection request - ${s.title || s.url}`
                             : (s.title || s.url)
                         }
                         className={`inline-flex items-center gap-1 px-2 py-0.5 text-[11px] rounded-full border transition-colors ${meta.bg} ${meta.color} max-w-[280px] ${
@@ -298,7 +298,7 @@ const LeadInsightsPanel: React.FC<{
 
       {counts && (
         <p className="text-[10px] text-[#94A3B8] mt-2">
-          Totals — KG: {counts.knowledge_graph || 0} · Social: {counts.social_profiles || 0} ·
+          Totals - KG: {counts.knowledge_graph || 0} · Social: {counts.social_profiles || 0} ·
           Articles: {counts.articles || 0} · News: {counts.news_mentions || 0} ·
           Podcasts: {counts.podcast_appearances || 0} · Speaking: {counts.speaking_engagements || 0} ·
           Awards: {counts.awards || 0} · Posts: {counts.linkedin_posts || 0}
@@ -709,7 +709,7 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
             lead.connectionSentWithMessage = false;
             lead.connectionProviderDetail = providerDetail
               || (alreadyConnected
-                ? 'Already a 1st-degree LinkedIn connection — no invite was sent.'
+                ? 'Already a 1st-degree LinkedIn connection. No invite was sent.'
                 : 'LinkedIn reports an invitation was already sent to this person.');
           } else if (messageContent && messageContent.trim().length > 0) {
             // Check if connection was sent with a message

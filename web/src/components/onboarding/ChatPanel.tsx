@@ -2852,7 +2852,7 @@ When complete, present the comprehensive ICP profile focused on the TARGET CUSTO
                               setShowLeadImport(true);
                               addAIMessage({
                                 role: 'ai',
-                                content: `📁 **Import Your Leads**\n\nUpload a CSV or Excel file with your lead data below. You can download our template first to see the expected format.\n\nAll fields are optional — I'll auto-detect which channels to enable based on your data.`,
+                                content: `📁 **Import Your Leads**\n\nUpload a CSV or Excel file with your lead data below. You can download our template first to see the expected format.\n\nAll fields are optional - I'll auto-detect which channels to enable based on your data.`,
                                 timestamp: new Date(),
                               });
                             }

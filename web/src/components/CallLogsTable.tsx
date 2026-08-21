@@ -243,7 +243,7 @@ export function CallLogsTable({
 
   // Helper function to clean lead names from placeholder text
   const cleanLeadName = (leadName?: string): string => {
-    if (!leadName || !leadName.trim()) return "—";
+    if (!leadName || !leadName.trim()) return "-";
 
     const cleaned = leadName.trim();
     const placeholders = [
@@ -258,7 +258,7 @@ export function CallLogsTable({
     const lowerName = cleaned.toLowerCase();
     // Check if the entire name is a placeholder
     if (placeholders.some(p => lowerName === p || lowerName.includes(`(${p}`) || lowerName.includes(`${p})`))) {
-      return "—";
+      return "-";
     }
 
     return cleaned;
@@ -302,12 +302,12 @@ export function CallLogsTable({
   };
 
   const formatDateTime = (dateStr?: string) => {
-    if (!dateStr) return "—";
+    if (!dateStr) return "-";
     return formatDateTimeUnified(dateStr);
   };
 
   const formatDuration = (seconds?: number) => {
-    if (!seconds) return "—";
+    if (!seconds) return "-";
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
     return `${m}:${String(s).padStart(2, "0")}`;
@@ -467,7 +467,7 @@ export function CallLogsTable({
       header: 'Agent',
       size: 120,
       maxSize: 150,
-      cell: ({ getValue }) => <span className="font-medium text-sm">{(getValue() as string) || "—"}</span>,
+      cell: ({ getValue }) => <span className="font-medium text-sm">{(getValue() as string) || "-"}</span>,
     },
     {
       id: 'lead_name',
@@ -476,7 +476,7 @@ export function CallLogsTable({
       header: 'Lead',
       cell: ({ row }) => {
         const leadName = cleanLeadName(row.original.lead_name);
-        const hasLead = leadName !== "—";
+        const hasLead = leadName !== "-";
         return (
           <div className="group flex items-center gap-2">
             <span className="text-muted-foreground">{leadName}</span>
@@ -539,7 +539,7 @@ export function CallLogsTable({
       header: "Response",
       cell: ({ row }) => (
         <span className="text-sm text-muted-foreground capitalize">
-          {getStatusReason(row.original) || "—"}
+          {getStatusReason(row.original) || "-"}
         </span>
       ),
     },
@@ -1366,7 +1366,7 @@ export function CallLogsTable({
                   <span className="block md:inline">Appointment</span>
                   {selectedLead?.name && (
                       <span className="block md:inline">
-                      <span> — </span>
+                      <span> - </span>
                       <span className="md:hidden"><br /></span>
                                       {selectedLead.name}
                       </span>

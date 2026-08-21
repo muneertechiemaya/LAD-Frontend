@@ -181,9 +181,13 @@ export default function CrmPage() {
         )}
 
         <footer className="pt-6 pb-2 text-[11.5px] text-slate-400 dark:text-slate-300/60 flex items-center justify-between">
-          <span>
-            {total.toLocaleString()} contacts total · page {page} of {pageCount}
-          </span>
+          {/* Every non-board view already renders its own Pager (see CrmTable),
+              sourced from this same `pagination` object — repeating the raw
+              total here duplicated it and, once a table search/filter was
+              active, contradicted the filtered count shown above it. Only the
+              board view has no other totals indicator, so it's the only one
+              shown here. */}
+          <span>{view === 'board' ? `${total.toLocaleString()} contacts total · page ${page} of ${pageCount}` : ''}</span>
           <span>Mr LAD · Master Agent</span>
         </footer>
       </main>

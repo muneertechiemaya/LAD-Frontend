@@ -58,7 +58,7 @@ export const STAGE_META: Record<string, { label: string; color: string }> = {
 
 // ── Relative time helpers ────────────────────────────────────────────────
 export function rel(from?: string | null, now: Date = new Date()): string {
-  if (!from) return '—';
+  if (!from) return '-';
   const s = Math.max(1, Math.round((now.getTime() - new Date(from).getTime()) / 1000));
   if (s < 60) return `${s}s`;
   const m = Math.round(s / 60); if (m < 60) return `${m}m`;
@@ -68,12 +68,12 @@ export function rel(from?: string | null, now: Date = new Date()): string {
 }
 
 export function fmtDate(s?: string | null): string {
-  if (!s) return '—';
+  if (!s) return '-';
   return new Date(s).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' });
 }
 
 export function fmtCurrency(n: number, ccy = 'AED'): string {
-  if (n == null) return '—';
+  if (n == null) return '-';
   if (n >= 1_000_000) return `${ccy} ${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000)     return `${ccy} ${(n / 1_000).toFixed(1)}K`;
   return `${ccy} ${n}`;
@@ -141,7 +141,7 @@ export function CrmAvatar({
 }
 
 export function ChannelChips({ channels }: { channels?: ChannelKey[] }) {
-  if (!channels?.length) return <span className="text-[11.5px] text-slate-400">—</span>;
+  if (!channels?.length) return <span className="text-[11.5px] text-slate-400">-</span>;
   return (
     <div className="flex items-center gap-1">
       {channels.map((ch) => {
@@ -179,8 +179,14 @@ export interface CrmPagination {
  * The "Showing a–b of N" range is derived from the pagination window alone
  * (the last page may be short), so it stays consistent across the board and
  * every table tab regardless of client-side filtering within the page.
+ *
+ * `matchCount`, when passed, is the number of CURRENT-PAGE rows that survive
+ * an active in-page search/filter — since that search only narrows the page
+ * already fetched (see CrmTable), the range/total above still describe the
+ * unfiltered server-side page. Without this note the two numbers read as
+ * contradictory (e.g. a 2-row search result next to "Showing 1–18 of 18").
  */
-export function Pager({ pagination }: { pagination: CrmPagination }) {
+export function Pager({ pagination, matchCount }: { pagination: CrmPagination; matchCount?: number }) {
   const { page, pageCount, total, pageSize, onPageChange, loading } = pagination;
   const start = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const windowSize = Math.max(0, Math.min(pageSize, total - (page - 1) * pageSize));
@@ -195,6 +201,12 @@ export function Pager({ pagination }: { pagination: CrmPagination }) {
           {start}{end !== start ? `–${end}` : ''}
         </span>{' '}
         of <span className="tabular-nums">{total.toLocaleString()}</span>
+        {matchCount != null && (
+          <>
+            {' '}· <span className="font-semibold text-[#172560] dark:text-white tabular-nums">{matchCount}</span>{' '}
+            match{matchCount === 1 ? 'es' : ''} your search on this page
+          </>
+        )}
       </span>
       <div className="flex items-center gap-1.5">
         <button

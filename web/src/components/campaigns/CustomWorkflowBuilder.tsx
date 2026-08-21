@@ -79,10 +79,10 @@ const edgeTypes = { labeled: LabeledEdge };
 type SourceKey = 'zoho_recurring' | 'zoho_once' | 'ghl_recurring' | 'ghl_once' | 'linkedin_search' | 'linkedin_signal' | 'file_import' | 'web_extract';
 
 const SOURCES: { key: SourceKey; label: string; sub: string; icon: React.ReactNode; chip: string; recurring?: boolean }[] = [
-  { key: 'zoho_recurring', label: 'Zoho CRM — recurring', sub: 'Import new contacts daily', icon: <Repeat className="h-4 w-4 text-red-600" />, chip: 'bg-red-50 dark:bg-red-950/30', recurring: true },
-  { key: 'zoho_once', label: 'Zoho CRM — one-time', sub: 'Import synced contacts now', icon: <Users className="h-4 w-4 text-red-600" />, chip: 'bg-red-50 dark:bg-red-950/30' },
-  { key: 'ghl_once', label: 'GoHighLevel — one-time', sub: 'Import synced contacts now', icon: <Users className="h-4 w-4 text-blue-600" />, chip: 'bg-blue-50 dark:bg-blue-950/30' },
-  { key: 'ghl_recurring', label: 'GoHighLevel — recurring', sub: 'Import new contacts daily', icon: <Repeat className="h-4 w-4 text-blue-600" />, chip: 'bg-blue-50 dark:bg-blue-950/30', recurring: true },
+  { key: 'zoho_recurring', label: 'Zoho CRM (Recurring)', sub: 'Import new contacts daily', icon: <Repeat className="h-4 w-4 text-red-600" />, chip: 'bg-red-50 dark:bg-red-950/30', recurring: true },
+  { key: 'zoho_once', label: 'Zoho CRM (One-Time)', sub: 'Import synced contacts now', icon: <Users className="h-4 w-4 text-red-600" />, chip: 'bg-red-50 dark:bg-red-950/30' },
+  { key: 'ghl_once', label: 'GoHighLevel (One-Time)', sub: 'Import synced contacts now', icon: <Users className="h-4 w-4 text-blue-600" />, chip: 'bg-blue-50 dark:bg-blue-950/30' },
+  { key: 'ghl_recurring', label: 'GoHighLevel (Recurring)', sub: 'Import new contacts daily', icon: <Repeat className="h-4 w-4 text-blue-600" />, chip: 'bg-blue-50 dark:bg-blue-950/30', recurring: true },
   { key: 'file_import', label: 'File import (CSV / Excel)', sub: 'Upload a list and map columns', icon: <FileSpreadsheet className="h-4 w-4 text-emerald-600" />, chip: 'bg-emerald-50 dark:bg-emerald-950/30' },
   { key: 'linkedin_search', label: 'LinkedIn Search', sub: 'Find new leads by keywords', icon: <Search className="h-4 w-4 text-[#0077B5]" />, chip: 'bg-sky-50 dark:bg-sky-950/30' },
   { key: 'web_extract', label: 'Web page (exhibitors, directories)', sub: 'Pull companies off a page, then find the roles you name', icon: <Globe className="h-4 w-4 text-violet-600" />, chip: 'bg-violet-50 dark:bg-violet-950/30' },

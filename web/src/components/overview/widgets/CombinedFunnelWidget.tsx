@@ -175,7 +175,7 @@ export const CombinedFunnelWidget: React.FC<{ id: string }> = ({ id }) => {
                 <div key={s.key}>
                   {i > 0 && (
                     <div className="flex items-center justify-center gap-2 py-0.5">
-                      <span className="text-[11px] font-medium text-slate-700 bg-slate-100 rounded-full px-2 py-0.5 dark:text-slate-200 dark:bg-white/5">{conv != null ? `${conv}%` : '—'}</span>
+                      <span className="text-[11px] font-medium text-slate-700 bg-slate-100 rounded-full px-2 py-0.5 dark:text-slate-200 dark:bg-white/5">{conv != null ? `${conv}%` : '-'}</span>
                       {dropped > 0 && <span className="text-[10px] text-muted-foreground/70">{num(dropped)} dropped</span>}
                     </div>
                   )}
@@ -216,9 +216,9 @@ export const CombinedFunnelWidget: React.FC<{ id: string }> = ({ id }) => {
 };
 
 const fmtFollowup = (iso: string | null): string => {
-  if (!iso) return '—';
+  if (!iso) return '-';
   const d = new Date(iso);
-  if (isNaN(d.getTime())) return '—';
+  if (isNaN(d.getTime())) return '-';
   return d.toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 };
 
@@ -311,8 +311,8 @@ const StageLeadsModal: React.FC<{ title: string; subtitle: string; fileLabel: st
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-2.5 text-muted-foreground truncate" title={l.company_name || ''}>{l.company_name || '—'}</td>
-                  <td className="px-4 py-2.5 text-muted-foreground truncate" title={l.campaign_name || ''}>{l.campaign_name || '—'}</td>
+                  <td className="px-4 py-2.5 text-muted-foreground truncate" title={l.company_name || ''}>{l.company_name || '-'}</td>
+                  <td className="px-4 py-2.5 text-muted-foreground truncate" title={l.campaign_name || ''}>{l.campaign_name || '-'}</td>
                   <td className="px-4 py-2.5 text-muted-foreground whitespace-nowrap" title={l.next_followup_at || ''}>{fmtFollowup(l.next_followup_at)}</td>
                 </tr>
               ))}

@@ -274,7 +274,7 @@ function TagGroup({ items, selected, onChange, locked = [] }: {
             key={item}
             type="button"
             onClick={() => toggle(item)}
-            title={isLocked ? 'Required — always enabled. Cannot be removed.' : undefined}
+            title={isLocked ? 'Required - always enabled. Cannot be removed.' : undefined}
             className={`px-2.5 py-1 rounded text-xs font-mono transition-all border inline-flex items-center gap-1
               ${isLocked
                 ? 'bg-cyan-900/40 border-cyan-500 text-cyan-300 cursor-not-allowed'
@@ -645,7 +645,7 @@ function ReviewRow({ label, value, mono }: { label: string; value: string; mono?
   return (
     <div className="flex justify-between items-center py-2 border-b border-gray-800 last:border-0">
       <span className="text-xs text-gray-500 w-44 shrink-0">{label}</span>
-      <span className={`text-sm text-gray-200 text-right ${mono ? 'font-mono text-xs' : ''}`}>{value || '—'}</span>
+      <span className={`text-sm text-gray-200 text-right ${mono ? 'font-mono text-xs' : ''}`}>{value || '-'}</span>
     </div>
   );
 }
@@ -735,7 +735,7 @@ function ProvisionLog({ logs, done, result, onReset }: {
               'text-gray-600'
             }>
               {l.step}
-              {l.detail && <span className="text-gray-600 ml-2">— {l.detail}</span>}
+              {l.detail && <span className="text-gray-600 ml-2">- {l.detail}</span>}
             </span>
           </div>
         ))}
@@ -893,7 +893,7 @@ export default function TenantOnboardPage() {
           capabilities: [...new Set([...prev.capabilities, ...next.essential_capabilities])],
         }));
       })
-      .catch(() => { /* silent — UI falls back to hardcoded DEFAULT_* lists */ });
+      .catch(() => { /* silent - UI falls back to hardcoded DEFAULT_* lists */ });
     return () => { cancelled = true; };
   }, [authState]);
 

@@ -97,7 +97,7 @@ function toDirectImageUrl(url: string): string {
     if (fileMatch) return `https://drive.google.com/uc?export=view&id=${fileMatch[1]}`;
     const idParam = u.searchParams.get('id');
     if (idParam) return `https://drive.google.com/uc?export=view&id=${idParam}`;
-  } catch { /* not a valid URL yet — leave as-is */ }
+  } catch { /* not a valid URL yet - leave as-is */ }
   return url;
 }
 

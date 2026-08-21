@@ -593,7 +593,7 @@ export function TenantOnboarding() {
                       <div>
                         <span className="text-xs text-gray-400 dark:text-slate-300">Human Escalation Phone</span>
                         <p className="font-mono text-xs text-gray-600 dark:text-gray-400">
-                          {((account as any).metadata?.escalation_phone as string) || '—'}
+                          {((account as any).metadata?.escalation_phone as string) || '-'}
                         </p>
                       </div>
                     </div>

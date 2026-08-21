@@ -83,7 +83,7 @@ export const ZohoAutomationsPanel: React.FC = () => {
       if (res.ok && data?.success) {
         const s = data.data || {};
         const li = s.resolved_linkedin ? ` (${s.resolved_linkedin} LinkedIn profiles resolved)` : '';
-        setBanner({ kind: 'ok', text: `Scanned ${s.scanned || 0} tasks — ${s.proposed || 0} proposed, ${s.skipped || 0} skipped${li}.` });
+        setBanner({ kind: 'ok', text: `Scanned ${s.scanned || 0} tasks - ${s.proposed || 0} proposed, ${s.skipped || 0} skipped${li}.` });
         load();
       } else {
         setBanner({ kind: 'err', text: data?.error || 'Scan failed' });

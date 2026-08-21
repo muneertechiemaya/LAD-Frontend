@@ -418,10 +418,10 @@ const WF_SOURCE_LABELS: Record<string, { label: string; sub: string }> = {
     linkedin_search:  { label: 'LinkedIn Search',            sub: 'Find new leads by keywords' },
     linkedin_signal:  { label: 'LinkedIn Signal Search',     sub: 'Find leads from hiring/buying signals' },
     file_import:      { label: 'File import (CSV / Excel)',  sub: 'Upload a list and map columns' },
-    zoho_once:        { label: 'Zoho CRM — one-time',        sub: 'Import synced contacts now' },
-    zoho_recurring:   { label: 'Zoho CRM — recurring',       sub: 'Import new contacts daily' },
-    ghl_once:         { label: 'GoHighLevel — one-time',     sub: 'Import synced contacts now' },
-    ghl_recurring:    { label: 'GoHighLevel — recurring',    sub: 'Import new contacts daily' },
+    zoho_once:        { label: 'Zoho CRM (One-Time)',        sub: 'Import synced contacts now' },
+    zoho_recurring:   { label: 'Zoho CRM (Recurring)',       sub: 'Import new contacts daily' },
+    ghl_once:         { label: 'GoHighLevel (One-Time)',     sub: 'Import synced contacts now' },
+    ghl_recurring:    { label: 'GoHighLevel (Recurring)',    sub: 'Import new contacts daily' },
 };
 
 /* ═══════════════════════════════════════════════

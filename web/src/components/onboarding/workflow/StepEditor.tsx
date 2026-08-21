@@ -525,7 +525,7 @@ export default function StepEditor({ step, onClose, campaignId }: StepEditorProp
               </div>
             ) : (
               <p className="text-sm text-gray-600">
-                Generate brand media in the AI Media Studio, then attach it here — it will be sent with this campaign&apos;s outreach messages.
+                Generate brand media in the AI Media Studio, then attach it here - it will be sent with this campaign&apos;s outreach messages.
               </p>
             )}
 

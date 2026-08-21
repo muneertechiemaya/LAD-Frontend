@@ -535,7 +535,7 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
     chain: ['Zoho daily', 'AI Agent', 'Connect', 'Wait: accepted', 'Message', 'Zoho write-back'],
     source: {
       key: 'zoho_recurring',
-      title: 'Zoho CRM — recurring', description: 'Import new contacts daily',
+      title: 'Zoho CRM (Recurring)', description: 'Import new contacts daily',
       cfg: { zoho_modules: 'contacts' },
     },
     inputs: [

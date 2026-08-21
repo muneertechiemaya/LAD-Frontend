@@ -173,7 +173,7 @@ const INTEGRATIONS: IntegrationCard[] = [
   {
     id: 'zoho',
     name: 'Zoho CRM',
-    description: 'Connect Zoho CRM to sync Contacts, Leads, and Deals — and push Mr LAD leads back into Zoho.',
+    description: 'Connect Zoho CRM to sync Contacts, Leads, and Deals - and push Mr LAD leads back into Zoho.',
     icon: (
       <span className="text-lg font-bold text-red-600 select-none leading-none" aria-label="Zoho">Z</span>
     ),
@@ -340,7 +340,7 @@ export const IntegrationsSettings: React.FC = () => {
                 const csData = await cs.json();
                 setWapaAiEnabled(csData?.settings?.ai_enabled !== false);
               }
-            } catch { /* non-fatal — pill stays at its default (ON) */ }
+            } catch { /* non-fatal - pill stays at its default (ON) */ }
           }
         }
       } catch { setStatus('whatsapp-personal', 'disconnected'); }
@@ -365,7 +365,7 @@ export const IntegrationsSettings: React.FC = () => {
                 const csData = await cs.json();
                 setWabaAiEnabled(csData?.ai_enabled !== false);
               }
-            } catch { /* non-fatal — pill stays at its default (ON) */ }
+            } catch { /* non-fatal - pill stays at its default (ON) */ }
           }
         }
       } catch { setStatus('whatsapp-ai', 'disconnected'); }
