@@ -543,16 +543,22 @@ function FilterDropdown({
 
 // ── Reusable name+title row cell ────────────────────────────────────────
 function NameCell({ row, withCompany = false }: { row: CrmContact; withCompany?: boolean }) {
+  // Join only the parts that exist. Interpolating `${title} · ${company}`
+  // unconditionally rendered the separator even when both were empty, so a
+  // contact with neither showed a lone "·" under its name (and one with only
+  // a company showed a leading " · Acme"). Same "decoration rendered for
+  // absent data" shape as the "-" placeholder fixes in the columns below.
+  const subtitle = (withCompany ? [row.title, row.company] : [row.title])
+    .filter((v) => v && String(v).trim())
+    .join(' · ');
   return (
     <div className="flex items-center gap-2.5 min-w-0">
       <CrmAvatar name={row.name} initials={row.initials} />
       <div className="min-w-0 max-w-[260px] sm:max-w-[320px]">
         <p className="text-[12.5px] font-semibold text-[#172560] dark:text-white truncate">{row.name}</p>
-        <p
-          className="text-[11px] text-slate-500 dark:text-[#7a8ba3] truncate"
-          title={withCompany ? `${row.title} · ${row.company}` : row.title}
-        >
-          {withCompany ? `${row.title} · ${row.company}` : row.title}
+        {/* Kept rendered even when empty so row heights stay aligned. */}
+        <p className="text-[11px] text-slate-500 dark:text-[#7a8ba3] truncate" title={subtitle}>
+          {subtitle}
         </p>
       </div>
     </div>
