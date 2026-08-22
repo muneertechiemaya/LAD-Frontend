@@ -124,8 +124,20 @@ export default function CrmDetailPage() {
           <div className={BOX}>
             Could not load this contact: {(detailQuery.error as Error)?.message ?? 'Unknown error'}
           </div>
-        ) : detailQuery.isLoading || !fixture ? (
+        ) : !fixture && (detailQuery.isLoading || detailQuery.isFetching) ? (
           <div className={BOX}>Loading contact…</div>
+        ) : !fixture ? (
+          // The query has SETTLED and still produced no contact. The old
+          // condition was `isLoading || !fixture`, which treated "no data"
+          // as "still loading" — so a prospect id that no longer exists
+          // (the API answers 404 prospect_not_found) sat on "Loading
+          // contact…" forever, with no error and no way to tell the page
+          // was finished. Verified live against a non-existent id: the
+          // request fires, returns 404, and the old UI never left the
+          // loading state. Anything terminal-with-no-contact lands here.
+          <div className={BOX}>
+            This contact could not be found. It may have been removed.
+          </div>
         ) : (
           <ProspectDetail
             prospect={fixture}
