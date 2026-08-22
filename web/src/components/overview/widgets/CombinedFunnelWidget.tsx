@@ -16,7 +16,7 @@
  * Data: GET /api/campaigns/lead-journey?from=&to= — returns counts + the lead
  * lists per stage. Channel-agnostic → always shown.
  */
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { RefreshCw, Filter, Linkedin, X, Download } from 'lucide-react';
 import { WidgetWrapper } from '../WidgetWrapper';
@@ -64,7 +64,17 @@ export const CombinedFunnelWidget: React.FC<{ id: string }> = ({ id }) => {
   const [error, setError] = useState<string | null>(null);
   const [openStage, setOpenStage] = useState<StageKey | null>(null);
 
+  // Every load gets a sequence number; only the newest one is allowed to
+  // write state. Switching period fires a new request without cancelling the
+  // old one, and these requests are slow enough (measured 3.5–5.8s) and
+  // variable enough that an EARLIER request can land after a later one — at
+  // which point the stale response would overwrite the newer data and the
+  // funnel would show, say, Year's numbers with "Week" still selected.
+  const reqSeq = useRef(0);
+
   const load = useCallback(async () => {
+    const seq = ++reqSeq.current;
+    const isStale = () => seq !== reqSeq.current;
     setLoading(true);
     setError(null);
     try {
@@ -80,6 +90,7 @@ export const CombinedFunnelWidget: React.FC<{ id: string }> = ({ id }) => {
       const res = await fetchWithTenant(`/api/campaigns/lead-journey${qs}`);
       const json = await res.json().catch(() => ({}));
       if (!res.ok || json?.success === false) throw new Error(json?.error || `Request failed (${res.status})`);
+      if (isStale()) return; // a newer period was selected while this was in flight
       const c = json?.counts || {};
       setData({
         counts: {
@@ -96,9 +107,12 @@ export const CombinedFunnelWidget: React.FC<{ id: string }> = ({ id }) => {
         },
       });
     } catch (e: any) {
+      if (isStale()) return; // don't surface a superseded request's error
       setError(e?.message || 'Failed to load funnel');
     } finally {
-      setLoading(false);
+      // Only the newest request may clear the spinner — otherwise a stale
+      // one finishing would stop it while the current request is still going.
+      if (!isStale()) setLoading(false);
     }
   }, [period]);
 
