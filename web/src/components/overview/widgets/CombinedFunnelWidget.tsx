@@ -51,6 +51,9 @@ const STAGES: { key: StageKey; label: string; color: string }[] = [
   { key: 'sah', label: 'Sales Handoff', color: '#639922' },
 ];
 const DAY_MS = 24 * 60 * 60 * 1000;
+// The lead-journey endpoint caps a page at 2000; request that rather than
+// letting it fall back to its 500 default — see the fetch below.
+const LIST_LIMIT = 2000;
 const num = (n: number) => n.toLocaleString();
 const rate = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 100) : 0);
 
@@ -68,7 +71,12 @@ export const CombinedFunnelWidget: React.FC<{ id: string }> = ({ id }) => {
       const days = PERIODS.find((p) => p.key === period)?.days ?? 7;
       const to = new Date();
       const from = new Date(to.getTime() - days * DAY_MS);
-      const qs = `?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}`;
+      // Ask for the endpoint's maximum page (it caps at 2000). Without an
+      // explicit limit the backend defaults to 500, but it computes `counts`
+      // from the FULL result set before slicing the lists — so a stage with
+      // 507 leads reported 507 in the bar and the modal subtitle while the
+      // drill-down table (and its "Download CSV") silently carried only 500.
+      const qs = `?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}&limit=${LIST_LIMIT}`;
       const res = await fetchWithTenant(`/api/campaigns/lead-journey${qs}`);
       const json = await res.json().catch(() => ({}));
       if (!res.ok || json?.success === false) throw new Error(json?.error || `Request failed (${res.status})`);
@@ -205,7 +213,14 @@ export const CombinedFunnelWidget: React.FC<{ id: string }> = ({ id }) => {
       {openStage && data && (
         <StageLeadsModal
           title={STAGES.find((s) => s.key === openStage)!.label}
-          subtitle={`${periodLabel} · ${num(data.counts[openStage])} lead${data.counts[openStage] === 1 ? '' : 's'}`}
+          // Say what this list ACTUALLY contains. `counts` is the true total,
+          // but the list is capped at LIST_LIMIT — quoting the total alone
+          // would misdescribe both the table and the CSV it exports.
+          subtitle={
+            data.lists[openStage].length < data.counts[openStage]
+              ? `${periodLabel} · showing ${num(data.lists[openStage].length)} of ${num(data.counts[openStage])} leads`
+              : `${periodLabel} · ${num(data.counts[openStage])} lead${data.counts[openStage] === 1 ? '' : 's'}`
+          }
           fileLabel={`${STAGES.find((s) => s.key === openStage)!.label.replace(/\s+/g, '-').toLowerCase()}-${period}`}
           leads={data.lists[openStage]}
           onClose={() => setOpenStage(null)}
