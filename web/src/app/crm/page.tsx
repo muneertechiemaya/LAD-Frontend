@@ -247,7 +247,16 @@ export default function CrmPage() {
 
         {listQuery.isLoading ? (
           <div className={EMPTY_BOX}>Loading prospects…</div>
-        ) : !listQuery.isError && prospects.length === 0 ? (
+        ) : !listQuery.isError && prospects.length === 0 && !search.trim() ? (
+          // "No prospects yet" is the FIRST-RUN message, so it must only show
+          // when the tenant genuinely has nothing — never as the result of a
+          // search. Since search became server-side, a query with no hits
+          // empties `prospects`, which used to swap the whole table out for
+          // this box: the message was flatly wrong (the tenant has 571), and
+          // it removed the search input, so the user could not clear their
+          // own search without reloading. With a search active we always
+          // render the table, which has its own "No matches." state and
+          // keeps the box, filters and Export in place.
           <div className={EMPTY_BOX}>
             No prospects yet. As your channels engage prospects, they&apos;ll appear here.
           </div>
