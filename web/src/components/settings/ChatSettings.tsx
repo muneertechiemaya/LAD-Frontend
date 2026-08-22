@@ -42,6 +42,7 @@ import FollowupTouchesEditor, {
 } from './FollowupTouchesEditor';
 import dynamic from 'next/dynamic';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
+import { TeamPersonasCard } from './TeamPersonasCard';
 import {
   Select,
   SelectContent,
@@ -2911,6 +2912,9 @@ export function ChatSettings() {
 
       {/* ── Email agent (Gmail/Outlook tab) ──────────────────────── */}
       {activeChannel === 'waba' && <HumanMuteCard showToast={showToast} />}
+      {/* WABA only: a persona is keyed on the user who owns a NUMBER, and no
+          other channel has that ownership model. */}
+      {activeChannel === 'waba' && <TeamPersonasCard showToast={showToast} />}
       {activeChannel === 'gmail' && <EmailAgentCard showToast={showToast} />}
 
       {/* ── Hidden channels hint ─────────────────────────────────── */}
