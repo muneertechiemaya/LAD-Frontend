@@ -99,10 +99,21 @@ export default function CrmDetailPage() {
   // unknown — the error object is not always populated, which is the same
   // reason these guards key off absent data rather than isError — the safe
   // default is "could not load", which is never false.
-  const detailStatus = apiErrorStatus(detailQuery.error as unknown);
+  // `error` alone is NOT enough. Verified live against a genuinely missing id:
+  // the API answers 404, and `isError` stays false — the page reaches its
+  // "could not be found" message through the !fixture fallthrough, never the
+  // error branch. So reading only `error` would leave detailStatus undefined for
+  // the one case this check exists to identify, and a deleted contact would get
+  // the vague "Could not load this contact. Please try again." — pointing the
+  // user at a retry that can never succeed. `failureReason` carries the last
+  // failed attempt's error even while status is not 'error'.
+  const detailStatus = apiErrorStatus(
+    (detailQuery.error ?? detailQuery.failureReason) as unknown,
+  );
   const detailNotFound = detailStatus === 404;
   const detailUnavailable = !detailQuery.isFetching && detailQuery.data === undefined;
-  const detailMessage = (detailQuery.error as Error | null)?.message;
+  const detailMessage = ((detailQuery.error ?? detailQuery.failureReason) as Error | null)
+    ?.message;
 
   // Option C — enrich the prospect's LinkedIn profile on first open (company +
   // employment + warm-path signals) when it hasn't been enriched yet. Fire once,
