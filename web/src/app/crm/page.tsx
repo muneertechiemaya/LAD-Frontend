@@ -144,7 +144,11 @@ export default function CrmPage() {
   // their OWN unsearched total — otherwise typing into the search box
   // made "All Contacts"/"Prospects" collapse to the search's match count
   // instead of staying the tenant's real totals.
-  const trueTotal = useProspects({ limit: 1 }).data?.total ?? 0;
+  // `?? 0` on all of these meant an outage rendered "All Contacts 0 · Prospects
+  // 0 · Leads 0 · Clients 0" — a tenant with 571 contacts told their CRM was
+  // empty. Keep them nullable so a figure we could not load reads as "—".
+  const trueTotalQuery = useProspects({ limit: 1 });
+  const trueTotal = trueTotalQuery.data?.total ?? null;
   const qualifiedTotal = useProspects({ lifecycle_stage: 'qualified', limit: 1 }).data?.total ?? 0;
   const sahTotal = useProspects({ lifecycle_stage: 'sah', limit: 1 }).data?.total ?? 0;
   const wonTotal = useProspects({ lifecycle_stage: 'won', limit: 1 }).data?.total ?? 0;
@@ -168,10 +172,23 @@ export default function CrmPage() {
     [newTotal, contactedTotal, engagedTotal, qualifiedTotal, sahTotal],
   );
   const counts = useMemo(() => {
+    // Without the tenant total we cannot derive ANY of these honestly — the
+    // prospect bucket is `all` minus the others — so surface all four as
+    // unknown rather than inventing zeros.
+    if (trueTotal === null) {
+      return { all: null, prospects: null, leads: null, clients: null };
+    }
     const leads = qualifiedTotal + sahTotal;
     const clients = wonTotal;
     return { all: trueTotal, prospects: Math.max(0, trueTotal - leads - clients), leads, clients };
   }, [trueTotal, qualifiedTotal, sahTotal, wonTotal]);
+
+  // The list itself never loaded — distinct from "this tenant has no contacts".
+  // On a cold cache during an outage this rendered the FIRST-RUN message ("No
+  // prospects yet. As your channels engage prospects, they'll appear here.")
+  // with no error at all, telling a tenant with 571 contacts they were a brand
+  // new empty account. Same reason as the other guards: isError does not fire.
+  const listUnavailable = !listQuery.isFetching && listQuery.data === undefined;
 
   // Open a contact's full detail page.
   const openDetail = (idOrContact: string | CrmContact) => {
@@ -271,10 +288,13 @@ export default function CrmPage() {
           </Link>
         </div>
 
-        {(listQuery.isError || showingStaleRows) && (
+        {(listQuery.isError || showingStaleRows || listUnavailable) && (
           <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 dark:border-rose-900/60 dark:bg-rose-950/30 p-4 text-[13px] text-rose-700 dark:text-rose-300">
             {listQuery.isError ? (
               <>Could not load prospects: {(listQuery.error as Error)?.message ?? 'Unknown error'}</>
+            ) : listUnavailable ? (
+              <>Could not load your contacts. This is a loading problem, not an empty
+                pipeline — please try again.</>
             ) : (
               // The stale branch exists precisely BECAUSE the query stays in
               // 'success' when placeholder data is present — which also means
@@ -293,7 +313,7 @@ export default function CrmPage() {
 
         {listQuery.isLoading ? (
           <div className={EMPTY_BOX}>Loading prospects…</div>
-        ) : !listQuery.isError && prospects.length === 0 && !search.trim() ? (
+        ) : !listQuery.isError && !listUnavailable && prospects.length === 0 && !search.trim() ? (
           // "No prospects yet" is the FIRST-RUN message, so it must only show
           // when the tenant genuinely has nothing — never as the result of a
           // search. Since search became server-side, a query with no hits
