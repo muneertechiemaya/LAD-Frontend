@@ -23,9 +23,16 @@ export interface KanbanBoardProps {
    * actually on this page.
    */
   stageTotals?: Partial<Record<LifecycleStage, number>>;
+  /**
+   * We could not load the pipeline at all. Without this the board falls back to
+   * counting `leads` — which during an outage is an empty array — and every
+   * column confidently reads 0, on the DEFAULT view, while the summary cards
+   * directly above correctly read "—".
+   */
+  unavailable?: boolean;
 }
 
-export default function KanbanBoard({ stages = [], leads = [], selectedLeadId, onSelectLead, onAddDeal, stageTotals }: KanbanBoardProps) {
+export default function KanbanBoard({ stages = [], leads = [], selectedLeadId, onSelectLead, onAddDeal, stageTotals, unavailable = false }: KanbanBoardProps) {
   return (
     <div className="overflow-x-auto -mx-4 sm:-mx-6 px-4 sm:px-6 pb-1">
       <div className="flex gap-3 min-w-max">
@@ -65,7 +72,7 @@ export default function KanbanBoard({ stages = [], leads = [], selectedLeadId, o
                   <span
                     className="inline-flex dark:bg-[#2563eb] dark:text-white items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium tabular-nums"
                   >
-                    {headerCount}
+                    {unavailable ? '—' : headerCount}
                   </span>
                 </div>
                 {onAddDeal && (
@@ -81,7 +88,9 @@ export default function KanbanBoard({ stages = [], leads = [], selectedLeadId, o
 
               {/* Subheader */}
               <p className="text-[11px] text-slate-500 dark:text-slate-400 px-1 mb-2">
-                {headerCount === 0
+                {unavailable
+                  ? 'could not be loaded'
+                  : headerCount === 0
                   ? 'AED 0 pipeline'
                   : anyValueTracked
                     ? `${fmtCurrency(pipelineValue)} pipeline`
@@ -108,12 +117,14 @@ export default function KanbanBoard({ stages = [], leads = [], selectedLeadId, o
                     <Inbox className="w-5 h-5 text-slate-400 dark:text-slate-400" />
                   </div>
                   <p className="text-[13px] font-medium text-slate-700 dark:text-slate-200 mb-1">
-                    {truncated ? 'None on this page' : 'No deals here'}
+                    {unavailable ? 'Not loaded' : truncated ? 'None on this page' : 'No deals here'}
                   </p>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-[180px] leading-tight mb-6">
-                    {truncated
-                      ? `All ${headerCount} are on other pages — open this stage from the list view to see them.`
-                      : 'Add deals to move them to the next stage.'}
+                    {unavailable
+                      ? "We couldn't load this pipeline — this isn't an empty stage."
+                      : truncated
+                        ? `All ${headerCount} are on other pages — open this stage from the list view to see them.`
+                        : 'Add deals to move them to the next stage.'}
                   </p>
                 </div>
               )}
