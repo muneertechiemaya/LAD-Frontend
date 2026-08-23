@@ -927,7 +927,7 @@ function Actions({ onAction, isActing, doNotContact, quietUntil }: {
         <ActionBtn
           Icon={MoonStar}
           label={quietActive ? 'Quieted' : 'Quiet 7d'}
-          hint={quietActive ? `until ${new Date(quietUntil!).toLocaleDateString()}` : 'pause outreach'}
+          hint={quietActive ? `until ${new Date(quietUntil!).toLocaleDateString()}` : 'pause agent replies'}
           active={quietActive}
           disabled={isActing}
           onClick={() => onAction?.(quietActive ? { clearQuiet: true } : { quietDays: 7 })}
@@ -935,13 +935,22 @@ function Actions({ onAction, isActing, doNotContact, quietUntil }: {
         <ActionBtn
           Icon={Ban}
           label="Do not contact"
-          hint={doNotContact ? 'suppressed - click to lift' : 'hard suppress'}
+          // Was "hard suppress" / "suppressed". Both overstated what the flag
+          // does: quiet_until and do_not_contact are surfaced to the agent's
+          // prompt (tenant_context_service builds a CROSS-CHANNEL STATE block
+          // from them), but no send path gates on either — a running campaign
+          // sequence keeps executing its steps regardless. Say what is true.
+          hint={doNotContact ? 'flagged - click to lift' : 'tell the agent to stop'}
           danger
           active={!!doNotContact}
           disabled={isActing}
           onClick={() => onAction?.({ doNotContact: !doNotContact })}
         />
       </div>
+      <p className="mt-2.5 text-[11.5px] text-slate-500 dark:text-slate-400 leading-snug">
+        Agent replies honour these. A running campaign sequence does not — pause
+        the campaign to stop its steps.
+      </p>
     </LadCard>
   );
 }
