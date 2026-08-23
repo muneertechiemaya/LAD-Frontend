@@ -133,6 +133,25 @@ export default function CrmPage() {
   const qualifiedTotal = useProspects({ lifecycle_stage: 'qualified', limit: 1 }).data?.total ?? 0;
   const sahTotal = useProspects({ lifecycle_stage: 'sah', limit: 1 }).data?.total ?? 0;
   const wonTotal = useProspects({ lifecycle_stage: 'won', limit: 1 }).data?.total ?? 0;
+
+  // Same problem, one view over: the board buckets `kanbanLeads`, which is only
+  // the current 50-row page, so its column headers capped at PAGE_SIZE too —
+  // 550 "new" prospects rendered as "New 38" right under "All Contacts 571".
+  // 'qualified' and 'sah' are already fetched above, so only 3 more limit=1
+  // requests are needed to cover all five STAGES.
+  const newTotal = useProspects({ lifecycle_stage: 'new', limit: 1 }).data?.total ?? 0;
+  const contactedTotal = useProspects({ lifecycle_stage: 'contacted', limit: 1 }).data?.total ?? 0;
+  const engagedTotal = useProspects({ lifecycle_stage: 'engaged', limit: 1 }).data?.total ?? 0;
+  const stageTotals = useMemo(
+    () => ({
+      new: newTotal,
+      contacted: contactedTotal,
+      engaged: engagedTotal,
+      qualified: qualifiedTotal,
+      sah: sahTotal,
+    }),
+    [newTotal, contactedTotal, engagedTotal, qualifiedTotal, sahTotal],
+  );
   const counts = useMemo(() => {
     const leads = qualifiedTotal + sahTotal;
     const clients = wonTotal;
@@ -192,6 +211,7 @@ export default function CrmPage() {
           <KanbanBoard
             stages={STAGES}
             leads={kanbanLeads}
+            stageTotals={stageTotals}
             selectedLeadId={null}
             onSelectLead={openDetail}
           />
