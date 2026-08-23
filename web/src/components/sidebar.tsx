@@ -692,6 +692,13 @@ export function Sidebar() {
               <div key={n.href} className="relative group">
                 <NavLink
                   href={n.href}
+                  // Collapsed, this renders as a bare 48px icon — the label
+                  // span below is gated on isExpanded, so without these the
+                  // link has NO accessible name and screen readers announce
+                  // eight identical "link"s. The title also gives sighted
+                  // users a hover tooltip telling them where each icon goes.
+                  aria-label={n.label}
+                  title={!isExpanded ? n.label : undefined}
                   className={cn(
                     "relative flex items-center rounded-2xl overflow-visible",
                     "transition-all duration-400 ease-[cubic-bezier(.19,1,.22,1)]",
@@ -924,6 +931,10 @@ export function Sidebar() {
               {/* Settings */}
               <NavLink
                 href="/settings"
+                // Collapsed, the label span is not rendered, so the link would
+                // have no accessible name at all — see the nav items above.
+                aria-label="Settings"
+                title={!isExpanded ? "Settings" : undefined}
                 className={cn(
                   "flex items-center gap-3 rounded-xl px-3 h-10 text-sm font-medium transition-all",
                   "text-gray-700 dark:text-gray-300 hover:bg-white/5 dark:hover:bg-white/10 active:scale-95 select-none",
