@@ -425,9 +425,35 @@ function CrmTable<R extends CrmContact>({
                   <th
                     key={i}
                     onClick={canSort ? () => toggleSort(i) : undefined}
+                    // Same gap as the rows below: a sortable header was
+                    // clickable (cursor-pointer + onClick) but tabIndex -1 with
+                    // nothing focusable inside, so sorting was mouse-only.
+                    // aria-sort was missing too, so a screen-reader user could
+                    // not tell which column was sorted or in which direction —
+                    // the chevron conveys that visually and nowhere else.
+                    tabIndex={canSort ? 0 : undefined}
+                    onKeyDown={
+                      canSort
+                        ? (e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              toggleSort(i);
+                            }
+                          }
+                        : undefined
+                    }
+                    aria-sort={
+                      canSort
+                        ? active
+                          ? sort!.dir === 'asc'
+                            ? 'ascending'
+                            : 'descending'
+                          : 'none'
+                        : undefined
+                    }
                     className={`px-3 py-2.5 text-[10.5px] uppercase tracking-wider font-semibold text-slate-500 dark:text-[#7a8ba3] whitespace-nowrap ${
                       c.align === 'right' ? 'text-right' : 'text-left'
-                    } ${canSort ? 'cursor-pointer select-none hover:text-[#172560] dark:hover:text-white' : ''}`}
+                    } ${canSort ? 'cursor-pointer select-none hover:text-[#172560] dark:hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2563eb]' : ''}`}
                   >
                     <span className="inline-flex items-center gap-1">
                       {c.label}
@@ -449,7 +475,33 @@ function CrmTable<R extends CrmContact>({
               <tr
                 key={r.id}
                 onClick={() => onRowClick?.(r)}
-                className="border-b border-slate-100 dark:border-[#262831] hover:bg-[#f5f7fd] dark:hover:bg-[#0e1a3a] cursor-pointer transition"
+                // Opening a contact was mouse-only. The row carried onClick and
+                // cursor-pointer (and the page says "Click any row to open the
+                // contact's profile"), but no tabIndex, no key handler and no
+                // link — so a keyboard user could not open a contact at all,
+                // while the ONE control they could reach in a row was the
+                // destructive "Remove: not a fit" button.
+                //
+                // Deliberately NOT role="button": that would pull the row out of
+                // the table's accessibility tree and cost every screen-reader
+                // user their row/column context. tabIndex + Enter/Space makes it
+                // operable while it stays a real table row. (The fully semantic
+                // alternative — a real control inside the name cell — needs
+                // onRowClick plumbed through the column definitions.)
+                tabIndex={onRowClick ? 0 : undefined}
+                onKeyDown={
+                  onRowClick
+                    ? (e) => {
+                        if (e.target !== e.currentTarget) return; // let cell controls keep their keys
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          onRowClick(r);
+                        }
+                      }
+                    : undefined
+                }
+                aria-label={onRowClick ? `Open ${r.name}` : undefined}
+                className="border-b border-slate-100 dark:border-[#262831] hover:bg-[#f5f7fd] dark:hover:bg-[#0e1a3a] cursor-pointer transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2563eb]"
               >
                 <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                   <input
