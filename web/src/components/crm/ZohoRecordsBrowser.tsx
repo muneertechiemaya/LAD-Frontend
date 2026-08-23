@@ -89,14 +89,25 @@ export const ZohoRecordsBrowser: React.FC = () => {
     (async () => { await checkStatus(); setLoading(false); })();
   }, [checkStatus]);
 
+  // Same response-race guard as the Sales funnel widget. loadRecords takes the
+  // varying key (record type / page / search) as ARGUMENTS, so switching tabs,
+  // paging or typing fires a new request without cancelling the previous one.
+  // Nothing here stops an earlier request that lands late from overwriting a
+  // newer one — and because the stale branch also calls setPage(p), it would
+  // snap the pager back to the page the user already navigated away from.
+  const recordsSeq = useRef(0);
+
   const loadRecords = useCallback(async (type: RecordType, p: number, q: string, size?: number) => {
     const limit = size ?? pageSize;
+    const seq = ++recordsSeq.current;
+    const isStale = () => seq !== recordsSeq.current;
     setRecordsLoading(true);
     try {
       const params = new URLSearchParams({ type, page: String(p), limit: String(limit) });
       if (q) params.set('search', q);
       const res = await fetchWithTenant(`${ZOHO_API}/records/local?${params.toString()}`);
       const data = await res.json();
+      if (isStale()) return;
       if (res.ok && data?.success) {
         setRecords(data.data || []);
         setTotal(data.total || 0);
@@ -105,10 +116,15 @@ export const ZohoRecordsBrowser: React.FC = () => {
         setRecords([]); setTotal(0);
       }
     } catch {
+      if (isStale()) return;
       setRecords([]); setTotal(0);
     } finally {
-      setRecordsLoading(false);
-      listContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+      // Only the newest request may clear the spinner or yank the list back to
+      // the top; a stale one doing either fights the request still in flight.
+      if (!isStale()) {
+        setRecordsLoading(false);
+        listContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     }
   }, [pageSize]);
 
