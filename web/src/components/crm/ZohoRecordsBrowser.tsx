@@ -68,6 +68,12 @@ export const ZohoRecordsBrowser: React.FC = () => {
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [search, setSearch] = useState('');
   const [recordsLoading, setRecordsLoading] = useState(false);
+  // A failed records fetch used to be indistinguishable from a successful empty
+  // one: both paths below just cleared the list, and the empty state then said
+  // "No {type} synced yet. Click 'Sync from Zoho' to pull them in." — telling a
+  // tenant who has synced thousands of records that they have none, and
+  // inviting a pointless full re-sync.
+  const [recordsError, setRecordsError] = useState(false);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollingRef = useRef(false);
   const listContainerRef = useRef<HTMLDivElement>(null);
@@ -112,12 +118,13 @@ export const ZohoRecordsBrowser: React.FC = () => {
         setRecords(data.data || []);
         setTotal(data.total || 0);
         setPage(p);
+        setRecordsError(false);
       } else {
-        setRecords([]); setTotal(0);
+        setRecords([]); setTotal(0); setRecordsError(true);
       }
     } catch {
       if (isStale()) return;
-      setRecords([]); setTotal(0);
+      setRecords([]); setTotal(0); setRecordsError(true);
     } finally {
       // Only the newest request may clear the spinner or yank the list back to
       // the top; a stale one doing either fights the request still in flight.
@@ -300,6 +307,11 @@ export const ZohoRecordsBrowser: React.FC = () => {
         {recordsLoading ? (
           <div className="flex items-center justify-center py-12 text-slate-500 dark:text-[#7a8ba3]">
             <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading {recordType}…
+          </div>
+        ) : recordsError ? (
+          <div className="text-center py-12 text-rose-600 dark:text-rose-300 text-sm">
+            Couldn&apos;t load your {recordType}. This is a loading problem, not an empty
+            sync — please try again.
           </div>
         ) : records.length === 0 ? (
           <div className="text-center py-12 text-slate-500 dark:text-[#7a8ba3] text-sm">
