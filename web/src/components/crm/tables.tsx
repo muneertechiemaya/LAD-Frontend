@@ -343,17 +343,24 @@ function CrmTable<R extends CrmContact>({
   // tenant. The file was still called `all-contacts-<date>.csv`, and that name
   // outlives the screen it came from: whoever opens it later has no way to know
   // it holds a twelfth of the contacts. Say so in the name and in the tooltip.
+  //
+  // Two different partial cases, and calling both "page" would be a new (small)
+  // lie of its own: with a local filter or search active the export is the
+  // FILTERED view, which is not "page 1 of 12" either.
   const exportedIsPartial = !!pagination && pagination.total > sorted.length;
+  const exportIsFiltered = sorted.length < rows.length;
   const handleExport = useCallback(() => {
     if (!sorted.length) return;
     const csv = buildContactsCsv(sorted as CrmContact[]);
     const ts = new Date().toISOString().slice(0, 10);
-    const scope =
-      pagination && pagination.total > sorted.length
-        ? `-page-${pagination.page}-of-${pagination.pageCount}`
-        : '';
+    const partial = !!pagination && pagination.total > sorted.length;
+    const scope = !partial
+      ? ''
+      : sorted.length < rows.length
+        ? '-filtered'
+        : `-page-${pagination!.page}-of-${pagination!.pageCount}`;
     downloadCsv(`${slugify(title)}${scope}-${ts}.csv`, csv);
-  }, [sorted, title, pagination]);
+  }, [sorted, rows.length, title, pagination]);
 
   return (
     <section className="bg-white dark:bg-[#000724] rounded-[20px] border border-slate-200 dark:border-[#262831] overflow-hidden">
@@ -404,7 +411,7 @@ function CrmTable<R extends CrmContact>({
               filtered.length === 0
                 ? 'No rows to export'
                 : exportedIsPartial
-                  ? `Export this page only — ${filtered.length} of ${pagination!.total} rows`
+                  ? `Export the ${filtered.length} row${filtered.length === 1 ? '' : 's'} shown${exportIsFiltered ? ' by this filter' : ' on this page'} — not all ${pagination!.total}`
                   : `Export ${filtered.length} row${filtered.length === 1 ? '' : 's'} as CSV`
             }
             className="h-9 px-3 rounded-lg text-[12.5px] font-medium border border-slate-200 dark:border-[#262831] text-[#172560] dark:text-white hover:bg-slate-50 dark:hover:bg-[#1a2a43] inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -413,7 +420,9 @@ function CrmTable<R extends CrmContact>({
                 hover hint does not exist on touch, and "Export" next to a
                 header reading "All Contacts · 571" implies all 571. */}
             <Download className="w-3.5 h-3.5" />{' '}
-            {exportedIsPartial ? `Export page (${filtered.length})` : 'Export'}
+            {exportedIsPartial
+              ? `Export ${exportIsFiltered ? 'view' : 'page'} (${filtered.length})`
+              : 'Export'}
           </button>
           <button
             disabled
