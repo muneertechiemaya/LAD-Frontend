@@ -12,6 +12,7 @@ import {
   useProspect, useProspectEvents, useDeleteProspect, useEnrichProspect,
   useProspectAction, useProspectFollowups,
 } from '@lad/frontend-features/prospects';
+import { apiErrorStatus } from '@lad/frontend-features';
 
 import TopBar from '@/components/crm/top-bar';
 import ProspectDetail from '@/components/crm/prospect-detail';
@@ -89,6 +90,20 @@ export default function CrmDetailPage() {
   const followupsUnavailable =
     !followupsQuery.isFetching && followupsQuery.data === undefined;
 
+  // Third instance of the same shape, and the most misleading of them: a failed
+  // detail fetch left `fixture` null and fell through to "This contact could not
+  // be found. It may have been removed." Blocking the endpoint with a 503
+  // produced exactly that for a contact that exists.
+  //
+  // Only claim removal when the API actually said 404. When the status is
+  // unknown — the error object is not always populated, which is the same
+  // reason these guards key off absent data rather than isError — the safe
+  // default is "could not load", which is never false.
+  const detailStatus = apiErrorStatus(detailQuery.error as unknown);
+  const detailNotFound = detailStatus === 404;
+  const detailUnavailable = !detailQuery.isFetching && detailQuery.data === undefined;
+  const detailMessage = (detailQuery.error as Error | null)?.message;
+
   // Option C — enrich the prospect's LinkedIn profile on first open (company +
   // employment + warm-path signals) when it hasn't been enriched yet. Fire once,
   // best-effort; refetch shortly after so the freshly-pulled data renders.
@@ -141,24 +156,29 @@ export default function CrmDetailPage() {
         ]}
       />
       <main className="max-w-[1280px] mx-auto px-4 sm:px-6 py-6">
-        {detailQuery.isError ? (
+        {detailNotFound ? (
+          // ONLY when the API actually answered 404. The old code reached this
+          // message for ANY settled-with-no-contact state, so a 503 rendered
+          // "It may have been removed." for a contact that exists — a specific
+          // claim about the RECORD when the truth was about the connection.
+          //
+          // (Kept from the original fix: a missing id used to sit on "Loading
+          // contact…" forever, because the condition treated "no data" as
+          // "still loading". Anything terminal still lands somewhere honest.)
           <div className={BOX}>
-            Could not load this contact: {(detailQuery.error as Error)?.message ?? 'Unknown error'}
+            This contact could not be found. It may have been removed.
+          </div>
+        ) : detailQuery.isError || detailUnavailable ? (
+          <div className={BOX}>
+            Could not load this contact
+            {detailMessage ? `: ${detailMessage}` : '. Please try again.'}
           </div>
         ) : !fixture && (detailQuery.isLoading || detailQuery.isFetching) ? (
           <div className={BOX}>Loading contact…</div>
         ) : !fixture ? (
-          // The query has SETTLED and still produced no contact. The old
-          // condition was `isLoading || !fixture`, which treated "no data"
-          // as "still loading" — so a prospect id that no longer exists
-          // (the API answers 404 prospect_not_found) sat on "Loading
-          // contact…" forever, with no error and no way to tell the page
-          // was finished. Verified live against a non-existent id: the
-          // request fires, returns 404, and the old UI never left the
-          // loading state. Anything terminal-with-no-contact lands here.
-          <div className={BOX}>
-            This contact could not be found. It may have been removed.
-          </div>
+          // Settled, no contact, and we never saw a 404 — say what we know
+          // rather than guessing that it was deleted.
+          <div className={BOX}>Could not load this contact. Please try again.</div>
         ) : (
           <ProspectDetail
             prospect={fixture}
