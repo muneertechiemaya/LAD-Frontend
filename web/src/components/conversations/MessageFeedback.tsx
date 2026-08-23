@@ -21,6 +21,8 @@ import {
 } from '@lad/frontend-features/conversations';
 
 interface MessageFeedbackProps {
+  /** Which agent to teach. Defaults to WhatsApp; 'linkedin' hits the LI endpoint. */
+  channel?: 'waba' | 'linkedin';
   conversationId: string;
   messageId: string;
   /** The reply being rated — prefilled as "what it said" in the form. */
@@ -30,6 +32,7 @@ interface MessageFeedbackProps {
 }
 
 export function MessageFeedback({
+  channel,
   conversationId,
   messageId,
   content,
@@ -50,6 +53,7 @@ export function MessageFeedback({
     setRating(next);
     try {
       await submitMessageFeedback({
+        channel,
         conversationId,
         messageId,
         rating: next,
