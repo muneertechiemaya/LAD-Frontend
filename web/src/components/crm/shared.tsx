@@ -172,6 +172,14 @@ export interface CrmPagination {
   pageSize: number;    // rows per page
   onPageChange: (page: number) => void; // 1-indexed target page
   loading?: boolean;   // a page fetch is in flight
+  /**
+   * The rows on screen are NOT the rows for `page` — the fetch for it settled
+   * without producing data (i.e. it failed) and React Query is still serving
+   * the previous page as placeholder data. Without this the footer asserted
+   * "Showing 51–100 of 571" over page 1's rows with nothing to say the load
+   * had failed, so the user read 50 people as records 51–100.
+   */
+  stale?: boolean;
 }
 
 /**
@@ -190,7 +198,7 @@ export interface CrmPagination {
  * don't read as contradictory.
  */
 export function Pager({ pagination, visibleCount }: { pagination: CrmPagination; visibleCount?: number }) {
-  const { page, pageCount, total, pageSize, onPageChange, loading } = pagination;
+  const { page, pageCount, total, pageSize, onPageChange, loading, stale } = pagination;
   const start = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const windowSize = Math.max(0, Math.min(pageSize, total - (page - 1) * pageSize));
   const end = total === 0 ? 0 : start + windowSize - 1;
@@ -199,19 +207,28 @@ export function Pager({ pagination, visibleCount }: { pagination: CrmPagination;
   const narrowed = visibleCount != null && visibleCount !== windowSize;
   return (
     <div className="flex items-center justify-between gap-3 text-[12px] text-slate-500 dark:text-[#7a8ba3]">
-      <span>
-        Showing{' '}
-        <span className="font-semibold text-[#172560] dark:text-white tabular-nums">
-          {start}{end !== start ? `–${end}` : ''}
-        </span>{' '}
-        of <span className="tabular-nums">{total.toLocaleString()}</span>
-        {narrowed && (
-          <>
-            {' '}· <span className="font-semibold text-[#172560] dark:text-white tabular-nums">{visibleCount}</span>{' '}
-            visible below
-          </>
-        )}
-      </span>
+      {stale ? (
+        // Never assert a range the rows on screen do not support.
+        <span className="text-rose-700 dark:text-rose-300">
+          Couldn&apos;t load page{' '}
+          <span className="font-semibold tabular-nums">{page}</span> — still showing the
+          previous page.
+        </span>
+      ) : (
+        <span>
+          Showing{' '}
+          <span className="font-semibold text-[#172560] dark:text-white tabular-nums">
+            {start}{end !== start ? `–${end}` : ''}
+          </span>{' '}
+          of <span className="tabular-nums">{total.toLocaleString()}</span>
+          {narrowed && (
+            <>
+              {' '}· <span className="font-semibold text-[#172560] dark:text-white tabular-nums">{visibleCount}</span>{' '}
+              visible below
+            </>
+          )}
+        </span>
+      )}
       <div className="flex items-center gap-1.5">
         <button
           type="button"

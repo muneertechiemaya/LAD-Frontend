@@ -103,6 +103,20 @@ export default function CrmPage() {
     if (page > pageCount) setPage(pageCount);
   }, [page, pageCount]);
 
+  // React Query serves the PREVIOUS page as placeholderData while the next one
+  // loads. If that fetch then fails, placeholder data still counts as data, so
+  // `status` stays 'success' and `listQuery.isError` never fires — the error
+  // banner below is only ever reached on a cold load with an empty cache.
+  //
+  // Measured on develop: with every /api/prospects request returning 503, the
+  // page still read "Showing 51–100 of 571" above rows byte-identical to page 1,
+  // and showed nothing at all to say the load had failed. The user reads 50
+  // people as records 51–100.
+  //
+  // isPlaceholderData says "these rows are not for the current query key";
+  // combined with the fetch having settled, that means it failed.
+  const showingStaleRows = listQuery.isPlaceholderData && !listQuery.isFetching;
+
   const pagination: CrmPagination = {
     page,
     pageCount,
@@ -110,6 +124,7 @@ export default function CrmPage() {
     pageSize: PAGE_SIZE,
     onPageChange: setPage,
     loading: listQuery.isFetching,
+    stale: showingStaleRows,
   };
 
   const contacts = useMemo(() => toCrmContacts(prospects), [prospects]);
@@ -256,9 +271,12 @@ export default function CrmPage() {
           </Link>
         </div>
 
-        {listQuery.isError && (
+        {(listQuery.isError || showingStaleRows) && (
           <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 dark:border-rose-900/60 dark:bg-rose-950/30 p-4 text-[13px] text-rose-700 dark:text-rose-300">
             Could not load prospects: {(listQuery.error as Error)?.message ?? 'Unknown error'}
+            {showingStaleRows && !listQuery.isError && (
+              <> — the contacts below are from your previous view, not this one.</>
+            )}
           </div>
         )}
 
