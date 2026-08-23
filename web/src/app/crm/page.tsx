@@ -273,9 +273,17 @@ export default function CrmPage() {
 
         {(listQuery.isError || showingStaleRows) && (
           <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 dark:border-rose-900/60 dark:bg-rose-950/30 p-4 text-[13px] text-rose-700 dark:text-rose-300">
-            Could not load prospects: {(listQuery.error as Error)?.message ?? 'Unknown error'}
-            {showingStaleRows && !listQuery.isError && (
-              <> — the contacts below are from your previous view, not this one.</>
+            {listQuery.isError ? (
+              <>Could not load prospects: {(listQuery.error as Error)?.message ?? 'Unknown error'}</>
+            ) : (
+              // The stale branch exists precisely BECAUSE the query stays in
+              // 'success' when placeholder data is present — which also means
+              // `listQuery.error` is null here. Interpolating it printed the
+              // literal "Could not load prospects: Unknown error", which reads
+              // as a second, mysterious failure mode rather than the plain
+              // "your refresh didn't land" that it actually is.
+              <>Couldn&apos;t refresh this view — the contacts below are from your previous
+                view, not this one.</>
             )}
           </div>
         )}
