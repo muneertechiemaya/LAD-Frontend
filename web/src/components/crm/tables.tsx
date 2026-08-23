@@ -425,9 +425,35 @@ function CrmTable<R extends CrmContact>({
                   <th
                     key={i}
                     onClick={canSort ? () => toggleSort(i) : undefined}
+                    // Same gap as the rows below: a sortable header was
+                    // clickable (cursor-pointer + onClick) but tabIndex -1 with
+                    // nothing focusable inside, so sorting was mouse-only.
+                    // aria-sort was missing too, so a screen-reader user could
+                    // not tell which column was sorted or in which direction —
+                    // the chevron conveys that visually and nowhere else.
+                    tabIndex={canSort ? 0 : undefined}
+                    onKeyDown={
+                      canSort
+                        ? (e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              toggleSort(i);
+                            }
+                          }
+                        : undefined
+                    }
+                    aria-sort={
+                      canSort
+                        ? active
+                          ? sort!.dir === 'asc'
+                            ? 'ascending'
+                            : 'descending'
+                          : 'none'
+                        : undefined
+                    }
                     className={`px-3 py-2.5 text-[10.5px] uppercase tracking-wider font-semibold text-slate-500 dark:text-[#7a8ba3] whitespace-nowrap ${
                       c.align === 'right' ? 'text-right' : 'text-left'
-                    } ${canSort ? 'cursor-pointer select-none hover:text-[#172560] dark:hover:text-white' : ''}`}
+                    } ${canSort ? 'cursor-pointer select-none hover:text-[#172560] dark:hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2563eb]' : ''}`}
                   >
                     <span className="inline-flex items-center gap-1">
                       {c.label}
