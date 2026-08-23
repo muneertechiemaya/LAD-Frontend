@@ -74,6 +74,27 @@ function planColor(p: string) {
 
 // ─── CopyButton ───────────────────────────────────────────────────────────────
 
+/**
+ * Feature keys this screen may switch.
+ *
+ * An allowlist rather than "everything is clickable": most tenant_features rows
+ * are provisioning artifacts that nothing reads at runtime, and making them
+ * look switchable invites somebody to turn off a tenant's dashboard to see what
+ * happens. The backend enforces its own list — this one only decides what the
+ * UI offers.
+ */
+const TOGGLEABLE_FEATURES = new Set<string>([
+  'per_user_visibility',
+]);
+
+const FEATURE_HELP: Record<string, string> = {
+  per_user_visibility:
+    'When on, a member sees only the WhatsApp numbers assigned to them and the ' +
+    'conversations on those numbers. Owners and admins always see everything. ' +
+    'Turning it on for a tenant whose reps have no numbers of their own leaves ' +
+    'them with an empty inbox.',
+};
+
 function CopyBtn({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   const copy = async () => {
@@ -97,11 +118,49 @@ function DetailPanel({ tenantId, environment, onClose }: {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [tab, setTab] = useState<'overview' | 'users' | 'features' | 'capabilities'>('overview');
+  const [togglingKey, setTogglingKey] = useState<string | null>(null);
 
-  useEffect(() => {
+  /**
+   * Flip one tenant feature.
+   *
+   * Refetches rather than patching local state: the backend refuses unknown
+   * keys and can reject the write, so echoing an optimistic value would show a
+   * flag as on when nothing changed. `environment` is forwarded because the
+   * backend picks lad_dev or lad_stage from it.
+   */
+  const toggleFeature = async (featureKey: string, next: boolean) => {
+    setTogglingKey(featureKey);
+    try {
+      const res = await fetch(
+        `/api/tenant/manage/${tenantId}/features/${encodeURIComponent(featureKey)}?environment=${environment}`,
+        {
+          method: 'PUT',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: next }),
+        },
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        alert(body?.error || 'Could not change that feature.');
+        return;
+      }
+      await loadDetail();
+    } catch {
+      alert('Could not reach the server.');
+    } finally {
+      setTogglingKey(null);
+    }
+  };
+
+  // Extracted from the mount effect so a feature toggle can refetch. The
+  // toggle deliberately refetches instead of patching local state: the backend
+  // refuses unknown keys and can reject the write, so an optimistic value would
+  // show a flag as on when nothing changed.
+  const loadDetail = useCallback(() => {
     setLoading(true);
     setError('');
-    fetch(`/api/tenant/manage/${tenantId}?environment=${environment}`, { credentials: 'include' })
+    return fetch(`/api/tenant/manage/${tenantId}?environment=${environment}`, { credentials: 'include' })
       .then(r => r.json())
       .then(d => {
         if (d.success) setDetail(d);
@@ -110,6 +169,8 @@ function DetailPanel({ tenantId, environment, onClose }: {
       .catch(() => setError('Network error'))
       .finally(() => setLoading(false));
   }, [tenantId, environment]);
+
+  useEffect(() => { loadDetail(); }, [loadDetail]);
 
   const TABS = [
     { id: 'overview',     label: 'Overview' },
@@ -296,14 +357,39 @@ function DetailPanel({ tenantId, environment, onClose }: {
                     </div>
                   </div>
                   <div className="bg-[#1a1f2e] rounded-xl border border-gray-800 p-4">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Tenant Features</p>
+                    <div className="flex items-baseline justify-between gap-3 mb-3">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Tenant Features</p>
+                      <p className="text-[11px] text-gray-600">
+                        Click a toggleable flag to switch it. Takes about a minute to apply.
+                      </p>
+                    </div>
                     <div className="flex flex-wrap gap-2">
                       {detail.tenant_features.map(f => (
+                        TOGGLEABLE_FEATURES.has(f.feature_key) ? (
+                          <button
+                            key={f.feature_key}
+                            type="button"
+                            disabled={togglingKey === f.feature_key}
+                            onClick={() => toggleFeature(f.feature_key, !f.enabled)}
+                            title={FEATURE_HELP[f.feature_key] || 'Toggle this feature'}
+                            className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border font-mono
+                              transition-colors disabled:opacity-50 cursor-pointer
+                              ${f.enabled
+                                ? 'border-blue-600 text-blue-300 bg-blue-900/30 hover:bg-blue-900/50'
+                                : 'border-gray-600 text-gray-400 hover:border-gray-500 hover:text-gray-300'}`}
+                          >
+                            {togglingKey === f.feature_key
+                              ? <Loader2 size={10} className="animate-spin" />
+                              : f.enabled ? <CheckCircle2 size={10} /> : <XCircle size={10} />}
+                            {f.feature_key}
+                          </button>
+                        ) : (
                         <span key={f.feature_key} className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border font-mono
                           ${f.enabled ? 'border-blue-800 text-blue-400 bg-blue-900/20' : 'border-gray-700 text-gray-600'}`}>
                           {f.enabled ? <CheckCircle2 size={10} /> : <XCircle size={10} />}
                           {f.feature_key}
                         </span>
+                        )
                       ))}
                       {detail.tenant_features.length === 0 && <p className="text-xs text-gray-600">None</p>}
                     </div>
