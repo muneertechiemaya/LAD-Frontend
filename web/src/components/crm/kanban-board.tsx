@@ -14,9 +14,18 @@ export interface KanbanBoardProps {
   selectedLeadId: string | null;
   onSelectLead: (id: string) => void;
   onAddDeal?: (stageKey: LifecycleStage) => void;
+  /**
+   * The stage's real tenant-wide count. `leads` only ever holds the current
+   * 50-row page, so counting it gave a column header that looked authoritative
+   * but capped at the page size — a tenant with 550 "new" prospects read
+   * "New 38" directly beneath an "All Contacts 571" card. When a total is
+   * supplied the header shows it, and the subheader says how many of them are
+   * actually on this page.
+   */
+  stageTotals?: Partial<Record<LifecycleStage, number>>;
 }
 
-export default function KanbanBoard({ stages = [], leads = [], selectedLeadId, onSelectLead, onAddDeal }: KanbanBoardProps) {
+export default function KanbanBoard({ stages = [], leads = [], selectedLeadId, onSelectLead, onAddDeal, stageTotals }: KanbanBoardProps) {
   return (
     <div className="overflow-x-auto -mx-4 sm:-mx-6 px-4 sm:px-6 pb-1">
       <div className="flex gap-3 min-w-max">
@@ -32,6 +41,11 @@ export default function KanbanBoard({ stages = [], leads = [], selectedLeadId, o
           // 0, which read as "these deals are worth nothing" rather than the
           // true "we don't know yet".
           const anyValueTracked = stageLeads.some((l) => l.value != null);
+          // `stageLeads` is this page's slice; `stageTotal` is the whole tenant.
+          const loaded = stageLeads.length;
+          const stageTotal = stageTotals?.[stageKey as LifecycleStage];
+          const headerCount = stageTotal ?? loaded;
+          const truncated = stageTotal != null && stageTotal > loaded;
 
           return (
             <div
@@ -51,7 +65,7 @@ export default function KanbanBoard({ stages = [], leads = [], selectedLeadId, o
                   <span
                     className="inline-flex dark:bg-[#2563eb] dark:text-white items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium tabular-nums"
                   >
-                    {stageLeads.length}
+                    {headerCount}
                   </span>
                 </div>
                 {onAddDeal && (
@@ -67,11 +81,13 @@ export default function KanbanBoard({ stages = [], leads = [], selectedLeadId, o
 
               {/* Subheader */}
               <p className="text-[11px] text-slate-500 dark:text-slate-400 px-1 mb-2">
-                {stageLeads.length === 0
+                {headerCount === 0
                   ? 'AED 0 pipeline'
                   : anyValueTracked
                     ? `${fmtCurrency(pipelineValue)} pipeline`
-                    : `${stageLeads.length} deal${stageLeads.length === 1 ? '' : 's'} · value not tracked`}
+                    : truncated
+                      ? `${loaded} of ${headerCount} on this page · value not tracked`
+                      : `${headerCount} deal${headerCount === 1 ? '' : 's'} · value not tracked`}
               </p>
 
               {stageLeads.length > 0 ? (
@@ -92,10 +108,12 @@ export default function KanbanBoard({ stages = [], leads = [], selectedLeadId, o
                     <Inbox className="w-5 h-5 text-slate-400 dark:text-slate-400" />
                   </div>
                   <p className="text-[13px] font-medium text-slate-700 dark:text-slate-200 mb-1">
-                    No deals here
+                    {truncated ? 'None on this page' : 'No deals here'}
                   </p>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-[180px] leading-tight mb-6">
-                    Add deals to move them to the next stage.
+                    {truncated
+                      ? `All ${headerCount} are on other pages — open this stage from the list view to see them.`
+                      : 'Add deals to move them to the next stage.'}
                   </p>
                 </div>
               )}
