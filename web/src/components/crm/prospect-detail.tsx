@@ -33,6 +33,12 @@ interface ProspectDetailProps {
    *  `events` regardless, so without this flag a failed fetch (events=[])
    *  is visually identical to a genuinely quiet contact. */
   eventsError?: boolean;
+  /**
+   * We have no events to show and are not still loading them. Distinct from
+   * "this contact has no activity": rendering 0 for a failed load told the user
+   * the lead was quiet when we simply did not know.
+   */
+  eventsUnavailable?: boolean;
   /** True when `events` was cut off by the fetch's own page-size limit —
    *  the backend has no total-event-count endpoint, so MiniFeed's "N total
    *  events" label would otherwise silently overclaim completeness for any
@@ -77,7 +83,7 @@ function isOperatorEvent(e: ProspectEvent): boolean {
   return String(e.event_type || '').startsWith('crm.');
 }
 
-export default function ProspectDetail({ prospect, warmPath, warmPathSample = false, events = [], eventsError = false, eventsTruncated = false, onClose, onRemove, isRemoving = false, onAction, isActing = false, doNotContact = false, quietUntil = null, followups = [], followupsLoading = false, followupsError = false, coreLeadId = null }: ProspectDetailProps) {
+export default function ProspectDetail({ prospect, warmPath, warmPathSample = false, events = [], eventsError = false, eventsUnavailable = false, eventsTruncated = false, onClose, onRemove, isRemoving = false, onAction, isActing = false, doNotContact = false, quietUntil = null, followups = [], followupsLoading = false, followupsError = false, coreLeadId = null }: ProspectDetailProps) {
   const [warmOpen, setWarmOpen] = useState(false);
   const sectionRef = useRef<HTMLDivElement | null>(null);
 
@@ -243,7 +249,7 @@ export default function ProspectDetail({ prospect, warmPath, warmPathSample = fa
 
           <div className="lg:flex-1 grid grid-cols-2 lg:grid-cols-4">
             <KpiFit value={prospect.fit_score} />
-            <KpiSpark counts={kpis.dailyCounts} total={kpis.total7d} />
+            <KpiSpark counts={kpis.dailyCounts} total={eventsUnavailable ? null : kpis.total7d} />
             <KpiRoutes
               count={kpis.routes}
               top={kpis.topConnection}
@@ -269,13 +275,13 @@ export default function ProspectDetail({ prospect, warmPath, warmPathSample = fa
         <WarmPathPanel wp={warmPath} prospect={prospect} open={warmOpen} onToggle={toggleWarm} />
       </div>
 
-      {eventsError && (
+      {(eventsError || eventsUnavailable) && (
         <div className="rounded-xl border border-rose-200 bg-rose-50 dark:border-rose-900/60 dark:bg-rose-950/30 p-3 text-[12.5px] text-rose-700 dark:text-rose-300">
           Couldn&apos;t load this contact&apos;s activity — the Activity chart and Recent activity below may be
           missing events, not showing that the contact is actually quiet.
         </div>
       )}
-      <ActivityHeatmap events={events} days={30} />
+      <ActivityHeatmap events={events} days={30} unavailable={eventsUnavailable} />
 
       <AcceleratorPanels coreLeadId={coreLeadId} firstName={prospect.full_name?.split(' ')[0]} />
 
@@ -288,7 +294,7 @@ export default function ProspectDetail({ prospect, warmPath, warmPathSample = fa
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2">
-          <MiniFeed events={events} truncated={eventsTruncated} />
+          <MiniFeed events={events} truncated={eventsTruncated} unavailable={eventsUnavailable} />
         </div>
         <div className="space-y-4">
           <Actions onAction={onAction} isActing={isActing} doNotContact={doNotContact} quietUntil={quietUntil} />
@@ -389,7 +395,9 @@ function KpiFit({ value }: { value: number | null }) {
   );
 }
 
-function KpiSpark({ counts, total }: { counts: number[]; total: number }) {
+// `total: null` = we could not load the events, which is NOT the same as zero
+// activity. Render a dash rather than a number we cannot stand behind.
+function KpiSpark({ counts, total }: { counts: number[]; total: number | null }) {
   const max = Math.max(1, ...counts);
   const w = 100, h = 26, n = counts.length;
   const step = w / (n - 1);
@@ -406,9 +414,11 @@ function KpiSpark({ counts, total }: { counts: number[]; total: number }) {
           className="text-2xl font-bold tabular-nums text-[#1e293b] dark:text-white"
           style={{ fontFamily: '"Space Grotesk", system-ui' }}
         >
-          {total}
+          {total ?? '—'}
         </span>
-        <span className="text-[11px] text-slate-500 dark:text-slate-300">events</span>
+        <span className="text-[11px] text-slate-500 dark:text-slate-300">
+          {total == null ? 'not loaded' : 'events'}
+        </span>
       </div>
       <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-7 mt-2 overflow-visible" preserveAspectRatio="none">
         <defs>
@@ -539,7 +549,7 @@ const HEATMAP_CHANNEL: Record<string, ChannelKey> = {
   intent: 'intent', signal: 'intent', fit: 'intent', system: 'intent',
 };
 
-function ActivityHeatmap({ events, days = 30 }: { events: ProspectEvent[]; days?: number }) {
+function ActivityHeatmap({ events, days = 30, unavailable = false }: { events: ProspectEvent[]; days?: number; unavailable?: boolean }) {
   const ch: ChannelKey[] = ['linkedin', 'whatsapp', 'email', 'voice', 'instagram', 'intent'];
   const grid: Record<string, number[]> = {};
   ch.forEach((c) => (grid[c] = new Array(days).fill(0)));
@@ -554,7 +564,14 @@ function ActivityHeatmap({ events, days = 30 }: { events: ProspectEvent[]; days?
   const max = Math.max(1, ...ch.flatMap((c) => grid[c]));
   return (
     <LadCard>
-      <LadCardHeader title="Activity" subtitle={`Last ${days} days · all channels`} />
+      <LadCardHeader
+        title="Activity"
+        subtitle={
+          // An all-empty grid is indistinguishable from a genuinely quiet
+          // contact, so say which one this is.
+          unavailable ? 'could not be loaded' : `Last ${days} days · all channels`
+        }
+      />
       <div className="space-y-1.5">
         {ch.map((c) => {
           const cells = grid[c];
@@ -859,7 +876,7 @@ function IntentStrip({ signals }: { signals: ProspectFixture['intent_signals'] }
 }
 
 // ── Mini feed ────────────────────────────────────────────────────────────
-function MiniFeed({ events, truncated = false }: { events: ProspectEvent[]; truncated?: boolean }) {
+function MiniFeed({ events, truncated = false, unavailable = false }: { events: ProspectEvent[]; truncated?: boolean; unavailable?: boolean }) {
   const recent = events.slice(0, 6);
   return (
     <LadCard>
@@ -869,7 +886,12 @@ function MiniFeed({ events, truncated = false }: { events: ProspectEvent[]; trun
           // The backend's events endpoint has no total-count support (unlike
           // /api/prospects), so "N total events" would overclaim completeness
           // for any contact whose real history exceeds the fetch limit.
-          truncated ? `${events.length}+ events (most recent shown)` : `${events.length} total events`
+          // `unavailable` is a third case again: we have no events because the
+          // fetch did not deliver, so "0 total events" would be a claim about
+          // the contact rather than about us.
+          unavailable
+            ? 'could not be loaded'
+            : truncated ? `${events.length}+ events (most recent shown)` : `${events.length} total events`
         }
       />
       <ul className="space-y-2.5">
