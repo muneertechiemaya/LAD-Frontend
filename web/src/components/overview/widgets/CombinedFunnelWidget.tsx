@@ -35,6 +35,14 @@ type StageKey = 'sent' | 'accepted' | 'responded' | 'sah';
 interface FunnelData {
   counts: Record<StageKey, number>;
   lists: Record<StageKey, LeadRow[]>;
+  /**
+   * Sources the backend could not read for this window (LAD-Backend #661).
+   * `conv_signals` means responded/sah are a FLOOR, not a count — the tenant
+   * conversation DB was unreachable and those signals degraded to empty. Without
+   * reading this the widget renders the shortfall as a real number, and a
+   * zeroed window as "No activity in this period".
+   */
+  degraded?: { new_leads?: boolean; conv_signals?: boolean };
 }
 
 type PeriodKey = 'week' | 'month' | 'quarter' | 'year';
@@ -105,6 +113,8 @@ export const CombinedFunnelWidget: React.FC<{ id: string }> = ({ id }) => {
           responded: Array.isArray(json.responded) ? json.responded : [],
           sah: Array.isArray(json.sah) ? json.sah : [],
         },
+        // Absent on every healthy response, so this stays undefined normally.
+        degraded: json?.degraded,
       });
     } catch (e: any) {
       if (isStale()) return; // don't surface a superseded request's error
@@ -124,6 +134,11 @@ export const CombinedFunnelWidget: React.FC<{ id: string }> = ({ id }) => {
       <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
     </button>
   );
+
+  // Any source the backend could not read makes the whole funnel a floor —
+  // the stages are nested, so an undercounted "responded" drags every stage
+  // below it down too.
+  const isDegraded = !!(data?.degraded?.conv_signals || data?.degraded?.new_leads);
 
   const first = data?.counts.sent ?? 0;
   const last = data?.counts.sah ?? 0;
@@ -163,6 +178,16 @@ export const CombinedFunnelWidget: React.FC<{ id: string }> = ({ id }) => {
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="h-9 rounded-lg bg-muted/50 dark:bg-white/5 animate-pulse" style={{ width: `${100 - i * 18}%`, margin: '0 auto' }} />
           ))}
+        </div>
+      ) : data && isDegraded ? (
+        // Reaching "No activity in this period" while the backend told us it
+        // could not read the signals would state the opposite of what we know.
+        <div className="flex flex-col items-center justify-center py-10 text-center">
+          <p className="text-sm font-medium dark:text-[#E0E0E0]">Couldn&apos;t read this period&apos;s activity</p>
+          <p className="text-xs text-muted-foreground mt-1 max-w-[280px]">
+            Some sources didn&apos;t respond, so these numbers would be too low to trust.
+            This is a loading problem, not a quiet pipeline — try again shortly.
+          </p>
         </div>
       ) : data && first === 0 && last === 0 && data.counts.accepted === 0 ? (
         <div className="flex flex-col items-center justify-center py-10 text-center">

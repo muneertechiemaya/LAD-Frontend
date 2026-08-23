@@ -206,7 +206,8 @@ export default function CrmDetailPage() {
             isActing={actionMutation.isPending}
             doNotContact={detailQuery.data?.do_not_contact ?? false}
             quietUntil={detailQuery.data?.quiet_until ?? null}
-            followups={followupsQuery.data ?? []}
+            followups={followupsQuery.data?.followups ?? []}
+            followupsDegradedChannels={followupsQuery.data?.degradedChannels ?? []}
             followupsLoading={followupsQuery.isLoading}
             followupsError={followupsQuery.isError || followupsUnavailable}
             // The report + accelerator API is keyed by the CORE lead id, not
