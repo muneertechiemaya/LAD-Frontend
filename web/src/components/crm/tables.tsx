@@ -449,7 +449,33 @@ function CrmTable<R extends CrmContact>({
               <tr
                 key={r.id}
                 onClick={() => onRowClick?.(r)}
-                className="border-b border-slate-100 dark:border-[#262831] hover:bg-[#f5f7fd] dark:hover:bg-[#0e1a3a] cursor-pointer transition"
+                // Opening a contact was mouse-only. The row carried onClick and
+                // cursor-pointer (and the page says "Click any row to open the
+                // contact's profile"), but no tabIndex, no key handler and no
+                // link — so a keyboard user could not open a contact at all,
+                // while the ONE control they could reach in a row was the
+                // destructive "Remove: not a fit" button.
+                //
+                // Deliberately NOT role="button": that would pull the row out of
+                // the table's accessibility tree and cost every screen-reader
+                // user their row/column context. tabIndex + Enter/Space makes it
+                // operable while it stays a real table row. (The fully semantic
+                // alternative — a real control inside the name cell — needs
+                // onRowClick plumbed through the column definitions.)
+                tabIndex={onRowClick ? 0 : undefined}
+                onKeyDown={
+                  onRowClick
+                    ? (e) => {
+                        if (e.target !== e.currentTarget) return; // let cell controls keep their keys
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          onRowClick(r);
+                        }
+                      }
+                    : undefined
+                }
+                aria-label={onRowClick ? `Open ${r.name}` : undefined}
+                className="border-b border-slate-100 dark:border-[#262831] hover:bg-[#f5f7fd] dark:hover:bg-[#0e1a3a] cursor-pointer transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2563eb]"
               >
                 <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                   <input
