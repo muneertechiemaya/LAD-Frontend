@@ -68,6 +68,15 @@ function degreeLabel(nd?: string | null): string {
   return (nd && (m[nd] || nd.replace(/_/g, ' ').toLowerCase())) || '';
 }
 
+// `crm.*` events (crm.quiet_set, crm.do_not_contact_set, crm.deleted) are things the
+// operator did to the record, not things the prospect did. They arrive on the "system"
+// channel, which the heatmap maps to the "Signal" (intent) row — so an operator toggling
+// DNC twice used to read as two buying-intent signals, and inflated "Engagement · 7d" by
+// two. Keep them out of both aggregates; the timeline below still shows them as audit trail.
+function isOperatorEvent(e: ProspectEvent): boolean {
+  return String(e.event_type || '').startsWith('crm.');
+}
+
 export default function ProspectDetail({ prospect, warmPath, warmPathSample = false, events = [], eventsError = false, eventsTruncated = false, onClose, onRemove, isRemoving = false, onAction, isActing = false, doNotContact = false, quietUntil = null, followups = [], followupsLoading = false, followupsError = false, coreLeadId = null }: ProspectDetailProps) {
   const [warmOpen, setWarmOpen] = useState(false);
   const sectionRef = useRef<HTMLDivElement | null>(null);
@@ -80,6 +89,7 @@ export default function ProspectDetail({ prospect, warmPath, warmPathSample = fa
     let total = 0;
     let lastDir: ProspectEvent['direction'] | null = null;
     for (const e of events) {
+      if (isOperatorEvent(e)) continue;
       const d = new Date(e.occurred_at);
       const diff = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
       if (diff >= 0 && diff < days) {
@@ -534,6 +544,7 @@ function ActivityHeatmap({ events, days = 30 }: { events: ProspectEvent[]; days?
   const grid: Record<string, number[]> = {};
   ch.forEach((c) => (grid[c] = new Array(days).fill(0)));
   for (const e of events) {
+    if (isOperatorEvent(e)) continue;
     const d = new Date(e.occurred_at);
     const diff = Math.floor((new Date().getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
     if (diff < 0 || diff >= days) continue;
