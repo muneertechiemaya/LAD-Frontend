@@ -68,6 +68,19 @@ export default function CrmDetailPage() {
   const events = useMemo(() => toCrmEvents(eventsQuery.data), [eventsQuery.data]);
   const eventsTruncated = events.length >= EVENTS_LIMIT;
 
+  // A failed events fetch leaves eventsQuery.data undefined, which toCrmEvents
+  // turns into [] — and every aggregate below then renders a confident 0.
+  // Reproduced by blocking /events (both as a 503 and as a network error): a
+  // contact with 5 real events showed "ENGAGEMENT · 7D 0" and "Recent activity
+  // 0 total events", while "Channel mix" — read from the prospect's OWN
+  // channel_rollups, which loaded fine — still said 2 on the same screen.
+  //
+  // Keyed on data being absent rather than on isError, because that is the
+  // thing the UI actually cannot render honestly: it covers a failed fetch, a
+  // query stuck pending, and anything else that leaves us without events.
+  // Excludes the in-flight case so a normal load doesn't flash the warning.
+  const eventsUnavailable = !eventsQuery.isFetching && eventsQuery.data === undefined;
+
   // Option C — enrich the prospect's LinkedIn profile on first open (company +
   // employment + warm-path signals) when it hasn't been enriched yet. Fire once,
   // best-effort; refetch shortly after so the freshly-pulled data renders.
@@ -144,6 +157,7 @@ export default function CrmDetailPage() {
             events={events}
             eventsTruncated={eventsTruncated}
             eventsError={eventsQuery.isError}
+            eventsUnavailable={eventsUnavailable}
             warmPath={WARM_PATH}
             warmPathSample
             onClose={back}
