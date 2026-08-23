@@ -81,6 +81,14 @@ export default function CrmDetailPage() {
   // Excludes the in-flight case so a normal load doesn't flash the warning.
   const eventsUnavailable = !eventsQuery.isFetching && eventsQuery.data === undefined;
 
+  // Same shape, same reason, one panel over. NextFollowups already has a
+  // well-written error branch — it even says "this isn't necessarily 'no
+  // follow-ups queued'" — but it was gated on `isError`, which (as with the
+  // events query) does not fire here. Blocking the follow-ups endpoint with a
+  // 503 rendered the confident "No automatic follow-ups queued." instead.
+  const followupsUnavailable =
+    !followupsQuery.isFetching && followupsQuery.data === undefined;
+
   // Option C — enrich the prospect's LinkedIn profile on first open (company +
   // employment + warm-path signals) when it hasn't been enriched yet. Fire once,
   // best-effort; refetch shortly after so the freshly-pulled data renders.
@@ -169,7 +177,7 @@ export default function CrmDetailPage() {
             quietUntil={detailQuery.data?.quiet_until ?? null}
             followups={followupsQuery.data ?? []}
             followupsLoading={followupsQuery.isLoading}
-            followupsError={followupsQuery.isError}
+            followupsError={followupsQuery.isError || followupsUnavailable}
             // The report + accelerator API is keyed by the CORE lead id, not
             // this page's Master Agent prospect id.
             coreLeadId={detailQuery.data?.core_lead_id ?? null}
