@@ -244,6 +244,11 @@ export default function CrmPage() {
             stages={STAGES}
             leads={kanbanLeads}
             stageTotals={stageTotals}
+            // Board is the DEFAULT view, so during an outage it is the first
+            // thing a user sees. Without this it falls back to counting the
+            // (empty) page and reads "New 0 · Contacted 0 · …" directly under
+            // summary cards that correctly read "—".
+            unavailable={listUnavailable || trueTotal === null}
             selectedLeadId={null}
             onSelectLead={openDetail}
           />
