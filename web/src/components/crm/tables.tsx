@@ -338,12 +338,22 @@ function CrmTable<R extends CrmContact>({
 
   // Export the CURRENTLY FILTERED + SORTED rows to CSV. The button is
   // disabled when there is nothing to export, so this guard is defensive only.
+  //
+  // Pagination is SERVER-side, so `sorted` is one page — 50 of 571 on the live
+  // tenant. The file was still called `all-contacts-<date>.csv`, and that name
+  // outlives the screen it came from: whoever opens it later has no way to know
+  // it holds a twelfth of the contacts. Say so in the name and in the tooltip.
+  const exportedIsPartial = !!pagination && pagination.total > sorted.length;
   const handleExport = useCallback(() => {
     if (!sorted.length) return;
     const csv = buildContactsCsv(sorted as CrmContact[]);
     const ts = new Date().toISOString().slice(0, 10);
-    downloadCsv(`${slugify(title)}-${ts}.csv`, csv);
-  }, [sorted, title]);
+    const scope =
+      pagination && pagination.total > sorted.length
+        ? `-page-${pagination.page}-of-${pagination.pageCount}`
+        : '';
+    downloadCsv(`${slugify(title)}${scope}-${ts}.csv`, csv);
+  }, [sorted, title, pagination]);
 
   return (
     <section className="bg-white dark:bg-[#000724] rounded-[20px] border border-slate-200 dark:border-[#262831] overflow-hidden">
@@ -390,10 +400,20 @@ function CrmTable<R extends CrmContact>({
             type="button"
             onClick={handleExport}
             disabled={filtered.length === 0}
-            title={filtered.length === 0 ? 'No rows to export' : `Export ${filtered.length} row${filtered.length === 1 ? '' : 's'} as CSV`}
+            title={
+              filtered.length === 0
+                ? 'No rows to export'
+                : exportedIsPartial
+                  ? `Export this page only — ${filtered.length} of ${pagination!.total} rows`
+                  : `Export ${filtered.length} row${filtered.length === 1 ? '' : 's'} as CSV`
+            }
             className="h-9 px-3 rounded-lg text-[12.5px] font-medium border border-slate-200 dark:border-[#262831] text-[#172560] dark:text-white hover:bg-slate-50 dark:hover:bg-[#1a2a43] inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Download className="w-3.5 h-3.5" /> Export
+            {/* The count is on the button itself, not only in the tooltip: a
+                hover hint does not exist on touch, and "Export" next to a
+                header reading "All Contacts · 571" implies all 571. */}
+            <Download className="w-3.5 h-3.5" />{' '}
+            {exportedIsPartial ? `Export page (${filtered.length})` : 'Export'}
           </button>
           <button
             disabled
