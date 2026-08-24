@@ -109,7 +109,7 @@ function SelectItem({
         "relative flex w-full cursor-pointer items-center gap-2 rounded-md py-2 pr-8 pl-3 text-sm outline-none select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2 transition-colors duration-150 group",
 
         // Light Mode
-        "data-[state=checked]:font-semibold focus:bg-primary/95 focus:text-primary-foreground data-[state=checked]:bg-primary/95 data-[state=checked]:text-primary-foreground data-[state=checked]:focus:bg-primary/95 data-[state=checked]:focus:text-primary-foreground",
+        "data-[state=checked]:font-semibold focus:bg-primary focus:text-primary-foreground data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:focus:bg-primary data-[state=checked]:focus:text-primary-foreground",
 
         // Dark Mode — Standard Light Blue (#2563eb) for active/hover/checked states
         "dark:text-slate-200 dark:focus:bg-[#2563eb] dark:focus:text-white dark:data-[state=checked]:focus:bg-[#2563eb] dark:data-[state=checked]:focus:text-white dark:data-[state=checked]:bg-blue-600/20 dark:data-[state=checked]:text-white",
