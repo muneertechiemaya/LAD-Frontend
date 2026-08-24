@@ -18,7 +18,6 @@ frontend/features/apollo-leads/
 │   ├── useApolloSearch.ts           # Search hook (TODO)
 │   └── useApolloCredits.ts          # Credits tracking hook (TODO)
 ├── components/
-│   ├── ApolloLeadsSearch.tsx        # Main search component
 │   ├── ApolloCompanyCard.tsx        # Company display (TODO)
 │   └── ApolloEmployeeList.tsx       # Employee list (TODO)
 └── README.md                         # This file
@@ -32,7 +31,6 @@ frontend/features/apollo-leads/
 import { 
   apolloLeadsService,
   useApolloLeads,
-  ApolloLeadsSearch,
   type ApolloCompany,
   type ApolloSearchParams
 } from '@/features/apollo-leads';
@@ -95,27 +93,6 @@ function MyComponent() {
       </button>
       {error && <p>Error: {error}</p>}
     </div>
-  );
-}
-```
-
-### Using the Component
-
-```typescript
-import { ApolloLeadsSearch } from '@/features/apollo-leads';
-
-function LeadsPage() {
-  const handleCompanySelect = (company) => {
-    console.log('Selected company:', company);
-  };
-
-  return (
-    <ApolloLeadsSearch
-      onCompanySelect={handleCompanySelect}
-      defaultParams={{ location: 'Dubai' }}
-      showFilters={true}
-      maxResults={50}
-    />
   );
 }
 ```
