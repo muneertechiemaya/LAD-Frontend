@@ -51,6 +51,8 @@ export const ZohoAutomationsPanel: React.FC = () => {
   const [items, setItems] = useState<Automation[]>([]);
   const [enabled, setEnabled] = useState(true);
   const [connected, setConnected] = useState(true);
+  /** The server could not determine the connection state — not the same as "off". */
+  const [statusUnavailable, setStatusUnavailable] = useState(false);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
   const [queryScanning, setQueryScanning] = useState(false);
@@ -75,6 +77,7 @@ export const ZohoAutomationsPanel: React.FC = () => {
       const statusData = await statusRes.json();
       if (statusRes.ok && statusData?.success) {
         setConnected(!!statusData.data?.connected);
+        setStatusUnavailable(!!statusData.data?.status_unavailable);
       }
     } catch { /* ignore */ } finally {
       setLoading(false);
@@ -82,6 +85,12 @@ export const ZohoAutomationsPanel: React.FC = () => {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Why the scan controls are disabled. "Connect Zoho CRM first" is wrong when
+  // we simply could not read the status — the tenant may well be connected.
+  const blockedReason = statusUnavailable
+    ? "Couldn't check your Zoho connection — try again shortly"
+    : 'Connect Zoho CRM first';
 
   const handleScan = async () => {
     setScanning(true); setBanner(null);
@@ -203,7 +212,7 @@ export const ZohoAutomationsPanel: React.FC = () => {
         <button
           onClick={handleScan}
           disabled={scanning || !connected}
-          title={connected ? undefined : 'Connect Zoho CRM first'}
+          title={connected ? undefined : blockedReason}
           className="inline-flex items-center justify-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold text-white bg-primary/95 hover:bg-primary/90 dark:bg-blue-600 dark:hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
@@ -211,7 +220,14 @@ export const ZohoAutomationsPanel: React.FC = () => {
         </button>
       </div>
 
-      {!loading && !connected && (
+      {!loading && !connected && statusUnavailable && (
+        <div className="flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 p-3 text-sm text-amber-800 dark:text-amber-300">
+          <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+          Couldn&apos;t check your Zoho connection, so scanning is paused. This isn&apos;t
+          &quot;not connected&quot; — please try again shortly.
+        </div>
+      )}
+      {!loading && !connected && !statusUnavailable && (
         <div className="flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 p-3 text-sm text-amber-800 dark:text-amber-300">
           <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
           Zoho CRM isn&apos;t connected. Connect it in Settings → Integrations to scan and sync tasks.
@@ -249,7 +265,7 @@ export const ZohoAutomationsPanel: React.FC = () => {
               type="button"
               disabled={queryScanning || !search.trim() || !connected}
               onClick={handleQueryScan}
-              title={connected ? 'Search all open Zoho tasks and interpret matches' : 'Connect Zoho CRM first'}
+              title={connected ? 'Search all open Zoho tasks and interpret matches' : blockedReason}
               className="h-9 px-3.5 rounded-lg text-sm font-medium border border-slate-200 dark:border-blue-950/40 bg-white dark:bg-[#09153b] text-[#172560] dark:text-white hover:bg-slate-50 dark:hover:bg-[#122254] inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {queryScanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
