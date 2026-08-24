@@ -132,8 +132,15 @@ export interface ProspectEvent {
 export interface ListProspectsParams {
   lifecycle_stage?: LifecycleStage;
   channel?: Channel;
+  /** Case-insensitive substring match against name/email/phone/company,
+   *  server-side across the whole tenant (not just the current page). */
+  search?: string;
   limit?: number;
   offset?: number;
+  /** Server-side sort — only fields the backend actually indexes on
+   *  prospect_state. Omit for the backend's default (last_event_at desc). */
+  sort_by?: 'last_event_at' | 'fit_score' | 'sah_at' | 'created_at';
+  sort_dir?: 'asc' | 'desc';
 }
 
 export interface ListProspectEventsParams {

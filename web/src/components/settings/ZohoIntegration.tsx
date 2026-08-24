@@ -218,13 +218,13 @@ export const ZohoIntegration: React.FC = () => {
           }
           return;
         }
-      } catch { /* transient — keep polling */ }
+      } catch { /* transient - keep polling */ }
       if (tries < 120) {
         setTimeout(tick, 3000); // poll up to ~6 min
       } else {
         pollingRef.current = false;
         setSyncing(false);
-        setError('Sync is taking longer than expected — check back shortly, then refresh.');
+        setError('Sync is taking longer than expected - check back shortly, then refresh.');
       }
     };
     setTimeout(tick, 3000);
@@ -246,6 +246,7 @@ export const ZohoIntegration: React.FC = () => {
       const res = await fetchWithTenant(`${ZOHO_API}/sync`, { method: 'POST' });
       const data = await res.json();
       if (res.ok && data?.success) {
+        // Background sync: server returns immediately; poll for completion.
         setSuccess('Sync started — pulling from Zoho. This can take a minute for large accounts…');
         pollSyncStatus();
       } else {
@@ -323,6 +324,7 @@ export const ZohoIntegration: React.FC = () => {
         <div className="flex items-center gap-3">
           <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-red-50 dark:bg-red-950/40 flex items-center justify-center">
             <span className="text-xl font-bold text-red-600 select-none">Z</span>
+          </div>
           </div>
           <div>
             <h3 className="text-lg font-bold text-[#172560] dark:text-white">Zoho CRM</h3>

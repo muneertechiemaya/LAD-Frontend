@@ -162,7 +162,7 @@ export function InjuryReviewCard({ conversationId, backendChannel = 'waba' }: In
           <div className="flex items-start gap-3">
             <AlertTriangle className="h-4 w-4 text-warning flex-shrink-0 mt-0.5" />
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium">Reported an injury — booking on hold</p>
+              <p className="text-sm font-medium">Reported an injury - booking on hold</p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {state.note_changed_since_review
                   ? 'Previously cleared, but they have since shared new detail. Please review again.'
@@ -199,7 +199,7 @@ export function InjuryReviewCard({ conversationId, backendChannel = 'waba' }: In
           <div className="flex items-start gap-3">
             <CheckCircle2 className="h-4 w-4 text-success flex-shrink-0 mt-0.5" />
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium">Injury reviewed — cleared for booking</p>
+              <p className="text-sm font-medium">Injury reviewed - cleared for booking</p>
               {state.injuries_note && (
                 <p className="text-xs text-muted-foreground mt-0.5 break-words">
                   “{state.injuries_note}”
@@ -250,7 +250,7 @@ export function InjuryReviewCard({ conversationId, backendChannel = 'waba' }: In
             </label>
             <Textarea
               id="injury-review-notes"
-              placeholder="e.g. Reformer Basics only — avoid Intermediate and Advanced"
+              placeholder="e.g. Reformer Basics only - avoid Intermediate and Advanced"
               value={reviewNotes}
               onChange={(e) => setReviewNotes(e.target.value)}
               rows={3}

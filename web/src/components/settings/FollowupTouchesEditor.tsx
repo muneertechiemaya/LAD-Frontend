@@ -287,7 +287,7 @@ export default function FollowupTouchesEditor({
                       />
                       <p className="text-[11px] text-gray-400 dark:text-slate-500 mt-1 leading-snug">
                         We pick the post from this page that best fits the lead&apos;s industry. If nothing fits,
-                        the touch sends an industry-trend message and shares the page link instead — never a broken post link.
+                        the touch sends an industry-trend message and shares the page link instead - never a broken post link.
                       </p>
                     </div>
                   </div>

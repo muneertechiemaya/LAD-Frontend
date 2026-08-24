@@ -222,7 +222,7 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({ className, onLoadi
   // Format call date
   const formatCallDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    if (isNaN(date.getTime())) return '—';
+    if (isNaN(date.getTime())) return '-';
     return (
       date.toLocaleDateString('en-US', {
         month: 'short',

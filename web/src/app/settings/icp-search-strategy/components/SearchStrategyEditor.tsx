@@ -49,7 +49,7 @@ const CROSS_BACKEND_MERGE_OPTIONS: Array<{
   {
     value: 'first_match',
     label: 'First match wins',
-    hint: 'Honour discovery order — keep whichever backend surfaced the candidate first.',
+    hint: 'Honour discovery order - keep whichever backend surfaced the candidate first.',
   },
   {
     value: 'merge_fields',

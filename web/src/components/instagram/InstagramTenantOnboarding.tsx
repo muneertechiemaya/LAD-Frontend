@@ -441,7 +441,7 @@ export const InstagramTenantOnboarding: React.FC = () => {
                     enabled={a.ai_likes_enabled}
                     onToggle={() => handleToggleAi(a, 'ai_likes_enabled')}
                     unavailable={a.provider === 'meta' && !a.ai_likes_enabled}
-                    unavailableTitle="AI Likes isn't supported via Meta's official API — only available with direct sign-in (Unipile)."
+                    unavailableTitle="AI Likes isn't supported via Meta's official API. It is only available with direct sign-in (Unipile)."
                   />
                 </div>
               </li>
@@ -457,7 +457,7 @@ export const InstagramTenantOnboarding: React.FC = () => {
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Onboard new Instagram account</h2>
         </div>
         <p className="text-sm text-slate-600 mb-5 dark:text-slate-300">
-          Mirrors the WhatsApp tenant onboarding flow — connect a provider, link to an existing tenant or auto-create one.
+          Mirrors the WhatsApp tenant onboarding flow - connect a provider, link to an existing tenant or auto-create one.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -572,7 +572,7 @@ export const InstagramTenantOnboarding: React.FC = () => {
                   <Input
                     value={form.meta_verify_token}
                     onChange={(v) => setForm((f) => ({ ...f, meta_verify_token: v }))}
-                    placeholder="Choose any string — paste the same value into Meta webhooks setup"
+                    placeholder="Choose any string, then paste the same value into Meta webhooks setup"
                   />
                 </Field>
                 <Field label="Access Token" icon={MetaLogo} required>
@@ -608,7 +608,7 @@ export const InstagramTenantOnboarding: React.FC = () => {
                 <div className="flex items-center justify-between gap-3 rounded-md bg-emerald-950/20 px-3 py-2 text-sm text-emerald-200">
                   <span className="inline-flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4" />
-                    Signed in — account <span className="font-mono">{form.provider_account_id}</span> ready to connect.
+                    Signed in: account <span className="font-mono">{form.provider_account_id}</span> ready to connect.
                   </span>
                   <button
                     type="button"
@@ -637,7 +637,7 @@ export const InstagramTenantOnboarding: React.FC = () => {
                   <Input
                     value={form.provider_account_id}
                     onChange={(v) => setForm((f) => ({ ...f, provider_account_id: v }))}
-                    placeholder="e.g. WS_xxxxx — paste if you already have a connection id"
+                    placeholder="e.g. WS_xxxxx. Paste if you already have a connection ID."
                     mono
                   />
                 </Field>
@@ -699,7 +699,7 @@ export const InstagramTenantOnboarding: React.FC = () => {
 
       {/* Edit-account modal. Opens when an operator clicks "Edit" on a row.
           Saves dirty fields via PATCH /api/accounts/{id}; secrets (app_secret,
-          access_token) are write-only — pre-populated as blank, sent only if
+          access_token) are write-only - pre-populated as blank, sent only if
           the operator types a replacement. */}
       {editingAccount && (
         <EditAccountModal
@@ -738,7 +738,7 @@ function LikesUnavailableModal({ onClose }: { onClose: () => void }): JSX.Elemen
         </div>
         <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
           Meta&apos;s official Instagram Graph API doesn&apos;t expose a way to
-          like comments on your posts — it&apos;s a documented limitation, not
+          like comments on your posts - it&apos;s a documented limitation, not
           something we can work around.
         </p>
         <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
@@ -1383,7 +1383,7 @@ function InstagramSignInModal({
                 <form className="space-y-3" onSubmit={handleSubmit}>
                   <p className="text-xs text-slate-600 dark:text-slate-300">
                     Paste your Instagram <span className="font-mono text-slate-700 dark:text-slate-200">sessionid</span> cookie from your browser
-                    — open <span className="font-mono">instagram.com</span>, DevTools → Application → Cookies.
+                    - open <span className="font-mono">instagram.com</span>, DevTools → Application → Cookies.
                   </p>
                   <input
                     type="text"

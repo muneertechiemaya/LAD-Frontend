@@ -223,10 +223,10 @@ function parseAIResponse(raw: string): ParsedAIResponse {
             return { text: String(agent_reply), metadata: meta };
           }
           // agent_reply is null / empty — surface full JSON as debug info
-          return { text: "(No reply — see debug info)", metadata: obj };
+          return { text: "(No reply - see debug info)", metadata: obj };
         }
         // Valid JSON but no agent_reply key
-        return { text: "[Structured response — expand debug info]", metadata: obj };
+        return { text: "[Structured response - expand debug info]", metadata: obj };
       }
     } catch {
       // Truncated / malformed JSON — fall through to regex
@@ -251,7 +251,7 @@ function parseAIResponse(raw: string): ParsedAIResponse {
 
   // ── 3. Truncated JSON where agent_reply is null ───────────────────────────
   if (/"agent_reply"\s*:\s*null/.test(raw)) {
-    return { text: "(No reply — see debug info)", metadata: null };
+    return { text: "(No reply - see debug info)", metadata: null };
   }
 
   // ── 4. Plain text — render as-is ─────────────────────────────────────────
@@ -524,7 +524,7 @@ export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps
         setMessages(messages);
       }
     } catch {
-      setSendError("Network error — could not reach the AI service.");
+      setSendError("Network error - could not reach the AI service.");
       setMessages(messages);
     } finally {
       setIsSending(false);
@@ -739,7 +739,7 @@ export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps
                   <select
                     value={selectedStage}
                     onChange={(e) => setSelectedStage(e.target.value)}
-                    title="Preview how a sectioned (## STAGE:) prompt scopes + how the bot replies in this stage. Stateless — does not run real transitions or bookings."
+                    title="Preview how a sectioned (## STAGE:) prompt scopes + how the bot replies in this stage. Stateless - does not run real transitions or bookings."
                     className={cn(
                       "flex-1 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none transition-colors cursor-pointer",
                       isWhatsApp

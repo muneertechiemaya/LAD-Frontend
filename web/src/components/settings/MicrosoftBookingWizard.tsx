@@ -203,7 +203,7 @@ export const MicrosoftBookingWizard: React.FC<MicrosoftBookingWizardProps> = ({ 
     if (step === 2) {
       if (servicesQ.services.length === 0) {
         return (
-          <EmptyState message="No services on this booking page — continue and we'll detect one automatically." />
+          <EmptyState message="No services on this booking page. Continue and we'll detect one automatically." />
         );
       }
       return servicesQ.services.map((s: MsBookingService) => (
@@ -218,7 +218,7 @@ export const MicrosoftBookingWizard: React.FC<MicrosoftBookingWizardProps> = ({ 
     }
 
     if (staffQ.staff.length === 0) {
-      return <EmptyState message="No staff members on this booking page — you can save without one." />;
+      return <EmptyState message="No staff members on this booking page. You can save without one." />;
     }
     return staffQ.staff.map((m: MsBookingStaff) => (
       <OptionRow

@@ -359,7 +359,7 @@ export default function WhatsAppTemplateCreatePage() {
       );
       const data = await res.json();
       if (data.success) {
-        setResult({ success: true, message: `"${safeName}" submitted — status: ${data.status ?? 'PENDING'}` });
+        setResult({ success: true, message: `"${safeName}" submitted - status: ${data.status ?? 'PENDING'}` });
       } else {
         setResult({ success: false, message: data.error || 'Meta rejected the template.' });
       }
@@ -937,7 +937,7 @@ export default function WhatsAppTemplateCreatePage() {
                     <div className="flex items-start justify-between gap-2">
                       <span className="text-xs text-[#94A3B8] dark:text-gray-500">Components</span>
                       <span className="text-xs text-[#1E293B] dark:text-white text-right">
-                    {buildComponents().map((c: any) => c.type).join(', ') || '—'}
+                    {buildComponents().map((c: any) => c.type).join(', ') || '-'}
                   </span>
                     </div>
                   </div>
@@ -1067,7 +1067,7 @@ export default function WhatsAppTemplateCreatePage() {
                 <div className="flex items-start justify-between gap-2">
                   <span className="text-xs text-[#94A3B8] dark:text-gray-500">Components</span>
                   <span className="text-xs text-[#1E293B] dark:text-white text-right">
-                    {buildComponents().map((c: any) => c.type).join(', ') || '—'}
+                    {buildComponents().map((c: any) => c.type).join(', ') || '-'}
                   </span>
                 </div>
               </div>
