@@ -104,7 +104,7 @@ const Login: React.FC = () => {
   };
 
   return (
-      <div className="w-full max-w-[440px] sm:max-w-[460px] p-6 sm:p-8 rounded-2xl shadow-2xl border backdrop-blur-xl bg-gradient-to-b from-white to-gray-50 dark:from-[#071131] dark:to-[#071131] border-gray-200 dark:border-gray-700 mx-auto">
+      <div className="w-full max-w-[400px] sm:max-w-[420px] p-6 sm:p-7 rounded-2xl shadow-2xl border backdrop-blur-xl bg-gradient-to-b from-white to-gray-50 dark:from-[#071131] dark:to-[#071131] border-gray-200 dark:border-gray-700 mx-auto">
         {/* Logo — driven by the app theme (.dark class), not OS prefers-color-scheme */}
         <img
           src="/MrLAD-logo.svg"

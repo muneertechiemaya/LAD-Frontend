@@ -433,7 +433,7 @@ function ComposeBroadcastDialog({
         const data = await res.json();
         const list = Array.isArray(data) ? data : (data.templates ?? data.data ?? []);
         if (!cancelled) setTemplates(list);
-      } catch { /* non-fatal — picker just stays empty */ }
+      } catch { /* non-fatal - picker just stays empty */ }
     })();
     return () => { cancelled = true; };
   }, [open]);
@@ -543,7 +543,7 @@ function ComposeBroadcastDialog({
               <SelectContent>
                 {activeAccounts.length === 0 ? (
                   <div className="px-3 py-2 text-sm text-muted-foreground">
-                    No active accounts — connect Gmail / Outlook in Settings.
+                    No active accounts - connect Gmail / Outlook in Settings.
                   </div>
                 ) : (
                   activeAccounts.map((a) => (
@@ -694,7 +694,7 @@ function ComposeBroadcastDialog({
             </div>
             <p className="mt-3.5 text-xs text-muted-foreground">
               Build the email with blocks (header, image, button, signature…). Use{' '}
-              <code>{'{{first_name}}'}</code> or <code>{'{first_name}'}</code> to personalise —
+              <code>{'{{first_name}}'}</code> or <code>{'{first_name}'}</code> to personalise -
               unknown placeholders are removed before sending.
             </p>
           </div>
@@ -708,7 +708,7 @@ function ComposeBroadcastDialog({
               <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                 {sendCount} recipients exceeds the safe daily volume for this account
                 (~{cap}/day). Sending is paced and may spread across days to protect your
-                sender reputation — for regular large sends, connect an email service
+                sender reputation - for regular large sends, connect an email service
                 (Brevo / Amazon SES) via Custom SMTP.
               </p>
             ) : null;
@@ -734,7 +734,7 @@ function ComposeBroadcastDialog({
 
 /** "2h 14m" / "34m" / "45s" from seconds. */
 function formatDuration(seconds: number | null): string {
-  if (seconds == null || !Number.isFinite(seconds) || seconds < 0) return '—';
+  if (seconds == null || !Number.isFinite(seconds) || seconds < 0) return '-';
   const s = Math.round(seconds);
   if (s < 60) return `${s}s`;
   const m = Math.floor(s / 60);
@@ -788,14 +788,14 @@ function BroadcastPerformancePanel({ stats }: { stats: BroadcastRunStats }) {
       {stats.proxy_opens > 0 && (
         <p className="text-[11px] text-[#5f6368] dark:text-[#9aa0a6] mb-3">
           {stats.proxy_opens} open{stats.proxy_opens === 1 ? '' : 's'} came from mail-client
-          privacy proxies (Apple/Gmail prefetch) — treat open counts as an upper bound.
+          privacy proxies (Apple/Gmail prefetch) - treat open counts as an upper bound.
         </p>
       )}
 
       {stats.repeat_openers.length > 0 && (
         <details className="mb-2 rounded-lg border border-[#e0e0e0] dark:border-[#3c4043]">
           <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-[#202124] dark:text-[#e8eaed]">
-            Repeat openers ({stats.repeat_openers_count}) — most engaged first
+            Repeat openers ({stats.repeat_openers_count}) - most engaged first
           </summary>
           <div className="px-3 pb-2 divide-y divide-[#f0f0f0] dark:divide-white/5">
             {stats.repeat_openers.map((o) => (

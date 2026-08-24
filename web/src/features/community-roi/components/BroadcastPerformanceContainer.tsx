@@ -69,7 +69,7 @@ interface EmailRun {
 type TemplateWithTs = Template & { _ts: string | null };
 
 function shortRelative(iso: string | null): string {
-  if (!iso) return '—';
+  if (!iso) return '-';
   try {
     // formatDistanceToNow returns "about 10 hours ago"; tighten to "10h ago"
     const long = formatDistanceToNow(parseISO(iso), { addSuffix: true });

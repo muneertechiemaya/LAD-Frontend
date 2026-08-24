@@ -103,7 +103,7 @@ export default function MonitorLlmRoutingPage() {
         <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
         <span>
           Fallbacks change what the tenant is billed for. If the primary fails, usage is charged
-          against whichever provider actually answered — and output quality differs between models.
+          against whichever provider actually answered - and output quality differs between models.
         </span>
       </div>
 
@@ -148,7 +148,7 @@ export default function MonitorLlmRoutingPage() {
                     <p className="mt-0.5 text-xs text-gray-500">
                       {locked
                         || (notWired
-                          ? `${f.hint} — not yet wired to routing; a rule here would be ignored.`
+                          ? `${f.hint} - not yet wired to routing; a rule here would be ignored.`
                           : f.hint)}
                     </p>
                   </div>

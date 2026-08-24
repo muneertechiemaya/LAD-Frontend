@@ -1182,7 +1182,7 @@ export default function GuidedFlowPanel() {
               If you could clone this customer, would you?
             </h3>
             <p className="mb-6 text-[#64748B] block text-[13px] italic">
-              If yes — this is your ICP
+              If yes - this is your ICP
             </p>
             <div className="flex flex-row gap-4">
               <Button

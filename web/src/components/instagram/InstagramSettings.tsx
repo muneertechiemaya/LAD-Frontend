@@ -170,7 +170,7 @@ const AIGoalsPanel: React.FC = () => {
   };
 
   const onDelete = async (id: string) => {
-    if (!confirm('Delete this goal? This action is reversible — the goal is soft-deleted.')) return;
+    if (!confirm('Delete this goal? This action is reversible - the goal is soft-deleted.')) return;
     await apiDelete(`/api/instagram-conversations/goals/${id}`);
     await load();
   };
@@ -201,7 +201,7 @@ const AIGoalsPanel: React.FC = () => {
         <EmptyState
           icon={Target}
           title="No goals yet"
-          blurb="Create your first AI Goal — bookings, sales, email captures — and AI will steer every reply toward it."
+          blurb="Create your first AI Goal: bookings, sales, or email captures. AI will steer every reply toward it."
         />
       )}
 
@@ -604,7 +604,7 @@ const MetaConnectForm: React.FC<{ onAdd: (payload: any) => Promise<void> }> = ({
       {verified && (
         <div className="flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-950/20 px-3 py-2.5 text-xs text-emerald-200 font-medium">
           <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-          Verified — ID <code className="font-mono bg-slate-900 px-1 py-0.5 rounded text-slate-200">{verified.id}</code>
+          Verified - ID <code className="font-mono bg-slate-900 px-1 py-0.5 rounded text-slate-200">{verified.id}</code>
           {verified.username && <> · @{verified.username}</>}
         </div>
       )}

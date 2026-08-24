@@ -418,10 +418,10 @@ const WF_SOURCE_LABELS: Record<string, { label: string; sub: string }> = {
     linkedin_search:  { label: 'LinkedIn Search',            sub: 'Find new leads by keywords' },
     linkedin_signal:  { label: 'LinkedIn Signal Search',     sub: 'Find leads from hiring/buying signals' },
     file_import:      { label: 'File import (CSV / Excel)',  sub: 'Upload a list and map columns' },
-    zoho_once:        { label: 'Zoho CRM — one-time',        sub: 'Import synced contacts now' },
-    zoho_recurring:   { label: 'Zoho CRM — recurring',       sub: 'Import new contacts daily' },
-    ghl_once:         { label: 'GoHighLevel — one-time',     sub: 'Import synced contacts now' },
-    ghl_recurring:    { label: 'GoHighLevel — recurring',    sub: 'Import new contacts daily' },
+    zoho_once:        { label: 'Zoho CRM (One-Time)',        sub: 'Import synced contacts now' },
+    zoho_recurring:   { label: 'Zoho CRM (Recurring)',       sub: 'Import new contacts daily' },
+    ghl_once:         { label: 'GoHighLevel (One-Time)',     sub: 'Import synced contacts now' },
+    ghl_recurring:    { label: 'GoHighLevel (Recurring)',    sub: 'Import new contacts daily' },
 };
 
 /* ═══════════════════════════════════════════════
@@ -6121,7 +6121,7 @@ export default function AdvancedSearchAIPage() {
                     finalText = `Searching LinkedIn for leads...\n\n🔍 **Found ${searchTotal} leads** ${searchSourceLabel()}.`;
                     setTimeout(() => setShowPanel('leads'), 500);
                 } else {
-                    finalText = "I'm here to help you find the perfect leads! Try describing what you need — for example:\n\n• **Find a person:** \"John Smith, CTO at Stripe\"\n• **People at a company:** \"Find all people in Tesla\"\n• **Decision makers:** \"Find decision makers at Google\"\n• **Specific role:** \"Find founders at techiemaya\"\n• **Industry search:** \"Marketing directors at fintech startups in London\"";
+                    finalText = "I'm here to help you find the perfect leads! Try describing what you need. For example:\n\n• **Find a person:** \"John Smith, CTO at Stripe\"\n• **People at a company:** \"Find all people in Tesla\"\n• **Decision makers:** \"Find decision makers at Google\"\n• **Specific role:** \"Find founders at techiemaya\"\n• **Industry search:** \"Marketing directors at fintech startups in London\"";
                 }
             } else if (realLeads.length > 0) {
                 // lead-chat triggered a search and got results
@@ -6344,11 +6344,11 @@ export default function AdvancedSearchAIPage() {
                 if (v !== '__wf_launch__') {
                     const saved = await wfSaveStrategy(draft.template, name);
                     if (!saved) return;   // the failure already explained itself
-                    wfPushAi(`💾 Saved **"${name}"** — you'll find it under your saved sequences.`);
+                    wfPushAi(`💾 Saved **"${name}"**. You'll find it under your saved sequences.`);
                     if (v === '__wf_save__') return;
                 }
                 // Hand the launch to the builder's own launch(), guards and all.
-                wfPushAi(`🚀 Launching **"${name}"** — opening the canvas so you can watch it start. If anything is missing, it'll say so there rather than failing quietly.`);
+                wfPushAi(`🚀 Launching **"${name}"**! Opening the canvas so you can watch it start. If anything is missing, it'll say so there rather than failing quietly.`);
                 openDraftInBuilder(draft.template, draft.warnings, true);
             })();
             return;
@@ -7847,7 +7847,7 @@ export default function AdvancedSearchAIPage() {
                                             className={`adv-premium-btn ${isRecording ? 'recording-pulse' : ''}`}
                                             onClick={toggleRecording}
                                             disabled={beautifying}
-                                            title={beautifying ? "Beautifying..." : isRecording ? "Stop voice transcription" : "Talk to Mr. LADs — voice interaction"}
+                                            title={beautifying ? "Beautifying..." : isRecording ? "Stop voice transcription" : "Talk to Mr. LADs: voice interaction"}
                                             style={{
                                                 display: 'flex', alignItems: 'center', gap: '4px',
                                                 padding: '3px 8px', borderRadius: '12px',
@@ -9743,7 +9743,7 @@ function RoleCardView({ card, onOpt, previewing, icp }: { card: NonNullable<Chat
                     {/* What "skip" keeps — so message copy is never a blind choice. */}
                     {q?.suggestion ? (
                         <div className="mt-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/40 px-3 py-2">
-                            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">Suggested — kept if you skip</div>
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">Suggested, kept if you skip</div>
                             <div className="text-[12px] text-slate-600 dark:text-slate-300 leading-snug whitespace-pre-wrap">{q.suggestion}</div>
                         </div>
                     ) : q?.target === 'node' ? (
@@ -9786,7 +9786,7 @@ function RoleCardView({ card, onOpt, previewing, icp }: { card: NonNullable<Chat
             {card.stage === 'file' && (
                 <div className="px-4 pb-4 pt-3 border-t border-slate-100 dark:border-slate-800">
                     <div className="text-[13px] text-slate-700 dark:text-slate-200 leading-relaxed">
-                        This Accelerator starts from a <strong className="font-semibold">file upload</strong>. I&apos;ll open the workflow builder with the whole pipeline pre-built — upload your CSV/Excel in the source node and hit Launch.
+                        This Accelerator starts from a <strong className="font-semibold">file upload</strong>. I&apos;ll open the workflow builder with the whole pipeline pre-built. Upload your CSV/Excel in the source node and hit Launch.
                     </div>
                     <div className="flex items-center gap-2 mt-3.5">
                         <button type="button" onClick={() => onOpt(`__role_builder__:${tpl.key}`)}
@@ -9841,11 +9841,11 @@ function RoleCardView({ card, onOpt, previewing, icp }: { card: NonNullable<Chat
                             })}
                         </div>
                     ) : (
-                        <div className="text-[13px] text-slate-600 dark:text-slate-300 mb-3">Nothing to configure — this Accelerator is ready to go.</div>
+                        <div className="text-[13px] text-slate-600 dark:text-slate-300 mb-3">Nothing to configure. This Accelerator is ready to go.</div>
                     )}
                     <div className="flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500 mb-3.5">
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
-                        Defaults: 25 leads/day · 30 days — adjustable in the builder
+                        Defaults: 25 leads/day · 30 days, adjustable in the builder
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                         {previewQuery && (
@@ -10118,7 +10118,7 @@ function Bubble({ msg, onOpt, onShowPanel, onStartCheckpoints, onLetAgentDeal, a
                                 boxShadow: "0 4px 14px rgba(11,25,87,0.22)",
                             }}>
                               <span style={{ fontSize: "16px", lineHeight: 1 }}>{agentDealLoading ? "⏳" : "⚡"}</span>
-                              {agentDealLoading ? "Building your campaign…" : "Let Agent Deal — auto-build every connected channel"}
+                              {agentDealLoading ? "Building your campaign…" : "Let Agent Deal: auto-build every connected channel"}
                           </button>
                       )}
                       <div className="adv-action-btns flex flex-nowrap gap-2 justify-between">
@@ -12191,7 +12191,7 @@ function CheckpointFormInline({
                                                 }}
                                               >
                                                   <SelectTrigger className="flex items-center w-full px-3 bg-white dark:bg-[#000724] border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-[#111c3a] rounded-lg focus:ring-0 shadow-none h-[42px] text-sm">
-                                                      <SelectValue placeholder="— Select sender account —" />
+                                                      <SelectValue placeholder="Select sender account" />
                                                   </SelectTrigger>
                                                   <SelectContent  className="bg-white dark:bg-[#000724] border-slate-200 dark:border-[#262831]">
                                                       {connectedSenders.map((s) => (
@@ -12201,7 +12201,7 @@ function CheckpointFormInline({
                                                           className="pl-3 pr-6 text-sm justify-start transition-colors cursor-pointer text-slate-800 dark:text-white dark:focus:bg-[#2563eb] dark:focus:text-white dark:data-[state=checked]:focus:bg-[#2563eb] dark:data-[state=checked]:focus:text-white">
                                                             <div className="flex items-center gap-3">
                                                               <span className="text-sm">
-                                                                {s.provider === 'google' ? '📧 Gmail' : '📨 Outlook'} — {s.email}
+                                                                {s.provider === 'google' ? '📧 Gmail' : '📨 Outlook'}: {s.email}
                                                               </span>
                                                             </div>
                                                         </SelectItem>
@@ -12233,7 +12233,7 @@ function CheckpointFormInline({
                                                   }}
                                                 >
                                                     <SelectTrigger className="flex items-center w-full px-3 bg-white dark:bg-[#000724] border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-[#111c3a] rounded-lg focus:ring-0 shadow-none h-[42px] text-sm">
-                                                        <SelectValue placeholder="— Select a template —" />
+                                                        <SelectValue placeholder="Select a template" />
                                                     </SelectTrigger>
                                                     <SelectContent className="bg-white dark:bg-[#000724] border-slate-200 dark:border-[#262831]">
                                                         {emailTemplates.map((t) => (
@@ -12412,7 +12412,7 @@ function CheckpointFormInline({
                                                 onValueChange={setWaAccountId}
                                               >
                                                   <SelectTrigger className="flex items-center w-full px-3 bg-white dark:bg-[#000724] border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-[#111c3a] rounded-lg focus:ring-0 shadow-none h-[42px] text-sm">
-                                                      <SelectValue placeholder="— Select WhatsApp account —" />
+                                                      <SelectValue placeholder="Select WhatsApp account" />
                                                   </SelectTrigger>
                                                   <SelectContent className="bg-white dark:bg-[#000724] border-slate-200 dark:border-[#262831]">
                                                       {whatsAppAccounts.map((acc: any) => (
