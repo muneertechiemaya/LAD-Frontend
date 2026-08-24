@@ -60,6 +60,12 @@ interface ProspectDetailProps {
    *  to "no follow-ups queued" (loading=false, followups=[]). */
   followupsError?: boolean;
   /**
+   * Channels the Master Agent could not read (MA #16). The list it returned is
+   * a FLOOR for these — without saying so, a dropped LinkedIn lookup reads as
+   * "no LinkedIn follow-ups are queued".
+   */
+  followupsDegradedChannels?: string[];
+  /**
    * The prospect's `core_lead_id` — the id `campaign_leads` and
    * `campaign_analytics` are keyed by, and the only one the report API resolves.
    * Omitted or null ⇒ the report + accelerator sections are not rendered.
@@ -83,7 +89,7 @@ function isOperatorEvent(e: ProspectEvent): boolean {
   return String(e.event_type || '').startsWith('crm.');
 }
 
-export default function ProspectDetail({ prospect, warmPath, warmPathSample = false, events = [], eventsError = false, eventsUnavailable = false, eventsTruncated = false, onClose, onRemove, isRemoving = false, onAction, isActing = false, doNotContact = false, quietUntil = null, followups = [], followupsLoading = false, followupsError = false, coreLeadId = null }: ProspectDetailProps) {
+export default function ProspectDetail({ prospect, warmPath, warmPathSample = false, events = [], eventsError = false, eventsUnavailable = false, eventsTruncated = false, onClose, onRemove, isRemoving = false, onAction, isActing = false, doNotContact = false, quietUntil = null, followups = [], followupsLoading = false, followupsError = false, followupsDegradedChannels = [], coreLeadId = null }: ProspectDetailProps) {
   const [warmOpen, setWarmOpen] = useState(false);
   const sectionRef = useRef<HTMLDivElement | null>(null);
 
@@ -298,7 +304,7 @@ export default function ProspectDetail({ prospect, warmPath, warmPathSample = fa
         </div>
         <div className="space-y-4">
           <Actions onAction={onAction} isActing={isActing} doNotContact={doNotContact} quietUntil={quietUntil} />
-          <NextFollowups followups={followups} loading={followupsLoading} error={followupsError} />
+          <NextFollowups followups={followups} loading={followupsLoading} error={followupsError} degradedChannels={followupsDegradedChannels} />
         </div>
       </div>
     </div>
@@ -1048,14 +1054,23 @@ function futureWhen(iso?: string | null): { abs: string; badge: string | null } 
 
 /** Upcoming automatic follow-ups the Master Agent has scheduled across channels. */
 function NextFollowups({
-  followups, loading, error,
-}: { followups: ProspectFollowup[]; loading?: boolean; error?: boolean }) {
+  followups, loading, error, degradedChannels = [],
+}: { followups: ProspectFollowup[]; loading?: boolean; error?: boolean; degradedChannels?: string[] }) {
   return (
     <LadCard>
       <LadCardHeader
         title="Next follow-ups"
         subtitle={
-          error ? 'Could not load' : loading ? 'Loading…' : followups.length ? `${followups.length} scheduled` : 'Automatic outreach'
+          error
+            ? 'Could not load'
+            : loading
+              ? 'Loading…'
+              : degradedChannels.length
+                // A count we know is short must not be stated as a total.
+                ? `${followups.length}+ scheduled`
+                : followups.length
+                  ? `${followups.length} scheduled`
+                  : 'Automatic outreach'
         }
       />
       {error ? (
@@ -1064,6 +1079,13 @@ function NextFollowups({
         </p>
       ) : loading ? (
         <p className="text-[13px] text-slate-500 dark:text-slate-300">Checking the schedule…</p>
+      ) : followups.length === 0 && degradedChannels.length ? (
+        // The ONE case the server can tell us about and we previously could
+        // not: nothing came back, but only because a channel was unreadable.
+        <p className="text-[13px] text-amber-700 dark:text-amber-300">
+          Couldn&apos;t read {degradedChannels.join(', ')} follow-ups, so this isn&apos;t
+          necessarily &quot;none queued.&quot;
+        </p>
       ) : followups.length === 0 ? (
         <div className="flex items-center gap-2 text-[13px] text-slate-500 dark:text-slate-300">
           <CalendarClock className="w-4 h-4 shrink-0" />
@@ -1109,6 +1131,12 @@ function NextFollowups({
             );
           })}
         </ul>
+      )}
+      {!error && !loading && followups.length > 0 && degradedChannels.length > 0 && (
+        <p className="mt-2 text-[11.5px] text-amber-700 dark:text-amber-300">
+          {degradedChannels.join(', ')} follow-ups couldn&apos;t be read — there may be more
+          than shown.
+        </p>
       )}
     </LadCard>
   );
