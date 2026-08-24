@@ -8,8 +8,7 @@
  * ```typescript
  * import { 
  *   apolloLeadsService,
- *   useApolloLeads,
- *   ApolloLeadsSearch 
+ *   useApolloLeads
  * } from '@/features/apollo-leads';
  * ```
  */
