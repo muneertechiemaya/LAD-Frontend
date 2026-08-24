@@ -18,7 +18,17 @@ interface StatCard {
 }
 
 export interface StatsCardsProps {
-  counts: { all: number; prospects: number; leads: number; clients: number };
+  /**
+   * `null` for a figure we could not load — NOT the same as a tenant that has
+   * none. During an outage these all rendered `0`, which told a tenant with 571
+   * contacts that their CRM was empty.
+   */
+  counts: {
+    all: number | null;
+    prospects: number | null;
+    leads: number | null;
+    clients: number | null;
+  };
   selected: CrmView;
   onSelect: (key: Exclude<CrmView, 'board'>) => void;
 }
@@ -61,7 +71,7 @@ export default function StatsCards({ counts, selected, onSelect }: StatsCardsPro
                 className="text-2xl font-bold text-slate-800 dark:text-white tabular-nums"
                 style={{ fontFamily: '"Space Grotesk", system-ui' }}
               >
-                {c.value}
+                {c.value ?? '—'}
               </h5>
             </div>
           </div>

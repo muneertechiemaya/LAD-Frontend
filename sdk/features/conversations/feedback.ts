@@ -27,6 +27,13 @@ export interface SubmitFeedbackRequest {
   conversationId: string;
   messageId: string;
   rating: FeedbackRating;
+  /**
+   * Which agent is being corrected. Defaults to the WhatsApp/WABA endpoint.
+   * 'linkedin' appends ?channel=linkedin, which the conversations proxy routes
+   * to LAD_backend's /api/linkedin-conversations. Corrections are scoped per
+   * channel server-side, so a LinkedIn correction only ever trains LinkedIn.
+   */
+  channel?: 'waba' | 'linkedin';
   /** What the agent SHOULD have said. Only meaningful on a dislike. */
   expectedResponse?: string;
   /**
@@ -65,7 +72,8 @@ export async function submitMessageFeedback(
     data: { id: string; rating: FeedbackRating; is_active: boolean };
     will_train: boolean;
   }>(
-    `/api/whatsapp-conversations/conversations/${req.conversationId}/messages/${req.messageId}/feedback`,
+    `/api/whatsapp-conversations/conversations/${req.conversationId}/messages/${req.messageId}/feedback` +
+      (req.channel === 'linkedin' ? '?channel=linkedin' : ''),
     {
       rating: req.rating,
       expected_response: req.expectedResponse,
