@@ -40,6 +40,8 @@ export const ReengageTopicsWidget: React.FC<{ id: string }> = ({ id }) => {
   const { data, loading, error, refresh } = useConversationAnalytics(WINDOW_DAYS, true);
   const [active, setActive] = useState<TopicSegment | null>(null);
   const [sent, setSent] = useState<{ topic: string; total: number } | null>(null);
+  /** Final broadcast outcome. The optimistic banner above is a CLAIM until this lands. */
+  const [outcome, setOutcome] = useState<{ sent: number; failed: number; error?: string } | null>(null);
 
   const activeMembers = useMemo(() => (active ? toMembers(active) : []), [active]);
 
@@ -66,6 +68,27 @@ export const ReengageTopicsWidget: React.FC<{ id: string }> = ({ id }) => {
         <div className="mb-3 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300">
           <CheckCircle2 className="h-4 w-4 shrink-0" />
           <span>Broadcasting to {sent.total} {sent.topic} contact{sent.total === 1 ? '' : 's'}…</span>
+        </div>
+      )}
+
+      {/* What ACTUALLY happened. The banner above is optimistic — it fires
+          before the request — so this is the only thing that can correct it. */}
+      {outcome && (
+        <div
+          className={`mb-3 flex items-start gap-2 rounded-lg border px-3 py-2 text-xs ${
+            outcome.failed > 0
+              ? 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300'
+              : 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300'
+          }`}
+        >
+          <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />
+          <span>
+            {outcome.error
+              ? `Broadcast failed — ${outcome.error}. No messages were sent.`
+              : outcome.failed > 0
+                ? `Broadcast finished: ${outcome.sent} sent, ${outcome.failed} failed.`
+                : `Broadcast finished: ${outcome.sent} sent.`}
+          </span>
         </div>
       )}
 
@@ -148,10 +171,31 @@ export const ReengageTopicsWidget: React.FC<{ id: string }> = ({ id }) => {
           recommendations={[]}
           allMembers={activeMembers}
           onClose={() => setActive(null)}
-          onSuccess={(result: { broadcasting?: boolean; total?: number }) => {
+          onSuccess={(result: {
+            broadcasting?: boolean;
+            broadcastComplete?: boolean;
+            total?: number;
+            sent?: number;
+            failed?: number;
+            error?: string;
+          }) => {
             if (result?.broadcasting) {
               setSent({ topic: active.topic, total: result.total ?? activeMembers.length });
               setTimeout(() => setSent(null), 8000);
+              return;
+            }
+            // The send finished. Until this existed the optimistic "Broadcasting
+            // to N…" above was the LAST thing the user saw, so a broadcast that
+            // failed outright — or half-failed — looked exactly like one that
+            // went out.
+            if (result?.broadcastComplete) {
+              setSent(null);
+              setOutcome({
+                sent: result.sent ?? 0,
+                failed: result.failed ?? 0,
+                error: result.error,
+              });
+              setTimeout(() => setOutcome(null), 12000);
             }
           }}
         />
