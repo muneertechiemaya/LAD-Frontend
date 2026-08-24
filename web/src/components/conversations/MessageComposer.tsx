@@ -30,6 +30,7 @@ import {
 import { QuickReplyPicker } from './QuickReplyPicker';
 import { TemplatePicker } from './TemplatePicker';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
+import { fetchJson } from '@/lib/fetch-json';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -455,6 +456,8 @@ export const MessageComposer = memo(function MessageComposer({
   const [fileLoading,        setFileLoading]        = useState(false);
   const [agentType,          setAgentType]          = useState<AgentType>(owner === 'human_agent' ? 'human' : 'ai');
   const [showTakeoverDialog, setShowTakeoverDialog] = useState(false);
+  /** Set when an AI/human handover was rejected, so the UI stops implying it worked. */
+  const [ownershipError,     setOwnershipError]     = useState<string | null>(null);
   const [showAttachMenu,     setShowAttachMenu]     = useState(false);
   const [showStickers,       setShowStickers]       = useState(false);
   const [showPoll,           setShowPoll]           = useState(false);
@@ -495,23 +498,43 @@ export const MessageComposer = memo(function MessageComposer({
   }, [showAttachMenu]);
 
   // ── Ownership API ─────────────────────────────────────────────────────────
-  const updateOwnership = useCallback(async (newOwner: 'AI' | 'human_agent') => {
-    if (!conversationId) return;
+  // Reports whether the change actually landed. This used to swallow every
+  // failure into console.error while the caller had ALREADY flipped
+  // `agentType`, so a rejected PATCH left the composer showing "human agent"
+  // while the server still had the AI owning the thread — the AI kept replying
+  // to a conversation its operator believed they had taken over. `fetchWithTenant`
+  // does not throw on 4xx/5xx, so even an explicit reject arrived here as success.
+  const updateOwnership = useCallback(async (newOwner: 'AI' | 'human_agent'): Promise<boolean> => {
+    if (!conversationId) return true;
+    setOwnershipError(null);
     try {
-      await fetchWithTenant(`${CONV_API}/${conversationId}/ownership`, {
+      await fetchJson(`${CONV_API}/${conversationId}/ownership`, {
         method: 'PATCH',
         body: JSON.stringify({ owner: newOwner }),
       });
-    } catch (err) { console.error('Failed to update ownership:', err); }
+      return true;
+    } catch (err) {
+      setOwnershipError(
+        err instanceof Error ? err.message : 'Could not change who handles this conversation',
+      );
+      return false;
+    }
   }, [conversationId]);
 
   const handleAgentTypeChange = useCallback((type: AgentType) => {
     if (type === 'human' && agentType === 'ai') setShowTakeoverDialog(true);
-    else if (type === 'ai' && agentType === 'human') { setAgentType('ai'); updateOwnership('AI'); }
+    else if (type === 'ai' && agentType === 'human') {
+      setAgentType('ai');
+      // Put the toggle back if the server refused, so it never claims a
+      // handover that did not happen.
+      void updateOwnership('AI').then((ok) => { if (!ok) setAgentType('human'); });
+    }
   }, [agentType, updateOwnership]);
 
   const confirmTakeover = useCallback(() => {
-    setAgentType('human'); updateOwnership('human_agent'); setShowTakeoverDialog(false);
+    setAgentType('human');
+    void updateOwnership('human_agent').then((ok) => { if (!ok) setAgentType('ai'); });
+    setShowTakeoverDialog(false);
   }, [updateOwnership]);
 
   // ── File reading ──────────────────────────────────────────────────────────
@@ -791,6 +814,11 @@ export const MessageComposer = memo(function MessageComposer({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          {ownershipError && (
+            <p className="absolute top-full left-0 mt-1 whitespace-nowrap text-[11px] text-rose-600 dark:text-rose-400">
+              {ownershipError} — handover not applied.
+            </p>
+          )}
         </div>
         )}
 
