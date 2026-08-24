@@ -102,7 +102,7 @@ export function StrategyPublishDialog({ strategyId, strategyName, onClose, onPub
                 <div className="text-[13px] font-semibold text-foreground mb-1">What gets shared</div>
                 <p className="text-[12.5px] text-muted-foreground leading-relaxed">
                   The pipeline structure and your message copy, subjects, AI instructions, targeting
-                  and timing — {preview.shared_definition?.nodes?.length ?? 0} steps in total. Anyone
+                  and timing - {preview.shared_definition?.nodes?.length ?? 0} steps in total. Anyone
                   who imports it gets their own editable copy.
                 </p>
               </div>
@@ -147,7 +147,7 @@ export function StrategyPublishDialog({ strategyId, strategyName, onClose, onPub
                   <ul className="space-y-1">
                     {preview.warnings.map((w, i) => (
                       <li key={i} className="text-[12.5px] text-amber-900/90 dark:text-amber-200/90">
-                        <strong className="font-semibold">{w.type}</strong> — {w.reason}
+                        <strong className="font-semibold">{w.type}</strong>: {w.reason}
                       </li>
                     ))}
                   </ul>
@@ -156,7 +156,7 @@ export function StrategyPublishDialog({ strategyId, strategyName, onClose, onPub
 
               {preview.shared_definition?.requiresFile && (
                 <p className="text-[12.5px] text-muted-foreground">
-                  This strategy starts from a file import. Your uploaded contacts are never included —
+                  This strategy starts from a file import. Your uploaded contacts are never included -
                   whoever imports it supplies their own list.
                 </p>
               )}

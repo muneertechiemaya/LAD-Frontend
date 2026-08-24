@@ -172,7 +172,7 @@ function sanitizeHtml(html: string): string {
 const SMART_REPLIES: Record<string, string[]> = {
   default: ['Looking forward to it!', 'We will be there!', 'Thanks for the update!'],
   inquiry: ['Thanks for reaching out!', "I'll review and get back to you", 'Can we schedule a call?'],
-  approval: ['Sounds great!', 'Approved — please proceed', 'Let me check with the team'],
+  approval: ['Sounds great!', 'Approved - please proceed', 'Let me check with the team'],
   meeting: ['Works for me!', 'Can we reschedule?', "I'll send a calendar invite"],
   proposal: ['Looks good to me!', 'I have a few questions', "Let's discuss further"],
 };
@@ -551,7 +551,7 @@ function ComposeWindow({
         <div className="flex items-center gap-0.5">
           <button title="Minimize" aria-label="Minimize compose window" onClick={onMinimize}
             className="h-7 w-7 flex items-center justify-center hover:bg-white/20 rounded transition-colors">
-            <span className="text-white text-base leading-none pb-1" aria-hidden="true">—</span>
+            <span className="text-white text-base leading-none pb-1" aria-hidden="true">-</span>
           </button>
           <button title={maximized ? 'Restore' : 'Maximize'} aria-label={maximized ? 'Restore compose window' : 'Maximize compose window'} onClick={onMaximize}
             className="h-7 w-7 flex items-center justify-center hover:bg-white/20 rounded transition-colors">
@@ -797,7 +797,7 @@ function ComposeWindow({
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                title={agentType === 'human' ? 'Human agent — tap to hand back to Mr LAD' : 'Mr LAD is replying — tap to take over'}
+                title={agentType === 'human' ? 'Human agent - tap to hand back to Mr LAD' : 'Mr LAD is replying - tap to take over'}
                 className={cn(
                   'h-9 w-9 flex items-center justify-center rounded-full transition-colors hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] flex-shrink-0',
                   agentType === 'human' && 'text-orange-500'
@@ -1255,7 +1255,7 @@ function ContactDetailsPanel({ contact, provider, groups, onClose, onAddToGroup 
 
       <div className="px-4 py-4 space-y-3 border-b border-[#dadce0] dark:border-[#3c4043]">
         {[
-          { icon: AtSign, label: 'Email', value: contact.email ?? '—' },
+          { icon: AtSign, label: 'Email', value: contact.email ?? '-' },
           ...(contact.company ? [{ icon: Building2, label: 'Company', value: contact.company }] : []),
           ...(contact.created_at ? [{ icon: Clock, label: 'Added', value: formatDate(contact.created_at) }] : []),
           { icon: Hash, label: 'Channel', value: providerLabel },
@@ -1309,7 +1309,7 @@ function ContactDetailsPanel({ contact, provider, groups, onClose, onAddToGroup 
       <div className="px-4 py-4">
         <span className="text-[11px] font-semibold text-[#5f6368] dark:text-[#9aa0a6] uppercase tracking-wider">Metadata</span>
         <div className="mt-2 space-y-1.5">
-          {[['Status', 'Active'], ['Channel', providerLabel], ['Owner', '—']].map(([label, value]) => (
+          {[['Status', 'Active'], ['Channel', providerLabel], ['Owner', '-']].map(([label, value]) => (
             <div key={label} className="flex items-center justify-between">
               <span className="text-xs text-[#5f6368] dark:text-[#9aa0a6]">{label}</span>
               <span className="text-xs font-medium text-[#202124] dark:text-[#e8eaed]">{value}</span>
@@ -2822,7 +2822,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
                   )}
                   <div className="max-h-44 overflow-y-auto">
                     {labels.length === 0
-                      ? <p className="text-xs text-[#5f6368] dark:text-[#9aa0a6] text-center py-4 px-6">No labels — create one above</p>
+                      ? <p className="text-xs text-[#5f6368] dark:text-[#9aa0a6] text-center py-4 px-6">No labels yet. Create one above.</p>
                       : labels.map(g => (
                         <button key={g.id} onClick={() => { setActiveGroup(g as unknown as EmailGroup); if (window.innerWidth < 768) setSidebarOpen(false); }}
                           aria-label={`Open label: ${g.name}`}
@@ -2888,7 +2888,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
                   )}
                   <div className="max-h-44 overflow-y-auto">
                     {groups.length === 0
-                      ? <p className="text-xs text-[#5f6368] dark:text-[#9aa0a6] text-center py-4 px-6">No groups — create one above</p>
+                      ? <p className="text-xs text-[#5f6368] dark:text-[#9aa0a6] text-center py-4 px-6">No groups yet. Create one above.</p>
                       : groups.map(g => (
                         <button key={g.id} onClick={() => { setActiveGroup(g); if (window.innerWidth < 768) setSidebarOpen(false); }}
                           aria-label={`Open group: ${g.name}, ${g.member_count} members`}
@@ -3111,7 +3111,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
                   The contacts list above is a legacy WhatsApp-derived view; for these
                   providers we swap in the broadcast panel so users see their actual
                   sent emails (subject, status, sent_count/recipient_count, live polling).
-                  Compose lives inside the panel — uses useSendBroadcast hook.
+                  Compose lives inside the panel - uses useSendBroadcast hook.
                   For 'custom' provider or other folders, fall through to the existing
                   contacts-list path.
                 */}
@@ -3207,7 +3207,7 @@ export function EmailChannelView({ provider, connectedEmail, userImage, onSignOu
                               {details.subject}
                             </span>
                             <span className="text-[#5f6368] dark:text-[#9aa0a6] font-normal truncate max-w-xl hidden md:inline">
-                              — {details.snippet.split('\n')[0]}
+                              - {details.snippet.split('\n')[0]}
                             </span>
                           </div>
 

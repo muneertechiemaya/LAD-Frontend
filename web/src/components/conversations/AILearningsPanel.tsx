@@ -63,7 +63,7 @@ export function AILearningsPanel({ open, onClose }: AILearningsPanelProps) {
       await setCorrectionActive(row.id, next);
     } catch {
       setRows(previous);
-      setError('Could not update — try again');
+      setError('Could not update - try again');
     } finally {
       setBusyId(null);
     }
@@ -101,7 +101,7 @@ export function AILearningsPanel({ open, onClose }: AILearningsPanelProps) {
         {!loading && !error && rows.length === 0 && (
           <p className="text-xs text-gray-500 dark:text-gray-400">
             Nothing learned yet. Give a reply a thumbs-down in the inbox and say
-            what it should have said — that correction will appear here.
+            what it should have said - that correction will appear here.
           </p>
         )}
 
@@ -137,7 +137,7 @@ export function AILearningsPanel({ open, onClose }: AILearningsPanelProps) {
                       className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-400"
                       title={`Only the newest ${maxInPrompt} active corrections are sent to the agent`}
                     >
-                      Not applied — over the {maxInPrompt} limit
+                      Not applied - over the {maxInPrompt} limit
                     </span>
                   )}
                   {!r.is_active && (

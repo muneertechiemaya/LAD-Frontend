@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Loader2, Repeat, Linkedin, Mail, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,6 +30,32 @@ export const RecurringZohoCampaignModal: React.FC<{ open: boolean; onClose: () =
 
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [connected, setConnected] = useState(true);
+
+  // Keyboard users have no other way to dismiss this modal: the overlay
+  // click-to-close only reaches mouse users, and nothing was listening for
+  // Escape.
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [open, onClose]);
+
+  // Without Zoho connected there's nothing to import — the campaign would
+  // create real, scheduled DB rows via /api/campaigns and then sit forever
+  // importing zero contacts, with nothing telling the user why.
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    fetchWithTenant('/api/social-integration/zoho/status')
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled) setConnected(!!d?.data?.connected); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [open]);
 
   if (!open) return null;
 
@@ -118,19 +144,31 @@ export const RecurringZohoCampaignModal: React.FC<{ open: boolean; onClose: () =
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4 pt-16 sm:pt-4" onClick={onClose}>
-      <div className="bg-card dark:bg-[#071131] rounded-xl border border-border dark:border-blue-950/40 w-full max-w-lg max-h-[75vh] sm:max-h-[85vh] flex flex-col my-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="bg-card dark:bg-[#071131] rounded-xl border border-border dark:border-blue-950/40 w-full max-w-lg max-h-[75vh] sm:max-h-[85vh] flex flex-col my-auto shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="recurring-zoho-campaign-title"
+      >
         <div className="flex items-center justify-between p-4 border-b border-border dark:border-blue-950/40 flex-shrink-0">
           <div className="flex items-center gap-2">
             <Repeat className="h-5 w-5 text-primary" />
             <div>
-              <div className="text-sm font-semibold text-foreground">Recurring Zoho campaign</div>
+              <div id="recurring-zoho-campaign-title" className="text-sm font-semibold text-foreground">Recurring Zoho campaign</div>
               <p className="text-xs text-muted-foreground">Imports new Zoho contacts daily and runs them through your sequence.</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="h-5 w-5" /></button>
+          <button onClick={onClose} aria-label="Close" className="text-muted-foreground hover:text-foreground"><X className="h-5 w-5" /></button>
         </div>
 
         <div className="p-4 space-y-4 overflow-y-auto flex-1">
+          {!connected && (
+            <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
+              Zoho CRM isn&apos;t connected. Connect it in Settings → Integrations first — this campaign
+              would otherwise import zero contacts.
+            </div>
+          )}
           {error && <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">{error}</div>}
 
           <div className="space-y-1">
@@ -155,7 +193,7 @@ export const RecurringZohoCampaignModal: React.FC<{ open: boolean; onClose: () =
             </div>
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground">Only contacts with tag (optional)</label>
-              <Input value={tag} onChange={(e) => setTag(e.target.value)} placeholder="e.g. Auto-Conversion Lead — leave blank for all new" />
+              <Input value={tag} onChange={(e) => setTag(e.target.value)} placeholder="e.g. Auto-Conversion Lead. Leave blank for all new." />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
@@ -213,7 +251,7 @@ export const RecurringZohoCampaignModal: React.FC<{ open: boolean; onClose: () =
 
         <div className="flex items-center justify-end gap-2 p-4 border-t border-border dark:border-blue-950/40 flex-shrink-0">
           <Button variant="ghost" onClick={onClose} disabled={creating}>Cancel</Button>
-          <Button onClick={handleCreate} disabled={creating}>
+          <Button onClick={handleCreate} disabled={creating || !connected} title={connected ? undefined : 'Connect Zoho CRM first'}>
             {creating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Repeat className="h-4 w-4 mr-2" />}
             Create recurring campaign
           </Button>

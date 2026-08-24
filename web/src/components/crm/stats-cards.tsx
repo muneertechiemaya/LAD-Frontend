@@ -18,7 +18,17 @@ interface StatCard {
 }
 
 export interface StatsCardsProps {
-  counts: { all: number; prospects: number; leads: number; clients: number };
+  /**
+   * `null` for a figure we could not load — NOT the same as a tenant that has
+   * none. During an outage these all rendered `0`, which told a tenant with 571
+   * contacts that their CRM was empty.
+   */
+  counts: {
+    all: number | null;
+    prospects: number | null;
+    leads: number | null;
+    clients: number | null;
+  };
   selected: CrmView;
   onSelect: (key: Exclude<CrmView, 'board'>) => void;
 }

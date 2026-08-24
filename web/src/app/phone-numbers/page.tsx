@@ -145,7 +145,7 @@ export type PhoneNumber = {
 };
 
 const displayNumber = (n: PhoneNumber) =>
-  `${n.country_code ?? ""}${n.base_number ?? ""}` || "—";
+  `${n.country_code ?? ""}${n.base_number ?? ""}` || "-";
 
 export default function PhoneNumbersPage() {
   const [items, setItems] = useState<PhoneNumber[]>([]);
@@ -264,12 +264,12 @@ export default function PhoneNumbersPage() {
                       i % 2 === 0 ? "bg-white/50 dark:bg-white/[0.03]" : ""
                     }`}
                   >
-                    <td className="p-6 font-semibold">{n.id || "—"}</td>
+                    <td className="p-6 font-semibold">{n.id || "-"}</td>
                     <td className="p-6 font-mono">{displayNumber(n)}</td>
-                    <td className="p-6 capitalize">{n.provider || "—"}</td>
-                    <td className="p-6 font-mono">{n.status || "—"}</td>
+                    <td className="p-6 capitalize">{n.provider || "-"}</td>
+                    <td className="p-6 font-mono">{n.status || "-"}</td>
                     <td className="p-6 font-mono">
-                      {n.created_at ? new Date(n.created_at).toLocaleDateString() : "—"}
+                      {n.created_at ? new Date(n.created_at).toLocaleDateString() : "-"}
                     </td>
                   </tr>
                 ))
