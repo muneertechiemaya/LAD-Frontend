@@ -1033,7 +1033,7 @@ const BookingSlot: React.FC<BookingSlotProps> = ({
                     setSelectedSlotForBooking(customSlot);
                     setConfirmDialogOpen(true);
                   }}
-                  className={cn("inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm transition-all disabled:pointer-events-none disabled:opacity-50 active:scale-95 select-none [&_svg]:pointer-events-none [_svg:not([class*='size-'])]:size-4 shrink-0 [_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive bg-primary dark:bg-sky-600 text-primary-foreground dark:text-white hover:bg-primary/90 dark:hover:bg-sky-500 px-4 py-2 has-[>svg]:px-3 h-14 rounded-[10px] font-semibold shadow-sm mx-0", fullWidthButton && "w-full")}
+                  className={cn("inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm transition-all disabled:pointer-events-none disabled:opacity-50 active:scale-95 select-none [&_svg]:pointer-events-none [_svg:not([class*='size-'])]:size-4 shrink-0 [_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive bg-primary dark:bg-[#2B7CFF] text-primary-foreground dark:text-white hover:bg-primary/90 dark:hover:bg-sky-500 px-4 py-2 has-[>svg]:px-3 h-14 rounded-[10px] font-semibold shadow-sm mx-0", fullWidthButton && "w-full")}
                   disabled={
                     loading ||
                     !selectedUser ||
@@ -1161,7 +1161,7 @@ const BookingSlot: React.FC<BookingSlotProps> = ({
               <Button
                 onClick={handleConfirmBooking}
                 disabled={loading || !tenantId || !createdBy}
-                className="bg-[#0B1957] dark:bg-sky-600 hover:bg-[#0B1957]/90 dark:hover:bg-sky-500 text-white px-8 h-11 font-bold shadow-md rounded-lg transition-all"
+                className="bg-[#0B1957] dark:bg-[#2B7CFF] hover:bg-[#0B1957]/90 dark:hover:bg-sky-500 text-white px-8 h-11 font-bold shadow-md rounded-lg transition-all"
               >
                 {loading ? 'Booking...' : 'Confirm Booking'}
               </Button>
