@@ -234,6 +234,8 @@ export function CallConfiguration({
   }, [selectedAgent, onSelectedLanguageChange, onSelectedAccentChange, languages]);
 
   const [isRephrasing, setIsRephrasing] = useState(false);
+  /** Set when a rephrase attempt failed, so the button does not just look broken. */
+  const [rephraseError, setRephraseError] = useState<string | null>(null);
 
   return (
     <Card className="rounded-2xl transition-all p-2 bg-white dark:bg-[#071131] border border-gray-100 dark:border-blue-950/40">
@@ -611,6 +613,7 @@ export function CallConfiguration({
 
                 try {
                   setIsRephrasing(true);
+                  setRephraseError(null);
 
                   const apiBase =
                     process.env.NEXT_PUBLIC_USE_API_PROXY === "true"
@@ -628,14 +631,21 @@ export function CallConfiguration({
                     }
                   );
 
-                  const data = await res.json();
-                  if (data.success) {
-                    onAdditionalInstructionsChange(data.generatedText);
-                  } else {
-                    console.error("Gemini Error:", data.error);
+                  const data = await res.json().catch(() => ({}));
+                  // `fetch` does not throw on 4xx/5xx, so a server error landed
+                  // here and was only console.error'd. The spinner stopped and
+                  // the text was unchanged, which is exactly what a broken
+                  // button looks like — say what happened instead.
+                  if (!res.ok || !data?.success) {
+                    setRephraseError(
+                      data?.error || `Couldn't rephrase that (${res.status}).`
+                    );
+                    return;
                   }
+                  onAdditionalInstructionsChange(data.generatedText);
                 } catch (err) {
                   console.error("Rephrase Failed:", err);
+                  setRephraseError("Couldn't rephrase that — check your connection.");
                 } finally {
                   setIsRephrasing(false);
                 }
@@ -657,6 +667,12 @@ export function CallConfiguration({
               )}
             </button>
           </div>
+
+          {rephraseError && (
+            <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">
+              {rephraseError} Your text is unchanged.
+            </p>
+          )}
 
           <p className="mt-1 text-xs text-gray-500 dark:text-[#7a8ba3]">
             These instructions will be provided as context for the voice agent.

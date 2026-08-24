@@ -1143,19 +1143,32 @@ export function CallOptions(props: CallOptionsProps) {
                         body: JSON.stringify({ context: text }),
                       }
                     );
-                    const data = await res.json();
-                    if (data.success) {
-                      const generated = data.generatedText as string;
-                      setEditorValues((v) => (
-                        dataType === 'employee'
-                          ? { ...v, company_sales_summary: generated, summary: generated }
-                          : { ...v, sales_summary: generated, summary: generated }
-                      ));
-                    } else {
-                      logger.error('Gemini API error', { error: data.error });
+                    const data = await res.json().catch(() => ({}));
+                    // `fetch` does not throw on 4xx/5xx, so a server error was
+                    // only logged: the spinner stopped, the summary was
+                    // unchanged, and nothing told the user it had failed.
+                    if (!res.ok || !data.success) {
+                      logger.error('Gemini API error', { error: data?.error, status: res.status });
+                      push({
+                        variant: 'error',
+                        title: 'Rephrase failed',
+                        description: data?.error || 'Your summary is unchanged. Please try again.',
+                      });
+                      return;
                     }
+                    const generated = data.generatedText as string;
+                    setEditorValues((v) => (
+                      dataType === 'employee'
+                        ? { ...v, company_sales_summary: generated, summary: generated }
+                        : { ...v, sales_summary: generated, summary: generated }
+                    ));
                   } catch (err) {
                     logger.error('Rephrase operation failed', { error: err });
+                    push({
+                      variant: 'error',
+                      title: 'Rephrase failed',
+                      description: 'Your summary is unchanged. Please check your connection.',
+                    });
                   } finally {
                     setIsRephrasing(false);
                   }
