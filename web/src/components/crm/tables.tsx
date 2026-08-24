@@ -13,6 +13,7 @@ import {
   VerifiedTag, Pager, type CrmPagination,
 } from './shared';
 import { CRM_OWNERS, type CrmContact } from './data';
+import { csvCell } from '@/lib/csv';
 import {
   Select,
   SelectContent,
@@ -188,15 +189,6 @@ const CSV_FIELDS: { key: keyof CrmContact; label: string }[] = [
 
 // RFC-4180 CSV cell escape: wrap in double quotes if the value contains a
 // comma, double-quote, or newline; double any embedded quotes.
-function csvCell(v: unknown): string {
-  if (v == null) return '';
-  let s: string;
-  if (Array.isArray(v)) s = v.join('|');
-  else if (typeof v === 'object') s = JSON.stringify(v);
-  else s = String(v);
-  if (/[",\r\n]/.test(s)) s = `"${s.replace(/"/g, '""')}"`;
-  return s;
-}
 
 function buildContactsCsv(rows: CrmContact[]): string {
   const header = CSV_FIELDS.map((f) => csvCell(f.label)).join(',');
