@@ -396,10 +396,26 @@ export const RecommendationPairs: React.FC = () => {
           onClose={() => setShowMessageSender(false)}
           onSuccess={(result) => {
             setShowMessageSender(false);
-            if ((result as any)?.broadcasting) {
-              const total = (result as any)?.total ?? '';
-              setBroadcastToast(`📤 Broadcasting to ${total} members in background...`);
+            const r = result as {
+              broadcasting?: boolean; broadcastComplete?: boolean;
+              total?: number; sent?: number; failed?: number; error?: string;
+            };
+            if (r?.broadcasting) {
+              setBroadcastToast(`📤 Broadcasting to ${r.total ?? ''} members in background...`);
               setTimeout(() => setBroadcastToast(null), 6000);
+              return;
+            }
+            // The toast above fires BEFORE the request, so without this a
+            // broadcast that failed — or partly failed — still read as sent.
+            if (r?.broadcastComplete) {
+              setBroadcastToast(
+                r.error
+                  ? `⚠️ Broadcast failed — ${r.error}. No messages were sent.`
+                  : (r.failed ?? 0) > 0
+                    ? `⚠️ Broadcast finished: ${r.sent ?? 0} sent, ${r.failed} failed.`
+                    : `✅ Broadcast finished: ${r.sent ?? 0} sent.`,
+              );
+              setTimeout(() => setBroadcastToast(null), 12000);
             }
           }}
         />
