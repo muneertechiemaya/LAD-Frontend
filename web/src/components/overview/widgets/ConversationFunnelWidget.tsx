@@ -1,13 +1,13 @@
 'use client';
 
 /**
- * ConversationFunnelWidget — "Enquiries & Bookings".
+ * ConversationFunnelWidget - "Enquiries & Bookings".
  *
  * Shows the conversation funnel (New enquiries → Engaged → In booking → Booked)
  * with drop-off at each step and the overall conversion rate, plus a daily
  * new-conversation volume headline with a spike indicator + mini sparkline.
  * Data: LAD-Master-Agent via useConversationAnalytics (shared with the
- * Re-engage widget — one fetch).
+ * Re-engage widget - one fetch).
  */
 import React from 'react';
 import { TrendingUp, TrendingDown, ArrowRight, RefreshCw, Users } from 'lucide-react';
@@ -27,7 +27,7 @@ const fmtDay = (iso?: string) => {
 const STEP_COLORS = ['bg-blue-500', 'bg-indigo-500', 'bg-violet-500', 'bg-emerald-500'];
 
 export const ConversationFunnelWidget: React.FC<{ id: string }> = ({ id }) => {
-  // Funnel + spike are fast SQL — fetch WITHOUT topics so this renders instantly
+  // Funnel + spike are fast SQL - fetch WITHOUT topics so this renders instantly
   // (and still works if topic extraction / the LLM is unavailable).
   const { data, loading, error, refresh } = useConversationAnalytics(WINDOW_DAYS, false);
 
@@ -87,7 +87,7 @@ const FunnelBody: React.FC<{ data: NonNullable<ReturnType<typeof useConversation
   const total = funnel.total || 1;
   const spikeUp = volume_spike.pct_change >= 0;
 
-  // sparkline — last 14 days
+  // sparkline - last 14 days
   const spark = daily_volume.slice(-14);
   const sparkMax = Math.max(1, ...spark.map((p) => p.count));
 

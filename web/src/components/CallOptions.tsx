@@ -969,7 +969,7 @@ export function CallOptions(props: CallOptionsProps) {
           </Button>
         </div>
         {!useCsv ? (
-          // — Single Call UI with Country Selector —
+          // - Single Call UI with Country Selector  - 
           <div className="space-y-3">
             {/* Phone Number with Country Dropdown */}
             <div className="relative">

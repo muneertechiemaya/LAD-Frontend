@@ -1,5 +1,5 @@
 'use client';
-// /crm/[id] — full-page prospect / lead / client detail.
+// /crm/[id] - full-page prospect / lead / client detail.
 //
 // Opened when a row is clicked in /crm. Fetches the prospect + its event
 // timeline from the Master Agent and renders the rich ProspectDetail panel
@@ -41,7 +41,7 @@ export default function CrmDetailPage() {
   const followupsQuery = useProspectFollowups(id);
   const { push } = useToast();
 
-  // CRM "Take action" — pause outreach (quiet) or hard-suppress (do not contact).
+  // CRM "Take action" - pause outreach (quiet) or hard-suppress (do not contact).
   // The mutation invalidates the prospect cache, so do_not_contact / quiet_until
   // re-render from the refreshed detailQuery. onError surfaces a toast — without
   // one, a failed click and a click that never registered look identical (the
@@ -115,7 +115,7 @@ export default function CrmDetailPage() {
   const detailMessage = ((detailQuery.error ?? detailQuery.failureReason) as Error | null)
     ?.message;
 
-  // Option C — enrich the prospect's LinkedIn profile on first open (company +
+  // Option C - enrich the prospect's LinkedIn profile on first open (company +
   // employment + warm-path signals) when it hasn't been enriched yet. Fire once,
   // best-effort; refetch shortly after so the freshly-pulled data renders.
   const enrichMutation = useEnrichProspect();

@@ -4,8 +4,8 @@
  * Strategy review queue.
  *
  * Tenants can publish a workflow playbook for other tenants to import. Approving
- * one here is what makes it visible platform-wide — the first peer-visible
- * cross-tenant surface on the platform — so the reviewer sees the full sanitized
+ * one here is what makes it visible platform-wide - the first peer-visible
+ * cross-tenant surface on the platform - so the reviewer sees the full sanitized
  * payload (message copy, targeting, node chain) before deciding.
  *
  * The private definition is never shown here because it is never sent: the

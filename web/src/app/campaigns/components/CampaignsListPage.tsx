@@ -42,7 +42,7 @@ export default function CampaignsListPage() {
   const searchParams = useSearchParams();
   const { push } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
-  // Read ?status= from URL — synced every time URL changes
+  // Read ?status= from URL - synced every time URL changes
   const [statusFilter, setStatusFilter] = useState<string>(
     searchParams.get("status") || "all",
   );

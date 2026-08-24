@@ -249,7 +249,7 @@ export function usePlayground({
         );
       }, warningTime);
 
-      /* 45-min expiration — release and close */
+      /* 45-min expiration - release and close */
       forceTimerRef.current = setTimeout(async () => {
         await releaseHold(currentId);
         if (onClose) onClose();
@@ -613,7 +613,7 @@ export function usePlayground({
           return;
         }
 
-        // Set data and transition immediately — no timer
+        // Set data and transition immediately - no timer
         setBuilderData({
           question: data.question,
           description: data.description,

@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { type ChannelKey } from './data';
 
-// LAD brand tokens — kept in sync with globals.css / tailwind config.
+// LAD brand tokens - kept in sync with globals.css / tailwind config.
 export const T = {
   primary:     '#0B1957',
   primaryDark: '#3b82f6',
@@ -184,7 +184,7 @@ export interface CrmPagination {
 
 /**
  * Prev / "Page X of Y" / Next control driven by real server-side pagination.
- * The "Showing a–b of N" range is derived from the pagination window alone
+ * The "Showing a-b of N" range is derived from the pagination window alone
  * (the last page may be short), so it stays consistent across the board and
  * every table tab regardless of client-side filtering within the page.
  *
@@ -193,8 +193,8 @@ export interface CrmPagination {
  * that are both invisible to this range/total: its own search box/column
  * filters, and (for the Prospects/Leads/Clients tabs) page.tsx's own
  * type filter applied before rows ever reach CrmTable. Whenever the two
- * numbers disagree — e.g. a 2-row search result, or an empty Clients tab —
- * next to "Showing 1–18 of 18" — this renders a clarifying count so they
+ * numbers disagree - e.g. a 2-row search result, or an empty Clients tab  - 
+ * next to "Showing 1-18 of 18" - this renders a clarifying count so they
  * don't read as contradictory.
  */
 export function Pager({ pagination, visibleCount }: { pagination: CrmPagination; visibleCount?: number }) {
@@ -211,14 +211,14 @@ export function Pager({ pagination, visibleCount }: { pagination: CrmPagination;
         // Never assert a range the rows on screen do not support.
         <span className="text-rose-700 dark:text-rose-300">
           Couldn&apos;t load page{' '}
-          <span className="font-semibold tabular-nums">{page}</span> — still showing the
+          <span className="font-semibold tabular-nums">{page}</span> - still showing the
           previous page.
         </span>
       ) : (
         <span>
           Showing{' '}
           <span className="font-semibold text-[#172560] dark:text-white tabular-nums">
-            {start}{end !== start ? `–${end}` : ''}
+            {start}{end !== start ? `-${end}` : ''}
           </span>{' '}
           of <span className="tabular-nums">{total.toLocaleString()}</span>
           {narrowed && (

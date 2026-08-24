@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * EmailActivityWidget — email channel activity.
+ * EmailActivityWidget - email channel activity.
  *
  * Connected senders + broadcast send/fail totals across recent runs, plus the
  * latest few broadcasts. Data: GET /api/campaigns/email/connected-senders and

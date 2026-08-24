@@ -394,7 +394,7 @@ export const ZohoRecordsBrowser: React.FC = () => {
         {total > 0 && (
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3.5 mt-3 border-t border-slate-100 dark:border-[#132247] shrink-0">
             <div className="text-xs text-slate-500 dark:text-[#7a8ba3] font-medium">
-              Showing {Math.min((page - 1) * pageSize + 1, total).toLocaleString()}–{Math.min(page * pageSize, total).toLocaleString()} of {total.toLocaleString()} {recordType}
+              Showing {Math.min((page - 1) * pageSize + 1, total).toLocaleString()}-{Math.min(page * pageSize, total).toLocaleString()} of {total.toLocaleString()} {recordType}
               {totalPages > 1 && <span className="ml-1 opacity-80">(Page {page} of {totalPages})</span>}
             </div>
             <div className="flex items-center gap-3">

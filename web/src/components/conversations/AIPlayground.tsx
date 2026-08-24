@@ -175,7 +175,7 @@ function getUserBubbleStyle(channel: string, isWhatsAppVariant: boolean) {
 // Lets a tester preview how a sectioned ("## STAGE:") prompt is scoped, and how
 // the bot replies in each stage. Sent as `context_status` to the playground
 // /chat endpoint; the live pipeline computes this per turn from the state
-// machine. Stateless preview — does NOT run the real transitions or booking
+// machine. Stateless preview - does NOT run the real transitions or booking
 // handlers (those only exist in process_inbound_message on the live pipeline).
 const STAGES: { value: string; label: string }[] = [
   { value: "greeting",            label: "Greeting" },
@@ -205,7 +205,7 @@ function parseAIResponse(raw: string): ParsedAIResponse {
   if (!raw) return { text: raw, metadata: null };
 
   // ── 1. Extract JSON by locating the outermost { } ────────────────────────
-  // More robust than regex-stripping code fences — works regardless of
+  // More robust than regex-stripping code fences - works regardless of
   // surrounding text, markdown fences, leading/trailing whitespace, etc.
   const firstBrace = raw.indexOf("{");
   const lastBrace  = raw.lastIndexOf("}");
@@ -222,14 +222,14 @@ function parseAIResponse(raw: string): ParsedAIResponse {
           if (agent_reply != null && agent_reply !== "") {
             return { text: String(agent_reply), metadata: meta };
           }
-          // agent_reply is null / empty — surface full JSON as debug info
+          // agent_reply is null / empty - surface full JSON as debug info
           return { text: "(No reply - see debug info)", metadata: obj };
         }
         // Valid JSON but no agent_reply key
         return { text: "[Structured response - expand debug info]", metadata: obj };
       }
     } catch {
-      // Truncated / malformed JSON — fall through to regex
+      // Truncated / malformed JSON - fall through to regex
     }
   }
 
@@ -254,11 +254,11 @@ function parseAIResponse(raw: string): ParsedAIResponse {
     return { text: "(No reply - see debug info)", metadata: null };
   }
 
-  // ── 4. Plain text — render as-is ─────────────────────────────────────────
+  // ── 4. Plain text - render as-is ─────────────────────────────────────────
   return { text: raw, metadata: null };
 }
 
-// ── AssistantBubble — AI reply with optional collapsible metadata ─────────────
+// ── AssistantBubble - AI reply with optional collapsible metadata ─────────────
 
 function AssistantBubble({ content, isWhatsApp }: { content: string; isWhatsApp?: boolean }) {
   const { text, metadata } = parseAIResponse(content);
@@ -323,7 +323,7 @@ export function AIPlayground({ onClose, variant = "default" }: AIPlaygroundProps
   const [knowledgeBase, setKnowledgeBase]     = useState<string>("");
   const [showKnowledgeBase, setShowKnowledgeBase] = useState(false);
   const [showPromptDropdown, setShowPromptDropdown] = useState(false);
-  // Conversation-stage selector (WABA) — previews stage-scoped prompts.
+  // Conversation-stage selector (WABA) - previews stage-scoped prompts.
   const [selectedStage, setSelectedStage] = useState<string>("greeting");
   // Echo of what the backend actually scoped to (stage + assembled prompt size).
   const [stageInfo, setStageInfo] = useState<{ stage: string; chars: number } | null>(null);

@@ -247,7 +247,7 @@ const CharacterSection = () => {
       animate="visible"
       className="relative w-full h-full flex items-center justify-center"
     >
-      {/* Video slot — reserves the same space whether or not the video has
+      {/* Video slot - reserves the same space whether or not the video has
           loaded so layout doesn't jump. */}
       <div className="w-70 h-180 relative z-10">
         <video

@@ -394,7 +394,7 @@ export default function ScheduleMeetingModal({
             {startTime && (
               <p className="text-xs text-slate-400 flex items-center gap-1 mt-1">
                 <Clock className="w-3 h-3" />
-                {startTime} – {endTime}
+                {startTime} - {endTime}
               </p>
             )}
           </div>

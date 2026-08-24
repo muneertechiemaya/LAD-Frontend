@@ -1,5 +1,5 @@
 /**
- * Lead Appreciation — review queue.
+ * Lead Appreciation - review queue.
  *
  * Lists appreciation DMs drafted for accepted LinkedIn connections who posted
  * an achievement. In review mode (the default) every DM waits here for a

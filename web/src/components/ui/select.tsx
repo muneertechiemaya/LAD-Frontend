@@ -109,7 +109,7 @@ function SelectItem({
         // Light Mode
         "data-[state=checked]:font-semibold focus:bg-primary/95 focus:text-primary-foreground data-[state=checked]:bg-primary/95 data-[state=checked]:text-primary-foreground data-[state=checked]:focus:bg-primary/95 data-[state=checked]:focus:text-primary-foreground",
 
-        // Dark Mode — Standard Light Blue (#2563eb) for active/hover/checked states
+        // Dark Mode - Standard Light Blue (#2563eb) for active/hover/checked states
         "dark:text-slate-200 dark:focus:bg-[#2563eb] dark:focus:text-white dark:data-[state=checked]:focus:bg-[#2563eb] dark:data-[state=checked]:focus:text-white dark:data-[state=checked]:bg-blue-600/20 dark:data-[state=checked]:text-white",
         className
       )}

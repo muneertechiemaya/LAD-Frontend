@@ -63,7 +63,7 @@ async function fetchNodeAccounts(req: NextRequest, tenantId: string | null): Pro
 
 /** Pull accounts from the Python BNI conversation service.
  *  Uses a direct fetch (not proxyToPythonService) so ECONNREFUSED is swallowed
- *  silently — Python is optional; Node.js accounts are the primary source.
+ *  silently - Python is optional; Node.js accounts are the primary source.
  */
 async function fetchPythonAccounts(req: NextRequest, tenantId: string | null): Promise<WaAccount[]> {
   const wabaBase = getWhatsAppServiceUrl();
@@ -91,7 +91,7 @@ async function fetchPythonAccounts(req: NextRequest, tenantId: string | null): P
     if (Array.isArray(data)) return data;
     return [];
   } catch {
-    // Python service is optional — silently return empty when it's down
+    // Python service is optional - silently return empty when it's down
     return [];
   }
 }
@@ -131,7 +131,7 @@ export async function GET(req: NextRequest) {
     if (queryTenant) tenantId = queryTenant;
   }
 
-  // Skip the Python call entirely when we have no tenant context — there is no
+  // Skip the Python call entirely when we have no tenant context - there is no
   // point making a round-trip that will just return [] and log a warning.
   const [nodeAccounts, pythonAccountsRaw] = await Promise.all([
     fetchNodeAccounts(req, tenantId),
@@ -154,7 +154,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  // Create flow is owned exclusively by the Python WABA service — the Node
+  // Create flow is owned exclusively by the Python WABA service - the Node
   // backend has no POST handler for /admin/whatsapp-accounts and its catch-all
   // returns a misleading 404 ("Personal WhatsApp endpoints must be explicitly
   // defined."). Surface real errors from Python instead of swallowing them.

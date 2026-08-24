@@ -1,9 +1,9 @@
 'use client';
-// /crm — Pipeline + Prospect list/board, wired to the Master Agent.
+// /crm - Pipeline + Prospect list/board, wired to the Master Agent.
 //
 // Live data: prospect_state via @lad/frontend-features/prospects. Clicking a row
 // navigates to /crm/[id] (full detail page). The dummy data in ./data is no
-// longer used for values — only its types + STAGES + the adapter.
+// longer used for values - only its types + STAGES + the adapter.
 
 import * as React from 'react';
 import { useMemo, useState } from 'react';
@@ -351,7 +351,7 @@ export default function CrmPage() {
 
         <footer className="pt-6 pb-2 text-[11.5px] text-slate-400 dark:text-slate-300/60 flex items-center justify-between">
           {/* Every non-board view already renders its own Pager (see CrmTable),
-              sourced from this same `pagination` object — repeating the raw
+              sourced from this same `pagination` object - repeating the raw
               total here duplicated it and, once a table search/filter was
               active, contradicted the filtered count shown above it. Only the
               board view has no other totals indicator, so it's the only one

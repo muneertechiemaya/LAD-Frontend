@@ -66,7 +66,7 @@ function buildWorkflowSteps(
   return rawSteps
     .filter((s) => {
       if (!s.type || SKIP_STEP_TYPES.has(s.type.toLowerCase())) return false;
-      // Skip wait_for_condition whose action_type is PROFILE_VISITED —
+      // Skip wait_for_condition whose action_type is PROFILE_VISITED  - 
       // it's an internal gate that fires immediately after linkedin_visit
       // and creates a confusing duplicate step in the UI stepper.
       if (s.type.toLowerCase() === 'wait_for_condition') {
@@ -96,7 +96,7 @@ function buildWorkflowSteps(
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Agent Insights — per-lead source links the agent gathered during enrichment
+// Agent Insights - per-lead source links the agent gathered during enrichment
 // (web_presence + LinkedIn posts). Renders inside an expandable row.
 //
 // HIDDEN BY DEFAULT.
@@ -104,13 +104,13 @@ function buildWorkflowSteps(
 // for common names (e.g. it returns "Indrajith Full Movie" results for a lead
 // named "Indrajith AS"), which makes the panel look broken to users. Flip
 // SHOW_AGENT_INSIGHT_SOURCES back to `true` after the enrichment pipeline has
-// stricter name-disambiguation in place — both the toggle button under each
+// stricter name-disambiguation in place - both the toggle button under each
 // lead row AND the expandable details panel will reappear.
 //
 // All the data wiring below (collecting `enrichmentSources`, `enrichmentCounts`,
 // `enrichmentLatestAt` from campaign-analytics events) is intentionally kept
 // live so the feature can be turned back on without re-implementing the
-// collection logic — only the two render sites in the table body honour the
+// collection logic - only the two render sites in the table body honour the
 // flag.
 // ─────────────────────────────────────────────────────────────────────────
 const SHOW_AGENT_INSIGHT_SOURCES = false;
@@ -141,7 +141,7 @@ const LeadInsightsPanel: React.FC<{
   sources: EnrichmentSource[];
   counts?: Record<string, number>;
   latestAt?: string;
-  /** The specific source the agent used to write the connection request — highlighted in the panel */
+  /** The specific source the agent used to write the connection request - highlighted in the panel */
   hookSource?: { type: string; url?: string | null; title?: string } | null;
 }> = ({ sources, counts, latestAt, hookSource }) => {
   if (!sources || sources.length === 0) {
@@ -327,7 +327,7 @@ interface ActivityItem {
   status: string;
   message_content?: string;
   error_message?: string;
-  /** JSONB — shape varies by action_type; connection rows may carry
+  /** JSONB - shape varies by action_type; connection rows may carry
    *  already_connected / already_sent / provider_detail (see LinkedInStepExecutor). */
   response_data?: Record<string, unknown> | string | null;
 }
@@ -349,14 +349,14 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
 
   const { toast } = useToast();
 
-  // Retry-state per lead — leadId → { status, message? }
+  // Retry-state per lead - leadId → { status, message? }
   // Drives the small status pill that appears next to the Retry button.
   const [retryState, setRetryState] = useState<Record<string, {
     status: 'pending' | 'success' | 'failed';
     message?: string;
   }>>({});
 
-  // Withdraw-state per lead — leadId → { status, message? }
+  // Withdraw-state per lead - leadId → { status, message? }
   // Drives the small status pill next to the Withdraw button (mirrors retry).
   const [withdrawState, setWithdrawState] = useState<Record<string, {
     status: 'pending' | 'success' | 'failed';
@@ -512,7 +512,7 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
   /**
    * Withdraw a still-pending LinkedIn connection request for a single lead.
    * Confirms first, then calls the withdraw endpoint. A `no_pending_invite`
-   * response (nothing to retract — already accepted/withdrawn) is surfaced as a
+   * response (nothing to retract - already accepted/withdrawn) is surfaced as a
    * friendly toast rather than an error.
    */
   const handleWithdraw = async (leadId: string) => {
@@ -532,7 +532,7 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
         // Pull the freshly-inserted CONNECTION_WITHDRAWN row into the feed.
         setTimeout(() => refresh(), 500);
       } else if (result.reason === 'no_pending_invite') {
-        // Nothing to do — invite already accepted, withdrawn, or never pending.
+        // Nothing to do - invite already accepted, withdrawn, or never pending.
         setWithdrawState((prev) => {
           const next = { ...prev };
           delete next[leadId];
@@ -583,7 +583,7 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
           profileVisited: false,
           connectionStatus: 'NOT_SENT' as const,
           connectionSentWithMessage: false,
-          // Set when response_data.already_connected / already_sent comes back true —
+          // Set when response_data.already_connected / already_sent comes back true  - 
           // the step completed (counts as done) but no fresh invite was actually sent.
           connectionProviderDetail: undefined as string | undefined,
           connectionAccepted: false,
@@ -648,12 +648,12 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
       }
 
       if (actionType.includes('CONNECTION') && actionType.includes('WITHDRAW')) {
-        // A withdrawn request is terminal for the connect step — mark it and
+        // A withdrawn request is terminal for the connect step - mark it and
         // skip the SENT/ACCEPT handling below so the row reads "Withdrawn".
         lead.connectionWithdrawn = true;
         lead.connectionStatus = 'WITHDRAWN';
       } else if (actionType.includes('CONNECTION')) {
-        // Parse response_data once per row — used below for the
+        // Parse response_data once per row - used below for the
         // personalization source AND for already_connected/already_sent, which
         // can arrive on ANY connection row, not only *_SENT_WITH_MESSAGE ones.
         const respData = activity.response_data;
@@ -661,7 +661,7 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
           ? (() => { try { return JSON.parse(respData); } catch { return null; } })()
           : respData;
 
-        // Capture the personalization source — which post/article URL the agent
+        // Capture the personalization source - which post/article URL the agent
         // used as the hook. Only present on CONNECTION_SENT_WITH_MESSAGE rows.
         if (
           (actionType === 'CONNECTION_SENT_WITH_MESSAGE' || actionType.includes('SENT_WITH_MESSAGE')) &&
@@ -673,8 +673,8 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
 
         // Did this row actually deliver a fresh invite, or was it a terminal
         // no-op (already 1st-degree connected, or LinkedIn already had a
-        // pending invite)? Both are recorded status:'success' — the step
-        // completed and must not retry — but "Connection Sent" would be a
+        // pending invite)? Both are recorded status:'success' - the step
+        // completed and must not retry - but "Connection Sent" would be a
         // false claim for either. See LinkedInStepExecutor.js for the write side.
         const alreadyConnected = parsedResp?.already_connected === true;
         const alreadySent = parsedResp?.already_sent === true;
@@ -704,7 +704,7 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
           lead.connectionStatus = 'SENT';
 
           if (alreadyConnected || alreadySent) {
-            // Terminal and correct, but nothing was actually sent this run —
+            // Terminal and correct, but nothing was actually sent this run  - 
             // never claim a message went out for a request that never fired.
             lead.connectionSentWithMessage = false;
             lead.connectionProviderDetail = providerDetail
@@ -755,7 +755,7 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
         lead.contacted = true;
       }
 
-      // Web/social enrichment events — collect source URLs to render per-lead.
+      // Web/social enrichment events - collect source URLs to render per-lead.
       // Multiple events can arrive over time (workflow run + manual summary
       // generation); merge sources by URL so we don't show duplicates.
       if (actionType === 'WEB_ENRICHMENT_COMPLETED') {
@@ -1054,7 +1054,7 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
                         >
                           {lead.leadName || 'Unknown'}
                         </Link>
-                        {/* LinkedIn external link as a small icon — only shown when URL is a valid absolute URL */}
+                        {/* LinkedIn external link as a small icon - only shown when URL is a valid absolute URL */}
                         {lead.leadLinkedin && /^https?:\/\//i.test(lead.leadLinkedin) && (
                           <a
                             href={lead.leadLinkedin}
@@ -1126,7 +1126,7 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
                   <TableCell className="w-[150px]">
                     <div className="flex flex-col items-start gap-1.5">
                       <LiveActivityStatusBadge status={lead.latestStatus} currentStep={calculateCurrentStep(lead)} />
-                      {/* Retry button — appears when this lead had a failed connection
+                      {/* Retry button - appears when this lead had a failed connection
                           (rate-limited or errored) AND no successful send yet. Hidden
                           once retry has succeeded. */}
                       {(() => {
@@ -1188,7 +1188,7 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
                           </div>
                         );
                       })()}
-                      {/* Withdraw button — appears when this lead has a still-pending
+                      {/* Withdraw button - appears when this lead has a still-pending
                           sent connection request (SENT and not accepted/replied/
                           already withdrawn). Retracts the LinkedIn invitation. */}
                       {(() => {
@@ -1269,7 +1269,7 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
-                      {/* Agent Insights expand toggle — hidden by default
+                      {/* Agent Insights expand toggle - hidden by default
                           (SHOW_AGENT_INSIGHT_SOURCES at top of file).
                           Visible when sources exist OR when a personalization
                           hook source is known, AND the feature flag is on. */}
@@ -1340,7 +1340,7 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
                                     isDone ? (
                                       lead.connectionProviderDetail
                                         // Terminal (the step is done, never retries), but not a fresh
-                                        // send — LinkedIn already had this relationship or invite.
+                                        // send - LinkedIn already had this relationship or invite.
                                         ? <p className="text-blue-400">ⓘ {lead.connectionProviderDetail}</p>
                                         : lead.connectionSentWithMessage
                                           ? <p className="text-green-500">✓ Sent with message</p>
@@ -1380,7 +1380,7 @@ export const LiveActivityTable: React.FC<LiveActivityTableProps> = ({
                     )}
                   </TableCell>
                 </TableRow>
-                {/* Expanded Agent Insights row — gated by the same
+                {/* Expanded Agent Insights row - gated by the same
                     SHOW_AGENT_INSIGHT_SOURCES flag at the top of this file
                     so it can never appear while the toggle is hidden. */}
                 {SHOW_AGENT_INSIGHT_SOURCES && expandedLeadId === lead.leadId && (

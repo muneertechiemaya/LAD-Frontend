@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * ReengageTopicsWidget — "Re-engage by Topic".
+ * ReengageTopicsWidget - "Re-engage by Topic".
  *
  * Surfaces the segments of customers who ASKED ABOUT a topic (e.g. Pilates,
  * Pricing) but did NOT convert, and lets the tenant fire a WhatsApp broadcast
@@ -10,7 +10,7 @@
  * "Send to all" targets precisely that segment.
  *
  * Data: LAD-Master-Agent via useConversationAnalytics (shared with the funnel
- * widget — one fetch).
+ * widget - one fetch).
  */
 import React, { useMemo, useState } from 'react';
 import { Megaphone, RefreshCw, Sparkles, CheckCircle2 } from 'lucide-react';
@@ -35,7 +35,7 @@ function toMembers(topic: TopicSegment) {
 }
 
 export const ReengageTopicsWidget: React.FC<{ id: string }> = ({ id }) => {
-  // Topics need the LLM round-trip — fetched separately from the funnel so the
+  // Topics need the LLM round-trip - fetched separately from the funnel so the
   // funnel stays instant; this widget shows its own skeleton while labels resolve.
   const { data, loading, error, refresh } = useConversationAnalytics(WINDOW_DAYS, true);
   const [active, setActive] = useState<TopicSegment | null>(null);
