@@ -77,6 +77,19 @@ export const ReengageTopicsWidget: React.FC<{ id: string }> = ({ id }) => {
         </div>
       ) : loading && !data ? (
         <TopicsSkeleton />
+      ) : topics.length === 0 && data?.topics_degraded ? (
+        // The server told us it could not RUN the topic labelling. Without this
+        // the same empty list rendered the first-run message below, which
+        // asserts the tenant has no unconverted demand — a claim about their
+        // customers that we had not established.
+        <div className="h-full flex flex-col items-center justify-center text-center gap-1 py-6">
+          <p className="text-sm text-muted-foreground">Couldn’t group your enquiries by topic</p>
+          <p className="text-[11px] text-muted-foreground/70 max-w-[250px]">
+            This isn’t “no segments” — the labelling step was unavailable, so we don’t
+            know what your unconverted enquiries were about.
+          </p>
+          <button onClick={refresh} className="mt-2 text-xs text-blue-600 hover:underline">Try again</button>
+        </div>
       ) : topics.length === 0 ? (
         <div className="h-full flex flex-col items-center justify-center text-center gap-1 py-6">
           <Sparkles className="h-5 w-5 text-muted-foreground/60" />
