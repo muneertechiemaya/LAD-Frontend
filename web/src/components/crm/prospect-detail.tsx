@@ -19,7 +19,7 @@ import {
 import WarmPathPanel from './warm-path-panel';
 import LeadReportSection from './lead-report-section';
 import AcceleratorSection from './accelerator-section';
-import { useLeadReport } from '@/hooks/useLeadReport';
+import { useLeadReport, LeadReportError } from '@/hooks/useLeadReport';
 import type { ProspectFollowup } from '@lad/frontend-features/prospects';
 
 interface ProspectDetailProps {
@@ -322,11 +322,35 @@ export default function ProspectDetail({ prospect, warmPath, warmPathSample = fa
  */
 function AcceleratorPanels({ coreLeadId, firstName }: { coreLeadId: string | null; firstName?: string }) {
   const {
-    bundle, isLoading, state, refusalMessage, advance, isAdvancing,
+    bundle, isLoading, loadError, state, refusalMessage, advance, isAdvancing,
     approve, reject, isDeciding, settledElsewhere, actionError,
   } = useLeadReport(coreLeadId);
 
-  if (!coreLeadId || isLoading || !bundle?.enrolled) return null;
+  if (!coreLeadId || isLoading) return null;
+
+  // A failed fetch used to render EXACTLY like "this contact isn't in a
+  // campaign": both fell into the `return null` below, so the Lead Report and
+  // Accelerator cards were simply absent. Not-enrolled is the overwhelmingly
+  // common case, so nothing ever prompted the user to suspect the cards were
+  // MISSING rather than legitimately not applicable — a lead sitting on an
+  // unapproved report looked like a lead with no report at all.
+  //
+  // 404 is the one status that genuinely means "there is nothing here", so it
+  // keeps rendering nothing. Everything else is an outage and says so.
+  if (loadError && !(loadError instanceof LeadReportError && loadError.status === 404)) {
+    return (
+      <LadCard>
+        <LadCardHeader title="Lead Report" subtitle="Could not load" />
+        <p className="text-[13px] text-rose-600 dark:text-rose-300">
+          Couldn&apos;t load this lead&apos;s report and sequence — this isn&apos;t
+          necessarily &quot;not in a campaign.&quot; If they are enrolled, any pending
+          audit and its approval state are hidden right now.
+        </p>
+      </LadCard>
+    );
+  }
+
+  if (!bundle?.enrolled) return null;
 
   return (
     <>
