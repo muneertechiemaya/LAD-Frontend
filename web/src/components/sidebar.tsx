@@ -175,6 +175,9 @@ export function Sidebar() {
   };
   const [mobileExpanded, setMobileExpanded] = useState<string | null>(null);
   const [isUserPanelOpen, setIsUserPanelOpen] = useState(true);
+  // Closed by default: the point of the dropdown is that the tenant list costs
+  // one row until somebody wants to switch.
+  const [isTenantListOpen, setIsTenantListOpen] = useState(false);
   // Education vertical context
   const isEducation = hasFeature("education_vertical");
   // Hydration check
@@ -904,27 +907,55 @@ export function Sidebar() {
             )}
           >
             <div className="px-2 pb-2 space-y-1">
-              {/* Tenant section — only if multiple tenants */}
+              {/* Tenant section — only if multiple tenants.
+                  A dropdown rather than an inline list: this panel is capped at
+                  max-h-96, so one row per tenant pushes Settings, Pricing and
+                  Logout past the clip and out of reach for anyone in enough
+                  workspaces. Closed, it costs one row whatever the count. */}
               {tenants.length > 1 && (
                 <div className="px-2 pt-1 pb-0.5">
                   <span className="text-[10px] uppercase tracking-wider text-muted-foreground/50 font-bold">Tenant</span>
-                  <div className="mt-1 space-y-0.5">
-                    {tenants.map((t) => (
-                      <button
-                        key={t.id}
-                        onClick={() => setTenantById(t.id)}
-                        className={cn(
-                          "w-full flex items-center justify-between px-2 py-1 rounded-lg text-xs transition active:scale-95 select-none",
-                          tenant.id === t.id
-                            ? "bg-primary/20 text-primary font-semibold"
-                            : "text-muted-foreground hover:bg-white/5",
-                        )}
-                      >
-                        <span className="truncate">{t.name}</span>
-                        {tenant.id === t.id && <span className="text-primary text-[10px]">✓</span>}
-                      </button>
-                    ))}
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsTenantListOpen((open) => !open)}
+                    aria-expanded={isTenantListOpen}
+                    // The current tenant is the label, so the closed state still
+                    // answers "which workspace am I in?" without opening it.
+                    className="mt-1 w-full flex items-center justify-between gap-2 px-2 py-1 rounded-lg text-xs
+                               text-foreground/90 hover:bg-white/5 transition active:scale-95 select-none"
+                  >
+                    <span className="truncate font-semibold">{tenant.name}</span>
+                    <ChevronDown
+                      className={cn(
+                        "h-3 w-3 flex-shrink-0 text-muted-foreground/60 transition-transform duration-200",
+                        isTenantListOpen && "rotate-180",
+                      )}
+                    />
+                  </button>
+                  {isTenantListOpen && (
+                    // Scrolls rather than growing without bound — the parent
+                    // clips, so an unbounded list would hide its own options.
+                    <div className="mt-0.5 space-y-0.5 max-h-40 overflow-y-auto">
+                      {tenants.map((t) => (
+                        <button
+                          key={t.id}
+                          onClick={() => {
+                            setTenantById(t.id);
+                            setIsTenantListOpen(false);
+                          }}
+                          className={cn(
+                            "w-full flex items-center justify-between px-2 py-1 rounded-lg text-xs transition active:scale-95 select-none",
+                            tenant.id === t.id
+                              ? "bg-primary/20 text-primary font-semibold"
+                              : "text-muted-foreground hover:bg-white/5",
+                          )}
+                        >
+                          <span className="truncate">{t.name}</span>
+                          {tenant.id === t.id && <span className="text-primary text-[10px]">✓</span>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
