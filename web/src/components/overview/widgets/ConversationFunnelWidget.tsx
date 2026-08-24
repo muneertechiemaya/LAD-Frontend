@@ -64,7 +64,19 @@ export const ConversationFunnelWidget: React.FC<{ id: string }> = ({ id }) => {
           </p>
         </div>
       ) : (
-        <FunnelBody data={data} />
+        <div className="flex flex-col gap-2">
+          {/* The hook KEEPS the previous data when a refresh fails, so without
+              this a failed refresh was completely silent: the spinner stopped,
+              the numbers did not move, and the user read them as current. The
+              full-panel error above only covers a COLD failure (`!data`). */}
+          {error && (
+            <p className="text-[11px] text-amber-600 dark:text-amber-400 leading-snug">
+              Couldn&apos;t refresh — these figures are from the last successful load,
+              not now.
+            </p>
+          )}
+          <FunnelBody data={data} />
+        </div>
       )}
     </WidgetWrapper>
   );
