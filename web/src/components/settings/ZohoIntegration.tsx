@@ -325,7 +325,6 @@ export const ZohoIntegration: React.FC = () => {
           <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-red-50 dark:bg-red-950/40 flex items-center justify-center">
             <span className="text-xl font-bold text-red-600 select-none">Z</span>
           </div>
-          </div>
           <div>
             <h3 className="text-lg font-bold text-[#172560] dark:text-white">Zoho CRM</h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">

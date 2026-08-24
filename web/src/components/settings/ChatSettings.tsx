@@ -673,7 +673,7 @@ function EmailAgentCard({ showToast }: { showToast: (msg: string, type: 'success
               'pricing and availability using the knowledge base. Be concise and professional. ' +
               'If the sender asks for anything you are unsure about, say a team member will follow up.'
             }
-            className="mt-1 w-full rounded-lg border border-gray-200 dark:border-blue-950/60 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-red-400 disabled:bg-gray-50"
+            className="mt-1 w-full rounded-lg border border-gray-200 dark:border-blue-950/60 bg-white dark:bg-slate-800/50 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-red-400 disabled:bg-gray-50"
           />
           <p className="mt-1 text-[11px] text-gray-500">
             The knowledge base and tone from your chat settings are added automatically.
