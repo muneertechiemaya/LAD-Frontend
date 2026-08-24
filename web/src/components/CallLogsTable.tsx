@@ -1092,7 +1092,7 @@ export function CallLogsTable({
                   // Check if there's any data
                   if (timelineItems.length === 0) {
                     return (
-                      <TableRow>
+                      <TableRow className="hover:bg-transparent">
                         <TableCell
                           colSpan={columns.length}
                           className="text-center py-16"
@@ -1174,7 +1174,7 @@ export function CallLogsTable({
                   });
                 })()
               ) : table.getRowModel().rows.length === 0 ? (
-                <TableRow>
+                <TableRow className="hover:bg-transparent">
                   <TableCell
                     colSpan={columns.length}
                     className="text-center py-16"
