@@ -21,6 +21,7 @@ import { createPortal } from 'react-dom';
 import { RefreshCw, Filter, Linkedin, X, Download } from 'lucide-react';
 import { WidgetWrapper } from '../WidgetWrapper';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
+import { csvCell } from '@/lib/csv';
 
 interface LeadRow {
   lead_id: string;
@@ -277,7 +278,10 @@ const fmtFollowup = (iso: string | null): string => {
 };
 
 function downloadLeadsCsv(leads: LeadRow[], fileLabel: string) {
-  const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  // Shared cell encoder: RFC-4180 quoting AND the formula-injection guard. The
+  // old local `esc` only quoted — a lead named `=WEBSERVICE(...)` (name/company
+  // come from untrusted enrichment) executed when the file was opened in Excel.
+  const esc = csvCell;
   const headers = ['Name', 'Company', 'Industry', 'Campaign', 'LinkedIn URL', 'Next follow-up'];
   const lines = [headers.join(',')];
   for (const l of leads) {
