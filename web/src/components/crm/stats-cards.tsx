@@ -11,14 +11,27 @@ export type CrmView = 'board' | 'all' | 'prospects' | 'leads' | 'clients';
 interface StatCard {
   key: Exclude<CrmView, 'board'>;
   title: string;
-  value: number;
+  /** `null` = could not be loaded; renders "—". Matches `StatsCardsProps.counts`,
+   *  which has always been nullable — typing this `number` made every one of the
+   *  four assignments below a type error. */
+  value: number | null;
   Icon: LucideIcon;
   bg: string;
   ic: string;
 }
 
 export interface StatsCardsProps {
-  counts: { all: number; prospects: number; leads: number; clients: number };
+  /**
+   * `null` for a figure we could not load — NOT the same as a tenant that has
+   * none. During an outage these all rendered `0`, which told a tenant with 571
+   * contacts that their CRM was empty.
+   */
+  counts: {
+    all: number | null;
+    prospects: number | null;
+    leads: number | null;
+    clients: number | null;
+  };
   selected: CrmView;
   onSelect: (key: Exclude<CrmView, 'board'>) => void;
 }
@@ -61,7 +74,7 @@ export default function StatsCards({ counts, selected, onSelect }: StatsCardsPro
                 className="text-2xl font-bold text-slate-800 dark:text-white tabular-nums"
                 style={{ fontFamily: '"Space Grotesk", system-ui' }}
               >
-                {c.value}
+                {c.value ?? '—'}
               </h5>
             </div>
           </div>

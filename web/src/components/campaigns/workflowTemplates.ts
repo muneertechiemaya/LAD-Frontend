@@ -842,6 +842,112 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
       },
     ],
   },
+  {
+    key: 'job_search',
+    category: 'industry',
+    badge: { label: 'New', tone: 'blue' },
+    meta: { cycleDays: 14, channels: 3 },
+    accent: '#B45309',
+    name: 'Job Search Accelerator',
+    tagline: 'Find the companies hiring for your role, then reach the person who actually decides',
+    chain: [
+      'Signal Search (jobs)', 'Enrich', 'Fit brief', 'Profile visit', 'Connect',
+      'Wait: accepted', 'Message', 'Apply (human)', 'Email + brief', 'Follow-ups', 'Auto-post',
+    ],
+    // The inversion this pipeline is built on: a job listing has no author, so
+    // JobSignalService turns each listing into the hiring COMPANY and then runs a
+    // second search for the decision-makers there. Those people are the leads —
+    // the posting itself is the signal, never the destination.
+    //
+    // decision_maker_titles is load-bearing here in a way it is not on the posts
+    // path: with no titles configured the jobs path has no author to fall back
+    // on, enrols nobody, and only logs `no_decision_maker_titles`. Hence the
+    // defaults below — a copy of this template must never start empty.
+    source: {
+      key: 'linkedin_signal',
+      title: 'LinkedIn Signal Search', description: 'Open roles · hiring companies',
+      cfg: {
+        signal_query: 'companies hiring for senior backend engineers in Dubai',
+        decision_maker_titles: 'Hiring Manager, Engineering Manager, Head of Engineering, VP Engineering, Talent Acquisition',
+      },
+    },
+    inputs: [
+      { key: 'signal_query', question: 'Which **role** are you targeting, and **where**? e.g. "companies hiring senior backend engineers in Dubai".' },
+      { key: 'decision_maker_titles', question: 'Which **titles** should I reach at those companies? (or say **skip** to keep hiring managers, engineering leads and talent acquisition)', optional: true },
+    ],
+    nodes: [
+      // Reaching a hiring manager by email later depends on having one now.
+      { type: 'data_enrich', macroId: ENRICH_STEP_ID, title: 'Enrich contact', description: 'Official email', cfg: { enrich: ['official_email'] } },
+
+      // The case for you at THIS company, written from the open role and the
+      // company context the signal already carried. Held for approval: it goes
+      // out under the candidate's own name, so nothing sends unread.
+      {
+        type: 'lead_report', macroId: REPORT_STEP_ID,
+        title: 'Fit brief', description: 'Per lead · PDF · you approve',
+        cfg: {
+          scope: 'lead',
+          report_type: 'company_fit',
+          context: 'Make the case for this candidate at this specific company, grounded in the open role and what the company is building. No generic strengths.',
+          email_now: false,
+          require_approval: true, approval_channel: 'email', approval_to: '',
+        },
+      },
+
+      // Visit first, connect a couple of days later: the profile view lands in
+      // "who viewed your profile" and the request stops being cold.
+      { type: 'linkedin_visit', title: 'Profile visit', description: 'Warm up before connecting' },
+      { type: 'linkedin_connect', title: 'Connection request', description: 'Grounded in the open role', cfg: { message: '', delayDays: 2 } },
+      { type: 'condition', title: 'Wait for condition', description: 'Connection accepted', cfg: { condition: 'connection_accepted' } },
+      {
+        type: 'linkedin_message', title: 'Message', description: 'Specific, not a pitch',
+        cfg: { message: 'Hi {{first_name}}, thanks for connecting. I saw {{company_name}} is hiring on your team — I have been working on exactly that problem and would be glad to share how I would approach it, whether or not it goes anywhere formal.' },
+      },
+
+      // Applications are submitted by a person, always. LinkedIn's terms put
+      // automated Easy Apply squarely off-limits, and a candidate's account is
+      // the one asset this pipeline cannot risk. Mr LAD assembles the package;
+      // the candidate reads it and presses send.
+      {
+        type: 'human_task', macroId: HUMAN_TASK_STEP_ID,
+        title: 'Submit the application', description: 'Human · pauses the lead',
+        cfg: {
+          title: 'Apply to the open role',
+          instructions: 'The job link, company and matched title are on this lead from the hiring signal. Tailor the resume to the role, answer the screening questions, submit, and confirm here so the email follow-up goes out.',
+          assignee_channel: 'email', assignee_to: '',
+        },
+      },
+
+      // Sent alongside the application so nothing depends on the ATS alone.
+      // attach_report puts the approved fit brief on the email; the resume is
+      // the candidate's own file and is attached in the step's media config,
+      // which is deliberately per-tenant and never travels with a shared copy.
+      {
+        type: 'email_send', title: 'Email the hiring manager', description: 'Fit brief attached',
+        cfg: {
+          subject: 'Applied for the {{title}} role at {{company_name}}',
+          body: 'Hi {{first_name}},\n\nI have just applied for the open role on your team. Rather than leave it in the queue, I have attached a short brief on where I think I would be useful at {{company_name}}.\n\nHappy to talk it through if it is worth a conversation.\n\nBest',
+          attach_report: true,
+          delayDays: 1,
+        },
+      },
+      {
+        type: 'followup_sequence', macroId: FOLLOWUP_STEP_ID,
+        title: 'Follow-up sequence', description: '2 touches · Email · stops on reply',
+        cfg: { channel: 'email', touches: [{ hours: 96 }, { hours: 240 }] },
+      },
+
+      // Runs once for the campaign, not per lead — the candidate has one feed.
+      // Credibility for when the decision-maker looks them up, which they will.
+      {
+        type: 'linkedin_post', macroId: AUTOPOST_STEP_ID, title: 'LinkedIn auto-post', description: '2x weekly · 09:00 · you approve',
+        cfg: {
+          content: 'Share one concrete thing I have learned doing the work I am targeting — a decision, a tradeoff, or a mistake worth avoiding. Not career advice, not looking-for-work posts.',
+          ai_generate: true, frequency: 'weekly', days: [2, 4], time: '09:00', post_as: 'personal',
+        },
+      },
+    ],
+  },
 ];
 
 // ── Wizard input derivation ────────────────────────────────────────────────

@@ -29,6 +29,7 @@ import {
   AlertDialogTitle, AlertDialogDescription, AlertDialogCancel,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { MessageFeedback } from './MessageFeedback';
 import { cn } from '@/lib/utils';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
 import { LinkedInFollowupComposer } from './LinkedInFollowupComposer';
@@ -380,7 +381,7 @@ function ConvListItem({
 
 // ─── Message bubble ───────────────────────────────────────────────────────────
 
-function MessageBubble({ msg }: { msg: LinkedInMessage }) {
+function MessageBubble({ msg, conversationId }: { msg: LinkedInMessage; conversationId?: string }) {
   const isOut = msg.is_sender || msg.role === 'assistant';
 
   // Label virtual messages differently
@@ -410,6 +411,17 @@ function MessageBubble({ msg }: { msg: LinkedInMessage }) {
           {formatBubbleTime(msg.created_at)}
         </p>
       </div>
+      {/* Only the agent's own replies are rateable — correcting the lead teaches
+          nothing, and virtual rows are campaign-analytics echoes rather than real
+          stored messages the agent could learn from. */}
+      {msg.role === 'assistant' && !msg.is_virtual && conversationId && (
+        <MessageFeedback
+          channel="linkedin"
+          conversationId={conversationId}
+          messageId={String(msg.id)}
+          content={msg.content || ''}
+        />
+      )}
     </div>
   );
 }
@@ -1127,7 +1139,7 @@ export function LinkedInConversationView({
                   item.type === 'date' ? (
                     <DateSeparator key={item.key} date={item.date} variant="linkedin" />
                   ) : (
-                    <MessageBubble key={item.key} msg={item.msg} />
+                    <MessageBubble key={item.key} msg={item.msg} conversationId={selectedConv?.id} />
                   )
                 )
               )}

@@ -51,6 +51,20 @@ export interface UseLeadReportResult {
   bundle: LeadReportBundle | null;
   isLoading: boolean;
   isError: boolean;
+  /**
+   * The bundle fetch left us with NOTHING to render, and why.
+   *
+   * `isError` alone is not enough for the caller to act on: it says a request
+   * failed, not that we are empty-handed (a retry that fails after a good
+   * response still has the good response). This is set only when `data` is
+   * actually undefined, so a caller can tell "we could not load this" apart
+   * from "this lead has no report", which look identical downstream.
+   *
+   * Read from `failureReason` as well as `error` — while retries are still in
+   * flight `error` is null, so the window where a caller would otherwise treat
+   * a live outage as an empty result is exactly the window this closes.
+   */
+  loadError: Error | null;
   /** The report card's render state, with the trigger's progress folded in. */
   state: ReportViewState;
   /** Set when generation was refused for want of grounding. */
@@ -165,6 +179,11 @@ export function useLeadReport(leadId: string | null | undefined): UseLeadReportR
     bundle: query.data ?? null,
     isLoading: query.isLoading,
     isError: query.isError,
+    // Only when we genuinely have nothing — see the doc-comment on the type.
+    loadError:
+      query.data === undefined
+        ? ((query.error ?? query.failureReason) as Error | null) ?? null
+        : null,
     state,
     refusalMessage,
     advance,
