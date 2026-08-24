@@ -1,4 +1,4 @@
-// Vertical snapshots — public SDK surface.
+// Vertical snapshots - public SDK surface.
 export {
   getPipelineOverview, setPipelineActive, setPipelineKnobs, requestKnobProposals,
   listSampleConversations,

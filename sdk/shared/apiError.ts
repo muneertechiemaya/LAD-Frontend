@@ -1,5 +1,5 @@
 /**
- * Typed API error — carries the backend's HTTP status and machine-readable
+ * Typed API error - carries the backend's HTTP status and machine-readable
  * `code` through to the UI.
  *
  * Every HTTP client in this repo used to throw a bare `Error` whose only
@@ -93,7 +93,7 @@ export async function apiErrorFromResponse(
   try {
     body = await res.json();
   } catch {
-    // Non-JSON (HTML error page, empty body) — the fallback message stands.
+    // Non-JSON (HTML error page, empty body) - the fallback message stands.
   }
   const message =
     (prefer === 'message'
