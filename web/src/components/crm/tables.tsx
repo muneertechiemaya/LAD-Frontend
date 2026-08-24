@@ -12,7 +12,7 @@ import {
   CrmAvatar, ChannelChips, LadCard, T, fmtCurrency, fmtDate, rel,
   VerifiedTag, Pager, type CrmPagination,
 } from './shared';
-import { CRM_OWNERS, NOW, type CrmContact } from './data';
+import { CRM_OWNERS, type CrmContact } from './data';
 import {
   Select,
   SelectContent,
@@ -1035,8 +1035,13 @@ export function ClientsTable({
       sortKey: (r) => r.renewalDate,
       render: (r) => {
         if (!r.renewalDate) return <span className="text-[11.5px] text-slate-400">-</span>;
+        // Real current time — NOT the frozen `NOW` (2026-05-27) that the mock
+        // fixtures use. Days-until-renewal and the <60d "urgent" highlight must
+        // be measured from today; against the frozen date every real renewal
+        // would compute a wrong (and eventually negative) day count. Unreachable
+        // today only because renewalDate isn't wired from prospect_state yet.
         const days = Math.round(
-          (new Date(r.renewalDate).getTime() - NOW.getTime()) / (1000 * 60 * 60 * 24)
+          (new Date(r.renewalDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
         );
         const isClose = days < 60;
         return (
