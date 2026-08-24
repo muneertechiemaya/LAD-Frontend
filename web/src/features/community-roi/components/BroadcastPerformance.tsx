@@ -508,8 +508,8 @@ export function BroadcastPerformance({
                 key={selectedId + '-rate'}
                 className="lad-bp-rate-pill lad-bp-anim"
                 style={{ background: band.bg, color: band.color }}
-                aria-label={`Read rate: ${pct1(readRate)} percent — ${band.label}`}
-                title={`${band.label} — ${pct1(readRate)}%`}
+                aria-label={`Read rate: ${pct1(readRate)} percent - ${band.label}`}
+                title={`${band.label} - ${pct1(readRate)}%`}
               >
                 <span className="num">{pct1(readRate)}</span>
                 <span className="unit">%</span>

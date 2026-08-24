@@ -93,7 +93,7 @@ export function LinkedInFollowupComposer({ campaignId, leadId, contactName, onSe
       setMessage(data.message || '');
       if (!data.message) {
         setInfo(m === 'ai'
-          ? 'AI returned an empty message — try regenerating.'
+          ? 'AI returned an empty message - try regenerating.'
           : 'Template is empty.');
       }
     } catch (e: any) {
@@ -271,7 +271,7 @@ export function LinkedInFollowupComposer({ campaignId, leadId, contactName, onSe
               isPreviewing
                 ? mode === 'ai' ? 'Generating personalised follow-up…' : 'Loading template…'
                 : mode === 'template' && !hasTemplate
-                  ? 'No template configured for this campaign — switch to AI or add one in Edit Campaign.'
+                  ? 'No template configured for this campaign - switch to AI or add one in Edit Campaign.'
                   : 'Edit the follow-up message before sending…'
             }
             rows={5}

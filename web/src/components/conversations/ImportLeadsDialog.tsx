@@ -579,7 +579,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
         // Email groups need an email per contact — surface it early rather
         // than silently importing 0.
         if (isEmailMode && !parsedLeads.some((l) => l.email.trim())) {
-          setExcelError('None of the rows have an email address — email groups need an "email" column.');
+          setExcelError('None of the rows have an email address - email groups need an "email" column.');
         }
         setLeads(parsedLeads);
         setSelectedIds(new Set());
@@ -750,7 +750,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
         if (cleaned.length === 0) {
           setImportResult({
             success: false, total: validLeads.length, imported: 0, conversations: 0,
-            errors: [{ name: 'Import', error: 'No valid email addresses after cleaning — check the email column.' }],
+            errors: [{ name: 'Import', error: 'No valid email addresses after cleaning - check the email column.' }],
             skipped: [], duplicates: [],
           });
           setImporting(false);
@@ -1147,7 +1147,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
 
               {scraping && (
                 <div className="text-xs text-muted-foreground italic">
-                  Fetching the page and extracting contacts — this can take 20–45 seconds for
+                  Fetching the page and extracting contacts - this can take 20–45 seconds for
                   JavaScript-heavy pages.
                 </div>
               )}
@@ -1165,7 +1165,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                   <span>
                     Extracted <strong>{scrapeStats.extracted}</strong> contact{scrapeStats.extracted !== 1 ? 's' : ''}
                     {scrapeStats.chars > 0 && ` from ${scrapeStats.chars.toLocaleString()} chars of page content`}.
-                    Switched to the Add Leads tab — review and edit before importing.
+                    Switched to the Add Leads tab - review and edit before importing.
                   </span>
                 </div>
               )}
@@ -1219,7 +1219,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
               <div className="flex items-center gap-2 min-w-0 text-amber-800 dark:text-amber-200/90">
                 <TriangleAlert className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400/80" />
                 <span className="text-xs font-medium">
-                  {invalidCount} record{invalidCount !== 1 ? 's' : ''} with invalid data — fix or delete before importing
+                  {invalidCount} record{invalidCount !== 1 ? 's' : ''} with invalid data - fix or delete before importing
                 </span>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
@@ -1253,7 +1253,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                   <code className="rounded px-1 font-mono bg-amber-200 dark:bg-amber-500/20 text-amber-900 dark:text-amber-200 dark:border dark:border-amber-500/30">
                     {detectedCountryCode}
                   </code>{' '}
-                  from existing records — apply to {phoneErrorLeadIds.size} number{phoneErrorLeadIds.size !== 1 ? 's' : ''}?
+                  from existing records - apply to {phoneErrorLeadIds.size} number{phoneErrorLeadIds.size !== 1 ? 's' : ''}?
                 </span>
                 <Button
                   size="sm"
@@ -1332,7 +1332,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                     <span className="block">
                       <strong>{importResult.imported}</strong> of <strong>{importResult.total}</strong> lead{importResult.total !== 1 ? 's' : ''} imported
                       {importResult.conversations > 0 && (
-                        <> — <strong>{importResult.conversations}</strong> new conversation{importResult.conversations !== 1 ? 's' : ''} created</>
+                        <> - <strong>{importResult.conversations}</strong> new conversation{importResult.conversations !== 1 ? 's' : ''} created</>
                       )}
                       {importResult.duplicates.length > 0 && (
                         <>, <strong>{importResult.duplicates.length}</strong> linked to existing</>
@@ -1356,7 +1356,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                                   <span className="break-all">
                                     <strong>{s.name}</strong>
                                     {s.phone ? <span className="text-amber-700/80 dark:text-amber-300/80"> ({s.phone})</span> : null}
-                                    {' — '}{s.reason}
+                                    {' - '}{s.reason}
                                   </span>
                                 </li>
                               ))}
@@ -1375,7 +1375,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                                   <span className="break-all">
                                     <strong>{e.name}</strong>
                                     {e.phone ? <span className="text-red-600/80 dark:text-red-300/80"> ({e.phone})</span> : null}
-                                    {' — '}{e.error}
+                                    {' - '}{e.error}
                                   </span>
                                 </li>
                               ))}
@@ -1388,7 +1388,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                     {importResult.duplicates.length > 0 && (
                       <details className="rounded-md border border-blue-200 dark:border-blue-500/25 bg-blue-50 dark:bg-blue-500/[0.08] p-2.5 text-xs text-blue-800 dark:text-blue-200/90">
                         <summary className="cursor-pointer font-medium select-none">
-                          ℹ {importResult.duplicates.length} already existed — linked to existing conversation{importResult.duplicates.length !== 1 ? 's' : ''}
+                          ℹ {importResult.duplicates.length} already existed - linked to existing conversation{importResult.duplicates.length !== 1 ? 's' : ''}
                         </summary>
                         <ul className="mt-1 ml-3 space-y-0.5 max-h-32 overflow-y-auto">
                           {importResult.duplicates.map((d, i) => (
@@ -1548,7 +1548,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                             }
                             const newGroup = groupData.group || groupData.data || (groupData.id ? groupData : null);
                             if (!newGroup?.id) {
-                              setBroadcastCreateError('Group created but ID not returned — please refresh.');
+                              setBroadcastCreateError('Group created but ID not returned - please refresh.');
                               return;
                             }
                             // Add the imported leads as members
@@ -1646,7 +1646,7 @@ export function ImportLeadsDialog({ open, onOpenChange, onImportComplete, channe
                   <RefreshCw className={cn('h-3.5 w-3.5 shrink-0', runInBackground && 'animate-spin')} />
                   <span>
                     <span className="font-medium">Run in background</span>
-                    {' '}— close this dialog and continue importing without waiting
+                    {' '}- close this dialog and continue importing without waiting
                   </span>
                 </button>
               )}

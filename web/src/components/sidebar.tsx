@@ -156,7 +156,7 @@ export function Sidebar() {
     try {
       const saved = window.localStorage.getItem('sidebar.pinned');
       if (saved === '1') setIsPinned(true);
-    } catch { /* localStorage blocked — fine, default is unpinned */ }
+    } catch { /* localStorage blocked - fine, default is unpinned */ }
   }, []);
   const togglePinned = () => {
     setIsPinned(prev => {
@@ -175,6 +175,9 @@ export function Sidebar() {
   };
   const [mobileExpanded, setMobileExpanded] = useState<string | null>(null);
   const [isUserPanelOpen, setIsUserPanelOpen] = useState(true);
+  // Closed by default: the point of the dropdown is that the tenant list costs
+  // one row until somebody wants to switch.
+  const [isTenantListOpen, setIsTenantListOpen] = useState(false);
   // Education vertical context
   const isEducation = hasFeature("education_vertical");
   // Hydration check
@@ -692,6 +695,13 @@ export function Sidebar() {
               <div key={n.href} className="relative group">
                 <NavLink
                   href={n.href}
+                  // Collapsed, this renders as a bare 48px icon — the label
+                  // span below is gated on isExpanded, so without these the
+                  // link has NO accessible name and screen readers announce
+                  // eight identical "link"s. The title also gives sighted
+                  // users a hover tooltip telling them where each icon goes.
+                  aria-label={n.label}
+                  title={!isExpanded ? n.label : undefined}
                   className={cn(
                     "relative flex items-center rounded-2xl overflow-visible",
                     "transition-all duration-400 ease-[cubic-bezier(.19,1,.22,1)]",
@@ -897,33 +907,65 @@ export function Sidebar() {
             )}
           >
             <div className="px-2 pb-2 space-y-1">
-              {/* Tenant section — only if multiple tenants */}
+              {/* Tenant section — only if multiple tenants.
+                  A dropdown rather than an inline list: this panel is capped at
+                  max-h-96, so one row per tenant pushes Settings, Pricing and
+                  Logout past the clip and out of reach for anyone in enough
+                  workspaces. Closed, it costs one row whatever the count. */}
               {tenants.length > 1 && (
                 <div className="px-2 pt-1 pb-0.5">
                   <span className="text-[10px] uppercase tracking-wider text-muted-foreground/50 font-bold">Tenant</span>
-                  <div className="mt-1 space-y-0.5">
-                    {tenants.map((t) => (
-                      <button
-                        key={t.id}
-                        onClick={() => setTenantById(t.id)}
-                        className={cn(
-                          "w-full flex items-center justify-between px-2 py-1 rounded-lg text-xs transition active:scale-95 select-none",
-                          tenant.id === t.id
-                            ? "bg-primary/20 text-primary font-semibold"
-                            : "text-muted-foreground hover:bg-white/5",
-                        )}
-                      >
-                        <span className="truncate">{t.name}</span>
-                        {tenant.id === t.id && <span className="text-primary text-[10px]">✓</span>}
-                      </button>
-                    ))}
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsTenantListOpen((open) => !open)}
+                    aria-expanded={isTenantListOpen}
+                    // The current tenant is the label, so the closed state still
+                    // answers "which workspace am I in?" without opening it.
+                    className="mt-1 w-full flex items-center justify-between gap-2 px-2 py-1 rounded-lg text-xs
+                               text-foreground/90 hover:bg-white/5 transition active:scale-95 select-none"
+                  >
+                    <span className="truncate font-semibold">{tenant.name}</span>
+                    <ChevronDown
+                      className={cn(
+                        "h-3 w-3 flex-shrink-0 text-muted-foreground/60 transition-transform duration-200",
+                        isTenantListOpen && "rotate-180",
+                      )}
+                    />
+                  </button>
+                  {isTenantListOpen && (
+                    // Scrolls rather than growing without bound — the parent
+                    // clips, so an unbounded list would hide its own options.
+                    <div className="mt-0.5 space-y-0.5 max-h-40 overflow-y-auto">
+                      {tenants.map((t) => (
+                        <button
+                          key={t.id}
+                          onClick={() => {
+                            setTenantById(t.id);
+                            setIsTenantListOpen(false);
+                          }}
+                          className={cn(
+                            "w-full flex items-center justify-between px-2 py-1 rounded-lg text-xs transition active:scale-95 select-none",
+                            tenant.id === t.id
+                              ? "bg-primary/20 text-primary font-semibold"
+                              : "text-muted-foreground hover:bg-white/5",
+                          )}
+                        >
+                          <span className="truncate">{t.name}</span>
+                          {tenant.id === t.id && <span className="text-primary text-[10px]">✓</span>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* Settings */}
               <NavLink
                 href="/settings"
+                // Collapsed, the label span is not rendered, so the link would
+                // have no accessible name at all — see the nav items above.
+                aria-label="Settings"
+                title={!isExpanded ? "Settings" : undefined}
                 className={cn(
                   "flex items-center gap-3 rounded-xl px-3 h-10 text-sm font-medium transition-all",
                   "text-gray-700 dark:text-gray-300 hover:bg-white/5 dark:hover:bg-white/10 active:scale-95 select-none",
@@ -945,7 +987,7 @@ export function Sidebar() {
                 {/* Group the leading icon + label together so the layout
                     mirrors the Settings row above and the Logout row below.
                     When the sidebar collapses, only the ThemeToggle remains
-                    visible (centered) — the leading Palette icon hides to
+                    visible (centered) - the leading Palette icon hides to
                     avoid two icons in a 40px-wide column. */}
                 {isExpanded && (
                   <div className="flex items-center gap-2">
@@ -959,6 +1001,8 @@ export function Sidebar() {
               {/* Logout */}
               <button
                 onClick={handleLogout}
+                aria-label="Logout"
+                title="Logout"
                 className={cn(
                   "flex items-center gap-3 rounded-xl px-3 h-10 text-sm font-medium transition-all w-full",
                   "text-red-500 hover:bg-red-500/10 active:scale-95 select-none",

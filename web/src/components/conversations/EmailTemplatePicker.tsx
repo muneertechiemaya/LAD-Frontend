@@ -335,10 +335,10 @@ export const EmailTemplatePicker = memo(function EmailTemplatePicker({
               setSending(false);
               return;
             }
-            console.warn('[EmailTemplatePicker] broadcast route failed — falling back to direct send', data);
+            console.warn('[EmailTemplatePicker] broadcast route failed - falling back to direct send', data);
           }
         } catch (err) {
-          console.warn('[EmailTemplatePicker] broadcast route unreachable — falling back to direct send', err);
+          console.warn('[EmailTemplatePicker] broadcast route unreachable - falling back to direct send', err);
         }
       }
 
@@ -381,7 +381,7 @@ export const EmailTemplatePicker = memo(function EmailTemplatePicker({
         });
         setView('done');
       } else {
-        setSendError(data.error || data.detail || 'Send failed — please try again.');
+        setSendError(data.error || data.detail || 'Send failed - please try again.');
         setView('preview');
       }
     } catch (err) {
@@ -891,7 +891,7 @@ export const EmailTemplatePicker = memo(function EmailTemplatePicker({
                 </p>
                 <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5 max-w-md">
                   {sendResult.queued
-                    ? `Sending to ${sendResult.total} recipient${sendResult.total === 1 ? '' : 's'} via ${providerLabel} — paced to protect your sender reputation. Track progress and opens in the Sent tab.`
+                    ? `Sending to ${sendResult.total} recipient${sendResult.total === 1 ? '' : 's'} via ${providerLabel} - paced to protect your sender reputation. Track progress and opens in the Sent tab.`
                     : `Campaign dispatched via ${providerLabel}`}
                 </p>
               </div>
@@ -1033,7 +1033,7 @@ function PersonalizationHints({ onInsert }: { onInsert: (v: string) => void }) {
             key={label}
             type="button"
             onClick={() => onInsert(label)}
-            title={`Insert ${label} — ${desc}`}
+            title={`Insert ${label} - ${desc}`}
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white dark:bg-[#081331] border border-slate-200 dark:border-slate-800/80 hover:border-blue-400 dark:hover:border-blue-500/60 hover:bg-blue-50/50 dark:hover:bg-blue-950/30 text-xs font-mono transition-all shadow-xs"
           >
             <span className="text-blue-600 dark:text-blue-400 font-semibold">{label}</span>

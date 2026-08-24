@@ -214,13 +214,13 @@ export const ZohoIntegration: React.FC = () => {
           }
           return;
         }
-      } catch { /* transient — keep polling */ }
+      } catch { /* transient - keep polling */ }
       if (tries < 120) {
         setTimeout(tick, 3000); // poll up to ~6 min
       } else {
         pollingRef.current = false;
         setSyncing(false);
-        setError('Sync is taking longer than expected — check back shortly, then refresh.');
+        setError('Sync is taking longer than expected - check back shortly, then refresh.');
       }
     };
     setTimeout(tick, 3000);
@@ -243,7 +243,7 @@ export const ZohoIntegration: React.FC = () => {
       const data = await res.json();
       if (res.ok && data?.success) {
         // Background sync: server returns immediately; poll for completion.
-        setSuccess('Sync started — pulling from Zoho. This can take a minute for large accounts…');
+        setSuccess('Sync started - pulling from Zoho. This can take a minute for large accounts…');
         pollSyncStatus();
       } else {
         setSyncing(false);
@@ -327,7 +327,7 @@ export const ZohoIntegration: React.FC = () => {
             <div>
               <CardTitle>Zoho CRM</CardTitle>
               <CardDescription>
-                Connect your Zoho CRM to sync Contacts, Leads, and Deals — and push Mr LAD leads back into Zoho.
+                Connect your Zoho CRM to sync Contacts, Leads, and Deals - and push Mr LAD leads back into Zoho.
               </CardDescription>
             </div>
           </div>
@@ -403,19 +403,19 @@ export const ZohoIntegration: React.FC = () => {
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="rounded-lg border border-border p-3 text-center">
-              <div className="text-2xl font-semibold text-foreground">{account.counts?.contacts ?? '—'}</div>
+              <div className="text-2xl font-semibold text-foreground">{account.counts?.contacts ?? '-'}</div>
               <div className="text-xs text-muted-foreground">Contacts</div>
             </div>
             <div className="rounded-lg border border-border p-3 text-center">
-              <div className="text-2xl font-semibold text-foreground">{account.counts?.leads ?? '—'}</div>
+              <div className="text-2xl font-semibold text-foreground">{account.counts?.leads ?? '-'}</div>
               <div className="text-xs text-muted-foreground">Leads</div>
             </div>
             <div className="rounded-lg border border-border p-3 text-center">
-              <div className="text-2xl font-semibold text-foreground">{account.counts?.deals ?? '—'}</div>
+              <div className="text-2xl font-semibold text-foreground">{account.counts?.deals ?? '-'}</div>
               <div className="text-xs text-muted-foreground">Deals</div>
             </div>
             <div className="rounded-lg border border-border p-3 text-center">
-              <div className="text-2xl font-semibold text-foreground">{account.counts?.tasks ?? '—'}</div>
+              <div className="text-2xl font-semibold text-foreground">{account.counts?.tasks ?? '-'}</div>
               <div className="text-xs text-muted-foreground">Tasks</div>
             </div>
           </div>
@@ -459,7 +459,7 @@ export const ZohoIntegration: React.FC = () => {
           {testResult && (
             <p className={`text-sm ${testResult.success ? 'text-green-600' : 'text-red-600'}`}>
               {testResult.success
-                ? `Connection OK — ${testResult.contacts ?? 0} contacts reachable.`
+                ? `Connection OK - ${testResult.contacts ?? 0} contacts reachable.`
                 : 'Connection test failed.'}
             </p>
           )}
@@ -497,7 +497,7 @@ export const ZohoIntegration: React.FC = () => {
                 {pushResult && <span className="text-sm text-muted-foreground">{pushResult}</span>}
               </div>
               <p className="text-xs text-muted-foreground">
-                Upserts on Email — re-pushing the same email updates the existing Zoho record. Use the <code>/zoho/push</code> API with <code>lead_ids[]</code> to push campaign leads in bulk.
+                Upserts on Email - re-pushing the same email updates the existing Zoho record. Use the <code>/zoho/push</code> API with <code>lead_ids[]</code> to push campaign leads in bulk.
               </p>
             </div>
           )}

@@ -124,8 +124,8 @@ function ErrorStrip({
   const friendly =
     message === 'no_active_icp'
       ? "No active ICP found. Define your Ideal Customer Profile in onboarding first."
-      : message === 'unauthorised — tenant id missing'
-        ? 'Session expired — please sign in again.'
+      : message === 'unauthorised - tenant id missing'
+        ? 'Session expired - please sign in again.'
         : message;
 
   return (
@@ -169,7 +169,7 @@ function ResultStrip({
             candidate{count === 1 ? '' : 's'} discovered
           </span>
           <span className="ml-2 text-xs text-gray-500">
-            search id {result.searchId?.slice(0, 8) ?? '—'} · cost $
+            search id {result.searchId?.slice(0, 8) ?? '-'} · cost $
             {(result.totalCostUsd || 0).toFixed(2)}
           </span>
         </div>

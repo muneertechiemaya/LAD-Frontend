@@ -301,8 +301,8 @@ export default function CreateLinkedInTemplateModal({
             </select>
             <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
               {isConnection
-                ? 'Connection request note — text-only and limited to 300 characters.'
-                : 'Follow-up message — sent after a connection is accepted. Supports an attachment.'}
+                ? 'Connection request note - text-only and limited to 300 characters.'
+                : 'Follow-up message - sent after a connection is accepted. Supports an attachment.'}
             </p>
           </div>
 

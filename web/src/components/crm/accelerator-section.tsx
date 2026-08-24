@@ -203,7 +203,7 @@ function StepRow({ step, isLast }: { step: SequenceStep; isLast: boolean }) {
             <p className="mt-1.5 inline-flex items-start gap-1.5 text-[11.5px] text-amber-700 dark:text-amber-400">
               <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-px" />
               <span>
-                Stuck — {step.stuck_attempts} failed attempt
+                Stuck - {step.stuck_attempts} failed attempt
                 {step.stuck_attempts === 1 ? '' : 's'}
                 {step.stuck_last_attempt ? `, last ${rel(step.stuck_last_attempt)} ago` : ''}. The
                 sequence will keep retrying this step until it succeeds.

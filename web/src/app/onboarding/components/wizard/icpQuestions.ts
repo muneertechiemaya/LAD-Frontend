@@ -105,7 +105,7 @@ export const ICP_QUESTIONS: IcpQuestion[] = [
   {
     id: 'companyDescription',
     prompt: 'How would you describe your company?',
-    helper: 'A sentence or two — this grounds every message the agent writes.',
+    helper: 'A sentence or two - this grounds every message the agent writes.',
     type: 'text',
     multiline: true,
     placeholder: 'We help outbound sales teams in MENA run AI-driven LinkedIn and WhatsApp campaigns.',
@@ -114,7 +114,7 @@ export const ICP_QUESTIONS: IcpQuestion[] = [
   {
     id: 'industries',
     prompt: 'Which industries?',
-    helper: 'Comma-separate any number — e.g. Healthtech, B2B SaaS.',
+    helper: 'Comma-separate any number - e.g. Healthtech, B2B SaaS.',
     type: 'chips',
     placeholder: 'Healthtech, B2B SaaS',
     apply: (v, icp) => ({ ...icp, company: { ...icp.company, industries: v as string[] } }),
@@ -154,7 +154,7 @@ export const ICP_QUESTIONS: IcpQuestion[] = [
   {
     id: 'jobTitles',
     prompt: 'Job titles?',
-    helper: 'Free text — partial matches are fine.',
+    helper: 'Free text - partial matches are fine.',
     type: 'chips',
     placeholder: 'Head of Growth, VP Marketing',
     apply: (v, icp) => ({ ...icp, person: { ...icp.person, job_titles_includes: v as string[] } }),
@@ -174,7 +174,7 @@ export const ICP_QUESTIONS: IcpQuestion[] = [
   {
     id: 'icpPainPoints',
     prompt: 'What problems do you solve for them?',
-    helper: 'In their language, not yours — the agent opens with these.',
+    helper: 'In their language, not yours - the agent opens with these.',
     type: 'text',
     multiline: true,
     placeholder: 'Reps spend hours on manual prospecting and follow-ups slip through the cracks.',
@@ -208,7 +208,7 @@ export const ICP_QUESTIONS: IcpQuestion[] = [
   {
     id: 'competitors',
     prompt: 'Who do you usually compete against?',
-    helper: 'Optional — names help the AI position you.',
+    helper: 'Optional - names help the AI position you.',
     type: 'chips',
     placeholder: 'Outreach, Lemlist',
     optional: true,
@@ -217,11 +217,11 @@ export const ICP_QUESTIONS: IcpQuestion[] = [
   {
     id: 'sampleConversation',
     prompt: 'Paste a sales conversation that worked.',
-    helper: 'Optional — the strongest single input for message quality.',
+    helper: 'Optional - the strongest single input for message quality.',
     type: 'text',
     multiline: true,
     optional: true,
-    placeholder: 'Them: we already use a tool for this…\nYou: totally — most teams do. What usually breaks is…',
+    placeholder: 'Them: we already use a tool for this…\nYou: totally - most teams do. What usually breaks is…',
     applyProfile: (v) => ({ sampleConversation: String(v ?? '').trim() }),
   },
   {

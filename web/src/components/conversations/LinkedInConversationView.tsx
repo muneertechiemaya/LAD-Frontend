@@ -29,6 +29,7 @@ import {
   AlertDialogTitle, AlertDialogDescription, AlertDialogCancel,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { MessageFeedback } from './MessageFeedback';
 import { cn } from '@/lib/utils';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
 import { LinkedInFollowupComposer } from './LinkedInFollowupComposer';
@@ -163,7 +164,7 @@ const STATUS_CONFIG: Record<ConnectionStatus, {
     icon:       <Clock className="w-3 h-3" />,
     dotClass:   'bg-slate-300 dark:bg-slate-500',
     badgeClass: 'bg-slate-100 text-slate-500 dark:bg-slate-800/80 dark:text-slate-300',
-    bannerText: 'Connection request sent — chat will be available once they accept.',
+    bannerText: 'Connection request sent - chat will be available once they accept.',
   },
   accepted: {
     label:      'Connected',
@@ -380,7 +381,7 @@ function ConvListItem({
 
 // ─── Message bubble ───────────────────────────────────────────────────────────
 
-function MessageBubble({ msg }: { msg: LinkedInMessage }) {
+function MessageBubble({ msg, conversationId }: { msg: LinkedInMessage; conversationId?: string }) {
   const isOut = msg.is_sender || msg.role === 'assistant';
 
   // Label virtual messages differently
@@ -410,6 +411,17 @@ function MessageBubble({ msg }: { msg: LinkedInMessage }) {
           {formatBubbleTime(msg.created_at)}
         </p>
       </div>
+      {/* Only the agent's own replies are rateable — correcting the lead teaches
+          nothing, and virtual rows are campaign-analytics echoes rather than real
+          stored messages the agent could learn from. */}
+      {msg.role === 'assistant' && !msg.is_virtual && conversationId && (
+        <MessageFeedback
+          channel="linkedin"
+          conversationId={conversationId}
+          messageId={String(msg.id)}
+          content={msg.content || ''}
+        />
+      )}
     </div>
   );
 }
@@ -554,7 +566,7 @@ export function LinkedInConversationView({
   const handleFileChosen = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setAttachInfo(`Selected "${file.name}" — media upload to LinkedIn DMs is queued for the next backend release.`);
+    setAttachInfo(`Selected "${file.name}" - media upload to LinkedIn DMs is queued for the next backend release.`);
     if (fileInputRef.current) fileInputRef.current.value = '';
     setTimeout(() => setAttachInfo(null), 6000);
   };
@@ -1123,7 +1135,7 @@ export function LinkedInConversationView({
                       </p>
                     </>
                   ) : (
-                    <p>No messages yet — start the conversation!</p>
+                    <p>No messages yet - start the conversation!</p>
                   )}
                 </div>
               ) : (
@@ -1131,7 +1143,7 @@ export function LinkedInConversationView({
                   item.type === 'date' ? (
                     <DateSeparator key={item.key} date={item.date} variant="linkedin" />
                   ) : (
-                    <MessageBubble key={item.key} msg={item.msg} />
+                    <MessageBubble key={item.key} msg={item.msg} conversationId={selectedConv?.id} />
                   )
                 )
               )}
@@ -1387,8 +1399,8 @@ export function LinkedInConversationView({
                     </TooltipTrigger>
                     <TooltipContent side="top">
                       {agentEnabled
-                        ? 'AI auto-replies are ON — click to turn off'
-                        : 'AI auto-replies are OFF — click to turn on'}
+                        ? 'AI auto-replies are ON - click to turn off'
+                        : 'AI auto-replies are OFF - click to turn on'}
                     </TooltipContent>
                   </Tooltip>
 

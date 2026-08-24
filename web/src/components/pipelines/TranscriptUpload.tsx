@@ -143,7 +143,7 @@ export function TranscriptUpload({
         <>
           <p className="mt-3 text-xs text-gray-600 dark:text-slate-300">
             <span className="font-medium text-gray-900 dark:text-white">{fileName}</span>
-            {' — '}{preview.messageCount} message{preview.messageCount === 1 ? '' : 's'}
+            {' - '}{preview.messageCount} message{preview.messageCount === 1 ? '' : 's'}
             {preview.skipped > 0 && `, ${preview.skipped} media placeholder${preview.skipped === 1 ? '' : 's'} skipped`}.
           </p>
 
@@ -190,7 +190,7 @@ export function TranscriptUpload({
 
           {studioSide.size === 0 && (
             <p className="mt-2 text-[11px] text-gray-500 dark:text-slate-400">
-              Answers from your side are what the reading trusts most — without this,
+              Answers from your side are what the reading trusts most - without this,
               nothing in the chat counts as your answer.
             </p>
           )}

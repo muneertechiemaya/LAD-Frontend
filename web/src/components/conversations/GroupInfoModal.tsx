@@ -211,7 +211,7 @@ export function GroupInfoModal({ open, onClose, group, allGroups, channel, onCha
         </DialogHeader>
 
         {/* A broadcast LIST contains groups, not people, and has no send history
-            of its own — so it keeps the single-list view rather than growing
+            of its own - so it keeps the single-list view rather than growing
             tabs that would both be wrong for it. */}
         {!isBroadcastList && (
           <div className="flex border-b border-border px-2">

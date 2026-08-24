@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Settings2, Linkedin, Instagram, Smartphone, Bot, Clock, Lock, Server, Truck, X, Power, Loader2 } from 'lucide-react';
+import { Search, Settings2, Linkedin, Instagram, Smartphone, Bot, Clock, Lock, Server, Truck, X, Power, Loader2, FolderOpen } from 'lucide-react';
 import { useCreditsBalance } from '@lad/frontend-features/billing';
 import { Input } from '@/components/ui/input';
 import { GoogleAuthIntegration } from './GoogleAuthIntegration';
@@ -15,8 +15,10 @@ import { TenantOnboarding } from './TenantOnboarding';
 import { WhatsAppEmbeddedSignup } from './WhatsAppEmbeddedSignup';
 import { GoHighLevelIntegration } from './GoHighLevelIntegration';
 import { ZohoIntegration } from './ZohoIntegration';
+import { MageSettings } from './MageSettings';
 import { useTenant } from '@/contexts/TenantContext';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
+import { safeStorage } from '@lad/shared/storage';
 
 type IntegrationView = 'grid' | string;
 
@@ -130,6 +132,17 @@ const INTEGRATIONS: IntegrationCard[] = [
     category: 'Email & Calendar',
   },
   {
+    // Not an OAuth connection — we provision a Drive folder on our own account
+    // and share it with the user, so this asks nothing of their Google account.
+    // Distinct from the 'google' card above, which is their own Google sign-in.
+    id: 'brand-assets',
+    name: 'Media Generation Engine',
+    description: 'Brand DNA, reference imagery, generated media, and the shorthand the media agent understands.',
+    icon: <FolderOpen className="h-6 w-6 text-indigo-600" />,
+    iconBg: 'bg-indigo-50',
+    category: 'Content',
+  },
+  {
     id: 'custom-email',
     name: 'Custom Email (SMTP)',
     description: 'Connect Roundcube, cPanel mail, Zoho, Yandex, Fastmail, or any self-hosted webmail.',
@@ -160,7 +173,7 @@ const INTEGRATIONS: IntegrationCard[] = [
   {
     id: 'zoho',
     name: 'Zoho CRM',
-    description: 'Connect Zoho CRM to sync Contacts, Leads, and Deals — and push Mr LAD leads back into Zoho.',
+    description: 'Connect Zoho CRM to sync Contacts, Leads, and Deals - and push Mr LAD leads back into Zoho.',
     icon: (
       <span className="text-lg font-bold text-red-600 select-none leading-none" aria-label="Zoho">Z</span>
     ),
@@ -327,7 +340,7 @@ export const IntegrationsSettings: React.FC = () => {
                 const csData = await cs.json();
                 setWapaAiEnabled(csData?.settings?.ai_enabled !== false);
               }
-            } catch { /* non-fatal — pill stays at its default (ON) */ }
+            } catch { /* non-fatal - pill stays at its default (ON) */ }
           }
         }
       } catch { setStatus('whatsapp-personal', 'disconnected'); }
@@ -352,7 +365,7 @@ export const IntegrationsSettings: React.FC = () => {
                 const csData = await cs.json();
                 setWabaAiEnabled(csData?.ai_enabled !== false);
               }
-            } catch { /* non-fatal — pill stays at its default (ON) */ }
+            } catch { /* non-fatal - pill stays at its default (ON) */ }
           }
         }
       } catch { setStatus('whatsapp-ai', 'disconnected'); }
@@ -466,6 +479,31 @@ export const IntegrationsSettings: React.FC = () => {
       } catch {
         setStatus('routemagic', 'disconnected');
       }
+
+      // Brand Assets folder — served by the playground worker, not the Next.js
+      // API, so this goes direct with the JWT rather than via fetchWithTenant.
+      //
+      // Deliberately last in this chain. Every other check hits our own API,
+      // but this one hits a Cloud Run service in asia-south1 that has no
+      // minScale, so a first visit after an idle period pays a cold start.
+      // Anywhere earlier and every integration below it waits behind that.
+      // Being last also means the timeout can be generous: ConnectionStatus has
+      // no "unknown", so timing out has to claim 'disconnected', and a short
+      // fuse would mislabel a connected folder whenever the worker was cold.
+      setStatus('brand-assets', 'loading');
+      try {
+        const workerUrl = process.env.NEXT_PUBLIC_PLAYGROUND_WORKER_URL || 'http://localhost:8080';
+        const token = safeStorage.getItem('token');
+        const res = await fetch(`${workerUrl}/brand-assets/status`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          signal: AbortSignal.timeout(10000),
+        });
+        if (!res.ok) { setStatus('brand-assets', 'disconnected'); }
+        else {
+          const data = await res.json();
+          setStatus('brand-assets', data?.asset_count > 0 || data?.drive_connected ? 'connected' : 'disconnected');
+        }
+      } catch { setStatus('brand-assets', 'disconnected'); }
     };
     checkAll();
   }, [setStatus]);
@@ -612,6 +650,7 @@ export const IntegrationsSettings: React.FC = () => {
               }
             />
           )}
+          {activeView === 'brand-assets' && <MageSettings />}
           {activeView === 'linkedin' && <LinkedInIntegration />}
           {activeView === 'gohighlevel' && <GoHighLevelIntegration />}
           {activeView === 'zoho' && <ZohoIntegration />}

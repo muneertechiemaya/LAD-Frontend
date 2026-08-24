@@ -154,7 +154,7 @@ export default function LinkedInBroadcastModal({ onClose }: Props) {
 
   const createGroupFromAccepted = async () => {
     if (!selectedCampaign || !chosenCampaign) { setNotice({ kind: 'err', text: 'Select a campaign first' }); return; }
-    const suffix = excludeResponded ? ' — not responded' : ' — accepted';
+    const suffix = excludeResponded ? ' - not responded' : ' - accepted';
     const name = (newGroupName.trim() || `${chosenCampaign.name}${suffix}`).slice(0, 200);
     setBusy('create');
     setNotice(null);
@@ -169,7 +169,7 @@ export default function LinkedInBroadcastModal({ onClose }: Props) {
       if (!mat.ok) { setNotice({ kind: 'err', text: mat.data?.error || 'Group created but adding members failed' }); }
       else {
         const { added, skipped, member_count } = mat.data.data;
-        setNotice({ kind: 'ok', text: `Added ${added} connection(s)${skipped ? ` — ${skipped} skipped (no LinkedIn id)` : ''}. Group has ${member_count}.` });
+        setNotice({ kind: 'ok', text: `Added ${added} connection(s)${skipped ? ` - ${skipped} skipped (no LinkedIn id)` : ''}. Group has ${member_count}.` });
       }
       setNewGroupName('');
       await loadGroups();
@@ -185,7 +185,7 @@ export default function LinkedInBroadcastModal({ onClose }: Props) {
       const mat = await getJson(`${BASE}/groups/${groupId}/members`, { method: 'POST', body: JSON.stringify({ source: 'campaign_accepted' }) });
       if (mat.ok) {
         const { added, skipped, member_count } = mat.data.data;
-        setNotice({ kind: 'ok', text: `Refreshed — ${added} new, ${skipped} skipped, ${member_count} total.` });
+        setNotice({ kind: 'ok', text: `Refreshed - ${added} new, ${skipped} skipped, ${member_count} total.` });
       }
       await loadGroups();
     } finally {
@@ -406,7 +406,7 @@ export default function LinkedInBroadcastModal({ onClose }: Props) {
                       <input
                         value={newGroupName}
                         onChange={(e) => setNewGroupName(e.target.value)}
-                        placeholder={chosenCampaign ? `${chosenCampaign.name}${excludeResponded ? ' — not responded' : ' — accepted'}` : 'Group name (optional)'}
+                        placeholder={chosenCampaign ? `${chosenCampaign.name}${excludeResponded ? ' - not responded' : ' - accepted'}` : 'Group name (optional)'}
                         className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0D1527] px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0A66C2] dark:focus:border-blue-500"
                       />
 

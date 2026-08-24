@@ -16,11 +16,12 @@
  * Data: GET /api/campaigns/lead-journey?from=&to= — returns counts + the lead
  * lists per stage. Channel-agnostic → always shown.
  */
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { RefreshCw, Filter, Linkedin, X, Download } from 'lucide-react';
 import { WidgetWrapper } from '../WidgetWrapper';
 import { fetchWithTenant } from '@/lib/fetch-with-tenant';
+import { csvCell } from '@/lib/csv';
 
 interface LeadRow {
   lead_id: string;
@@ -35,6 +36,14 @@ type StageKey = 'sent' | 'accepted' | 'responded' | 'sah';
 interface FunnelData {
   counts: Record<StageKey, number>;
   lists: Record<StageKey, LeadRow[]>;
+  /**
+   * Sources the backend could not read for this window (LAD-Backend #661).
+   * `conv_signals` means responded/sah are a FLOOR, not a count — the tenant
+   * conversation DB was unreachable and those signals degraded to empty. Without
+   * reading this the widget renders the shortfall as a real number, and a
+   * zeroed window as "No activity in this period".
+   */
+  degraded?: { new_leads?: boolean; conv_signals?: boolean };
 }
 
 type PeriodKey = 'week' | 'month' | 'quarter' | 'year';
@@ -51,6 +60,9 @@ const STAGES: { key: StageKey; label: string; color: string }[] = [
   { key: 'sah', label: 'Sales Handoff', color: '#639922' },
 ];
 const DAY_MS = 24 * 60 * 60 * 1000;
+// The lead-journey endpoint caps a page at 2000; request that rather than
+// letting it fall back to its 500 default — see the fetch below.
+const LIST_LIMIT = 2000;
 const num = (n: number) => n.toLocaleString();
 const rate = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 100) : 0);
 
@@ -61,17 +73,33 @@ export const CombinedFunnelWidget: React.FC<{ id: string }> = ({ id }) => {
   const [error, setError] = useState<string | null>(null);
   const [openStage, setOpenStage] = useState<StageKey | null>(null);
 
+  // Every load gets a sequence number; only the newest one is allowed to
+  // write state. Switching period fires a new request without cancelling the
+  // old one, and these requests are slow enough (measured 3.5–5.8s) and
+  // variable enough that an EARLIER request can land after a later one — at
+  // which point the stale response would overwrite the newer data and the
+  // funnel would show, say, Year's numbers with "Week" still selected.
+  const reqSeq = useRef(0);
+
   const load = useCallback(async () => {
+    const seq = ++reqSeq.current;
+    const isStale = () => seq !== reqSeq.current;
     setLoading(true);
     setError(null);
     try {
       const days = PERIODS.find((p) => p.key === period)?.days ?? 7;
       const to = new Date();
       const from = new Date(to.getTime() - days * DAY_MS);
-      const qs = `?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}`;
+      // Ask for the endpoint's maximum page (it caps at 2000). Without an
+      // explicit limit the backend defaults to 500, but it computes `counts`
+      // from the FULL result set before slicing the lists — so a stage with
+      // 507 leads reported 507 in the bar and the modal subtitle while the
+      // drill-down table (and its "Download CSV") silently carried only 500.
+      const qs = `?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}&limit=${LIST_LIMIT}`;
       const res = await fetchWithTenant(`/api/campaigns/lead-journey${qs}`);
       const json = await res.json().catch(() => ({}));
       if (!res.ok || json?.success === false) throw new Error(json?.error || `Request failed (${res.status})`);
+      if (isStale()) return; // a newer period was selected while this was in flight
       const c = json?.counts || {};
       setData({
         counts: {
@@ -86,11 +114,16 @@ export const CombinedFunnelWidget: React.FC<{ id: string }> = ({ id }) => {
           responded: Array.isArray(json.responded) ? json.responded : [],
           sah: Array.isArray(json.sah) ? json.sah : [],
         },
+        // Absent on every healthy response, so this stays undefined normally.
+        degraded: json?.degraded,
       });
     } catch (e: any) {
+      if (isStale()) return; // don't surface a superseded request's error
       setError(e?.message || 'Failed to load funnel');
     } finally {
-      setLoading(false);
+      // Only the newest request may clear the spinner — otherwise a stale
+      // one finishing would stop it while the current request is still going.
+      if (!isStale()) setLoading(false);
     }
   }, [period]);
 
@@ -102,6 +135,11 @@ export const CombinedFunnelWidget: React.FC<{ id: string }> = ({ id }) => {
       <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
     </button>
   );
+
+  // Any source the backend could not read makes the whole funnel a floor —
+  // the stages are nested, so an undercounted "responded" drags every stage
+  // below it down too.
+  const isDegraded = !!(data?.degraded?.conv_signals || data?.degraded?.new_leads);
 
   const first = data?.counts.sent ?? 0;
   const last = data?.counts.sah ?? 0;
@@ -142,6 +180,16 @@ export const CombinedFunnelWidget: React.FC<{ id: string }> = ({ id }) => {
             <div key={i} className="h-9 rounded-lg bg-muted/50 dark:bg-white/5 animate-pulse" style={{ width: `${100 - i * 18}%`, margin: '0 auto' }} />
           ))}
         </div>
+      ) : data && isDegraded ? (
+        // Reaching "No activity in this period" while the backend told us it
+        // could not read the signals would state the opposite of what we know.
+        <div className="flex flex-col items-center justify-center py-10 text-center">
+          <p className="text-sm font-medium dark:text-[#E0E0E0]">Couldn&apos;t read this period&apos;s activity</p>
+          <p className="text-xs text-muted-foreground mt-1 max-w-[280px]">
+            Some sources didn&apos;t respond, so these numbers would be too low to trust.
+            This is a loading problem, not a quiet pipeline — try again shortly.
+          </p>
+        </div>
       ) : data && first === 0 && last === 0 && data.counts.accepted === 0 ? (
         <div className="flex flex-col items-center justify-center py-10 text-center">
           <p className="text-sm font-medium dark:text-[#E0E0E0]">No activity in this period</p>
@@ -175,7 +223,7 @@ export const CombinedFunnelWidget: React.FC<{ id: string }> = ({ id }) => {
                 <div key={s.key}>
                   {i > 0 && (
                     <div className="flex items-center justify-center gap-2 py-0.5">
-                      <span className="text-[11px] font-medium text-slate-700 bg-slate-100 rounded-full px-2 py-0.5 dark:text-slate-200 dark:bg-white/5">{conv != null ? `${conv}%` : '—'}</span>
+                      <span className="text-[11px] font-medium text-slate-700 bg-slate-100 rounded-full px-2 py-0.5 dark:text-slate-200 dark:bg-white/5">{conv != null ? `${conv}%` : '-'}</span>
                       {dropped > 0 && <span className="text-[10px] text-muted-foreground/70">{num(dropped)} dropped</span>}
                     </div>
                   )}
@@ -205,7 +253,14 @@ export const CombinedFunnelWidget: React.FC<{ id: string }> = ({ id }) => {
       {openStage && data && (
         <StageLeadsModal
           title={STAGES.find((s) => s.key === openStage)!.label}
-          subtitle={`${periodLabel} · ${num(data.counts[openStage])} lead${data.counts[openStage] === 1 ? '' : 's'}`}
+          // Say what this list ACTUALLY contains. `counts` is the true total,
+          // but the list is capped at LIST_LIMIT — quoting the total alone
+          // would misdescribe both the table and the CSV it exports.
+          subtitle={
+            data.lists[openStage].length < data.counts[openStage]
+              ? `${periodLabel} · showing ${num(data.lists[openStage].length)} of ${num(data.counts[openStage])} leads`
+              : `${periodLabel} · ${num(data.counts[openStage])} lead${data.counts[openStage] === 1 ? '' : 's'}`
+          }
           fileLabel={`${STAGES.find((s) => s.key === openStage)!.label.replace(/\s+/g, '-').toLowerCase()}-${period}`}
           leads={data.lists[openStage]}
           onClose={() => setOpenStage(null)}
@@ -216,14 +271,17 @@ export const CombinedFunnelWidget: React.FC<{ id: string }> = ({ id }) => {
 };
 
 const fmtFollowup = (iso: string | null): string => {
-  if (!iso) return '—';
+  if (!iso) return '-';
   const d = new Date(iso);
-  if (isNaN(d.getTime())) return '—';
+  if (isNaN(d.getTime())) return '-';
   return d.toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 };
 
 function downloadLeadsCsv(leads: LeadRow[], fileLabel: string) {
-  const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  // Shared cell encoder: RFC-4180 quoting AND the formula-injection guard. The
+  // old local `esc` only quoted — a lead named `=WEBSERVICE(...)` (name/company
+  // come from untrusted enrichment) executed when the file was opened in Excel.
+  const esc = csvCell;
   const headers = ['Name', 'Company', 'Industry', 'Campaign', 'LinkedIn URL', 'Next follow-up'];
   const lines = [headers.join(',')];
   for (const l of leads) {
@@ -311,8 +369,8 @@ const StageLeadsModal: React.FC<{ title: string; subtitle: string; fileLabel: st
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-2.5 text-muted-foreground truncate" title={l.company_name || ''}>{l.company_name || '—'}</td>
-                  <td className="px-4 py-2.5 text-muted-foreground truncate" title={l.campaign_name || ''}>{l.campaign_name || '—'}</td>
+                  <td className="px-4 py-2.5 text-muted-foreground truncate" title={l.company_name || ''}>{l.company_name || '-'}</td>
+                  <td className="px-4 py-2.5 text-muted-foreground truncate" title={l.campaign_name || ''}>{l.campaign_name || '-'}</td>
                   <td className="px-4 py-2.5 text-muted-foreground whitespace-nowrap" title={l.next_followup_at || ''}>{fmtFollowup(l.next_followup_at)}</td>
                 </tr>
               ))}

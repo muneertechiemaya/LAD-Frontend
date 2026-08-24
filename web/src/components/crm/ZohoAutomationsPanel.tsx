@@ -50,6 +50,7 @@ const targetLabel = (a: Automation) =>
 export const ZohoAutomationsPanel: React.FC = () => {
   const [items, setItems] = useState<Automation[]>([]);
   const [enabled, setEnabled] = useState(true);
+  const [connected, setConnected] = useState(true);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
   const [queryScanning, setQueryScanning] = useState(false);
@@ -62,11 +63,18 @@ export const ZohoAutomationsPanel: React.FC = () => {
 
   const load = useCallback(async () => {
     try {
-      const res = await fetchWithTenant(`${ZOHO_API}/automations`);
-      const data = await res.json();
-      if (res.ok && data?.success) {
+      const [automationsRes, statusRes] = await Promise.all([
+        fetchWithTenant(`${ZOHO_API}/automations`),
+        fetchWithTenant(`${ZOHO_API}/status`),
+      ]);
+      const data = await automationsRes.json();
+      if (automationsRes.ok && data?.success) {
         setItems(data.data || []);
         setEnabled(data.automation_enabled !== false);
+      }
+      const statusData = await statusRes.json();
+      if (statusRes.ok && statusData?.success) {
+        setConnected(!!statusData.data?.connected);
       }
     } catch { /* ignore */ } finally {
       setLoading(false);
@@ -83,7 +91,7 @@ export const ZohoAutomationsPanel: React.FC = () => {
       if (res.ok && data?.success) {
         const s = data.data || {};
         const li = s.resolved_linkedin ? ` (${s.resolved_linkedin} LinkedIn profiles resolved)` : '';
-        setBanner({ kind: 'ok', text: `Scanned ${s.scanned || 0} tasks — ${s.proposed || 0} proposed, ${s.skipped || 0} skipped${li}.` });
+        setBanner({ kind: 'ok', text: `Scanned ${s.scanned || 0} tasks - ${s.proposed || 0} proposed, ${s.skipped || 0} skipped${li}.` });
         load();
       } else {
         setBanner({ kind: 'err', text: data?.error || 'Scan failed' });
@@ -194,14 +202,21 @@ export const ZohoAutomationsPanel: React.FC = () => {
         </div>
         <button
           onClick={handleScan}
-          disabled={scanning}
-          className="inline-flex items-center justify-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold text-white bg-primary/95 hover:bg-primary/90 dark:bg-blue-600 dark:hover:bg-blue-700 transition-all disabled:opacity-50"
+          disabled={scanning || !connected}
+          title={connected ? undefined : 'Connect Zoho CRM first'}
+          className="inline-flex items-center justify-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold text-white bg-primary/95 hover:bg-primary/90 dark:bg-blue-600 dark:hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
           {scanning ? 'Scanning…' : 'Scan open tasks'}
         </button>
       </div>
 
+      {!loading && !connected && (
+        <div className="flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 p-3 text-sm text-amber-800 dark:text-amber-300">
+          <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+          Zoho CRM isn&apos;t connected. Connect it in Settings → Integrations to scan and sync tasks.
+        </div>
+      )}
       {!enabled && (
         <div className="flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 p-3 text-sm text-amber-800 dark:text-amber-300">
           <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
@@ -232,9 +247,9 @@ export const ZohoAutomationsPanel: React.FC = () => {
             </div>
             <button
               type="button"
-              disabled={queryScanning || !search.trim()}
+              disabled={queryScanning || !search.trim() || !connected}
               onClick={handleQueryScan}
-              title="Search all open Zoho tasks and interpret matches"
+              title={connected ? 'Search all open Zoho tasks and interpret matches' : 'Connect Zoho CRM first'}
               className="h-9 px-3.5 rounded-lg text-sm font-medium border border-slate-200 dark:border-blue-950/40 bg-white dark:bg-[#09153b] text-[#172560] dark:text-white hover:bg-slate-50 dark:hover:bg-[#122254] inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {queryScanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
@@ -275,7 +290,7 @@ export const ZohoAutomationsPanel: React.FC = () => {
         <div className="text-center py-8 text-muted-foreground text-sm space-y-3">
           <div>No pending proposals match “{search}”.</div>
           {search.trim() && (
-            <Button variant="outline" size="sm" disabled={queryScanning} onClick={handleQueryScan}>
+            <Button variant="outline" size="sm" disabled={queryScanning || !connected} onClick={handleQueryScan}>
               {queryScanning ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Search className="h-4 w-4 mr-1.5" />}
               Search all Zoho tasks for “{search.trim()}”
             </Button>

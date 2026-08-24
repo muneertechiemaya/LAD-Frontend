@@ -37,6 +37,13 @@ interface PersonalWaTemplate {
   media_type?: 'image' | 'video' | 'document' | null;
   media_url?: string | null;
   media_filename?: string | null;
+  // Attached contact — sent as a follow-up vCard message when the template is
+  // used. Personal WA can't render WABA-style interactive buttons, so this is
+  // the equivalent UX (recipient gets tappable Message/Save actions).
+  attached_contact_name?: string | null;
+  attached_contact_phone?: string | null;
+  attached_contact_email?: string | null;
+  attached_contact_company?: string | null;
 }
 
 type MediaType = 'none' | 'image' | 'video' | 'document';
@@ -51,6 +58,10 @@ interface TemplateFormData {
   media_type: MediaType;
   media_url: string;
   media_filename: string;
+  attached_contact_name: string;
+  attached_contact_phone: string;
+  attached_contact_email: string;
+  attached_contact_company: string;
 }
 
 const EMPTY_FORM: TemplateFormData = {
@@ -63,6 +74,10 @@ const EMPTY_FORM: TemplateFormData = {
   media_type: 'none',
   media_url: '',
   media_filename: '',
+  attached_contact_name: '',
+  attached_contact_phone: '',
+  attached_contact_email: '',
+  attached_contact_company: '',
 };
 
 const API = '/api/whatsapp-conversations/conversations/templates';
@@ -378,6 +393,52 @@ function TemplateFormDialog({
             )}
           </div>
 
+          {/* ── Attached Contact ────────────────────────────────────── */}
+          {/*
+            Personal WA can't render WABA-style interactive buttons, so we
+            offer an attached contact card instead: at send time WAPA fires
+            the template body first, then a native vCard message immediately
+            after. The recipient sees tappable Message/Save actions on the
+            card — closest to a "contact button" the Web protocol allows.
+            All four fields optional; leave phone empty to disable.
+          */}
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+                Attached Contact (optional)
+              </label>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                Sent as a follow-up contact card right after the template — recipient can tap Message / Save.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <Input
+                placeholder="Contact name"
+                value={form.attached_contact_name}
+                onChange={(e) => set('attached_contact_name', e.target.value)}
+                className="bg-white dark:bg-[#00051d] border-slate-200 dark:border-slate-800 text-sm rounded-xl h-11 text-slate-800 dark:text-white"
+              />
+              <Input
+                placeholder="Phone e.g. +971501234567"
+                value={form.attached_contact_phone}
+                onChange={(e) => set('attached_contact_phone', e.target.value)}
+                className="bg-white dark:bg-[#00051d] border-slate-200 dark:border-slate-800 text-sm rounded-xl h-11 text-slate-800 dark:text-white"
+              />
+              <Input
+                placeholder="Email (optional)"
+                value={form.attached_contact_email}
+                onChange={(e) => set('attached_contact_email', e.target.value)}
+                className="bg-white dark:bg-[#00051d] border-slate-200 dark:border-slate-800 text-sm rounded-xl h-11 text-slate-800 dark:text-white"
+              />
+              <Input
+                placeholder="Company (optional)"
+                value={form.attached_contact_company}
+                onChange={(e) => set('attached_contact_company', e.target.value)}
+                className="bg-white dark:bg-[#00051d] border-slate-200 dark:border-slate-800 text-sm rounded-xl h-11 text-slate-800 dark:text-white"
+              />
+            </div>
+          </div>
+
           {/* Description */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -485,6 +546,10 @@ export function PersonalWaTemplateManager() {
       media_type: (t.media_type as MediaType) || 'none',
       media_url: t.media_url || '',
       media_filename: t.media_filename || '',
+      attached_contact_name:    t.attached_contact_name    || '',
+      attached_contact_phone:   t.attached_contact_phone   || '',
+      attached_contact_email:   t.attached_contact_email   || '',
+      attached_contact_company: t.attached_contact_company || '',
     });
     setFormOpen(true);
   }
@@ -507,6 +572,11 @@ export function PersonalWaTemplateManager() {
         media_type: data.media_type !== 'none' ? data.media_type : null,
         media_url: (data.media_url ?? '').trim() || null,
         media_filename: (data.media_filename ?? '').trim() || null,
+        // Attached contact — sent as follow-up vCard at template-send time
+        attached_contact_name:    (data.attached_contact_name    ?? '').trim() || null,
+        attached_contact_phone:   (data.attached_contact_phone   ?? '').trim() || null,
+        attached_contact_email:   (data.attached_contact_email   ?? '').trim() || null,
+        attached_contact_company: (data.attached_contact_company ?? '').trim() || null,
       };
 
       if (editingId) {
