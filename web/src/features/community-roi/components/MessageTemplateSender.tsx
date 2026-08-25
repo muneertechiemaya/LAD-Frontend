@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Send, Clock, Search, CheckCircle, AlertCircle, ChevronRight, ChevronLeft, X } from 'lucide-react';
 import { useScheduleMessages } from '@lad/frontend-features/community-roi';
-import { fetchWithTenant } from '@/lib/fetch-with-tenant';
+import { fetchJson } from '@/lib/fetch-json';
 
 // Render the modal at <body> via a portal so its `position: fixed` actually
 // pins to the viewport. Without this, any ancestor with a CSS transform / filter
@@ -574,7 +574,7 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
         selectedTemplate.header_type === 'document' &&
         MEMBER_REPORT_TEMPLATES.has(selectedTemplate.name);
 
-      fetchWithTenant('/api/whatsapp-conversations/conversations/send-template-to-members', {
+      fetchJson<{ sent?: number; failed?: number }>('/api/whatsapp-conversations/conversations/send-template-to-members', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -588,15 +588,32 @@ const MessageTemplateSender: React.FC<MessageTemplateSenderProps> = ({
           attach_member_report: attachMemberReport,
         }),
       })
-        .then(r => r.json())
-        .then(data => {
-          if (data.failed > 0) {
-            console.warn(`[TemplateSend] ${data.sent} sent, ${data.failed} failed`, data.results);
-          } else {
-            console.warn(`[TemplateSend] Complete - ${data.sent} sent`);
-          }
+        // The banner above already told the user "Broadcasting to N…" and the
+        // modal has closed, so this response is the ONLY chance to correct it.
+        // It used to go to console.warn — for BOTH a total failure and a
+        // partial one — so "20 sent, 30 failed" was invisible and a request
+        // that never landed still read as a broadcast that went out.
+        // `fetchJson` turns the non-2xx case into a throw; the WABA endpoint
+        // gathers all sends and returns the real aggregate, so `failed` here is
+        // an outcome, not a guess.
+        .then((data: { sent?: number; failed?: number }) => {
+          onSuccess({
+            broadcastComplete: true,
+            sent: data?.sent ?? 0,
+            failed: data?.failed ?? 0,
+            total: memberCount,
+          });
         })
-        .catch(err => console.error('[TemplateSend] Error:', err));
+        .catch((err: unknown) => {
+          console.error('[TemplateSend] Error:', err);
+          onSuccess({
+            broadcastComplete: true,
+            sent: 0,
+            failed: memberCount,
+            total: memberCount,
+            error: err instanceof Error ? err.message : 'The broadcast could not be sent',
+          });
+        });
 
     } else {
       // Schedule mode - uses hook (per-member mapping not yet supported)
