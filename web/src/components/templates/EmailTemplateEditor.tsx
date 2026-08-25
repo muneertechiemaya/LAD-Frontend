@@ -951,44 +951,50 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
 
       {/* ── Full-screen preview modal ── */}
       {showPreview && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-6">
-          <div className="bg-white dark:bg-[#000724] rounded-2xl shadow-2xl flex flex-col w-full max-w-3xl max-h-[90vh] border border-gray-100 dark:border-[#262831]">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-[#262831]">
-              <div>
-                <p className="font-semibold text-gray-900 dark:text-white">Email Preview</p>
-                {template.subject && <p className="text-xs text-gray-400 dark:text-[#7a8ba3] mt-0.5">Subject: {template.subject}</p>}
+        <div
+          className="fixed top-14 md:top-0 inset-x-0 bottom-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6"
+          onClick={() => setShowPreview(false)}
+        >
+          <div
+            className="bg-white dark:bg-[#000724] rounded-2xl shadow-2xl flex flex-col w-full max-w-3xl max-h-[calc(100dvh-4.5rem)] md:max-h-[90vh] border border-gray-100 dark:border-[#262831] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-100 dark:border-[#262831] shrink-0">
+              <div className="min-w-0 pr-2">
+                <p className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white truncate">Email Preview</p>
+                {template.subject && <p className="text-xs text-gray-400 dark:text-[#7a8ba3] mt-0.5 truncate">Subject: {template.subject}</p>}
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                 <div className="flex items-center gap-0.5 bg-gray-100 dark:bg-[#253456] rounded-lg p-0.5">
                   {([
-                    { id: 'mobile',  icon: <Smartphone className="w-4 h-4" />, label: '375px'  },
-                    { id: 'tablet',  icon: <Tablet className="w-4 h-4" />,     label: '768px'  },
-                    { id: 'desktop', icon: <Monitor className="w-4 h-4" />,    label: '1200px' },
+                    { id: 'mobile',  icon: <Smartphone className="w-3.5 h-3.5 sm:w-4 sm:h-4" />, label: '375px'  },
+                    { id: 'tablet',  icon: <Tablet className="w-3.5 h-3.5 sm:w-4 sm:h-4" />,     label: '768px'  },
+                    { id: 'desktop', icon: <Monitor className="w-3.5 h-3.5 sm:w-4 sm:h-4" />,    label: '1200px' },
                   ] as const).map(({ id, icon, label }) => (
                     <button
                       key={id}
                       onClick={() => setDevice(id)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer ${device === id ? 'bg-white dark:bg-[#071131] text-blue-600 dark:text-[#60a5fa] shadow-xs' : 'text-gray-500 dark:text-[#7a8ba3] hover:text-gray-700 dark:hover:text-white'}`}
+                      className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer ${device === id ? 'bg-white dark:bg-[#071131] text-blue-600 dark:text-[#60a5fa] shadow-xs' : 'text-gray-500 dark:text-[#7a8ba3] hover:text-gray-700 dark:hover:text-white'}`}
                     >
                       {icon}
                       <span className="hidden sm:inline">{label}</span>
                     </button>
                   ))}
                 </div>
-                <button onClick={() => setShowPreview(false)} className="p-2 rounded-xl text-gray-400 dark:text-[#7a8ba3] hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#253456] transition-colors cursor-pointer">
+                <button onClick={() => setShowPreview(false)} className="p-1.5 sm:p-2 rounded-xl text-gray-400 dark:text-[#7a8ba3] hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#253456] transition-colors cursor-pointer">
                   <X className="w-5 h-5" />
                 </button>
               </div>
             </div>
             {/* ── Test email send bar ── */}
-            <div className="flex-shrink-0 px-6 py-3 border-b border-gray-100 dark:border-[#262831] bg-amber-50/70 dark:bg-amber-950/20 space-y-2">
+            <div className="flex-shrink-0 px-4 sm:px-6 py-2.5 sm:py-3 border-b border-gray-100 dark:border-[#262831] bg-amber-50/70 dark:bg-amber-950/20 space-y-2">
               <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1.5 w-full">
                 <Send className="w-3.5 h-3.5 shrink-0" />
                 Send a test email to verify before using this template
               </p>
 
               {/* Provider selector */}
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-[11px] text-amber-600 dark:text-amber-500 font-medium shrink-0">Send via:</span>
                 {(
                   [
@@ -1020,7 +1026,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
                   value={testEmailAddr}
                   onChange={(e) => { setTestEmailAddr(e.target.value); setTestResult(null); }}
                   onKeyDown={(e) => { if (e.key === 'Enter') handleSendTest(); }}
-                  className="flex-1 h-8 px-3 text-sm border border-amber-200 dark:border-amber-900 rounded-lg bg-white dark:bg-[#000724] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-300 placeholder-gray-400"
+                  className="flex-1 min-w-0 h-8 px-3 text-xs sm:text-sm border border-amber-200 dark:border-amber-900 rounded-lg bg-white dark:bg-[#000724] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-300 placeholder-gray-400"
                 />
                 <button
                   onClick={handleSendTest}
@@ -1030,7 +1036,7 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
                     !template.subject?.trim() ||
                     !previewHtml?.trim()
                   }
-                  className="flex items-center gap-1.5 h-8 px-4 text-xs font-semibold rounded-lg bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shrink-0 cursor-pointer"
+                  className="flex items-center gap-1.5 h-8 px-3 sm:px-4 text-xs font-semibold rounded-lg bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shrink-0 cursor-pointer"
                 >
                   {sendingTest
                     ? <><Loader2 className="w-3 h-3 animate-spin" /> Sending…</>
@@ -1047,12 +1053,12 @@ export default function EmailTemplateEditor({ mode, initialTemplate, onBack }: E
                   {testResult.ok
                     ? <CheckCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                     : <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />}
-                  <span>{testResult.message}</span>
+                  <span className="break-all">{testResult.message}</span>
                 </div>
               )}
             </div>
 
-            <div className="flex-1 overflow-auto p-6 bg-[#F8F9FE] dark:bg-[#000724]">
+            <div className="flex-1 overflow-auto p-3 sm:p-6 bg-[#F8F9FE] dark:bg-[#000724]">
               <div className={`mx-auto bg-white dark:bg-[#071131] rounded-xl shadow-xs transition-all duration-300 ${device === 'mobile' ? 'max-w-[375px]' : device === 'tablet' ? 'max-w-[768px]' : 'max-w-full'}`}>
                 <EmailPreview htmlContent={previewHtml} subject={template.subject} showDeviceSelector={false} />
               </div>
