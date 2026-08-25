@@ -1,7 +1,7 @@
 'use client';
 // Floating step picker opened by a node's hover "+" buttons.
 //
-// CustomWorkflowNode only knows WHERE a step should go — it dispatches
+// CustomWorkflowNode only knows WHERE a step should go - it dispatches
 // 'addWorkflowStepAt' with the anchor node id and the side that was clicked.
 // The host canvas owns WHAT can be added (its own palette, plus any per-node
 // launch config it has to seed), so it supplies the items and renders this.
@@ -21,7 +21,7 @@ export interface InsertMenuItem {
   chip?: string;
   /** Section heading this item sits under. */
   group?: string;
-  /** Already on the canvas — shown greyed with `hint` instead of being added. */
+  /** Already on the canvas - shown greyed with `hint` instead of being added. */
   disabled?: boolean;
   hint?: string;
   onSelect: () => void;

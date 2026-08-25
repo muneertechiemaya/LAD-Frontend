@@ -76,7 +76,7 @@ interface BusinessHoursModalProps {
   /** Receives structured payload AND formatted summary string */
   onSave: (payload: BusinessHoursPayload, summary: string) => void;
   onClose: () => void;
-  /** Mutation in flight — disables the button so a slow save can't be double-fired. */
+  /** Mutation in flight - disables the button so a slow save can't be double-fired. */
   saving?: boolean;
   /** Set by the caller's onError. Previously there was nowhere for this to go:
    *  a failed save left the modal open with no indication anything went wrong. */
@@ -90,15 +90,15 @@ export const BusinessHoursModal: React.FC<BusinessHoursModalProps> = ({ initialD
   const [activeDays, setActiveDays] = useState<number[]>(initialData?.activeDays ?? [0, 1, 2, 3, 4]);
 
   const timezoneOptions = [
-    { value: 'UTC+0', label: 'UTC — Coordinated Universal Time (UTC+0)', short: 'UTC(UTC+0)' },
-    { value: 'GMT+0', label: 'GMT — Greenwich Mean Time (UTC+0)', short: 'GMT(UTC+0)' },
-    { value: 'GST+4', label: 'GST — Gulf Standard Time (UTC+4)', short: 'GST(UTC+4)' },
-    { value: 'IST+5:30', label: 'IST — India Standard Time (UTC+5:30)', short: 'IST(UTC+5:30)' },
-    { value: 'EST-5', label: 'EST — Eastern Standard Time (UTC−5)', short: 'EST(UTC-5)' },
-    { value: 'PST-8', label: 'PST — Pacific Standard Time (UTC−8)', short: 'PST(UTC-8)' },
-    { value: 'CET+1', label: 'CET — Central European Time (UTC+1)', short: 'CET(UTC+1)' },
-    { value: 'JST+9', label: 'JST — Japan Standard Time (UTC+9)', short: 'JST(UTC+9)' },
-    { value: 'AEST+10', label: 'AEST — Australian Eastern Time (UTC+10)', short: 'AEST(UTC+10)' },
+    { value: 'UTC+0', label: 'UTC - Coordinated Universal Time (UTC+0)', short: 'UTC(UTC+0)' },
+    { value: 'GMT+0', label: 'GMT - Greenwich Mean Time (UTC+0)', short: 'GMT(UTC+0)' },
+    { value: 'GST+4', label: 'GST - Gulf Standard Time (UTC+4)', short: 'GST(UTC+4)' },
+    { value: 'IST+5:30', label: 'IST - India Standard Time (UTC+5:30)', short: 'IST(UTC+5:30)' },
+    { value: 'EST-5', label: 'EST - Eastern Standard Time (UTC−5)', short: 'EST(UTC-5)' },
+    { value: 'PST-8', label: 'PST - Pacific Standard Time (UTC−8)', short: 'PST(UTC-8)' },
+    { value: 'CET+1', label: 'CET - Central European Time (UTC+1)', short: 'CET(UTC+1)' },
+    { value: 'JST+9', label: 'JST - Japan Standard Time (UTC+9)', short: 'JST(UTC+9)' },
+    { value: 'AEST+10', label: 'AEST - Australian Eastern Time (UTC+10)', short: 'AEST(UTC+10)' },
   ];
 
   const toggleDay = (i: number) => {
@@ -128,8 +128,8 @@ export const BusinessHoursModal: React.FC<BusinessHoursModalProps> = ({ initialD
     const sorted = [...activeDays].sort((a, b) => a - b);
     if (!sorted.length) return 'No days selected';
     if (sorted.length === 7) return 'All 7 days selected';
-    if (JSON.stringify(sorted) === JSON.stringify([0, 1, 2, 3, 4])) return 'Mon – Fri selected';
-    if (JSON.stringify(sorted) === JSON.stringify([5, 6])) return 'Sat – Sun selected';
+    if (JSON.stringify(sorted) === JSON.stringify([0, 1, 2, 3, 4])) return 'Mon-Fri selected';
+    if (JSON.stringify(sorted) === JSON.stringify([5, 6])) return 'Sat-Sun selected';
     return sorted.map(i => DAYS[i]).join(', ') + ' selected';
   };
 
@@ -146,10 +146,10 @@ export const BusinessHoursModal: React.FC<BusinessHoursModalProps> = ({ initialD
     const sorted = [...activeDays].sort((a, b) => a - b);
     let dayStr = 'No days';
     if (sorted.length === 7) dayStr = 'All Days';
-    else if (JSON.stringify(sorted) === JSON.stringify([0, 1, 2, 3, 4])) dayStr = 'Mon–Fri';
-    else if (JSON.stringify(sorted) === JSON.stringify([5, 6])) dayStr = 'Sat–Sun';
+    else if (JSON.stringify(sorted) === JSON.stringify([0, 1, 2, 3, 4])) dayStr = 'Mon-Fri';
+    else if (JSON.stringify(sorted) === JSON.stringify([5, 6])) dayStr = 'Sat-Sun';
     else dayStr = sorted.map(i => DAYS[i]).join(', ');
-    return `${fmt12(startTime)} – ${fmt12(endTime)} · ${dayStr} · ${tzText}`;
+    return `${fmt12(startTime)} - ${fmt12(endTime)} · ${dayStr} · ${tzText}`;
   };
 
   const PRESET_LABELS: Record<string, string> = {
@@ -282,7 +282,7 @@ export const BusinessHoursModal: React.FC<BusinessHoursModalProps> = ({ initialD
             </div>
           </div>
 
-          {/* Save error — the mutation's onError previously had nowhere to surface to. */}
+          {/* Save error - the mutation's onError previously had nowhere to surface to. */}
           {error && (
             <div
               role="alert"

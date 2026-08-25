@@ -1,29 +1,67 @@
 'use client';
 
 /**
- * Pipelines — the curated workspace's home screen.
+ * Pipelines - the curated workspace's home screen.
  *
  * This is the surface that REPLACES the workflow builder for a tenant on a
  * vertical snapshot. They do not compose nodes; they switch prebuilt pipelines
  * on and off. Every card is one of three states, which is the whole model:
  *
- *   locked     not entitled — shown, with what it would do, and no switch
+ *   locked     not entitled - shown, with what it would do, and no switch
  *   off        entitled, tenant has not switched it on
  *   on         entitled and running
  *
  * "Locked" is deliberately shown rather than hidden: hiding everything a
  * workspace lacks removes the only route by which they discover it exists.
  *
- * The switch changes ACTIVATION only. It cannot grant an entitlement — the
+ * BUILD STATE IS A SECOND, INDEPENDENT AXIS
+ * A pipeline the manifest marks `planned` is entitled and switchable, but no
+ * engine runs it yet. Rendering it identically to a `live` one is the single
+ * most misleading thing this page can do: the switch looks like it started
+ * work, and the tenant waits for an agent that was never going to reply. So a
+ * non-live pipeline is labelled, and switching it on says what that actually
+ * means - the choice is recorded and takes effect when the pipeline ships.
+ *
+ * Only `live` is treated as running. An unrecognised state - one added to a
+ * later manifest and deployed ahead of this page - reads as not-live, so a
+ * frontend that has not caught up understates rather than overstates.
+ *
+ * The switch changes ACTIVATION only. It cannot grant an entitlement - the
  * server refuses, and the optimistic update in usePipelines rolls back.
  */
 
 import React, { useState } from 'react';
 import { Lock, Loader2, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react';
-import { usePipelines } from '@lad/frontend-features/snapshots';
+import { usePipelines, useKnobProposals } from '@lad/frontend-features/snapshots';
 import type { SnapshotPipeline, KnobValues } from '@lad/frontend-features/snapshots';
 import { KnobForm } from '@/components/pipelines/KnobForm';
+import { KnobProposals, ScanHistoryButton } from '@/components/pipelines/KnobProposals';
+import { ConversationPicker } from '@/components/pipelines/ConversationPicker';
+import { TranscriptUpload } from '@/components/pipelines/TranscriptUpload';
 import { useAuth } from '@/contexts/AuthContext';
+
+/** Only `live` means an engine is actually running this pipeline. Unknown
+ *  states fail closed - see the header comment. */
+function isLive(pipeline: SnapshotPipeline) {
+  return pipeline.state === 'live';
+}
+
+/** Wording per known build state, falling back to a neutral label so a state
+ *  this build has never heard of still renders honestly. */
+const BUILD_STATE_LABEL: Record<string, string> = {
+  planned: 'Not running yet',
+  building: 'Being built',
+};
+
+function BuildStateBadge({ pipeline }: { pipeline: SnapshotPipeline }) {
+  if (isLive(pipeline)) return null;
+  const label = (pipeline.state && BUILD_STATE_LABEL[pipeline.state]) || 'Not running yet';
+  return (
+    <span className="shrink-0 rounded-md border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0.5 text-[11px] font-medium text-amber-800 dark:text-amber-300">
+      {label}
+    </span>
+  );
+}
 
 function EngineHint({ pipeline }: { pipeline: SnapshotPipeline }) {
   if (!pipeline.goal) return null;
@@ -48,9 +86,18 @@ function PipelineCard({
   onSaveKnobs: (values: KnobValues) => Promise<string[]>;
 }) {
   const { key, name, blurb, entitled, active, campaignCount, knobs, knobValues } = pipeline;
+  const live = isLive(pipeline);
   const toggleId = `pipeline-toggle-${key}`;
   const [showSettings, setShowSettings] = useState(false);
   const hasKnobs = entitled && knobs.length > 0;
+  // Per-card, so two open cards do not share one set of suggestions. Mounted
+  // with the card rather than with the settings panel so a scan survives the
+  // panel being collapsed and reopened.
+  const proposals = useKnobProposals(key);
+  // Idle → (picking | uploading) → reviewing. One field, not two booleans, so
+  // the picker and the upload panel can never be open at once. Held here rather
+  // than in the panels so leaving one cannot strand a half-made selection.
+  const [sourceMode, setSourceMode] = useState<'pick' | 'upload' | null>(null);
 
   return (
     <div
@@ -63,6 +110,7 @@ function PipelineCard({
           <div className="flex items-center gap-2">
             <h3 className="text-base font-semibold text-gray-900 dark:text-white truncate">{name}</h3>
             {!entitled && <Lock className="h-3.5 w-3.5 text-gray-400 dark:text-slate-500 shrink-0" aria-hidden="true" />}
+            <BuildStateBadge pipeline={pipeline} />
           </div>
           <p className="mt-1 text-sm leading-relaxed text-gray-600 dark:text-slate-300">{blurb}</p>
         </div>
@@ -70,7 +118,11 @@ function PipelineCard({
         {entitled ? (
           <label htmlFor={toggleId} className="flex items-center gap-2 shrink-0 cursor-pointer">
             <span className="sr-only">
-              {active ? `Turn ${name} off` : `Turn ${name} on`}
+              {live
+                ? (active ? `Turn ${name} off` : `Turn ${name} on`)
+                : (active
+                    ? `Turn ${name} off. Not running yet.`
+                    : `Turn ${name} on. Not running yet - starts when this pipeline ships.`)}
             </span>
             <input
               id={toggleId}
@@ -94,9 +146,11 @@ function PipelineCard({
         <EngineHint pipeline={pipeline} />
         {entitled && (
           <span className="text-xs text-gray-500 dark:text-slate-400 tabular-nums">
-            {campaignCount === 0
-              ? 'No campaigns yet'
-              : `${campaignCount} campaign${campaignCount === 1 ? '' : 's'}`}
+            {!live
+              ? (active ? 'On - starts when this ships' : 'Available when this ships')
+              : campaignCount === 0
+                ? 'No campaigns yet'
+                : `${campaignCount} campaign${campaignCount === 1 ? '' : 's'}`}
           </span>
         )}
       </div>
@@ -118,12 +172,63 @@ function PipelineCard({
           {/* Mounted only when open so each card keeps its own draft state and
               a collapse discards edits rather than holding them invisibly. */}
           {showSettings && (
-            <KnobForm
-              knobs={knobs}
-              values={knobValues}
-              saving={saving}
-              onSave={onSaveKnobs}
-            />
+            <>
+              {/* Offered above the form: filling 27 fields by hand is the real
+                  cost here, and most of the answers are already in the
+                  workspace's own history. */}
+              {proposals.result ? (
+                <KnobProposals
+                  result={proposals.result}
+                  saving={saving}
+                  onApply={async (values) => {
+                    const errs = await onSaveKnobs(values);
+                    // Keep the panel open when the server rejected something  - 
+                    // dismissing would hide both the errors and the evidence
+                    // needed to judge them.
+                    if (!errs.length) proposals.dismiss();
+                    return errs;
+                  }}
+                  onDismiss={proposals.dismiss}
+                />
+              ) : sourceMode === 'pick' ? (
+                <ConversationPicker
+                  isScanning={proposals.isScanning}
+                  onCancel={() => setSourceMode(null)}
+                  onScan={async (ids) => {
+                    await proposals.scan(ids);
+                    // Leave the picker only once the scan has returned: closing
+                    // on click would drop the user back to the buttons with no
+                    // sign anything was happening.
+                    setSourceMode(null);
+                  }}
+                />
+              ) : sourceMode === 'upload' ? (
+                <TranscriptUpload
+                  pipeline={key}
+                  isScanning={proposals.isScanning}
+                  onCancel={() => setSourceMode(null)}
+                  onScan={async (transcript, studioParticipants) => {
+                    await proposals.scanUpload(transcript, studioParticipants);
+                    setSourceMode(null);
+                  }}
+                />
+              ) : (
+                <ScanHistoryButton
+                  isScanning={proposals.isScanning}
+                  error={proposals.error}
+                  onScan={() => void proposals.scan()}
+                  onPick={() => setSourceMode('pick')}
+                  onUpload={() => setSourceMode('upload')}
+                />
+              )}
+
+              <KnobForm
+                knobs={knobs}
+                values={knobValues}
+                saving={saving}
+                onSave={onSaveKnobs}
+              />
+            </>
           )}
         </>
       )}
@@ -144,7 +249,7 @@ export default function PipelinesPage() {
     );
   }
 
-  // A tenant outside a snapshot reaching this route is not an error — they
+  // A tenant outside a snapshot reaching this route is not an error - they
   // simply run the general-purpose product, where campaigns are built rather
   // than switched on.
   if (!isCuratedWorkspace || !overview?.vertical) {

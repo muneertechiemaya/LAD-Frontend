@@ -6,7 +6,7 @@ import { Trash2, Settings, Tag, Plus } from 'lucide-react';
 import { useOnboardingStore } from '@/store/onboardingStore';
 
 /**
- * Brand color config — matches the generated mockup palette
+ * Brand color config - matches the generated mockup palette
  */
 function getBrandConfig(type: string) {
   if (type === 'start')            return { bg: '#22c55e', border: '#16a34a', glow: 'rgba(34,197,94,0.25)' };
@@ -48,7 +48,7 @@ function getBrandConfig(type: string) {
 }
 
 /**
- * Clean circular workflow node — matches the generated mockup
+ * Clean circular workflow node - matches the generated mockup
  * Light style, soft shadows, clean typography
  */
 export function CustomWorkflowNode({ data, id, selected }: NodeProps) {
@@ -62,7 +62,7 @@ export function CustomWorkflowNode({ data, id, selected }: NodeProps) {
   // Insert affordances ("+" on each side of the circle). The fanned-out branch
   // children of a Multi-condition node are drawn from its config, not from the
   // step list, so there is no slot to insert around them. Nothing may be
-  // inserted ahead of the lead source (or of 'start') — leads have to exist
+  // inserted ahead of the lead source (or of 'start') - leads have to exist
   // before any step can act on them.
   const isBranchNode = !!data?._branch;
   const isEntry = stepType === 'start' || stepType === 'lead_generation';
@@ -128,7 +128,7 @@ export function CustomWorkflowNode({ data, id, selected }: NodeProps) {
         <Handle type="source" position={Position.Bottom} id="bottom"
           style={{ width: 8, height: 8, background: '#d1d5db', border: '2px solid #fff', bottom: -4 }} />
       )}
-      {/* Side connection points on the circle's left/right edges — used by the
+      {/* Side connection points on the circle's left/right edges - used by the
           horizontal "snake" layout. Invisible; edges simply attach here. */}
       <Handle type="target" position={Position.Left}  id="l-t" style={{ left: `calc(50% - ${nodeSize / 2}px)`, top: nodeSize / 2, width: 6, height: 6, opacity: 0, border: 'none', background: 'transparent' }} />
       <Handle type="source" position={Position.Left}  id="l-s" style={{ left: `calc(50% - ${nodeSize / 2}px)`, top: nodeSize / 2, width: 6, height: 6, opacity: 0, border: 'none', background: 'transparent' }} />
@@ -151,14 +151,14 @@ export function CustomWorkflowNode({ data, id, selected }: NodeProps) {
         </div>
       )}
 
-      {/* Add-a-step affordances — left = input (runs before), right = output
+      {/* Add-a-step affordances - left = input (runs before), right = output
           (runs after). Revealed on hover, and kept visible while selected. */}
       {canInsertBefore && (
         <button
           onClick={requestInsert('before')}
           className="mk-io mk-io-in"
           style={{ left: `calc(50% - ${nodeSize / 2 + 28}px)`, top: nodeSize / 2 - 11 }}
-          title="Add input — a step that runs before this one"
+          title="Add input: a step that runs before this one"
         >
           <Plus className="w-3 h-3" />
         </button>
@@ -168,7 +168,7 @@ export function CustomWorkflowNode({ data, id, selected }: NodeProps) {
           onClick={requestInsert('after')}
           className="mk-io mk-io-out"
           style={{ right: `calc(50% - ${nodeSize / 2 + 28}px)`, top: nodeSize / 2 - 11 }}
-          title="Add output — a step that runs after this one"
+          title="Add output: a step that runs after this one"
         >
           <Plus className="w-3 h-3" />
         </button>
@@ -188,7 +188,7 @@ export function CustomWorkflowNode({ data, id, selected }: NodeProps) {
         }} />
       )}
 
-      {/* Main circle — clean soft shadow, no excessive glow */}
+      {/* Main circle - clean soft shadow, no excessive glow */}
       <div
         className="mk-circle"
         style={{
