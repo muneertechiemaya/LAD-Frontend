@@ -148,7 +148,7 @@ export function CreateWabaTemplateModal({ open, onOpenChange, onCreated }: Creat
     setHeaderMediaHandle('');
     setMediaFileName(file.name);
     try {
-      // Read file as base64 and send as JSON — avoids multipart proxy issues
+      // Read file as base64 and send as JSON - avoids multipart proxy issues
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve((reader.result as string).split(',')[1]);

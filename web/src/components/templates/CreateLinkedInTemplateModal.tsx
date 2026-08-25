@@ -56,7 +56,7 @@ interface CreateLinkedInTemplateModalProps {
    * Optional callback fired with the freshly-created template (the create
    * mutation's result) right before the modal closes. Lets a caller auto-select
    * the new template (e.g. the per-touch follow-up template picker). Not called
-   * on edit. Backward-compatible — existing callers omit it.
+   * on edit. Backward-compatible - existing callers omit it.
    */
   onCreated?: (tpl: LinkedInMessageTemplate) => void;
 }
@@ -159,7 +159,7 @@ export default function CreateLinkedInTemplateModal({
     setMediaFilename(null);
   };
 
-  // Connection requests are text-only on LinkedIn — drop any attachment when the
+  // Connection requests are text-only on LinkedIn - drop any attachment when the
   // user switches the type to connection.
   const handleTypeChange = (value: string) => {
     setTemplateType(value);
@@ -355,7 +355,7 @@ export default function CreateLinkedInTemplateModal({
             </p>
           </div>
 
-          {/* Media attachment — follow-up templates only */}
+          {/* Media attachment - follow-up templates only */}
           {!isConnection && (
             <div className="space-y-2">
               <Label className="text-sm font-medium text-gray-900 dark:text-white">Attachment (optional)</Label>

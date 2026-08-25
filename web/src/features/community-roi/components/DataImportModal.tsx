@@ -337,7 +337,7 @@ export function DataImportModal() {
                     type="file"
                     accept=".xlsx"
                     multiple
-                    // @ts-expect-error — webkitdirectory is non-standard but widely supported
+                    // @ts-expect-error - webkitdirectory is non-standard but widely supported
                     webkitdirectory=""
                     onChange={handleFolderSelect}
                     className="hidden"

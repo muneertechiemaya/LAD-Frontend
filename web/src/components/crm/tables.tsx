@@ -13,6 +13,7 @@ import {
   VerifiedTag, Pager, type CrmPagination,
 } from './shared';
 import { CRM_OWNERS, type CrmContact } from './data';
+import { csvCell } from '@/lib/csv';
 import {
   Select,
   SelectContent,
@@ -151,7 +152,7 @@ function RowActions({ onRemove }: { onRemove?: () => void }) {
 // Used by the Export button in every CrmTable view. Renders the CURRENTLY
 // FILTERED rows (so the user gets what they're seeing, not the whole table)
 // to a UTF-8 CSV with a BOM so Excel opens it cleanly. Stable, well-known
-// CrmContact fields are exported regardless of which view is showing —
+// CrmContact fields are exported regardless of which view is showing  - 
 // users typically want all the underlying data, not just the visible cells.
 
 // Stable column order for the exported CSV. Centralised so all four views
@@ -188,15 +189,6 @@ const CSV_FIELDS: { key: keyof CrmContact; label: string }[] = [
 
 // RFC-4180 CSV cell escape: wrap in double quotes if the value contains a
 // comma, double-quote, or newline; double any embedded quotes.
-function csvCell(v: unknown): string {
-  if (v == null) return '';
-  let s: string;
-  if (Array.isArray(v)) s = v.join('|');
-  else if (typeof v === 'object') s = JSON.stringify(v);
-  else s = String(v);
-  if (/[",\r\n]/.test(s)) s = `"${s.replace(/"/g, '""')}"`;
-  return s;
-}
 
 function buildContactsCsv(rows: CrmContact[]): string {
   const header = CSV_FIELDS.map((f) => csvCell(f.label)).join(',');
@@ -207,8 +199,8 @@ function buildContactsCsv(rows: CrmContact[]): string {
 }
 
 function downloadCsv(filename: string, csv: string): void {
-  // Guard for SSR-style invocation (shouldn't happen — this lives in a
-  // 'use client' file — but fail safely if it ever does).
+  // Guard for SSR-style invocation (shouldn't happen - this lives in a
+  // 'use client' file - but fail safely if it ever does).
   if (typeof window === 'undefined' || typeof document === 'undefined') return;
   // Prepend BOM so Excel auto-detects UTF-8.
   const blob = new Blob(['﻿', csv], { type: 'text/csv;charset=utf-8' });

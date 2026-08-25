@@ -34,7 +34,7 @@ export type Template = {
   channel?: 'WhatsApp' | 'Gmail' | 'Outlook' | 'Email';
 };
 
-// Channel chip colors — aligned with the app's channel branding.
+// Channel chip colors - aligned with the app's channel branding.
 const CHANNEL_CHIP: Record<NonNullable<Template['channel']>, { bg: string; fg: string }> = {
   WhatsApp: { bg: '#d1fae5', fg: '#059669' },  // emerald
   Gmail:    { bg: '#fee2e2', fg: '#dc2626' },  // red
@@ -55,25 +55,25 @@ export type BroadcastPerformanceProps = {
   chromeless?: boolean;
 };
 
-// ─── Visual system — Tailwind-aligned palette ────────────────────────────────
+// ─── Visual system - Tailwind-aligned palette ────────────────────────────────
 // Source-of-truth hex values mirror the app's Tailwind defaults so the table
 // blends in with neighbouring cards / badges. Color meaning is immutable:
 // Read=emerald, Delivered=amber, Pending=slate, Failed=rose.
 const C = {
   // Neutrals (slate)
-  ink:       '#0f172a',   // slate-900   — primary text
-  ink2:      '#334155',   // slate-700   — secondary text
-  muted:     '#64748b',   // slate-500   — captions, headers
-  hair:      '#e2e8f0',   // slate-200   — borders, bar track
+  ink:       '#0f172a',   // slate-900   - primary text
+  ink2:      '#334155',   // slate-700   - secondary text
+  muted:     '#64748b',   // slate-500   - captions, headers
+  hair:      '#e2e8f0',   // slate-200   - borders, bar track
   surface:   '#ffffff',
-  surface2:  '#f8fafc',   // slate-50    — header / subtle hover
+  surface2:  '#f8fafc',   // slate-50    - header / subtle hover
 
   // Semantic (matches existing badges across the app)
   read:        '#059669', readSoft:      '#d1fae5',  // emerald-600 / emerald-100
   delivered:   '#d97706', deliveredSoft: '#fef3c7',  // amber-600   / amber-100
   pending:     '#94a3b8', pendingSoft:   '#e2e8f0',  // slate-400   / slate-200
   failed:      '#e11d48', failedSoft:    '#ffe4e6',  // rose-600    / rose-100
-  // "Okay" band (25–35%): a warmer amber that still reads as caution, not a
+  // "Okay" band (25-35%): a warmer amber that still reads as caution, not a
   // celebratory green and not an alarming red.
   okay:        '#b45309', okaySoft:      '#fef3c7',  // amber-700   / amber-100
 } as const;
@@ -120,7 +120,7 @@ const SCOPED_CSS = `
   border-bottom: 1px solid ${C.hair};
 }
 /* Extra bottom padding leaves room for the absolutely-positioned subtitle
-   under the template dropdown without affecting the row's centerline — that
+   under the template dropdown without affecting the row's centerline - that
    way every other cell (bar, numbers, pill) aligns to the dropdown's middle,
    not to a synthetic midpoint between dropdown and subtitle. */
 .lad-bp-table tbody td {
@@ -137,7 +137,7 @@ const SCOPED_CSS = `
 .lad-bp-col-num      { width: 80px;  text-align: right; font-family: ${FONT_MONO}; font-variant-numeric: tabular-nums; font-size: 15px; font-weight: 600; white-space: nowrap; }
 .lad-bp-col-rate     { width: 104px; text-align: right; }
 
-/* Template-cell dropdown — pill-shaped with prefix label, matches app's
+/* Template-cell dropdown - pill-shaped with prefix label, matches app's
    "Next 2 weeks ▾" filter buttons elsewhere in the product. */
 .lad-bp-select-pill {
   position: relative;
@@ -181,7 +181,7 @@ const SCOPED_CSS = `
 }
 
 /* Subtitle: floats below the dropdown without contributing to the row's
-   centerline — keeps numbers/bar/pill visually aligned to the dropdown. */
+   centerline - keeps numbers/bar/pill visually aligned to the dropdown. */
 .lad-bp-template-wrap { position: relative; min-width: 0; }
 .lad-bp-template-sub {
   position: absolute;
@@ -200,7 +200,7 @@ const SCOPED_CSS = `
 }
 .lad-bp-bar-seg { height: 100%; transition: width 500ms cubic-bezier(.4,0,.2,1); }
 
-/* Rate pill — color/background driven by band */
+/* Rate pill - color/background driven by band */
 .lad-bp-rate-pill {
   display: inline-flex; align-items: baseline; gap: 2px;
   padding: 6px 12px; border-radius: 999px;
@@ -369,7 +369,7 @@ export function BroadcastPerformance({
     <section className="lad-bp-wrap" aria-labelledby={chromeless ? undefined : 'lad-bp-heading'}>
       <style>{SCOPED_CSS}</style>
 
-      {/* Section heading — suppressed when host provides its own chrome */}
+      {/* Section heading - suppressed when host provides its own chrome */}
       {!chromeless && (
         <header style={{ marginBottom: 12 }}>
           <div
@@ -421,7 +421,7 @@ export function BroadcastPerformance({
           <tr aria-label={`${t.name} broadcast row`}>
             <td className="lad-bp-col-index">{String(idx + 1).padStart(2, '0')}</td>
 
-            {/* Template — pill-shaped dropdown with subtitle floated below */}
+            {/* Template - pill-shaped dropdown with subtitle floated below */}
             <td className="lad-bp-col-template">
               <label
                 htmlFor="lad-bp-template-select"

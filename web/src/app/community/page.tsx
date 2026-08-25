@@ -1,11 +1,11 @@
 'use client';
 
 /**
- * /community — founding-group landing page.
+ * /community - founding-group landing page.
  *
  * The destination for the "reply 'in'" InMail and the PDF lead magnet: an
  * operator with a working outreach playbook applies to build it as a Mr LAD
- * strategy, run it for real, and — if it produces results — have it published
+ * strategy, run it for real, and - if it produces results - have it published
  * to the shared strategy gallery.
  *
  * Public route (see lib/routes.ts). The form posts to /api/community-signup,
@@ -33,7 +33,7 @@ interface Attribution {
  *
  * Read from the URL, then fall back to whatever we stored the first time they
  * arrived. FIRST touch wins on purpose: someone clicks the InMail link, reads,
- * leaves, then comes back later by typing the URL — without persistence that
+ * leaves, then comes back later by typing the URL - without persistence that
  * signup would be miscredited to "landing" and the InMail would look like it
  * did nothing.
  *
@@ -66,12 +66,12 @@ function resolveAttribution(): Attribution {
   if (source) {
     const attribution = { source, utm };
     try {
-      // First touch only — never overwrite an earlier, more meaningful visit.
+      // First touch only - never overwrite an earlier, more meaningful visit.
       if (!window.localStorage.getItem(ATTRIBUTION_KEY)) {
         window.localStorage.setItem(ATTRIBUTION_KEY, JSON.stringify(attribution));
       }
     } catch {
-      /* private browsing — attribution just won't survive the round trip */
+      /* private browsing - attribution just won't survive the round trip */
     }
     return attribution;
   }
@@ -146,7 +146,7 @@ export default function CommunityPage() {
     linkedin_url: '',
     playbook: '',
     client_volume: '',
-    website: '', // honeypot — hidden from humans, bots fill it
+    website: '', // honeypot - hidden from humans, bots fill it
   });
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
@@ -155,7 +155,7 @@ export default function CommunityPage() {
   const [attribution, setAttribution] = useState<Attribution>({ source: 'landing', utm: {} });
 
   // Resolved after mount so the server render stays identical for every
-  // visitor — attribution is per-visitor state, not page content.
+  // visitor - attribution is per-visitor state, not page content.
   useEffect(() => {
     setAttribution(resolveAttribution());
   }, []);

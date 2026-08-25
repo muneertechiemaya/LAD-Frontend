@@ -1,9 +1,9 @@
 'use client';
-// /crm — Pipeline + Prospect list/board, wired to the Master Agent.
+// /crm - Pipeline + Prospect list/board, wired to the Master Agent.
 //
 // Live data: prospect_state via @lad/frontend-features/prospects. Clicking a row
 // navigates to /crm/[id] (full detail page). The dummy data in ./data is no
-// longer used for values — only its types + STAGES + the adapter.
+// longer used for values - only its types + STAGES + the adapter.
 
 import * as React from 'react';
 import { useMemo, useState } from 'react';
@@ -147,40 +147,54 @@ export default function CrmPage() {
   // `?? 0` on all of these meant an outage rendered "All Contacts 0 · Prospects
   // 0 · Leads 0 · Clients 0" — a tenant with 571 contacts told their CRM was
   // empty. Keep them nullable so a figure we could not load reads as "—".
+  //
+  // Each bucket is its OWN request, so they fail INDEPENDENTLY: on a cold cache
+  // a partial outage can resolve the tenant total while one bucket comes back
+  // undefined. Coercing that bucket to 0 published two lies at once — "Clients
+  // 0" for a tenant that has clients, and a Prospects figure inflated by the
+  // clients that silently went missing from the subtraction below. Stay null
+  // all the way to the render so each card can say "—" on its own.
   const trueTotalQuery = useProspects({ limit: 1 });
   const trueTotal = trueTotalQuery.data?.total ?? null;
-  const qualifiedTotal = useProspects({ lifecycle_stage: 'qualified', limit: 1 }).data?.total ?? 0;
-  const sahTotal = useProspects({ lifecycle_stage: 'sah', limit: 1 }).data?.total ?? 0;
-  const wonTotal = useProspects({ lifecycle_stage: 'won', limit: 1 }).data?.total ?? 0;
+  const qualifiedTotal = useProspects({ lifecycle_stage: 'qualified', limit: 1 }).data?.total ?? null;
+  const sahTotal = useProspects({ lifecycle_stage: 'sah', limit: 1 }).data?.total ?? null;
+  const wonTotal = useProspects({ lifecycle_stage: 'won', limit: 1 }).data?.total ?? null;
 
   // Same problem, one view over: the board buckets `kanbanLeads`, which is only
   // the current 50-row page, so its column headers capped at PAGE_SIZE too —
   // 550 "new" prospects rendered as "New 38" right under "All Contacts 571".
   // 'qualified' and 'sah' are already fetched above, so only 3 more limit=1
   // requests are needed to cover all five STAGES.
-  const newTotal = useProspects({ lifecycle_stage: 'new', limit: 1 }).data?.total ?? 0;
-  const contactedTotal = useProspects({ lifecycle_stage: 'contacted', limit: 1 }).data?.total ?? 0;
-  const engagedTotal = useProspects({ lifecycle_stage: 'engaged', limit: 1 }).data?.total ?? 0;
+  //
+  // Left UNDEFINED when the count did not load: KanbanBoard already falls back
+  // to the number of cards it actually has (`stageTotal ?? loaded`). Passing 0
+  // defeated that fallback — 0 is not nullish — so a failed stage count printed
+  // "Engaged 0 · AED 0 pipeline" directly above the Engaged cards on the page.
+  const newTotal = useProspects({ lifecycle_stage: 'new', limit: 1 }).data?.total;
+  const contactedTotal = useProspects({ lifecycle_stage: 'contacted', limit: 1 }).data?.total;
+  const engagedTotal = useProspects({ lifecycle_stage: 'engaged', limit: 1 }).data?.total;
   const stageTotals = useMemo(
     () => ({
       new: newTotal,
       contacted: contactedTotal,
       engaged: engagedTotal,
-      qualified: qualifiedTotal,
-      sah: sahTotal,
+      qualified: qualifiedTotal ?? undefined,
+      sah: sahTotal ?? undefined,
     }),
     [newTotal, contactedTotal, engagedTotal, qualifiedTotal, sahTotal],
   );
   const counts = useMemo(() => {
-    // Without the tenant total we cannot derive ANY of these honestly — the
-    // prospect bucket is `all` minus the others — so surface all four as
-    // unknown rather than inventing zeros.
-    if (trueTotal === null) {
-      return { all: null, prospects: null, leads: null, clients: null };
-    }
-    const leads = qualifiedTotal + sahTotal;
+    // Derive each card only from figures we actually have. `leads` needs both
+    // of its halves; `prospects` is `all` minus the others, so it needs all
+    // three. Anything underivable stays null and renders "—" rather than a
+    // zero we cannot stand behind.
+    const leads = qualifiedTotal != null && sahTotal != null ? qualifiedTotal + sahTotal : null;
     const clients = wonTotal;
-    return { all: trueTotal, prospects: Math.max(0, trueTotal - leads - clients), leads, clients };
+    const prospects =
+      trueTotal != null && leads != null && clients != null
+        ? Math.max(0, trueTotal - leads - clients)
+        : null;
+    return { all: trueTotal, prospects, leads, clients };
   }, [trueTotal, qualifiedTotal, sahTotal, wonTotal]);
 
   // The list itself never loaded — distinct from "this tenant has no contacts".
@@ -337,7 +351,7 @@ export default function CrmPage() {
 
         <footer className="pt-6 pb-2 text-[11.5px] text-slate-400 dark:text-slate-300/60 flex items-center justify-between">
           {/* Every non-board view already renders its own Pager (see CrmTable),
-              sourced from this same `pagination` object — repeating the raw
+              sourced from this same `pagination` object - repeating the raw
               total here duplicated it and, once a table search/filter was
               active, contradicted the filtered count shown above it. Only the
               board view has no other totals indicator, so it's the only one

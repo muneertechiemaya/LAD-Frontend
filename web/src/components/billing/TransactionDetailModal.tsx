@@ -35,7 +35,7 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
 }) => {
   if (!transaction) return null;
 
-  // Ledger amounts are CREDIT-denominated — format as credits, not USD.
+  // Ledger amounts are CREDIT-denominated - format as credits, not USD.
   const formatCredits = (amount: string | number) => {
     const num = typeof amount === 'string' ? parseFloat(amount) : amount;
     return new Intl.NumberFormat('en-US', {

@@ -4,7 +4,7 @@
  *
  * React port of VOAG's server-rendered `api/templates/booking_wizard.html`, which
  * ran as a post-OAuth redirect step. LAD_backend's callback goes straight back to
- * /settings, so the picker lives here instead — same three steps, same auto-select
+ * /settings, so the picker lives here instead - same three steps, same auto-select
  * and auto-advance behaviour, same save payload.
  *
  * The API layer was already migrated (routes + proxy routes + SDK hooks); this is
@@ -145,7 +145,7 @@ export const MicrosoftBookingWizard: React.FC<MicrosoftBookingWizardProps> = ({ 
     }
   };
 
-  // Must mirror `canAdvance` exactly — if Next is enabled but this refuses to
+  // Must mirror `canAdvance` exactly - if Next is enabled but this refuses to
   // move, the button silently does nothing.
   const goNext = () => {
     if (step === 1 && business) setStep(2);
@@ -158,7 +158,7 @@ export const MicrosoftBookingWizard: React.FC<MicrosoftBookingWizardProps> = ({ 
 
   const renderOptions = () => {
     // Covers first load, retries, and retries paused while the backend is
-    // unreachable — none of which should ever look like an empty result.
+    // unreachable - none of which should ever look like an empty result.
     if (activeQuery.isPending) {
       return (
         <div className="flex items-center justify-center gap-2 py-8 text-sm text-slate-500 dark:text-slate-400">

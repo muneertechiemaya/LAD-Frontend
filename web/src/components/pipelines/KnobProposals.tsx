@@ -10,8 +10,8 @@
  * into configuration, where it is far harder to notice. So nothing here is
  * saved until someone ticks it.
  *
- * That makes the EVIDENCE the most important thing on screen — it is the only
- * way a reviewer can tell a fact from a hallucination — so it is shown in full
+ * That makes the EVIDENCE the most important thing on screen - it is the only
+ * way a reviewer can tell a fact from a hallucination - so it is shown in full
  * next to every proposal rather than hidden behind a disclosure.
  *
  * Anything the server flagged for closer review starts UNTICKED. The default
@@ -77,7 +77,7 @@ function ProposalRow({
             )}
           </label>
 
-          {/* The change, not just the value — a reviewer needs to see what it
+          {/* The change, not just the value - a reviewer needs to see what it
               would replace before agreeing to it. */}
           <div className="mt-1.5 text-sm">
             {hasCurrent && (
@@ -230,8 +230,8 @@ export function KnobProposals({
  * The two ways to start a scan, plus its busy and error states.
  *
  * Reading everything is offered first because it needs no decisions. Picking
- * specific chats is the better input — a studio knows which conversations went
- * the way they want — but it is work, so it is the second option rather than
+ * specific chats is the better input - a studio knows which conversations went
+ * the way they want - but it is work, so it is the second option rather than
  * the gate.
  */
 export function ScanHistoryButton({
@@ -245,7 +245,7 @@ export function ScanHistoryButton({
   error: string | null;
   onScan: () => void;
   onPick: () => void;
-  /** Open the WhatsApp-export upload — for history OLDER than the account. */
+  /** Open the WhatsApp-export upload - for history OLDER than the account. */
   onUpload: () => void;
 }) {
   return (

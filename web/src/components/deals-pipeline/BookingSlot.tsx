@@ -723,7 +723,7 @@ const BookingSlot: React.FC<BookingSlotProps> = ({
               {visibleBookedSlots.map((slot) => (
                 <div
                   key={slot.id}
-                  className="p-4 bg-white dark:bg-[#1a2a43]/50 border border-green-200 dark:border-emerald-500/20 rounded-lg hover:border-green-300 dark:hover:border-emerald-500/40 transition-colors"
+                  className="p-4 bg-white dark:bg-[#030a21]/60 border border-green-200 dark:border-blue-950/40 rounded-lg hover:border-green-300 dark:hover:border-blue-900/60 transition-colors"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 space-y-2">
@@ -797,13 +797,13 @@ const BookingSlot: React.FC<BookingSlotProps> = ({
             )}
           </div>
         ) : (
-          <div className="text-center py-8 text-gray-500 bg-white dark:bg-[#1a2a43]/30 rounded-lg border border-gray-200 dark:border-[#262831]">
+          <div className="text-center py-8 text-gray-500 bg-white dark:bg-[#030a21]/40 rounded-lg border border-gray-200 dark:border-blue-950/40">
             <Calendar className="h-8 w-8 mx-auto mb-2 text-gray-400 dark:text-slate-300" />
             <p className="text-sm">No appointments scheduled</p>
           </div>
         )}
         {/* Allow booking new appointments in edit mode */}
-        <div className="pt-4 border-t border-gray-200 dark:border-[#262831]">
+        <div className="pt-4 border-t border-gray-200 dark:border-blue-950/40">
           <Label className="text-sm text-gray-600 dark:text-slate-300 mb-3 block font-medium">
             Book New Appointment
           </Label>
@@ -819,7 +819,7 @@ const BookingSlot: React.FC<BookingSlotProps> = ({
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
                 min={new Date().toISOString().split('T')[0]}
-                className="w-full bg-transparent dark:border-slate-800 text-slate-800 dark:text-white"
+                className="w-full bg-transparent dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 text-slate-800 dark:text-white"
               />
             </div>
             {/* User Selection */}
@@ -832,7 +832,7 @@ const BookingSlot: React.FC<BookingSlotProps> = ({
                 onValueChange={(value: string) => setSelectedUser(value)}
                 disabled={Boolean(createdBy) || users.length === 0}
               >
-                <SelectTrigger id="user-select-edit" className="w-full bg-transparent dark:border-slate-800 text-slate-800 dark:text-white">
+                <SelectTrigger id="user-select-edit" className="w-full bg-transparent dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 text-slate-800 dark:text-white">
                   <SelectValue
                     placeholder={
                       createdBy && currentUser?.email
@@ -854,9 +854,9 @@ const BookingSlot: React.FC<BookingSlotProps> = ({
                         : null}
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent className="dark:bg-[#1a2a43] dark:border-[#262831]">
+                <SelectContent className="dark:bg-[#071131] dark:border-blue-950/40 text-slate-800 dark:text-white">
                   {users.map((user) => (
-                    <SelectItem key={user.id} value={String(user.id)} className="dark:text-white dark:focus:bg-slate-800">
+                    <SelectItem key={user.id} value={String(user.id)}>
                       {user.name} {user.email ? `(${user.email})` : ''}
                     </SelectItem>
                   ))}
@@ -874,11 +874,11 @@ const BookingSlot: React.FC<BookingSlotProps> = ({
                 Booking Type
               </Label>
               <Select value={bookingType} onValueChange={(value: string) => setBookingType(value)}>
-                <SelectTrigger id="booking-type" className="w-full bg-transparent dark:border-slate-800 text-slate-800 dark:text-white">
+                <SelectTrigger id="booking-type" className="w-full bg-transparent dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 text-slate-800 dark:text-white">
                   <SelectValue placeholder="Select booking type" />
                 </SelectTrigger>
-                <SelectContent className="dark:bg-[#1a2a43] dark:border-[#262831]">
-                  <SelectItem value="manual_followup" className="dark:text-white dark:focus:bg-slate-800">manual_followup</SelectItem>
+                <SelectContent className="dark:bg-[#071131] dark:border-blue-950/40 text-slate-800 dark:text-white">
+                  <SelectItem value="manual_followup">manual_followup</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -888,76 +888,72 @@ const BookingSlot: React.FC<BookingSlotProps> = ({
                 <Label htmlFor="start-time-edit" className="text-sm text-gray-600 dark:text-slate-300 mb-2 block">
                   Start Time (15 min intervals)
                 </Label>
-                <select
-                  id="start-time-edit"
+                <Select
                   value={startTime}
-                  onChange={(e) => {
-                    const newStartTime = e.target.value;
-                    setStartTime(newStartTime);
-                    const matching = availableSlots.find((s) => s.startTime === newStartTime);
+                  onValueChange={(value: string) => {
+                    setStartTime(value);
+                    const matching = availableSlots.find((s) => s.startTime === value);
                     if (matching) {
                       setEndTime(matching.endTime);
                     }
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-800 bg-transparent dark:bg-[#101935] text-slate-800 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   disabled={availableSlots.length === 0}
                 >
-                  {availableSlots.length === 0 ? (
-                    <option value="" className="dark:bg-[#1a2a43]">No available slots</option>
-                  ) : (
-                    Array.from(new Set(availableSlots.map((s) => s.startTime))).map((t) => (
-                      <option key={t} value={t} className="dark:bg-[#1a2a43]">
+                  <SelectTrigger id="start-time-edit" className="w-full bg-transparent dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 text-slate-800 dark:text-white">
+                    <SelectValue placeholder="No available slots" />
+                  </SelectTrigger>
+                  <SelectContent className="dark:bg-[#071131] dark:border-blue-950/40 text-slate-800 dark:text-white">
+                    {availableSlots.length === 0 ? null : Array.from(new Set(availableSlots.map((s) => s.startTime))).map((t) => (
+                      <SelectItem key={t} value={t}>
                         {t}
-                      </option>
-                    ))
-                  )}
-                </select>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label htmlFor="end-time-edit" className="text-sm text-gray-600 dark:text-slate-300 mb-2 block">
                   End Time (15 min intervals)
                 </Label>
-                <select
-                  id="end-time-edit"
+                <Select
                   value={endTime}
-                  onChange={(e) => {
-                    const newEndTime = e.target.value;
-                    const [endHour, endMin] = newEndTime.split(':').map(Number);
+                  onValueChange={(value: string) => {
+                    const [endHour, endMin] = value.split(':').map(Number);
                     const endTotalMin = endHour * 60 + endMin;
                     const [startHour, startMin] = startTime.split(':').map(Number);
                     const startTotalMin = startHour * 60 + startMin;
-                    if (newEndTime && startTime && endTotalMin > startTotalMin) {
-                      setEndTime(newEndTime);
+                    if (value && startTime && endTotalMin > startTotalMin) {
+                      setEndTime(value);
                     } else {
                       alert('End time must be after start time');
                     }
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-800 bg-transparent dark:bg-[#101935] text-slate-800 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   disabled={availableSlots.length === 0}
                 >
-                  {availableSlots.length === 0 ? (
-                    <option value="" className="dark:bg-[#1a2a43]">No available slots</option>
-                  ) : (
-                    Array.from(
+                  <SelectTrigger id="end-time-edit" className="w-full bg-transparent dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 text-slate-800 dark:text-white">
+                    <SelectValue placeholder="No available slots" />
+                  </SelectTrigger>
+                  <SelectContent className="dark:bg-[#071131] dark:border-blue-950/40 text-slate-800 dark:text-white">
+                    {Array.from(
                       new Set(
                         (availableSlots.filter((s) => s.startTime === startTime).length > 0
                           ? availableSlots.filter((s) => s.startTime === startTime).map((s) => s.endTime)
                           : availableSlots.map((s) => s.endTime))
                       )
                     ).map((t) => (
-                      <option key={t} value={t} className="dark:bg-[#1a2a43]">
+                      <SelectItem key={t} value={t}>
                         {t}
-                      </option>
-                    ))
-                  )}
-                </select>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             {/* Availability Preview */}
             {selectedUser && selectedDate && (
               <div className="space-y-3">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="bg-white dark:bg-[#1a2a43]/20 border border-gray-200 dark:border-[#262831] rounded-lg p-3">
+                  <div className="bg-white dark:bg-[#030a21]/40 border border-gray-200 dark:border-blue-950/40 rounded-lg p-3">
                     <Label className="text-xs text-gray-600 dark:text-slate-300 block mb-2">
                       Available Slots ({availableSlots.length})
                     </Label>
@@ -975,7 +971,7 @@ const BookingSlot: React.FC<BookingSlotProps> = ({
                       </div>
                     )}
                   </div>
-                  <div className="bg-white dark:bg-[#1a2a43]/20 border border-gray-200 dark:border-[#262831] rounded-lg p-3">
+                  <div className="bg-white dark:bg-[#030a21]/40 border border-gray-200 dark:border-blue-950/40 rounded-lg p-3">
                     <Label className="text-xs text-gray-600 dark:text-slate-300 block mb-2">
                       Previous Bookings ({previousBookingsForUser.length})
                     </Label>
@@ -1007,7 +1003,7 @@ const BookingSlot: React.FC<BookingSlotProps> = ({
                 placeholder="Add notes for this appointment (optional)"
                 value={bookingNotes}
                 onChange={(e) => setBookingNotes(e.target.value)}
-                className="bg-transparent dark:border-slate-800 text-slate-800 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                className="bg-transparent dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 text-slate-800 dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-400"
               />
             </div>
             {/* Book Slot Button */}
@@ -1037,7 +1033,7 @@ const BookingSlot: React.FC<BookingSlotProps> = ({
                     setSelectedSlotForBooking(customSlot);
                     setConfirmDialogOpen(true);
                   }}
-                  className={cn("inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm transition-all disabled:pointer-events-none disabled:opacity-50 active:scale-95 select-none [&_svg]:pointer-events-none [_svg:not([class*='size-'])]:size-4 shrink-0 [_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 has-[>svg]:px-3 h-14 rounded-[10px] font-semibold shadow-sm mx-0", fullWidthButton && "w-full")}
+                  className={cn("inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm transition-all disabled:pointer-events-none disabled:opacity-50 active:scale-95 select-none [&_svg]:pointer-events-none [_svg:not([class*='size-'])]:size-4 shrink-0 [_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive bg-primary dark:bg-[#2B7CFF] text-primary-foreground dark:text-white hover:bg-primary/90 dark:hover:bg-sky-500 px-4 py-2 has-[>svg]:px-3 h-14 rounded-[10px] font-semibold shadow-sm mx-0", fullWidthButton && "w-full")}
                   disabled={
                     loading ||
                     !selectedUser ||

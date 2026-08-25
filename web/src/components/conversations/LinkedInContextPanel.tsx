@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * LinkedIn Context Panel — right-rail companion to the LinkedIn chat view.
+ * LinkedIn Context Panel - right-rail companion to the LinkedIn chat view.
  *
  * Mirrors the WhatsApp ConversationContextPanel but is scoped to what the
  * LinkedIn backend currently supports:
@@ -104,6 +104,8 @@ export function LinkedInContextPanel({ conversation, onClose }: Props) {
   const [labelLoading, setLabelLoading] = useState(false);
   const [showLabelInput, setShowLabelInput] = useState(false);
   const [newLabelName, setNewLabelName] = useState('');
+  /** Set when a label edit was rejected, so the UI stops implying it applied. */
+  const [labelError, setLabelError] = useState<string | null>(null);
 
   const loadLabels = useCallback(async () => {
     try {
@@ -121,30 +123,51 @@ export function LinkedInContextPanel({ conversation, onClose }: Props) {
 
   useEffect(() => { loadLabels(); }, [loadLabels]);
 
-  const addLabel = async (labelId: string) => {
+  // These three mutated LOCAL state whether or not the server accepted the
+  // change, and none checked `resp.ok` — which `fetch` never signals by
+  // throwing. So a failed label edit looked exactly like a successful one until
+  // the panel was reopened and the change had silently reverted.
+  const addLabel = async (labelId: string): Promise<boolean> => {
+    setLabelError(null);
     try {
-      await fetch(`${API_BASE}/conversations/${conversation.id}/labels`, {
+      const resp = await fetch(`${API_BASE}/conversations/${conversation.id}/labels`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ label_id: labelId }),
       });
+      if (!resp.ok) {
+        setLabelError(`Couldn't apply that label (${resp.status}).`);
+        return false;
+      }
       const matched = allLabels.find(l => l.id === labelId);
       if (matched) setLabels(prev => [...prev, matched]);
-    } catch { /* non-fatal */ }
+      return true;
+    } catch {
+      setLabelError("Couldn't apply that label — check your connection.");
+      return false;
+    }
   };
 
   const removeLabel = async (labelId: string) => {
+    setLabelError(null);
     try {
-      await fetch(`${API_BASE}/conversations/${conversation.id}/labels/${labelId}`, {
+      const resp = await fetch(`${API_BASE}/conversations/${conversation.id}/labels/${labelId}`, {
         method: 'DELETE',
       });
+      if (!resp.ok) {
+        setLabelError(`Couldn't remove that label (${resp.status}).`);
+        return;
+      }
       setLabels(prev => prev.filter(l => l.id !== labelId));
-    } catch { /* non-fatal */ }
+    } catch {
+      setLabelError("Couldn't remove that label — check your connection.");
+    }
   };
 
   const createLabel = async () => {
     const name = newLabelName.trim();
     if (!name) return;
+    setLabelError(null);
     try {
       const resp = await fetch(`${API_BASE}/labels`, {
         method: 'POST',
@@ -152,11 +175,18 @@ export function LinkedInContextPanel({ conversation, onClose }: Props) {
         body: JSON.stringify({ name }),
       });
       const data = await resp.json().catch(() => ({}));
-      if (data?.success && data?.data) {
-        setAllLabels(prev => [...prev, data.data]);
-        addLabel(data.data.id);
+      if (!resp.ok || !data?.success || !data?.data) {
+        // Keep the typed name and the open input: clearing them on failure
+        // discarded what the user wrote and looked like the label was created.
+        setLabelError(data?.error || `Couldn't create that label (${resp.status}).`);
+        return;
       }
-    } catch { /* non-fatal */ }
+      setAllLabels(prev => [...prev, data.data]);
+      await addLabel(data.data.id);
+    } catch {
+      setLabelError("Couldn't create that label — check your connection.");
+      return;
+    }
     setNewLabelName('');
     setShowLabelInput(false);
   };
@@ -165,6 +195,8 @@ export function LinkedInContextPanel({ conversation, onClose }: Props) {
   const [notes, setNotes] = useState<LinkedInNote[]>([]);
   const [noteText, setNoteText] = useState('');
   const [savingNote, setSavingNote] = useState(false);
+  /** Set when a save failed, so the note is kept in the box rather than dropped. */
+  const [noteError, setNoteError] = useState<string | null>(null);
 
   const loadNotes = useCallback(async () => {
     try {
@@ -180,6 +212,7 @@ export function LinkedInContextPanel({ conversation, onClose }: Props) {
     const content = noteText.trim();
     if (!content) return;
     setSavingNote(true);
+    setNoteError(null);
     try {
       const resp = await fetch(`${API_BASE}/conversations/${conversation.id}/notes`, {
         method: 'POST',
@@ -187,11 +220,20 @@ export function LinkedInContextPanel({ conversation, onClose }: Props) {
         body: JSON.stringify({ content }),
       });
       const data = await resp.json().catch(() => ({}));
-      if (data?.success && data?.data) {
-        setNotes(prev => [data.data, ...prev]);
+      // `fetch` does not throw on 4xx/5xx, so a server error landed here rather
+      // than in the catch — and `setNoteText('')` used to run REGARDLESS of the
+      // outcome. The note was never saved, never added to the list, and the box
+      // emptied anyway, which reads as success. The user's typed note was gone
+      // with nothing to retype from. Only clear on a CONFIRMED save.
+      if (!resp.ok || !data?.success || !data?.data) {
+        setNoteError(data?.error || `Couldn't save the note (${resp.status}).`);
+        return;
       }
+      setNotes(prev => [data.data, ...prev]);
       setNoteText('');
-    } catch { /* non-fatal */ } finally { setSavingNote(false); }
+    } catch {
+      setNoteError("Couldn't save the note — check your connection.");
+    } finally { setSavingNote(false); }
   };
 
   // ── AI Chat Agent toggle (tenant-wide automation flag) ──────────────────
@@ -211,7 +253,7 @@ export function LinkedInContextPanel({ conversation, onClose }: Props) {
     setAgentSaving(true);
     setAgentEnabled(next);   // optimistic
     try {
-      // Read CURRENT values then PUT — backend expects every field we want to
+      // Read CURRENT values then PUT - backend expects every field we want to
       // keep. If we omit a field here, the backend's clamp logic resets it
       // (e.g. ai_agent_reply_delay_seconds would silently flip back to 0
       // every time the user toggles the agent on/off from this panel).
@@ -464,6 +506,13 @@ export function LinkedInContextPanel({ conversation, onClose }: Props) {
             ))}
           </div>
 
+          {labelError && (
+            <p className="mt-2 flex items-start gap-1.5 text-[11px] text-rose-600 dark:text-rose-400">
+              <AlertCircle className="w-3 h-3 flex-shrink-0 mt-0.5" />
+              <span>{labelError}</span>
+            </p>
+          )}
+
           {showLabelInput && (
             <div className="mt-3 space-y-2">
               {/* Existing labels not yet assigned */}
@@ -622,10 +671,10 @@ export function LinkedInContextPanel({ conversation, onClose }: Props) {
                   <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">Monitor Their Posts</p>
                   <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
                     {!pmTenantEnabled
-                      ? 'Off tenant-wide — enable in Settings → Chat → LinkedIn'
+                      ? 'Off tenant-wide - enable in Settings → Chat → LinkedIn'
                       : pmPaused
                         ? 'Paused for this lead'
-                        : 'On — engages new posts'}
+                        : 'On - engages new posts'}
                   </p>
                 </div>
               </div>
@@ -712,6 +761,12 @@ export function LinkedInContextPanel({ conversation, onClose }: Props) {
                 rows={3}
                 className="text-xs resize-none"
               />
+              {noteError && (
+                <p className="flex items-start gap-1.5 text-[11px] text-rose-600 dark:text-rose-400">
+                  <AlertCircle className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                  <span>{noteError} Your note is still here — try again.</span>
+                </p>
+              )}
               <div className="flex justify-end">
                 <Button
                   size="sm"
@@ -740,7 +795,7 @@ export function LinkedInContextPanel({ conversation, onClose }: Props) {
             </div>
           </TabsContent>
 
-          {/* Internal comments — placeholder */}
+          {/* Internal comments - placeholder */}
           <TabsContent value="internal" className="pt-3">
             <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center py-3">
               Internal comments coming soon.

@@ -639,7 +639,7 @@ export function CallLogsTable({
     //     const cost = row.original.cost || row.original.call_cost;
     //     return (
     //       <span className="font-mono text-sm">
-    //         {cost ? `$${Number(cost).toFixed(2)}` : "—"}
+    //         {cost ? `$${Number(cost).toFixed(2)}` : " - "}
     //       </span>
     //     );
     //   },
@@ -1092,7 +1092,7 @@ export function CallLogsTable({
                   // Check if there's any data
                   if (timelineItems.length === 0) {
                     return (
-                      <TableRow>
+                      <TableRow className="hover:bg-transparent">
                         <TableCell
                           colSpan={columns.length}
                           className="text-center py-16"
@@ -1112,7 +1112,7 @@ export function CallLogsTable({
                               </div>
                               <button
                                 onClick={() => router.push('/make-call')}
-                                className="px-6 py-2.5 bg-[#ffffff] rounded-lg transition-all duration-300 font-medium shadow-md hover:shadow-lg hover:scale-105 flex items-center gap-2"
+                                className="px-6 py-2.5 bg-primary hover:bg-primary/90 rounded-lg text-white transition-all duration-300 font-medium shadow-md hover:shadow-lg hover:scale-105 flex items-center gap-2"
                               >
                                 <Plus className="w-4 h-4" />
                                 Go to Make Call
@@ -1174,7 +1174,7 @@ export function CallLogsTable({
                   });
                 })()
               ) : table.getRowModel().rows.length === 0 ? (
-                <TableRow>
+                <TableRow className="hover:bg-transparent">
                   <TableCell
                     colSpan={columns.length}
                     className="text-center py-16"
@@ -1255,7 +1255,7 @@ export function CallLogsTable({
           </Table>
         </div>
       </div>
-      {/* Pagination Controls – Server-Side Pagination */}
+      {/* Pagination Controls-Server-Side Pagination */}
       {table.getRowModel().rows.length > 0 && onPageChange && (
         <div className="flex items-center justify-between px-2 xs:px-4 py-3 gap-2 border-t border-[#E2E8F0] dark:border-[#262831] bg-[#F8FAFC] dark:bg-[#000724]">
           {/* Left Side: Records per page */}
@@ -1365,8 +1365,8 @@ export function CallLogsTable({
                   <span className="block md:inline">Schedule</span>{' '}
                   <span className="block md:inline">Appointment</span>
                   {selectedLead?.name && (
-                      <span className="block md:inline">
-                      <span> - </span>
+                      <span className="block md:inline text-slate-500 dark:text-slate-400 font-normal">
+                      <span> — </span>
                       <span className="md:hidden"><br /></span>
                                       {selectedLead.name}
                       </span>

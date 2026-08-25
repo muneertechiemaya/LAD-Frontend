@@ -80,7 +80,7 @@ export const LatestCallsWidget: React.FC<LatestCallsWidgetProps> = ({
             {calls.length > ITEMS_PER_PAGE && (
               <div className="flex items-center justify-between pt-2">
                 <span className="text-xs text-muted-foreground">
-                  {(currentPage - 1) * ITEMS_PER_PAGE + 1}–
+                  {(currentPage - 1) * ITEMS_PER_PAGE + 1}-
                   {Math.min(currentPage * ITEMS_PER_PAGE, calls.length)} of {calls.length}
                 </span>
                 <div className="flex gap-2">

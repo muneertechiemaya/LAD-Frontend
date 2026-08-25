@@ -157,9 +157,9 @@ export function toProspectFixture(p: ProspectState): ProspectFixture {
     };
   }
 
-  // fit_signals may arrive as numbers (0..1) or booleans — coerce to numbers.
+  // fit_signals may arrive as numbers (0..1) or booleans - coerce to numbers.
   // Some backend-computed signals (e.g. scored_from_messages) come through as
-  // raw, unnormalized scores rather than the documented 0..1 fraction — clamp
+  // raw, unnormalized scores rather than the documented 0..1 fraction - clamp
   // so a stray large value can't blow up FitRadar's bar percentage/rounded
   // label (width: `${v * 100}%` / Math.round(v * 100), so an unclamped 21
   // renders as a nonsensical "2100") or fly its radar vertex off the chart.

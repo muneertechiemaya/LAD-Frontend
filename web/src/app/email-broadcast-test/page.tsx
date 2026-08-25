@@ -3,7 +3,7 @@
 /**
  * Debug-only page to verify the LAD-Email-Comms integration end-to-end.
  *
- * Renders the EmailBroadcastPanel — pulls accounts + runs + recipients from
+ * Renders the EmailBroadcastPanel - pulls accounts + runs + recipients from
  * /api/email-comms/* (the Next.js proxy → LAD-Email-Comms FastAPI).
  *
  * Auth is via the same access_token cookie the rest of the app uses, so log

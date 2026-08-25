@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * LinkedInFunnelWidget — the outbound LinkedIn funnel.
+ * LinkedInFunnelWidget - the outbound LinkedIn funnel.
  *
  * Sent → Accepted → Replied across all campaigns, with accept/reply rates and
  * the account's weekly connection-limit usage. Data: LAD backend
@@ -18,7 +18,7 @@ interface Stats {
   total_connected?: number;
   total_replied?: number;
   // GET /api/campaigns/stats -> CampaignCRUDController.getCampaignStats sends
-  // `connection_rate` (no avg_ prefix) — a sibling code path, CampaignModel's
+  // `connection_rate` (no avg_ prefix) - a sibling code path, CampaignModel's
   // per-campaign stats method, names the equivalent field `avg_connection_rate`,
   // and this widget was written against that name. Since this endpoint never
   // sends `avg_connection_rate`, the read below always missed and the widget
